@@ -48,7 +48,7 @@ go.work.sum
 target*
 env.yml
 env.yaml
-.clinerules
+# .clinerules
 .clinerules/*
 
 ### Cloud Functions ###
@@ -56,6 +56,10 @@ env.yaml
 mypkg/go.mod
 mypkg/go.sum
 
+### data ###
+# testdata/*
 
-### module file ###
-mcps-go
+### binary ###
+pkg/bin/win_amd64
+pkg/bin/linux_amd64
+bin

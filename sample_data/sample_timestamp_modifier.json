@@ -1,0 +1,8 @@
+{
+  "description": "これはサンプルJSONファイルです",
+  "name": "サンプル",
+  "new_key": "新しい値",
+  "timestamp": 1744274431,
+  "updated_at": 1744274451,
+  "version": "1.0.0"
+}
