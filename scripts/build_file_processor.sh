@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/file-processor"
+CMD_DIR="cmd/cli/file-processor"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"

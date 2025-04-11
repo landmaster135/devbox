@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/json-timestamp-modifier"
+CMD_DIR="cmd/cli/json-timestamp-modifier"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"
