@@ -1,32 +1,21 @@
 package main
 
 import (
-	util "go-dev-template/mymodule/util"
+	"fmt"
+	"io"
+	"os"
 )
 
+// run はアプリケーションのメイン処理を実行します
+func run(w io.Writer) int {
+	// メインメッセージを出力
+	fmt.Fprint(w, "Devbox: ファイル処理ユーティリティ\n")
+	fmt.Fprint(w, "詳細なコマンドは cmd/file-processor を使用してください。\n")
+	return 0
+}
+
 func main() {
-	// env_name := "ANY_TOKEN"
-	// TOKEN, ok := os.LookupEnv(env_name)
-	// if !ok {
-	// 	fmt.Printf("%s is not set", env_name)
-	// }
-	// results, err := util.AnyFunction(TOKEN)
-	// if err != nil {
-	// 	util.OutLog(err)
-	// 	panic(err)
-	// }
-	util.OutLog("main: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-
-	// util.OutLog(results)
-	// j, err := json.Marshal(results)
-	// b := bytes.NewBuffer([]byte(j))
-	// util.OutLog(b)
-
-	// util.OutLog(results)
-	l := util.NewBuiltinLogger("FILE")
-	l.Debug("this is debug message")
-	l.Info("this is info message")
-	l.Warning("this is warning message")
-	l.Error("this is error message")
-	l.Fatal("this is fatal message")
+	// run関数を呼び出し、結果に応じて終了コードを設定
+	code := run(os.Stdout)
+	os.Exit(code)
 }

@@ -1,0 +1,21 @@
+{
+  "created_at": 1744299045,
+  "description": "ISO8601形式の日時文字列をUNIXタイムスタンプに変換するためのサンプル",
+  "id": 123,
+  "items": [
+    {
+      "name": "アイテム1",
+      "timestamp": 1744236605
+    },
+    {
+      "name": "アイテム2",
+      "timestamp": 1744273515
+    }
+  ],
+  "metadata": {
+    "author": "テストユーザー",
+    "published_at": 1744280120
+  },
+  "title": "サンプルデータ",
+  "updated_at": 1744307130
+}

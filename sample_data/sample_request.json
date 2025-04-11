@@ -1,0 +1,11 @@
+{
+  "name": "テストユーザー",
+  "email": "test@example.com",
+  "age": 30,
+  "interests": ["プログラミング", "読書", "旅行"],
+  "address": {
+    "country": "日本",
+    "city": "東京",
+    "postalCode": "100-0001"
+  }
+}
