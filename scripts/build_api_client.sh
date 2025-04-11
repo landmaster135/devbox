@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/api-client"
+CMD_DIR="cmd/cli/api-client"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"

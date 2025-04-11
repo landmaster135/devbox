@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/json-file-merger"
+CMD_DIR="cmd/cli/json-file-merger"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"

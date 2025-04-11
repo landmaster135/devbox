@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/json-iso8601-converter"
+CMD_DIR="cmd/cli/json-iso8601-converter"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"
