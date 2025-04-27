@@ -1,6 +1,6 @@
 @echo off
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\pdf-merger.exe -dir C:\Users\OCT--\Downloads\picture_backup
+.\pkg\bin\win_amd64\pdf-merger.exe -dir %HOMEPATH%\Downloads\picture_backup
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
