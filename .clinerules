@@ -1,4 +1,5 @@
 # devbox Project
+
 ## Directory Structure
 Based on standard Go project structure:
 - cmd/: Entry points for command line tools.

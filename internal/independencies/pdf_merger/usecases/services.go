@@ -58,9 +58,6 @@ func MergeImagesIntoPDF(images []string, output string) error {
 	cfg.OptimizeResourceDicts = true
 	// Share duplicated streams in all pages
 	cfg.OptimizeDuplicateContentStreams = true
-	// Set user password and owner password
-	// cfg.UserPWNew = "aaaaa"
-	// cfg.OwnerPWNew = "aaaaa"
 	if err := api.ImportImagesFile(images, output, nil, cfg); err != nil {
 		return err
 	}
