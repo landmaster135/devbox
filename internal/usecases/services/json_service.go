@@ -266,6 +266,161 @@ func (s *JSONService) ConvertUnixToISO8601(filePath string, key string) error {
 	return nil
 }
 
+// AddKeyValueToAllFiles は指定されたディレクトリ内の全てのJSONファイルに新しいキーと値を追加します
+func (s *JSONService) AddKeyValueToAllFiles(dirPath string, key string, value interface{}, recursive bool) (int, error) {
+	if key == "" {
+		return 0, errors.New("キーは空にできません")
+	}
+
+	// ディレクトリ内のJSONファイルを検索
+	jsonFiles, err := s.FileRepo.FindFilesByExt(dirPath, ".json")
+	if err != nil {
+		return 0, fmt.Errorf("JSONファイルの検索に失敗しました: %w", err)
+	}
+
+	// 再帰的に検索する場合
+	if recursive {
+		// ディレクトリ内のサブディレクトリを取得
+		entries, err := s.FileRepo.ReadDir(dirPath)
+		if err != nil {
+			return 0, fmt.Errorf("ディレクトリの読み込みに失敗しました: %w", err)
+		}
+
+		// 各サブディレクトリを処理
+		for _, entry := range entries {
+			if entry.IsDir {
+				// サブディレクトリ内のJSONファイルを処理
+				subCount, err := s.AddKeyValueToAllFiles(entry.Path, key, value, recursive)
+				if err != nil {
+					return 0, err
+				}
+				// 処理したファイル数を加算
+				jsonFiles = append(jsonFiles, make([]string, subCount)...)
+			}
+		}
+	}
+
+	// 各JSONファイルを処理
+	processedCount := 0
+	for _, filePath := range jsonFiles {
+		err := s.AddKeyValue(filePath, key, value)
+		if err != nil {
+			// エラーが発生しても処理を続行
+			fmt.Printf("ファイル %s の処理中にエラーが発生しました: %v\n", filePath, err)
+			continue
+		}
+		processedCount++
+	}
+
+	return processedCount, nil
+}
+
+// ConvertISO8601ToUnixInAllFiles は指定されたディレクトリ内の全てのJSONファイルに指定したキーの値をISO-8601形式からUNIXタイムスタンプに変換します
+func (s *JSONService) ConvertISO8601ToUnixInAllFiles(dirPath string, key string, isJst bool, recursive bool) (int, error) {
+	if key == "" {
+		return 0, errors.New("キーは空にできません")
+	}
+
+	// ディレクトリ内のJSONファイルを検索
+	jsonFiles, err := s.FileRepo.FindFilesByExt(dirPath, ".json")
+	if err != nil {
+		return 0, fmt.Errorf("JSONファイルの検索に失敗しました: %w", err)
+	}
+
+	// 再帰的に検索する場合
+	if recursive {
+		// ディレクトリ内のサブディレクトリを取得
+		entries, err := s.FileRepo.ReadDir(dirPath)
+		if err != nil {
+			return 0, fmt.Errorf("ディレクトリの読み込みに失敗しました: %w", err)
+		}
+
+		// 各サブディレクトリを処理
+		for _, entry := range entries {
+			if entry.IsDir {
+				// サブディレクトリ内のJSONファイルを処理
+				subCount, err := s.ConvertISO8601ToUnixInAllFiles(entry.Path, key, isJst, recursive)
+				if err != nil {
+					return 0, err
+				}
+				// 処理したファイル数を加算
+				jsonFiles = append(jsonFiles, make([]string, subCount)...)
+			}
+		}
+	}
+
+	// 各JSONファイルを処理
+	processedCount := 0
+	for _, filePath := range jsonFiles {
+		err := s.ConvertISO8601ToUnix(filePath, key, isJst)
+		if err != nil {
+			// キーが存在しない場合はスキップ
+			if strings.Contains(err.Error(), "キー") && strings.Contains(err.Error(), "が存在しません") {
+				continue
+			}
+			// その他のエラーが発生しても処理を続行
+			fmt.Printf("ファイル %s の処理中にエラーが発生しました: %v\n", filePath, err)
+			continue
+		}
+		processedCount++
+	}
+
+	return processedCount, nil
+}
+
+// ConvertUnixToISO8601InAllFiles は指定されたディレクトリ内の全てのJSONファイルに指定したキーの値をUNIXタイムスタンプからISO-8601形式に変換します
+func (s *JSONService) ConvertUnixToISO8601InAllFiles(dirPath string, key string, recursive bool) (int, error) {
+	if key == "" {
+		return 0, errors.New("キーは空にできません")
+	}
+
+	// ディレクトリ内のJSONファイルを検索
+	jsonFiles, err := s.FileRepo.FindFilesByExt(dirPath, ".json")
+	if err != nil {
+		return 0, fmt.Errorf("JSONファイルの検索に失敗しました: %w", err)
+	}
+
+	// 再帰的に検索する場合
+	if recursive {
+		// ディレクトリ内のサブディレクトリを取得
+		entries, err := s.FileRepo.ReadDir(dirPath)
+		if err != nil {
+			return 0, fmt.Errorf("ディレクトリの読み込みに失敗しました: %w", err)
+		}
+
+		// 各サブディレクトリを処理
+		for _, entry := range entries {
+			if entry.IsDir {
+				// サブディレクトリ内のJSONファイルを処理
+				subCount, err := s.ConvertUnixToISO8601InAllFiles(entry.Path, key, recursive)
+				if err != nil {
+					return 0, err
+				}
+				// 処理したファイル数を加算
+				jsonFiles = append(jsonFiles, make([]string, subCount)...)
+			}
+		}
+	}
+
+	// 各JSONファイルを処理
+	processedCount := 0
+	for _, filePath := range jsonFiles {
+		err := s.ConvertUnixToISO8601(filePath, key)
+		if err != nil {
+			// キーが存在しない場合はスキップ
+			if strings.Contains(err.Error(), "キー") && strings.Contains(err.Error(), "が存在しません") {
+				continue
+			}
+			// その他のエラーが発生しても処理を続行
+			fmt.Printf("ファイル %s の処理中にエラーが発生しました: %v\n", filePath, err)
+			continue
+		}
+		processedCount++
+	}
+
+	return processedCount, nil
+}
+
 // TimestampService はJSONファイルにタイムスタンプを追加するためのサービスです
 type TimestampService struct {
 	jsonService *JSONService
@@ -290,4 +445,18 @@ func (s *TimestampService) AddTimestamp(filePath string, key string) error {
 
 	// JSONファイルにキーと値を追加
 	return s.jsonService.AddKeyValue(filePath, key, timestamp)
+}
+
+// AddTimestampToAllFiles は指定されたディレクトリ内の全てのJSONファイルに現在の日時のタイムスタンプを追加します
+func (s *TimestampService) AddTimestampToAllFiles(dirPath string, key string, recursive bool) (int, error) {
+	if key == "" {
+		return 0, errors.New("キーは空にできません")
+	}
+
+	// 現在の日時を取得（UNIXタイムスタンプ）
+	now := time.Now()
+	timestamp := now.Unix()
+
+	// ディレクトリ内の全てのJSONファイルにキーと値を追加
+	return s.jsonService.AddKeyValueToAllFiles(dirPath, key, timestamp, recursive)
 }
