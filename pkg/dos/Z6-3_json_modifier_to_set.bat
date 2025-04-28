@@ -5,7 +5,7 @@ set /p key="Input key to set: "
 set /p value="Input value to set: "
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\json-timestamp-modifier.exe -file %filepath% -key %key% -set %value%
+.\pkg\bin\win_amd64\json-modifier.exe -file %filepath% -key %key% -set %value%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
