@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/landmaster135/devbox/internal/domain/models"
 	"github.com/landmaster135/devbox/internal/domain/repositories"
+	"github.com/landmaster135/devbox/internal/independencies/iso8601-converter/usecases"
 )
 
 // JSONService はJSONファイルを操作するためのサービスです
@@ -118,6 +120,150 @@ func (s *JSONService) GetAllData(filePath string) (map[string]interface{}, error
 	}
 
 	return data, nil
+}
+
+// ConvertISO8601ToUnix はJSONファイル内の指定したキーの値をISO-8601形式からUNIXタイムスタンプに変換します
+func (s *JSONService) ConvertISO8601ToUnix(filePath string, key string, isJst bool) error {
+	// ファイルが存在するか確認
+	if !s.FileRepo.FileExists(filePath) {
+		return errors.New("ファイルが存在しません")
+	}
+
+	// JSONファイルを読み込む
+	jsonData, err := s.FileRepo.ReadJSONFile(filePath)
+	if err != nil {
+		return fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
+	}
+
+	// 型アサーション
+	data, ok := jsonData.(map[string]interface{})
+	if !ok {
+		return errors.New("JSONデータをマップに変換できません")
+	}
+
+	// キーが存在するか確認
+	value, exists := data[key]
+	if !exists {
+		return fmt.Errorf("キー '%s' が存在しません", key)
+	}
+
+	// 文字列型かどうか確認
+	strValue, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("キー '%s' の値が文字列ではありません", key)
+	}
+
+	var unixTimestamp int64
+
+	// 時刻情報が含まれているかどうかを確認
+	if strings.Contains(strValue, "T") {
+		// ISO-8601形式からUNIXタイムスタンプに変換
+		unixStr, err := usecases.ISO8601ToUnix(strValue)
+		if err != nil {
+			return fmt.Errorf("ISO-8601形式からUNIXタイムスタンプへの変換に失敗しました: %w", err)
+		}
+		unixTimestamp, err = strconv.ParseInt(unixStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("UNIXタイムスタンプの解析に失敗しました: %w", err)
+		}
+	} else {
+		// 日付のみの場合、isJstに基づいて変換
+		unixStr, err := usecases.DateToUnix(strValue, isJst)
+		if err != nil {
+			return fmt.Errorf("日付からUNIXタイムスタンプへの変換に失敗しました: %w", err)
+		}
+		unixTimestamp, err = strconv.ParseInt(unixStr, 10, 64)
+		if err != nil {
+			return fmt.Errorf("UNIXタイムスタンプの解析に失敗しました: %w", err)
+		}
+	}
+
+	// 変換した値を設定
+	data[key] = unixTimestamp
+
+	// JSONに変換
+	jsonBytes, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("JSONへの変換に失敗しました: %w", err)
+	}
+
+	// ファイルに書き込む
+	lines := strings.Split(string(jsonBytes), "\n")
+	content := models.NewFileContent(lines)
+	if err := s.FileRepo.WriteFile(filePath, content); err != nil {
+		return fmt.Errorf("ファイルの書き込みに失敗しました: %w", err)
+	}
+
+	return nil
+}
+
+// ConvertUnixToISO8601 はJSONファイル内の指定したキーの値をUNIXタイムスタンプからISO-8601形式に変換します
+func (s *JSONService) ConvertUnixToISO8601(filePath string, key string) error {
+	// ファイルが存在するか確認
+	if !s.FileRepo.FileExists(filePath) {
+		return errors.New("ファイルが存在しません")
+	}
+
+	// JSONファイルを読み込む
+	jsonData, err := s.FileRepo.ReadJSONFile(filePath)
+	if err != nil {
+		return fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
+	}
+
+	// 型アサーション
+	data, ok := jsonData.(map[string]interface{})
+	if !ok {
+		return errors.New("JSONデータをマップに変換できません")
+	}
+
+	// キーが存在するか確認
+	value, exists := data[key]
+	if !exists {
+		return fmt.Errorf("キー '%s' が存在しません", key)
+	}
+
+	// 数値型に変換
+	var numValue int64
+	switch v := value.(type) {
+	case float64:
+		numValue = int64(v)
+	case int64:
+		numValue = v
+	case int:
+		numValue = int64(v)
+	case string:
+		var err error
+		numValue, err = strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return fmt.Errorf("キー '%s' の値をUNIXタイムスタンプとして解析できません: %w", key, err)
+		}
+	default:
+		return fmt.Errorf("キー '%s' の値がUNIXタイムスタンプとして解析できません", key)
+	}
+
+	// UNIXタイムスタンプからISO-8601形式に変換
+	iso8601Str, err := usecases.UnixToISO8601(strconv.FormatInt(numValue, 10))
+	if err != nil {
+		return fmt.Errorf("UNIXタイムスタンプからISO-8601形式への変換に失敗しました: %w", err)
+	}
+
+	// 変換した値を設定
+	data[key] = iso8601Str
+
+	// JSONに変換
+	jsonBytes, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("JSONへの変換に失敗しました: %w", err)
+	}
+
+	// ファイルに書き込む
+	lines := strings.Split(string(jsonBytes), "\n")
+	content := models.NewFileContent(lines)
+	if err := s.FileRepo.WriteFile(filePath, content); err != nil {
+		return fmt.Errorf("ファイルの書き込みに失敗しました: %w", err)
+	}
+
+	return nil
 }
 
 // TimestampService はJSONファイルにタイムスタンプを追加するためのサービスです

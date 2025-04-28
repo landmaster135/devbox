@@ -10,6 +10,13 @@ import (
 	"github.com/landmaster135/devbox/internal/usecases/services"
 )
 
+// モード定数
+const (
+	modeAddTimestamp = "add"
+	modeToUnix       = "to-unix"
+	modeToISO8601    = "to-iso"
+)
+
 // exitCode はプログラムの終了コードを表します
 type exitCode int
 
@@ -26,7 +33,9 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// コマンドライン引数の定義
 	filePath := fs.String("file", "", "操作するJSONファイルのパス")
-	key := fs.String("key", "timestamp", "タイムスタンプを追加するキー")
+	key := fs.String("key", "timestamp", "操作するキー")
+	mode := fs.String("mode", modeAddTimestamp, "操作モード: add (タイムスタンプ追加), to-unix (ISO-8601→UNIX), to-iso (UNIX→ISO-8601)")
+	isJst := fs.Bool("is-jst", false, "日付のみの文字列をJSTとして扱う（to-unixモードのみ）")
 
 	// 引数の解析
 	if err := fs.Parse(args); err != nil {
@@ -41,19 +50,49 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
+	// モードの検証
+	if *mode != modeAddTimestamp && *mode != modeToUnix && *mode != modeToISO8601 {
+		fmt.Fprintf(stderr, "エラー: 無効なモード '%s' が指定されました\n", *mode)
+		fs.Usage()
+		return exitCodeError
+	}
+
 	// 依存関係の注入
 	fileRepo := repositories.NewFileRepository()
 	jsonService := services.NewJSONService(fileRepo)
 	timestampService := services.NewTimestampService(jsonService)
 
-	// タイムスタンプを追加
-	err := timestampService.AddTimestamp(*filePath, *key)
-	if err != nil {
-		fmt.Fprintf(stderr, "エラー: %v\n", err)
-		return exitCodeError
-	}
+	var err error
 
-	fmt.Fprintf(stdout, "JSONファイル '%s' にキー '%s' と現在の日時のタイムスタンプを追加しました\n", *filePath, *key)
+	// モードに応じた処理を実行
+	switch *mode {
+	case modeAddTimestamp:
+		// タイムスタンプを追加
+		err = timestampService.AddTimestamp(*filePath, *key)
+		if err != nil {
+			fmt.Fprintf(stderr, "エラー: %v\n", err)
+			return exitCodeError
+		}
+		fmt.Fprintf(stdout, "JSONファイル '%s' にキー '%s' と現在の日時のタイムスタンプを追加しました\n", *filePath, *key)
+
+	case modeToUnix:
+		// ISO-8601形式からUNIXタイムスタンプに変換
+		err = jsonService.ConvertISO8601ToUnix(*filePath, *key, *isJst)
+		if err != nil {
+			fmt.Fprintf(stderr, "エラー: %v\n", err)
+			return exitCodeError
+		}
+		fmt.Fprintf(stdout, "JSONファイル '%s' のキー '%s' の値をISO-8601形式からUNIXタイムスタンプに変換しました\n", *filePath, *key)
+
+	case modeToISO8601:
+		// UNIXタイムスタンプからISO-8601形式に変換
+		err = jsonService.ConvertUnixToISO8601(*filePath, *key)
+		if err != nil {
+			fmt.Fprintf(stderr, "エラー: %v\n", err)
+			return exitCodeError
+		}
+		fmt.Fprintf(stdout, "JSONファイル '%s' のキー '%s' の値をUNIXタイムスタンプからISO-8601形式に変換しました\n", *filePath, *key)
+	}
 
 	return exitCodeOK
 }
