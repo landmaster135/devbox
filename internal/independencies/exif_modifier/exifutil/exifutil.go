@@ -1,0 +1,2 @@
+// exifutil.go
+package exifutil
