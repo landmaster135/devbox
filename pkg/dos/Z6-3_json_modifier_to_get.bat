@@ -3,7 +3,7 @@
 set /p filepath="Input path of JSON file you wanna edit: "
 set /p key="Input key to get: "
 choice /c yn /n /m "Select whether to get all keys and values or not  [y]='-get-all'  [n]='-get' : "
-if errorlevel 1 (
+if %errorlevel% == 1 (
   set "gets_all=-get-all"
 ) else (
   set "gets_all=-get"

@@ -5,7 +5,7 @@ set /p filepath="Input path of JSON file you wanna edit: "
 choice /c ui /n /m "Select conversion format  [u]=--to-unix  [i]=--to-iso : "
 rem ---- choice ‚Ì–ß‚è’l (errorlevel) ‚Å•ªŠò ----
 rem  ¦ /c ui ‚¾‚Æ i ‚ğ‰Ÿ‚µ‚½‚Æ‚« errorlevel=2, u ‚ğ‰Ÿ‚µ‚½‚Æ‚« errorlevel=1
-if errorlevel 2 (
+if %errorlevel% == 2 (
   set "to=to-iso"
 ) else (
   set "to=to-unix"
@@ -14,7 +14,7 @@ if errorlevel 2 (
 set /p key="Input key to convert to ISO-8601 format or UNIX timestamp: "
 
 choice /c yn /n /m "Select whether to enable the --is-jst option or not  [y]='--is-jst'  [n]='' : "
-if errorlevel 1 (
+if %errorlevel% == 1 (
   set "is_jst=--is-jst"
 ) else (
   set "is_jst="

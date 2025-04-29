@@ -3,7 +3,7 @@ set /p dirpath="Input dir path having JSON files you wanna edit: "
 set /p key="Input key to add UNIX timestamp: "
 
 choice /c yn /n /m "Select whether to enable the --recursive option or not  [y]='--recursive'  [n]='' : "
-if errorlevel 1 (
+if %errorlevel% == 1 (
   set "is_recursive=-recursive"
 ) else (
   set "is_recursive="
