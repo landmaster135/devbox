@@ -118,3 +118,27 @@ func TestConvertSVGForceConvert(t *testing.T) {
 		t.Errorf("expected 300 bytes, got %d", size)
 	}
 }
+
+func TestArchiveMoveFlag(t *testing.T) {
+    srcDir := t.TempDir(); archDir := t.TempDir()
+    src, _ := writeDummyFile(srcDir, "pic.jpg", 10)
+
+    // move=false → 何もしない
+    if err := ArchiveOriginal(src, srcDir, archDir, false); err != nil {
+        t.Fatal(err)
+    }
+    if _, err := os.Stat(src); err != nil {
+        t.Errorf("source should remain when move=false: %v", err)
+    }
+    if _, err := os.Stat(filepath.Join(archDir, "pic.jpg")); !os.IsNotExist(err) {
+        t.Errorf("file should NOT be archived when move=false")
+    }
+
+    // move=true → 移動
+    if err := ArchiveOriginal(src, srcDir, archDir, true); err != nil {
+        t.Fatal(err)
+    }
+    if _, err := os.Stat(src); !os.IsNotExist(err) {
+        t.Errorf("source should be moved when move=true")
+    }
+}

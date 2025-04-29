@@ -9,6 +9,7 @@
 - 非可逆圧縮フォーマットの品質調整
 - 複数のCPUコアを活用した並列処理
 - 再帰的なディレクトリ走査オプション
+- 元画像ファイルのアーカイブ機能（コピーまたは移動）
 
 ## 使い方
 
@@ -22,6 +23,8 @@ image-converter [オプション]
 |------------|--------------|------|
 | `-src` | `.` | 変換元ディレクトリ |
 | `-out` | `./999_converted_images` | 出力先ディレクトリ |
+| `-archive` | `""` (空) | アーカイブ先ディレクトリ（空の場合は無効） |
+| `-move` | `false` | 元ファイルをコピーではなく移動（-archiveが指定されている場合のみ有効） |
 | `-ext` | `png` | 変換先フォーマット (png/jpg/webp/avif) |
 | `-q` | `80` | 非可逆圧縮フォーマットの品質 (1-100) |
 | `-workers` | CPU数 | 同時実行ワーカー数 |
@@ -51,6 +54,18 @@ image-converter -src ./photos -ext jpg -R
 
 ```bash
 image-converter -src ./photos -out ./converted -ext avif
+```
+
+#### 変換後に元ファイルをアーカイブディレクトリにコピー
+
+```bash
+image-converter -src ./photos -ext webp -archive ./originals
+```
+
+#### 変換後に元ファイルをアーカイブディレクトリに移動
+
+```bash
+image-converter -src ./photos -ext webp -archive ./originals -move
 ```
 
 ## サポートされているフォーマット

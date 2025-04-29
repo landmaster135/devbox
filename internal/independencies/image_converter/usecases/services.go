@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -141,4 +142,46 @@ func ConvertFile(path, srcDir, outDir, outExt string, table map[string]codec) er
 		path, outPath, note, len(origBytes), len(saveBytes), ratio)
 
 	return nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = out.Close() }()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
+}
+
+// preserving the relative directory structure under srcDir.
+func ArchiveOriginal(srcPath, srcDir, archiveDir string, move bool) error {
+	if !move || archiveDir == "" {
+		return nil // 触らない
+	}
+
+	rel, _ := filepath.Rel(srcDir, srcPath)
+	dest := filepath.Join(archiveDir, rel)
+
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+
+	// 1) rename で速く 2) cross-device fallback
+	if err := os.Rename(srcPath, dest); err == nil {
+		return nil
+	}
+	if err := copyFile(srcPath, dest); err != nil {
+		return err
+	}
+	return os.Remove(srcPath)
 }
