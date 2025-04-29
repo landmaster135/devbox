@@ -115,8 +115,8 @@ func ConvertFile(path, srcDir, outDir, outExt string, table map[string]codec) er
 	dstExt := outExt
 	note := "converted"
 
-	// ◎ サイズ比較は「SVG → 非SVG」以外にのみ適用
-	requiresForcedConvert := (inExt == "svg" && outExt != "svg") || (inExt == "avif" && outExt == "webp")
+	// ◎ サイズ比較は「SVG → 非SVG」、「Avif → Webp」、「any → Jpg」以外にのみ適用
+	requiresForcedConvert := (inExt == "svg" && outExt != "svg") || (inExt == "avif" && outExt == "webp") || (outExt == "jpg")
 
 	if !requiresForcedConvert && len(encBytes) >= len(origBytes) {
 		saveBytes = origBytes
@@ -165,7 +165,7 @@ func copyFile(src, dst string) error {
 
 // preserving the relative directory structure under srcDir.
 func ArchiveOriginal(srcPath, srcDir, archiveDir string, move bool) error {
-	if !move || archiveDir == "" {
+	if !move {
 		return nil // 触らない
 	}
 
