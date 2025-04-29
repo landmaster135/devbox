@@ -15,6 +15,10 @@ jobs:
       matrix:
         go-version: [1.23.x]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          # Set additional parameters for a specific combination
+          - os: ubuntu-latest
+            coverage-badge: true
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -30,10 +34,12 @@ jobs:
           go test -v ./... -coverpkg=./... -covermode=count -coverprofile=${{ env.COV_FILE }}
           go tool cover -func=${{ env.COV_FILE }} -o=${{ env.COV_FILE }}
       - name: Go Coverage Badge  # Pass the `coverage.out` output to this action
+        if: ${{ matrix.coverage-badge }}
         uses: tj-actions/coverage-badge-go@v2
         with:
           filename: ${{ env.COV_FILE }}
       - name: Push changes
+        if: ${{ matrix.coverage-badge }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
