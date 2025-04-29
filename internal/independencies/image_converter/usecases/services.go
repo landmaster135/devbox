@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	webp "github.com/chai2010/webp"
 	avif "github.com/gen2brain/avif"
+	webp "github.com/gen2brain/webp"
 	oksvg "github.com/srwiley/oksvg"
 	rasterx "github.com/srwiley/rasterx"
 	xwebp "golang.org/x/image/webp"
@@ -56,7 +56,12 @@ func MakeCodecTable(q int) map[string]codec {
 	}
 	encWebP := func(img image.Image) ([]byte, error) {
 		var buf bytes.Buffer
-		err := webp.Encode(&buf, img, &webp.Options{Quality: float32(q)})
+		// quality=0–100, method=0–6 (速度↔品質)
+		err := webp.Encode(&buf, img, webp.Options{
+			Quality:  q,
+			Method:   6,
+			Lossless: false,
+		})
 		return buf.Bytes(), err
 	}
 	encAVIF := func(img image.Image) ([]byte, error) {
