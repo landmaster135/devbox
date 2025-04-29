@@ -16,6 +16,8 @@ import (
 func main() {
 	srcDir := flag.String("src", ".", "source directory to scan")
 	outDir := flag.String("out", "./999_converted_images", "output directory")
+	archiveDir := flag.String("archive", "", "move processed originals to this directory (disabled if empty)")
+	moveOrig := flag.Bool("move", false, "move originals instead of copying (effective only with -archive)")
 	outExt := flag.String("ext", "png", "target extension (png|jpg|webp|avif)")
 	quality := flag.Int("q", 80, "quality for lossy formats (1-100)")
 	workers := flag.Int("workers", runtime.NumCPU(), "number of concurrent workers")
@@ -70,6 +72,9 @@ func main() {
 			for p := range paths {
 				if err := usecases.ConvertFile(p, *srcDir, *outDir, *outExt, codecs); err != nil {
 					log.Printf("warn: %v", err)
+				}
+				if err := usecases.ArchiveOriginal(p, *srcDir, *archiveDir, *moveOrig); err != nil {
+					log.Printf("warn (archive): %v", err)
 				}
 			}
 		}()

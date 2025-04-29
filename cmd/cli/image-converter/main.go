@@ -30,6 +30,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// コマンドライン引数の定義
 	srcDir := flagSet.String("src", ".", "変換元ディレクトリ")
 	outDir := flagSet.String("out", "./999_converted_images", "出力先ディレクトリ")
+	archiveDir := flagSet.String("archive", "", "アーカイブ先ディレクトリ (disabled if empty)")
+	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
 	outExt := flagSet.String("ext", "png", "変換先フォーマット (png|jpg|webp|avif)")
 	quality := flagSet.Int("q", 80, "非可逆圧縮フォーマットの品質 (1-100)")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "同時実行ワーカー数")
@@ -107,6 +109,13 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 			defer wg.Done()
 			for p := range paths {
 				if err := usecases.ConvertFile(p, *srcDir, *outDir, *outExt, codecs); err != nil {
+					fmt.Fprintf(stderr, "警告: %v\n", err)
+					countMutex.Lock()
+					errorCount++
+					countMutex.Unlock()
+					continue
+				}
+				if err := usecases.ArchiveOriginal(p, *srcDir, *archiveDir, *moveOrig); err != nil {
 					fmt.Fprintf(stderr, "警告: %v\n", err)
 					countMutex.Lock()
 					errorCount++
