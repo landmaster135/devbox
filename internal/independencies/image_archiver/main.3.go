@@ -50,7 +50,7 @@ func convertImageToWebp(srcPath string, logger *log.Logger) error {
 		return fmt.Errorf("encode webp: %w", err)
 	}
 
-	logger.Printf("+ webp.Encode %s -> %s (q=%.0f)", filepath.Base(srcPath), filepath.Base(destPath), opts.Quality)
+	logger.Printf("+ webp.Encode %s -> %s (q=%d)", filepath.Base(srcPath), filepath.Base(destPath), opts.Quality)
 	return nil
 }
 
