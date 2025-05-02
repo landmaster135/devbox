@@ -1,0 +1,56 @@
+# devbox Project
+
+## Directory Structure
+Based on standard Go project structure:
+- cmd/: Entry points for command line tools.
+- internal/: Packages used internally within the project.
+- pkg/: Packages available for external use. Contains the built executable files.
+- scripts/: Directory containing shell scripts for building Go files. No Go files exist here.
+- util/: Utility functions.
+
+## `internal` package
+The directory structure of Internal packages is based on clean architecture patterns.
+
+```
+project-root/
+├── cmd/                     # Application entry points
+│   ├── cli/                   # Main function for CLI
+├── internal/                # Private packages
+│   ├── domain/              # Entities (cannot import external packages)
+│   │   ├── models/           # Models and business rules (cannot import external packages)
+│   │   └── repositories/    # Repository interfaces (cannot import external packages)
+│   ├── usecases/            # Use case layer (can import external packages)
+│   │   └── services/       # Application business rule
+│   └── interfaces/          # Interface adapter layer (can import external packages)
+│       └── repositories/    # Repository implementations (can import external packages)
+```
+
+First, implement the entities. Within the entities, in the models and business rules, data models are defined as structures. For example, files, directories, environment variables, DB, API, etc. Business rules define what values these data models receive, how they are processed, and what values they return. External packages must not be imported.
+
+In the repository interfaces within entities, interfaces with methods for retrieving data are defined. External packages must not be imported.
+
+Next, in the interface adapter layer, define structures using the interfaces defined in the repository interfaces, and implement the processing contents of the methods of those structures. Those methods may use entities. External packages may be imported.
+
+In the use case layer, implement the actual processing content using the methods of the interface adapter layer. Entities may be used, and external packages may be imported.
+
+In clean architecture, functional programming is generally recommended over procedural programming.
+
+## `cmd` package
+The overview of each entry point is as follows:
+- api-client: Make requests to APIs with any method, using any JSON file as the request body. Can also set a token in the Authorization header.
+- env-loader: Set environment variables described in any yml file.
+- file-processor: 
+- json-modifier: Set any value (string or integer or floating-point number) to any new key in a single JSON file.
+- json-timestamp-modifier: Set the current date and time's UNIX timestamp to any new key in a single JSON file.
+- 
+
+## Development Flow
+The basic development flow is as follows:
+1. Check files that seem related to the instructions.
+2. Create a directory and main.go file to serve as entry points in the cmd package.
+3. Implement Internal packages.
+4. Write README documentation in the entry point within the cmd package.
+5. Implement build shell scripts in the scripts directory. Build two types of executable files for linux_amd64 and win_amd64 in the pkg/bin directory.
+6. Build and, if necessary, prepare sample data in the sample_data directory before checking the operation.
+7. After checking that the operation works without problems, implement test code.
+8. If the test code implementation fails, fix it. If successful, check the test coverage and the task is complete if it exceeds 90%.
