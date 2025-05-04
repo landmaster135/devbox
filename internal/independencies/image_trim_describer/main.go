@@ -9,7 +9,7 @@ import (
 	"io"
 	"os"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/image_trim_describer_2/usecases"
+	usecases "github.com/landmaster135/devbox/internal/independencies/image_trim_describer/usecases"
 )
 
 //go:embed web/index.html
