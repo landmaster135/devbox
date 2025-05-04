@@ -113,6 +113,25 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
+	// 画像ファイル用のディレクトリを作成
+	imagesDir := "images"
+	if err := os.MkdirAll(imagesDir, 0755); err != nil {
+		fmt.Fprintf(stderr, "画像ディレクトリの作成に失敗しました: %v\n", err)
+		return exitCodeError
+	}
+
+	// 画像ファイルをコピー
+	for _, imgFile := range imageFiles {
+		srcPath := filepath.Join(*srcDir, imgFile)
+		dstPath := filepath.Join(imagesDir, imgFile)
+
+		// ファイルをコピー
+		if err := copyFile(srcPath, dstPath); err != nil {
+			fmt.Fprintf(stderr, "画像ファイルのコピーに失敗しました: %v\n", err)
+			// エラーがあっても続行
+		}
+	}
+
 	// カレントディレクトリにHTMLファイルを作成
 	htmlFilePath := "image_trimmer.html"
 	htmlFile, err := os.Create(htmlFilePath)
@@ -247,6 +266,27 @@ func openBrowser(url string) error {
 	}
 
 	return cmd.Start()
+}
+
+// ファイルをコピーする関数
+func copyFile(src, dst string) error {
+	// 元ファイルを開く
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	// 宛先ファイルを作成
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	// コピー
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }
 
 // 画像をトリミングして保存する関数
