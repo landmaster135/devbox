@@ -61,7 +61,7 @@ func MakeCodecTable(q int) map[string]codec {
 		err := webp.Encode(&buf, img, webp.Options{
 			Quality:  q,
 			Method:   6,
-			Lossless: false,
+			Lossless: true,
 		})
 		return buf.Bytes(), err
 	}
