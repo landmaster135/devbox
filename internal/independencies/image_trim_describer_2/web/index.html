@@ -9,6 +9,17 @@
 </head>
 
 <body>
+  <h1>画像トリミング座標プロットツール</h1>
+  <div class="instructions">
+    <p>使い方:</p>
+    <ol>
+      <li>画像を選択してください</li>
+      <li>赤と青のバーを<strong>クリック</strong>して上部座標を設定</li>
+      <li>黄と緑のバーを<strong>クリック</strong>して下部座標を設定</li>
+      <li>「トリミング実行」ボタンをクリックして座標をコピー</li>
+      <li>コピーされた座標を使用してコマンドラインでトリミングを実行</li>
+    </ol>
+  </div>
   <input type="file" id="imageLoader" accept="image/*">
   <div id="imageView" style="position: relative; width: fit-content;">
     <img id="imageElement" src="" alt="Choose an image.">
@@ -25,40 +36,48 @@
     <div id="draggableBarYLower"
       style="position: absolute; width: 100%; height: 5px; background-color: green; cursor: grab; top: 0;"></div>
   </div>
-  <div style="display: flex; gap: 10px;">
-    <span>X: </span>
-    <input type="text" id="coordinateXUpperDisplay" readonly style="width: 100px;">
-    <span id="coordinateXUpperUnit">px</span>
-    <span>Y: </span>
-    <input type="text" id="coordinateYUpperDisplay" readonly style="width: 100px;">
-    <span id="coordinateYUpperUnit">px</span>
+
+  <div class="coordinates-container">
+    <div style="display: flex; gap: 10px;">
+      <span>X: </span>
+      <input type="text" id="coordinateXUpperDisplay" readonly style="width: 100px;">
+      <span id="coordinateXUpperUnit">px</span>
+      <span>Y: </span>
+      <input type="text" id="coordinateYUpperDisplay" readonly style="width: 100px;">
+      <span id="coordinateYUpperUnit">px</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span>X: </span>
+      <input type="text" id="coordinateXLowerDisplay" readonly style="width: 100px;">
+      <span id="coordinateXLowerUnit">px</span>
+      <span>Y: </span>
+      <input type="text" id="coordinateYLowerDisplay" readonly style="width: 100px;">
+      <span id="coordinateYLowerUnit">px</span>
+    </div>
+    <p id="lockStatus"></p><!-- Paragraph to show the status of lock -->
+    <div style="display: flex; gap: 10px;">
+      <span>X: </span>
+      <input type="text" id="coordinateXUpperDisplayToRecord" style="width: 100px;">
+      <span id="coordinateXUnit">px</span>
+      <span>Y: </span>
+      <input type="text" id="coordinateYUpperDisplayToRecord" style="width: 100px;">
+      <span id="coordinateYUnit">px</span>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span>X: </span>
+      <input type="text" id="coordinateXLowerDisplayToRecord" style="width: 100px;">
+      <span id="coordinateXUnit">px</span>
+      <span>Y: </span>
+      <input type="text" id="coordinateYLowerDisplayToRecord" style="width: 100px;">
+      <span id="coordinateYUnit">px</span>
+    </div>
+    <div class="clipboard-container">
+      <h3>クリップボードの座標</h3>
+      <input type="text" id="clipboardCoordinates" readonly>
+      <p>※この座標をimage-trimmerコマンドで使用できます</p>
+    </div>
+    <p id="copyToCb"></p><!-- Paragraph to show the status whether coordinates are copied into clipboard or not. -->
   </div>
-  <div style="display: flex; gap: 10px;">
-    <span>X: </span>
-    <input type="text" id="coordinateXLowerDisplay" readonly style="width: 100px;">
-    <span id="coordinateXLowerUnit">px</span>
-    <span>Y: </span>
-    <input type="text" id="coordinateYLowerDisplay" readonly style="width: 100px;">
-    <span id="coordinateYLowerUnit">px</span>
-  </div>
-  <p id="lockStatus"></p><!-- Paragraph to show the status of lock -->
-  <div style="display: flex; gap: 10px;">
-    <span>X: </span>
-    <input type="text" id="coordinateXUpperDisplayToRecord" style="width: 100px;">
-    <span id="coordinateXUnit">px</span>
-    <span>Y: </span>
-    <input type="text" id="coordinateYUpperDisplayToRecord" style="width: 100px;">
-    <span id="coordinateYUnit">px</span>
-  </div>
-  <div style="display: flex; gap: 10px;">
-    <span>X: </span>
-    <input type="text" id="coordinateXLowerDisplayToRecord" style="width: 100px;">
-    <span id="coordinateXUnit">px</span>
-    <span>Y: </span>
-    <input type="text" id="coordinateYLowerDisplayToRecord" style="width: 100px;">
-    <span id="coordinateYUnit">px</span>
-  </div>
-  <p id="copyToCb"></p><!-- Paragraph to show the status whether coordinates are copied into clipboard or not. -->
 
   <script src="script.js"></script>
 </body>

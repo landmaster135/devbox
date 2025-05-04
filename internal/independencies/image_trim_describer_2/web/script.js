@@ -40,7 +40,14 @@ const updateLockStatusDisplay = (isUpdating, isLocking) => {
 
 const copyToClipboard = (copyStatusesToCb, coordinateXUpper, coordinateYUpper, coordinateXLower, coordinateYLower) => {
   const sep = " ";
-  const copyText = `${coordinateXUpper.value}${sep}${coordinateYUpper.value}${sep}${coordinateXLower.value}${sep}${coordinateYLower.value}`;
+  // const copyText = `${coordinateXUpper.value}${sep}${coordinateYUpper.value}${sep}${coordinateXLower.value}${sep}${coordinateYLower.value}`;
+  const copyText = `-x1 ${coordinateXUpper.value}${sep}-y1 ${coordinateYUpper.value}${sep}-x2 ${coordinateXLower.value}${sep}-y2 ${coordinateYLower.value}`;
+
+  // クリップボード表示用テキストボックスに座標を表示
+  const clipboardCoordinates = document.getElementById("clipboardCoordinates");
+  clipboardCoordinates.value = copyText;
+
+  // クリップボードにコピー
   navigator.clipboard.writeText(copyText).then(() => {
     const newElement = document.createElement("p");
     newElement.textContent = "copied!";
