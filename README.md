@@ -12,7 +12,7 @@ Provides utilities for development.
 
 ## Build
 ```bash
-./scripts/build_file_processor.sh
+./scripts/build.sh
 ```
 
 Confirm compilable distributions.
