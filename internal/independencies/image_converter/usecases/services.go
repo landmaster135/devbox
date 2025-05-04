@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/color"
 	"image/jpeg"
 	"image/png"
 	"io"
@@ -47,27 +46,8 @@ func decodeSVG(b []byte) (image.Image, error) {
 // MakeCodecTable returns decoder/encoder map keyed by extension
 func MakeCodecTable(q int) map[string]codec {
 	encJPEG := func(img image.Image) ([]byte, error) {
-		// JPEGの代わりにPNG形式を使用して彩度低下を防止
-		// アルファチャンネルを削除するために白い背景で合成
-		bounds := img.Bounds()
-		nrgba := image.NewNRGBA(bounds)
-
-		// 白い背景を描画
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				nrgba.Set(x, y, color.White)
-			}
-		}
-
-		// 元の画像を白い背景の上に描画
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				nrgba.Set(x, y, img.At(x, y))
-			}
-		}
-
 		var buf bytes.Buffer
-		err := png.Encode(&buf, nrgba)
+		err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: q})
 		return buf.Bytes(), err
 	}
 	encPNG := func(img image.Image) ([]byte, error) {
