@@ -81,8 +81,8 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
 
     if (propsForCoordRecordInput.isInputting) {
       const imageRect = imageElement.getBoundingClientRect();
-      const x = propsForCoordRecordInput.e.clientX - imageRect.left;
-      const y = propsForCoordRecordInput.e.clientY - imageRect.top;
+      const x = Math.round(propsForCoordRecordInput.e.clientX - imageRect.left);
+      const y = Math.round(propsForCoordRecordInput.e.clientY - imageRect.top);
       switch (indexOfActiveBar) {
         case 0:
           coordinateXUpperToRecord.value = `${x}`;
@@ -111,12 +111,14 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
         if (ev.clientX >= imgRect.left && ev.clientX <= imgRect.right &&
           ev.clientY >= imgRect.top && ev.clientY <= imgRect.bottom) {
           // Track the bar to the mouse within the image
-          barY.style.top = `${ev.clientY - imgRect.top}px`;
+          const yPos = ev.clientY - imgRect.top;
+          barY.style.top = `${yPos}px`;
           barY.style.transform = 'translateY(-50%)'; // Always center align
-          coordY.value = `${ev.clientY - imgRect.top}`;
+          coordY.value = `${Math.round(yPos)}`;
 
-          barX.style.left = `${ev.clientX - imgRect.left}px`;
-          coordX.value = `${ev.clientX - imgRect.left}`;
+          const xPos = ev.clientX - imgRect.left;
+          barX.style.left = `${xPos}px`;
+          coordX.value = `${Math.round(xPos)}`;
         }
       }
       const imageRect = imageElement.getBoundingClientRect();
@@ -151,7 +153,7 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
         draggableBarYUpper.style.transform = "translateY(-50%)";
         draggableBarXUpper.style.left = "0px"; // Align to image left edge
         coordinateXUpperDisplay.value = "0";
-        coordinateYUpperDisplay.value = `${(imageElement.offsetHeight / 2)}`;
+        coordinateYUpperDisplay.value = `${Math.round(imageElement.offsetHeight / 2)}`;
       };
       reader.readAsDataURL(selectedImage);
     }
