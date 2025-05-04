@@ -5,7 +5,6 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"image"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
@@ -14,9 +13,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/anthonynsimon/bild/imgio"
-	"github.com/anthonynsimon/bild/transform"
 )
 
 //go:embed web/index.html
@@ -35,24 +31,6 @@ const (
 	exitCodeOK exitCode = iota
 	exitCodeError
 )
-
-// 設定情報を保持する構造体
-type Config struct {
-	ImageFiles []string
-	SrcDir     string
-	OutDir     string
-	ArcDir     string
-	Suffix     string
-	Move       bool
-}
-
-// HTMLテンプレートのデータ
-type TemplateData struct {
-	Style      string
-	Script     string
-	ConfigJS   string
-	ImageFiles []string
-}
 
 // run は画像トリミング記述ツールの主要なロジックを実行します
 func run(args []string, stdout, stderr io.Writer) exitCode {
@@ -175,6 +153,30 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	return exitCodeOK
 }
 
+func main() {
+	// run関数を呼び出し、結果に応じて終了コードを設定
+	code := run(os.Args[1:], os.Stdout, os.Stderr)
+	os.Exit(int(code))
+}
+
+// 設定情報を保持する構造体
+type Config struct {
+	ImageFiles []string
+	SrcDir     string
+	OutDir     string
+	ArcDir     string
+	Suffix     string
+	Move       bool
+}
+
+// HTMLテンプレートのデータ
+type TemplateData struct {
+	Style      string
+	Script     string
+	ConfigJS   string
+	ImageFiles []string
+}
+
 // getImageFiles は指定したディレクトリ内の画像ファイル一覧を取得します
 func getImageFiles(dirPath string) ([]string, error) {
 	files, err := os.ReadDir(dirPath)
@@ -287,59 +289,4 @@ func copyFile(src, dst string) error {
 	// コピー
 	_, err = io.Copy(dstFile, srcFile)
 	return err
-}
-
-// 画像をトリミングして保存する関数
-func cropAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string) error {
-	// 画像を読み込み
-	img, err := imgio.Open(inPath)
-	if err != nil {
-		return fmt.Errorf("open %s: %w", inPath, err)
-	}
-
-	// 矩形チェック
-	bounds := img.Bounds()
-	if x1 < 0 || y1 < 0 || x2 <= x1 || y2 <= y1 ||
-		x2 > bounds.Dx() || y2 > bounds.Dy() {
-		return fmt.Errorf("invalid rectangle %v for %s",
-			image.Rect(x1, y1, x2, y2), inPath)
-	}
-
-	// トリミング
-	cropped := transform.Crop(img, image.Rect(x1, y1, x2, y2))
-
-	// 保存パス準備
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return err
-	}
-	base := strings.TrimSuffix(filepath.Base(inPath), filepath.Ext(inPath))
-	outPath := filepath.Join(outDir,
-		fmt.Sprintf("%s_%s%s", base, suffix, filepath.Ext(inPath)))
-
-	// 形式に応じて保存
-	ext := strings.ToLower(filepath.Ext(outPath))
-	switch ext {
-	case ".jpg", ".jpeg":
-		err = imgio.Save(outPath, cropped, imgio.JPEGEncoder(95))
-	case ".png":
-		err = imgio.Save(outPath, cropped, imgio.PNGEncoder())
-	default:
-		err = fmt.Errorf("unsupported extension: %s", ext)
-	}
-	return err
-}
-
-// 元画像を移動する関数
-func moveOriginal(src, arcDir string) error {
-	if err := os.MkdirAll(arcDir, 0o755); err != nil {
-		return err
-	}
-	dst := filepath.Join(arcDir, filepath.Base(src))
-	return os.Rename(src, dst)
-}
-
-func main() {
-	// run関数を呼び出し、結果に応じて終了コードを設定
-	code := run(os.Args[1:], os.Stdout, os.Stderr)
-	os.Exit(int(code))
 }

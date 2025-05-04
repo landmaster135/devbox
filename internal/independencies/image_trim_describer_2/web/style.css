@@ -1,0 +1,32 @@
+/* style.css - Image and Bar Basic Styles */
+#draggableBarYUpper {
+  left: 0;
+  /* Initialize position to the left edge of the image */
+  top: 0;
+  /* Align vertically to the center of the image */
+  transform: translateY(-50%);
+}
+
+#draggableBarXUpper {
+  top: 0;
+  /* Initialize position to the top of the image */
+  left: 0;
+  /* Align horizontally to the center of the image */
+  /* No need for 'left: 50%' and 'transform' to match the image width */
+}
+
+#draggableBarYLower {
+  left: 0;
+  /* Initialize position to the left edge of the image */
+  top: 100;
+  /* Note: This seems to be a specific offset rather than centering */
+  transform: translateY(-50%);
+}
+
+#draggableBarXLower {
+  top: 0;
+  /* Initialize position to the top of the image */
+  left: 0;
+  /* Align horizontally to the center of the image */
+  /* No need for 'left: 50%' and 'transform' to match the image width */
+}
