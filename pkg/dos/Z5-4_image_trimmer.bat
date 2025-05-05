@@ -1,6 +1,6 @@
 @echo off
 
-set /p coordinates="Input 4 coordinates linked on each parameter to trim images (lefter-x, upper-y, righter-x, lower-y): "
+set /p coordinates="Input 4 coordinates linked on each parameter to trim images (-x1, -y1, -x2, -y2): "
 choice /c yn /n /m "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : "
 if %errorlevel% == 1 (
   set "moves=-move"
@@ -10,7 +10,7 @@ if %errorlevel% == 1 (
 echo %moves%
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\image-trimmer.exe -src . -suffix cropped -x1 0 -y1 131 -x2 1080 -y2 2293 %moves%
+.\pkg\bin\win_amd64\image-trimmer.exe -src . -suffix cropped %coordinates% %moves%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
