@@ -1,0 +1,46 @@
+name: pull-request-stats
+
+on:
+  pull_request:
+    types: [synchronize, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  PR_COMMENT_FILE: 'comment.md'
+
+jobs:
+  git-stat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Debug pull request stats
+        run: |
+          echo "Base ref: ${{ github.event.pull_request.base.ref }}"
+          echo "Base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "Head ref: ${{ github.event.pull_request.head.ref }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "Base ref: ${{ github.base_ref }}"
+          echo "Head ref: ${{ github.head_ref }}"
+          echo "Head SHA: ${{ github.sha }}"
+      - uses: actions/checkout@v3
+        with:
+          # PR用の特別なチェックアウト設定
+          fetch-depth: 0
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/${{ github.event.pull_request.base.ref }}
+      - name: Get PR stats
+        run: |
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          printf '## 📊 Change stats:\n\n```\n' >> ${{ env.PR_COMMENT_FILE }}
+          printf "$(git diff --stat ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }})" >> ${{ env.PR_COMMENT_FILE }}
+          printf '\n```\n' >> ${{ env.PR_COMMENT_FILE }}
+      - name: Comment on Pull Request Stats
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body-file ${{ env.PR_COMMENT_FILE }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
