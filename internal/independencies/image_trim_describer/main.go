@@ -4,8 +4,6 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	_ "image/jpeg"
-	_ "image/png"
 	"io"
 	"os"
 
