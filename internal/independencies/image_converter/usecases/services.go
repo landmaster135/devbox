@@ -44,7 +44,7 @@ func decodeSVG(b []byte) (image.Image, error) {
 }
 
 // MakeCodecTable returns decoder/encoder map keyed by extension
-func MakeCodecTable(q int) map[string]codec {
+func MakeCodecTable(q int, lossless bool) map[string]codec {
 	encJPEG := func(img image.Image) ([]byte, error) {
 		var buf bytes.Buffer
 		err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: q})
@@ -61,7 +61,7 @@ func MakeCodecTable(q int) map[string]codec {
 		err := webp.Encode(&buf, img, webp.Options{
 			Quality:  q,
 			Method:   6,
-			Lossless: true,
+			Lossless: lossless,
 		})
 		return buf.Bytes(), err
 	}

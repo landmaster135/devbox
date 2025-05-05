@@ -36,6 +36,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	quality := flagSet.Int("q", 80, "quality for lossy formats (1-100)")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
 	recursive := flagSet.Bool("R", false, "recursively scan sub-directories")
+	lossless := flagSet.Bool("lossless", false, "enable lossless compression (for Webp)")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
@@ -47,7 +48,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	*outExt = strings.ToLower(strings.TrimPrefix(*outExt, "."))
 
 	// コーデックテーブルの作成
-	codecs := usecases.MakeCodecTable(*quality)
+	codecs := usecases.MakeCodecTable(*quality, *lossless)
 
 	// サポートされていないフォーマットのチェック
 	if _, ok := codecs[*outExt]; !ok {
