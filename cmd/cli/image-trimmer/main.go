@@ -28,17 +28,17 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	flagSet.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	srcDir := flagSet.String("src", ".", "トリミング元ディレクトリ")
-	outDir := flagSet.String("out", "", "出力先ディレクトリ (空の場合はsrcと同じ)")
-	arcDir := flagSet.String("arc", "./5_original_files", "アーカイブ先ディレクトリ")
-	x1 := flagSet.Int("x1", 0, "トリミングを開始するX座標")
-	y1 := flagSet.Int("y1", 0, "トリミングを開始するY座標")
-	x2 := flagSet.Int("x2", 0, "トリミングを終了するX座標")
-	y2 := flagSet.Int("y2", 0, "トリミングを終了するY座標")
-	suffix := flagSet.String("suffix", "trimmed", "出力ファイル名に付加するサフィックス")
-	move := flagSet.Bool("move", false, "元ファイルを移動する (コピーではなく)")
-	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的に処理")
-	workers := flagSet.Int("workers", runtime.NumCPU(), "同時実行ワーカー数")
+	srcDir := flagSet.String("src", ".", "source directory to scan")
+	outDir := flagSet.String("out", "", "output directory (output into src if empty)")
+	arcDir := flagSet.String("arc", "./5_original_files", "move processed originals to this directory")
+	x1 := flagSet.Int("x1", 0, "X-coordinate on upper left")
+	y1 := flagSet.Int("y1", 0, "Y-coordinate on upper left")
+	x2 := flagSet.Int("x2", 0, "X-coordinate on lower right")
+	y2 := flagSet.Int("y2", 0,  "Y-coordinate on lower right")
+	suffix := flagSet.String("suffix", "trimmed", "suffix to attach to file name to save")
+	move := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
+	recursive := flagSet.Bool("r", false, "recursively scan sub-directories")
+	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {

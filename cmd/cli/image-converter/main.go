@@ -28,14 +28,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	flagSet.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	srcDir := flagSet.String("src", ".", "変換元ディレクトリ")
-	outDir := flagSet.String("out", "./999_converted_images", "出力先ディレクトリ")
-	archiveDir := flagSet.String("archive", "", "アーカイブ先ディレクトリ (disabled if empty)")
+	srcDir := flagSet.String("src", ".", "source directory to scan")
+	outDir := flagSet.String("out", "./999_converted_images", "output directory")
+	archiveDir := flagSet.String("archive", "", "move processed originals to this directory (disabled if empty)")
 	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
-	outExt := flagSet.String("ext", "png", "変換先フォーマット (png|jpg|webp|avif)")
-	quality := flagSet.Int("q", 80, "非可逆圧縮フォーマットの品質 (1-100)")
-	workers := flagSet.Int("workers", runtime.NumCPU(), "同時実行ワーカー数")
-	recursive := flagSet.Bool("R", false, "サブディレクトリを再帰的に処理")
+	outExt := flagSet.String("ext", "png", "target extension (png|jpg|webp|avif)")
+	quality := flagSet.Int("q", 80, "quality for lossy formats (1-100)")
+	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
+	recursive := flagSet.Bool("R", false, "recursively scan sub-directories")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
