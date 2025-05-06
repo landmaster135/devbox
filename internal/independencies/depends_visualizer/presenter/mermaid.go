@@ -18,7 +18,7 @@ func RenderMermaid(results []analyzer.AnalysisResult) (string, error) {
 	for _, result := range results {
 		// ファイル名をコメントとして表示
 		shortName := filepath.Base(result.FilePath)
-		sb.WriteString(fmt.Sprintf("  %%% File: %s\n", shortName))
+		sb.WriteString("  %%% File: " + shortName + "\n")
 
 		// 依存関係の記述
 		for funcName, deps := range result.Dependencies {
