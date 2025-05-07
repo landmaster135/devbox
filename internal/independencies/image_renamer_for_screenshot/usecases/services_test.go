@@ -145,6 +145,138 @@ func TestRenameWindowsScreenshot_InvalidFormat(t *testing.T) {
 	}
 }
 
+func TestRenameAndroidScreenshot_Normal(t *testing.T) {
+	// Arrange
+	baseName := "screen-20250215-064735"
+	ext := ".png"
+
+	// Act
+	newName, err := renameAndroidScreenshot(baseName, ext)
+
+	// Assert
+	if err != nil {
+		t.Errorf("renameAndroidScreenshot() returned error: %v", err)
+	}
+	expected := "Screenshot_20250215-064735.png"
+	if newName != expected {
+		t.Errorf("renameAndroidScreenshot() = %v, want %v", newName, expected)
+	}
+}
+
+func TestRenameAndroidScreenshot_MP4(t *testing.T) {
+	// Arrange
+	baseName := "screen-20250215-064735"
+	ext := ".mp4"
+
+	// Act
+	newName, err := renameAndroidScreenshot(baseName, ext)
+
+	// Assert
+	if err != nil {
+		t.Errorf("renameAndroidScreenshot() returned error: %v", err)
+	}
+	expected := "Screenshot_20250215-064735.mp4"
+	if newName != expected {
+		t.Errorf("renameAndroidScreenshot() = %v, want %v", newName, expected)
+	}
+}
+
+func TestRenameAndroidScreenshot_InvalidFormat(t *testing.T) {
+	// Arrange
+	baseName := "screen-invalid-format"
+	ext := ".png"
+
+	// Act
+	_, err := renameAndroidScreenshot(baseName, ext)
+
+	// Assert
+	if err == nil {
+		t.Error("renameAndroidScreenshot() should return error for invalid format")
+	}
+}
+
+func TestProcessScreenshotRename_AndroidPattern(t *testing.T) {
+	// Arrange
+	tempDir, err := os.MkdirTemp("", "test-android-screenshot")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testFile := filepath.Join(tempDir, "screen-20250215-064735.png")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	file := FileInfo{
+		Path: testFile,
+		Name: "screen-20250215-064735.png",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	var mu sync.Mutex
+	successCount := 0
+	errorCount := 0
+
+	// Act
+	processScreenshotRename(file, false, false, true, &mu, &successCount, &errorCount, stdout, stderr)
+
+	// Assert
+	if successCount != 1 {
+		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
+	}
+	if errorCount != 0 {
+		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
+	}
+
+	expectedNewPath := filepath.Join(tempDir, "Screenshot_20250215-064735.png")
+	if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
+		t.Errorf("File was not renamed to %s", expectedNewPath)
+	}
+}
+
+func TestProcessScreenshotRename_AndroidPatternMP4(t *testing.T) {
+	// Arrange
+	tempDir, err := os.MkdirTemp("", "test-android-screenshot-mp4")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testFile := filepath.Join(tempDir, "screen-20250215-064735.mp4")
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	file := FileInfo{
+		Path: testFile,
+		Name: "screen-20250215-064735.mp4",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	var mu sync.Mutex
+	successCount := 0
+	errorCount := 0
+
+	// Act
+	processScreenshotRename(file, false, false, true, &mu, &successCount, &errorCount, stdout, stderr)
+
+	// Assert
+	if successCount != 1 {
+		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
+	}
+	if errorCount != 0 {
+		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
+	}
+
+	expectedNewPath := filepath.Join(tempDir, "Screenshot_20250215-064735.mp4")
+	if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
+		t.Errorf("File was not renamed to %s", expectedNewPath)
+	}
+}
+
 func TestProcessScreenshotRename_VlcPattern(t *testing.T) {
 	// Arrange
 	tempDir, err := os.MkdirTemp("", "test-vlc-screenshot")
@@ -170,7 +302,7 @@ func TestProcessScreenshotRename_VlcPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -211,7 +343,7 @@ func TestProcessScreenshotRename_WinPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, true, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, false, true, false, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -275,7 +407,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - VLCパターンのみ
-	filesVlc, err := FindScreenshotFiles(tempDir, false, true, false, stdout, stderr)
+	filesVlc, err := FindScreenshotFiles(tempDir, false, true, false, false, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -289,7 +421,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	}
 
 	// Act - Windowsパターンのみ
-	filesWin, err := FindScreenshotFiles(tempDir, false, false, true, stdout, stderr)
+	filesWin, err := FindScreenshotFiles(tempDir, false, false, true, false, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -333,7 +465,7 @@ func TestFindScreenshotFiles_Recursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索
-	files, err := FindScreenshotFiles(tempDir, true, true, false, stdout, stderr)
+	files, err := FindScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -350,7 +482,7 @@ func TestFindScreenshotFiles_InvalidDirectory(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	_, err := FindScreenshotFiles("/non/existent/directory", false, true, false, stdout, stderr)
+	_, err := FindScreenshotFiles("/non/existent/directory", false, true, false, false, stdout, stderr)
 
 	// Assert
 	if err == nil {
@@ -582,7 +714,7 @@ func TestFindScreenshotFiles_WalkDirError(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索でエラーが発生するケース
-	_, err = FindScreenshotFiles(tempDir, true, true, false, stdout, stderr)
+	_, err = FindScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
 
 	// Assert
 	// 権限の問題でエラーが発生する可能性があるが、OSによって動作が異なるため
@@ -622,7 +754,7 @@ func TestProcessScreenshotRename_ParseError(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -658,7 +790,7 @@ func TestProcessScreenshotRename_InvalidPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -717,7 +849,7 @@ func TestProcessScreenshotRename_RenameError(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -739,6 +871,7 @@ func TestIsImageExt(t *testing.T) {
 		{".png", true},
 		{".webp", true},
 		{".avif", true},
+		{".mp4", true},
 		{".gif", false},
 		{".txt", false},
 		{".pdf", false},
