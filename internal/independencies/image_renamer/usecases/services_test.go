@@ -574,7 +574,7 @@ func TestProcessRenameJob_Normal(t *testing.T) {
 			errorCount := 0
 
 			// テスト実行
-			processRenameJob(job, tc.digits, tc.prefix, &mu, &successCount, &errorCount, &stdout, &stderr)
+			processRenameJob(job, tc.digits, tc.prefix, "_", &mu, &successCount, &errorCount, &stdout, &stderr)
 
 			// 結果の確認
 			if tc.expectedError {
@@ -627,7 +627,7 @@ func TestProcessRenameJob_Error(t *testing.T) {
 	successCount := 0
 	errorCount := 0
 
-	processRenameJob(job, 4, "test", &mu, &successCount, &errorCount, &stdout, &stderr)
+	processRenameJob(job, 4, "test", "_", &mu, &successCount, &errorCount, &stdout, &stderr)
 
 	// 結果の確認
 	if errorCount != 1 || successCount != 0 {
@@ -699,6 +699,7 @@ func TestRenameFiles_Normal(t *testing.T) {
 		SortByName: true,
 		SortByTime: false,
 		Prefix:     "test",
+		Delimiter:  "_",
 		Digits:     4,
 		StartCount: 1,
 		Recursive:  false,
@@ -829,6 +830,7 @@ func TestRenameFiles_WithScreenshotFiles(t *testing.T) {
 				SortByName: tc.sortByName,
 				SortByTime: tc.sortByTime,
 				Prefix:     tc.prefix,
+				Delimiter:  "_",
 				Digits:     4,
 				StartCount: 1,
 				Recursive:  false,
@@ -981,6 +983,7 @@ func TestRenameFiles_WithDifferentWorkers(t *testing.T) {
 				SortByName: true,
 				SortByTime: false,
 				Prefix:     "test",
+				Delimiter:  "_",
 				Digits:     4,
 				StartCount: 1,
 				Recursive:  false,
