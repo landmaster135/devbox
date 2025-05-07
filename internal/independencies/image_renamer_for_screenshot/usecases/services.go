@@ -19,25 +19,37 @@ type FileInfo struct {
 
 // Config はプログラムの設定を保持する構造体です
 type Config struct {
-	SrcDir     string
-	Recursive  bool
-	Workers    int
-	VlcPattern bool
-	WinPattern bool
+	SrcDir         string
+	Recursive      bool
+	Workers        int
+	VlcPattern     bool
+	WinPattern     bool
+	AndroidPattern bool
 }
 
 // ValidateConfig は設定の妥当性を検証します
 func ValidateConfig(config Config, stderr io.Writer) error {
-	// パターンのチェック：両方ともfalseならエラー
-	if !config.VlcPattern && !config.WinPattern {
-		fmt.Fprintln(stderr, "エラー: -vlc または -win のいずれかのパターンを指定する必要があります。")
+	// パターンのチェック：すべてfalseならエラー
+	if !config.VlcPattern && !config.WinPattern && !config.AndroidPattern {
+		fmt.Fprintln(stderr, "エラー: -vlc、-win、または -android のいずれかのパターンを指定する必要があります。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -vlc")
 		return fmt.Errorf("パターンが指定されていません")
 	}
 
-	// パターンの排他制御：両方がtrueの場合はエラーを表示
-	if config.VlcPattern && config.WinPattern {
-		fmt.Fprintln(stderr, "エラー: -vlc と -win の両方のフラグを同時に設定することはできません。")
+	// パターンの排他制御：複数がtrueの場合はエラーを表示
+	patternCount := 0
+	if config.VlcPattern {
+		patternCount++
+	}
+	if config.WinPattern {
+		patternCount++
+	}
+	if config.AndroidPattern {
+		patternCount++
+	}
+
+	if patternCount > 1 {
+		fmt.Fprintln(stderr, "エラー: -vlc、-win、-android のフラグは同時に設定できません。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -vlc")
 		return fmt.Errorf("複数のパターンが指定されています")
 	}
@@ -53,7 +65,7 @@ func ValidateConfig(config Config, stderr io.Writer) error {
 }
 
 // FindScreenshotFiles は指定されたディレクトリからスクリーンショットファイルを検索します
-func FindScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern bool, stdout, stderr io.Writer) ([]string, error) {
+func FindScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, androidPattern bool, stdout, stderr io.Writer) ([]string, error) {
 	var files []string
 
 	walkFunc := func(path string, d fs.DirEntry, err error) error {
@@ -65,7 +77,8 @@ func FindScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern b
 			if isImageExt(ext) {
 				name := d.Name()
 				if (vlcPattern && strings.HasPrefix(name, "vlcsnap-")) ||
-					(winPattern && strings.HasPrefix(name, "スクリーンショット ")) {
+					(winPattern && strings.HasPrefix(name, "スクリーンショット ")) ||
+					(androidPattern && strings.HasPrefix(name, "screen-")) {
 					files = append(files, path)
 				}
 			}
@@ -92,7 +105,8 @@ func FindScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern b
 				if isImageExt(ext) {
 					name := entry.Name()
 					if (vlcPattern && strings.HasPrefix(name, "vlcsnap-")) ||
-						(winPattern && strings.HasPrefix(name, "スクリーンショット ")) {
+						(winPattern && strings.HasPrefix(name, "スクリーンショット ")) ||
+						(androidPattern && strings.HasPrefix(name, "screen-")) {
 						files = append(files, filepath.Join(srcDir, name))
 					}
 				}
@@ -155,7 +169,7 @@ func RenameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 		go func() {
 			defer wg.Done()
 			for file := range jobChan {
-				processScreenshotRename(file, config.VlcPattern, config.WinPattern, &mu, &successCount, &errorCount, stdout, stderr)
+				processScreenshotRename(file, config.VlcPattern, config.WinPattern, config.AndroidPattern, &mu, &successCount, &errorCount, stdout, stderr)
 			}
 		}()
 	}
@@ -173,7 +187,7 @@ func RenameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 }
 
 // processScreenshotRename は1つのスクリーンショットファイルをリネームします
-func processScreenshotRename(file FileInfo, vlcPattern, winPattern bool, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
+func processScreenshotRename(file FileInfo, vlcPattern, winPattern, androidPattern bool, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
 	oldPath := file.Path
 	dir := filepath.Dir(oldPath)
 	oldName := filepath.Base(oldPath)
@@ -187,6 +201,8 @@ func processScreenshotRename(file FileInfo, vlcPattern, winPattern bool, mu *syn
 		newName, err = renameVlcScreenshot(baseName, ext)
 	} else if winPattern && strings.HasPrefix(baseName, "スクリーンショット ") {
 		newName, err = renameWindowsScreenshot(baseName, ext)
+	} else if androidPattern && strings.HasPrefix(baseName, "screen-") {
+		newName, err = renameAndroidScreenshot(baseName, ext)
 	} else {
 		// パターンに一致しないファイルはスキップ
 		return
@@ -245,7 +261,7 @@ func renameWindowsScreenshot(baseName, ext string) (string, error) {
 	re := regexp.MustCompile(`スクリーンショット (\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2})(\d{2})`)
 	matches := re.FindStringSubmatch(baseName)
 	if len(matches) != 7 {
-		return "", fmt.Errorf("Windowsスクリーンショットのパターンに一致しません: %s", baseName)
+		return "", fmt.Errorf("[Error] Windowsスクリーンショットのパターンに一致しません: %s", baseName)
 	}
 
 	year, month, day := matches[1], matches[2], matches[3]
@@ -254,9 +270,36 @@ func renameWindowsScreenshot(baseName, ext string) (string, error) {
 	return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
 }
 
+// renameAndroidScreenshot はAndroidスクリーンショットファイルをリネームします
+func renameAndroidScreenshot(baseName, ext string) (string, error) {
+	// screen-YYYYMMDD-HHMMSS
+	re := regexp.MustCompile(`screen-(\d{8})-(\d{6})`)
+	matches := re.FindStringSubmatch(baseName)
+	if len(matches) != 3 {
+		return "", fmt.Errorf("[Error] Androidスクリーンショットのパターンに一致しません: %s", baseName)
+	}
+
+	dateStr := matches[1]
+	timeStr := matches[2]
+
+	if len(dateStr) != 8 || len(timeStr) != 6 {
+		return "", fmt.Errorf("[Error] Androidスクリーンショットの日時形式が不正です: %s", baseName)
+	}
+
+	year := dateStr[0:4]
+	month := dateStr[4:6]
+	day := dateStr[6:8]
+
+	hour := timeStr[0:2]
+	minute := timeStr[2:4]
+	second := timeStr[4:6]
+
+	return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
+}
+
 func isImageExt(ext string) bool {
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".avif":
+	case ".jpg", ".jpeg", ".png", ".webp", ".avif", ".mp4":
 		return true
 	default:
 		return false

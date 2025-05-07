@@ -28,6 +28,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
 	vlcPattern := flagSet.Bool("vlc", false, "VLCスナップショットファイル (vlcsnap-*.png) をリネーム")
 	winPattern := flagSet.Bool("win", false, "Windowsスクリーンショットファイル (スクリーンショット *.png) をリネーム")
+	androidPattern := flagSet.Bool("android", false, "Androidスクリーンレコードファイル (screen-*.mp4) をリネーム")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
 
@@ -38,11 +39,12 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	}
 
 	return usecases.Config{
-		SrcDir:     *srcDir,
-		Recursive:  *recursive,
-		Workers:    *workers,
-		VlcPattern: *vlcPattern,
-		WinPattern: *winPattern,
+		SrcDir:        *srcDir,
+		Recursive:     *recursive,
+		Workers:       *workers,
+		VlcPattern:    *vlcPattern,
+		WinPattern:    *winPattern,
+		AndroidPattern: *androidPattern,
 	}, nil
 }
 
@@ -60,7 +62,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	// スクリーンショットファイルの検索
-	files, err := usecases.FindScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, stdout, stderr)
+	files, err := usecases.FindScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.AndroidPattern, stdout, stderr)
 	if err != nil {
 		return exitCodeError
 	}
@@ -76,6 +78,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		fmt.Fprintln(stdout, "VLCスナップショットパターンを使用します。")
 	} else if config.WinPattern {
 		fmt.Fprintln(stdout, "Windowsスクリーンショットパターンを使用します。")
+	} else if config.AndroidPattern {
+		fmt.Fprintln(stdout, "Androidスクリーンレコードパターンを使用します。")
 	}
 
 	// ファイル情報の取得
