@@ -4,7 +4,9 @@
 
 ## 機能
 
-- VLCスナップショットファイル (`vlcsnap-YYYY-MM-DD-HH-MM-SS.png`) を `Screenshot_YYYYMMDD-HHMMSS.png` 形式にリネーム
+- VLCスナップショットファイルを `Screenshot_YYYYMMDD-HHMMSS.png` 形式にリネーム
+  - 対応形式1: `vlcsnap-YYYY-MM-DD-HH-MM-SS.png`
+  - 対応形式2: `vlcsnap-YYYY-MM-DD-HHhMMmSSsNNN.png`（例: `vlcsnap-2025-05-06-23h59m44s239.png`）
 - Windowsスクリーンショットファイル (`スクリーンショット YYYY-MM-DD HHMMSS.png`) を `Screenshot_YYYYMMDD-HHMMSS.png` 形式にリネーム
 - 複数のファイルを並行処理
 - 再帰的なディレクトリスキャン

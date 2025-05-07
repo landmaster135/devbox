@@ -218,17 +218,25 @@ func processScreenshotRename(file FileInfo, vlcPattern, winPattern bool, mu *syn
 
 // renameVlcScreenshot はVLCスクリーンショットファイルをリネームします
 func renameVlcScreenshot(baseName, ext string) (string, error) {
-	// vlcsnap-YYYY-MM-DD-HH-MM-SS
-	re := regexp.MustCompile(`vlcsnap-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})`)
-	matches := re.FindStringSubmatch(baseName)
-	if len(matches) != 7 {
-		return "", fmt.Errorf("VLCスクリーンショットのパターンに一致しません: %s", baseName)
+	// パターン1: vlcsnap-YYYY-MM-DD-HH-MM-SS
+	re1 := regexp.MustCompile(`vlcsnap-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})`)
+	matches1 := re1.FindStringSubmatch(baseName)
+	if len(matches1) == 7 {
+		year, month, day := matches1[1], matches1[2], matches1[3]
+		hour, minute, second := matches1[4], matches1[5], matches1[6]
+		return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
 	}
 
-	year, month, day := matches[1], matches[2], matches[3]
-	hour, minute, second := matches[4], matches[5], matches[6]
+	// パターン2: vlcsnap-YYYY-MM-DD-HHhMMmSSsNNN
+	re2 := regexp.MustCompile(`vlcsnap-(\d{4})-(\d{2})-(\d{2})-(\d{2})h(\d{2})m(\d{2})s\d+`)
+	matches2 := re2.FindStringSubmatch(baseName)
+	if len(matches2) == 7 {
+		year, month, day := matches2[1], matches2[2], matches2[3]
+		hour, minute, second := matches2[4], matches2[5], matches2[6]
+		return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
+	}
 
-	return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
+	return "", fmt.Errorf("VLCスクリーンショットのパターンに一致しません: %s", baseName)
 }
 
 // renameWindowsScreenshot はWindowsスクリーンショットファイルをリネームします

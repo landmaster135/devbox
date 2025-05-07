@@ -62,7 +62,7 @@ func TestValidateConfig_BothPatterns(t *testing.T) {
 	}
 }
 
-func TestRenameVlcScreenshot_Normal(t *testing.T) {
+func TestRenameVlcScreenshot_NormalPattern1(t *testing.T) {
 	// Arrange
 	baseName := "vlcsnap-2025-05-07-12-34-56"
 	ext := ".png"
@@ -75,6 +75,24 @@ func TestRenameVlcScreenshot_Normal(t *testing.T) {
 		t.Errorf("renameVlcScreenshot() returned error: %v", err)
 	}
 	expected := "Screenshot_20250507-123456.png"
+	if newName != expected {
+		t.Errorf("renameVlcScreenshot() = %v, want %v", newName, expected)
+	}
+}
+
+func TestRenameVlcScreenshot_NormalPattern2(t *testing.T) {
+	// Arrange
+	baseName := "vlcsnap-2025-05-06-23h59m44s239"
+	ext := ".png"
+
+	// Act
+	newName, err := renameVlcScreenshot(baseName, ext)
+
+	// Assert
+	if err != nil {
+		t.Errorf("renameVlcScreenshot() returned error: %v", err)
+	}
+	expected := "Screenshot_20250506-235944.png"
 	if newName != expected {
 		t.Errorf("renameVlcScreenshot() = %v, want %v", newName, expected)
 	}
