@@ -24,6 +24,7 @@
 | -time      | false        | 画像ファイルを更新日時順に並べ替え |
 | -name      | false        | 画像ファイルをファイル名順に並べ替え |
 | -prefix    | (必須)       | 記事番号のプレフィックス |
+| -delimiter | _            | プレフィックスとシリアル番号の間の区切り文字 |
 | -digits    | 4            | シリアル番号の桁数 |
 | -start     | 1            | リネーム操作の開始番号 |
 | -r         | false        | サブディレクトリを再帰的にスキャン |
@@ -47,6 +48,9 @@
 
 # 開始番号を10から始める
 ./file-renamer -prefix "article01" -start 10 -time
+
+# カスタム区切り文字を使用（例: article01-001.jpg）
+./file-renamer -prefix "article01" -delimiter "-" -time
 ```
 
 ### 再帰的なスキャン
