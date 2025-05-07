@@ -30,6 +30,7 @@ type Config struct {
 	SortByName bool
 	SortByTime bool
 	Prefix     string
+	Delimiter  string
 	Digits     int
 	StartCount int
 	Recursive  bool
@@ -175,7 +176,7 @@ func RenameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) 
 	jobChan := make(chan Job, len(jobs))
 
 	// ワーカーの起動
-	startWorkers(workerCount, jobChan, &wg, &mu, &successCount, &errorCount, config.Digits, config.Prefix, stdout, stderr)
+	startWorkers(workerCount, jobChan, &wg, &mu, &successCount, &errorCount, config.Digits, config.Prefix, config.Delimiter, stdout, stderr)
 
 	// ジョブの送信
 	for _, job := range jobs {
@@ -202,20 +203,20 @@ func prepareJobs(fileInfos []FileInfo, startCount int) []Job {
 }
 
 // startWorkers はリネームワーカーを起動します
-func startWorkers(workerCount int, jobChan <-chan Job, wg *sync.WaitGroup, mu *sync.Mutex, successCount, errorCount *int, digits int, prefix string, stdout, stderr io.Writer) {
+func startWorkers(workerCount int, jobChan <-chan Job, wg *sync.WaitGroup, mu *sync.Mutex, successCount, errorCount *int, digits int, prefix string, delimiter string, stdout, stderr io.Writer) {
 	for range workerCount {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for job := range jobChan {
-				processRenameJob(job, digits, prefix, mu, successCount, errorCount, stdout, stderr)
+				processRenameJob(job, digits, prefix, delimiter, mu, successCount, errorCount, stdout, stderr)
 			}
 		}()
 	}
 }
 
 // processRenameJob は1つのリネームジョブを処理します
-func processRenameJob(job Job, digits int, prefix string, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
+func processRenameJob(job Job, digits int, prefix string, delimiter string, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
 	// ファイルのリネーム
 	oldPath := job.File.Path
 	dir := filepath.Dir(oldPath)
@@ -225,7 +226,7 @@ func processRenameJob(job Job, digits int, prefix string, mu *sync.Mutex, succes
 	// シリアル番号を指定桁数になるようにフォーマット
 	formatStr := fmt.Sprintf("%%0%dd", digits)
 	serial := fmt.Sprintf(formatStr, job.NewSerial)
-	newName := fmt.Sprintf("%s_%s%s", prefix, serial, ext)
+	newName := fmt.Sprintf("%s%s%s%s", prefix, delimiter, serial, ext)
 	newPath := filepath.Join(dir, newName)
 
 	fmt.Fprintf(stdout, "処理中: %s -> %s\n", oldPath, newPath)

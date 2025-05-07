@@ -29,6 +29,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	sortByName := flagSet.Bool("name", false, "画像ファイルをファイル名順に並べ替え")
 	sortByTime := flagSet.Bool("time", false, "画像ファイルを更新日時順に並べ替え")
 	prefix := flagSet.String("prefix", "", "記事番号のプレフィックス (必須)")
+	delimiter := flagSet.String("delimiter", "_", "プレフィックスとシリアル番号の間の区切り文字")
 	digits := flagSet.Int("digits", 4, "シリアル番号の桁数")
 	startCount := flagSet.Int("start", 1, "リネーム操作の開始番号")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
@@ -45,6 +46,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 		SortByName: *sortByName,
 		SortByTime: *sortByTime,
 		Prefix:     *prefix,
+		Delimiter:  *delimiter,
 		Digits:     *digits,
 		StartCount: *startCount,
 		Recursive:  *recursive,
@@ -78,6 +80,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	fmt.Fprintf(stdout, "画像ファイルが %d 件見つかりました。\n", len(files))
 	fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
+	fmt.Fprintf(stdout, "区切り文字: %s\n", config.Delimiter)
 	fmt.Fprintf(stdout, "開始番号: %d\n", config.StartCount)
 
 	// ファイル情報の取得と並べ替え
