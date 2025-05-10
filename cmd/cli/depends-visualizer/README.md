@@ -158,11 +158,3 @@ depends-visualizer -dir ./src -ext .py -format dot -out python-deps.dot
 ```
 
 これにより、`src`ディレクトリ内のPythonファイルのみを解析し、DOT形式で出力します。
-
-## ライセンス
-
-MIT
-
-## 貢献
-
-バグレポート、機能リクエスト、プルリクエストなど、あらゆる形の貢献を歓迎します。
