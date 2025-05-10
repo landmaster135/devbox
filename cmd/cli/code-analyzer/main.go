@@ -1,52 +1,48 @@
-// cmd/codemetrics/main.go
 package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/independencies/code_analyzer/app"
 	"github.com/landmaster135/devbox/internal/independencies/code_analyzer/config"
+	"github.com/landmaster135/devbox/internal/independencies/code_analyzer/app"
 )
 
 func main() {
-	// 設定のインスタンス作成
-	appConfig := config.NewAppConfig()
-
 	// フラグを定義
-	flag.StringVar(&appConfig.ProjectPath, "path", ".", "Path to the project to analyze")
-	flag.StringVar(&appConfig.OutputFormat, "format", "text", "Output format (text, json, csv)")
-	flag.StringVar(&appConfig.OutputFile, "output", "", "Output file (if not provided, writes to stdout)")
-
-	extensions := flag.String("ext", ".go", "Comma-separated list of file extensions to analyze")
-
-	flag.BoolVar(&appConfig.VisualReport, "visual", false, "Generate visual HTML report")
-	flag.StringVar(&appConfig.HistoryPath, "history", "", "Path to historical data file for trend analysis")
-	flag.BoolVar(&appConfig.DetectClones, "detect-clones", false, "Enable code clone detection")
-	flag.IntVar(&appConfig.MinBlockSize, "min-block-size", 30, "Minimum token block size for clone detection")
-	flag.Float64Var(&appConfig.MinSimilarity, "min-similarity", 0.8, "Minimum similarity threshold for clone detection (0.0-1.0)")
-	flag.BoolVar(&appConfig.Verbose, "v", false, "Enable verbose logging")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nCode Metrics Analyzer Tool\n")
-		fmt.Fprintf(os.Stderr, "Analyzes source code and generates metrics reports\n\n")
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExample:\n")
-		fmt.Fprintf(os.Stderr, "  %s -path /path/to/project -ext .go,.py -format json -output metrics.json -visual\n", os.Args[0])
-	}
+	projectPath := flag.String("path", ".", "解析対象のプロジェクトパス")
+	outputFormat := flag.String("format", "text", "出力形式 (text, json, csv)")
+	outputFile := flag.String("output", "", "出力ファイル（省略時は標準出力）")
+	extensions := flag.String("ext", ".go", "解析対象のファイル拡張子（カンマ区切り）")
+	visualReport := flag.Bool("visual", false, "視覚的なHTMLレポートを生成")
+	historyPath := flag.String("history", "", "トレンド分析用の履歴データファイルのパス")
+	detectClones := flag.Bool("detect-clones", false, "コードクローン検出を有効化")
+	minBlockSize := flag.Int("min-block-size", 30, "クローン検出のための最小トークンブロックサイズ")
+	minSimilarity := flag.Float64("min-similarity", 0.8, "クローン検出のための最小類似度閾値 (0.0-1.0)")
+	verbose := flag.Bool("v", false, "詳細なログを出力")
 
 	// フラグを解析
 	flag.Parse()
 
 	// ログ設定
-	if appConfig.Verbose {
+	if *verbose {
 		log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
 	} else {
 		log.SetFlags(log.Ldate | log.Ltime)
+	}
+
+	// アプリケーション設定
+	appConfig := &config.AppConfig{
+		ProjectPath:    *projectPath,
+		OutputFormat:   *outputFormat,
+		OutputFile:     *outputFile,
+		VisualReport:   *visualReport,
+		HistoryPath:    *historyPath,
+		DetectClones:   *detectClones,
+		MinBlockSize:   *minBlockSize,
+		MinSimilarity:  *minSimilarity,
+		Verbose:        *verbose,
 	}
 
 	// 拡張子リストの処理
