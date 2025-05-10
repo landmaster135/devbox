@@ -38,4 +38,4 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./code-analyzer [options]"
+echo "  code-analyzer -path ./my-project"

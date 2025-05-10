@@ -146,34 +146,146 @@ func (a *App) generateBuildScript(packageName string) error {
 		// READMEファイルが存在する場合
 		content, err := os.ReadFile(readmePath)
 		if err == nil {
+			// デバッグ用にREADMEの内容を出力
+			fmt.Printf("READMEファイルを読み込みました: %s\n", readmePath)
+
 			lines := strings.Split(string(content), "\n")
-			inUsageSection := false
-			usageLines := []string{}
 
-			for _, line := range lines {
-				if strings.Contains(line, "Usage:") || strings.Contains(line, "Example:") || strings.Contains(line, "Examples:") {
-					inUsageSection = true
-					continue
+			// まず「## 使用例」セクションを探す（最優先）
+			usageExampleSectionFound := false
+			usageExampleSectionIndex := -1
+
+			for i, line := range lines {
+				if strings.HasPrefix(strings.TrimSpace(line), "#") &&
+				   strings.Contains(strings.ToLower(line), "使用例") &&
+				   !strings.Contains(strings.ToLower(line), "使用方法") {
+					usageExampleSectionFound = true
+					usageExampleSectionIndex = i
+					fmt.Printf("「使用例」セクションを見つけました: %s（行 %d）\n", line, i+1)
+					break
 				}
+			}
 
-				if inUsageSection {
-					if strings.HasPrefix(line, "#") || line == "" {
-						// 次のセクションに到達したか、空行の場合は終了
-						if len(usageLines) > 0 {
-							break
-						}
-					} else {
-						// 使用例の行を追加
-						trimmedLine := strings.TrimSpace(line)
-						if trimmedLine != "" && !strings.HasPrefix(trimmedLine, "-") {
-							usageLines = append(usageLines, fmt.Sprintf("echo \"  %s\"", trimmedLine))
-						}
+			// 「使用例」セクションが見つからなかった場合は「使用方法」セクションを探す
+			usageMethodSectionIndex := -1
+			if !usageExampleSectionFound {
+				for i, line := range lines {
+					if strings.HasPrefix(strings.TrimSpace(line), "#") &&
+					   strings.Contains(strings.ToLower(line), "使用方法") {
+						usageMethodSectionIndex = i
+						fmt.Printf("「使用方法」セクションを見つけました: %s（行 %d）\n", line, i+1)
+						break
 					}
 				}
 			}
 
-			if len(usageLines) > 0 {
-				usageExamples = strings.Join(usageLines, "\n")
+			// 使用例を抽出する開始位置を決定
+			startIndex := -1
+			if usageExampleSectionFound {
+				startIndex = usageExampleSectionIndex
+			} else if usageMethodSectionIndex >= 0 {
+				startIndex = usageMethodSectionIndex
+			}
+
+			if startIndex >= 0 {
+				inCodeBlock := false
+				usageLines := []string{}
+
+				// 開始位置から処理を開始
+				for i := startIndex + 1; i < len(lines); i++ {
+					line := lines[i]
+
+					// 見出しに到達した場合の処理
+					if strings.HasPrefix(strings.TrimSpace(line), "#") {
+						// 現在「使用方法」セクションにいて、「使用例」セクションに到達した場合は続行
+						if usageMethodSectionIndex >= 0 && !usageExampleSectionFound &&
+						   strings.Contains(strings.ToLower(line), "使用例") {
+							usageExampleSectionFound = true
+							fmt.Printf("「使用例」サブセクションを見つけました: %s（行 %d）\n", line, i+1)
+							continue
+						}
+
+						// コードブロック内にいる場合は、コードブロックが終了するまで続行
+						if inCodeBlock {
+							continue
+						}
+
+						// 「使用例」セクション内のサブセクションの場合は続行
+						if usageExampleSectionFound {
+							// 見出しレベルを確認（「##」より深い「###」などの場合は続行）
+							currentLevel := 0
+							for _, c := range strings.TrimSpace(line) {
+								if c == '#' {
+									currentLevel++
+								} else {
+									break
+								}
+							}
+
+							// 「使用例」セクションの見出しレベルを確認
+							exampleSectionLevel := 0
+							if usageExampleSectionIndex >= 0 {
+								exampleLine := lines[usageExampleSectionIndex]
+								for _, c := range strings.TrimSpace(exampleLine) {
+									if c == '#' {
+										exampleSectionLevel++
+									} else {
+										break
+									}
+								}
+							}
+
+							// サブセクション（より深い見出し）の場合は続行
+							if currentLevel > exampleSectionLevel {
+								fmt.Printf("「使用例」セクション内のサブセクションを検出: %s（行 %d）\n", line, i+1)
+								continue
+							}
+						}
+
+						// それ以外の見出しなら終了
+						fmt.Printf("次のセクションに到達しました: %s（行 %d）\n", line, i+1)
+						break
+					}
+
+					trimmedLine := strings.TrimSpace(line)
+
+					// コードブロックの開始を検出
+					if !inCodeBlock && strings.HasPrefix(trimmedLine, "```") {
+						inCodeBlock = true
+						fmt.Printf("コードブロック開始を検出: %s（行 %d）\n", line, i+1)
+						continue
+					}
+
+					// コードブロックの終了を検出
+					if inCodeBlock && strings.HasPrefix(trimmedLine, "```") {
+						inCodeBlock = false
+						fmt.Printf("コードブロック終了を検出: %s（行 %d）\n", line, i+1)
+
+						// 最初のコードブロックが終了したら処理を終了
+						if len(usageLines) > 0 {
+							fmt.Println("最初のコードブロックを抽出しました。処理を終了します。")
+							break
+						}
+						continue
+					}
+
+					// コードブロック内の行を追加
+					if inCodeBlock {
+						if trimmedLine != "" {
+							usageLines = append(usageLines, fmt.Sprintf("echo \"  %s\"", trimmedLine))
+							fmt.Printf("使用例行を追加: %s\n", trimmedLine)
+						}
+					}
+				}
+
+				if len(usageLines) > 0 {
+					usageExamples = strings.Join(usageLines, "\n")
+					fmt.Printf("使用例を抽出しました（%d行）\n", len(usageLines))
+				} else {
+					fmt.Println("使用例を抽出できませんでした")
+				}
+			} else {
+				fmt.Println("使用例または使用方法セクションが見つかりませんでした")
 			}
 		}
 	}
