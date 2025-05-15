@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -47,6 +48,7 @@ type AppConfig struct {
 	ApiToken    string
 	Debug       bool
 	PrefixConID string
+	MaxPages    int
 }
 
 func main() {
@@ -65,7 +67,11 @@ func main() {
 	log.Printf("処理開始: %s", indexURL)
 
 	// 索引ページから単語を取得して処理
-	processIndex(config, indexURL, config.DictType)
+	if err := processIndex(config, indexURL, config.DictType); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		printUsage()
+		os.Exit(1)
+	}
 
 	log.Println("処理完了")
 }
@@ -84,6 +90,7 @@ func parseFlags() *AppConfig {
 	flag.StringVar(&config.ApiURL, "api-url", "", "APIエンドポイントURL")
 	flag.StringVar(&config.ApiToken, "api-token", "", "API認証トークン")
 	flag.StringVar(&config.PrefixConID, "prefix", "VC", "con_idのプレフィックス")
+	flag.IntVar(&config.MaxPages, "max-pages", 0, "スクレイピングする最大ページ数（0=無制限）")
 	flag.BoolVar(&config.Debug, "debug", false, "デバッグモード")
 
 	// ヘルプフラグ
@@ -101,6 +108,12 @@ func parseFlags() *AppConfig {
 
 	if config.ApiURL == "" {
 		config.ApiURL = fmt.Sprintf("%s%s", os.Getenv("DB_SERVER_URL"), os.Getenv("DB_SERVER_ENDPOINT_FOR_VOCABULARY_APPEND"))
+	}
+	if config.ApiURL == "" {
+		printUsage()
+		fmt.Println("")
+		fmt.Println("**Warning** 環境変数が設定されていません。")
+		os.Exit(1)
 	}
 
 	return config
@@ -177,14 +190,27 @@ func buildIndexURL(dictType, indexChar string) string {
 }
 
 // 索引ページから単語を取得して処理する関数
-func processIndex(config *AppConfig, indexURL, dictType string) {
-	log.Printf("索引ページの処理を開始: %s", indexURL)
+func processIndex(config *AppConfig, indexURL, dictType string) error {
+	if err := processIndexWithPage(config, indexURL, dictType, 1); err != nil {
+		return fmt.Errorf("単語の取得に失敗: %w", err)
+	}
+	return nil
+}
+
+// 指定されたページ番号で索引ページから単語を取得して処理する関数
+func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentPage int) error {
+	log.Printf("索引ページの処理を開始: %s (ページ %d)", indexURL, currentPage)
+
+	// 最大ページ数のチェック
+	if config.MaxPages > 0 && currentPage > config.MaxPages {
+		log.Printf("最大ページ数 %d に達したため処理を終了します", config.MaxPages)
+		return nil
+	}
 
 	// 単語リストを取得
 	words, nextPage, err := fetchWordsFromIndex(indexURL)
 	if err != nil {
-		log.Printf("索引からの単語取得に失敗: %v", err)
-		return
+		return fmt.Errorf("索引からの単語取得に失敗: %v", err)
 	}
 
 	log.Printf("索引から%d個の単語を取得しました", len(words))
@@ -195,7 +221,7 @@ func processIndex(config *AppConfig, indexURL, dictType string) {
 		log.Printf("処理中 (%d/%d): %s", i+1, len(words), word)
 
 		// 単語情報を取得
-		info, err := fetchWordInfo(word, dictType, config.PrefixConID, i+1)
+		info, err := fetchWordInfo(word, dictType, config.PrefixConID, i+1, config)
 		if err != nil {
 			log.Printf("単語「%s」の取得に失敗: %v", word, err)
 			continue
@@ -214,7 +240,7 @@ func processIndex(config *AppConfig, indexURL, dictType string) {
 	if len(vocabularies) > 0 {
 		err := sendToAPI(config, vocabularies)
 		if err != nil {
-			log.Printf("APIへのデータ送信に失敗: %v", err)
+			return fmt.Errorf("APIへのデータ送信に失敗: %v", err)
 		} else {
 			log.Printf("%d個の単語をAPIに送信しました", len(vocabularies))
 		}
@@ -223,15 +249,17 @@ func processIndex(config *AppConfig, indexURL, dictType string) {
 	// 次のページがあれば処理
 	if nextPage != "" {
 		log.Printf("次のページを処理します: %s", nextPage)
-		processIndex(config, nextPage, dictType)
+		processIndexWithPage(config, nextPage, dictType, currentPage+1)
 	}
+
+	return nil
 }
 
 // APIにデータを送信する関数
 func sendToAPI(config *AppConfig, vocabularies []Word) error {
 	// リクエストデータの構築
 	requestData := map[string]interface{}{
-		"name":        fmt.Sprintf("Goo辞書スクレイピング - %s - %s", config.DictType, config.IndexChar),
+		"name":        fmt.Sprintf("Goo辞書スクレイピング %s %s", config.DictType, config.IndexChar),
 		"description": fmt.Sprintf("Goo辞書から取得した%s辞典の「%s」で始まる単語", config.DictType, config.IndexChar),
 		"data": map[string]interface{}{
 			"vocabularies": vocabularies,
@@ -242,6 +270,14 @@ func sendToAPI(config *AppConfig, vocabularies []Word) error {
 	jsonData, err := json.Marshal(requestData)
 	if err != nil {
 		return fmt.Errorf("JSONの生成に失敗: %w", err)
+	}
+
+	// リクエストボディを表示
+	if config.Debug {
+		log.Printf("リクエストボディ: %s", string(jsonData))
+	} else {
+		// デバッグモードでなくても簡易情報を表示
+		log.Printf("リクエストボディ: %d個の単語を送信します", len(vocabularies))
 	}
 
 	// HTTPリクエストの作成
@@ -271,6 +307,15 @@ func sendToAPI(config *AppConfig, vocabularies []Word) error {
 		return fmt.Errorf("APIエラー: ステータスコード %d", resp.StatusCode)
 	}
 
+	// レスポンスボディを読み取り
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("レスポンスボディの読み取りに失敗: %w", err)
+	}
+
+	// レスポンスボディを表示
+	log.Printf("レスポンスボディ: %s", string(respBody))
+
 	return nil
 }
 
@@ -281,7 +326,7 @@ func fetchWordsFromIndex(indexURL string) ([]string, string, error) {
 
 	// HTTPリクエスト
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 20 * time.Second,
 	}
 	req, err := http.NewRequest("GET", indexURL, nil)
 	if err != nil {
@@ -337,15 +382,25 @@ func fetchWordsFromIndex(indexURL string) ([]string, string, error) {
 }
 
 // 単語のページから詳細情報を取得する関数
-func fetchWordInfo(word, dictType, prefixConID string, index int) (Word, error) {
+func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppConfig) (Word, error) {
+	// 単語から半角ハイフンを削除
+	cleanWord := strings.ReplaceAll(word, "-", "")
+	cleanWord = strings.ReplaceAll(cleanWord, "‐", "") // 全角ハイフンも削除
+
 	var info Word
-	info.Word = word
+	info.Word = cleanWord
 	info.DictType = dictType
 	info.ConID = generateConID(prefixConID, index)
 
 	// URLエンコード
-	encodedWord := url.QueryEscape(word)
+	encodedWord := url.QueryEscape(cleanWord)
 	wordURL := buildWordURL(dictType, encodedWord)
+
+	// 単語URLを表示
+	if config.Debug {
+		log.Printf("単語（エンコード前）: %s", cleanWord)
+		log.Printf("単語（エンコード後）: %s", encodedWord)
+	}
 
 	// HTTPリクエスト
 	client := &http.Client{
