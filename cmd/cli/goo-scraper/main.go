@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -11,9 +13,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
 // 辞書の種類を表す定数
@@ -29,23 +28,25 @@ const (
 
 // 単語情報のモデル
 type Word struct {
-	gorm.Model
-	Word            string     `gorm:"uniqueIndex:idx_word_dict_type;not null" json:"word"`
-	DictType        string     `gorm:"uniqueIndex:idx_word_dict_type;not null;comment:辞書の種類(kokugo,eiwa,waei,dokuwa,wadoku,ruigo,yojijuku)" json:"dict_type"`
-	Readings        []string   `gorm:"type:jsonb" json:"readings"`
-	Meanings        []string   `gorm:"type:jsonb" json:"meanings"`
-	Examples        []string   `gorm:"type:jsonb" json:"examples"`
-	Categories      []string   `gorm:"type:jsonb" json:"categories"`
-	LastMemorizedAt *time.Time `gorm:"index;comment:最後に暗記した日時" json:"last_memorized_at"`
-	Notice          string     `gorm:"comment:特記事項" json:"notice"`
+	ConID           string     `json:"con_id"`
+	Word            string     `json:"word"`
+	DictType        string     `json:"dict_type"`
+	Readings        []string   `json:"readings,omitempty"`
+	Meanings        []string   `json:"meanings,omitempty"`
+	Examples        []string   `json:"examples,omitempty"`
+	Categories      []string   `json:"categories,omitempty"`
+	LastMemorizedAt *time.Time `json:"last_memorized_at,omitempty"`
+	Notice          string     `json:"notice,omitempty"`
 }
 
 // アプリケーション設定
 type AppConfig struct {
-	DictType  string
-	IndexChar string
-	DbURL     string
-	Debug     bool
+	DictType    string
+	IndexChar   string
+	ApiURL      string
+	ApiToken    string
+	Debug       bool
+	PrefixConID string
 }
 
 func main() {
@@ -59,26 +60,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// データベース接続
-	db, err := connectDB(config)
-	if err != nil {
-		log.Fatalf("データベース接続エラー: %v", err)
-	}
-
-	// データベースのマイグレーション（テーブル作成）
-	err = db.AutoMigrate(&Word{})
-	if err != nil {
-		log.Fatalf("マイグレーションエラー: %v", err)
-	}
-
-	log.Println("マイグレーション完了、データベース準備完了")
-
 	// 索引ページのURLを構築
 	indexURL := buildIndexURL(config.DictType, config.IndexChar)
 	log.Printf("処理開始: %s", indexURL)
 
 	// 索引ページから単語を取得して処理
-	processIndex(db, indexURL, config.DictType)
+	processIndex(config, indexURL, config.DictType)
 
 	log.Println("処理完了")
 }
@@ -94,7 +81,9 @@ func parseFlags() *AppConfig {
 			DictTypeDokuwa, DictTypeWadoku,
 			DictTypeRuigo, DictTypeYojijuku))
 	flag.StringVar(&config.IndexChar, "char", "あ", "取得する索引の文字")
-	flag.StringVar(&config.DbURL, "db-url", "postgres://postgres:password@localhost:5432/dictionary", "データベース接続URL")
+	flag.StringVar(&config.ApiURL, "api-url", "", "APIエンドポイントURL")
+	flag.StringVar(&config.ApiToken, "api-token", "", "API認証トークン")
+	flag.StringVar(&config.PrefixConID, "prefix", "VC", "con_idのプレフィックス")
 	flag.BoolVar(&config.Debug, "debug", false, "デバッグモード")
 
 	// ヘルプフラグ
@@ -110,6 +99,10 @@ func parseFlags() *AppConfig {
 		os.Exit(0)
 	}
 
+	if config.ApiURL == "" {
+		config.ApiURL = fmt.Sprintf("%s%s", os.Getenv("DB_SERVER_URL"), os.Getenv("DB_SERVER_ENDPOINT_FOR_VOCABULARY_APPEND"))
+	}
+
 	return config
 }
 
@@ -120,7 +113,7 @@ func printUsage() {
 	flag.PrintDefaults()
 	fmt.Println("\n例:")
 	fmt.Println("  goo_dict_scraper -type kokugo -char あ")
-	fmt.Println("  goo_dict_scraper -type eiwa -char a -db-url \"postgres://user:pass@host:5432/mydb\"")
+	fmt.Println("  goo_dict_scraper -type eiwa -char a -api-url \"http://example.com/api/endpoint\"")
 	fmt.Println("  goo_dict_scraper -type dokuwa -char a -debug")
 }
 
@@ -146,23 +139,17 @@ func validateConfig(config *AppConfig) error {
 		return fmt.Errorf("索引文字を指定してください")
 	}
 
-	// データベースURLの検証
-	if config.DbURL == "" {
-		return fmt.Errorf("データベースURLを指定してください")
+	// APIのURLの検証
+	if config.ApiURL == "" {
+		return fmt.Errorf("APIエンドポイントURLを指定してください")
 	}
 
 	return nil
 }
 
-// データベースに接続する関数
-func connectDB(config *AppConfig) (*gorm.DB, error) {
-	// ログレベルの設定
-	var gormConfig gorm.Config
-	if !config.Debug {
-		gormConfig.Logger = logger.Default.LogMode(logger.Silent)
-	}
-
-	return gorm.Open(postgres.Open(config.DbURL), &gormConfig)
+// con_idを生成する関数
+func generateConID(prefix string, index int) string {
+	return fmt.Sprintf("%s%013d", prefix, index)
 }
 
 // 辞書タイプと索引文字に基づいて索引ページのURLを構築する関数
@@ -190,7 +177,7 @@ func buildIndexURL(dictType, indexChar string) string {
 }
 
 // 索引ページから単語を取得して処理する関数
-func processIndex(db *gorm.DB, indexURL, dictType string) {
+func processIndex(config *AppConfig, indexURL, dictType string) {
 	log.Printf("索引ページの処理を開始: %s", indexURL)
 
 	// 単語リストを取得
@@ -203,41 +190,88 @@ func processIndex(db *gorm.DB, indexURL, dictType string) {
 	log.Printf("索引から%d個の単語を取得しました", len(words))
 
 	// 単語を処理
+	var vocabularies []Word
 	for i, word := range words {
 		log.Printf("処理中 (%d/%d): %s", i+1, len(words), word)
 
-		// 既に登録済みかチェック
-		var count int64
-		db.Model(&Word{}).Where("word = ? AND dict_type = ?", word, dictType).Count(&count)
-		if count > 0 {
-			log.Printf("単語「%s」（%s）は既に登録済みのためスキップします", word, dictType)
-			continue
-		}
-
 		// 単語情報を取得
-		info, err := fetchWordInfo(word, dictType)
+		info, err := fetchWordInfo(word, dictType, config.PrefixConID, i+1)
 		if err != nil {
 			log.Printf("単語「%s」の取得に失敗: %v", word, err)
 			continue
 		}
 
-		// DBに保存
-		if err := db.Create(&info).Error; err != nil {
-			log.Printf("単語「%s」の保存に失敗: %v", word, err)
-			continue
-		}
+		// 単語情報を配列に追加
+		vocabularies = append(vocabularies, info)
 
-		log.Printf("単語「%s」を保存しました", word)
+		log.Printf("単語「%s」を処理しました", word)
 
 		// サーバーに負荷をかけないよう少し待機
 		time.Sleep(2 * time.Second)
 	}
 
+	// APIにデータを送信
+	if len(vocabularies) > 0 {
+		err := sendToAPI(config, vocabularies)
+		if err != nil {
+			log.Printf("APIへのデータ送信に失敗: %v", err)
+		} else {
+			log.Printf("%d個の単語をAPIに送信しました", len(vocabularies))
+		}
+	}
+
 	// 次のページがあれば処理
 	if nextPage != "" {
 		log.Printf("次のページを処理します: %s", nextPage)
-		processIndex(db, nextPage, dictType)
+		processIndex(config, nextPage, dictType)
 	}
+}
+
+// APIにデータを送信する関数
+func sendToAPI(config *AppConfig, vocabularies []Word) error {
+	// リクエストデータの構築
+	requestData := map[string]interface{}{
+		"name":        fmt.Sprintf("Goo辞書スクレイピング - %s - %s", config.DictType, config.IndexChar),
+		"description": fmt.Sprintf("Goo辞書から取得した%s辞典の「%s」で始まる単語", config.DictType, config.IndexChar),
+		"data": map[string]interface{}{
+			"vocabularies": vocabularies,
+		},
+	}
+
+	// JSONに変換
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		return fmt.Errorf("JSONの生成に失敗: %w", err)
+	}
+
+	// HTTPリクエストの作成
+	req, err := http.NewRequest("POST", config.ApiURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("リクエストの作成に失敗: %w", err)
+	}
+
+	// ヘッダーの設定
+	req.Header.Set("Content-Type", "application/json")
+	if config.ApiToken != "" {
+		req.Header.Set("Authorization", "Bearer "+config.ApiToken)
+	}
+
+	// リクエストの送信
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("APIリクエストの送信に失敗: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// レスポンスの確認
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("APIエラー: ステータスコード %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 // 索引ページから単語リストと次ページのURLを取得する関数
@@ -303,10 +337,11 @@ func fetchWordsFromIndex(indexURL string) ([]string, string, error) {
 }
 
 // 単語のページから詳細情報を取得する関数
-func fetchWordInfo(word, dictType string) (Word, error) {
+func fetchWordInfo(word, dictType, prefixConID string, index int) (Word, error) {
 	var info Word
 	info.Word = word
 	info.DictType = dictType
+	info.ConID = generateConID(prefixConID, index)
 
 	// URLエンコード
 	encodedWord := url.QueryEscape(word)
