@@ -49,6 +49,7 @@ type AppConfig struct {
 	Debug       bool
 	PrefixConID string
 	MaxPages    int
+	StartIndex  int // con_idの開始番号
 }
 
 func main() {
@@ -91,6 +92,7 @@ func parseFlags() *AppConfig {
 	flag.StringVar(&config.ApiToken, "api-token", "", "API認証トークン")
 	flag.StringVar(&config.PrefixConID, "prefix", "VC", "con_idのプレフィックス")
 	flag.IntVar(&config.MaxPages, "max-pages", 0, "スクレイピングする最大ページ数（0=無制限）")
+	flag.IntVar(&config.StartIndex, "start-index", 1, "con_idの開始番号")
 	flag.BoolVar(&config.Debug, "debug", false, "デバッグモード")
 
 	// ヘルプフラグ
@@ -191,14 +193,14 @@ func buildIndexURL(dictType, indexChar string) string {
 
 // 索引ページから単語を取得して処理する関数
 func processIndex(config *AppConfig, indexURL, dictType string) error {
-	if err := processIndexWithPage(config, indexURL, dictType, 1); err != nil {
+	if err := processIndexWithPage(config, indexURL, dictType, 1, 0); err != nil {
 		return fmt.Errorf("単語の取得に失敗: %w", err)
 	}
 	return nil
 }
 
 // 指定されたページ番号で索引ページから単語を取得して処理する関数
-func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentPage int) error {
+func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentPage, conIDIndex int) error {
 	log.Printf("索引ページの処理を開始: %s (ページ %d)", indexURL, currentPage)
 
 	// 最大ページ数のチェック
@@ -215,15 +217,26 @@ func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentP
 
 	log.Printf("索引から%d個の単語を取得しました", len(words))
 
+	// 単語が取得できなかった場合はエラーを返す
+	if len(words) == 0 {
+		return fmt.Errorf("単語が取得できませんでした。セレクタが正しくないか、ページの構造が変更された可能性があります。URL: %s", indexURL)
+	}
+
 	// 単語を処理
 	var vocabularies []Word
 	var failedWords []IndexWord // 取得に失敗した単語のリスト
+	currentIndex := conIDIndex
+	if currentIndex == 0 {
+		currentIndex = config.StartIndex
+	}
 
 	for i, indexWord := range words {
-		log.Printf("処理中 (%d/%d): %s", i+1, len(words), indexWord.Word)
+		// 単語ごとにインデックスを増やす
+		conID := generateConID(config.PrefixConID, currentIndex)
+		log.Printf("処理中 (%d/%d): %s (ID: %s)", i+1, len(words), indexWord.Word, conID)
 
 		// 単語情報を取得
-		info, err := fetchWordInfo(indexWord.Word, dictType, config.PrefixConID, i+1, config, indexWord.URL)
+		info, err := fetchWordInfo(indexWord.Word, dictType, conID, config, indexWord.URL)
 		if err != nil {
 			log.Printf("単語「%s」の取得に失敗: %v", indexWord.Word, err)
 			failedWords = append(failedWords, indexWord) // 失敗した単語をリストに追加
@@ -232,6 +245,7 @@ func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentP
 
 		// 単語情報を配列に追加
 		vocabularies = append(vocabularies, info)
+		currentIndex++
 
 		log.Printf("単語「%s」を処理しました", indexWord.Word)
 
@@ -260,7 +274,9 @@ func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentP
 	// 次のページがあれば処理
 	if nextPage != "" {
 		log.Printf("次のページを処理します: %s", nextPage)
-		processIndexWithPage(config, nextPage, dictType, currentPage+1)
+		// 次のページを処理する際に、現在のページで処理した最後の単語のインデックスを引き継ぐ
+		log.Printf("次のページの開始インデックス: %d", currentIndex)
+		processIndexWithPage(config, nextPage, dictType, currentPage+1, currentIndex)
 	}
 
 	return nil
@@ -350,8 +366,8 @@ func fetchWordsFromIndex(indexURL string) ([]IndexWord, string, error) {
 		return words, nextPage, err
 	}
 
-	// ユーザーエージェントの設定
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MyDictionaryBot/1.0; +https://example.com)")
+	// ユーザーエージェントの設定（より一般的なブラウザのUser-Agentを使用）
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -369,7 +385,25 @@ func fetchWordsFromIndex(indexURL string) ([]IndexWord, string, error) {
 		return words, nextPage, err
 	}
 
+	// デバッグ: HTMLの構造を出力
+	html, _ := doc.Html()
+	displayLen := 1000
+	if len(html) < displayLen {
+		displayLen = len(html)
+	}
+	log.Printf("HTMLの一部: %s", html[:displayLen])
+
+	// デバッグ: 主要な要素を出力
+	log.Println("主要な要素を確認:")
+	doc.Find("div").Each(func(i int, s *goquery.Selection) {
+		class, _ := s.Attr("class")
+		if class != "" {
+			log.Printf("div要素 %d: class=%s, 子要素数=%d", i, class, s.Children().Length())
+		}
+	})
+
 	// 単語リストの取得
+	var fetchErrors []string
 	doc.Find(".content_list.idiom li a").Each(func(i int, s *goquery.Selection) {
 		// タイトル部分を取得
 		title := s.Find(".title").Text()
@@ -377,29 +411,44 @@ func fetchWordsFromIndex(indexURL string) ([]IndexWord, string, error) {
 		if title == "" {
 			// タイトルが見つからない場合はリンクのテキスト全体を使用
 			title = s.Text()
+			if title == "" {
+				fetchErrors = append(fetchErrors, fmt.Sprintf("インデックス %d の単語のタイトルが取得できませんでした", i))
+				return
+			}
 		}
 
 		// 括弧書きの部分を削除して単語だけを取得
 		// word := strings.Split(title, "【")[0]
 		word := strings.TrimSpace(title)
 
-		if word != "" {
-			// 単語のURLを取得
-			href, exists := s.Attr("href")
-			wordURL := ""
-			if exists {
-				// 相対URLを絶対URLに変換
-				wordURL = "https://dictionary.goo.ne.jp" + href
-			}
-
-			// 構造体に格納して配列に追加
-			indexWord := IndexWord{
-				Word: word,
-				URL:  wordURL,
-			}
-			words = append(words, indexWord)
+		if word == "" {
+			fetchErrors = append(fetchErrors, fmt.Sprintf("インデックス %d の単語が空です", i))
+			return
 		}
+
+		// 単語のURLを取得
+		href, exists := s.Attr("href")
+		if !exists {
+			fetchErrors = append(fetchErrors, fmt.Sprintf("単語「%s」のURLが取得できませんでした", word))
+			return
+		}
+
+		// 相対URLを絶対URLに変換
+		wordURL := "https://dictionary.goo.ne.jp" + href
+
+		// 構造体に格納して配列に追加
+		indexWord := IndexWord{
+			Word: word,
+			URL:  wordURL,
+		}
+		words = append(words, indexWord)
 	})
+
+	// エラーがあれば返す
+	if len(fetchErrors) > 0 {
+		errorMsg := strings.Join(fetchErrors, "\n")
+		return words, nextPage, fmt.Errorf("単語リストの取得中にエラーが発生しました:\n%s", errorMsg)
+	}
 
 	// 次のページのリンクを取得
 	nextLink := doc.Find(".nav-paging .next a").AttrOr("href", "")
@@ -412,7 +461,7 @@ func fetchWordsFromIndex(indexURL string) ([]IndexWord, string, error) {
 }
 
 // 単語のページから詳細情報を取得する関数
-func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppConfig, wordURL string) (Word, error) {
+func fetchWordInfo(word, dictType, conID string, config *AppConfig, wordURL string) (Word, error) {
 	// 単語から半角ハイフンを削除
 	cleanWord := strings.ReplaceAll(word, "-", "")
 	cleanWord = strings.ReplaceAll(cleanWord, "‐", "") // 全角ハイフンも削除
@@ -420,7 +469,7 @@ func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppCon
 	var info Word
 	info.Word = cleanWord
 	info.DictType = dictType
-	info.ConID = generateConID(prefixConID, index)
+	info.ConID = conID
 
 	// URLが指定されていない場合は生成する
 	if wordURL == "" {
@@ -444,8 +493,9 @@ func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppCon
 		return info, err
 	}
 
-	// ユーザーエージェントの設定
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MyDictionaryBot/1.0; +https://example.com)")
+	// ユーザーエージェントの設定（より一般的なブラウザのUser-Agentを使用）
+	// req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; MyDictionaryBot/1.0; +https://example.com)")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
 	resp, err := client.Do(req)
 	if err != nil {
