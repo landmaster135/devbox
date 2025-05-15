@@ -162,7 +162,7 @@ func validateConfig(config *AppConfig) error {
 
 // con_idを生成する関数
 func generateConID(prefix string, index int) string {
-	return fmt.Sprintf("%s%013d", prefix, index)
+	return fmt.Sprintf("%s%011d", prefix, index)
 }
 
 // 辞書タイプと索引文字に基づいて索引ページのURLを構築する関数
@@ -217,23 +217,34 @@ func processIndexWithPage(config *AppConfig, indexURL, dictType string, currentP
 
 	// 単語を処理
 	var vocabularies []Word
-	for i, word := range words {
-		log.Printf("処理中 (%d/%d): %s", i+1, len(words), word)
+	var failedWords []IndexWord // 取得に失敗した単語のリスト
+
+	for i, indexWord := range words {
+		log.Printf("処理中 (%d/%d): %s", i+1, len(words), indexWord.Word)
 
 		// 単語情報を取得
-		info, err := fetchWordInfo(word, dictType, config.PrefixConID, i+1, config)
+		info, err := fetchWordInfo(indexWord.Word, dictType, config.PrefixConID, i+1, config, indexWord.URL)
 		if err != nil {
-			log.Printf("単語「%s」の取得に失敗: %v", word, err)
+			log.Printf("単語「%s」の取得に失敗: %v", indexWord.Word, err)
+			failedWords = append(failedWords, indexWord) // 失敗した単語をリストに追加
 			continue
 		}
 
 		// 単語情報を配列に追加
 		vocabularies = append(vocabularies, info)
 
-		log.Printf("単語「%s」を処理しました", word)
+		log.Printf("単語「%s」を処理しました", indexWord.Word)
 
 		// サーバーに負荷をかけないよう少し待機
 		time.Sleep(2 * time.Second)
+	}
+
+	// 取得に失敗した単語があれば表示
+	if len(failedWords) > 0 {
+		log.Printf("以下の単語の取得に失敗しました（%d個）:", len(failedWords))
+		for i, failedWord := range failedWords {
+			log.Printf("  %d. %s (URL: %s)", i+1, failedWord.Word, failedWord.URL)
+		}
 	}
 
 	// APIにデータを送信
@@ -319,9 +330,15 @@ func sendToAPI(config *AppConfig, vocabularies []Word) error {
 	return nil
 }
 
+// 索引語の構造体
+type IndexWord struct {
+	Word string // 単語
+	URL  string // 単語のページURL
+}
+
 // 索引ページから単語リストと次ページのURLを取得する関数
-func fetchWordsFromIndex(indexURL string) ([]string, string, error) {
-	var words []string
+func fetchWordsFromIndex(indexURL string) ([]IndexWord, string, error) {
+	var words []IndexWord
 	var nextPage string
 
 	// HTTPリクエスト
@@ -363,11 +380,24 @@ func fetchWordsFromIndex(indexURL string) ([]string, string, error) {
 		}
 
 		// 括弧書きの部分を削除して単語だけを取得
-		word := strings.Split(title, "【")[0]
-		word = strings.TrimSpace(word)
+		// word := strings.Split(title, "【")[0]
+		word := strings.TrimSpace(title)
 
 		if word != "" {
-			words = append(words, word)
+			// 単語のURLを取得
+			href, exists := s.Attr("href")
+			wordURL := ""
+			if exists {
+				// 相対URLを絶対URLに変換
+				wordURL = "https://dictionary.goo.ne.jp" + href
+			}
+
+			// 構造体に格納して配列に追加
+			indexWord := IndexWord{
+				Word: word,
+				URL:  wordURL,
+			}
+			words = append(words, indexWord)
 		}
 	})
 
@@ -382,7 +412,7 @@ func fetchWordsFromIndex(indexURL string) ([]string, string, error) {
 }
 
 // 単語のページから詳細情報を取得する関数
-func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppConfig) (Word, error) {
+func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppConfig, wordURL string) (Word, error) {
 	// 単語から半角ハイフンを削除
 	cleanWord := strings.ReplaceAll(word, "-", "")
 	cleanWord = strings.ReplaceAll(cleanWord, "‐", "") // 全角ハイフンも削除
@@ -392,14 +422,17 @@ func fetchWordInfo(word, dictType, prefixConID string, index int, config *AppCon
 	info.DictType = dictType
 	info.ConID = generateConID(prefixConID, index)
 
-	// URLエンコード
-	encodedWord := url.QueryEscape(cleanWord)
-	wordURL := buildWordURL(dictType, encodedWord)
+	// URLが指定されていない場合は生成する
+	if wordURL == "" {
+		// URLエンコード
+		encodedWord := url.QueryEscape(cleanWord)
+		wordURL = buildWordURL(dictType, encodedWord)
+	}
 
 	// 単語URLを表示
 	if config.Debug {
 		log.Printf("単語（エンコード前）: %s", cleanWord)
-		log.Printf("単語（エンコード後）: %s", encodedWord)
+		log.Printf("単語URL: %s", wordURL)
 	}
 
 	// HTTPリクエスト
