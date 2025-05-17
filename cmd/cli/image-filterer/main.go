@@ -81,7 +81,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 				return nil
 			}
 			ext := strings.ToLower(filepath.Ext(path))
-			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
+			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
 				paths <- path
 			}
 			return nil
@@ -106,7 +106,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 					continue
 				}
 				ext := strings.ToLower(filepath.Ext(e.Name()))
-				if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
+				if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
 					paths <- filepath.Join(*srcDir, e.Name())
 				}
 			}
