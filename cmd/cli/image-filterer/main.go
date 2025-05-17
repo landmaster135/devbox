@@ -60,6 +60,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
+	// 処理情報の表示
+	fmt.Fprintf(stdout, "画像フィルタリング処理を開始します\n")
+	fmt.Fprintf(stdout, "指定された範囲: (%d,%d)-(%d,%d)\n", *x1, *y1, *x2, *y2)
+	fmt.Fprintf(stdout, "フィルターモード: %s, 半径: %.1f\n", *mode, *radius)
+
 	// フィルターモードのバリデーション
 	var filterMode usecases.FilterMode
 	switch strings.ToLower(*mode) {
@@ -154,7 +159,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	wg.Wait()
 
 	// 処理結果の出力
-	fmt.Fprintf(stdout, "✔ 画像フィルタリングが完了しました\n")
+	fmt.Fprintf(stdout, "\n✔ 画像フィルタリングが完了しました\n")
 	fmt.Fprintf(stdout, "  成功: %d ファイル\n", successCount)
 
 	if errorCount > 0 {
