@@ -24,6 +24,10 @@ const (
 
 // 画像を読み込み、指定した領域にフィルターを適用して outDir に保存
 func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string, mode FilterMode, radius float64) error {
+	// ログ出力用のフォーマット文字列
+	logFormat := "処理情報: ファイル=%s, 範囲=(%d,%d)-(%d,%d), モード=%s, 半径=%.1f"
+	fmt.Printf(logFormat+"\n", filepath.Base(inPath), x1, y1, x2, y2, mode, radius)
+
 	// ── 読み込み ──
 	img, err := imgio.Open(inPath) // 拡張子を気にせずデコード
 	if err != nil {
@@ -32,10 +36,17 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 
 	// ── 矩形チェック ──
 	bounds := img.Bounds()
-	if x1 < 0 || y1 < 0 || x2 <= x1 || y2 <= y1 ||
-		x2 > bounds.Dx() || y2 > bounds.Dy() {
-		return fmt.Errorf("invalid rectangle %v for %s",
-			image.Rect(x1, y1, x2, y2), inPath)
+	// 画像の実際の境界を取得
+	minX, minY := bounds.Min.X, bounds.Min.Y
+	maxX, maxY := bounds.Max.X, bounds.Max.Y
+
+	fmt.Printf("画像情報: サイズ=%dx%d, 境界=(%d,%d)-(%d,%d)\n",
+		bounds.Dx(), bounds.Dy(), minX, minY, maxX, maxY)
+
+	// 座標が画像の範囲内かチェック
+	if x1 < minX || y1 < minY || x2 > maxX || y2 > maxY || x2 <= x1 || y2 <= y1 {
+		return fmt.Errorf("invalid rectangle (%d,%d)-(%d,%d) for %s with bounds (%d,%d)-(%d,%d)",
+			x1, y1, x2, y2, inPath, minX, minY, maxX, maxY)
 	}
 
 	// ── 元画像のクローンを作成 ──
@@ -43,7 +54,9 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 	draw.Draw(dst, bounds, img, bounds.Min, draw.Src)
 
 	// ── 指定領域を切り出し ──
-	subImg := transform.Crop(img, image.Rect(x1, y1, x2, y2))
+	cropRect := image.Rect(x1, y1, x2, y2)
+	fmt.Printf("切り出し範囲: (%d,%d)-(%d,%d)\n", cropRect.Min.X, cropRect.Min.Y, cropRect.Max.X, cropRect.Max.Y)
+	subImg := transform.Crop(img, cropRect)
 
 	// ── フィルター適用 ──
 	var filtered *image.RGBA
@@ -55,7 +68,13 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 	}
 
 	// ── フィルター適用した領域を元の画像に合成 ──
-	draw.Draw(dst, image.Rect(x1, y1, x2, y2), filtered, filtered.Bounds().Min, draw.Src)
+	targetRect := image.Rect(x1, y1, x2, y2)
+	fmt.Printf("合成先範囲: (%d,%d)-(%d,%d)\n", targetRect.Min.X, targetRect.Min.Y, targetRect.Max.X, targetRect.Max.Y)
+	fmt.Printf("フィルター適用画像の境界: (%d,%d)-(%d,%d)\n",
+		filtered.Bounds().Min.X, filtered.Bounds().Min.Y,
+		filtered.Bounds().Max.X, filtered.Bounds().Max.Y)
+
+	draw.Draw(dst, targetRect, filtered, filtered.Bounds().Min, draw.Src)
 
 	// ── 保存パス準備 ──
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
@@ -67,6 +86,8 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 
 	// ── 形式に応じて保存 ──
 	ext := strings.ToLower(filepath.Ext(outPath))
+	fmt.Printf("保存形式: %s, 保存先: %s\n", ext, outPath)
+
 	switch ext {
 	case ".jpg", ".jpeg":
 		err = imgio.Save(outPath, dst, imgio.JPEGEncoder(95))
