@@ -55,7 +55,7 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 	}
 
 	// ── フィルター適用した領域を元の画像に合成 ──
-	draw.Draw(dst, image.Rect(x1, y1, x2, y2), filtered, image.Point{}, draw.Src)
+	draw.Draw(dst, image.Rect(x1, y1, x2, y2), filtered, filtered.Bounds().Min, draw.Src)
 
 	// ── 保存パス準備 ──
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
@@ -79,6 +79,9 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 		}
 		defer f.Close()
 		err = webp.Encode(f, dst, webp.Options{Quality: 90})
+		if err != nil {
+			return err
+		}
 	default:
 		err = fmt.Errorf("unsupported extension: %s", ext)
 	}
