@@ -11,6 +11,7 @@ import (
 	"github.com/anthonynsimon/bild/blur"
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
+	"github.com/gen2brain/webp"
 )
 
 // FilterMode は適用するフィルターの種類を表します
@@ -71,6 +72,13 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 		err = imgio.Save(outPath, dst, imgio.JPEGEncoder(95))
 	case ".png":
 		err = imgio.Save(outPath, dst, imgio.PNGEncoder())
+	case ".webp":
+		f, err := os.Create(outPath)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		err = webp.Encode(f, dst, webp.Options{Quality: 90})
 	default:
 		err = fmt.Errorf("unsupported extension: %s", ext)
 	}

@@ -10,7 +10,7 @@ if %errorlevel% == 1 (
 echo %moves%
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\image-filterer.exe -src . -suffix blurred %coordinates% %moves% ` -mode blur -radius 10.0
+.\pkg\bin\win_amd64\image-filterer.exe -src . -suffix blurred %coordinates% %moves% ` -mode blur -radius 100.0
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
