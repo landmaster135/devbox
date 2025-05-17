@@ -10,6 +10,12 @@ Provides utilities for development.
 
 # Development
 
+## Generate shell scripts to build
+```bash
+cd devbox
+./pkg/bin/linux_amd64/script-generator-to-build <TOOL_NAME>
+```
+
 ## Build
 ```bash
 ./scripts/build.sh
