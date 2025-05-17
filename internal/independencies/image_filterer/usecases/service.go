@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,6 +23,13 @@ const (
 	BlurMode FilterMode = "blur"
 )
 
+func multiplyAndRound(value int, multiplier float64) int {
+	// 整数値をfloat64に変換して指定された倍率で掛ける
+	multiplied := float64(value) * multiplier
+	// 四捨五入して整数に変換
+	rounded := int(math.Round(multiplied))
+	return rounded
+}
 // 画像を読み込み、指定した領域にフィルターを適用して outDir に保存
 func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string, mode FilterMode, radius float64) error {
 	// ログ出力用のフォーマット文字列
@@ -54,6 +62,7 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 	draw.Draw(dst, bounds, img, bounds.Min, draw.Src)
 
 	// ── 指定領域を切り出し ──
+	// x1, y1, x2, y2 = multiplyAndRound(x1, 1.5), multiplyAndRound(y1, 1.5), multiplyAndRound(x2, 1.5), multiplyAndRound(y2, 1.5)
 	cropRect := image.Rect(x1, y1, x2, y2)
 	fmt.Printf("切り出し範囲: (%d,%d)-(%d,%d)\n", cropRect.Min.X, cropRect.Min.Y, cropRect.Max.X, cropRect.Max.Y)
 	subImg := transform.Crop(img, cropRect)
