@@ -97,18 +97,35 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
     // 座標入力処理
     if (propsForCoordRecordInput.isInputting) {
       const imageRect = imageElement.getBoundingClientRect();
-      const x = Math.round(propsForCoordRecordInput.e.clientX - imageRect.left);
-      const y = Math.round(propsForCoordRecordInput.e.clientY - imageRect.top);
+
+      // 画像の元のサイズと表示サイズの比率を計算
+      const scaleX = imageElement.naturalWidth / imageElement.width;
+      const scaleY = imageElement.naturalHeight / imageElement.height;
+
+      // 画像の最大座標を取得
+      const offset = 0;
+      const maxX = imageElement.naturalWidth - offset; // 最大X座標
+      const maxY = imageElement.naturalHeight - offset; // 最大Y座標
+
+      // 表示サイズでの座標を取得
+      const displayX = Math.round(propsForCoordRecordInput.e.clientX - imageRect.left);
+      const displayY = Math.round(propsForCoordRecordInput.e.clientY - imageRect.top);
+
+      // 元のサイズに変換（最大値を超えないように制限）
+      let originalX = Math.round(displayX * scaleX);
+      let originalY = Math.round(displayY * scaleY);
+      originalX = Math.min(originalX, maxX);
+      originalY = Math.min(originalY, maxY);
 
       // アクティブなバーに応じて座標を更新
       switch (indexOfActiveBar) {
         case 0: // 上部座標
-          coordinateXUpperToRecord.value = `${x}`;
-          coordinateYUpperToRecord.value = `${y}`;
+          coordinateXUpperToRecord.value = `${originalX}`;
+          coordinateYUpperToRecord.value = `${originalY}`;
           break;
         case 1: // 下部座標
-          coordinateXLowerToRecord.value = `${x}`;
-          coordinateYLowerToRecord.value = `${y}`;
+          coordinateXLowerToRecord.value = `${originalX}`;
+          coordinateYLowerToRecord.value = `${originalY}`;
           break;
       }
 
@@ -127,14 +144,25 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
       }
 
       const updateCoordinates = (imgRect, ev, coordX, coordY) => {
+        // 画像の元のサイズと表示サイズの比率を計算
+        const img = document.getElementById("imageElement");
+        const scaleX = img.naturalWidth / img.width;
+        const scaleY = img.naturalHeight / img.height;
+        const offset = 0;
+        const maxX = img.naturalWidth - offset; // 最大X座標
+        const maxY = img.naturalHeight - offset; // 最大Y座標
+
         // 画像内のマウス位置のみ処理
         let yPos = 0;
-        if (ev.clientY >= imgRect.top && ev.clientY <= imgRect.bottom){
+        if (ev.clientY >= imgRect.top && ev.clientY <= imgRect.bottom) {
           yPos = ev.clientY - imgRect.top;
-        } else if (ev.clientY > imgRect.bottom){
+        } else if (ev.clientY > imgRect.bottom) {
           yPos = imgRect.bottom - imgRect.top;
         }
-        coordY.value = `${Math.round(yPos)}`;
+        // 表示サイズから元のサイズへ変換（最大値を超えないように制限）
+        let originalY = Math.round(yPos * scaleY);
+        originalY = Math.min(originalY, maxY);
+        coordY.value = `${originalY}`;
 
         let xPos = 0;
         if (ev.clientX >= imgRect.left && ev.clientX <= imgRect.right) {
@@ -142,7 +170,10 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
         } else if (ev.clientX > imgRect.right) {
           xPos = imgRect.right - imgRect.left;
         }
-        coordX.value = `${Math.round(xPos)}`;
+        // 表示サイズから元のサイズへ変換（最大値を超えないように制限）
+        let originalX = Math.round(xPos * scaleX);
+        originalX = Math.min(originalX, maxX);
+        coordX.value = `${originalX}`;
       };
 
       // バーと座標を更新
@@ -180,16 +211,30 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
         if (ev.clientX >= imgRect.left && ev.clientX <= imgRect.right &&
           ev.clientY >= imgRect.top && ev.clientY <= imgRect.bottom) {
 
+          // 画像の元のサイズと表示サイズの比率を計算
+          const img = document.getElementById("imageElement");
+          const scaleX = img.naturalWidth / img.width;
+          const scaleY = img.naturalHeight / img.height;
+          const offset = 0;
+          const maxX = img.naturalWidth - offset; // 最大X座標
+          const maxY = img.naturalHeight - offset; // 最大Y座標
+
           // Y座標の更新
           const yPos = ev.clientY - imgRect.top;
           barY.style.top = `${yPos}px`;
           barY.style.transform = 'translateY(-50%)'; // 中央揃え
-          coordY.value = `${Math.round(yPos)}`;
+          // 表示サイズから元のサイズへ変換（最大値を超えないように制限）
+          let originalY = Math.round(yPos * scaleY);
+          originalY = Math.min(originalY, maxY);
+          coordY.value = `${originalY}`;
 
           // X座標の更新
           const xPos = ev.clientX - imgRect.left;
           barX.style.left = `${xPos}px`;
-          coordX.value = `${Math.round(xPos)}`;
+          // 表示サイズから元のサイズへ変換（最大値を超えないように制限）
+          let originalX = Math.round(xPos * scaleX);
+          originalX = Math.min(originalX, maxX);
+          coordX.value = `${originalX}`;
         }
       };
 
@@ -240,18 +285,29 @@ const updateStateOfBarActivation = (indexOfActiveBar) => {
         draggableBarYUpper.style.transform = "translateY(-50%)";
         draggableBarXUpper.style.left = "0px"; // 画像の左端に配置
 
-        // 座標表示を初期化
+        // 画像の元のサイズと表示サイズの比率を計算
+        const scaleX = imageElement.naturalWidth / imageElement.width;
+        const scaleY = imageElement.naturalHeight / imageElement.height;
+        const offset = 0;
+        const maxX = imageElement.naturalWidth - offset; // 最大X座標
+        const maxY = imageElement.naturalHeight - offset; // 最大Y座標
+
+        // 座標表示を初期化（元のサイズに変換）
         coordinateXUpperDisplay.value = "0";
-        coordinateYUpperDisplay.value = `${Math.round(imageElement.offsetHeight / 2)}`;
+        let upperY = Math.round((imageElement.offsetHeight / 2) * scaleY);
+        upperY = Math.min(upperY, maxY);
+        coordinateYUpperDisplay.value = `${upperY}`;
 
         // 下部バーも初期化
         draggableBarYLower.style.top = "75%"; // 画像の下部に配置
         draggableBarYLower.style.transform = "translateY(-50%)";
         draggableBarXLower.style.left = "0px"; // 画像の左端に配置
 
-        // 下部座標表示を初期化
+        // 下部座標表示を初期化（元のサイズに変換）
         coordinateXLowerDisplay.value = "0";
-        coordinateYLowerDisplay.value = `${Math.round(imageElement.offsetHeight * 0.75)}`;
+        let lowerY = Math.round((imageElement.offsetHeight * 0.75) * scaleY);
+        lowerY = Math.min(lowerY, maxY);
+        coordinateYLowerDisplay.value = `${lowerY}`;
       };
 
       reader.readAsDataURL(selectedImage);
