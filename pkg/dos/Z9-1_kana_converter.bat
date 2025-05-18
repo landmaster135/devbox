@@ -1,11 +1,13 @@
 @echo off
 
 set /p input_chr="Input characters you wanna convert: "
-choice /c fh /n /m "Select conversion mode  [f]='full'  [h]='half' : "
+choice /c fhp /n /m "Select conversion mode  [f]='full'  [h]='half'  [p]='voiced-pairs' : "
 if %errorlevel% == 1 (
   set "conv_mode=full"
-) else (
+) else if %errorlevel% == 2 (
   set "conv_mode=half"
+) else (
+  set "conv_mode=voiced-pairs"
 )
 
 echo --- ƒvƒƒOƒ‰ƒ€‚ğÀs‚µ‚Ü‚· ---
