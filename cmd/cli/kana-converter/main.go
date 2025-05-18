@@ -27,7 +27,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// コマンドライン引数の定義
 	inputString := flagSet.String("input", "", "Input characters containing Katakana")
 	mode := flagSet.String("mode", string(usecases.FullWidthMode),
-		"Conversion mode: 'full' for full-width or 'half' for half-width kana")
+		"Conversion mode: 'full' for full-width, 'half' for half-width kana, 'unvoiced' to remove voiced sounds, 'voiced' to add voiced sounds, 'voiced-pairs' to handle voiced sound pairs")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
