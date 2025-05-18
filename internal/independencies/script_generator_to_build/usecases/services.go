@@ -344,7 +344,7 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 echo "Build completed successfully!"
 echo "Usage as example:"
 %s
-`, packagePath, outputName, usageExamples)
+`, packagePath, packageName, usageExamples)
 
 	// ファイルに書き込み
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
