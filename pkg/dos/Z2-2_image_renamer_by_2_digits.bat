@@ -1,8 +1,8 @@
 @echo off
 
 setlocal enabledelayedexpansion
-set /p prefix="Input prefix to rename image files (e.g. yyyymmdd_0000.jpg): "
-set /p start="Input number to renumber the images  (e.g. !prefix!_xxxx.jpg): "
+set /p prefix="Input prefix to rename image files (e.g. yyyymmdd_00.jpg): "
+set /p start="Input number to renumber the images  (e.g. !prefix!_xx.jpg): "
 choice /c nd /n /m "Select how to sort image files to rename  [n]='--name'  [d]='--time' : "
 if %errorlevel% == 1 (
   set "sort=-name"
