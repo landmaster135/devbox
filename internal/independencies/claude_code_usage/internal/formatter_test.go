@@ -291,7 +291,7 @@ func TestFormatDailyReport_Table(t *testing.T) {
 	}
 
 	// 罫線文字がある事を確認
-	boxDrawingChars := []string{"┌", "┐", "├", "┤", "└", "┘", "│", "─"}
+	boxDrawingChars := []string{"┌", "┐", "├", "┤", "└", "┘", "│", "─", "┬", "┼", "┴"}
 	for _, char := range boxDrawingChars {
 		if !strings.Contains(output, char) {
 			t.Errorf("FormatDailyReport() table output missing box drawing character: %s", char)
@@ -438,6 +438,33 @@ func TestPrintTableSeparator(t *testing.T) {
 	for _, char := range separatorChars {
 		if !strings.Contains(output, char) {
 			t.Errorf("printTableSeparator() output missing separator character: %s", char)
+		}
+	}
+}
+
+func TestPrintTableBottomBorder(t *testing.T) {
+	formatter := NewFormatter()
+
+	// 標準出力をキャプチャ
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	widths := []int{10, 8, 12}
+	formatter.printTableBottomBorder(widths...)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// 下部ボーダー文字が含まれている事を確認
+	bottomBorderChars := []string{"└", "┘", "┴", "─"}
+	for _, char := range bottomBorderChars {
+		if !strings.Contains(output, char) {
+			t.Errorf("printTableBottomBorder() output missing bottom border character: %s", char)
 		}
 	}
 }

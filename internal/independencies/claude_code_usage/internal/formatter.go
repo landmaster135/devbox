@@ -76,7 +76,7 @@ func (f *Formatter) outputDailyTable(data []DailyUsage) error {
 			costWidth-2, f.formatCost(daily.Cost))
 	}
 
-	f.printTableBorder(dateWidth, inputWidth, outputWidth, cacheCreateWidth, cacheReadWidth, totalWidth, costWidth)
+	f.printTableBottomBorder(dateWidth, inputWidth, outputWidth, cacheCreateWidth, cacheReadWidth, totalWidth, costWidth)
 	return nil
 }
 
@@ -128,7 +128,7 @@ func (f *Formatter) outputSessionTable(data []SessionUsage) error {
 			activityWidth-2, activityStr)
 	}
 
-	f.printSessionTableBorder(projectWidth, sessionWidth, inputWidth, outputWidth, cacheCreateWidth, cacheReadWidth, totalWidth, costWidth, activityWidth)
+	f.printSessionTableBottomBorder(projectWidth, sessionWidth, inputWidth, outputWidth, cacheCreateWidth, cacheReadWidth, totalWidth, costWidth, activityWidth)
 	return nil
 }
 
@@ -154,6 +154,18 @@ func (f *Formatter) printTableBorder(widths ...int) {
 	fmt.Println("┐")
 }
 
+// printTableBottomBorder prints table bottom border for daily report
+func (f *Formatter) printTableBottomBorder(widths ...int) {
+	fmt.Print("└")
+	for i, w := range widths {
+		fmt.Print(strings.Repeat("─", w))
+		if i < len(widths)-1 {
+			fmt.Print("┴")
+		}
+	}
+	fmt.Println("┘")
+}
+
 // printTableSeparator prints table separator for daily report
 func (f *Formatter) printTableSeparator(widths ...int) {
 	fmt.Print("├")
@@ -176,6 +188,18 @@ func (f *Formatter) printSessionTableBorder(widths ...int) {
 		}
 	}
 	fmt.Println("┐")
+}
+
+// printSessionTableBottomBorder prints table bottom border for session report
+func (f *Formatter) printSessionTableBottomBorder(widths ...int) {
+	fmt.Print("└")
+	for i, w := range widths {
+		fmt.Print(strings.Repeat("─", w))
+		if i < len(widths)-1 {
+			fmt.Print("┴")
+		}
+	}
+	fmt.Println("┘")
 }
 
 // printSessionTableSeparator prints table separator for session report
