@@ -82,3 +82,21 @@ func DateToUnix(dateStr string, isJST bool) (string, error) {
 	// Convert to string
 	return strconv.FormatInt(unixTimestamp, 10), nil
 }
+
+func NowToUnix() string {
+	currentTime := time.Now()
+	unixTimestamp := currentTime.Unix()
+	return strconv.FormatInt(unixTimestamp, 10)
+}
+
+func NowToISO8601InUTC() string {
+	currentTime := time.Now()
+	t := currentTime.UTC().Format(time.RFC3339)
+	return t
+}
+
+func NowToISO8601InJST() string {
+	currentTime := time.Now()
+	t := currentTime.In(time.FixedZone("JST", 9*60*60)).Format(time.RFC3339)
+	return t
+}
