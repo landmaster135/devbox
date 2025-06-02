@@ -84,6 +84,12 @@ image-converter -src ./photos -ext webp -archive ./originals -move
 - WebP (webp)
 - AVIF (avif)
 
+## 推奨ユースケース
+
+| usecase | settings |
+| --- | --- |
+| Androidでスクショした漫画の画像をPDFにマージする | `-ext jpg -q 20` |
+
 ## ビルド方法
 
 リポジトリのルートディレクトリで以下のコマンドを実行します：
