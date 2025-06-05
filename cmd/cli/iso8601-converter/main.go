@@ -65,7 +65,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		// 入力に時刻情報が含まれているかチェック
 		if strings.Contains(*input, "T") {
 			// 入力はISO-8601形式
-			result, err := usecases.ISO8601ToUnix(*input)
+			result, err := usecases.ISO8601ToUnix(*input, *isJST)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError

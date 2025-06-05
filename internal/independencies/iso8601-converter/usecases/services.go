@@ -23,11 +23,42 @@ func UnixToISO8601(unixTimestamp string) (string, error) {
 }
 
 // ISO8601ToUnix converts an ISO-8601 formatted time to Unix timestamp
-func ISO8601ToUnix(iso8601 string) (string, error) {
-	// Parse the ISO-8601 timestamp
-	t, err := time.Parse(time.RFC3339, iso8601)
-	if err != nil {
-		return "", errors.New("invalid ISO-8601 format: " + err.Error())
+// If isJST is true and the input doesn't have timezone info, treat it as JST time
+func ISO8601ToUnix(iso8601 string, isJST bool) (string, error) {
+	// Try multiple ISO-8601 formats
+	formats := []string{
+		time.RFC3339,                   // 2006-01-02T15:04:05Z07:00 (with timezone)
+		time.RFC3339Nano,               // 2006-01-02T15:04:05.999999999Z07:00 (with nanoseconds and timezone)
+		"2006-01-02T15:04:05",          // 2006-01-02T15:04:05 (without timezone)
+		"2006-01-02T15:04:05.000",      // 2006-01-02T15:04:05.000 (with milliseconds, without timezone)
+		"2006-01-02T15:04:05.000000",   // 2006-01-02T15:04:05.000000 (with microseconds, without timezone)
+		"2006-01-02T15:04:05.000000000", // 2006-01-02T15:04:05.000000000 (with nanoseconds, without timezone)
+	}
+
+	var t time.Time
+	var parseErr error
+
+	for _, format := range formats {
+		if strings.Contains(format, "Z07:00") {
+			// Parse with timezone information
+			t, parseErr = time.Parse(format, iso8601)
+		} else {
+			// Parse without timezone information
+			var loc *time.Location
+			if isJST {
+				loc = time.FixedZone("UTC+9", 9*60*60) // JST
+			} else {
+				loc = time.UTC // UTC
+			}
+			t, parseErr = time.ParseInLocation(format, iso8601, loc)
+		}
+		if parseErr == nil {
+			break
+		}
+	}
+
+	if parseErr != nil {
+		return "", errors.New("invalid ISO-8601 format: " + parseErr.Error())
 	}
 
 	// Convert to Unix timestamp

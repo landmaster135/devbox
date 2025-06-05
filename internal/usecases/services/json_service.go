@@ -158,7 +158,7 @@ func (s *JSONService) ConvertISO8601ToUnix(filePath string, key string, isJst bo
 	// 時刻情報が含まれているかどうかを確認
 	if strings.Contains(strValue, "T") {
 		// ISO-8601形式からUNIXタイムスタンプに変換
-		unixStr, err := usecases.ISO8601ToUnix(strValue)
+		unixStr, err := usecases.ISO8601ToUnix(strValue, isJst)
 		if err != nil {
 			return fmt.Errorf("ISO-8601形式からUNIXタイムスタンプへの変換に失敗しました: %w", err)
 		}

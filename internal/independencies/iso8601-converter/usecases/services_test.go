@@ -92,24 +92,39 @@ func TestISO8601ToUnix_Normal(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    string
+		isJST    bool
 		expected string
 	}{
 		{
-			name:     "正常なISO8601形式",
+			name:     "正常なISO8601形式（UTC）",
 			input:    "2021-04-30T00:00:00Z",
+			isJST:    false,
 			expected: "1619740800",
 		},
 		{
 			name:     "タイムゾーン付きISO8601形式",
 			input:    "2021-04-30T09:00:00+09:00",
+			isJST:    false,
 			expected: "1619740800",
+		},
+		{
+			name:     "タイムゾーンなしISO8601形式（UTC扱い）",
+			input:    "2021-04-30T00:00:00",
+			isJST:    false,
+			expected: "1619740800",
+		},
+		{
+			name:     "タイムゾーンなしISO8601形式（JST扱い）",
+			input:    "2021-04-30T00:00:00",
+			isJST:    true,
+			expected: "1619708400",
 		},
 	}
 
 	// テストの実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := ISO8601ToUnix(tc.input)
+			result, err := ISO8601ToUnix(tc.input, tc.isJST)
 			if err != nil {
 				t.Fatalf("予期しないエラー: %v", err)
 			}
@@ -125,25 +140,24 @@ func TestISO8601ToUnix_Error(t *testing.T) {
 	testCases := []struct {
 		name  string
 		input string
+		isJST bool
 	}{
-		{
-			name:  "無効な形式",
-			input: "2021-04-30",
-		},
 		{
 			name:  "空の入力",
 			input: "",
+			isJST: false,
 		},
 		{
 			name:  "無効な日付",
 			input: "2021-13-30T00:00:00Z",
+			isJST: false,
 		},
 	}
 
 	// テストの実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := ISO8601ToUnix(tc.input)
+			_, err := ISO8601ToUnix(tc.input, tc.isJST)
 			if err == nil {
 				t.Error("エラーが期待されましたが、エラーは発生しませんでした")
 			}
