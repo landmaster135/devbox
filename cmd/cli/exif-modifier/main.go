@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/landmaster135/devbox/internal/independencies/exif_modifier/usecases"
@@ -14,14 +16,15 @@ const version = "1.0.0"
 
 // コマンドライン引数
 var (
-	dirPath     = flag.String("dir", ".", "画像ファイルがあるディレクトリのパス")
-	dateTime    = flag.String("datetime", "", "設定する日時 (yyyyMMddhhmmss形式)")
-	extension   = flag.String("ext", "", "対象とする拡張子 (例: .jpg, .jpeg, .png, .webp, .mp4)")
-	recursive   = flag.Bool("recursive", false, "サブフォルダも再帰的に処理する")
-	dryRun      = flag.Bool("dry-run", false, "実際には変更せず、処理対象ファイルのみ表示")
-	verbose     = flag.Bool("verbose", false, "詳細な出力を表示")
-	showHelp    = flag.Bool("help", false, "ヘルプメッセージを表示")
-	showVersion = flag.Bool("version", false, "バージョン情報を表示")
+	dirPath      = flag.String("dir", ".", "画像ファイルがあるディレクトリのパス")
+	dateTime     = flag.String("datetime", "", "設定する日時 (yyyyMMddhhmmss形式)")
+	fromFilename = flag.Bool("from-filename", false, "ファイル名から日時を取得してExifに設定する (ファイル名がyyyyMMddhhmmss形式の場合)")
+	extension    = flag.String("ext", "", "対象とする拡張子 (例: .jpg, .jpeg, .png, .webp, .mp4)")
+	recursive    = flag.Bool("recursive", false, "サブフォルダも再帰的に処理する")
+	dryRun       = flag.Bool("dry-run", false, "実際には変更せず、処理対象ファイルのみ表示")
+	verbose      = flag.Bool("verbose", false, "詳細な出力を表示")
+	showHelp     = flag.Bool("help", false, "ヘルプメッセージを表示")
+	showVersion  = flag.Bool("version", false, "バージョン情報を表示")
 )
 
 func main() {
@@ -38,6 +41,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --recursive\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --dry-run\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --verbose\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --from-filename --ext .jpg\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --from-filename --recursive --dry-run\n")
 	}
 
 	flag.Parse()
@@ -54,17 +59,28 @@ func main() {
 	}
 
 	// 引数の検証
-	if *dateTime == "" {
-		fmt.Fprintf(os.Stderr, "Error: --datetime パラメータは必須です (yyyyMMddhhmmss形式)\n")
+	if *dateTime == "" && !*fromFilename {
+		fmt.Fprintf(os.Stderr, "Error: --datetime または --from-filename のいずれかのパラメータが必要です\n")
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	// 日時のパース
-	targetTime, err := parseDateTime(*dateTime)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: 日時の形式が正しくありません: %v\n", err)
+	if *dateTime != "" && *fromFilename {
+		fmt.Fprintf(os.Stderr, "Error: --datetime と --from-filename は同時に指定できません\n")
+		flag.Usage()
 		os.Exit(1)
+	}
+
+	var targetTime time.Time
+	var err error
+
+	// 日時のパース
+	if *dateTime != "" {
+		targetTime, err = parseDateTime(*dateTime)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: 日時の形式が正しくありません: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	// ディレクトリの存在確認
@@ -82,12 +98,13 @@ func main() {
 
 	// 設定を作成
 	config := &usecases.Config{
-		FolderPath: *dirPath,
-		DateTime:   targetTime,
-		Extension:  *extension,
-		Recursive:  *recursive,
-		DryRun:     *dryRun,
-		Verbose:    *verbose,
+		FolderPath:   *dirPath,
+		DateTime:     targetTime,
+		Extension:    *extension,
+		Recursive:    *recursive,
+		DryRun:       *dryRun,
+		Verbose:      *verbose,
+		FromFilename: *fromFilename,
 	}
 
 	// 実行情報を表示
@@ -112,19 +129,35 @@ func main() {
 		log.Printf("Found %d image files\n", len(imageFiles))
 	}
 
-	// Exif情報を更新
-	processedCount, errorCount, err := service.ModifyExifData(imageFiles, config)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error modifying EXIF data: %v\n", err)
-		os.Exit(1)
-	}
+	// fromFilenameモードの場合、ファイル名から日時を抽出してファイルごとに設定
+	if *fromFilename {
+		processedCount, errorCount, err := processFilesFromFilename(service, imageFiles, config)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error processing files from filename: %v\n", err)
+			os.Exit(1)
+		}
 
-	// 結果を表示
-	fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
-	if errorCount > 0 {
-		fmt.Printf(" (%d個のエラー)", errorCount)
+		// 結果を表示
+		fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
+		if errorCount > 0 {
+			fmt.Printf(" (%d個のエラー)", errorCount)
+		}
+		fmt.Println()
+	} else {
+		// 通常のモード（全ファイルに同じ日時を設定）
+		processedCount, errorCount, err := service.ModifyExifData(imageFiles, config)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error modifying EXIF data: %v\n", err)
+			os.Exit(1)
+		}
+
+		// 結果を表示
+		fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
+		if errorCount > 0 {
+			fmt.Printf(" (%d個のエラー)", errorCount)
+		}
+		fmt.Println()
 	}
-	fmt.Println()
 }
 
 // 日時文字列をtime.Timeに変換
@@ -139,7 +172,11 @@ func parseDateTime(dateTimeStr string) (time.Time, error) {
 // 実行情報を表示
 func printExecutionInfo(config *usecases.Config) {
 	fmt.Printf("ディレクトリ: %s\n", config.FolderPath)
-	fmt.Printf("設定する日時: %s\n", config.DateTime.Format("2006-01-02 15:04:05"))
+	if config.FromFilename {
+		fmt.Println("モード: ファイル名から日時を取得")
+	} else {
+		fmt.Printf("設定する日時: %s\n", config.DateTime.Format("2006-01-02 15:04:05"))
+	}
 	if config.Extension != "" {
 		fmt.Printf("対象拡張子: %s\n", config.Extension)
 	}
@@ -147,4 +184,80 @@ func printExecutionInfo(config *usecases.Config) {
 	fmt.Printf("ドライラン: %t\n", config.DryRun)
 	fmt.Printf("詳細モード: %t\n", config.Verbose)
 	fmt.Println()
+}
+
+// ファイル名から日時を抽出してファイルごとに処理
+func processFilesFromFilename(service *usecases.ExifModifierService, imageFiles []string, config *usecases.Config) (int, int, error) {
+	processedCount := 0
+	errorCount := 0
+	
+	// yyyyMMddhhmmss形式の正規表現（ファイル名の先頭に14桁の数字がある場合）
+	dateTimeRegex := regexp.MustCompile(`^(\d{14})`)
+	
+	for _, filePath := range imageFiles {
+		fileName := filepath.Base(filePath)
+		fileName = removeExtension(fileName)
+		
+		// ファイル名から日時を抽出
+		matches := dateTimeRegex.FindStringSubmatch(fileName)
+		if len(matches) < 2 {
+			if config.Verbose {
+				log.Printf("ファイル名が日時形式ではありません（スキップ）: %s", fileName)
+			}
+			continue
+		}
+		
+		// 日時をパース
+		dateTimeStr := matches[1]
+		fileDateTime, err := parseDateTime(dateTimeStr)
+		if err != nil {
+			if config.Verbose {
+				log.Printf("日時のパースに失敗しました（スキップ）: %s - %v", fileName, err)
+			}
+			errorCount++
+			continue
+		}
+		
+		if config.Verbose {
+			log.Printf("ファイル: %s -> 日時: %s", fileName, fileDateTime.Format("2006-01-02 15:04:05"))
+		}
+		
+		// 一時的にconfigの日時を変更
+		tempConfig := *config
+		tempConfig.DateTime = fileDateTime
+		
+		// ドライランの場合は処理をスキップ
+		if config.DryRun {
+			fmt.Printf("[DRY RUN] %s -> %s\n", filePath, fileDateTime.Format("2006-01-02 15:04:05"))
+			processedCount++
+			continue
+		}
+		
+		// 単一ファイルの処理
+		_, fileErrorCount, err := service.ModifyExifData([]string{filePath}, &tempConfig)
+		if err != nil {
+			if config.Verbose {
+				log.Printf("ファイル処理中にエラーが発生しました: %s - %v", filePath, err)
+			}
+			errorCount++
+			continue
+		}
+		
+		if fileErrorCount > 0 {
+			errorCount += fileErrorCount
+		} else {
+			processedCount++
+		}
+	}
+	
+	return processedCount, errorCount, nil
+}
+
+// ファイル名から拡張子を除去
+func removeExtension(fileName string) string {
+	ext := filepath.Ext(fileName)
+	if ext != "" {
+		return fileName[:len(fileName)-len(ext)]
+	}
+	return fileName
 }
