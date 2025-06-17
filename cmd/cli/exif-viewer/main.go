@@ -22,6 +22,8 @@ func main() {
 	showVersion := flag.Bool("version", false, "バージョン情報を表示")
 	verbose := flag.Bool("v", false, "詳細なログを出力")
 	recursive := flag.Bool("r", false, "サブディレクトリも再帰的に検索")
+	showProperties := flag.Bool("list-props", false, "利用可能なプロパティ一覧を表示")
+	showDataTypes := flag.Bool("types", false, "プロパティのデータ型も表示")
 
 	// カスタムUsage関数を設定
 	flag.Usage = func() {
@@ -35,6 +37,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "    exif-viewer -dir ./photos -ext jpg,png -props DateTime,Camera\n")
 		fmt.Fprintf(os.Stderr, "    exif-viewer -dir ./photos -max 5\n")
 		fmt.Fprintf(os.Stderr, "    exif-viewer -dir ./photos -r -v\n")
+		fmt.Fprintf(os.Stderr, "    exif-viewer -dir ./photos -list-props\n")
+		fmt.Fprintf(os.Stderr, "    exif-viewer -dir ./photos -types\n")
 	}
 
 	// フラグを解析
@@ -48,11 +52,13 @@ func main() {
 	}
 
 	config := &usecases.Config{
-		Directory:  *directory,
-		Extensions: strings.Split(strings.ToLower(*extensionsStr), ","),
-		MaxProps:   *maxProps,
-		Verbose:    *verbose,
-		Recursive:  *recursive,
+		Directory:      *directory,
+		Extensions:     strings.Split(strings.ToLower(*extensionsStr), ","),
+		MaxProps:       *maxProps,
+		Verbose:        *verbose,
+		Recursive:      *recursive,
+		ShowProperties: *showProperties,
+		ShowDataTypes:  *showDataTypes,
 	}
 
 	if *propertiesStr != "" {
@@ -100,6 +106,14 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error extracting EXIF data: %v\n", err)
 		os.Exit(1)
+	}
+
+	// プロパティ一覧表示の場合
+	if config.ShowProperties || config.ShowDataTypes {
+		propertyInfos := service.AnalyzeProperties(exifDataList)
+		output := service.FormatPropertyList(propertyInfos, len(exifDataList))
+		fmt.Print(output)
+		return
 	}
 
 	// 結果をテーブル形式で表示
