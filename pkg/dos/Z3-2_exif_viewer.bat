@@ -1,19 +1,23 @@
 @echo off
 
-set /p quality="Input integer (75 as default) for quality of output jpg (1-100): "
-choice /c yn /n /m "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : "
-if %errorlevel% == 1 (
-  set "moves=-move"
+set /p path="Input directory you wanna view EXIF: "
+set /p ext="Select extension of files you wanna view  [p]='png' [j]='jpg,jpeg' [w]='webp' : "
+if /i "%ext%"=="p" (
+  set "ext=png"
+) else if /i "%ext%"=="j" (
+  set "ext=jpg,jpeg"
+) else if /i "%ext%"=="w" (
+  set "ext=webp"
 ) else (
-  set "moves="
+  echo "Invalid choice. Input any key to exit..."
+  pause > nul
+  exit /b 1
 )
-echo %moves%
+echo "Selected extension: %ext%"
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\exif-viewer.exe -dir C:\Users\OCT--\Pictures\Screenshots -ext png -max 4 -list-props -v
-
-
-.\pkg\bin\win_amd64\image-converter.exe -src . -ext jpg -q %quality% -archive .\5_original_files %moves%
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -max 4 -v
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -list-props
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
