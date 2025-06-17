@@ -97,10 +97,18 @@ func main() {
 		}
 	}
 
-	// ディレクトリの存在確認
-	if _, err := os.Stat(*dirPath); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Error: ディレクトリが存在しません: %s\n", *dirPath)
+	// ディレクトリの存在確認とバリデーション
+	if err := validateDirectory(*dirPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	// 拡張子のバリデーション
+	if *extension != "" {
+		if err := validateExtension(*extension); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	// ログ設定
@@ -189,7 +197,184 @@ func parseDateTime(dateTimeStr string) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("日時は14文字である必要があります (yyyyMMddhhmmss)")
 	}
 
+	// 基本的な数値チェック
+	for _, char := range dateTimeStr {
+		if char < '0' || char > '9' {
+			return time.Time{}, fmt.Errorf("日時は数字のみで構成されている必要があります: %s", dateTimeStr)
+		}
+	}
+
+	// 各要素のバリデーション
+	if err := validateDateTime(dateTimeStr); err != nil {
+		return time.Time{}, err
+	}
+
 	return time.ParseInLocation("20060102150405", dateTimeStr, time.Local)
+}
+
+// 日時の各要素をバリデーション
+func validateDateTime(dateTimeStr string) error {
+	// 文字列から各要素を抽出
+	year := dateTimeStr[0:4]
+	month := dateTimeStr[4:6]
+	day := dateTimeStr[6:8]
+	hour := dateTimeStr[8:10]
+	minute := dateTimeStr[10:12]
+	second := dateTimeStr[12:14]
+
+	// 年のバリデーション (1900-2099)
+	yearInt := parseInt(year)
+	if yearInt < 1900 || yearInt > 2099 {
+		return fmt.Errorf("年は1900-2099の範囲である必要があります: %d", yearInt)
+	}
+
+	// 月のバリデーション (01-12)
+	monthInt := parseInt(month)
+	if monthInt < 1 || monthInt > 12 {
+		return fmt.Errorf("月は01-12の範囲である必要があります: %02d", monthInt)
+	}
+
+	// 日のバリデーション (01-31, 月によって異なる)
+	dayInt := parseInt(day)
+	if dayInt < 1 || dayInt > 31 {
+		return fmt.Errorf("日は01-31の範囲である必要があります: %02d", dayInt)
+	}
+
+	// 月ごとの日数チェック
+	maxDaysInMonth := getMaxDaysInMonth(monthInt, yearInt)
+	if dayInt > maxDaysInMonth {
+		return fmt.Errorf("%d年%02d月の日は01-%02dの範囲である必要があります: %02d", yearInt, monthInt, maxDaysInMonth, dayInt)
+	}
+
+	// 時のバリデーション (00-23)
+	hourInt := parseInt(hour)
+	if hourInt < 0 || hourInt > 23 {
+		return fmt.Errorf("時は00-23の範囲である必要があります: %02d", hourInt)
+	}
+
+	// 分のバリデーション (00-59)
+	minuteInt := parseInt(minute)
+	if minuteInt < 0 || minuteInt > 59 {
+		return fmt.Errorf("分は00-59の範囲である必要があります: %02d", minuteInt)
+	}
+
+	// 秒のバリデーション (00-59)
+	secondInt := parseInt(second)
+	if secondInt < 0 || secondInt > 59 {
+		return fmt.Errorf("秒は00-59の範囲である必要があります: %02d", secondInt)
+	}
+
+	return nil
+}
+
+// 文字列を整数に変換（エラーハンドリングなし、事前に数値チェック済み）
+func parseInt(s string) int {
+	result := 0
+	for _, char := range s {
+		result = result*10 + int(char-'0')
+	}
+	return result
+}
+
+// 指定された年月の最大日数を取得
+func getMaxDaysInMonth(month, year int) int {
+	switch month {
+	case 1, 3, 5, 7, 8, 10, 12: // 31日の月
+		return 31
+	case 4, 6, 9, 11: // 30日の月
+		return 30
+	case 2: // 2月（うるう年チェック）
+		if isLeapYear(year) {
+			return 29
+		}
+		return 28
+	default:
+		return 31 // フォールバック
+	}
+}
+
+// うるう年判定
+func isLeapYear(year int) bool {
+	// 4で割り切れる年はうるう年
+	// ただし100で割り切れる年は平年
+	// ただし400で割り切れる年はうるう年
+	return (year%4 == 0 && year%100 != 0) || (year%400 == 0)
+}
+
+// ディレクトリの存在と権限をバリデーション
+func validateDirectory(dirPath string) error {
+	// 空文字列チェック
+	if dirPath == "" {
+		return fmt.Errorf("ディレクトリパスが空です")
+	}
+
+	// 存在チェック
+	info, err := os.Stat(dirPath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("ディレクトリが存在しません: %s", dirPath)
+	}
+	if err != nil {
+		return fmt.Errorf("ディレクトリの情報取得に失敗しました: %s - %v", dirPath, err)
+	}
+
+	// ディレクトリかどうかチェック
+	if !info.IsDir() {
+		return fmt.Errorf("指定されたパスはディレクトリではありません: %s", dirPath)
+	}
+
+	// 読み取り権限チェック
+	testFile := filepath.Join(dirPath, ".test_access")
+	file, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("ディレクトリへの書き込み権限がありません: %s", dirPath)
+	}
+	file.Close()
+	os.Remove(testFile) // テストファイルを削除
+
+	return nil
+}
+
+// ファイル拡張子をバリデーション
+func validateExtension(ext string) error {
+	// 空文字列チェック
+	if ext == "" {
+		return fmt.Errorf("拡張子が空です")
+	}
+
+	// ドットで始まるかチェック
+	if !filepath.HasPrefix(ext, ".") {
+		return fmt.Errorf("拡張子はドット（.）で始まる必要があります: %s", ext)
+	}
+
+	// サポートされている拡張子のリスト
+	supportedExtensions := []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
+	
+	// 大文字小文字を無視して比較
+	extLower := filepath.ToSlash(ext) // パスを正規化
+	extLower = filepath.Ext(extLower + "dummy") // 拡張子として認識させる
+	if extLower == "" {
+		extLower = ext
+	}
+	extLower = filepath.ToSlash(extLower)
+	
+	// より確実な方法で小文字に変換
+	extLower = ""
+	for _, char := range ext {
+		if char >= 'A' && char <= 'Z' {
+			extLower += string(char + 32) // A-Z を a-z に変換
+		} else {
+			extLower += string(char)
+		}
+	}
+
+	// サポートされている拡張子かチェック
+	for _, supportedExt := range supportedExtensions {
+		if extLower == supportedExt {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("サポートされていない拡張子です: %s\nサポートされている拡張子: %v", ext, supportedExtensions)
 }
 
 // 実行情報を表示
