@@ -5,7 +5,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	exif "github.com/dsoprea/go-exif/v3"
@@ -25,6 +27,7 @@ type Config struct {
 	Verbose        bool
 	FromFilename   bool
 	FromScreenshot bool
+	WorkerCount    int // 並行処理のワーカー数
 }
 
 // ExifModifierService はEXIF修正サービスです
@@ -58,7 +61,16 @@ func (s *ExifModifierService) FindImageFiles(config *Config) ([]string, error) {
 		return nil
 	})
 
-	return imageFiles, err
+	if err != nil {
+		return nil, err
+	}
+
+	// ファイル名順でソート
+	sort.Slice(imageFiles, func(i, j int) bool {
+		return filepath.Base(imageFiles[i]) < filepath.Base(imageFiles[j])
+	})
+
+	return imageFiles, nil
 }
 
 // isImageFile は画像ファイルかどうかをチェック
@@ -67,7 +79,12 @@ func (s *ExifModifierService) isImageFile(filePath, targetExtension string) bool
 
 	// 特定の拡張子が指定されている場合
 	if targetExtension != "" {
-		return strings.ToLower(targetExtension) == ext
+		// 拡張子を正規化（ドットがない場合は追加）
+		normalizedExt := targetExtension
+		if !strings.HasPrefix(normalizedExt, ".") {
+			normalizedExt = "." + normalizedExt
+		}
+		return strings.ToLower(normalizedExt) == ext
 	}
 
 	// サポートされている拡張子かチェック
@@ -79,32 +96,88 @@ func (s *ExifModifierService) isImageFile(filePath, targetExtension string) bool
 	return false
 }
 
-// ModifyExifData は複数のファイルのEXIF情報を修正します
+// ProcessResult はファイル処理の結果を表します
+type ProcessResult struct {
+	FilePath string
+	Success  bool
+	Error    error
+}
+
+// ModifyExifData は複数のファイルのEXIF情報を並行処理で修正します
 func (s *ExifModifierService) ModifyExifData(imageFiles []string, config *Config) (int, int, error) {
+	// ワーカー数のデフォルト設定
+	workerCount := config.WorkerCount
+	if workerCount <= 0 {
+		workerCount = 4 // デフォルトは4並列
+	}
+
+	// ファイル数がワーカー数より少ない場合、ワーカー数をファイル数に調整
+	if len(imageFiles) < workerCount {
+		workerCount = len(imageFiles)
+	}
+
+	// チャネルの作成
+	jobs := make(chan string, len(imageFiles))
+	results := make(chan ProcessResult, len(imageFiles))
+
+	// ワーカーゴルーチンの起動
+	var wg sync.WaitGroup
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for filePath := range jobs {
+				result := ProcessResult{
+					FilePath: filePath,
+					Success:  false,
+					Error:    nil,
+				}
+
+				if config.DryRun {
+					fmt.Printf("処理中: %s\n", filePath)
+					fmt.Printf("  → (ドライラン) File Modification Date/Time を %s に設定\n",
+						config.DateTime.Format("2006-01-02 15:04:05"))
+					result.Success = true
+				} else {
+					fmt.Printf("処理中: %s\n", filePath)
+					err := s.ModifySingleFileExif(filePath, config)
+					if err != nil {
+						fmt.Printf("  ⚠️  エラー: %v\n", err)
+						result.Error = err
+						if config.Verbose {
+							log.Printf("Error processing file %s: %v", filePath, err)
+						}
+					} else {
+						fmt.Printf("  ✅ File Modification Date/Time を %s に設定しました\n",
+							config.DateTime.Format("2006-01-02 15:04:05"))
+						result.Success = true
+					}
+				}
+				results <- result
+			}
+		}()
+	}
+
+	// ジョブをチャネルに送信
+	for _, filePath := range imageFiles {
+		jobs <- filePath
+	}
+	close(jobs)
+
+	// ワーカーの完了を待つ
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// 結果を収集
 	processedCount := 0
 	errorCount := 0
-
-	for _, filePath := range imageFiles {
-		fmt.Printf("処理中: %s\n", filePath)
-
-		if config.DryRun {
-			fmt.Printf("  → (ドライラン) File Modification Date/Time を %s に設定\n",
-				config.DateTime.Format("2006-01-02 15:04:05"))
+	for result := range results {
+		if result.Success {
 			processedCount++
-			continue
-		}
-
-		err := s.ModifySingleFileExif(filePath, config)
-		if err != nil {
-			fmt.Printf("  ⚠️  エラー: %v\n", err)
-			errorCount++
-			if config.Verbose {
-				log.Printf("Error processing file %s: %v", filePath, err)
-			}
 		} else {
-			fmt.Printf("  ✅ File Modification Date/Time を %s に設定しました\n",
-				config.DateTime.Format("2006-01-02 15:04:05"))
-			processedCount++
+			errorCount++
 		}
 	}
 
@@ -387,14 +460,15 @@ func ValidateExtension(ext string) error {
 		return fmt.Errorf("拡張子が空です")
 	}
 
-	// ドットで始まるかチェック
-	if !strings.HasPrefix(ext, ".") {
-		return fmt.Errorf("拡張子はドット（.）で始まる必要があります: %s", ext)
+	// 拡張子を正規化（ドットがない場合は追加）
+	normalizedExt := ext
+	if !strings.HasPrefix(normalizedExt, ".") {
+		normalizedExt = "." + normalizedExt
 	}
 
 	// より確実な方法で小文字に変換
 	extLower := ""
-	for _, char := range ext {
+	for _, char := range normalizedExt {
 		if char >= 'A' && char <= 'Z' {
 			extLower += string(char + 32) // A-Z を a-z に変換
 		} else {
