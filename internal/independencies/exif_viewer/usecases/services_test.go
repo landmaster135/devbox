@@ -348,8 +348,12 @@ func TestExifViewerService_inferDataType(t *testing.T) {
 		{"5 MB", "filesize"},
 		{"1024 B", "filesize"},
 		{"35.6789°N", "coordinate"},
+		{"123.45678N", "coordinate"},
+		{"123'45\"N", "coordinate"},
 		{"1/100", "ratio"},
 		{"Canon EOS R5", "string"},
+		{"Sony A7R IV", "string"},
+		{"Nikon D850", "string"},
 	}
 
 	for _, tc := range testCases {

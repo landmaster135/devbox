@@ -576,14 +576,14 @@ func (s *ExifViewerService) inferDataType(value string) string {
 		return "filesize"
 	}
 
-	// 座標判定
-	if s.isCoordinate(value) {
-		return "coordinate"
-	}
-
-	// 比率判定
+	// 比率判定（座標判定より先に）
 	if s.isRatio(value) {
 		return "ratio"
+	}
+
+	// 座標判定（より厳密にチェック）
+	if s.isCoordinate(value) {
+		return "coordinate"
 	}
 
 	return "string"
@@ -628,9 +628,25 @@ func (s *ExifViewerService) isFileSize(value string) bool {
 
 // isCoordinate は座標形式かどうかを判定します
 func (s *ExifViewerService) isCoordinate(value string) bool {
-	return strings.Contains(value, "°") || strings.Contains(value, "'") ||
-		(strings.Contains(value, "N") || strings.Contains(value, "S") ||
-			strings.Contains(value, "E") || strings.Contains(value, "W"))
+	// 度記号(°)が含まれている場合
+	if strings.Contains(value, "°") {
+		return true
+	}
+	
+	// 分記号(')が含まれており、かつ数字と組み合わされている場合
+	if strings.Contains(value, "'") && strings.ContainsAny(value, "0123456789") {
+		return true
+	}
+	
+	// N, S, E, W が文字列の最後にあり、かつ数字が含まれている場合のみ
+	if strings.ContainsAny(value, "0123456789") {
+		if strings.HasSuffix(value, "N") || strings.HasSuffix(value, "S") ||
+		   strings.HasSuffix(value, "E") || strings.HasSuffix(value, "W") {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // isRatio は比率形式かどうかを判定します
