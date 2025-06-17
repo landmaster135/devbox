@@ -18,18 +18,28 @@ import (
 
 // Config はEXIF表示の設定を保持します
 type Config struct {
-	Directory   string
-	Extensions  []string
-	Properties  []string
-	MaxProps    int
-	Verbose     bool
-	Recursive   bool
+	Directory      string
+	Extensions     []string
+	Properties     []string
+	MaxProps       int
+	Verbose        bool
+	Recursive      bool
+	ShowProperties bool // プロパティ一覧を表示するフラグ
+	ShowDataTypes  bool // データ型を表示するフラグ
 }
 
 // ExifData は単一ファイルのEXIF情報を保持します
 type ExifData struct {
 	FilePath   string
 	Properties map[string]string
+}
+
+// PropertyInfo はプロパティの詳細情報を保持します
+type PropertyInfo struct {
+	Name     string
+	DataType string
+	Count    int // このプロパティが見つかったファイル数
+	Examples []string // 値の例（最大3つ）
 }
 
 // ExifViewerService はEXIF表示サービスです
@@ -458,6 +468,174 @@ func (s *ExifViewerService) FormatExifTable(exifDataList []ExifData, config *Con
 	}
 
 	return result.String()
+}
+
+// AnalyzeProperties は全プロパティの詳細情報を分析します
+func (s *ExifViewerService) AnalyzeProperties(exifDataList []ExifData) []PropertyInfo {
+	propertyStats := make(map[string]*PropertyInfo)
+
+	// 全ファイルのプロパティを分析
+	for _, data := range exifDataList {
+		for propName, propValue := range data.Properties {
+			if info, exists := propertyStats[propName]; exists {
+				info.Count++
+				// 例を追加（最大3つまで）
+				if len(info.Examples) < 3 && !s.containsString(info.Examples, propValue) {
+					info.Examples = append(info.Examples, propValue)
+				}
+			} else {
+				propertyStats[propName] = &PropertyInfo{
+					Name:     propName,
+					DataType: s.inferDataType(propValue),
+					Count:    1,
+					Examples: []string{propValue},
+				}
+			}
+		}
+	}
+
+	// PropertyInfoのスライスに変換してソート
+	var result []PropertyInfo
+	for _, info := range propertyStats {
+		result = append(result, *info)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		// 使用頻度でソート（降順）、同じ場合は名前でソート（昇順）
+		if result[i].Count != result[j].Count {
+			return result[i].Count > result[j].Count
+		}
+		return result[i].Name < result[j].Name
+	})
+
+	return result
+}
+
+// FormatPropertyList はプロパティ一覧をフォーマットします
+func (s *ExifViewerService) FormatPropertyList(propertyInfos []PropertyInfo, totalFiles int) string {
+	if len(propertyInfos) == 0 {
+		return "No properties found."
+	}
+
+	var result strings.Builder
+	w := tabwriter.NewWriter(&result, 0, 0, 2, ' ', 0)
+
+	// ヘッダーを出力
+	fmt.Fprint(w, "Property Name\tData Type\tFrequency\tUsage %\tExamples\n")
+	fmt.Fprint(w, strings.Repeat("-", 50)+"\t"+strings.Repeat("-", 15)+"\t"+strings.Repeat("-", 10)+"\t"+strings.Repeat("-", 8)+"\t"+strings.Repeat("-", 40)+"\n")
+
+	// プロパティ情報を出力
+	for _, info := range propertyInfos {
+		usagePercent := float64(info.Count) / float64(totalFiles) * 100
+		examplesStr := strings.Join(info.Examples, ", ")
+		if len(examplesStr) > 40 {
+			examplesStr = examplesStr[:37] + "..."
+		}
+
+		fmt.Fprintf(w, "%s\t%s\t%d/%d\t%.1f%%\t%s\n",
+			info.Name,
+			info.DataType,
+			info.Count,
+			totalFiles,
+			usagePercent,
+			examplesStr,
+		)
+	}
+
+	w.Flush()
+
+	fmt.Fprintf(&result, "\nSummary: %d unique properties found across %d files\n",
+		len(propertyInfos), totalFiles)
+
+	return result.String()
+}
+
+// inferDataType は値からデータ型を推測します
+func (s *ExifViewerService) inferDataType(value string) string {
+	if value == "" {
+		return "string"
+	}
+
+	// 整数判定
+	if _, err := strconv.Atoi(value); err == nil {
+		return "integer"
+	}
+
+	// 浮動小数点数判定
+	if _, err := strconv.ParseFloat(value, 64); err == nil {
+		return "float"
+	}
+
+	// 日付/時刻判定
+	if s.isDateTime(value) {
+		return "datetime"
+	}
+
+	// ファイルサイズ判定
+	if s.isFileSize(value) {
+		return "filesize"
+	}
+
+	// 座標判定
+	if s.isCoordinate(value) {
+		return "coordinate"
+	}
+
+	// 比率判定
+	if s.isRatio(value) {
+		return "ratio"
+	}
+
+	return "string"
+}
+
+// containsString は文字列スライスに特定の文字列が含まれているかチェックします
+func (s *ExifViewerService) containsString(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
+
+// isDateTime は日付・時刻形式かどうかを判定します
+func (s *ExifViewerService) isDateTime(value string) bool {
+	patterns := []string{
+		"2006:01:02 15:04:05",
+		"2006:01:02 15:04:05-07:00",
+		"2006-01-02T15:04:05",
+		"2006-01-02T15:04:05Z",
+		"2006-01-02 15:04:05",
+	}
+
+	for _, pattern := range patterns {
+		if len(value) == len(pattern) {
+			if strings.Contains(value, ":") && (strings.Contains(value, " ") || strings.Contains(value, "T")) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isFileSize はファイルサイズ形式かどうかを判定します
+func (s *ExifViewerService) isFileSize(value string) bool {
+	return strings.HasSuffix(value, " B") || strings.HasSuffix(value, "B") ||
+		strings.HasSuffix(value, "kB") || strings.HasSuffix(value, "MB") ||
+		strings.HasSuffix(value, "GB") || strings.HasSuffix(value, "TB")
+}
+
+// isCoordinate は座標形式かどうかを判定します
+func (s *ExifViewerService) isCoordinate(value string) bool {
+	return strings.Contains(value, "°") || strings.Contains(value, "'") ||
+		(strings.Contains(value, "N") || strings.Contains(value, "S") ||
+			strings.Contains(value, "E") || strings.Contains(value, "W"))
+}
+
+// isRatio は比率形式かどうかを判定します
+func (s *ExifViewerService) isRatio(value string) bool {
+	return strings.Contains(value, "/") && len(strings.Split(value, "/")) == 2
 }
 
 // ヘルパーメソッド
