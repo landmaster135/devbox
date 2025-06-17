@@ -10,6 +10,11 @@ Provides utilities for development.
 
 # Development
 
+## Generate Go packages
+```bash
+./scripts/create_project_files.sh <PACKAGE_NAME>
+```
+
 ## Generate shell scripts to build
 ```bash
 cd devbox
