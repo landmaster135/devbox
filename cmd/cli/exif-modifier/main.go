@@ -1,12 +1,15 @@
 package main
 
 import (
+	"encoding/binary"
 	"flag"
 	"fmt"
+	"image/png"
 	"log"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -35,7 +38,7 @@ type ExifData struct {
 func main() {
 	// フラグを定義
 	directory := flag.String("dir", ".", "画像ファイルを検索するディレクトリ")
-	extensionsStr := flag.String("ext", "jpg,jpeg,tiff,tif", "対象の画像拡張子（カンマ区切り）")
+	extensionsStr := flag.String("ext", "jpg,jpeg,tiff,tif,png", "対象の画像拡張子（カンマ区切り）")
 	propertiesStr := flag.String("props", "", "表示するExifプロパティ（カンマ区切り、空の場合は全て表示）")
 	showHelp := flag.Bool("help", false, "ヘルプメッセージを表示")
 	showVersion := flag.Bool("version", false, "バージョン情報を表示")
@@ -177,69 +180,20 @@ func extractExifData(imageFiles []string, config *Config) ([]ExifData, error) {
 }
 
 func extractSingleFileExif(filePath string, config *Config) (ExifData, error) {
-	data := ExifData{
-		FilePath:   filePath,
-		Properties: make(map[string]string),
-	}
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		return data, err
-	}
-	defer file.Close()
-
-	// JPEGファイルの場合の処理
 	ext := strings.ToLower(filepath.Ext(filePath))
+
+	// JPEGファイルの場合
 	if ext == ".jpg" || ext == ".jpeg" {
 		return extractJpegExif(filePath, config)
 	}
 
-	// その他の画像形式の場合（基本的なEXIF読み取り）
-	stat, err := file.Stat()
-	if err != nil {
-		return data, err
+	// PNGファイルの場合
+	if ext == ".png" {
+		return extractPngMetadata(filePath, config)
 	}
 
-	fileData := make([]byte, stat.Size())
-	_, err = file.Read(fileData)
-	if err != nil {
-		return data, err
-	}
-
-	rawExif, err := exif.SearchAndExtractExif(fileData)
-	if err != nil {
-		return data, err
-	}
-
-	im, err := exifcommon.NewIfdMappingWithStandard()
-	if err != nil {
-		return data, err
-	}
-
-	ti := exif.NewTagIndex()
-	_, index, err := exif.Collect(im, ti, rawExif)
-	if err != nil {
-		return data, err
-	}
-
-	// EXIFデータを収集
-	children := index.RootIfd.Children()
-	for _, ifd := range children {
-		entries := ifd.Entries()
-		for _, entry := range entries {
-			tagName := entry.TagName()
-			value, err := entry.FormatFirst()
-			if err != nil {
-				continue
-			}
-
-			if config.Properties == nil || contains(config.Properties, tagName) {
-				data.Properties[tagName] = fmt.Sprintf("%v", value)
-			}
-		}
-	}
-
-	return data, nil
+	// その他の画像形式（TIFF等）の場合
+	return extractGenericExif(filePath, config)
 }
 
 func extractJpegExif(filePath string, config *Config) (ExifData, error) {
@@ -276,6 +230,293 @@ func extractJpegExif(filePath string, config *Config) (ExifData, error) {
 	})
 
 	return data, err
+}
+
+func extractPngMetadata(filePath string, config *Config) (ExifData, error) {
+	data := ExifData{
+		FilePath:   filePath,
+		Properties: make(map[string]string),
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return data, err
+	}
+	defer file.Close()
+
+	// ファイル情報を追加
+	stat, err := file.Stat()
+	if err == nil {
+		data.Properties["File Size"] = formatFileSize(stat.Size())
+		data.Properties["File Modification Date/Time"] = stat.ModTime().Format("2006:01:02 15:04:05-07:00")
+		data.Properties["File Name"] = filepath.Base(filePath)
+		data.Properties["Directory"] = filepath.Dir(filePath)
+		data.Properties["File Type"] = "PNG"
+		data.Properties["File Type Extension"] = "png"
+		data.Properties["MIME Type"] = "image/png"
+	}
+
+	// 画像メタデータを読み取り
+	img, err := png.Decode(file)
+	if err != nil {
+		return data, err
+	}
+
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+
+	data.Properties["Image Width"] = strconv.Itoa(width)
+	data.Properties["Image Height"] = strconv.Itoa(height)
+	data.Properties["Image Size"] = fmt.Sprintf("%dx%d", width, height)
+	data.Properties["Megapixels"] = fmt.Sprintf("%.1f", float64(width*height)/1000000.0)
+
+	// PNG固有の情報を読み取り（再度ファイルを開く）
+	file.Seek(0, 0)
+	pngInfo, err := readPngChunks(file)
+	if err == nil {
+		for key, value := range pngInfo {
+			if config.Properties == nil || contains(config.Properties, key) {
+				data.Properties[key] = value
+			}
+		}
+	}
+
+	return data, nil
+}
+
+func extractGenericExif(filePath string, config *Config) (ExifData, error) {
+	data := ExifData{
+		FilePath:   filePath,
+		Properties: make(map[string]string),
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return data, err
+	}
+	defer file.Close()
+
+	// ファイル情報を追加
+	stat, err := file.Stat()
+	if err == nil {
+		data.Properties["File Size"] = formatFileSize(stat.Size())
+		data.Properties["File Modification Date/Time"] = stat.ModTime().Format("2006:01:02 15:04:05-07:00")
+		data.Properties["File Name"] = filepath.Base(filePath)
+		data.Properties["Directory"] = filepath.Dir(filePath)
+		ext := strings.ToUpper(strings.TrimPrefix(filepath.Ext(filePath), "."))
+		data.Properties["File Type"] = ext
+		data.Properties["File Type Extension"] = strings.ToLower(ext)
+	}
+
+	// EXIFデータを読み取り試行
+	fileData := make([]byte, stat.Size())
+	_, err = file.Read(fileData)
+	if err != nil {
+		return data, err
+	}
+
+	rawExif, err := exif.SearchAndExtractExif(fileData)
+	if err != nil {
+		return data, nil // EXIFがない場合はファイル情報のみ返す
+	}
+
+	im, err := exifcommon.NewIfdMappingWithStandard()
+	if err != nil {
+		return data, err
+	}
+
+	ti := exif.NewTagIndex()
+	_, index, err := exif.Collect(im, ti, rawExif)
+	if err != nil {
+		return data, err
+	}
+
+	// EXIFデータを収集
+	children := index.RootIfd.Children()
+	for _, ifd := range children {
+		entries := ifd.Entries()
+		for _, entry := range entries {
+			tagName := entry.TagName()
+			value, err := entry.FormatFirst()
+			if err != nil {
+				continue
+			}
+
+			if config.Properties == nil || contains(config.Properties, tagName) {
+				data.Properties[tagName] = fmt.Sprintf("%v", value)
+			}
+		}
+	}
+
+	return data, nil
+}
+
+func readPngChunks(file *os.File) (map[string]string, error) {
+	info := make(map[string]string)
+
+	// PNG signature check
+	signature := make([]byte, 8)
+	_, err := file.Read(signature)
+	if err != nil {
+		return info, err
+	}
+
+	for {
+		// Read chunk length
+		lengthBytes := make([]byte, 4)
+		n, err := file.Read(lengthBytes)
+		if err != nil || n != 4 {
+			break
+		}
+		length := binary.BigEndian.Uint32(lengthBytes)
+
+		// Read chunk type
+		chunkType := make([]byte, 4)
+		_, err = file.Read(chunkType)
+		if err != nil {
+			break
+		}
+
+		chunkTypeName := string(chunkType)
+
+		// Read chunk data
+		chunkData := make([]byte, length)
+		if length > 0 {
+			_, err = file.Read(chunkData)
+			if err != nil {
+				break
+			}
+		}
+
+		// Skip CRC
+		file.Seek(4, 1)
+
+		// Process specific chunks
+		switch chunkTypeName {
+		case "IHDR":
+			if len(chunkData) >= 13 {
+				width := binary.BigEndian.Uint32(chunkData[0:4])
+				height := binary.BigEndian.Uint32(chunkData[4:8])
+				bitDepth := chunkData[8]
+				colorType := chunkData[9]
+				compression := chunkData[10]
+				filter := chunkData[11]
+				interlace := chunkData[12]
+
+				info["Bit Depth"] = strconv.Itoa(int(bitDepth))
+				info["Color Type"] = getColorTypeName(colorType)
+				info["Compression"] = getCompressionName(compression)
+				info["Filter"] = getFilterName(filter)
+				info["Interlace"] = getInterlaceName(interlace)
+
+				// 既に設定されていなければ幅と高さも設定
+				if _, exists := info["Image Width"]; !exists {
+					info["Image Width"] = strconv.Itoa(int(width))
+					info["Image Height"] = strconv.Itoa(int(height))
+				}
+			}
+		case "pHYs":
+			if len(chunkData) >= 9 {
+				pixelsPerUnitX := binary.BigEndian.Uint32(chunkData[0:4])
+				pixelsPerUnitY := binary.BigEndian.Uint32(chunkData[4:8])
+				unitSpecifier := chunkData[8]
+
+				info["Pixels Per Unit X"] = strconv.Itoa(int(pixelsPerUnitX))
+				info["Pixels Per Unit Y"] = strconv.Itoa(int(pixelsPerUnitY))
+				if unitSpecifier == 1 {
+					info["Pixel Units"] = "meters"
+				} else {
+					info["Pixel Units"] = "unknown"
+				}
+			}
+		case "gAMA":
+			if len(chunkData) >= 4 {
+				gamma := binary.BigEndian.Uint32(chunkData[0:4])
+				gammaValue := float64(gamma) / 100000.0
+				info["Gamma"] = fmt.Sprintf("%.1f", gammaValue)
+			}
+		case "sRGB":
+			if len(chunkData) >= 1 {
+				renderingIntent := chunkData[0]
+				info["SRGB Rendering"] = getSRGBRenderingIntent(renderingIntent)
+			}
+		case "IEND":
+			return info, nil
+		}
+	}
+
+	return info, nil
+}
+
+func formatFileSize(size int64) string {
+	const unit = 1024
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+	div, exp := int64(unit), 0
+	for n := size / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.0f %cB", float64(size)/float64(div), "kMGTPE"[exp])
+}
+
+func getColorTypeName(colorType byte) string {
+	switch colorType {
+	case 0:
+		return "Grayscale"
+	case 2:
+		return "RGB"
+	case 3:
+		return "Palette"
+	case 4:
+		return "Grayscale with Alpha"
+	case 6:
+		return "RGB with Alpha"
+	default:
+		return "Unknown"
+	}
+}
+
+func getCompressionName(compression byte) string {
+	if compression == 0 {
+		return "Deflate/Inflate"
+	}
+	return "Unknown"
+}
+
+func getFilterName(filter byte) string {
+	if filter == 0 {
+		return "Adaptive"
+	}
+	return "Unknown"
+}
+
+func getInterlaceName(interlace byte) string {
+	switch interlace {
+	case 0:
+		return "Noninterlaced"
+	case 1:
+		return "Adam7 Interlaced"
+	default:
+		return "Unknown"
+	}
+}
+
+func getSRGBRenderingIntent(intent byte) string {
+	switch intent {
+	case 0:
+		return "Perceptual"
+	case 1:
+		return "Relative Colorimetric"
+	case 2:
+		return "Saturation"
+	case 3:
+		return "Absolute Colorimetric"
+	default:
+		return "Unknown"
+	}
 }
 
 func contains(slice []string, item string) bool {
