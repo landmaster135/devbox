@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"unicode/utf8"
 
 	exif "github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
@@ -48,6 +49,15 @@ type ExifViewerService struct{}
 // NewExifViewerService は新しいExifViewerServiceを作成します
 func NewExifViewerService() *ExifViewerService {
 	return &ExifViewerService{}
+}
+
+// ensureUTF8String は文字列がUTF-8として有効かチェックし、無効な場合は修正する
+func (s *ExifViewerService) ensureUTF8String(str string) string {
+	if utf8.ValidString(str) {
+		return str
+	}
+	// 無効なUTF-8文字を置換
+	return strings.ToValidUTF8(str, "�")
 }
 
 // FindImageFiles は指定された設定に基づいて画像ファイルを検索します
@@ -145,7 +155,7 @@ func (s *ExifViewerService) extractJpegExif(filePath string, config *Config) (Ex
 		}
 
 		if config.Properties == nil || s.contains(config.Properties, tagName) {
-			data.Properties[tagName] = fmt.Sprintf("%v", value)
+			data.Properties[tagName] = s.ensureUTF8String(fmt.Sprintf("%v", value))
 		}
 
 		return nil
@@ -268,7 +278,7 @@ func (s *ExifViewerService) extractGenericExif(filePath string, config *Config) 
 			}
 
 			if config.Properties == nil || s.contains(config.Properties, tagName) {
-				data.Properties[tagName] = fmt.Sprintf("%v", value)
+				data.Properties[tagName] = s.ensureUTF8String(fmt.Sprintf("%v", value))
 			}
 		}
 	}
@@ -467,7 +477,7 @@ func (s *ExifViewerService) FormatExifTable(exifDataList []ExifData, config *Con
 			len(exifDataList), displayedProperties)
 	}
 
-	return result.String()
+	return s.ensureUTF8String(result.String())
 }
 
 // AnalyzeProperties は全プロパティの詳細情報を分析します
@@ -547,7 +557,7 @@ func (s *ExifViewerService) FormatPropertyList(propertyInfos []PropertyInfo, tot
 	fmt.Fprintf(&result, "\nSummary: %d unique properties found across %d files\n",
 		len(propertyInfos), totalFiles)
 
-	return result.String()
+	return s.ensureUTF8String(result.String())
 }
 
 // inferDataType は値からデータ型を推測します
