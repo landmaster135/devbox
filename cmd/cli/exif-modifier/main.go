@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"time"
 
 	usecases "github.com/landmaster135/devbox/internal/independencies/exif_modifier/usecases"
@@ -20,12 +21,13 @@ var (
 	dateTime       = flag.String("datetime", "", "設定する日時 (yyyyMMddhhmmss形式)")
 	fromFilename   = flag.Bool("from-filename", false, "ファイル名から日時を取得してExifに設定する (ファイル名がyyyyMMddhhmmss形式の場合)")
 	fromScreenshot = flag.Bool("from-screenshot", false, "スクリーンショットファイル名から日時を取得してExifに設定する (Screenshot_yyyyMMdd-hhmmss形式の場合)")
-	extension      = flag.String("ext", "", "対象とする拡張子 (例: .jpg, .jpeg, .png, .webp, .mp4)")
+	extension      = flag.String("ext", "", "対象とする拡張子 (例: jpg, jpeg, png, webp, mp4)")
 	recursive      = flag.Bool("recursive", false, "サブフォルダも再帰的に処理する")
 	dryRun         = flag.Bool("dry-run", false, "実際には変更せず、処理対象ファイルのみ表示")
 	verbose        = flag.Bool("verbose", false, "詳細な出力を表示")
 	showHelp       = flag.Bool("help", false, "ヘルプメッセージを表示")
 	showVersion    = flag.Bool("version", false, "バージョン情報を表示")
+	workerCount    = flag.Int("workers", runtime.NumCPU(), "並行処理のワーカー数")
 )
 
 func main() {
@@ -38,13 +40,13 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nEXAMPLES:\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --datetime 20240315143000\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --ext .jpg\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --ext jpg\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --recursive\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --dry-run\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --verbose\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --from-filename --ext .jpg\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --from-filename --ext jpg\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --from-filename --recursive --dry-run\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./screenshots --from-screenshot --ext .png\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./screenshots --from-screenshot --ext png\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./screenshots --from-screenshot --recursive --dry-run\n")
 	}
 
@@ -128,6 +130,7 @@ func main() {
 		Verbose:        *verbose,
 		FromFilename:   *fromFilename,
 		FromScreenshot: *fromScreenshot,
+		WorkerCount:    *workerCount,
 	}
 
 	// 実行情報を表示
@@ -215,6 +218,7 @@ func printExecutionInfo(config *usecases.Config) {
 	fmt.Printf("再帰処理: %t\n", config.Recursive)
 	fmt.Printf("ドライラン: %t\n", config.DryRun)
 	fmt.Printf("詳細モード: %t\n", config.Verbose)
+	fmt.Printf("ワーカー数: %d\n", config.WorkerCount)
 	fmt.Println()
 }
 
