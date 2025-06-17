@@ -17,13 +17,14 @@ var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".w
 
 // Config はEXIF修正の設定を保持します
 type Config struct {
-	FolderPath   string
-	DateTime     time.Time
-	Extension    string
-	Recursive    bool
-	DryRun       bool
-	Verbose      bool
-	FromFilename bool
+	FolderPath     string
+	DateTime       time.Time
+	Extension      string
+	Recursive      bool
+	DryRun         bool
+	Verbose        bool
+	FromFilename   bool
+	FromScreenshot bool
 }
 
 // ExifModifierService はEXIF修正サービスです
