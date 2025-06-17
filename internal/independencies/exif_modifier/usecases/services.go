@@ -7,14 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	exif "github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 )
 
 // サポートする画像拡張子
-var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif"}
+var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
 
 // Config はEXIF修正の設定を保持します
 type Config struct {
@@ -32,14 +31,6 @@ type ExifModifierService struct{}
 // NewExifModifierService は新しいExifModifierServiceを作成します
 func NewExifModifierService() *ExifModifierService {
 	return &ExifModifierService{}
-}
-
-// ensureUTF8String は文字列がUTF-8として有効かチェックし、無効な場合は修正する
-func (s *ExifModifierService) ensureUTF8String(str string) string {
-	if utf8.ValidString(str) {
-		return str
-	}
-	return strings.ToValidUTF8(str, "�")
 }
 
 // FindImageFiles は指定された設定に基づいて画像ファイルを検索します
@@ -122,13 +113,22 @@ func (s *ExifModifierService) ModifyExifData(imageFiles []string, config *Config
 func (s *ExifModifierService) ModifySingleFileExif(filePath string, config *Config) error {
 	ext := strings.ToLower(filepath.Ext(filePath))
 
-	// JPEGファイルの場合
-	if ext == ".jpg" || ext == ".jpeg" {
+	switch ext {
+	case ".jpg", ".jpeg":
 		return s.modifyJpegExif(filePath, config)
+	case ".png":
+		return s.modifyPngFile(filePath, config)
+	case ".webp":
+		return s.modifyWebpFile(filePath, config)
+	case ".mp4":
+		return s.modifyMp4File(filePath, config)
+	case ".webm":
+		return s.modifyWebmFile(filePath, config)
+	case ".tiff", ".tif":
+		return s.modifyTiffFile(filePath, config)
+	default:
+		return s.modifyGenericFile(filePath, config)
 	}
-
-	// TIFF等の汎用ファイルの場合
-	return s.modifyGenericExif(filePath, config)
 }
 
 // modifyJpegExif はJPEGファイルのEXIF情報を修正します
@@ -167,6 +167,54 @@ func (s *ExifModifierService) modifyGenericExif(filePath string, config *Config)
 	// TIFF等の形式では、ファイル時刻のみ更新
 	if config.Verbose {
 		log.Printf("TIFF/その他形式のファイル時刻を更新: %s", filePath)
+	}
+	return s.updateFileTime(filePath, config.DateTime)
+}
+
+// modifyPngFile はPNGファイルの時刻を修正します
+func (s *ExifModifierService) modifyPngFile(filePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("PNGファイルの時刻を更新: %s", filePath)
+	}
+	return s.updateFileTime(filePath, config.DateTime)
+}
+
+// modifyWebpFile はWebPファイルの時刻を修正します
+func (s *ExifModifierService) modifyWebpFile(filePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("WebPファイルの時刻を更新: %s", filePath)
+	}
+	return s.updateFileTime(filePath, config.DateTime)
+}
+
+// modifyMp4File はMP4ファイルの時刻を修正します
+func (s *ExifModifierService) modifyMp4File(filePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("MP4ファイルの時刻を更新: %s", filePath)
+	}
+	return s.updateFileTime(filePath, config.DateTime)
+}
+
+// modifyWebmFile はWebMファイルの時刻を修正します
+func (s *ExifModifierService) modifyWebmFile(filePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("WebMファイルの時刻を更新: %s", filePath)
+	}
+	return s.updateFileTime(filePath, config.DateTime)
+}
+
+// modifyTiffFile はTIFFファイルの時刻を修正します
+func (s *ExifModifierService) modifyTiffFile(filePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("TIFFファイルの時刻を更新: %s", filePath)
+	}
+	return s.updateFileTime(filePath, config.DateTime)
+}
+
+// modifyGenericFile は汎用ファイルの時刻を修正します
+func (s *ExifModifierService) modifyGenericFile(filePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("汎用ファイルの時刻を更新: %s", filePath)
 	}
 	return s.updateFileTime(filePath, config.DateTime)
 }
