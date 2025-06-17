@@ -14,9 +14,9 @@ const version = "1.0.0"
 
 // コマンドライン引数
 var (
-	folderPath  = flag.String("folder", ".", "画像ファイルがあるフォルダのパス")
+	dirPath     = flag.String("dir", ".", "画像ファイルがあるディレクトリのパス")
 	dateTime    = flag.String("datetime", "", "設定する日時 (yyyyMMddhhmmss形式)")
-	extension   = flag.String("ext", "", "対象とする拡張子 (例: .jpg, .jpeg, .tiff)")
+	extension   = flag.String("ext", "", "対象とする拡張子 (例: .jpg, .jpeg, .png, .webp, .mp4)")
 	recursive   = flag.Bool("recursive", false, "サブフォルダも再帰的に処理する")
 	dryRun      = flag.Bool("dry-run", false, "実際には変更せず、処理対象ファイルのみ表示")
 	verbose     = flag.Bool("verbose", false, "詳細な出力を表示")
@@ -34,10 +34,10 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nEXAMPLES:\n")
 		fmt.Fprintf(os.Stderr, "    exif-modifier --datetime 20240315143000\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --folder ./photos --datetime 20240315143000 --ext .jpg\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --folder ./photos --datetime 20240315143000 --recursive\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --folder ./photos --datetime 20240315143000 --dry-run\n")
-		fmt.Fprintf(os.Stderr, "    exif-modifier --folder ./photos --datetime 20240315143000 --verbose\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --ext .jpg\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --recursive\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --dry-run\n")
+		fmt.Fprintf(os.Stderr, "    exif-modifier --dir ./photos --datetime 20240315143000 --verbose\n")
 	}
 
 	flag.Parse()
@@ -67,9 +67,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// フォルダの存在確認
-	if _, err := os.Stat(*folderPath); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Error: フォルダが存在しません: %s\n", *folderPath)
+	// ディレクトリの存在確認
+	if _, err := os.Stat(*dirPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Error: ディレクトリが存在しません: %s\n", *dirPath)
 		os.Exit(1)
 	}
 
@@ -82,7 +82,7 @@ func main() {
 
 	// 設定を作成
 	config := &usecases.Config{
-		FolderPath: *folderPath,
+		FolderPath: *dirPath,
 		DateTime:   targetTime,
 		Extension:  *extension,
 		Recursive:  *recursive,
@@ -104,7 +104,7 @@ func main() {
 	}
 
 	if len(imageFiles) == 0 {
-		fmt.Printf("対象の画像ファイルが見つかりませんでした: %s\n", *folderPath)
+		fmt.Printf("対象の画像ファイルが見つかりませんでした: %s\n", *dirPath)
 		os.Exit(0)
 	}
 
@@ -138,7 +138,7 @@ func parseDateTime(dateTimeStr string) (time.Time, error) {
 
 // 実行情報を表示
 func printExecutionInfo(config *usecases.Config) {
-	fmt.Printf("フォルダ: %s\n", config.FolderPath)
+	fmt.Printf("ディレクトリ: %s\n", config.FolderPath)
 	fmt.Printf("設定する日時: %s\n", config.DateTime.Format("2006-01-02 15:04:05"))
 	if config.Extension != "" {
 		fmt.Printf("対象拡張子: %s\n", config.Extension)
