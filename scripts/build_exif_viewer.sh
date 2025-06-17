@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/exif-modifier"
+CMD_DIR="cmd/cli/exif-viewer"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="exif-modifier"
+OUTPUT_NAME="exif-viewer"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,3 +38,9 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
+echo "# 特定の拡張子のみを対象にする"
+echo "./exif-viewer -dir ./photos -ext jpg,jpeg"
+echo "# 特定のプロパティのみを表示"
+echo "./exif-viewer -dir ./photos -props \"File Size,Image Width,Image Height\""
+echo "echo "# 組み合わせ使用例
+echo "./exif-viewer -dir ./photos -ext jpg,tiff,png -props \"File Name,Image Size,File Type\" -r -v"
