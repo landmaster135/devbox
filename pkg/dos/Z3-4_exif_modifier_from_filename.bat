@@ -1,7 +1,17 @@
 @echo off
 
-@REM set /p path="Input directory you wanna view EXIF: "
-set path=.
+set /p path="Input directory you wanna modify EXIF (e.g.: '.'): "
+if /i "%path%"=="" (
+  set "path=."
+)
+
+REM パスが存在するか確認
+if not exist "%path%" (
+  echo [ERROR] The specified path "%path%" does not exist.
+  echo Input any key to exit...
+  pause > nul
+  exit /b 1
+)
 
 set /p ext="Select extension of files you wanna view  [p]='png' [j]='jpg,jpeg' [w]='webp' : "
 if /i "%ext%"=="p" (
