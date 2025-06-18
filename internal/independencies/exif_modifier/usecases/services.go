@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -36,6 +37,111 @@ type ExifModifierService struct{}
 // NewExifModifierService は新しいExifModifierServiceを作成します
 func NewExifModifierService() *ExifModifierService {
 	return &ExifModifierService{}
+}
+
+// validateDirectory はディレクトリの存在と権限をバリデーションします
+func validateDirectory(dirPath string) error {
+	// 空文字列チェック
+	if dirPath == "" {
+		return fmt.Errorf("ディレクトリパスが空です")
+	}
+
+	// 存在チェック
+	info, err := os.Stat(dirPath)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("ディレクトリが存在しません: %s", dirPath)
+	}
+	if err != nil {
+		return fmt.Errorf("ディレクトリの情報取得に失敗しました: %s - %v", dirPath, err)
+	}
+
+	// ディレクトリかどうかチェック
+	if !info.IsDir() {
+		return fmt.Errorf("指定されたパスはディレクトリではありません: %s", dirPath)
+	}
+
+	// 読み取り権限チェック
+	testFile := filepath.Join(dirPath, ".test_access")
+	file, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return fmt.Errorf("ディレクトリへの書き込み権限がありません: %s", dirPath)
+	}
+	file.Close()
+	os.Remove(testFile) // テストファイルを削除
+
+	return nil
+}
+
+// validateExtension はファイル拡張子をバリデーションします
+func validateExtension(ext string) error {
+	// 空文字列チェック
+	if ext == "" {
+		return fmt.Errorf("拡張子が空です")
+	}
+
+	// 拡張子を正規化（ドットがない場合は追加）
+	normalizedExt := ext
+	if !strings.HasPrefix(normalizedExt, ".") {
+		normalizedExt = "." + normalizedExt
+	}
+
+	// より確実な方法で小文字に変換
+	extLower := ""
+	for _, char := range normalizedExt {
+		if char >= 'A' && char <= 'Z' {
+			extLower += string(char + 32) // A-Z を a-z に変換
+		} else {
+			extLower += string(char)
+		}
+	}
+
+	// サポートされている拡張子かチェック
+	for _, supportedExt := range supportedExtensions {
+		if extLower == supportedExt {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("サポートされていない拡張子です: %s\nサポートされている拡張子: %v", ext, supportedExtensions)
+}
+
+func ValidateInputOptions(dirPath, extension string) error {
+	// ディレクトリの存在確認とバリデーション
+	if err := validateDirectory(dirPath); err != nil {
+		return fmt.Errorf("ディレクトリの存在確認とバリデーションに失敗しました: %w", err)
+	}
+
+	// 拡張子のバリデーション
+	if extension != "" {
+		if err := validateExtension(extension); err != nil {
+			return fmt.Errorf("拡張子のバリデーションに失敗しました: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// isImageFile は画像ファイルかどうかをチェック
+func (s *ExifModifierService) isImageFile(filePath, targetExtension string) bool {
+	ext := strings.ToLower(filepath.Ext(filePath))
+
+	// 特定の拡張子が指定されている場合
+	if targetExtension != "" {
+		// 拡張子を正規化（ドットがない場合は追加）
+		normalizedExt := targetExtension
+		if !strings.HasPrefix(normalizedExt, ".") {
+			normalizedExt = "." + normalizedExt
+		}
+		return strings.ToLower(normalizedExt) == ext
+	}
+
+	// サポートされている拡張子かチェック
+	for _, supportedExt := range supportedExtensions {
+		if ext == supportedExt {
+			return true
+		}
+	}
+	return false
 }
 
 // FindImageFiles は指定された設定に基づいて画像ファイルを検索します
@@ -73,29 +179,6 @@ func (s *ExifModifierService) FindImageFiles(config *Config) ([]string, error) {
 	return imageFiles, nil
 }
 
-// isImageFile は画像ファイルかどうかをチェック
-func (s *ExifModifierService) isImageFile(filePath, targetExtension string) bool {
-	ext := strings.ToLower(filepath.Ext(filePath))
-
-	// 特定の拡張子が指定されている場合
-	if targetExtension != "" {
-		// 拡張子を正規化（ドットがない場合は追加）
-		normalizedExt := targetExtension
-		if !strings.HasPrefix(normalizedExt, ".") {
-			normalizedExt = "." + normalizedExt
-		}
-		return strings.ToLower(normalizedExt) == ext
-	}
-
-	// サポートされている拡張子かチェック
-	for _, supportedExt := range supportedExtensions {
-		if ext == supportedExt {
-			return true
-		}
-	}
-	return false
-}
-
 // ProcessResult はファイル処理の結果を表します
 type ProcessResult struct {
 	FilePath string
@@ -103,107 +186,9 @@ type ProcessResult struct {
 	Error    error
 }
 
-// ModifyExifData は複数のファイルのEXIF情報を並行処理で修正します
-func (s *ExifModifierService) ModifyExifData(imageFiles []string, config *Config) (int, int, error) {
-	// ワーカー数のデフォルト設定
-	workerCount := config.WorkerCount
-	if workerCount <= 0 {
-		workerCount = 4 // デフォルトは4並列
-	}
-
-	// ファイル数がワーカー数より少ない場合、ワーカー数をファイル数に調整
-	if len(imageFiles) < workerCount {
-		workerCount = len(imageFiles)
-	}
-
-	// チャネルの作成
-	jobs := make(chan string, len(imageFiles))
-	results := make(chan ProcessResult, len(imageFiles))
-
-	// ワーカーゴルーチンの起動
-	var wg sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for filePath := range jobs {
-				result := ProcessResult{
-					FilePath: filePath,
-					Success:  false,
-					Error:    nil,
-				}
-
-				if config.DryRun {
-					fmt.Printf("処理中: %s\n", filePath)
-					fmt.Printf("  → (ドライラン) File Modification Date/Time を %s に設定\n",
-						config.DateTime.Format("2006-01-02 15:04:05"))
-					result.Success = true
-				} else {
-					fmt.Printf("処理中: %s\n", filePath)
-					err := s.ModifySingleFileExif(filePath, config)
-					if err != nil {
-						fmt.Printf("  ⚠️  エラー: %v\n", err)
-						result.Error = err
-						if config.Verbose {
-							log.Printf("Error processing file %s: %v", filePath, err)
-						}
-					} else {
-						fmt.Printf("  ✅ File Modification Date/Time を %s に設定しました\n",
-							config.DateTime.Format("2006-01-02 15:04:05"))
-						result.Success = true
-					}
-				}
-				results <- result
-			}
-		}()
-	}
-
-	// ジョブをチャネルに送信
-	for _, filePath := range imageFiles {
-		jobs <- filePath
-	}
-	close(jobs)
-
-	// ワーカーの完了を待つ
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	// 結果を収集
-	processedCount := 0
-	errorCount := 0
-	for result := range results {
-		if result.Success {
-			processedCount++
-		} else {
-			errorCount++
-		}
-	}
-
-	return processedCount, errorCount, nil
-}
-
-// ModifySingleFileExif は単一ファイルのEXIF情報を修正します
-func (s *ExifModifierService) ModifySingleFileExif(filePath string, config *Config) error {
-	ext := strings.ToLower(filepath.Ext(filePath))
-
-	switch ext {
-	case ".jpg", ".jpeg":
-		return s.modifyJpegExif(filePath, config)
-	case ".png":
-		return s.modifyPngFile(filePath, config)
-	case ".webp":
-		return s.modifyWebpFile(filePath, config)
-	case ".mp4":
-		return s.modifyMp4File(filePath, config)
-	case ".webm":
-		return s.modifyWebmFile(filePath, config)
-	case ".tiff", ".tif":
-		return s.modifyTiffFile(filePath, config)
-	default:
-		return s.modifyGenericFile(filePath, config)
-	}
+// updateFileTime はファイルの更新時刻を変更します
+func (s *ExifModifierService) updateFileTime(filePath string, targetTime time.Time) error {
+	return os.Chtimes(filePath, targetTime, targetTime)
 }
 
 // modifyJpegExif はJPEGファイルのEXIF情報を修正します
@@ -294,6 +279,109 @@ func (s *ExifModifierService) modifyGenericFile(filePath string, config *Config)
 	return s.updateFileTime(filePath, config.DateTime)
 }
 
+// ModifySingleFileExif は単一ファイルのEXIF情報を修正します
+func (s *ExifModifierService) ModifySingleFileExif(filePath string, config *Config) error {
+	ext := strings.ToLower(filepath.Ext(filePath))
+
+	switch ext {
+	case ".jpg", ".jpeg":
+		return s.modifyJpegExif(filePath, config)
+	case ".png":
+		return s.modifyPngFile(filePath, config)
+	case ".webp":
+		return s.modifyWebpFile(filePath, config)
+	case ".mp4":
+		return s.modifyMp4File(filePath, config)
+	case ".webm":
+		return s.modifyWebmFile(filePath, config)
+	case ".tiff", ".tif":
+		return s.modifyTiffFile(filePath, config)
+	default:
+		return s.modifyGenericFile(filePath, config)
+	}
+}
+
+// ModifyExifData は複数のファイルのEXIF情報を並行処理で修正します
+func (s *ExifModifierService) ModifyExifData(imageFiles []string, config *Config) (int, int, error) {
+	// ワーカー数のデフォルト設定
+	workerCount := config.WorkerCount
+	if workerCount <= 0 {
+		workerCount = 4 // デフォルトは4並列
+	}
+
+	// ファイル数がワーカー数より少ない場合、ワーカー数をファイル数に調整
+	if len(imageFiles) < workerCount {
+		workerCount = len(imageFiles)
+	}
+
+	// チャネルの作成
+	jobs := make(chan string, len(imageFiles))
+	results := make(chan ProcessResult, len(imageFiles))
+
+	// ワーカーゴルーチンの起動
+	var wg sync.WaitGroup
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for filePath := range jobs {
+				result := ProcessResult{
+					FilePath: filePath,
+					Success:  false,
+					Error:    nil,
+				}
+
+				if config.DryRun {
+					fmt.Printf("処理中: %s\n", filePath)
+					fmt.Printf("  → (ドライラン) File Modification Date/Time を %s に設定\n",
+						config.DateTime.Format("2006-01-02 15:04:05"))
+					result.Success = true
+				} else {
+					fmt.Printf("処理中: %s\n", filePath)
+					err := s.ModifySingleFileExif(filePath, config)
+					if err != nil {
+						fmt.Printf("  ⚠️  エラー: %v\n", err)
+						result.Error = err
+						if config.Verbose {
+							log.Printf("Error processing file %s: %v", filePath, err)
+						}
+					} else {
+						fmt.Printf("  ✅ File Modification Date/Time を %s に設定しました\n",
+							config.DateTime.Format("2006-01-02 15:04:05"))
+						result.Success = true
+					}
+				}
+				results <- result
+			}
+		}()
+	}
+
+	// ジョブをチャネルに送信
+	for _, filePath := range imageFiles {
+		jobs <- filePath
+	}
+	close(jobs)
+
+	// ワーカーの完了を待つ
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// 結果を収集
+	processedCount := 0
+	errorCount := 0
+	for result := range results {
+		if result.Success {
+			processedCount++
+		} else {
+			errorCount++
+		}
+	}
+
+	return processedCount, errorCount, nil
+}
+
 // updateExistingExif は既存のExifデータを更新します
 func (s *ExifModifierService) updateExistingExif(filePath string, config *Config, originalData []byte, rootIfd *exif.Ifd, rawExif []byte) error {
 	// 現在のgo-exifライブラリでは、Exifデータの直接的な書き込みが複雑なため、
@@ -305,30 +393,38 @@ func (s *ExifModifierService) updateExistingExif(filePath string, config *Config
 	return s.updateFileTime(filePath, config.DateTime)
 }
 
-// updateFileTime はファイルの更新時刻を変更します
-func (s *ExifModifierService) updateFileTime(filePath string, targetTime time.Time) error {
-	return os.Chtimes(filePath, targetTime, targetTime)
+// parseInt は文字列を整数に変換します（エラーハンドリングなし、事前に数値チェック済み）
+func parseInt(s string) int {
+	result := 0
+	for _, char := range s {
+		result = result*10 + int(char-'0')
+	}
+	return result
 }
 
-// ParseDateTime は日時文字列をtime.Timeに変換します
-func ParseDateTime(dateTimeStr string) (time.Time, error) {
-	if len(dateTimeStr) != 14 {
-		return time.Time{}, fmt.Errorf("日時は14文字である必要があります (yyyyMMddhhmmss)")
-	}
+// isLeapYear はうるう年かどうか判定します
+func isLeapYear(year int) bool {
+	// 4で割り切れる年はうるう年
+	// ただし100で割り切れる年は平年
+	// ただし400で割り切れる年はうるう年
+	return (year%4 == 0 && year%100 != 0) || (year%400 == 0)
+}
 
-	// 基本的な数値チェック
-	for _, char := range dateTimeStr {
-		if char < '0' || char > '9' {
-			return time.Time{}, fmt.Errorf("日時は数字のみで構成されている必要があります: %s", dateTimeStr)
+// getMaxDaysInMonth は指定された年月の最大日数を取得します
+func getMaxDaysInMonth(month, year int) int {
+	switch month {
+	case 1, 3, 5, 7, 8, 10, 12: // 31日の月
+		return 31
+	case 4, 6, 9, 11: // 30日の月
+		return 30
+	case 2: // 2月（うるう年チェック）
+		if isLeapYear(year) {
+			return 29
 		}
+		return 28
+	default:
+		return 31 // フォールバック
 	}
-
-	// 各要素のバリデーション
-	if err := validateDateTime(dateTimeStr); err != nil {
-		return time.Time{}, err
-	}
-
-	return time.ParseInLocation("20060102150405", dateTimeStr, time.Local)
 }
 
 // validateDateTime は日時の各要素をバリデーションします
@@ -386,111 +482,233 @@ func validateDateTime(dateTimeStr string) error {
 	return nil
 }
 
-// parseInt は文字列を整数に変換します（エラーハンドリングなし、事前に数値チェック済み）
-func parseInt(s string) int {
-	result := 0
-	for _, char := range s {
-		result = result*10 + int(char-'0')
-	}
-	return result
-}
-
-// getMaxDaysInMonth は指定された年月の最大日数を取得します
-func getMaxDaysInMonth(month, year int) int {
-	switch month {
-	case 1, 3, 5, 7, 8, 10, 12: // 31日の月
-		return 31
-	case 4, 6, 9, 11: // 30日の月
-		return 30
-	case 2: // 2月（うるう年チェック）
-		if isLeapYear(year) {
-			return 29
-		}
-		return 28
-	default:
-		return 31 // フォールバック
-	}
-}
-
-// isLeapYear はうるう年かどうか判定します
-func isLeapYear(year int) bool {
-	// 4で割り切れる年はうるう年
-	// ただし100で割り切れる年は平年
-	// ただし400で割り切れる年はうるう年
-	return (year%4 == 0 && year%100 != 0) || (year%400 == 0)
-}
-
-// ValidateDirectory はディレクトリの存在と権限をバリデーションします
-func ValidateDirectory(dirPath string) error {
-	// 空文字列チェック
-	if dirPath == "" {
-		return fmt.Errorf("ディレクトリパスが空です")
+// ParseDateTime は日時文字列をtime.Timeに変換します
+func ParseDateTime(dateTimeStr string) (time.Time, error) {
+	if len(dateTimeStr) != 14 {
+		return time.Time{}, fmt.Errorf("日時は14文字である必要があります (yyyyMMddhhmmss)")
 	}
 
-	// 存在チェック
-	info, err := os.Stat(dirPath)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("ディレクトリが存在しません: %s", dirPath)
-	}
-	if err != nil {
-		return fmt.Errorf("ディレクトリの情報取得に失敗しました: %s - %v", dirPath, err)
-	}
-
-	// ディレクトリかどうかチェック
-	if !info.IsDir() {
-		return fmt.Errorf("指定されたパスはディレクトリではありません: %s", dirPath)
-	}
-
-	// 読み取り権限チェック
-	testFile := filepath.Join(dirPath, ".test_access")
-	file, err := os.OpenFile(testFile, os.O_CREATE|os.O_WRONLY, 0600)
-	if err != nil {
-		return fmt.Errorf("ディレクトリへの書き込み権限がありません: %s", dirPath)
-	}
-	file.Close()
-	os.Remove(testFile) // テストファイルを削除
-
-	return nil
-}
-
-// ValidateExtension はファイル拡張子をバリデーションします
-func ValidateExtension(ext string) error {
-	// 空文字列チェック
-	if ext == "" {
-		return fmt.Errorf("拡張子が空です")
-	}
-
-	// 拡張子を正規化（ドットがない場合は追加）
-	normalizedExt := ext
-	if !strings.HasPrefix(normalizedExt, ".") {
-		normalizedExt = "." + normalizedExt
-	}
-
-	// より確実な方法で小文字に変換
-	extLower := ""
-	for _, char := range normalizedExt {
-		if char >= 'A' && char <= 'Z' {
-			extLower += string(char + 32) // A-Z を a-z に変換
-		} else {
-			extLower += string(char)
+	// 基本的な数値チェック
+	for _, char := range dateTimeStr {
+		if char < '0' || char > '9' {
+			return time.Time{}, fmt.Errorf("日時は数字のみで構成されている必要があります: %s", dateTimeStr)
 		}
 	}
 
-	// サポートされている拡張子かチェック
-	for _, supportedExt := range supportedExtensions {
-		if extLower == supportedExt {
+	// 各要素のバリデーション
+	if err := validateDateTime(dateTimeStr); err != nil {
+		return time.Time{}, err
+	}
+
+	return time.ParseInLocation("20060102150405", dateTimeStr, time.Local)
+}
+
+// ProcessFilesFromFilename はファイル名から日時情報を抽出してEXIF情報を設定します
+func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, dryRun, verbose, overwriteExif bool) error {
+	// ファイルパターンの正規表現
+	// 例: IMG_20230101_120000.jpg, Screenshot_20230101-120000.png など
+	datePatterns := []*regexp.Regexp{
+		regexp.MustCompile(`(\d{4})(\d{2})(\d{2})[-_]?(\d{2})(\d{2})(\d{2})`), // YYYYMMDD_HHMMSS
+		regexp.MustCompile(`(\d{4})-(\d{2})-(\d{2})[-_](\d{2})-(\d{2})-(\d{2})`), // YYYY-MM-DD_HH-MM-SS
+		regexp.MustCompile(`(\d{4})[-_](\d{2})[-_](\d{2})[-_](\d{2})[-_](\d{2})[-_](\d{2})`), // YYYY_MM_DD_HH_MM_SS
+	}
+
+	return filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// ディレクトリの場合
+		if info.IsDir() {
+			// ルートパス以外のディレクトリで再帰的処理が無効の場合はスキップ
+			if filePath != path && !recursive {
+				return filepath.SkipDir
+			}
 			return nil
 		}
-	}
 
-	return fmt.Errorf("サポートされていない拡張子です: %s\nサポートされている拡張子: %v", ext, supportedExtensions)
+		// 画像ファイル以外はスキップ
+		ext := strings.ToLower(filepath.Ext(filePath))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			if verbose {
+				fmt.Printf("スキップ: %s (サポートされていないファイル形式)\n", filePath)
+			}
+			return nil
+		}
+
+		// ファイル名から日時情報を抽出
+		fileName := filepath.Base(filePath)
+		var dateTime time.Time
+		var matched bool
+
+		for _, pattern := range datePatterns {
+			matches := pattern.FindStringSubmatch(fileName)
+			if len(matches) >= 7 {
+				year := matches[1]
+				month := matches[2]
+				day := matches[3]
+				hour := matches[4]
+				minute := matches[5]
+				second := matches[6]
+
+				// 日時情報の解析
+				dateTimeStr := fmt.Sprintf("%s-%s-%s %s:%s:%s", year, month, day, hour, minute, second)
+				parsedTime, err := time.Parse("2006-01-02 15:04:05", dateTimeStr)
+				if err != nil {
+					if verbose {
+						fmt.Printf("警告: %s の日時情報の解析に失敗しました: %v\n", filePath, err)
+					}
+					continue
+				}
+
+				dateTime = parsedTime
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			if verbose {
+				fmt.Printf("スキップ: %s (ファイル名から日時情報を抽出できませんでした)\n", filePath)
+			}
+			return nil
+		}
+
+		// 既存のEXIF情報をチェック
+		if !overwriteExif {
+			// ファイルを読み取り
+			originalData, err := os.ReadFile(filePath)
+			if err == nil {
+				// JPEGパーサーを使用してExifセグメントを取得
+				jmp := jpegstructure.NewJpegMediaParser()
+				intfc, err := jmp.ParseBytes(originalData)
+				if err == nil {
+					sl := intfc.(*jpegstructure.SegmentList)
+					// Exifセグメントを取得
+					_, _, err := sl.Exif()
+					if err == nil {
+						if verbose {
+							fmt.Printf("スキップ: %s (既存のEXIF情報があります)\n", filePath)
+						}
+						return nil
+					}
+				}
+			}
+		}
+
+		// 処理内容の表示
+		fmt.Printf("処理: %s -> %v\n", filePath, dateTime.Format("2006-01-02 15:04:05"))
+
+		// ドライランの場合は実際の変更を行わない
+		if dryRun {
+			return nil
+		}
+
+		// 設定を作成
+		config := &Config{
+			DateTime: dateTime,
+			DryRun:   false,
+			Verbose:  verbose,
+		}
+
+		// EXIF情報の設定
+		err = s.ModifySingleFileExif(filePath, config)
+		if err != nil {
+			fmt.Printf("エラー: %s の処理中にエラーが発生しました: %v\n", filePath, err)
+			return nil // 個別のファイルエラーは全体の処理を中断しない
+		}
+
+		fmt.Printf("EXIF情報を設定しました: %s\n", filePath)
+		return nil
+	})
 }
 
-// RemoveExtension はファイル名から拡張子を除去します
-func RemoveExtension(fileName string) string {
-	ext := filepath.Ext(fileName)
-	if ext != "" {
-		return fileName[:len(fileName)-len(ext)]
-	}
-	return fileName
+// ProcessFilesFromScreenshot はスクリーンショットファイルの日時情報を設定します
+func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive, dryRun, verbose, overwriteExif bool) error {
+	return filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// ディレクトリの場合
+		if info.IsDir() {
+			// ルートパス以外のディレクトリで再帰的処理が無効の場合はスキップ
+			if filePath != path && !recursive {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// 画像ファイル以外はスキップ
+		ext := strings.ToLower(filepath.Ext(filePath))
+		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+			if verbose {
+				fmt.Printf("スキップ: %s (サポートされていないファイル形式)\n", filePath)
+			}
+			return nil
+		}
+
+		// ファイル名がスクリーンショットパターンに一致するか確認
+		fileName := filepath.Base(filePath)
+		isScreenshot := strings.HasPrefix(strings.ToLower(fileName), "screenshot") ||
+			strings.HasPrefix(strings.ToLower(fileName), "screen shot") ||
+			strings.HasPrefix(strings.ToLower(fileName), "スクリーンショット")
+
+		if !isScreenshot {
+			if verbose {
+				fmt.Printf("スキップ: %s (スクリーンショットファイルではありません)\n", filePath)
+			}
+			return nil
+		}
+
+		// ファイルの更新日時を取得
+		fileTime := info.ModTime()
+
+		// 既存のEXIF情報をチェック
+		if !overwriteExif {
+			// ファイルを読み取り
+			originalData, err := os.ReadFile(filePath)
+			if err == nil {
+				// JPEGパーサーを使用してExifセグメントを取得
+				jmp := jpegstructure.NewJpegMediaParser()
+				intfc, err := jmp.ParseBytes(originalData)
+				if err == nil {
+					sl := intfc.(*jpegstructure.SegmentList)
+					// Exifセグメントを取得
+					_, _, err := sl.Exif()
+					if err == nil {
+						if verbose {
+							fmt.Printf("スキップ: %s (既存のEXIF情報があります)\n", filePath)
+						}
+						return nil
+					}
+				}
+			}
+		}
+
+		// 処理内容の表示
+		fmt.Printf("処理: %s -> %v\n", filePath, fileTime.Format("2006-01-02 15:04:05"))
+
+		// ドライランの場合は実際の変更を行わない
+		if dryRun {
+			return nil
+		}
+
+		// 設定を作成
+		config := &Config{
+			DateTime: fileTime,
+			DryRun:   false,
+			Verbose:  verbose,
+		}
+
+		// EXIF情報の設定
+		err = s.ModifySingleFileExif(filePath, config)
+		if err != nil {
+			fmt.Printf("エラー: %s の処理中にエラーが発生しました: %v\n", filePath, err)
+			return nil // 個別のファイルエラーは全体の処理を中断しない
+		}
+
+		fmt.Printf("EXIF情報を設定しました: %s\n", filePath)
+		return nil
+	})
 }
