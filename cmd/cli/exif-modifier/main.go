@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"regexp"
 	"runtime"
 	"time"
 
@@ -99,18 +97,10 @@ func main() {
 		}
 	}
 
-	// ディレクトリの存在確認とバリデーション
-	if err := usecases.ValidateDirectory(*dirPath); err != nil {
+	// バリデーション
+	if err := usecases.ValidateInputOptions(*dirPath, *extension); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
-	}
-
-	// 拡張子のバリデーション
-	if *extension != "" {
-		if err := usecases.ValidateExtension(*extension); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
 	}
 
 	// ログ設定
@@ -157,13 +147,12 @@ func main() {
 
 	// fromFilename または fromScreenshot モードの場合、ファイル名から日時を抽出してファイルごとに設定
 	if *fromFilename || *fromScreenshot {
-		var processedCount, errorCount int
 		var err error
 
 		if *fromFilename {
-			processedCount, errorCount, err = processFilesFromFilename(service, imageFiles, config)
+			err = service.ProcessFilesFromFilename(*dirPath, *recursive, *dryRun, *verbose, true)
 		} else if *fromScreenshot {
-			processedCount, errorCount, err = processFilesFromScreenshot(service, imageFiles, config)
+			err = service.ProcessFilesFromScreenshot(*dirPath, *recursive, *dryRun, *verbose, true)
 		}
 
 		if err != nil {
@@ -172,11 +161,7 @@ func main() {
 		}
 
 		// 結果を表示
-		fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
-		if errorCount > 0 {
-			fmt.Printf(" (%d個のエラー)", errorCount)
-		}
-		fmt.Println()
+		fmt.Printf("\n処理完了\n")
 	} else {
 		// 通常のモード（全ファイルに同じ日時を設定）
 		processedCount, errorCount, err := service.ModifyExifData(imageFiles, config)
@@ -192,14 +177,6 @@ func main() {
 		}
 		fmt.Println()
 	}
-}
-
-// うるう年判定
-func isLeapYear(year int) bool {
-	// 4で割り切れる年はうるう年
-	// ただし100で割り切れる年は平年
-	// ただし400で割り切れる年はうるう年
-	return (year%4 == 0 && year%100 != 0) || (year%400 == 0)
 }
 
 // 実行情報を表示
@@ -220,151 +197,4 @@ func printExecutionInfo(config *usecases.Config) {
 	fmt.Printf("詳細モード: %t\n", config.Verbose)
 	fmt.Printf("ワーカー数: %d\n", config.WorkerCount)
 	fmt.Println()
-}
-
-// ファイル名から日時を抽出してファイルごとに処理
-func processFilesFromFilename(service *usecases.ExifModifierService, imageFiles []string, config *usecases.Config) (int, int, error) {
-	processedCount := 0
-	errorCount := 0
-
-	// yyyyMMddhhmmss形式の正規表現（ファイル名の先頭に14桁の数字がある場合）
-	dateTimeRegex := regexp.MustCompile(`^(\d{14})`)
-
-	for _, filePath := range imageFiles {
-		fileName := filepath.Base(filePath)
-		fileName = removeExtension(fileName)
-
-		// ファイル名から日時を抽出
-		matches := dateTimeRegex.FindStringSubmatch(fileName)
-		if len(matches) < 2 {
-			if config.Verbose {
-				log.Printf("ファイル名が日時形式ではありません（スキップ）: %s", fileName)
-			}
-			continue
-		}
-
-		// 日時をパース
-		dateTimeStr := matches[1]
-		fileDateTime, err := usecases.ParseDateTime(dateTimeStr)
-		if err != nil {
-			if config.Verbose {
-				log.Printf("日時のパースに失敗しました（スキップ）: %s - %v", fileName, err)
-			}
-			errorCount++
-			continue
-		}
-
-		if config.Verbose {
-			log.Printf("ファイル: %s -> 日時: %s", fileName, fileDateTime.Format("2006-01-02 15:04:05"))
-		}
-
-		// 一時的にconfigの日時を変更
-		tempConfig := *config
-		tempConfig.DateTime = fileDateTime
-
-		// ドライランの場合は処理をスキップ
-		if config.DryRun {
-			fmt.Printf("[DRY RUN] %s -> %s\n", filePath, fileDateTime.Format("2006-01-02 15:04:05"))
-			processedCount++
-			continue
-		}
-
-		// 単一ファイルの処理
-		_, fileErrorCount, err := service.ModifyExifData([]string{filePath}, &tempConfig)
-		if err != nil {
-			if config.Verbose {
-				log.Printf("ファイル処理中にエラーが発生しました: %s - %v", filePath, err)
-			}
-			errorCount++
-			continue
-		}
-
-		if fileErrorCount > 0 {
-			errorCount += fileErrorCount
-		} else {
-			processedCount++
-		}
-	}
-
-	return processedCount, errorCount, nil
-}
-
-// スクリーンショットファイル名から日時を抽出してファイルごとに処理
-func processFilesFromScreenshot(service *usecases.ExifModifierService, imageFiles []string, config *usecases.Config) (int, int, error) {
-	processedCount := 0
-	errorCount := 0
-
-	// Screenshot_yyyyMMdd-hhmmss形式の正規表現
-	screenshotRegex := regexp.MustCompile(`^Screenshot_(\d{8})-(\d{6})`)
-
-	for _, filePath := range imageFiles {
-		fileName := filepath.Base(filePath)
-		fileName = removeExtension(fileName)
-
-		// ファイル名から日時を抽出
-		matches := screenshotRegex.FindStringSubmatch(fileName)
-		if len(matches) < 3 {
-			if config.Verbose {
-				log.Printf("ファイル名がスクリーンショット形式ではありません（スキップ）: %s", fileName)
-			}
-			continue
-		}
-
-		// 日付と時刻を結合してyyyyMMddhhmmss形式にする
-		dateStr := matches[1] // yyyyMMdd
-		timeStr := matches[2] // hhmmss
-		dateTimeStr := dateStr + timeStr
-
-		// 日時をパース
-		fileDateTime, err := usecases.ParseDateTime(dateTimeStr)
-		if err != nil {
-			if config.Verbose {
-				log.Printf("日時のパースに失敗しました（スキップ）: %s - %v", fileName, err)
-			}
-			errorCount++
-			continue
-		}
-
-		if config.Verbose {
-			log.Printf("ファイル: %s -> 日時: %s", fileName, fileDateTime.Format("2006-01-02 15:04:05"))
-		}
-
-		// 一時的にconfigの日時を変更
-		tempConfig := *config
-		tempConfig.DateTime = fileDateTime
-
-		// ドライランの場合は処理をスキップ
-		if config.DryRun {
-			fmt.Printf("[DRY RUN] %s -> %s\n", filePath, fileDateTime.Format("2006-01-02 15:04:05"))
-			processedCount++
-			continue
-		}
-
-		// 単一ファイルの処理
-		_, fileErrorCount, err := service.ModifyExifData([]string{filePath}, &tempConfig)
-		if err != nil {
-			if config.Verbose {
-				log.Printf("ファイル処理中にエラーが発生しました: %s - %v", filePath, err)
-			}
-			errorCount++
-			continue
-		}
-
-		if fileErrorCount > 0 {
-			errorCount += fileErrorCount
-		} else {
-			processedCount++
-		}
-	}
-
-	return processedCount, errorCount, nil
-}
-
-// ファイル名から拡張子を除去
-func removeExtension(fileName string) string {
-	ext := filepath.Ext(fileName)
-	if ext != "" {
-		return fileName[:len(fileName)-len(ext)]
-	}
-	return fileName
 }
