@@ -7,6 +7,8 @@ require (
 	github.com/anthonynsimon/bild v0.14.0
 	github.com/dsoprea/go-exif/v3 v3.0.1
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20221012074422-4f3f7e934102
+	github.com/dsoprea/go-png-image-structure/v2 v2.0.0-20221012074422-4f3f7e934102
+	github.com/dsoprea/go-tiff-image-structure/v2 v2.0.0-20221012074422-4f3f7e934102
 	github.com/gen2brain/avif v0.4.3
 	github.com/gen2brain/webp v0.5.4
 	github.com/pdfcpu/pdfcpu v0.10.2
