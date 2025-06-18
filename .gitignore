@@ -63,3 +63,7 @@ mypkg/go.sum
 pkg/bin/win_amd64
 pkg/bin/linux_amd64
 bin
+
+### test data ###
+internal/independencies/exif_modifier/test_data/tmp/*
+!internal/independencies/exif_modifier/test_data/tmp/.gitkeep
