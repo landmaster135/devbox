@@ -10,11 +10,7 @@ import (
 	"sync"
 	"time"
 
-	exif "github.com/dsoprea/go-exif/v3"
-	exifcommon "github.com/dsoprea/go-exif/v3/common"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
-	pngstructure "github.com/dsoprea/go-png-image-structure/v2"
-	tiffstructure "github.com/dsoprea/go-tiff-image-structure/v2"
 )
 
 // サポートする画像拡張子
@@ -249,125 +245,6 @@ func (s *ImageRenamerService) extractCreateDateFromJpeg(filePath string) (time.T
 	return time.Time{}, fmt.Errorf("CreateDateまたはDateTimeOriginalが見つかりません")
 }
 
-// extractCreateDateFromPng はPNGファイルからCreateDateを抽出します
-func (s *ImageRenamerService) extractCreateDateFromPng(filePath string) (time.Time, error) {
-	// ファイルを読み取り
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("ファイルの読み取りに失敗: %v", err)
-	}
-
-	// PNGパーサーを使用してExifセグメントを取得
-	pmp := pngstructure.NewPngMediaParser()
-	intfc, err := pmp.ParseBytes(data)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("PNGの解析に失敗: %v", err)
-	}
-
-	cs := intfc.(*pngstructure.ChunkSlice)
-
-	// Exifチャンクを取得
-	_, rawExif, err := cs.Exif()
-	if err != nil {
-		return time.Time{}, fmt.Errorf("Exifデータが見つかりません: %v", err)
-	}
-
-	// Exifデータを解析
-	im, err := exifcommon.NewIfdMappingWithStandard()
-	if err != nil {
-		return time.Time{}, fmt.Errorf("IFDマッピングの作成に失敗: %v", err)
-	}
-
-	ti := exif.NewTagIndex()
-	_, index, err := exif.Collect(im, ti, rawExif)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("Exifデータの収集に失敗: %v", err)
-	}
-
-	// CreateDateまたはDateTimeOriginalを取得
-	rootIfd := index.RootIfd
-	results, err := rootIfd.FindTagWithName("DateTime")
-	if err == nil && len(results) > 0 {
-		value, err := results[0].Value()
-		if err == nil {
-			if dateStr, ok := value.(string); ok {
-				parsedTime, err := time.Parse("2006:01:02 15:04:05", dateStr)
-				if err == nil {
-					return parsedTime, nil
-				}
-			}
-		}
-	}
-
-	results, err = rootIfd.FindTagWithName("DateTimeOriginal")
-	if err == nil && len(results) > 0 {
-		value, err := results[0].Value()
-		if err == nil {
-			if dateStr, ok := value.(string); ok {
-				parsedTime, err := time.Parse("2006:01:02 15:04:05", dateStr)
-				if err == nil {
-					return parsedTime, nil
-				}
-			}
-		}
-	}
-
-	return time.Time{}, fmt.Errorf("CreateDateまたはDateTimeOriginalが見つかりません")
-}
-
-// extractCreateDateFromTiff はTIFFファイルからCreateDateを抽出します
-func (s *ImageRenamerService) extractCreateDateFromTiff(filePath string) (time.Time, error) {
-	// ファイルを読み取り
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("ファイルの読み取りに失敗: %v", err)
-	}
-
-	// TIFFパーサーを使用してExifセグメントを取得
-	tmp := tiffstructure.NewTiffMediaParser()
-	intfc, err := tmp.ParseBytes(data)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("TIFFの解析に失敗: %v", err)
-	}
-
-	tags := intfc.(*tiffstructure.TagSlice)
-
-	// Exifデータを取得
-	rootIfd, _, err := tags.Exif()
-	if err != nil {
-		return time.Time{}, fmt.Errorf("Exifデータが見つかりません: %v", err)
-	}
-
-	// CreateDateまたはDateTimeOriginalを取得
-	results, err := rootIfd.FindTagWithName("DateTime")
-	if err == nil && len(results) > 0 {
-		value, err := results[0].Value()
-		if err == nil {
-			if dateStr, ok := value.(string); ok {
-				parsedTime, err := time.Parse("2006:01:02 15:04:05", dateStr)
-				if err == nil {
-					return parsedTime, nil
-				}
-			}
-		}
-	}
-
-	results, err = rootIfd.FindTagWithName("DateTimeOriginal")
-	if err == nil && len(results) > 0 {
-		value, err := results[0].Value()
-		if err == nil {
-			if dateStr, ok := value.(string); ok {
-				parsedTime, err := time.Parse("2006:01:02 15:04:05", dateStr)
-				if err == nil {
-					return parsedTime, nil
-				}
-			}
-		}
-	}
-
-	return time.Time{}, fmt.Errorf("CreateDateまたはDateTimeOriginalが見つかりません")
-}
-
 // extractCreateDate はファイル形式に応じてCreateDateを抽出します
 func (s *ImageRenamerService) extractCreateDate(filePath string) (time.Time, error) {
 	ext := strings.ToLower(filepath.Ext(filePath))
@@ -375,12 +252,8 @@ func (s *ImageRenamerService) extractCreateDate(filePath string) (time.Time, err
 	switch ext {
 	case ".jpg", ".jpeg":
 		return s.extractCreateDateFromJpeg(filePath)
-	case ".png":
-		return s.extractCreateDateFromPng(filePath)
-	case ".tiff", ".tif":
-		return s.extractCreateDateFromTiff(filePath)
-	case ".webp":
-		// WebPは現在ExifサポートがないためファイルのModTimeを使用
+	case ".png", ".tiff", ".tif", ".webp":
+		// PNG, TIFF, WebPは依存関係を減らすためファイルのModTimeを使用
 		info, err := os.Stat(filePath)
 		if err != nil {
 			return time.Time{}, fmt.Errorf("ファイル情報の取得に失敗: %v", err)
