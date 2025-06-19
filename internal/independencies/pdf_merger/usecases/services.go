@@ -64,6 +64,36 @@ func MergeImagesIntoPDF(images []string, output string) error {
 	return nil
 }
 
+// AddImagesToExistingPDF は既存のPDFファイルに画像ページを追加します
+func AddImagesToExistingPDF(existingPDF string, images []string, output string) error {
+	cfg := api.LoadConfiguration()
+	// Unit is used in commands for layout
+	cfg.Unit = types.POINTS
+	// Compress non-stream object to stream object
+	cfg.WriteObjectStream = true
+	// Remove unused fonts and images from resource dictionary
+	cfg.OptimizeResourceDicts = true
+	// Share duplicated streams in all pages
+	cfg.OptimizeDuplicateContentStreams = true
+
+	// 一時的に画像からPDFを作成
+	tempPDF := output + ".tmp"
+	defer os.Remove(tempPDF) // 関数終了時に一時ファイルを削除
+
+	// 画像をPDFに変換
+	if err := api.ImportImagesFile(images, tempPDF, nil, cfg); err != nil {
+		return fmt.Errorf("画像をPDFに変換中にエラーが発生しました: %w", err)
+	}
+
+	// 既存PDFと新規PDFをマージ
+	inFiles := []string{existingPDF, tempPDF}
+	if err := api.MergeCreateFile(inFiles, output, false, cfg); err != nil {
+		return fmt.Errorf("PDFのマージ中にエラーが発生しました: %w", err)
+	}
+
+	return nil
+}
+
 func Check(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "エラー:", err)
