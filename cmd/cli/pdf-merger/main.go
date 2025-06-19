@@ -47,7 +47,6 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	fmt.Fprintf(stdout, "検出した画像: %d 枚\n", len(images))
-	fmt.Fprintf(stdout, "出力 PDF   : %s\n", output)
 
 	// 既存PDFファイルが指定されている場合は既存PDFに画像を追加
 	if *add != "" {
@@ -56,16 +55,16 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 			fmt.Fprintf(stderr, "エラー: 既存PDFファイルが見つかりません: %s\n", *add)
 			return exitCodeError
 		}
-		
+
 		fmt.Fprintf(stdout, "既存 PDF   : %s\n", *add)
-		
+
 		// 既存PDFに画像を追加
 		err = usecases.AddImagesToExistingPDF(*add, images, output)
 		if err != nil {
 			fmt.Fprintf(stderr, "エラー: %v\n", err)
 			return exitCodeError
 		}
-		
+
 		fmt.Fprintln(stdout, "既存PDFに画像を追加しました。完了です。")
 	} else {
 		// 新規PDFの生成
@@ -74,9 +73,12 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 			fmt.Fprintf(stderr, "エラー: %v\n", err)
 			return exitCodeError
 		}
-		
+
 		fmt.Fprintln(stdout, "PDF を生成しました。完了です。")
 	}
+	
+	fmt.Fprintf(stdout, "出力 PDF   : %s\n", output)
+
 	return exitCodeOK
 }
 

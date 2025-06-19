@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	api "github.com/pdfcpu/pdfcpu/pkg/api"
 	types "github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
@@ -64,6 +65,12 @@ func MergeImagesIntoPDF(images []string, output string) error {
 	return nil
 }
 
+func getNameOfTemporaryPDF() string {
+	timestamp := time.Now().Format("20060102150405")
+	tempPDF := fmt.Sprintf("added_%s.pdf", timestamp)
+	return tempPDF
+}
+
 // AddImagesToExistingPDF は既存のPDFファイルに画像ページを追加します
 func AddImagesToExistingPDF(existingPDF string, images []string, output string) error {
 	cfg := api.LoadConfiguration()
@@ -77,7 +84,7 @@ func AddImagesToExistingPDF(existingPDF string, images []string, output string) 
 	cfg.OptimizeDuplicateContentStreams = true
 
 	// 一時的に画像からPDFを作成
-	tempPDF := output + ".tmp"
+	tempPDF := getNameOfTemporaryPDF()
 	defer os.Remove(tempPDF) // 関数終了時に一時ファイルを削除
 
 	// 画像をPDFに変換
@@ -92,11 +99,4 @@ func AddImagesToExistingPDF(existingPDF string, images []string, output string) 
 	}
 
 	return nil
-}
-
-func Check(err error) {
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "エラー:", err)
-		os.Exit(1)
-	}
 }
