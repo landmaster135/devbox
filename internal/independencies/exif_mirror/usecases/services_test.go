@@ -273,15 +273,6 @@ func TestExifMirrorService_findCorrespondingSourceFile_NotFound(t *testing.T) {
 	}
 }
 
-func TestExifMirrorService_hasExifTool(t *testing.T) {
-	service := NewExifMirrorService()
-	
-	// このテストは環境に依存するため、エラーが出ないことだけ確認
-	result := service.hasExifTool()
-	
-	// exiftoolがあるかないかは環境次第なので、実行されることだけ確認
-	_ = result
-}
 
 func TestExifMirrorService_CopyFileExifSimple(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
@@ -306,7 +297,7 @@ func TestExifMirrorService_CopyFileExifSimple(t *testing.T) {
 	}
 
 	service := NewExifMirrorService()
-	
+
 	// 基本的なファイル時刻コピーのテスト
 	err = service.CopyFileExifSimple(sourceFile, targetFile)
 	if err != nil {
@@ -325,14 +316,14 @@ func TestExifMirrorService_BackupFile(t *testing.T) {
 	// テスト用のファイルを作成
 	originalFile := filepath.Join(tempDir, "original.jpg")
 	testContent := "test content for backup"
-	
+
 	err = os.WriteFile(originalFile, []byte(testContent), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	service := NewExifMirrorService()
-	
+
 	// バックアップ作成
 	backupPath, err := service.BackupFile(originalFile)
 	if err != nil {
@@ -354,4 +345,3 @@ func TestExifMirrorService_BackupFile(t *testing.T) {
 		t.Errorf("Backup content = %s, want %s", string(backupContent), testContent)
 	}
 }
-
