@@ -503,13 +503,20 @@ func ParseDateTime(dateTimeStr string) (time.Time, error) {
 	return time.ParseInLocation("20060102150405", dateTimeStr, time.Local)
 }
 
+func (s *ExifModifierService) isFileExtensionSupported(ext string) bool {
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" && ext != ".tiff" {
+		return false
+	}
+	return true
+}
+
 // ProcessFilesFromFilename はファイル名から日時情報を抽出してEXIF情報を設定します
 func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, dryRun, verbose, overwriteExif bool) error {
 	// ファイルパターンの正規表現
 	// 例: IMG_20230101_120000.jpg, Screenshot_20230101-120000.png など
 	datePatterns := []*regexp.Regexp{
-		regexp.MustCompile(`(\d{4})(\d{2})(\d{2})[-_]?(\d{2})(\d{2})(\d{2})`), // YYYYMMDD_HHMMSS
-		regexp.MustCompile(`(\d{4})-(\d{2})-(\d{2})[-_](\d{2})-(\d{2})-(\d{2})`), // YYYY-MM-DD_HH-MM-SS
+		regexp.MustCompile(`(\d{4})(\d{2})(\d{2})[-_]?(\d{2})(\d{2})(\d{2})`),                // YYYYMMDD_HHMMSS
+		regexp.MustCompile(`(\d{4})-(\d{2})-(\d{2})[-_](\d{2})-(\d{2})-(\d{2})`),             // YYYY-MM-DD_HH-MM-SS
 		regexp.MustCompile(`(\d{4})[-_](\d{2})[-_](\d{2})[-_](\d{2})[-_](\d{2})[-_](\d{2})`), // YYYY_MM_DD_HH_MM_SS
 	}
 
@@ -529,7 +536,7 @@ func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, d
 
 		// 画像ファイル以外はスキップ
 		ext := strings.ToLower(filepath.Ext(filePath))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		if !s.isFileExtensionSupported(ext) {
 			if verbose {
 				fmt.Printf("スキップ: %s (サポートされていないファイル形式)\n", filePath)
 			}
@@ -641,7 +648,7 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 
 		// 画像ファイル以外はスキップ
 		ext := strings.ToLower(filepath.Ext(filePath))
-		if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		if !s.isFileExtensionSupported(ext) {
 			if verbose {
 				fmt.Printf("スキップ: %s (サポートされていないファイル形式)\n", filePath)
 			}
