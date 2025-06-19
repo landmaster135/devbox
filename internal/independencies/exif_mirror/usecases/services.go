@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -245,35 +244,30 @@ func (s *ExifMirrorService) findCorrespondingSourceFile(targetFilePath string, c
 }
 
 // copyExifData はソースファイルからターゲットファイルにEXIFデータをコピーします
-// go-exifライブラリを優先的に使用し、フォールバックとしてexiftoolを使用
+// go-exifライブラリのみを使用
 func (s *ExifMirrorService) copyExifData(sourceFilePath, targetFilePath string, config *Config) error {
 	if config.Verbose {
 		log.Printf("Copying EXIF from %s to %s", sourceFilePath, targetFilePath)
 	}
 
-	// まずgo-exifライブラリを使用してEXIFデータをコピーを試す
+	// go-exifライブラリを使用してEXIFデータをコピー
 	err := s.copyExifWithGoExif(sourceFilePath, targetFilePath, config)
-	if err == nil {
-		return nil
+	if err != nil {
+		// EXIFデータが存在しない場合の特別な処理
+		if strings.Contains(err.Error(), "no exif data") {
+			// 警告メッセージを表示して基本的なファイル情報をコピー
+			fmt.Printf("  ⚠️  EXIFデータが存在しません。基本的なファイル情報をコピーします\n")
+			err = s.CopyFileExifSimple(sourceFilePath, targetFilePath)
+			if err != nil {
+				return fmt.Errorf("基本ファイル情報のコピーに失敗: %v", err)
+			}
+			fmt.Printf("  ✅ 基本ファイル情報をコピーしました\n")
+			return nil
+		}
+		return err
 	}
 
-	if config.Verbose {
-		log.Printf("go-exif failed: %v, trying exiftool as fallback", err)
-	}
-
-	// go-exifが失敗した場合、exiftoolをフォールバックとして使用
-	if s.hasExifTool() {
-		return s.copyExifWithExifTool(sourceFilePath, targetFilePath, config)
-	}
-
-	// どちらも利用できない場合はエラー
-	return fmt.Errorf("EXIF copying failed: go-exif error: %v, exiftool not available", err)
-}
-
-// hasExifTool はexiftoolが利用可能かチェックします
-func (s *ExifMirrorService) hasExifTool() bool {
-	_, err := exec.LookPath("exiftool")
-	return err == nil
+	return nil
 }
 
 // copyExifWithGoExif はgo-exifライブラリを使用してEXIFデータをコピーします
@@ -421,38 +415,6 @@ func (s *ExifMirrorService) copyExifGeneric(sourceFilePath, targetFilePath strin
 	return s.CopyFileExifSimple(sourceFilePath, targetFilePath)
 }
 
-// copyExifWithExifTool はexiftoolを使用してEXIFデータをコピーします
-func (s *ExifMirrorService) copyExifWithExifTool(sourceFilePath, targetFilePath string, config *Config) error {
-	// exiftoolコマンドを構築
-	args := []string{
-		"-tagsFromFile",
-		sourceFilePath,
-		"-exif:all",
-		"-overwrite_original",
-		targetFilePath,
-	}
-
-	if config.Verbose {
-		log.Printf("Running: exiftool %s", strings.Join(args, " "))
-	}
-
-	// exiftoolを実行
-	cmd := exec.Command("exiftool", args...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("exiftool failed: %v, stderr: %s", err, stderr.String())
-	}
-
-	if config.Verbose {
-		log.Printf("exiftool output: %s", stdout.String())
-	}
-
-	return nil
-}
 
 // removeExtension はファイル名から拡張子を除去します
 func removeExtension(fileName string) string {
@@ -523,7 +485,7 @@ func ValidateExtension(ext string) error {
 // CopyFileExifSimple は単純なファイルベースのEXIFコピー（fallback用）
 func (s *ExifMirrorService) CopyFileExifSimple(sourceFilePath, targetFilePath string) error {
 	// この実装は、ライブラリを使わない基本的なアプローチです
-	// 実際のEXIF操作は複雑なため、exiftoolの使用を推奨します
+	// 基本的なファイル情報（変更時刻など）のみをコピーします
 
 	sourceInfo, err := os.Stat(sourceFilePath)
 	if err != nil {
