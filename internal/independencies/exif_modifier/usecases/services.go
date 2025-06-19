@@ -39,6 +39,16 @@ func NewExifModifierService() *ExifModifierService {
 	return &ExifModifierService{}
 }
 
+// getJSTLocation はJSTタイムゾーンを取得します
+func (s *ExifModifierService) getJSTLocation() *time.Location {
+	jstLocation, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		// フォールバック: UTC+9の固定オフセット
+		return time.FixedZone("JST", 9*60*60)
+	}
+	return jstLocation
+}
+
 // validateDirectory はディレクトリの存在と権限をバリデーションします
 func validateDirectory(dirPath string) error {
 	// 空文字列チェック
@@ -500,7 +510,14 @@ func ParseDateTime(dateTimeStr string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	return time.ParseInLocation("20060102150405", dateTimeStr, time.Local)
+	// JSTタイムゾーンを取得
+	jstLocation, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		// フォールバック: UTC+9の固定オフセット
+		jstLocation = time.FixedZone("JST", 9*60*60)
+	}
+
+	return time.ParseInLocation("20060102150405", dateTimeStr, jstLocation)
 }
 
 func (s *ExifModifierService) isFileExtensionSupported(ext string) bool {
@@ -558,9 +575,9 @@ func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, d
 				minute := matches[5]
 				second := matches[6]
 
-				// 日時情報の解析
+				// 日時情報の解析（JSTタイムゾーンで）
 				dateTimeStr := fmt.Sprintf("%s-%s-%s %s:%s:%s", year, month, day, hour, minute, second)
-				parsedTime, err := time.Parse("2006-01-02 15:04:05", dateTimeStr)
+				parsedTime, err := time.ParseInLocation("2006-01-02 15:04:05", dateTimeStr, s.getJSTLocation())
 				if err != nil {
 					if verbose {
 						fmt.Printf("警告: %s の日時情報の解析に失敗しました: %v\n", filePath, err)
@@ -668,8 +685,36 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 			return nil
 		}
 
-		// ファイルの更新日時を取得
-		fileTime := info.ModTime()
+		// スクリーンショットファイル名から日時を抽出
+		screenshotPatterns := []*regexp.Regexp{
+			regexp.MustCompile(`[Ss]creenshot_(\d{8})-(\d{6})`),     // Screenshot_YYYYMMDD-HHMMSS
+			regexp.MustCompile(`スクリーンショット_(\d{8})-(\d{6})`),      // スクリーンショット_YYYYMMDD-HHMMSS
+		}
+
+		var fileTime time.Time
+		var matched bool
+
+		for _, pattern := range screenshotPatterns {
+			matches := pattern.FindStringSubmatch(fileName)
+			if len(matches) >= 3 {
+				dateStr := matches[1] // YYYYMMDD
+				timeStr := matches[2] // HHMMSS
+				dateTimeStr := dateStr + timeStr // YYYYMMDDHHMMSS
+
+				parsedTime, err := time.ParseInLocation("20060102150405", dateTimeStr, s.getJSTLocation())
+				if err != nil {
+					return fmt.Errorf("ファイル名から抽出した日時の解析に失敗: %s - %v", filePath, err)
+				}
+
+				fileTime = parsedTime
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			return fmt.Errorf("スクリーンショットファイル名から日時情報を抽出できませんでした: %s (期待される形式: Screenshot_YYYYMMDD-HHMMSS)", filePath)
+		}
 
 		// 既存のEXIF情報をチェック
 		if !overwriteExif {
