@@ -80,7 +80,9 @@ func readDirForTestData(targetDir string) (string, error) {
 
 	// ファイルが存在するか確認
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
-		return "", fmt.Errorf("directory for test data not found at %s: %w", dirPath, err)
+		errMsg := fmt.Sprintf("directory for test data not found at %s", dirPath)
+		fmt.Println(errMsg)
+		return "", fmt.Errorf("%s: %w", errMsg, err)
 	}
 
 	return dirPath, nil
