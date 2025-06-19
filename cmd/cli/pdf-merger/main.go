@@ -26,6 +26,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// コマンドライン引数の定義
 	dir := fs.String("dir", ".", "画像を検索するフォルダー (再帰探索)")
 	out := fs.String("out", "", "出力 PDF ファイル名 (未指定なら <dir 名>.pdf)")
+	add := fs.String("add", "", "既存の PDF ファイルパス (指定時は既存PDFに画像を追加)")
 
 	// 引数の解析
 	if err := fs.Parse(args); err != nil {
@@ -48,14 +49,34 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	fmt.Fprintf(stdout, "検出した画像: %d 枚\n", len(images))
 	fmt.Fprintf(stdout, "出力 PDF   : %s\n", output)
 
-	// PDFの生成
-	err = usecases.MergeImagesIntoPDF(images, output)
-	if err != nil {
-		fmt.Fprintf(stderr, "エラー: %v\n", err)
-		return exitCodeError
+	// 既存PDFファイルが指定されている場合は既存PDFに画像を追加
+	if *add != "" {
+		// 既存PDFファイルの存在確認
+		if _, err := os.Stat(*add); os.IsNotExist(err) {
+			fmt.Fprintf(stderr, "エラー: 既存PDFファイルが見つかりません: %s\n", *add)
+			return exitCodeError
+		}
+		
+		fmt.Fprintf(stdout, "既存 PDF   : %s\n", *add)
+		
+		// 既存PDFに画像を追加
+		err = usecases.AddImagesToExistingPDF(*add, images, output)
+		if err != nil {
+			fmt.Fprintf(stderr, "エラー: %v\n", err)
+			return exitCodeError
+		}
+		
+		fmt.Fprintln(stdout, "既存PDFに画像を追加しました。完了です。")
+	} else {
+		// 新規PDFの生成
+		err = usecases.MergeImagesIntoPDF(images, output)
+		if err != nil {
+			fmt.Fprintf(stderr, "エラー: %v\n", err)
+			return exitCodeError
+		}
+		
+		fmt.Fprintln(stdout, "PDF を生成しました。完了です。")
 	}
-
-	fmt.Fprintln(stdout, "PDF を生成しました。完了です。")
 	return exitCodeOK
 }
 
