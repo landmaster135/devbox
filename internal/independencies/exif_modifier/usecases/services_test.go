@@ -52,33 +52,33 @@ func TestMain(m *testing.M) {
 }
 
 func readDirForTestData(targetDir string) (string, error) {
-	// 設定ファイルのパスを構築して読み込む
 	workDir, err := os.Getwd()
-	fmt.Printf("Debug: 設定ファイルのパスを構築するためにカレントディレクトリを取得: %s\n", workDir)
+	fmt.Printf("Debug: カレントディレクトリ: %s\n", workDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
-	// 設定ファイルのパスを構築
-	projectName := "devbox"
+	// テストファイルが usecases ディレクトリにあることを前提として
+	// 相対パスで test_data ディレクトリを探す
 	var dirPath string
-	if strings.HasSuffix(workDir, fmt.Sprintf("/%s", targetDir)) {
-		// ローカルを想定
-		dirPath = filepath.Join(workDir)
-	} else if strings.Contains(workDir, fmt.Sprintf("/%s", projectName)) {
-		// GitHub Actionsを想定
-		idx := strings.Index(workDir, fmt.Sprintf("/%s", projectName))
-		if idx >= 0 {
-			projectRoot := workDir[:idx+len(fmt.Sprintf("/%s", projectName))]
-			dirPath = filepath.Join(projectRoot, targetDir)
-		} else {
-			return "", fmt.Errorf("unexpected working directory in project: %s", workDir)
-		}
+
+	if strings.HasSuffix(targetDir, "tmp") {
+		dirPath = filepath.Join(workDir, "..", "test_data", "tmp")
+	} else if strings.HasSuffix(targetDir, "org") {
+		dirPath = filepath.Join(workDir, "..", "test_data", "org")
 	} else {
-		return "", fmt.Errorf("unexpected working directory: %s", workDir)
+		return "", fmt.Errorf("unknown target directory: %s", targetDir)
 	}
 
-	// ファイルが存在するか確認
+	// パスを正規化
+	dirPath, err = filepath.Abs(dirPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	fmt.Printf("Debug: 構築されたパス: %s\n", dirPath)
+
+	// ディレクトリが存在するか確認
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		errMsg := fmt.Sprintf("directory for test data not found at %s", dirPath)
 		fmt.Println(errMsg)
