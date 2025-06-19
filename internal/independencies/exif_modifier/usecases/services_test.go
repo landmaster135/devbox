@@ -3,6 +3,7 @@ package usecases
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,16 +11,87 @@ import (
 	"time"
 )
 
+// #==============================================================#
+// ##          Setup and teardown                                ##
+// #==============================================================#
 // テスト用の定数
 const (
-	testDataOrgDir = "/home/nov/devbox/internal/independencies/exif_modifier/test_data/org"
-	testDataTmpDir = "/home/nov/devbox/internal/independencies/exif_modifier/test_data/tmp"
+	targetTmpDir = "internal/independencies/exif_modifier/test_data/tmp"
+	targetOrgDir = "internal/independencies/exif_modifier/test_data/org"
 )
 
+var (
+	dataTmpDir string
+	dataOrgDir string
+)
+
+// TestMain はテスト全体のセットアップとティアダウンを行います
+func TestMain(m *testing.M) {
+	fmt.Println("テスト環境のセットアップを開始します...")
+
+	// テストデータのオリジナルと実施用のものが入ったディレクトリを確認および取得
+	// tmpディレクトリをクリーンアップ
+	var err error
+	dataTmpDir, err = readDirForTestData(targetTmpDir)
+	if err != nil {
+		log.Fatalf("Failed to get tmp directory: %v", err)
+	}
+	dataOrgDir, err = readDirForTestData(targetOrgDir)
+	if err != nil {
+		log.Fatalf("Failed to get tmp directory: %v", err)
+	}
+
+	fmt.Println("テスト環境のセットアップが完了しました。テストを実行します...")
+
+	// テストを実行
+	exitCode := m.Run()
+
+	fmt.Println("テストが完了しました。テスト環境をクリーンアップします...")
+
+	os.Exit(exitCode)
+}
+
+func readDirForTestData(targetDir string) (string, error) {
+	// 設定ファイルのパスを構築して読み込む
+	workDir, err := os.Getwd()
+	fmt.Printf("Debug: 設定ファイルのパスを構築するためにカレントディレクトリを取得: %s\n", workDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	// 設定ファイルのパスを構築
+	projectName := "devbox"
+	var dirPath string
+	if strings.HasSuffix(workDir, fmt.Sprintf("/%s", targetDir)) {
+		// ローカルを想定
+		dirPath = filepath.Join(workDir)
+	} else if strings.Contains(workDir, fmt.Sprintf("/%s", projectName)) {
+		// GitHub Actionsを想定
+		idx := strings.Index(workDir, fmt.Sprintf("/%s", projectName))
+		if idx >= 0 {
+			projectRoot := workDir[:idx+len(fmt.Sprintf("/%s", projectName))]
+			dirPath = filepath.Join(projectRoot, targetDir)
+		} else {
+			return "", fmt.Errorf("unexpected working directory in project: %s", workDir)
+		}
+	} else {
+		return "", fmt.Errorf("unexpected working directory: %s", workDir)
+	}
+
+	// ファイルが存在するか確認
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("directory for test data not found at %s: %w", dirPath, err)
+	}
+
+	return dirPath, nil
+}
+
+// #==============================================================#
+// ##          Helpers                                           ##
+// #==============================================================#
 // setupTestData はテスト用のデータをセットアップします
 func setupTestData(t *testing.T) {
-	// tmpディレクトリをクリーンアップ
-	files, err := os.ReadDir(testDataTmpDir)
+	files, err := os.ReadDir(dataTmpDir)
 	if err != nil {
 		t.Fatalf("Failed to read tmp directory: %v", err)
 	}
@@ -27,14 +99,14 @@ func setupTestData(t *testing.T) {
 		if file.Name() == ".gitkeep" {
 			continue
 		}
-		err := os.Remove(filepath.Join(testDataTmpDir, file.Name()))
+		err := os.Remove(filepath.Join(dataTmpDir, file.Name()))
 		if err != nil {
 			t.Fatalf("Failed to remove file %s: %v", file.Name(), err)
 		}
 	}
 
 	// orgディレクトリからtmpディレクトリにファイルをコピー
-	files, err = os.ReadDir(testDataOrgDir)
+	files, err = os.ReadDir(dataOrgDir)
 	if err != nil {
 		t.Fatalf("Failed to read org directory: %v", err)
 	}
@@ -43,8 +115,8 @@ func setupTestData(t *testing.T) {
 			continue
 		}
 		err := copyFile(
-			filepath.Join(testDataOrgDir, file.Name()),
-			filepath.Join(testDataTmpDir, file.Name()),
+			filepath.Join(dataOrgDir, file.Name()),
+			filepath.Join(dataTmpDir, file.Name()),
 		)
 		if err != nil {
 			t.Fatalf("Failed to copy file %s: %v", file.Name(), err)
@@ -74,6 +146,9 @@ func copyFile(src, dst string) error {
 	return nil
 }
 
+// #==============================================================#
+// ##          Tests                                             ##
+// #==============================================================#
 // TestNewExifModifierService はExifModifierServiceのコンストラクタをテストします
 func TestNewExifModifierService(t *testing.T) {
 	service := NewExifModifierService()
@@ -513,11 +588,11 @@ func TestExifModifierService_ModifySingleFileExif(t *testing.T) {
 
 	// テスト用のファイルパスを準備
 	testFiles := []string{
-		filepath.Join(testDataTmpDir, "test_11.jpg"),
-		filepath.Join(testDataTmpDir, "test_21.jpeg"),
-		filepath.Join(testDataTmpDir, "test_01.png"),
-		filepath.Join(testDataTmpDir, "test_31.tiff"),
-		filepath.Join(testDataTmpDir, "test_41.webp"),
+		filepath.Join(dataTmpDir, "test_11.jpg"),
+		filepath.Join(dataTmpDir, "test_21.jpeg"),
+		filepath.Join(dataTmpDir, "test_01.png"),
+		filepath.Join(dataTmpDir, "test_31.tiff"),
+		filepath.Join(dataTmpDir, "test_41.webp"),
 	}
 
 	// テスト用の設定
@@ -554,7 +629,7 @@ func TestExifModifierService_ModifySingleFileExif(t *testing.T) {
 	}
 
 	// 存在しないファイルのテスト
-	nonExistentFile := filepath.Join(testDataTmpDir, "nonexistent.jpg")
+	nonExistentFile := filepath.Join(dataTmpDir, "nonexistent.jpg")
 	err := service.ModifySingleFileExif(nonExistentFile, config)
 	if err == nil {
 		t.Error("ModifySingleFileExif() with non-existent file should return error")
@@ -570,9 +645,9 @@ func TestExifModifierService_ModifyExifData(t *testing.T) {
 
 	// テスト用のファイルパスを準備
 	testFiles := []string{
-		filepath.Join(testDataTmpDir, "test_01.png"),
-		filepath.Join(testDataTmpDir, "test_31.tiff"),
-		filepath.Join(testDataTmpDir, "test_41.webp"),
+		filepath.Join(dataTmpDir, "test_01.png"),
+		filepath.Join(dataTmpDir, "test_31.tiff"),
+		filepath.Join(dataTmpDir, "test_41.webp"),
 	}
 
 	// テスト用の設定
@@ -678,7 +753,7 @@ func TestExifModifierService_ProcessFilesFromFilename(t *testing.T) {
 	for _, filename := range testFiles {
 		// test_01.pngをコピー
 		err := copyFile(
-			filepath.Join(testDataTmpDir, "test_01.png"),
+			filepath.Join(dataTmpDir, "test_01.png"),
 			filename,
 		)
 		if err != nil {
@@ -814,7 +889,7 @@ func TestExifModifierService_ProcessFilesFromScreenshot(t *testing.T) {
 	for _, filename := range testFiles {
 		// test_01.pngをコピー
 		err := copyFile(
-			filepath.Join(testDataTmpDir, "test_01.png"),
+			filepath.Join(dataTmpDir, "test_01.png"),
 			filename,
 		)
 		if err != nil {
