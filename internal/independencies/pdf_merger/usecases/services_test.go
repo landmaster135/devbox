@@ -251,13 +251,3 @@ func TestIntegration(t *testing.T) {
 		}
 	})
 }
-
-func TestCheck(t *testing.T) {
-	// Checkのテストは出力とexit処理を検証する必要があるため、
-	// 実際のコマンドラインテストや統合テストで行うことが適切
-	t.Run("エラーハンドリング", func(t *testing.T) {
-		// これは実際にos.Exit(1)を呼び出すため、テストは困難
-		// 必要に応じてモックを使用するか、外部コマンドでテストする
-		t.Skip("Check関数は直接のユニットテストが難しいためスキップ")
-	})
-}
