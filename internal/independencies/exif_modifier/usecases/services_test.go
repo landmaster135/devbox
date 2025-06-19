@@ -913,7 +913,14 @@ func TestExifModifierService_ProcessFilesFromScreenshot(t *testing.T) {
 		t.Errorf("ProcessFilesFromScreenshot() error = %v", err)
 	}
 
-	// スクリーンショットファイルの更新時刻が保持されていることを確認
+	// スクリーンショットファイルの更新時刻が正しく設定されていることを確認
+	expectedTimes := map[string]time.Time{
+		"Screenshot_20240101-120000.png":                time.Date(2024, 1, 1, 12, 0, 0, 0, jst),
+		"スクリーンショット 2024-01-02 13.00.00.png":        time.Date(2024, 1, 2, 13, 0, 0, 0, jst),
+		"Screen Shot 2024-01-03 at 14.00.00.png":       time.Date(2024, 1, 3, 14, 0, 0, 0, jst),
+		"Screenshot_20240105-160000.png":               time.Date(2024, 1, 5, 16, 0, 0, 0, jst),
+	}
+
 	for _, filename := range testFiles {
 		// スクリーンショットファイルのみチェック
 		if !strings.Contains(strings.ToLower(filepath.Base(filename)), "screenshot") &&
@@ -923,7 +930,7 @@ func TestExifModifierService_ProcessFilesFromScreenshot(t *testing.T) {
 		}
 
 		// サブディレクトリのファイルは再帰なしの場合スキップ
-		if strings.Contains(filename, subDir) && !strings.Contains(filename, tempDir) {
+		if strings.Contains(filename, subDir) {
 			continue
 		}
 
@@ -933,10 +940,17 @@ func TestExifModifierService_ProcessFilesFromScreenshot(t *testing.T) {
 			continue
 		}
 
-		// 更新時刻が保持されていることを確認
-		// 注: 完全一致ではなく、近似値で確認
-		if diff := info.ModTime().Sub(testTime); diff < -time.Second || diff > time.Second {
-			t.Errorf("File %s modification time = %v, expected close to %v", filename, info.ModTime(), testTime)
+		// ファイル名から期待される時刻を取得
+		baseName := filepath.Base(filename)
+		expectedTime, exists := expectedTimes[baseName]
+		if !exists {
+			t.Errorf("No expected time defined for file: %s", baseName)
+			continue
+		}
+
+		// 更新時刻が正しく設定されていることを確認
+		if diff := info.ModTime().Sub(expectedTime); diff < -time.Second || diff > time.Second {
+			t.Errorf("File %s modification time = %v, expected close to %v", filename, info.ModTime(), expectedTime)
 		} else {
 			t.Logf("File %s modification time is correct: %v", filepath.Base(filename), info.ModTime())
 		}

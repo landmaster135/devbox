@@ -687,8 +687,10 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 
 		// スクリーンショットファイル名から日時を抽出
 		screenshotPatterns := []*regexp.Regexp{
-			regexp.MustCompile(`[Ss]creenshot_(\d{8})-(\d{6})`),     // Screenshot_YYYYMMDD-HHMMSS
-			regexp.MustCompile(`スクリーンショット_(\d{8})-(\d{6})`),      // スクリーンショット_YYYYMMDD-HHMMSS
+			regexp.MustCompile(`[Ss]creenshot_(\d{8})-(\d{6})`),                                    // Screenshot_YYYYMMDD-HHMMSS
+			regexp.MustCompile(`スクリーンショット_(\d{8})-(\d{6})`),                                     // スクリーンショット_YYYYMMDD-HHMMSS
+			regexp.MustCompile(`スクリーンショット (\d{4})-(\d{2})-(\d{2}) (\d{2})\.(\d{2})\.(\d{2})`),        // スクリーンショット YYYY-MM-DD HH.MM.SS
+			regexp.MustCompile(`[Ss]creen [Ss]hot (\d{4})-(\d{2})-(\d{2}) at (\d{2})\.(\d{2})\.(\d{2})`), // Screen Shot YYYY-MM-DD at HH.MM.SS
 		}
 
 		var fileTime time.Time
@@ -697,9 +699,25 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 		for _, pattern := range screenshotPatterns {
 			matches := pattern.FindStringSubmatch(fileName)
 			if len(matches) >= 3 {
-				dateStr := matches[1] // YYYYMMDD
-				timeStr := matches[2] // HHMMSS
-				dateTimeStr := dateStr + timeStr // YYYYMMDDHHMMSS
+				var dateTimeStr string
+
+				if len(matches) == 3 {
+					// Screenshot_YYYYMMDD-HHMMSS 形式
+					dateStr := matches[1] // YYYYMMDD
+					timeStr := matches[2] // HHMMSS
+					dateTimeStr = dateStr + timeStr // YYYYMMDDHHMMSS
+				} else if len(matches) == 7 {
+					// YYYY-MM-DD HH.MM.SS 形式
+					year := matches[1]
+					month := matches[2]
+					day := matches[3]
+					hour := matches[4]
+					minute := matches[5]
+					second := matches[6]
+					dateTimeStr = year + month + day + hour + minute + second // YYYYMMDDHHMMSS
+				} else {
+					continue
+				}
 
 				parsedTime, err := time.ParseInLocation("20060102150405", dateTimeStr, s.getJSTLocation())
 				if err != nil {
