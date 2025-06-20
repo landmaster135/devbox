@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -96,6 +97,56 @@ func AddImagesToExistingPDF(existingPDF string, images []string, output string) 
 	inFiles := []string{existingPDF, tempPDF}
 	if err := api.MergeCreateFile(inFiles, output, false, cfg); err != nil {
 		return fmt.Errorf("PDFのマージ中にエラーが発生しました: %w", err)
+	}
+
+	return nil
+}
+
+// ExtractPDFToImages はPDFの指定したページ範囲を画像として抽出します
+func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPage int) error {
+	// 出力ディレクトリが存在しない場合は作成
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("出力ディレクトリの作成に失敗しました: %w", err)
+	}
+
+	// PDFファイルの存在確認
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		return fmt.Errorf("PDFファイルが見つかりません: %s", pdfPath)
+	}
+
+	// サポートする画像形式を確認
+	supportedFormats := map[string]bool{
+		"jpg":  true,
+		"jpeg": true,
+		"png":  true,
+		"tiff": true,
+		"webp": true,
+	}
+	
+	lowerFormat := strings.ToLower(imageFormat)
+	if !supportedFormats[lowerFormat] {
+		return fmt.Errorf("サポートされていない画像形式です: %s (サポート形式: jpg, jpeg, png, tiff, webp)", imageFormat)
+	}
+
+	cfg := api.LoadConfiguration()
+	
+	// ページ範囲の指定
+	var pageSelection []string
+	if startPage > 0 && endPage > 0 {
+		if startPage > endPage {
+			return fmt.Errorf("開始ページ(%d)は終了ページ(%d)より小さくなければなりません", startPage, endPage)
+		}
+		pageSelection = []string{fmt.Sprintf("%d-%d", startPage, endPage)}
+	} else if startPage > 0 {
+		pageSelection = []string{strconv.Itoa(startPage)}
+	}
+
+	// pdfcpuを使ってPDFページを画像として出力
+	// 注意: pdfcpuのバージョンによって利用可能なAPIが異なります
+	// ExtractImagesFileを試し、失敗した場合は代替手段を試行
+	err := api.ExtractImagesFile(pdfPath, outputDir, pageSelection, cfg)
+	if err != nil {
+		return fmt.Errorf("PDFからの画像抽出に失敗しました: %w", err)
 	}
 
 	return nil

@@ -28,14 +28,82 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	out := fs.String("out", "", "出力 PDF ファイル名 (未指定なら <dir 名>.pdf)")
 	add := fs.String("add", "", "既存の PDF ファイルパス (指定時は既存PDFに画像を追加)")
 
+	// PDF画像抽出用のオプション
+	extract := fs.String("extract", "", "PDFファイルから画像を抽出する (PDFファイルパス)")
+	outputDir := fs.String("output-dir", "", "画像の出力ディレクトリ (抽出時必須)")
+	imageFormat := fs.String("format", "jpg", "出力画像形式 (jpg, jpeg, png, tiff, webp)")
+	startPage := fs.Int("start", 0, "抽出開始ページ (1から開始、0は全ページ)")
+	endPage := fs.Int("end", 0, "抽出終了ページ (0は最終ページまで)")
+
 	// 引数の解析
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitCodeError
 	}
 
+	// PDFからの画像抽出処理
+	if *extract != "" {
+		return handleImageExtraction(*extract, *outputDir, *imageFormat, *startPage, *endPage, stdout, stderr)
+	}
+
+	// 既存のPDF作成機能
+	return handlePDFCreation(*dir, *out, *add, stdout, stderr)
+}
+
+// handleImageExtraction はPDFからの画像抽出を処理します
+func handleImageExtraction(pdfPath, outputDir, imageFormat string, startPage, endPage int, stdout, stderr io.Writer) exitCode {
+	// 出力ディレクトリが指定されていない場合はエラー
+	if outputDir == "" {
+		fmt.Fprintln(stderr, "エラー: 画像抽出時は --output-dir オプションが必須です")
+		return exitCodeError
+	}
+
+	// PDFファイルの存在確認
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		fmt.Fprintf(stderr, "エラー: PDFファイルが見つかりません: %s\n", pdfPath)
+		return exitCodeError
+	}
+
+	// ページ範囲の調整
+	if startPage < 0 {
+		startPage = 0
+	}
+	if endPage < 0 {
+		endPage = 0
+	}
+
+	// ページ範囲の表示
+	var pageRangeMsg string
+	if startPage > 0 && endPage > 0 {
+		pageRangeMsg = fmt.Sprintf("ページ %d から %d まで", startPage, endPage)
+	} else if startPage > 0 {
+		pageRangeMsg = fmt.Sprintf("ページ %d から最終ページまで", startPage)
+	} else {
+		pageRangeMsg = "全ページ"
+	}
+
+	fmt.Fprintf(stdout, "PDF画像抽出を開始します...\n")
+	fmt.Fprintf(stdout, "入力PDF    : %s\n", pdfPath)
+	fmt.Fprintf(stdout, "出力ディレクトリ: %s\n", outputDir)
+	fmt.Fprintf(stdout, "画像形式   : %s\n", imageFormat)
+	fmt.Fprintf(stdout, "ページ範囲 : %s\n", pageRangeMsg)
+
+	// 画像抽出の実行
+	err := usecases.ExtractPDFToImages(pdfPath, outputDir, imageFormat, startPage, endPage)
+	if err != nil {
+		fmt.Fprintf(stderr, "エラー: %v\n", err)
+		return exitCodeError
+	}
+
+	fmt.Fprintln(stdout, "画像抽出が完了しました。")
+	return exitCodeOK
+}
+
+// handlePDFCreation は既存のPDF作成機能を処理します
+func handlePDFCreation(dir, out, add string, stdout, stderr io.Writer) exitCode {
+
 	// 画像ファイルの取得
-	images, output, err := usecases.GetSourceImages(*dir, *out)
+	images, output, err := usecases.GetSourceImages(dir, out)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		return exitCodeError
@@ -49,17 +117,17 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	fmt.Fprintf(stdout, "検出した画像: %d 枚\n", len(images))
 
 	// 既存PDFファイルが指定されている場合は既存PDFに画像を追加
-	if *add != "" {
+	if add != "" {
 		// 既存PDFファイルの存在確認
-		if _, err := os.Stat(*add); os.IsNotExist(err) {
-			fmt.Fprintf(stderr, "エラー: 既存PDFファイルが見つかりません: %s\n", *add)
+		if _, err := os.Stat(add); os.IsNotExist(err) {
+			fmt.Fprintf(stderr, "エラー: 既存PDFファイルが見つかりません: %s\n", add)
 			return exitCodeError
 		}
 
-		fmt.Fprintf(stdout, "既存 PDF   : %s\n", *add)
+		fmt.Fprintf(stdout, "既存 PDF   : %s\n", add)
 
 		// 既存PDFに画像を追加
-		err = usecases.AddImagesToExistingPDF(*add, images, output)
+		err = usecases.AddImagesToExistingPDF(add, images, output)
 		if err != nil {
 			fmt.Fprintf(stderr, "エラー: %v\n", err)
 			return exitCodeError
@@ -76,7 +144,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 		fmt.Fprintln(stdout, "PDF を生成しました。完了です。")
 	}
-	
+
 	fmt.Fprintf(stdout, "出力 PDF   : %s\n", output)
 
 	return exitCodeOK
