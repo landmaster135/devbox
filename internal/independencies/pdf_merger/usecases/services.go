@@ -104,7 +104,7 @@ func AddImagesToExistingPDF(existingPDF string, images []string, output string) 
 
 
 // renameExtractedImagesWithFourDigits は抽出された画像ファイルの名前を4桁連番形式に変更します
-func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string) error {
+func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPageOffset int) error {
 	files, err := os.ReadDir(outputDir)
 	if err != nil {
 		return err
@@ -193,9 +193,24 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string) error {
 		return imageFiles[i].imageNum < imageFiles[j].imageNum
 	})
 
-	// 4桁連番でリネーム
+	// 実際のページ番号に基づいてリネーム
+	// startPageOffsetが0の場合は全ページ抽出なので、連番を使用
+	// startPageOffsetが1以上の場合は、実際のページ番号を使用
 	for i, fileInfo := range imageFiles {
-		newName := fmt.Sprintf("%s_%04d%s", pdfName, i+1, fileInfo.ext)
+		var actualPageNum int
+		if startPageOffset > 0 {
+			// 開始ページが指定されている場合、実際のページ番号を使用
+			actualPageNum = startPageOffset + i
+		} else {
+			// 全ページ抽出の場合、pdfcpuが抽出したページ番号または連番を使用
+			if fileInfo.pageNum > 0 {
+				actualPageNum = fileInfo.pageNum
+			} else {
+				actualPageNum = i + 1
+			}
+		}
+		
+		newName := fmt.Sprintf("%s_%04d%s", pdfName, actualPageNum, fileInfo.ext)
 		newPath := filepath.Join(outputDir, newName)
 
 		if err := os.Rename(fileInfo.originalPath, newPath); err != nil {
@@ -255,7 +270,7 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 	}
 
 	// 抽出された画像ファイルの名前を4桁連番形式に整理
-	err = renameExtractedImagesWithFourDigits(outputDir, filepath.Base(pdfPath))
+	err = renameExtractedImagesWithFourDigits(outputDir, filepath.Base(pdfPath), startPage)
 	if err != nil {
 		return fmt.Errorf("画像ファイル名の整理に失敗しました: %w", err)
 	}
