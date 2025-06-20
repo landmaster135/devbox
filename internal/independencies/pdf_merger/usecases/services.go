@@ -262,3 +262,20 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 
 	return nil
 }
+
+// GetPDFPageCount はPDFファイルのページ数を取得します
+func GetPDFPageCount(pdfPath string) (int, error) {
+	// PDFファイルの存在確認
+	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
+		return 0, fmt.Errorf("PDFファイルが見つかりません: %s", pdfPath)
+	}
+
+	// pdfcpuを使ってPDFの情報を取得
+	// ReadContextFileは内部で検証も行うため、これだけで十分
+	ctx, err := api.ReadContextFile(pdfPath)
+	if err != nil {
+		return 0, fmt.Errorf("PDFファイルの読み込みに失敗しました: %w", err)
+	}
+
+	return ctx.PageCount, nil
+}
