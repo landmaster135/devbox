@@ -282,18 +282,59 @@ func (s *ImageExtractionService) isSupportedFormat(format string) (bool, string,
 	return value, msg, nil
 }
 
-func (s *ImageExtractionService) specifyRangeOfPage(start, end, total int) []string {
-	if start == 0 {
-		// 開始ページのみ指定
-		start = 1
-	}
-	if end == 0 {
-		// 終了ページのみ指定
-		end = total
-	}
-	pageSelection := []string{fmt.Sprintf("%d-%d", start, end)}
+// PageRangeInfo はページ範囲の情報を格納する構造体
+type PageRangeInfo struct {
+	PageSelection []string // pdfcpuに渡すページ選択配列
+	Message       string   // ユーザー向け表示メッセージ
+}
 
-	return pageSelection
+// GetRangeOfPages はページ範囲の指定処理とメッセージ生成を行います
+func (s *ImageExtractionService) GetRangeOfPages(startPage, endPage, totalPages int) PageRangeInfo {
+	// ページ選択配列の生成（既存のspecifyRangeOfPages関数を使用）
+	pageSelection := s.specifyRangeOfPages(startPage, endPage, totalPages)
+
+	// メッセージの生成
+	message := s.generatePageRangeMessage(startPage, endPage, totalPages)
+
+	return PageRangeInfo{
+		PageSelection: pageSelection,
+		Message:       message,
+	}
+}
+
+// specifyRangeOfPages はページ範囲の指定処理を行います
+func (s *ImageExtractionService) specifyRangeOfPages(startPage, endPage, totalPages int) []string {
+	// 0を適切な値に変換
+	actualStart := startPage
+	actualEnd := endPage
+
+	if actualStart == 0 {
+		actualStart = 1 // 最初のページ
+	}
+	if actualEnd == 0 {
+		actualEnd = totalPages // 最後のページ
+	}
+
+	// 全ページ抽出の場合（両方とも0）は空配列を返す
+	if startPage == 0 && endPage == 0 {
+		return []string{}
+	}
+
+	return []string{fmt.Sprintf("%d-%d", actualStart, actualEnd)}
+}
+
+// generatePageRangeMessage はページ範囲表示用のメッセージを生成します
+func (s *ImageExtractionService) generatePageRangeMessage(startPage, endPage, totalPages int) string {
+	if startPage == 0 && endPage == 0 {
+		return fmt.Sprintf("全ページ (ページ 1 から %d まで)", totalPages)
+	}
+	if startPage == 0 {
+		return fmt.Sprintf("ページ 1 から %d まで", endPage)
+	}
+	if endPage == 0 {
+		return fmt.Sprintf("ページ %d から %d まで (最終ページ)", startPage, totalPages)
+	}
+	return fmt.Sprintf("ページ %d から %d まで", startPage, endPage)
 }
 
 // ExtractToImages はPDFの指定したページ範囲を画像として抽出します
@@ -323,17 +364,15 @@ func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat
 		return fmt.Errorf("PDFのページ数取得に失敗しました: %w", err)
 	}
 
-	cfg := api.LoadConfiguration()
-
 	// ページ範囲の指定
-	pageSelection := s.specifyRangeOfPage(startPage, endPage, totalPages)
+	rangeInfo := s.GetRangeOfPages(startPage, endPage, totalPages)
 
-	// startPage == 0 && endPage == 0 の場合は pageSelection を空のままにして全ページ抽出
+	cfg := api.LoadConfiguration()
 
 	// pdfcpuを使ってPDFページを画像として出力
 	// 注意: pdfcpuのバージョンによって利用可能なAPIが異なります
 	// ExtractImagesFileを試し、失敗した場合は代替手段を試行
-	err = api.ExtractImagesFile(pdfPath, outputDir, pageSelection, cfg)
+	err = api.ExtractImagesFile(pdfPath, outputDir, rangeInfo.PageSelection, cfg)
 	if err != nil {
 		return fmt.Errorf("PDFからの画像抽出に失敗しました: %w", err)
 	}
