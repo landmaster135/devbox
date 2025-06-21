@@ -282,6 +282,20 @@ func (s *ImageExtractionService) isSupportedFormat(format string) (bool, string,
 	return value, msg, nil
 }
 
+func (s *ImageExtractionService) specifyRangeOfPage(start, end, total int) []string {
+	if start == 0 {
+		// 開始ページのみ指定
+		start = 1
+	}
+	if end == 0 {
+		// 終了ページのみ指定
+		end = total
+	}
+	pageSelection := []string{fmt.Sprintf("%d-%d", start, end)}
+
+	return pageSelection
+}
+
 // ExtractToImages はPDFの指定したページ範囲を画像として抽出します
 func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat string, startPage, endPage int) error {
 	// 出力ディレクトリが存在しない場合は作成
@@ -312,16 +326,7 @@ func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat
 	cfg := api.LoadConfiguration()
 
 	// ページ範囲の指定
-	var pageSelection []string
-	if startPage == 0 {
-		// 開始ページのみ指定
-		startPage = 1
-	}
-	if endPage == 0 {
-		// 終了ページのみ指定
-		endPage = totalPages
-	}
-	pageSelection = []string{fmt.Sprintf("%d-%d", startPage, endPage)}
+	pageSelection := s.specifyRangeOfPage(startPage, endPage, totalPages)
 
 	// startPage == 0 && endPage == 0 の場合は pageSelection を空のままにして全ページ抽出
 
