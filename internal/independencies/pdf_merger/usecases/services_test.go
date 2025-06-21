@@ -32,7 +32,7 @@ func createValidJPEG(path string, width, height int) error {
 	return jpeg.Encode(file, img, &jpeg.Options{Quality: 80})
 }
 
-func TestGetSourceImages(t *testing.T) {
+func TestPDFCreationService_GetSourceImages(t *testing.T) {
 	t.Run("既存のディレクトリからJPG画像を収集", func(t *testing.T) {
 		// テスト用ディレクトリの準備
 		tmpDir, err := os.MkdirTemp("", "testdir-*")
@@ -57,8 +57,11 @@ func TestGetSourceImages(t *testing.T) {
 		}
 		nonJpgFile.Close()
 
+		// PDF作成サービスを作成
+		service := NewPDFCreationService()
+
 		// テスト実行
-		images, output, err := GetSourceImages(tmpDir, "")
+		images, output, err := service.GetSourceImages(tmpDir, "")
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -91,7 +94,8 @@ func TestGetSourceImages(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		images, output, err := GetSourceImages(tmpDir, "")
+		service := NewPDFCreationService()
+		images, output, err := service.GetSourceImages(tmpDir, "")
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -103,8 +107,9 @@ func TestGetSourceImages(t *testing.T) {
 
 	t.Run("存在しないディレクトリ", func(t *testing.T) {
 		nonExistentDir := "/non/existent/directory"
+		service := NewPDFCreationService()
 		// 実際の実装ではエラーが返されないので、テストを調整
-		images, output, err := GetSourceImages(nonExistentDir, "")
+		images, output, err := service.GetSourceImages(nonExistentDir, "")
 		if err != nil {
 			t.Logf("エラーが発生: %v", err)
 			// これは期待される動作なので、OKとする
@@ -129,9 +134,10 @@ func TestGetSourceImages(t *testing.T) {
 			t.Fatalf("テストJPGファイルの作成に失敗: %v", err)
 		}
 
+		service := NewPDFCreationService()
 		// カスタム出力パスをテンポラリディレクトリ内に指定
 		customOutput := filepath.Join(tmpDir, "custom_output.pdf")
-		_, output, err := GetSourceImages(tmpDir, customOutput)
+		_, output, err := service.GetSourceImages(tmpDir, customOutput)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -142,7 +148,7 @@ func TestGetSourceImages(t *testing.T) {
 	})
 }
 
-func TestMergeImagesIntoPDF(t *testing.T) {
+func TestPDFCreationService_MergeImagesIntoPDF(t *testing.T) {
 	t.Run("画像をPDFに正常に結合", func(t *testing.T) {
 		// テスト用ディレクトリの準備
 		tmpDir, err := os.MkdirTemp("", "testmerge-*")
@@ -165,8 +171,11 @@ func TestMergeImagesIntoPDF(t *testing.T) {
 		// 出力PDFパス
 		outputPDF := filepath.Join(tmpDir, "output.pdf")
 
+		// PDF作成サービスを作成
+		service := NewPDFCreationService()
+
 		// テスト実行
-		err = MergeImagesIntoPDF(jpgFiles, outputPDF)
+		err = service.MergeImagesIntoPDF(jpgFiles, outputPDF)
 		if err != nil {
 			t.Fatalf("MergeImagesIntoPDF()でエラーが発生: %v", err)
 		}
@@ -182,7 +191,8 @@ func TestMergeImagesIntoPDF(t *testing.T) {
 		nonExistentImages := []string{"/non/existent/image1.jpg", "/non/existent/image2.jpg"}
 		outputPDF := "output.pdf"
 
-		err := MergeImagesIntoPDF(nonExistentImages, outputPDF)
+		service := NewPDFCreationService()
+		err := service.MergeImagesIntoPDF(nonExistentImages, outputPDF)
 		if err == nil {
 			t.Error("存在しない画像ファイルではエラーが期待されます")
 		}
@@ -198,14 +208,15 @@ func TestMergeImagesIntoPDF(t *testing.T) {
 		emptyImages := []string{}
 		outputPDF := filepath.Join(tmpDir, "output.pdf")
 
-		err = MergeImagesIntoPDF(emptyImages, outputPDF)
+		service := NewPDFCreationService()
+		err = service.MergeImagesIntoPDF(emptyImages, outputPDF)
 		// ImportImagesFile は空の配列でも特にエラーを返さない場合がある
 		// これは仕様として受け入れる
 		t.Logf("空の画像リストの結果: %v", err)
 	})
 }
 
-func TestIntegration(t *testing.T) {
+func TestPDFCreationService_Integration(t *testing.T) {
 	t.Run("GetSourceImages→MergeImagesIntoPDF フロー", func(t *testing.T) {
 		tmpDir, err := os.MkdirTemp("", "testintegration-*")
 		if err != nil {
@@ -222,14 +233,17 @@ func TestIntegration(t *testing.T) {
 			}
 		}
 
+		// PDF作成サービスを作成
+		service := NewPDFCreationService()
+
 		// 画像を収集
-		images, output, err := GetSourceImages(tmpDir, "")
+		images, output, err := service.GetSourceImages(tmpDir, "")
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
 
 		// PDFに結合
-		err = MergeImagesIntoPDF(images, output)
+		err = service.MergeImagesIntoPDF(images, output)
 		if err != nil {
 			t.Fatalf("MergeImagesIntoPDF()でエラーが発生: %v", err)
 		}

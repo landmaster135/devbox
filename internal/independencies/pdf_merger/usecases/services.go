@@ -21,7 +21,16 @@ func NewImageExtractionService() *ImageExtractionService {
 	return &ImageExtractionService{}
 }
 
-func GetSourceImages(dir string, out string) ([]string, string, error) {
+// PDFCreationService は PDF を作成・結合するためのサービス
+type PDFCreationService struct{}
+
+// NewPDFCreationService は新しい PDFCreationService のインスタンスを作成します
+func NewPDFCreationService() *PDFCreationService {
+	return &PDFCreationService{}
+}
+
+// GetSourceImages は指定されたディレクトリから画像ファイルを取得します
+func (s *PDFCreationService) GetSourceImages(dir string, out string) ([]string, string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, "", err
@@ -58,7 +67,8 @@ func GetSourceImages(dir string, out string) ([]string, string, error) {
 	return images, out, nil
 }
 
-func MergeImagesIntoPDF(images []string, output string) error {
+// MergeImagesIntoPDF は画像ファイルを1つのPDFに結合します
+func (s *PDFCreationService) MergeImagesIntoPDF(images []string, output string) error {
 	cfg := api.LoadConfiguration()
 	// Unit is used in commands for layout
 	cfg.Unit = types.POINTS
@@ -74,14 +84,15 @@ func MergeImagesIntoPDF(images []string, output string) error {
 	return nil
 }
 
-func getNameOfTemporaryPDF() string {
+// getNameOfTemporaryPDF は一時的なPDFファイル名を生成します
+func (s *PDFCreationService) getNameOfTemporaryPDF() string {
 	timestamp := time.Now().Format("20060102150405")
 	tempPDF := fmt.Sprintf("added_%s.pdf", timestamp)
 	return tempPDF
 }
 
 // AddImagesToExistingPDF は既存のPDFファイルに画像ページを追加します
-func AddImagesToExistingPDF(existingPDF string, images []string, output string) error {
+func (s *PDFCreationService) AddImagesToExistingPDF(existingPDF string, images []string, output string) error {
 	cfg := api.LoadConfiguration()
 	// Unit is used in commands for layout
 	cfg.Unit = types.POINTS
@@ -93,7 +104,7 @@ func AddImagesToExistingPDF(existingPDF string, images []string, output string) 
 	cfg.OptimizeDuplicateContentStreams = true
 
 	// 一時的に画像からPDFを作成
-	tempPDF := getNameOfTemporaryPDF()
+	tempPDF := s.getNameOfTemporaryPDF()
 	defer os.Remove(tempPDF) // 関数終了時に一時ファイルを削除
 
 	// 画像をPDFに変換
@@ -252,7 +263,7 @@ func (s *ImageExtractionService) renameExtractedImagesWithFourDigits(outputDir, 
 	return nil
 }
 
-func (s *ImageExtractionService) isSupportedFormat(format string) (bool, error, string) {
+func (s *ImageExtractionService) isSupportedFormat(format string) (bool, string, error) {
 	// サポートする画像形式を確認
 	supportedFormats := map[string]bool{
 		"jpg":  true,
@@ -266,9 +277,9 @@ func (s *ImageExtractionService) isSupportedFormat(format string) (bool, error, 
 	value, exists := supportedFormats[lowerFormat]
 	msg := "(サポート形式: jpg, jpeg, png, tiff, webp)"
 	if !exists {
-		return false, fmt.Errorf("サポートの有無が規定されていない画像形式です: %s %s", format, msg), msg
+		return false, msg, fmt.Errorf("サポートの有無が規定されていない画像形式です: %s %s", format, msg)
 	}
-	return value, nil, msg
+	return value, msg, nil
 }
 
 // ExtractToImages はPDFの指定したページ範囲を画像として抽出します
@@ -284,7 +295,7 @@ func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat
 	}
 
 	// サポートする画像形式を確認
-	isValidFormat, err, messageAboutFormat := s.isSupportedFormat(imageFormat)
+	isValidFormat, messageAboutFormat, err := s.isSupportedFormat(imageFormat)
 	if err != nil {
 		return err
 	}

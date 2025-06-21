@@ -123,8 +123,11 @@ func handleImageExtraction(pdfPath, outputDir, imageFormat string, startPage, en
 // handlePDFCreation は既存のPDF作成機能を処理します
 func handlePDFCreation(dir, out, add string, stdout, stderr io.Writer) exitCode {
 
+	// PDF作成サービスのインスタンスを作成
+	service := usecases.NewPDFCreationService()
+
 	// 画像ファイルの取得
-	images, output, err := usecases.GetSourceImages(dir, out)
+	images, output, err := service.GetSourceImages(dir, out)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		return exitCodeError
@@ -148,7 +151,7 @@ func handlePDFCreation(dir, out, add string, stdout, stderr io.Writer) exitCode 
 		fmt.Fprintf(stdout, "既存 PDF   : %s\n", add)
 
 		// 既存PDFに画像を追加
-		err = usecases.AddImagesToExistingPDF(add, images, output)
+		err = service.AddImagesToExistingPDF(add, images, output)
 		if err != nil {
 			fmt.Fprintf(stderr, "エラー: %v\n", err)
 			return exitCodeError
@@ -157,7 +160,7 @@ func handlePDFCreation(dir, out, add string, stdout, stderr io.Writer) exitCode 
 		fmt.Fprintln(stdout, "既存PDFに画像を追加しました。完了です。")
 	} else {
 		// 新規PDFの生成
-		err = usecases.MergeImagesIntoPDF(images, output)
+		err = service.MergeImagesIntoPDF(images, output)
 		if err != nil {
 			fmt.Fprintf(stderr, "エラー: %v\n", err)
 			return exitCodeError
