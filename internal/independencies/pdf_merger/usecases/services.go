@@ -13,6 +13,14 @@ import (
 	types "github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 )
 
+// ImageExtractionService は PDF から画像を抽出するためのサービス
+type ImageExtractionService struct{}
+
+// NewImageExtractionService は新しい ImageExtractionService のインスタンスを作成します
+func NewImageExtractionService() *ImageExtractionService {
+	return &ImageExtractionService{}
+}
+
 func GetSourceImages(dir string, out string) ([]string, string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -111,7 +119,7 @@ type fileInfo struct {
 }
 
 // extractPageNumber は左側部分からページ番号を抽出します
-func extractPageNumber(leftPart string) int {
+func (s *ImageExtractionService) extractPageNumber(leftPart string) int {
 	// パターン1: document_001 のような形式
 	leftPart = strings.TrimSuffix(leftPart, "_")
 
@@ -131,7 +139,7 @@ func extractPageNumber(leftPart string) int {
 }
 
 // parseImageFileName はファイル名を解析してファイル情報を抽出します
-func parseImageFileName(filename, outputDir string) (fileInfo, error) {
+func (s *ImageExtractionService) parseImageFileName(filename, outputDir string) (fileInfo, error) {
 	// pdfcpuが生成する可能性のあるファイル名パターンを解析
 	// 例: document_001_Im0.jpg, document_page1_Im0.jpg, document_1_Im0.jpg
 	specifiedChr := "_Im"
@@ -160,7 +168,7 @@ func parseImageFileName(filename, outputDir string) (fileInfo, error) {
 	}
 
 	// ページ番号を抽出
-	pageNum := extractPageNumber(leftPart)
+	pageNum := s.extractPageNumber(leftPart)
 
 	return fileInfo{
 		originalPath: filepath.Join(outputDir, filename),
@@ -170,7 +178,7 @@ func parseImageFileName(filename, outputDir string) (fileInfo, error) {
 	}, nil
 }
 
-func sortImageFiles(imageFiles []fileInfo) []fileInfo {
+func (s *ImageExtractionService) sortImageFiles(imageFiles []fileInfo) []fileInfo {
 	sort.Slice(imageFiles, func(i, j int) bool {
 		if imageFiles[i].pageNum != imageFiles[j].pageNum {
 			return imageFiles[i].pageNum < imageFiles[j].pageNum
@@ -182,7 +190,7 @@ func sortImageFiles(imageFiles []fileInfo) []fileInfo {
 }
 
 // calculateActualPageNumber は実際のページ番号を計算します
-func calculateActualPageNumber(fileInfo fileInfo, index int, startPageOffset int) int {
+func (s *ImageExtractionService) calculateActualPageNumber(fileInfo fileInfo, index int, startPageOffset int) int {
 	if startPageOffset > 0 {
 		// 開始ページが指定されている場合、実際のページ番号を使用
 		return startPageOffset + index
@@ -197,7 +205,7 @@ func calculateActualPageNumber(fileInfo fileInfo, index int, startPageOffset int
 }
 
 // renameExtractedImagesWithFourDigits は抽出された画像ファイルの名前を4桁連番形式に変更します
-func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPageOffset int) error {
+func (s *ImageExtractionService) renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPageOffset int) error {
 	files, err := os.ReadDir(outputDir)
 	if err != nil {
 		return err
@@ -215,7 +223,7 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPag
 		}
 
 		filename := file.Name()
-		info, err := parseImageFileName(filename, outputDir)
+		info, err := s.parseImageFileName(filename, outputDir)
 		if err != nil {
 			// ファイル名が対象パターンではない場合はスキップ
 			continue
@@ -225,13 +233,13 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPag
 	}
 
 	// ページ番号でソート
-	imageFiles = sortImageFiles(imageFiles)
+	imageFiles = s.sortImageFiles(imageFiles)
 
 	// 実際のページ番号に基づいてリネーム
 	// startPageOffsetが0の場合は全ページ抽出なので、連番を使用
 	// startPageOffsetが1以上の場合は、実際のページ番号を使用
 	for i, fileInfo := range imageFiles {
-		actualPageNum := calculateActualPageNumber(fileInfo, i, startPageOffset)
+		actualPageNum := s.calculateActualPageNumber(fileInfo, i, startPageOffset)
 
 		newName := fmt.Sprintf("%s_%04d%s", pdfName, actualPageNum, fileInfo.ext)
 		newPath := filepath.Join(outputDir, newName)
@@ -244,7 +252,7 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPag
 	return nil
 }
 
-func isSupportedFormat(format string) (bool, error, string) {
+func (s *ImageExtractionService) isSupportedFormat(format string) (bool, error, string) {
 	// サポートする画像形式を確認
 	supportedFormats := map[string]bool{
 		"jpg":  true,
@@ -263,8 +271,8 @@ func isSupportedFormat(format string) (bool, error, string) {
 	return value, nil, msg
 }
 
-// ExtractPDFToImages はPDFの指定したページ範囲を画像として抽出します
-func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPage int) error {
+// ExtractToImages はPDFの指定したページ範囲を画像として抽出します
+func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat string, startPage, endPage int) error {
 	// 出力ディレクトリが存在しない場合は作成
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("出力ディレクトリの作成に失敗しました: %w", err)
@@ -276,7 +284,7 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 	}
 
 	// サポートする画像形式を確認
-	isValidFormat, err, messageAboutFormat := isSupportedFormat(imageFormat)
+	isValidFormat, err, messageAboutFormat := s.isSupportedFormat(imageFormat)
 	if err != nil {
 		return err
 	}
@@ -306,7 +314,7 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 	}
 
 	// 抽出された画像ファイルの名前を4桁連番形式に整理
-	err = renameExtractedImagesWithFourDigits(outputDir, filepath.Base(pdfPath), startPage)
+	err = s.renameExtractedImagesWithFourDigits(outputDir, filepath.Base(pdfPath), startPage)
 	if err != nil {
 		return fmt.Errorf("画像ファイル名の整理に失敗しました: %w", err)
 	}
@@ -314,8 +322,8 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 	return nil
 }
 
-// GetPDFPageCount はPDFファイルのページ数を取得します
-func GetPDFPageCount(pdfPath string) (int, error) {
+// GetPageCount はPDFファイルのページ数を取得します
+func (s *ImageExtractionService) GetPageCount(pdfPath string) (int, error) {
 	// PDFファイルの存在確認
 	if _, err := os.Stat(pdfPath); os.IsNotExist(err) {
 		return 0, fmt.Errorf("PDFファイルが見つかりません: %s", pdfPath)
