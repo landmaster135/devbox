@@ -64,8 +64,11 @@ func handleImageExtraction(pdfPath, outputDir, imageFormat string, startPage, en
 		return exitCodeError
 	}
 
+	// 画像抽出サービスのインスタンスを作成
+	imageService := usecases.NewImageExtractionService()
+
 	// PDFのページ数を取得
-	totalPages, err := usecases.GetPDFPageCount(pdfPath)
+	totalPages, err := imageService.GetPageCount(pdfPath)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: PDFのページ数取得に失敗しました: %v\n", err)
 		return exitCodeError
@@ -107,7 +110,7 @@ func handleImageExtraction(pdfPath, outputDir, imageFormat string, startPage, en
 	fmt.Fprintf(stdout, "ページ範囲 : %s\n", pageRangeMsg)
 
 	// 画像抽出の実行
-	err = usecases.ExtractPDFToImages(pdfPath, outputDir, imageFormat, startPage, endPage)
+	err = imageService.ExtractToImages(pdfPath, outputDir, imageFormat, startPage, endPage)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		return exitCodeError
