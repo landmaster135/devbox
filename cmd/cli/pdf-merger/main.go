@@ -74,33 +74,22 @@ func handleImageExtraction(pdfPath, outputDir, imageFormat string, startPage, en
 		return exitCodeError
 	}
 
-	// ページ範囲の調整
-	if startPage < 0 {
-		startPage = 0
-	}
-	if endPage < 0 {
-		endPage = 0
-	}
-
-	// 実際のページ範囲を決定
-	actualStartPage := 1
-	actualEndPage := totalPages
-
-	if startPage > 0 {
-		actualStartPage = startPage
-	}
-	if endPage > 0 {
-		actualEndPage = endPage
+	// startPageとendPageのバリデーション
+	if err := imageService.ValidatePageRange(startPage, endPage, totalPages); err != nil {
+		fmt.Fprintf(stderr, "エラー: %v\n", err)
+		return exitCodeError
 	}
 
 	// ページ範囲の表示
 	var pageRangeMsg string
 	if startPage > 0 && endPage > 0 {
 		pageRangeMsg = fmt.Sprintf("ページ %d から %d まで", startPage, endPage)
-	} else if startPage > 0 {
+	} else if startPage > 0 && endPage == 0 {
 		pageRangeMsg = fmt.Sprintf("ページ %d から %d まで (最終ページ)", startPage, totalPages)
+	} else if startPage == 0 && endPage > 0 {
+		pageRangeMsg = fmt.Sprintf("ページ 1 から %d まで", endPage)
 	} else {
-		pageRangeMsg = fmt.Sprintf("全ページ (ページ %d から %d まで)", actualStartPage, actualEndPage)
+		pageRangeMsg = fmt.Sprintf("全ページ (ページ 1 から %d まで)", totalPages)
 	}
 
 	fmt.Fprintf(stdout, "PDF画像抽出を開始します...\n")
