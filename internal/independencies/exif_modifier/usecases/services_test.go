@@ -427,7 +427,7 @@ func TestParseDateTime(t *testing.T) {
 		t.Errorf("ParseDateTime(20240101120000) unexpected error: %v", err)
 	}
 
-	expected := time.Date(2024, 1, 1, 12, 0, 0, 0, time.Local)
+	expected := time.Date(2024, 1, 1, 12, 0, 0, 0, time.FixedZone("JST", 9*60*60))
 	if !dt.Equal(expected) {
 		t.Errorf("ParseDateTime(20240101120000) = %v, expected %v", dt, expected)
 	}
