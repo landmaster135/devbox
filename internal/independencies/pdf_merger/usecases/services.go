@@ -102,6 +102,100 @@ func AddImagesToExistingPDF(existingPDF string, images []string, output string) 
 	return nil
 }
 
+// fileInfo は抽出された画像ファイルの情報を格納する構造体
+type fileInfo struct {
+	originalPath string
+	pageNum      int
+	imageNum     int
+	ext          string
+}
+
+// extractPageNumber は左側部分からページ番号を抽出します
+func extractPageNumber(leftPart string) int {
+	// パターン1: document_001 のような形式
+	leftPart = strings.TrimSuffix(leftPart, "_")
+
+	// 最後のアンダースコア以降を数値として解析
+	lastUnderscoreIndex := strings.LastIndex(leftPart, "_")
+	if lastUnderscoreIndex >= 0 {
+		pageNumStr := leftPart[lastUnderscoreIndex+1:]
+
+		// "page"プレフィックスがある場合は除去
+		pageNumStr = strings.TrimPrefix(pageNumStr, "page")
+
+		if num, err := strconv.Atoi(pageNumStr); err == nil {
+			return num
+		}
+	}
+	return 1 // デフォルト値
+}
+
+// parseImageFileName はファイル名を解析してファイル情報を抽出します
+func parseImageFileName(filename, outputDir string) (fileInfo, error) {
+	// pdfcpuが生成する可能性のあるファイル名パターンを解析
+	// 例: document_001_Im0.jpg, document_page1_Im0.jpg, document_1_Im0.jpg
+	specifiedChr := "_Im"
+	if !strings.Contains(filename, specifiedChr) {
+		return fileInfo{}, fmt.Errorf("not supported without '%s' characters in the file name: %s", specifiedChr, filename)
+	}
+
+	ext := filepath.Ext(filename)
+
+	// _Im部分で分割
+	parts := strings.Split(filename, specifiedChr)
+	if len(parts) < 2 {
+		return fileInfo{}, fmt.Errorf("invalid filename format: %s", filename)
+	}
+
+	// 左側の部分からページ番号を抽出
+	leftPart := parts[0]
+	// 右側の部分から画像番号を抽出
+	rightPart := parts[1]
+
+	// 画像番号を抽出（拡張子を除去）
+	imageNumStr := strings.TrimSuffix(rightPart, ext)
+	imageNum, err := strconv.Atoi(imageNumStr)
+	if err != nil {
+		imageNum = 0 // デフォルト値
+	}
+
+	// ページ番号を抽出
+	pageNum := extractPageNumber(leftPart)
+
+	return fileInfo{
+		originalPath: filepath.Join(outputDir, filename),
+		pageNum:      pageNum,
+		imageNum:     imageNum,
+		ext:          ext,
+	}, nil
+}
+
+func sortImageFiles(imageFiles []fileInfo) []fileInfo {
+	sort.Slice(imageFiles, func(i, j int) bool {
+		if imageFiles[i].pageNum != imageFiles[j].pageNum {
+			return imageFiles[i].pageNum < imageFiles[j].pageNum
+		}
+		return imageFiles[i].imageNum < imageFiles[j].imageNum
+	})
+
+	return imageFiles
+}
+
+// calculateActualPageNumber は実際のページ番号を計算します
+func calculateActualPageNumber(fileInfo fileInfo, index int, startPageOffset int) int {
+	if startPageOffset > 0 {
+		// 開始ページが指定されている場合、実際のページ番号を使用
+		return startPageOffset + index
+	} else {
+		// 全ページ抽出の場合、pdfcpuが抽出したページ番号または連番を使用
+		if fileInfo.pageNum > 0 {
+			return fileInfo.pageNum
+		} else {
+			return index + 1
+		}
+	}
+}
+
 // renameExtractedImagesWithFourDigits は抽出された画像ファイルの名前を4桁連番形式に変更します
 func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPageOffset int) error {
 	files, err := os.ReadDir(outputDir)
@@ -113,13 +207,6 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPag
 	pdfName := strings.TrimSuffix(pdfBaseName, filepath.Ext(pdfBaseName))
 
 	// ファイルを分析してページ別に整理
-	type fileInfo struct {
-		originalPath string
-		pageNum      int
-		imageNum     int
-		ext          string
-	}
-
 	var imageFiles []fileInfo
 
 	for _, file := range files {
@@ -128,89 +215,23 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPag
 		}
 
 		filename := file.Name()
-
-		// pdfcpuが生成する可能性のあるファイル名パターンを解析
-		// 例: document_001_Im0.jpg, document_page1_Im0.jpg, document_1_Im0.jpg
-		specifiedChr := "_Im"
-		if !strings.Contains(filename, specifiedChr) {
-			return fmt.Errorf("not supported without '%s' characters in the file name: %s", specifiedChr, filename)
-		}
-
-		ext := filepath.Ext(filename)
-
-		// _Im部分で分割
-		parts := strings.Split(filename, specifiedChr)
-		if len(parts) < 2 {
+		info, err := parseImageFileName(filename, outputDir)
+		if err != nil {
+			// ファイル名が対象パターンではない場合はスキップ
 			continue
 		}
 
-		// 左側の部分からページ番号を抽出
-		leftPart := parts[0]
-		// 右側の部分から画像番号を抽出
-		rightPart := parts[1]
-
-		// 画像番号を抽出（拡張子を除去）
-		imageNumStr := strings.TrimSuffix(rightPart, ext)
-		imageNum, err := strconv.Atoi(imageNumStr)
-		if err != nil {
-			imageNum = 0 // デフォルト値
-		}
-
-		// ページ番号を抽出（様々なパターンに対応）
-		var pageNum int
-
-		// パターン1: document_001 のような形式
-		leftPart = strings.TrimSuffix(leftPart, "_")
-
-		// 最後のアンダースコア以降を数値として解析
-		lastUnderscoreIndex := strings.LastIndex(leftPart, "_")
-		if lastUnderscoreIndex >= 0 {
-			pageNumStr := leftPart[lastUnderscoreIndex+1:]
-
-			// "page"プレフィックスがある場合は除去
-			pageNumStr = strings.TrimPrefix(pageNumStr, "page")
-
-			if num, err := strconv.Atoi(pageNumStr); err == nil {
-				pageNum = num
-			} else {
-				pageNum = 1 // デフォルト値
-			}
-		} else {
-			pageNum = 1 // デフォルト値
-		}
-
-		imageFiles = append(imageFiles, fileInfo{
-			originalPath: filepath.Join(outputDir, filename),
-			pageNum:      pageNum,
-			imageNum:     imageNum,
-			ext:          ext,
-		})
+		imageFiles = append(imageFiles, info)
 	}
 
 	// ページ番号でソート
-	sort.Slice(imageFiles, func(i, j int) bool {
-		if imageFiles[i].pageNum != imageFiles[j].pageNum {
-			return imageFiles[i].pageNum < imageFiles[j].pageNum
-		}
-		return imageFiles[i].imageNum < imageFiles[j].imageNum
-	})
+	imageFiles = sortImageFiles(imageFiles)
 
 	// 実際のページ番号に基づいてリネーム
 	// startPageOffsetが0の場合は全ページ抽出なので、連番を使用
 	// startPageOffsetが1以上の場合は、実際のページ番号を使用
 	for i, fileInfo := range imageFiles {
-		var actualPageNum int
-		if startPageOffset > 0 {
-			// 開始ページが指定されている場合、実際のページ番号を使用
-			actualPageNum = startPageOffset + i
-		} else {
-			// 全ページ抽出の場合、pdfcpuが抽出したページ番号または連番を使用
-			if fileInfo.pageNum > 0 {
-				actualPageNum = fileInfo.pageNum
-			} else {
-				actualPageNum = i + 1
-			}
-		}
+		actualPageNum := calculateActualPageNumber(fileInfo, i, startPageOffset)
 
 		newName := fmt.Sprintf("%s_%04d%s", pdfName, actualPageNum, fileInfo.ext)
 		newPath := filepath.Join(outputDir, newName)
