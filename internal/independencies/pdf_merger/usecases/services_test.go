@@ -6,6 +6,7 @@ import (
 	"image/jpeg"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -262,6 +263,377 @@ func TestPDFCreationService_Integration(t *testing.T) {
 
 		if string(content[:4]) != "%PDF" {
 			t.Errorf("出力ファイルは有効なPDFではありません")
+		}
+	})
+}
+
+func TestImageExtractionService_specifyRangeOfPages(t *testing.T) {
+	service := NewImageExtractionService()
+
+	tests := []struct {
+		name       string
+		startPage  int
+		endPage    int
+		totalPages int
+		want       []string
+	}{
+		{
+			name:       "両方のページが指定されている場合",
+			startPage:  3,
+			endPage:    7,
+			totalPages: 10,
+			want:       []string{"3-7"},
+		},
+		{
+			name:       "開始ページのみ指定（最後まで）",
+			startPage:  5,
+			endPage:    0,
+			totalPages: 10,
+			want:       []string{"5-10"},
+		},
+		{
+			name:       "終了ページのみ指定（最初から）",
+			startPage:  0,
+			endPage:    8,
+			totalPages: 10,
+			want:       []string{"1-8"},
+		},
+		{
+			name:       "全ページ抽出（両方とも0）",
+			startPage:  0,
+			endPage:    0,
+			totalPages: 10,
+			want:       []string{},
+		},
+		{
+			name:       "単一ページ指定（開始＝終了）",
+			startPage:  5,
+			endPage:    5,
+			totalPages: 10,
+			want:       []string{"5-5"},
+		},
+		{
+			name:       "最初のページのみ",
+			startPage:  1,
+			endPage:    1,
+			totalPages: 10,
+			want:       []string{"1-1"},
+		},
+		{
+			name:       "最後のページのみ",
+			startPage:  10,
+			endPage:    10,
+			totalPages: 10,
+			want:       []string{"10-10"},
+		},
+		{
+			name:       "1ページのPDFで全ページ",
+			startPage:  0,
+			endPage:    0,
+			totalPages: 1,
+			want:       []string{},
+		},
+		{
+			name:       "1ページのPDFで開始ページのみ指定",
+			startPage:  1,
+			endPage:    0,
+			totalPages: 1,
+			want:       []string{"1-1"},
+		},
+		{
+			name:       "1ページのPDFで終了ページのみ指定",
+			startPage:  0,
+			endPage:    1,
+			totalPages: 1,
+			want:       []string{"1-1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := service.specifyRangeOfPages(tt.startPage, tt.endPage, tt.totalPages)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("specifyRangeOfPages() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestImageExtractionService_generatePageRangeMessage(t *testing.T) {
+	service := NewImageExtractionService()
+
+	tests := []struct {
+		name       string
+		startPage  int
+		endPage    int
+		totalPages int
+		want       string
+	}{
+		{
+			name:       "両方のページが指定されている場合",
+			startPage:  3,
+			endPage:    7,
+			totalPages: 10,
+			want:       "ページ 3 から 7 まで",
+		},
+		{
+			name:       "開始ページのみ指定（最後まで）",
+			startPage:  5,
+			endPage:    0,
+			totalPages: 10,
+			want:       "ページ 5 から 10 まで (最終ページ)",
+		},
+		{
+			name:       "終了ページのみ指定（最初から）",
+			startPage:  0,
+			endPage:    8,
+			totalPages: 10,
+			want:       "ページ 1 から 8 まで",
+		},
+		{
+			name:       "全ページ抽出（両方とも0）",
+			startPage:  0,
+			endPage:    0,
+			totalPages: 10,
+			want:       "全ページ (ページ 1 から 10 まで)",
+		},
+		{
+			name:       "単一ページ指定（開始＝終了）",
+			startPage:  5,
+			endPage:    5,
+			totalPages: 10,
+			want:       "ページ 5 から 5 まで",
+		},
+		{
+			name:       "最初のページのみ",
+			startPage:  1,
+			endPage:    1,
+			totalPages: 10,
+			want:       "ページ 1 から 1 まで",
+		},
+		{
+			name:       "最後のページのみ",
+			startPage:  10,
+			endPage:    10,
+			totalPages: 10,
+			want:       "ページ 10 から 10 まで",
+		},
+		{
+			name:       "1ページのPDFで全ページ",
+			startPage:  0,
+			endPage:    0,
+			totalPages: 1,
+			want:       "全ページ (ページ 1 から 1 まで)",
+		},
+		{
+			name:       "1ページのPDFで開始ページのみ指定",
+			startPage:  1,
+			endPage:    0,
+			totalPages: 1,
+			want:       "ページ 1 から 1 まで (最終ページ)",
+		},
+		{
+			name:       "1ページのPDFで終了ページのみ指定",
+			startPage:  0,
+			endPage:    1,
+			totalPages: 1,
+			want:       "ページ 1 から 1 まで",
+		},
+		{
+			name:       "大きなページ数のPDF",
+			startPage:  50,
+			endPage:    0,
+			totalPages: 500,
+			want:       "ページ 50 から 500 まで (最終ページ)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := service.generatePageRangeMessage(tt.startPage, tt.endPage, tt.totalPages)
+			if got != tt.want {
+				t.Errorf("generatePageRangeMessage() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestImageExtractionService_GetRangeOfPages(t *testing.T) {
+	service := NewImageExtractionService()
+
+	tests := []struct {
+		name       string
+		startPage  int
+		endPage    int
+		totalPages int
+		want       PageRangeInfo
+	}{
+		{
+			name:       "両方のページが指定されている場合",
+			startPage:  3,
+			endPage:    7,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{"3-7"},
+				Message:       "ページ 3 から 7 まで",
+			},
+		},
+		{
+			name:       "開始ページのみ指定（最後まで）",
+			startPage:  5,
+			endPage:    0,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{"5-10"},
+				Message:       "ページ 5 から 10 まで (最終ページ)",
+			},
+		},
+		{
+			name:       "終了ページのみ指定（最初から）",
+			startPage:  0,
+			endPage:    8,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{"1-8"},
+				Message:       "ページ 1 から 8 まで",
+			},
+		},
+		{
+			name:       "全ページ抽出（両方とも0）",
+			startPage:  0,
+			endPage:    0,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{},
+				Message:       "全ページ (ページ 1 から 10 まで)",
+			},
+		},
+		{
+			name:       "単一ページ指定（開始＝終了）",
+			startPage:  5,
+			endPage:    5,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{"5-5"},
+				Message:       "ページ 5 から 5 まで",
+			},
+		},
+		{
+			name:       "最初のページのみ",
+			startPage:  1,
+			endPage:    1,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{"1-1"},
+				Message:       "ページ 1 から 1 まで",
+			},
+		},
+		{
+			name:       "最後のページのみ",
+			startPage:  10,
+			endPage:    10,
+			totalPages: 10,
+			want: PageRangeInfo{
+				PageSelection: []string{"10-10"},
+				Message:       "ページ 10 から 10 まで",
+			},
+		},
+		{
+			name:       "1ページのPDFで全ページ",
+			startPage:  0,
+			endPage:    0,
+			totalPages: 1,
+			want: PageRangeInfo{
+				PageSelection: []string{},
+				Message:       "全ページ (ページ 1 から 1 まで)",
+			},
+		},
+		{
+			name:       "1ページのPDFで開始ページのみ指定",
+			startPage:  1,
+			endPage:    0,
+			totalPages: 1,
+			want: PageRangeInfo{
+				PageSelection: []string{"1-1"},
+				Message:       "ページ 1 から 1 まで (最終ページ)",
+			},
+		},
+		{
+			name:       "1ページのPDFで終了ページのみ指定",
+			startPage:  0,
+			endPage:    1,
+			totalPages: 1,
+			want: PageRangeInfo{
+				PageSelection: []string{"1-1"},
+				Message:       "ページ 1 から 1 まで",
+			},
+		},
+		{
+			name:       "大きなページ数のPDF（開始ページのみ）",
+			startPage:  100,
+			endPage:    0,
+			totalPages: 500,
+			want: PageRangeInfo{
+				PageSelection: []string{"100-500"},
+				Message:       "ページ 100 から 500 まで (最終ページ)",
+			},
+		},
+		{
+			name:       "大きなページ数のPDF（範囲指定）",
+			startPage:  100,
+			endPage:    200,
+			totalPages: 500,
+			want: PageRangeInfo{
+				PageSelection: []string{"100-200"},
+				Message:       "ページ 100 から 200 まで",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := service.GetRangeOfPages(tt.startPage, tt.endPage, tt.totalPages)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetRangeOfPages() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// エッジケースのテスト
+func TestImageExtractionService_EdgeCases(t *testing.T) {
+	service := NewImageExtractionService()
+
+	t.Run("specifyRangeOfPages - ゼロページPDF（想定外）", func(t *testing.T) {
+		// 実際にはあり得ないが、エッジケースとしてテスト
+		got := service.specifyRangeOfPages(0, 0, 0)
+		want := []string{}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("specifyRangeOfPages(0, 0, 0) = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("generatePageRangeMessage - ゼロページPDF（想定外）", func(t *testing.T) {
+		got := service.generatePageRangeMessage(0, 0, 0)
+		want := "全ページ (ページ 1 から 0 まで)"
+		if got != want {
+			t.Errorf("generatePageRangeMessage(0, 0, 0) = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("GetRangeOfPages - 整合性確認", func(t *testing.T) {
+		// GetRangeOfPagesが内部関数を正しく組み合わせているかを確認
+		startPage, endPage, totalPages := 5, 0, 10
+
+		got := service.GetRangeOfPages(startPage, endPage, totalPages)
+		expectedPageSelection := service.specifyRangeOfPages(startPage, endPage, totalPages)
+		expectedMessage := service.generatePageRangeMessage(startPage, endPage, totalPages)
+
+		if !reflect.DeepEqual(got.PageSelection, expectedPageSelection) {
+			t.Errorf("GetRangeOfPages().PageSelection = %v, want %v", got.PageSelection, expectedPageSelection)
+		}
+		if got.Message != expectedMessage {
+			t.Errorf("GetRangeOfPages().Message = %v, want %v", got.Message, expectedMessage)
 		}
 	})
 }
