@@ -313,19 +313,16 @@ func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat
 
 	// ページ範囲の指定
 	var pageSelection []string
-	if startPage > 0 && endPage > 0 {
-		// 開始ページと終了ページが両方指定されている場合
-		if startPage > endPage {
-			return fmt.Errorf("開始ページ(%d)は終了ページ(%d)より小さくなければなりません", startPage, endPage)
-		}
-		pageSelection = []string{fmt.Sprintf("%d-%d", startPage, endPage)}
-	} else if startPage > 0 && endPage == 0 {
-		// 開始ページのみ指定（最後まで）
-		pageSelection = []string{fmt.Sprintf("%d-%d", startPage, totalPages)}
-	} else if startPage == 0 && endPage > 0 {
-		// 終了ページのみ指定（最初から）
-		pageSelection = []string{fmt.Sprintf("1-%d", endPage)}
+	if startPage == 0 {
+		// 開始ページのみ指定
+		startPage = 1
 	}
+	if endPage == 0 {
+		// 終了ページのみ指定
+		endPage = totalPages
+	}
+	pageSelection = []string{fmt.Sprintf("%d-%d", startPage, endPage)}
+
 	// startPage == 0 && endPage == 0 の場合は pageSelection を空のままにして全ページ抽出
 
 	// pdfcpuを使ってPDFページを画像として出力
