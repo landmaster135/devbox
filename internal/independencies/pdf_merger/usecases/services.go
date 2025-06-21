@@ -303,18 +303,30 @@ func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat
 		return fmt.Errorf("サポートされていない画像形式です: %s %s", imageFormat, messageAboutFormat)
 	}
 
+	// PDFの総ページ数を取得
+	totalPages, err := s.GetPageCount(pdfPath)
+	if err != nil {
+		return fmt.Errorf("PDFのページ数取得に失敗しました: %w", err)
+	}
+
 	cfg := api.LoadConfiguration()
 
 	// ページ範囲の指定
 	var pageSelection []string
 	if startPage > 0 && endPage > 0 {
+		// 開始ページと終了ページが両方指定されている場合
 		if startPage > endPage {
 			return fmt.Errorf("開始ページ(%d)は終了ページ(%d)より小さくなければなりません", startPage, endPage)
 		}
 		pageSelection = []string{fmt.Sprintf("%d-%d", startPage, endPage)}
-	} else if startPage > 0 {
-		pageSelection = []string{strconv.Itoa(startPage)}
+	} else if startPage > 0 && endPage == 0 {
+		// 開始ページのみ指定（最後まで）
+		pageSelection = []string{fmt.Sprintf("%d-%d", startPage, totalPages)}
+	} else if startPage == 0 && endPage > 0 {
+		// 終了ページのみ指定（最初から）
+		pageSelection = []string{fmt.Sprintf("1-%d", endPage)}
 	}
+	// startPage == 0 && endPage == 0 の場合は pageSelection を空のままにして全ページ抽出
 
 	// pdfcpuを使ってPDFページを画像として出力
 	// 注意: pdfcpuのバージョンによって利用可能なAPIが異なります
@@ -348,4 +360,37 @@ func (s *ImageExtractionService) GetPageCount(pdfPath string) (int, error) {
 	}
 
 	return ctx.PageCount, nil
+}
+
+// ValidatePageRange はページ範囲のバリデーションを行います
+func (s *ImageExtractionService) ValidatePageRange(startPage, endPage, totalPages int) error {
+	// 負の値のチェック
+	if startPage < 0 {
+		return fmt.Errorf("開始ページは0以上の値を指定してください（指定値: %d）", startPage)
+	}
+	if endPage < 0 {
+		return fmt.Errorf("終了ページは0以上の値を指定してください（指定値: %d）", endPage)
+	}
+
+	// 1以上の値が指定された場合のページ範囲チェック（1からtotalPagesの範囲内）
+	if startPage > 0 {
+		if startPage > totalPages {
+			return fmt.Errorf("開始ページがPDFの総ページ数を超えています（指定値: %d, 総ページ数: %d）", startPage, totalPages)
+		}
+	}
+
+	if endPage > 0 {
+		if endPage > totalPages {
+			return fmt.Errorf("終了ページがPDFの総ページ数を超えています（指定値: %d, 総ページ数: %d）", endPage, totalPages)
+		}
+	}
+
+	// 開始ページと終了ページの関係性チェック（両方が1以上の場合）
+	if startPage > 0 && endPage > 0 {
+		if startPage > endPage {
+			return fmt.Errorf("開始ページが終了ページより後になっています（開始: %d, 終了: %d）", startPage, endPage)
+		}
+	}
+
+	return nil
 }
