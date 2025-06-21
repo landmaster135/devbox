@@ -244,6 +244,25 @@ func renameExtractedImagesWithFourDigits(outputDir, pdfBaseName string, startPag
 	return nil
 }
 
+func isSupportedFormat(format string) (bool, error, string) {
+	// サポートする画像形式を確認
+	supportedFormats := map[string]bool{
+		"jpg":  true,
+		"jpeg": true,
+		"png":  true,
+		"tiff": true,
+		"webp": true,
+	}
+
+	lowerFormat := strings.ToLower(format)
+	value, exists := supportedFormats[lowerFormat]
+	msg := "(サポート形式: jpg, jpeg, png, tiff, webp)"
+	if !exists {
+		return false, fmt.Errorf("サポートの有無が規定されていない画像形式です: %s %s", format, msg), msg
+	}
+	return value, nil, msg
+}
+
 // ExtractPDFToImages はPDFの指定したページ範囲を画像として抽出します
 func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPage int) error {
 	// 出力ディレクトリが存在しない場合は作成
@@ -257,17 +276,12 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 	}
 
 	// サポートする画像形式を確認
-	supportedFormats := map[string]bool{
-		"jpg":  true,
-		"jpeg": true,
-		"png":  true,
-		"tiff": true,
-		"webp": true,
+	isValidFormat, err, messageAboutFormat := isSupportedFormat(imageFormat)
+	if err != nil {
+		return err
 	}
-
-	lowerFormat := strings.ToLower(imageFormat)
-	if !supportedFormats[lowerFormat] {
-		return fmt.Errorf("サポートされていない画像形式です: %s (サポート形式: jpg, jpeg, png, tiff, webp)", imageFormat)
+	if !isValidFormat {
+		return fmt.Errorf("サポートされていない画像形式です: %s %s", imageFormat, messageAboutFormat)
 	}
 
 	cfg := api.LoadConfiguration()
@@ -286,7 +300,7 @@ func ExtractPDFToImages(pdfPath, outputDir, imageFormat string, startPage, endPa
 	// pdfcpuを使ってPDFページを画像として出力
 	// 注意: pdfcpuのバージョンによって利用可能なAPIが異なります
 	// ExtractImagesFileを試し、失敗した場合は代替手段を試行
-	err := api.ExtractImagesFile(pdfPath, outputDir, pageSelection, cfg)
+	err = api.ExtractImagesFile(pdfPath, outputDir, pageSelection, cfg)
 	if err != nil {
 		return fmt.Errorf("PDFからの画像抽出に失敗しました: %w", err)
 	}
