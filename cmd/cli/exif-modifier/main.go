@@ -19,7 +19,7 @@ var (
 	dateTime       = flag.String("datetime", "", "設定する日時 (yyyyMMddhhmmss形式)")
 	fromFilename   = flag.Bool("from-filename", false, "ファイル名から日時を取得してExifに設定する (ファイル名がyyyyMMddhhmmss形式の場合)")
 	fromScreenshot = flag.Bool("from-screenshot", false, "スクリーンショットファイル名から日時を取得してExifに設定する (Screenshot_yyyyMMdd-hhmmss形式の場合)")
-	extension      = flag.String("ext", "", "対象とする拡張子 (例: jpg, jpeg, png, webp, mp4)")
+	extension      = flag.String("ext", "jpg", "対象とする拡張子 (例: jpg, jpeg, png, webp, mp4)")
 	recursive      = flag.Bool("recursive", false, "サブフォルダも再帰的に処理する")
 	dryRun         = flag.Bool("dry-run", false, "実際には変更せず、処理対象ファイルのみ表示")
 	verbose        = flag.Bool("verbose", false, "詳細な出力を表示")
@@ -85,22 +85,19 @@ func main() {
 		os.Exit(1)
 	}
 
+	// ExifModifierServiceを作成
+	service := usecases.NewExifModifierService()
+
 	var targetTime time.Time
 	var err error
 
 	// 日時のパース
 	if *dateTime != "" {
-		targetTime, err = usecases.ParseDateTime(*dateTime)
+		targetTime, err = service.ParseDateTime(*dateTime)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: 日時の形式が正しくありません: %v\n", err)
 			os.Exit(1)
 		}
-	}
-
-	// バリデーション
-	if err := usecases.ValidateInputOptions(*dirPath, *extension); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
 	}
 
 	// ログ設定
@@ -125,9 +122,6 @@ func main() {
 
 	// 実行情報を表示
 	printExecutionInfo(config)
-
-	// ExifModifierServiceを作成
-	service := usecases.NewExifModifierService()
 
 	// 画像ファイルを検索
 	imageFiles, err := service.FindImageFiles(config)
