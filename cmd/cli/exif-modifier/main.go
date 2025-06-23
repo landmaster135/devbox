@@ -123,7 +123,27 @@ func main() {
 	// 実行情報を表示
 	printExecutionInfo(config)
 
-	// 画像ファイルを検索
+	// fromFilename または fromScreenshot モードの場合、ファイル名から日時を抽出してファイルごとに設定
+	if *fromFilename || *fromScreenshot {
+		var err error
+
+		if *fromFilename {
+			err = service.ProcessFilesFromFilename(*dirPath, *extension, *recursive, *dryRun, *verbose, true)
+		} else if *fromScreenshot {
+			err = service.ProcessFilesFromScreenshot(*dirPath, *extension, *recursive, *dryRun, *verbose, true)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error processing files: %v\n", err)
+			os.Exit(1)
+		}
+
+		// 結果を表示
+		fmt.Printf("\n処理完了\n")
+		return
+	}
+
+	// 通常のモード（全ファイルに同じ日時を設定）の場合のみ画像ファイルを検索
 	imageFiles, err := service.FindImageFiles(config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error finding image files: %v\n", err)
@@ -139,38 +159,19 @@ func main() {
 		log.Printf("Found %d image files\n", len(imageFiles))
 	}
 
-	// fromFilename または fromScreenshot モードの場合、ファイル名から日時を抽出してファイルごとに設定
-	if *fromFilename || *fromScreenshot {
-		var err error
-
-		if *fromFilename {
-			err = service.ProcessFilesFromFilename(*dirPath, *recursive, *dryRun, *verbose, true)
-		} else if *fromScreenshot {
-			err = service.ProcessFilesFromScreenshot(*dirPath, *recursive, *dryRun, *verbose, true)
-		}
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error processing files: %v\n", err)
-			os.Exit(1)
-		}
-
-		// 結果を表示
-		fmt.Printf("\n処理完了\n")
-	} else {
-		// 通常のモード（全ファイルに同じ日時を設定）
-		processedCount, errorCount, err := service.ModifyExifData(imageFiles, config)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error modifying EXIF data: %v\n", err)
-			os.Exit(1)
-		}
-
-		// 結果を表示
-		fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
-		if errorCount > 0 {
-			fmt.Printf(" (%d個のエラー)", errorCount)
-		}
-		fmt.Println()
+	// 通常のモード（全ファイルに同じ日時を設定）
+	processedCount, errorCount, err := service.ModifyExifData(imageFiles, config)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error modifying EXIF data: %v\n", err)
+		os.Exit(1)
 	}
+
+	// 結果を表示
+	fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
+	if errorCount > 0 {
+		fmt.Printf(" (%d個のエラー)", errorCount)
+	}
+	fmt.Println()
 }
 
 // 実行情報を表示

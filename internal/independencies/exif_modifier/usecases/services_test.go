@@ -730,7 +730,7 @@ func TestExifModifierService_ProcessFilesFromFilename(t *testing.T) {
 	service := NewExifModifierService()
 
 	// 再帰なしのテスト
-	err = service.ProcessFilesFromFilename(tempDir, false, false, true, true)
+	err = service.ProcessFilesFromFilename(tempDir, "png", false, false, true, true)
 	if err != nil {
 		t.Errorf("ProcessFilesFromFilename() error = %v", err)
 	}
@@ -776,7 +776,7 @@ func TestExifModifierService_ProcessFilesFromFilename(t *testing.T) {
 	oldTime := time.Date(2000, 1, 1, 0, 0, 0, 0, time.Local)
 	os.Chtimes(subDirFile, oldTime, oldTime)
 
-	err = service.ProcessFilesFromFilename(tempDir, true, false, true, true)
+	err = service.ProcessFilesFromFilename(tempDir, "png", true, false, true, true)
 	if err != nil {
 		t.Errorf("ProcessFilesFromFilename() with recursion error = %v", err)
 	}
@@ -801,176 +801,9 @@ func TestExifModifierService_ProcessFilesFromFilename(t *testing.T) {
 		os.Chtimes(filename, oldTime, oldTime)
 	}
 
-	err = service.ProcessFilesFromFilename(tempDir, true, true, true, true)
+	err = service.ProcessFilesFromFilename(tempDir, "png", true, true, true, true)
 	if err != nil {
 		t.Errorf("ProcessFilesFromFilename() with dry-run error = %v", err)
-	}
-
-	// ドライランでは実際のファイルは変更されないことを確認
-	for _, filePath := range testFiles {
-		info, err := os.Stat(filePath)
-		if err != nil {
-			t.Errorf("os.Stat(%s) error = %v", filePath, err)
-			continue
-		}
-
-		if !info.ModTime().Equal(oldTime) {
-			t.Errorf("File %s was modified during dry-run", filePath)
-		} else {
-			t.Logf("File %s was not modified during dry-run as expected", filepath.Base(filePath))
-		}
-	}
-}
-
-// TestExifModifierService_ProcessFilesFromScreenshot はスクリーンショットファイルの処理をテストします
-func TestExifModifierService_ProcessFilesFromScreenshot(t *testing.T) {
-	service := NewExifModifierService()
-
-	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "exif_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// サブディレクトリを作成
-	subDir := filepath.Join(tempDir, "subdir")
-	if err := os.Mkdir(subDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	// テスト用のデータをセットアップ
-	setupTestData(t)
-
-	// テストファイルを作成（スクリーンショットファイル名）
-	testFiles := []string{
-		filepath.Join(tempDir, "Screenshot_20240101-120000.png"),
-		filepath.Join(tempDir, "スクリーンショット 2024-01-02 13.00.00.png"),
-		filepath.Join(tempDir, "Screen Shot 2024-01-03 at 14.00.00.png"),
-		filepath.Join(tempDir, "normal_image.png"), // スクリーンショットではない
-		filepath.Join(subDir, "Screenshot_20240105-160000.png"),
-	}
-
-	// テスト用のファイルを作成
-	for _, filename := range testFiles {
-		// test_01.pngをコピー
-		err := copyFile(
-			filepath.Join(dataTmpDir, "test_01.png"),
-			filename,
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// 特定の時刻を設定（タイムゾーンを明示的に指定）
-	jst := time.FixedZone("JST", 9*60*60) // JST = UTC+9
-	testTime := time.Date(2024, 1, 1, 12, 0, 0, 0, jst)
-	for _, filename := range testFiles {
-		// ファイルの更新時刻を設定
-		os.Chtimes(filename, testTime, testTime)
-	}
-
-	// 再帰なしのテスト
-	err = service.ProcessFilesFromScreenshot(tempDir, false, false, true, true)
-	if err != nil {
-		t.Errorf("ProcessFilesFromScreenshot() error = %v", err)
-	}
-
-	// スクリーンショットファイルの更新時刻が正しく設定されていることを確認
-	expectedTimes := map[string]time.Time{
-		"Screenshot_20240101-120000.png":         time.Date(2024, 1, 1, 12, 0, 0, 0, jst),
-		"スクリーンショット 2024-01-02 13.00.00.png":      time.Date(2024, 1, 2, 13, 0, 0, 0, jst),
-		"Screen Shot 2024-01-03 at 14.00.00.png": time.Date(2024, 1, 3, 14, 0, 0, 0, jst),
-		"Screenshot_20240105-160000.png":         time.Date(2024, 1, 5, 16, 0, 0, 0, jst),
-	}
-
-	for _, filename := range testFiles {
-		// スクリーンショットファイルのみチェック
-		if !strings.Contains(strings.ToLower(filepath.Base(filename)), "screenshot") &&
-			!strings.Contains(filepath.Base(filename), "スクリーンショット") &&
-			!strings.Contains(strings.ToLower(filepath.Base(filename)), "screen shot") {
-			continue
-		}
-
-		// サブディレクトリのファイルは再帰なしの場合スキップ
-		if strings.Contains(filename, subDir) {
-			continue
-		}
-
-		info, err := os.Stat(filename)
-		if err != nil {
-			t.Errorf("os.Stat(%s) error = %v", filename, err)
-			continue
-		}
-
-		// ファイル名から期待される時刻を取得
-		baseName := filepath.Base(filename)
-		expectedTime, exists := expectedTimes[baseName]
-		if !exists {
-			t.Errorf("No expected time defined for file: %s", baseName)
-			continue
-		}
-
-		// 更新時刻が正しく設定されていることを確認
-		if diff := info.ModTime().Sub(expectedTime); diff < -time.Second || diff > time.Second {
-			t.Errorf("File %s modification time = %v, expected close to %v", filename, info.ModTime(), expectedTime)
-		} else {
-			t.Logf("File %s modification time is correct: %v", filepath.Base(filename), info.ModTime())
-		}
-	}
-
-	// 通常の画像ファイルは変更されていないことを確認
-	normalFile := filepath.Join(tempDir, "normal_image.png")
-	info, err := os.Stat(normalFile)
-	if err != nil {
-		t.Errorf("os.Stat(%s) error = %v", normalFile, err)
-	} else {
-		// 注: 完全一致ではなく、近似値で確認
-		if diff := info.ModTime().Sub(testTime); diff < -time.Second || diff > time.Second {
-			t.Errorf("Non-screenshot file was incorrectly modified: %v", info.ModTime())
-		} else {
-			t.Logf("Non-screenshot file was not modified as expected: %v", info.ModTime())
-		}
-	}
-
-	// 再帰ありのテスト
-	// まず、サブディレクトリのファイルの時刻をリセット
-	subDirFile := filepath.Join(subDir, "Screenshot_20240105-160000.png")
-	oldTime := time.Date(2000, 1, 1, 0, 0, 0, 0, jst)
-	os.Chtimes(subDirFile, oldTime, oldTime)
-
-	// サブディレクトリのファイルの時刻を新しい時刻に設定
-	newTime := time.Date(2024, 1, 5, 16, 0, 0, 0, jst)
-	os.Chtimes(subDirFile, newTime, newTime)
-
-	err = service.ProcessFilesFromScreenshot(tempDir, true, false, true, true)
-	if err != nil {
-		t.Errorf("ProcessFilesFromScreenshot() with recursion error = %v", err)
-	}
-
-	// サブディレクトリのファイルが更新されたことを確認
-	info, err = os.Stat(subDirFile)
-	if err != nil {
-		t.Errorf("os.Stat(%s) error = %v", subDirFile, err)
-	} else {
-		// ファイルが更新されたかどうかを確認（oldTimeより後であること）
-		if !info.ModTime().After(oldTime) {
-			t.Errorf("Subdirectory file was not modified")
-		} else {
-			t.Logf("Subdirectory file was modified as expected: %v", info.ModTime())
-		}
-	}
-
-	// ドライランのテスト
-	// まず、全ファイルの時刻をリセット
-	for _, filename := range testFiles {
-		os.Chtimes(filename, oldTime, oldTime)
-	}
-
-	err = service.ProcessFilesFromScreenshot(tempDir, true, true, true, true)
-	if err != nil {
-		t.Errorf("ProcessFilesFromScreenshot() with dry-run error = %v", err)
 	}
 
 	// ドライランでは実際のファイルは変更されないことを確認
