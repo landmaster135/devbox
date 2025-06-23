@@ -15,9 +15,6 @@ import (
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 )
 
-// サポートする画像拡張子
-var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
-
 // Config はEXIF修正の設定を保持します
 type Config struct {
 	FolderPath     string
@@ -83,7 +80,7 @@ func validateDirectory(dirPath string) error {
 }
 
 // validateExtension はファイル拡張子をバリデーションします
-func validateExtension(ext string) error {
+func (s *ExifModifierService) validateExtension(ext string) error {
 	// 空文字列チェック
 	if ext == "" {
 		return fmt.Errorf("拡張子が空です")
@@ -106,52 +103,29 @@ func validateExtension(ext string) error {
 	}
 
 	// サポートされている拡張子かチェック
-	for _, supportedExt := range supportedExtensions {
-		if extLower == supportedExt {
-			return nil
-		}
+	if s.isFileExtensionSupported(extLower) {
+		return nil
 	}
 
-	return fmt.Errorf("サポートされていない拡張子です: %s\nサポートされている拡張子: %v", ext, supportedExtensions)
-}
-
-func ValidateInputOptions(dirPath, extension string) error {
-	// ディレクトリの存在確認とバリデーション
-	if err := validateDirectory(dirPath); err != nil {
-		return fmt.Errorf("ディレクトリの存在確認とバリデーションに失敗しました: %w", err)
-	}
-
-	// 拡張子のバリデーション
-	if extension != "" {
-		if err := validateExtension(extension); err != nil {
-			return fmt.Errorf("拡張子のバリデーションに失敗しました: %w", err)
-		}
-	}
-
-	return nil
+	return fmt.Errorf("サポートされていない拡張子です: %s", ext)
 }
 
 // isImageFile は画像ファイルかどうかをチェック
-func (s *ExifModifierService) isImageFile(filePath, targetExtension string) bool {
-	ext := strings.ToLower(filepath.Ext(filePath))
+func (s *ExifModifierService) isImageFile(filePath, ext string) bool {
+	lowerExt := strings.ToLower(filepath.Ext(filePath))
 
 	// 特定の拡張子が指定されている場合
-	if targetExtension != "" {
-		// 拡張子を正規化（ドットがない場合は追加）
-		normalizedExt := targetExtension
-		if !strings.HasPrefix(normalizedExt, ".") {
-			normalizedExt = "." + normalizedExt
-		}
-		return strings.ToLower(normalizedExt) == ext
+	if ext == "" {
+		return false
 	}
 
-	// サポートされている拡張子かチェック
-	for _, supportedExt := range supportedExtensions {
-		if ext == supportedExt {
-			return true
-		}
+	// 拡張子を正規化（ドットがない場合は追加）
+	normalizedExt := ext
+	if !strings.HasPrefix(normalizedExt, ".") {
+		normalizedExt = "." + normalizedExt
 	}
-	return false
+
+	return strings.ToLower(normalizedExt) == lowerExt
 }
 
 // FindImageFiles は指定された設定に基づいて画像ファイルを検索します
@@ -168,10 +142,24 @@ func (s *ExifModifierService) FindImageFiles(config *Config) ([]string, error) {
 			return filepath.SkipDir
 		}
 
-		if !info.IsDir() {
-			if s.isImageFile(path, config.Extension) {
-				imageFiles = append(imageFiles, path)
+		// ディレクトリの存在確認とバリデーション
+		if err := validateDirectory(config.FolderPath); err != nil {
+			return fmt.Errorf("ディレクトリの存在確認とバリデーションに失敗しました: %w", err)
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		// 拡張子のバリデーション
+		if config.Extension != "" {
+			if err := s.validateExtension(config.Extension); err != nil {
+				return fmt.Errorf("拡張子のバリデーションに失敗しました: %w", err)
 			}
+		}
+
+		if s.isImageFile(path, config.Extension) {
+			imageFiles = append(imageFiles, path)
 		}
 
 		return nil
@@ -493,7 +481,7 @@ func validateDateTime(dateTimeStr string) error {
 }
 
 // ParseDateTime は日時文字列をtime.Timeに変換します
-func ParseDateTime(dateTimeStr string) (time.Time, error) {
+func (s *ExifModifierService) ParseDateTime(dateTimeStr string) (time.Time, error) {
 	if len(dateTimeStr) != 14 {
 		return time.Time{}, fmt.Errorf("日時は14文字である必要があります (yyyyMMddhhmmss)")
 	}
@@ -510,21 +498,20 @@ func ParseDateTime(dateTimeStr string) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	// JSTタイムゾーンを取得
-	jstLocation, err := time.LoadLocation("Asia/Tokyo")
-	if err != nil {
-		// フォールバック: UTC+9の固定オフセット
-		jstLocation = time.FixedZone("JST", 9*60*60)
-	}
+	jstLocation := s.getJSTLocation()
 
 	return time.ParseInLocation("20060102150405", dateTimeStr, jstLocation)
 }
 
 func (s *ExifModifierService) isFileExtensionSupported(ext string) bool {
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" && ext != ".tiff" {
-		return false
+	// サポートされている拡張子かチェック
+	var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
+	for _, e := range supportedExtensions {
+		if ext == e {
+			return true
+		}
 	}
-	return true
+	return false
 }
 
 // ProcessFilesFromFilename はファイル名から日時情報を抽出してEXIF情報を設定します
@@ -687,9 +674,9 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 
 		// スクリーンショットファイル名から日時を抽出
 		screenshotPatterns := []*regexp.Regexp{
-			regexp.MustCompile(`[Ss]creenshot_(\d{8})-(\d{6})`),                                    // Screenshot_YYYYMMDD-HHMMSS
-			regexp.MustCompile(`スクリーンショット_(\d{8})-(\d{6})`),                                     // スクリーンショット_YYYYMMDD-HHMMSS
-			regexp.MustCompile(`スクリーンショット (\d{4})-(\d{2})-(\d{2}) (\d{2})\.(\d{2})\.(\d{2})`),        // スクリーンショット YYYY-MM-DD HH.MM.SS
+			regexp.MustCompile(`[Ss]creenshot_(\d{8})-(\d{6})`),                                          // Screenshot_YYYYMMDD-HHMMSS
+			regexp.MustCompile(`スクリーンショット_(\d{8})-(\d{6})`),                                              // スクリーンショット_YYYYMMDD-HHMMSS
+			regexp.MustCompile(`スクリーンショット (\d{4})-(\d{2})-(\d{2}) (\d{2})\.(\d{2})\.(\d{2})`),            // スクリーンショット YYYY-MM-DD HH.MM.SS
 			regexp.MustCompile(`[Ss]creen [Ss]hot (\d{4})-(\d{2})-(\d{2}) at (\d{2})\.(\d{2})\.(\d{2})`), // Screen Shot YYYY-MM-DD at HH.MM.SS
 		}
 
@@ -703,8 +690,8 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 
 				if len(matches) == 3 {
 					// Screenshot_YYYYMMDD-HHMMSS 形式
-					dateStr := matches[1] // YYYYMMDD
-					timeStr := matches[2] // HHMMSS
+					dateStr := matches[1]           // YYYYMMDD
+					timeStr := matches[2]           // HHMMSS
 					dateTimeStr = dateStr + timeStr // YYYYMMDDHHMMSS
 				} else if len(matches) == 7 {
 					// YYYY-MM-DD HH.MM.SS 形式
