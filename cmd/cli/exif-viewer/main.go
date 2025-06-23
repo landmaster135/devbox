@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/landmaster135/devbox/internal/independencies/exif_viewer/usecases"
+	usecases "github.com/landmaster135/devbox/internal/independencies/exif_viewer/usecases"
 )
 
 const version = "1.0.0"

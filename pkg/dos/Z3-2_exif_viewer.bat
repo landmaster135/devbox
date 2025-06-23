@@ -1,13 +1,15 @@
 @echo off
 
 set /p path="Input directory you wanna view EXIF: "
-set /p ext="Select extension of files you wanna view  [p]='png' [j]='jpg,jpeg' [w]='webp' : "
+set /p ext="Select extension of files you wanna view  [p]='png' [j]='jpg,jpeg' [w]='webp' [m]='mp4,webm' : "
 if /i "%ext%"=="p" (
   set "ext=png"
 ) else if /i "%ext%"=="j" (
   set "ext=jpg,jpeg"
 ) else if /i "%ext%"=="w" (
   set "ext=webp"
+) else if /i "%ext%"=="m" (
+  set "ext=mp4,webm"
 ) else (
   echo "Invalid choice. Input any key to exit..."
   pause > nul
