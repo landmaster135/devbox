@@ -14,7 +14,7 @@ import (
 )
 
 // サポートする画像拡張子
-var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp"}
+var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
 
 // Config は画像リネームの設定を保持します
 type Config struct {
@@ -252,7 +252,7 @@ func (s *ImageRenamerService) extractCreateDate(filePath string) (time.Time, err
 	switch ext {
 	case ".jpg", ".jpeg":
 		return s.extractCreateDateFromJpeg(filePath)
-	case ".png", ".tiff", ".tif", ".webp":
+	case ".png", ".tiff", ".tif", ".webp", ".mp4", ".webm":
 		// PNG, TIFF, WebPは依存関係を減らすためファイルのModTimeを使用
 		info, err := os.Stat(filePath)
 		if err != nil {

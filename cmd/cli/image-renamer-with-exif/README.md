@@ -57,7 +57,7 @@ go build -o image-renamer-with-exif main.go
   -dir string
         画像ファイルがあるディレクトリのパス (default ".")
   -ext string
-        対象とする拡張子 (例: jpg, jpeg, png, webp, tiff)
+        対象とする拡張子 (例: jpg, jpeg, png, webp, tiff, mp4, webm)
   -recursive
         サブフォルダも再帰的に処理する
   -dry-run
