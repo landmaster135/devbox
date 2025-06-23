@@ -29,6 +29,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	vlcPattern := flagSet.Bool("vlc", false, "VLCスナップショットファイル (vlcsnap-*.png) をリネーム")
 	winPattern := flagSet.Bool("win", false, "Windowsスクリーンショットファイル (スクリーンショット *.png) をリネーム")
 	androidPattern := flagSet.Bool("android", false, "Androidスクリーンレコードファイル (screen-*.mp4) をリネーム")
+	toDateTime := flagSet.Bool("to-datetime", false, "ファイル名をYYYYMMDDHHMMSS形式にリネーム")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
 
@@ -39,12 +40,13 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	}
 
 	return usecases.Config{
-		SrcDir:        *srcDir,
-		Recursive:     *recursive,
-		Workers:       *workers,
-		VlcPattern:    *vlcPattern,
-		WinPattern:    *winPattern,
+		SrcDir:         *srcDir,
+		Recursive:      *recursive,
+		Workers:        *workers,
+		VlcPattern:     *vlcPattern,
+		WinPattern:     *winPattern,
 		AndroidPattern: *androidPattern,
+		ToDateTime:     *toDateTime,
 	}, nil
 }
 
@@ -62,7 +64,12 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	// スクリーンショットファイルの検索
-	files, err := usecases.FindScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.AndroidPattern, stdout, stderr)
+	var files []string
+	if config.ToDateTime {
+		files, err = usecases.FindScreenshotFilesForDateTime(config.SrcDir, config.Recursive, stdout, stderr)
+	} else {
+		files, err = usecases.FindScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.AndroidPattern, stdout, stderr)
+	}
 	if err != nil {
 		return exitCodeError
 	}
@@ -74,7 +81,9 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	fmt.Fprintf(stdout, "スクリーンショットファイルが %d 件見つかりました。\n", len(files))
 
-	if config.VlcPattern {
+	if config.ToDateTime {
+		fmt.Fprintln(stdout, "YYYYMMDDHHMMSS形式でのリネームを実行します。")
+	} else if config.VlcPattern {
 		fmt.Fprintln(stdout, "VLCスナップショットパターンを使用します。")
 	} else if config.WinPattern {
 		fmt.Fprintln(stdout, "Windowsスクリーンショットパターンを使用します。")
