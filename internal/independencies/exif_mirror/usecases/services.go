@@ -40,15 +40,15 @@ func NewExifMirrorService() *ExifMirrorService {
 }
 
 // MirrorExifData は指定された設定に基づいてEXIFデータをミラーリングします
-func (s *ExifMirrorService) MirrorExifData(config *Config) (int, int, error) {
+func (s *ExifMirrorService) MirrorExifData(config *Config) (int, int, int, error) {
 	// ターゲットファイルを検索
 	targetFiles, err := s.findImageFiles(config.TargetFolderPath, config.TargetExtension, config.Recursive)
 	if err != nil {
-		return 0, 0, fmt.Errorf("ターゲットファイルの検索に失敗: %v", err)
+		return 0, 0, 0, fmt.Errorf("ターゲットファイルの検索に失敗: %v", err)
 	}
 
 	if len(targetFiles) == 0 {
-		return 0, 0, fmt.Errorf("ターゲットファイルが見つかりません")
+		return 0, 0, 0, fmt.Errorf("ターゲットファイルが見つかりません")
 	}
 
 	if config.Verbose {
@@ -86,7 +86,9 @@ func (s *ExifMirrorService) MirrorExifData(config *Config) (int, int, error) {
 				// 対応するソースファイルを検索
 				sourceFilePath := s.findCorrespondingSourceFile(targetFilePath, config)
 				if sourceFilePath == "" {
-					result.Error = fmt.Errorf("対応するソースファイルが見つかりません")
+					fmt.Printf("スキップ: %s\n", targetFilePath)
+					fmt.Printf("  ⏭️  対応するソースファイルが見つかりません（スキップ）\n")
+					result.Skipped = true
 					results <- result
 					continue
 				}
@@ -130,15 +132,18 @@ func (s *ExifMirrorService) MirrorExifData(config *Config) (int, int, error) {
 	// 結果を収集
 	processedCount := 0
 	errorCount := 0
+	skipCount := 0
 	for result := range results {
 		if result.Success {
 			processedCount++
+		} else if result.Skipped {
+			skipCount++
 		} else {
 			errorCount++
 		}
 	}
 
-	return processedCount, errorCount, nil
+	return processedCount, errorCount, skipCount, nil
 }
 
 // MirrorResult はファイル処理の結果を表します
@@ -146,6 +151,7 @@ type MirrorResult struct {
 	TargetFilePath string
 	SourceFilePath string
 	Success        bool
+	Skipped        bool
 	Error          error
 }
 

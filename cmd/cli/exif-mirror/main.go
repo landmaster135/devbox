@@ -138,7 +138,7 @@ func main() {
 	service := usecases.NewExifMirrorService()
 
 	// EXIFデータをミラーリング
-	processedCount, errorCount, err := service.MirrorExifData(config)
+	processedCount, errorCount, skipCount, err := service.MirrorExifData(config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error mirroring EXIF data: %v\n", err)
 		os.Exit(1)
@@ -146,9 +146,7 @@ func main() {
 
 	// 結果を表示
 	fmt.Printf("\n処理完了: %d個のファイルを処理しました", processedCount)
-	if errorCount > 0 {
-		fmt.Printf(" (%d個のエラー)", errorCount)
-	}
+	fmt.Printf(" (エラー: %d個, スキップ: %d個)", errorCount, skipCount)
 	fmt.Println()
 
 	if errorCount > 0 {
