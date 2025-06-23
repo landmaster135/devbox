@@ -79,13 +79,18 @@ func validateDirectory(dirPath string) error {
 	return nil
 }
 
-// validateExtension はファイル拡張子をバリデーションします
-func (s *ExifModifierService) validateExtension(ext string) error {
-	// 空文字列チェック
-	if ext == "" {
-		return fmt.Errorf("拡張子が空です")
+func (s *ExifModifierService) isFileExtensionSupported(ext string) bool {
+	// サポートされている拡張子かチェック
+	var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
+	for _, e := range supportedExtensions {
+		if ext == e {
+			return true
+		}
 	}
+	return false
+}
 
+func (s *ExifModifierService) getNormalizedExtension(ext string) string {
 	// 拡張子を正規化（ドットがない場合は追加）
 	normalizedExt := ext
 	if !strings.HasPrefix(normalizedExt, ".") {
@@ -93,14 +98,19 @@ func (s *ExifModifierService) validateExtension(ext string) error {
 	}
 
 	// より確実な方法で小文字に変換
-	extLower := ""
-	for _, char := range normalizedExt {
-		if char >= 'A' && char <= 'Z' {
-			extLower += string(char + 32) // A-Z を a-z に変換
-		} else {
-			extLower += string(char)
-		}
+	extLower := strings.ToLower(normalizedExt)
+
+	return extLower
+}
+
+// validateExtension はファイル拡張子をバリデーションします
+func (s *ExifModifierService) validateExtension(ext string) error {
+	// 空文字列チェック
+	if ext == "" {
+		return fmt.Errorf("拡張子が空です")
 	}
+
+	extLower := s.getNormalizedExtension(ext)
 
 	// サポートされている拡張子かチェック
 	if s.isFileExtensionSupported(extLower) {
@@ -503,19 +513,8 @@ func (s *ExifModifierService) ParseDateTime(dateTimeStr string) (time.Time, erro
 	return time.ParseInLocation("20060102150405", dateTimeStr, jstLocation)
 }
 
-func (s *ExifModifierService) isFileExtensionSupported(ext string) bool {
-	// サポートされている拡張子かチェック
-	var supportedExtensions = []string{".jpg", ".jpeg", ".tiff", ".tif", ".png", ".webp", ".mp4", ".webm"}
-	for _, e := range supportedExtensions {
-		if ext == e {
-			return true
-		}
-	}
-	return false
-}
-
-// ProcessFilesFromFilename はファイル名から日時情報を抽出してEXIF情報を設定します
-func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, dryRun, verbose, overwriteExif bool) error {
+// ProcessFilesFromFilename はファイル名から日時情報を抽出してEXIF情報を設定します（拡張子フィルタ付き）
+func (s *ExifModifierService) ProcessFilesFromFilename(path, targetExtension string, recursive, dryRun, verbose, overwriteExif bool) error {
 	// ファイルパターンの正規表現
 	// 例: IMG_20230101_120000.jpg, Screenshot_20230101-120000.png など
 	datePatterns := []*regexp.Regexp{
@@ -538,8 +537,21 @@ func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, d
 			return nil
 		}
 
-		// 画像ファイル以外はスキップ
+		// 拡張子チェック
 		ext := strings.ToLower(filepath.Ext(filePath))
+		if targetExtension != "" {
+			// 特定の拡張子が指定されている場合はそれをチェック
+			normalizedTargetExt := s.getNormalizedExtension(targetExtension)
+
+			if ext != normalizedTargetExt {
+				if verbose {
+					fmt.Printf("スキップ: %s (対象拡張子ではありません: %s != %s)\n", filePath, ext, normalizedTargetExt)
+				}
+				return nil
+			}
+		}
+
+		// サポートされているファイル形式かチェック
 		if !s.isFileExtensionSupported(ext) {
 			if verbose {
 				fmt.Printf("スキップ: %s (サポートされていないファイル形式)\n", filePath)
@@ -634,8 +646,8 @@ func (s *ExifModifierService) ProcessFilesFromFilename(path string, recursive, d
 	})
 }
 
-// ProcessFilesFromScreenshot はスクリーンショットファイルの日時情報を設定します
-func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive, dryRun, verbose, overwriteExif bool) error {
+// ProcessFilesFromScreenshot はスクリーンショットファイルの日時情報を設定します（拡張子フィルタ付き）
+func (s *ExifModifierService) ProcessFilesFromScreenshot(path, targetExtension string, recursive, dryRun, verbose, overwriteExif bool) error {
 	return filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -650,8 +662,18 @@ func (s *ExifModifierService) ProcessFilesFromScreenshot(path string, recursive,
 			return nil
 		}
 
-		// 画像ファイル以外はスキップ
+		// 拡張子チェック（指定された拡張子のみ処理）
 		ext := strings.ToLower(filepath.Ext(filePath))
+		normalizedTargetExt := s.getNormalizedExtension(targetExtension)
+
+		if ext != normalizedTargetExt {
+			if verbose {
+				fmt.Printf("スキップ: %s (対象拡張子ではありません: %s != %s)\n", filePath, ext, normalizedTargetExt)
+			}
+			return nil
+		}
+
+		// サポートされているファイル形式かチェック
 		if !s.isFileExtensionSupported(ext) {
 			if verbose {
 				fmt.Printf("スキップ: %s (サポートされていないファイル形式)\n", filePath)
