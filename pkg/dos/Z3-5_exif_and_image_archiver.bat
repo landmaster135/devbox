@@ -70,13 +70,16 @@ echo "===============  EXIF mirroring  =========================================
 .\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext png --target-ext webp
 echo "===================================================================================="
 echo "===============  EXIF viewer (WEBP)  ================================================="
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -list-props -props "File Modification Date/Time"
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -props "File Modification Date/Time"
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -list-props
 echo "===================================================================================="
 echo "===============  EXIF viewer (MP4)  ================================================="
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -list-props -props "File Modification Date/Time"
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -props "File Modification Date/Time"
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -list-props
 echo "===================================================================================="
 echo "===============  EXIF viewer (MP4 SS)  ================================================"
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -list-props -props "File Modification Date/Time"
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -props "File Modification Date/Time"
+.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -list-props
 echo "===================================================================================="
 echo "===============  File moving  ======================================================"
 .\pkg\bin\win_amd64\file-maneuver.exe --src-dirs %path_01_05% --extensions webp --dest-dir %path_01_07%
