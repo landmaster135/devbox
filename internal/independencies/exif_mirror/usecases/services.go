@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"encoding/binary"
 
 	"github.com/dsoprea/go-exif/v3"
 	"github.com/dsoprea/go-exif/v3/common"
@@ -368,6 +369,13 @@ func (s *ExifMirrorService) copyExifForJpeg(sourceFilePath, targetFilePath strin
 
 // copyExifGeneric は汎用的なEXIFコピー処理（JPEG以外のファイル形式用）
 func (s *ExifMirrorService) copyExifGeneric(sourceFilePath, targetFilePath string, config *Config) error {
+	targetExt := strings.ToLower(filepath.Ext(targetFilePath))
+
+	// WebPファイルの場合は専用処理
+	if targetExt == ".webp" {
+		return s.copyExifToWebp(sourceFilePath, targetFilePath, config)
+	}
+
 	// ソースファイルからEXIFデータを抽出
 	sourceRawExif, err := exif.SearchFileAndExtractExif(sourceFilePath)
 	if err != nil {
@@ -421,6 +429,241 @@ func (s *ExifMirrorService) copyExifGeneric(sourceFilePath, targetFilePath strin
 	return s.CopyFileExifSimple(sourceFilePath, targetFilePath)
 }
 
+// copyExifToWebp はWebPファイル専用のEXIF書き込み処理
+func (s *ExifMirrorService) copyExifToWebp(sourceFilePath, targetFilePath string, config *Config) error {
+	if config.Verbose {
+		log.Printf("Copying EXIF to WebP file: %s <- %s", targetFilePath, sourceFilePath)
+	}
+
+	// ソースファイルからEXIFデータを抽出
+	sourceRawExif, err := exif.SearchFileAndExtractExif(sourceFilePath)
+	if err != nil {
+		return fmt.Errorf("ソースファイルからEXIFデータの抽出に失敗: %v", err)
+	}
+
+	if config.Verbose {
+		log.Printf("Extracted EXIF data from source file: %d bytes", len(sourceRawExif))
+	}
+
+	// IFDマッピングとタグインデックスを初期化
+	im, err := exifcommon.NewIfdMappingWithStandard()
+	if err != nil {
+		return fmt.Errorf("IFDマッピングの初期化に失敗: %v", err)
+	}
+
+	ti := exif.NewTagIndex()
+
+	// ソースファイルのEXIFデータを解析
+	_, index, err := exif.Collect(im, ti, sourceRawExif)
+	if err != nil {
+		return fmt.Errorf("EXIFデータの解析に失敗: %v", err)
+	}
+
+	// IFDビルダーを使用してEXIFデータを構築
+	rootIfd := index.RootIfd
+	ib := exif.NewIfdBuilderFromExistingChain(rootIfd)
+
+	// EXIFデータをエンコード
+	ibe := exif.NewIfdByteEncoder()
+	exifBytes, err := ibe.EncodeToExif(ib)
+	if err != nil {
+		return fmt.Errorf("EXIFデータのエンコードに失敗: %v", err)
+	}
+
+	if config.Verbose {
+		log.Printf("Encoded EXIF data: %d bytes", len(exifBytes))
+	}
+
+	// WebPファイルにEXIFチャンクを追加
+	err = s.writeExifToWebpFile(targetFilePath, exifBytes, config)
+	if err != nil {
+		return fmt.Errorf("WebPファイルへのEXIF書き込みに失敗: %v", err)
+	}
+
+	if config.Verbose {
+		log.Printf("Successfully wrote EXIF data to WebP file: %s", targetFilePath)
+	}
+
+	return nil
+}
+
+// writeExifToWebpFile はWebPファイルにEXIFチャンクを書き込みます
+func (s *ExifMirrorService) writeExifToWebpFile(filePath string, exifData []byte, config *Config) error {
+	// WebPファイルを読み込み
+	originalData, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("WebPファイルの読み込みに失敗: %v", err)
+	}
+
+	// WebPファイルの基本構造を解析
+	if len(originalData) < 12 {
+		return fmt.Errorf("WebPファイルが小さすぎます")
+	}
+
+	// RIFFヘッダーとWEBPシグネチャを確認
+	if string(originalData[0:4]) != "RIFF" || string(originalData[8:12]) != "WEBP" {
+		return fmt.Errorf("有効なWebPファイルではありません")
+	}
+
+	// 既存のチャンクを収集
+	var chunks []webpChunk
+	var hasExif bool
+	offset := 12 // RIFFヘッダー(4) + サイズ(4) + WEBPシグネチャ(4)
+
+	for offset < len(originalData) {
+		if offset+8 > len(originalData) {
+			break
+		}
+
+		// チャンクヘッダーを読み取り
+		fourCc := [4]byte{originalData[offset], originalData[offset+1], originalData[offset+2], originalData[offset+3]}
+		chunkSize := binary.LittleEndian.Uint32(originalData[offset+4 : offset+8])
+
+		offset += 8
+
+		if offset+int(chunkSize) > len(originalData) {
+			break
+		}
+
+		// チャンクデータを読み取り
+		chunkData := make([]byte, chunkSize)
+		copy(chunkData, originalData[offset:offset+int(chunkSize)])
+
+		chunk := webpChunk{
+			FourCC: fourCc,
+			Data:   chunkData,
+		}
+
+		// EXIFチャンクが既に存在するかチェック
+		if string(fourCc[:]) == "EXIF" {
+			hasExif = true
+			// 既存のEXIFチャンクを新しいデータで置き換え
+			chunk.Data = exifData
+		}
+
+		chunks = append(chunks, chunk)
+
+		offset += int(chunkSize)
+		// パディング処理
+		if chunkSize%2 == 1 {
+			offset++
+		}
+	}
+
+	// EXIFチャンクが存在しない場合は追加
+	if !hasExif {
+		exifChunk := webpChunk{
+			FourCC: [4]byte{'E', 'X', 'I', 'F'},
+			Data:   exifData,
+		}
+		chunks = append(chunks, exifChunk)
+	}
+
+	// 新しいWebPファイルを構築
+	err = s.buildWebpFile(filePath, chunks, config)
+	if err != nil {
+		return fmt.Errorf("WebPファイルの再構築に失敗: %v", err)
+	}
+
+	return nil
+}
+
+// webpChunk はWebPチャンクを表します
+type webpChunk struct {
+	FourCC [4]byte
+	Data   []byte
+}
+
+// buildWebpFile はチャンクからWebPファイルを再構築します
+func (s *ExifMirrorService) buildWebpFile(filePath string, chunks []webpChunk, config *Config) error {
+	// 一時ファイルを作成
+	tempFile, err := os.CreateTemp(filepath.Dir(filePath), "webp_temp_*.webp")
+	if err != nil {
+		return fmt.Errorf("一時ファイルの作成に失敗: %v", err)
+	}
+	defer tempFile.Close()
+	defer os.Remove(tempFile.Name())
+
+	// RIFFヘッダーを書き込み
+	riffHeader := [4]byte{'R', 'I', 'F', 'F'}
+	_, err = tempFile.Write(riffHeader[:])
+	if err != nil {
+		return fmt.Errorf("RIFFヘッダーの書き込みに失敗: %v", err)
+	}
+
+	// ファイルサイズを計算（後で更新）
+	fileSizePos := int64(4)
+	err = binary.Write(tempFile, binary.LittleEndian, uint32(0))
+	if err != nil {
+		return fmt.Errorf("ファイルサイズの書き込みに失敗: %v", err)
+	}
+
+	// WEBPシグネチャを書き込み
+	webpSig := [4]byte{'W', 'E', 'B', 'P'}
+	_, err = tempFile.Write(webpSig[:])
+	if err != nil {
+		return fmt.Errorf("WEBPシグネチャの書き込みに失敗: %v", err)
+	}
+
+	totalSize := int64(4) // WEBPシグネチャのサイズ
+
+	// 各チャンクを書き込み
+	for _, chunk := range chunks {
+		// チャンクヘッダーを書き込み
+		_, err = tempFile.Write(chunk.FourCC[:])
+		if err != nil {
+			return fmt.Errorf("チャンクFourCCの書き込みに失敗: %v", err)
+		}
+
+		chunkSize := uint32(len(chunk.Data))
+		err = binary.Write(tempFile, binary.LittleEndian, chunkSize)
+		if err != nil {
+			return fmt.Errorf("チャンクサイズの書き込みに失敗: %v", err)
+		}
+
+		// チャンクデータを書き込み
+		_, err = tempFile.Write(chunk.Data)
+		if err != nil {
+			return fmt.Errorf("チャンクデータの書き込みに失敗: %v", err)
+		}
+
+		// パディング（奇数バイトの場合）
+		if len(chunk.Data)%2 == 1 {
+			_, err = tempFile.Write([]byte{0})
+			if err != nil {
+				return fmt.Errorf("パディングの書き込みに失敗: %v", err)
+			}
+			totalSize += int64(8 + len(chunk.Data) + 1)
+		} else {
+			totalSize += int64(8 + len(chunk.Data))
+		}
+	}
+
+	// ファイルサイズを更新
+	_, err = tempFile.Seek(fileSizePos, 0)
+	if err != nil {
+		return fmt.Errorf("ファイルサイズ位置への移動に失敗: %v", err)
+	}
+
+	err = binary.Write(tempFile, binary.LittleEndian, uint32(totalSize))
+	if err != nil {
+		return fmt.Errorf("ファイルサイズの更新に失敗: %v", err)
+	}
+
+	tempFile.Close()
+
+	// 元のファイルを置き換え
+	err = os.Rename(tempFile.Name(), filePath)
+	if err != nil {
+		return fmt.Errorf("ファイルの置き換えに失敗: %v", err)
+	}
+
+	if config.Verbose {
+		log.Printf("WebPファイルを再構築しました: %s (総サイズ: %d bytes)", filePath, totalSize+8)
+	}
+
+	return nil
+}
 
 // removeExtension はファイル名から拡張子を除去します
 func removeExtension(fileName string) string {
