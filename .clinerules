@@ -47,10 +47,17 @@ The overview of each entry point is as follows:
 ## Development Flow
 The basic development flow is as follows:
 1. Check files that seem related to the instructions.
-2. Create a directory and main.go file to serve as entry points in the cmd package.
+2. Create a directory and main.go file to serve as entry points in the `cmd` package.
 3. Implement Internal packages.
-4. Write README documentation in the entry point within the cmd package.
+4. Write README documentation in the entry point within the `cmd` package.
 5. Implement build shell scripts in the scripts directory. Build two types of executable files for linux_amd64 and win_amd64 in the pkg/bin directory.
 6. Build and, if necessary, prepare sample data in the sample_data directory before checking the operation.
 7. After checking that the operation works without problems, implement test code.
 8. If the test code implementation fails, fix it. If successful, check the test coverage and the task is complete if it exceeds 90%.
+
+## Precautions
+- The `cmd` package provides only interface functionality, such as for CLI purposes.
+- Create services corresponding to the packages inside each `cmd` package under the `internal/independencies` package, and implement the functionality as methods of the structs for those services. 
+- Make sure the service is implemented as part of the `usecase` layer, rather than directly within the cmd package.
+- Design the service so that its internal functionality is not exposed to the `cmd` package, ensuring clear separation of concerns and encapsulation.
+- Ensure that all fields of the service struct are fully validated at the time of its initialization within the `cmd` package implementation.
