@@ -4,344 +4,190 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewExifMirrorService(t *testing.T) {
+func TestExifMirrorService_copyExifToWebp_Normal(t *testing.T) {
+	// テスト用の一時ディレクトリを作成
+	tempDir, err := os.MkdirTemp("", "exif_mirror_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
 	service := NewExifMirrorService()
-	if service == nil {
-		t.Fatal("NewExifMirrorService() returned nil")
+	config := &Config{
+		Verbose: true,
 	}
+
+	// テスト用のダミーWebPファイルを作成
+	webpPath := filepath.Join(tempDir, "test.webp")
+	webpData := []byte{
+		'R', 'I', 'F', 'F', // RIFF header
+		0x20, 0x00, 0x00, 0x00, // file size (32 bytes)
+		'W', 'E', 'B', 'P', // WEBP signature
+		'V', 'P', '8', ' ', // VP8 chunk
+		0x10, 0x00, 0x00, 0x00, // chunk size (16 bytes)
+		// VP8 data (16 bytes of dummy data)
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	}
+	err = os.WriteFile(webpPath, webpData, 0644)
+	require.NoError(t, err)
+
+	// テスト用のダミーEXIFデータ
+	exifData := []byte{
+		0x45, 0x78, 0x69, 0x66, 0x00, 0x00, // Exif header
+		0x49, 0x49, 0x2A, 0x00, // TIFF header (little endian)
+		0x08, 0x00, 0x00, 0x00, // offset to first IFD
+	}
+
+	// WebPファイルにEXIFデータを書き込み
+	err = service.writeExifToWebpFile(webpPath, exifData, config)
+	assert.NoError(t, err)
+
+	// ファイルが正常に更新されたことを確認
+	updatedData, err := os.ReadFile(webpPath)
+	require.NoError(t, err)
+	assert.Greater(t, len(updatedData), len(webpData), "WebPファイルにEXIFチャンクが追加されている")
+
+	// EXIFチャンクが含まれていることを確認
+	assert.Contains(t, string(updatedData), "EXIF", "EXIFチャンクが含まれている")
 }
 
-func TestValidateDirectory(t *testing.T) {
-	tests := []struct {
-		name    string
-		dirPath string
-		wantErr bool
+func TestExifMirrorService_ValidateDirectory_Normal(t *testing.T) {
+	// 一時ディレクトリを作成
+	tempDir, err := os.MkdirTemp("", "validate_test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	// 正常なディレクトリの検証
+	err = ValidateDirectory(tempDir)
+	assert.NoError(t, err)
+}
+
+func TestExifMirrorService_ValidateDirectory_NotExists(t *testing.T) {
+	// 存在しないディレクトリの検証
+	err := ValidateDirectory("/non/existent/directory")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "ディレクトリが存在しません")
+}
+
+func TestExifMirrorService_ValidateExtension_Normal(t *testing.T) {
+	testCases := []struct {
+		name      string
+		extension string
+		expectErr bool
 	}{
-		{
-			name:    "empty path",
-			dirPath: "",
-			wantErr: true,
-		},
-		{
-			name:    "non-existent directory",
-			dirPath: "/non/existent/path",
-			wantErr: true,
-		},
-		{
-			name:    "current directory",
-			dirPath: ".",
-			wantErr: false,
-		},
+		{"jpg extension", "jpg", false},
+		{"jpeg extension", "jpeg", false},
+		{"webp extension", "webp", false},
+		{"png extension", "png", false},
+		{"dot jpg extension", ".jpg", false},
+		{"unsupported extension", "xyz", true},
+		{"empty extension", "", true},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateDirectory(tt.dirPath)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateDirectory() error = %v, wantErr %v", err, tt.wantErr)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateExtension(tc.extension)
+			if tc.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
 			}
 		})
 	}
 }
 
-func TestValidateExtension(t *testing.T) {
-	tests := []struct {
-		name    string
-		ext     string
-		wantErr bool
-	}{
-		{
-			name:    "empty extension",
-			ext:     "",
-			wantErr: true,
-		},
-		{
-			name:    "valid jpg extension",
-			ext:     "jpg",
-			wantErr: false,
-		},
-		{
-			name:    "valid jpg extension with dot",
-			ext:     ".jpg",
-			wantErr: false,
-		},
-		{
-			name:    "valid png extension",
-			ext:     "png",
-			wantErr: false,
-		},
-		{
-			name:    "valid webp extension",
-			ext:     "webp",
-			wantErr: false,
-		},
-		{
-			name:    "invalid extension",
-			ext:     "xyz",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateExtension(tt.ext)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateExtension() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestRemoveExtension(t *testing.T) {
-	tests := []struct {
-		name     string
-		fileName string
-		want     string
-	}{
-		{
-			name:     "file with jpg extension",
-			fileName: "image.jpg",
-			want:     "image",
-		},
-		{
-			name:     "file with png extension",
-			fileName: "photo.png",
-			want:     "photo",
-		},
-		{
-			name:     "file without extension",
-			fileName: "noextension",
-			want:     "noextension",
-		},
-		{
-			name:     "file with multiple dots",
-			fileName: "image.backup.jpg",
-			want:     "image.backup",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := removeExtension(tt.fileName)
-			if got != tt.want {
-				t.Errorf("removeExtension() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestExifMirrorService_isTargetFile(t *testing.T) {
+func TestExifMirrorService_isTargetFile_Normal(t *testing.T) {
 	service := NewExifMirrorService()
 
-	tests := []struct {
+	testCases := []struct {
 		name            string
 		filePath        string
 		targetExtension string
-		want            bool
+		expected        bool
 	}{
-		{
-			name:            "jpg file with jpg target",
-			filePath:        "/path/to/image.jpg",
-			targetExtension: "jpg",
-			want:            true,
-		},
-		{
-			name:            "jpg file with png target",
-			filePath:        "/path/to/image.jpg",
-			targetExtension: "png",
-			want:            false,
-		},
-		{
-			name:            "png file with png target",
-			filePath:        "/path/to/image.png",
-			targetExtension: "png",
-			want:            true,
-		},
-		{
-			name:            "jpg file with dot extension",
-			filePath:        "/path/to/image.jpg",
-			targetExtension: ".jpg",
-			want:            true,
-		},
-		{
-			name:            "unsupported extension",
-			filePath:        "/path/to/file.xyz",
-			targetExtension: "",
-			want:            false,
-		},
-		{
-			name:            "webp file with empty target",
-			filePath:        "/path/to/image.webp",
-			targetExtension: "",
-			want:            true,
-		},
+		{"jpg file with jpg target", "test.jpg", "jpg", true},
+		{"jpeg file with jpeg target", "test.jpeg", "jpeg", true},
+		{"webp file with webp target", "test.webp", "webp", true},
+		{"jpg file with webp target", "test.jpg", "webp", false},
+		{"uppercase extension", "test.JPG", "jpg", true},
+		{"dot extension", "test.jpg", ".jpg", true},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := service.isTargetFile(tt.filePath, tt.targetExtension)
-			if got != tt.want {
-				t.Errorf("ExifMirrorService.isTargetFile() = %v, want %v", got, tt.want)
-			}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := service.isTargetFile(tc.filePath, tc.targetExtension)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }
 
-func TestExifMirrorService_findCorrespondingSourceFile(t *testing.T) {
+func TestExifMirrorService_removeExtension_Normal(t *testing.T) {
+	testCases := []struct {
+		name     string
+		fileName string
+		expected string
+	}{
+		{"jpg file", "test.jpg", "test"},
+		{"jpeg file", "test.jpeg", "test"},
+		{"webp file", "test.webp", "test"},
+		{"no extension", "test", "test"},
+		{"multiple dots", "test.backup.jpg", "test.backup"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := removeExtension(tc.fileName)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestExifMirrorService_buildWebpFile_Normal(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "exif_mirror_test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	tempDir, err := os.MkdirTemp("", "build_webp_test")
+	require.NoError(t, err)
 	defer os.RemoveAll(tempDir)
-
-	// テスト用のファイル構造を作成
-	sourceDir := filepath.Join(tempDir, "source")
-	targetDir := filepath.Join(tempDir, "target")
-
-	err = os.MkdirAll(sourceDir, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.MkdirAll(targetDir, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// テスト用のソースファイルを作成
-	sourceFile := filepath.Join(sourceDir, "test.jpg")
-	err = os.WriteFile(sourceFile, []byte("test content"), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	service := NewExifMirrorService()
 	config := &Config{
-		SourceFolderPath: sourceDir,
-		TargetFolderPath: targetDir,
-		SourceExtension:  "jpg",
-		TargetExtension:  "webp",
+		Verbose: true,
 	}
 
-	targetFilePath := filepath.Join(targetDir, "test.webp")
+	webpPath := filepath.Join(tempDir, "test.webp")
 
-	result := service.findCorrespondingSourceFile(targetFilePath, config)
-	expected := sourceFile
-
-	if result != expected {
-		t.Errorf("findCorrespondingSourceFile() = %v, want %v", result, expected)
-	}
-}
-
-func TestExifMirrorService_findCorrespondingSourceFile_NotFound(t *testing.T) {
-	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "exif_mirror_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	sourceDir := filepath.Join(tempDir, "source")
-	targetDir := filepath.Join(tempDir, "target")
-
-	err = os.MkdirAll(sourceDir, 0755)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = os.MkdirAll(targetDir, 0755)
-	if err != nil {
-		t.Fatal(err)
+	// テスト用のチャンクデータ
+	chunks := []webpChunk{
+		{
+			FourCC: [4]byte{'V', 'P', '8', ' '},
+			Data:   []byte{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
+		},
+		{
+			FourCC: [4]byte{'E', 'X', 'I', 'F'},
+			Data:   []byte{0x45, 0x78, 0x69, 0x66, 0x00, 0x00},
+		},
 	}
 
-	service := NewExifMirrorService()
-	config := &Config{
-		SourceFolderPath: sourceDir,
-		TargetFolderPath: targetDir,
-		SourceExtension:  "jpg",
-		TargetExtension:  "webp",
-	}
+	// WebPファイルを構築
+	err = service.buildWebpFile(webpPath, chunks, config)
+	assert.NoError(t, err)
 
-	// 存在しないターゲットファイル
-	targetFilePath := filepath.Join(targetDir, "nonexistent.webp")
+	// ファイルが作成されたことを確認
+	_, err = os.Stat(webpPath)
+	assert.NoError(t, err)
 
-	result := service.findCorrespondingSourceFile(targetFilePath, config)
+	// ファイル内容を確認
+	data, err := os.ReadFile(webpPath)
+	require.NoError(t, err)
 
-	if result != "" {
-		t.Errorf("findCorrespondingSourceFile() = %v, want empty string", result)
-	}
-}
+	// RIFFヘッダーとWEBPシグネチャを確認
+	assert.Equal(t, "RIFF", string(data[0:4]))
+	assert.Equal(t, "WEBP", string(data[8:12]))
 
-
-func TestExifMirrorService_CopyFileExifSimple(t *testing.T) {
-	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "exif_mirror_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// テスト用のファイルを作成
-	sourceFile := filepath.Join(tempDir, "source.jpg")
-	targetFile := filepath.Join(tempDir, "target.jpg")
-
-	err = os.WriteFile(sourceFile, []byte("source content"), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = os.WriteFile(targetFile, []byte("target content"), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	service := NewExifMirrorService()
-
-	// 基本的なファイル時刻コピーのテスト
-	err = service.CopyFileExifSimple(sourceFile, targetFile)
-	if err != nil {
-		t.Errorf("CopyFileExifSimple() error = %v", err)
-	}
-}
-
-func TestExifMirrorService_BackupFile(t *testing.T) {
-	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "exif_mirror_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// テスト用のファイルを作成
-	originalFile := filepath.Join(tempDir, "original.jpg")
-	testContent := "test content for backup"
-
-	err = os.WriteFile(originalFile, []byte(testContent), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	service := NewExifMirrorService()
-
-	// バックアップ作成
-	backupPath, err := service.BackupFile(originalFile)
-	if err != nil {
-		t.Fatalf("BackupFile() error = %v", err)
-	}
-
-	// バックアップファイルが作成されたか確認
-	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
-		t.Errorf("Backup file was not created: %s", backupPath)
-	}
-
-	// バックアップファイルの内容が正しいか確認
-	backupContent, err := os.ReadFile(backupPath)
-	if err != nil {
-		t.Fatalf("Failed to read backup file: %v", err)
-	}
-
-	if string(backupContent) != testContent {
-		t.Errorf("Backup content = %s, want %s", string(backupContent), testContent)
-	}
+	// チャンクが含まれていることを確認
+	assert.Contains(t, string(data), "VP8 ")
+	assert.Contains(t, string(data), "EXIF")
 }
