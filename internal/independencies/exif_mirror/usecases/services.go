@@ -480,6 +480,15 @@ func (s *ExifMirrorService) copyExifToWebp(sourceFilePath, targetFilePath string
 		return fmt.Errorf("WebPファイルへのEXIF書き込みに失敗: %v", err)
 	}
 
+	// 元々コピーしていたメタ情報（ファイル時刻など）もコピー
+	err = s.CopyFileExifSimple(sourceFilePath, targetFilePath)
+	if err != nil {
+		if config.Verbose {
+			log.Printf("Warning: Failed to copy file metadata: %v", err)
+		}
+		// メタ情報のコピーに失敗してもEXIFコピーは成功とみなす
+	}
+
 	if config.Verbose {
 		log.Printf("Successfully wrote EXIF data to WebP file: %s", targetFilePath)
 	}
