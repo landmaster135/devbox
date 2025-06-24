@@ -461,7 +461,39 @@ func (s *ExifMirrorService) copyExifToWebp(sourceFilePath, targetFilePath string
 
 	// IFDビルダーを使用してEXIFデータを構築
 	rootIfd := index.RootIfd
-	ib := exif.NewIfdBuilderFromExistingChain(rootIfd)
+
+	// 新しいIFDビルダーを作成し、全てのIFDを含める
+	ib := exif.NewIfdBuilder(im, ti, exifcommon.IfdStandardIfdIdentity, binary.LittleEndian)
+
+	// IFD0（メインIFD）の情報を追加
+	err = ib.AddTagsFromExisting(rootIfd, nil, nil)
+	if err != nil {
+		if config.Verbose {
+			log.Printf("Warning: Failed to add IFD0 tags: %v", err)
+		}
+	}
+
+	// 子IFD（Exif IFD、GPS IFD、Interop IFD等）も追加
+	children := rootIfd.Children()
+	for _, childIfd := range children {
+		err = ib.AddTagsFromExisting(childIfd, nil, nil)
+		if err != nil {
+			if config.Verbose {
+				log.Printf("Warning: Failed to add child IFD tags: %v", err)
+			}
+		}
+
+		// さらに深い階層のIFDも処理
+		grandChildren := childIfd.Children()
+		for _, grandChildIfd := range grandChildren {
+			err = ib.AddTagsFromExisting(grandChildIfd, nil, nil)
+			if err != nil {
+				if config.Verbose {
+					log.Printf("Warning: Failed to add grandchild IFD tags: %v", err)
+				}
+			}
+		}
+	}
 
 	// EXIFデータをエンコード
 	ibe := exif.NewIfdByteEncoder()
