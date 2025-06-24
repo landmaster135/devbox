@@ -67,3 +67,5 @@ bin
 ### test data ###
 internal/independencies/exif_modifier/test_data/tmp/*
 !internal/independencies/exif_modifier/test_data/tmp/.gitkeep
+internal/independencies/exif_mirror/test_data/tmp/*
+!internal/independencies/exif_mirror/test_data/tmp/.gitkeep
