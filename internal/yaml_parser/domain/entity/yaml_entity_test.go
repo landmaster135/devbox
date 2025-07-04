@@ -3,8 +3,9 @@ package entity_test
 import (
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/domain/entity"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/landmaster135/devbox/internal/yaml_parser/domain/entity"
 )
 
 func TestNewYAMLData(t *testing.T) {

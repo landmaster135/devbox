@@ -1,10 +1,10 @@
 package yaml_service
 
 import (
-	yaml_controller "github.com/landmaster135/devbox/internal/independencies/yaml_parser/adapter/controller"
-	yaml_gateway "github.com/landmaster135/devbox/internal/independencies/yaml_parser/adapter/gateway"
-	yaml_infrastructure "github.com/landmaster135/devbox/internal/independencies/yaml_parser/infrastructure"
-	yaml_usecase "github.com/landmaster135/devbox/internal/independencies/yaml_parser/usecase"
+	yaml_controller "github.com/landmaster135/devbox/internal/yaml_parser/adapter/controller"
+	yaml_gateway "github.com/landmaster135/devbox/internal/yaml_parser/adapter/gateway"
+	yaml_infrastructure "github.com/landmaster135/devbox/internal/yaml_parser/infrastructure"
+	yaml_usecase "github.com/landmaster135/devbox/internal/yaml_parser/usecase"
 )
 
 type YamlService struct {

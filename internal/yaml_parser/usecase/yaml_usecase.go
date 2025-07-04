@@ -1,8 +1,8 @@
 package usecase
 
 import (
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/domain/entity"
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/domain/repository"
+	"github.com/landmaster135/devbox/internal/yaml_parser/domain/entity"
+	"github.com/landmaster135/devbox/internal/yaml_parser/domain/repository"
 )
 
 // YAMLUseCase はYAMLデータの処理に関するユースケースを定義します

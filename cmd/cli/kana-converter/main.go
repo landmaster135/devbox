@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/kana_converter/usecases"
+	usecases "github.com/landmaster135/devbox/internal/kana_converter/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します

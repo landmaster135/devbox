@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/adapter/controller"
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/domain/entity"
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/usecase"
+	"github.com/landmaster135/devbox/internal/yaml_parser/adapter/controller"
+	"github.com/landmaster135/devbox/internal/yaml_parser/domain/entity"
+	"github.com/landmaster135/devbox/internal/yaml_parser/usecase"
 )
 
 // YAMLUseCaseInterface はYAMLUseCaseのインターフェースを定義します

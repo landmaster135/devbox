@@ -1,6 +1,6 @@
 package repository
 
-import "github.com/landmaster135/devbox/internal/independencies/yaml_parser/domain/entity"
+import "github.com/landmaster135/devbox/internal/yaml_parser/domain/entity"
 
 // YAMLRepository はYAMLデータの操作に関するインターフェースです
 type YAMLRepository interface {

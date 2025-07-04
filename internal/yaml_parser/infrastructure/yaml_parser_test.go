@@ -4,9 +4,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/adapter/gateway"
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/infrastructure"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/landmaster135/devbox/internal/yaml_parser/adapter/gateway"
+	"github.com/landmaster135/devbox/internal/yaml_parser/infrastructure"
 )
 
 func TestNewYAMLParser(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	yaml_service "github.com/landmaster135/devbox/internal/independencies/yaml_parser/service"
+	yaml_service "github.com/landmaster135/devbox/internal/yaml_parser/service"
 )
 
 func main() {

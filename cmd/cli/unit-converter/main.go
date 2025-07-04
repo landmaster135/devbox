@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	uc "github.com/landmaster135/devbox/internal/independencies/unit_converter/usecases"
+	uc "github.com/landmaster135/devbox/internal/unit_converter/usecases"
 )
 
 // ------------------- application framing (PDF‑merger style) ----------------- //
