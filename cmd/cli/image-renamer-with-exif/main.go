@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/image_renamer_with_exif/usecases"
+	usecases "github.com/landmaster135/devbox/internal/image_renamer_with_exif/usecases"
 )
 
 const version = "1.0.0"

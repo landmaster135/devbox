@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/image_trim_describer/usecases"
+	usecases "github.com/landmaster135/devbox/internal/image_trim_describer/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します

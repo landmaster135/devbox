@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/landmaster135/devbox/internal/independencies/image_rotator/usecases"
+	"github.com/landmaster135/devbox/internal/image_rotator/usecases"
 )
 
 // exitCode は OS に返す終了ステータス

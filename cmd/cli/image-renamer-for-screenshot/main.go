@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/image_renamer_for_screenshot/usecases"
+	usecases "github.com/landmaster135/devbox/internal/image_renamer_for_screenshot/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します
