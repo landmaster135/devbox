@@ -5,9 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/independencies/env_loader/interfaces/repositories"
 )
-
 func TestEnvRepositoryImpl_LoadEnvFromYaml(t *testing.T) {
 	// テスト用のYAMLファイルを作成
 	tempDir := t.TempDir()
