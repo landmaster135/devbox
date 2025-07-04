@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/independencies/claude_code_usage/app"
-	"github.com/landmaster135/devbox/internal/independencies/claude_code_usage/config"
+	"github.com/landmaster135/devbox/internal/claude_code_usage/app"
+	"github.com/landmaster135/devbox/internal/claude_code_usage/config"
 )
 
 func main() {
