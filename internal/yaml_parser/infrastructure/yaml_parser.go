@@ -6,7 +6,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/adapter/gateway"
+	"github.com/landmaster135/devbox/internal/yaml_parser/adapter/gateway"
 )
 
 // YAMLParserInterfaceを実装していることを確認

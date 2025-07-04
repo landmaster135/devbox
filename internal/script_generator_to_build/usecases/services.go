@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/independencies/script_generator_to_build/config"
+	"github.com/landmaster135/devbox/internal/script_generator_to_build/config"
 )
 
 // 終了コード

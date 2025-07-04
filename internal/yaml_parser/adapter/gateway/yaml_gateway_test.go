@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/adapter/gateway"
-	"github.com/landmaster135/devbox/internal/independencies/yaml_parser/domain/entity"
+	"github.com/landmaster135/devbox/internal/yaml_parser/adapter/gateway"
+	"github.com/landmaster135/devbox/internal/yaml_parser/domain/entity"
 )
 
 // モックYAMLパーサー
