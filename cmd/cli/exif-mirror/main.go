@@ -7,7 +7,7 @@ import (
 	"os"
 	"runtime"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/exif_mirror/usecases"
+	usecases "github.com/landmaster135/devbox/internal/exif_mirror/usecases"
 )
 
 const version = "1.0.0"
