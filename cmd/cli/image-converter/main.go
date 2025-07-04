@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/image_converter/usecases"
+	usecases "github.com/landmaster135/devbox/internal/image_converter/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します
