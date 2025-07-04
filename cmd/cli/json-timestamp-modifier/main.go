@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/usecases/services"
+	"github.com/landmaster135/devbox/internal/independencies/json_timestamp_modifier/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/independencies/json_timestamp_modifier/usecases/services"
 )
 
 // モード定数
