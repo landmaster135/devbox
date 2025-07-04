@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/pdf_merger/usecases"
+	usecases "github.com/landmaster135/devbox/internal/pdf_merger/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します

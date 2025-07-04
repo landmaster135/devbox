@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"time"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/exif_modifier/usecases"
+	usecases "github.com/landmaster135/devbox/internal/exif_modifier/usecases"
 )
 
 const version = "1.0.0"

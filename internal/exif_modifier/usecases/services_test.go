@@ -16,8 +16,8 @@ import (
 // #==============================================================#
 // テスト用の定数
 const (
-	targetTmpDir = "internal/independencies/exif_modifier/test_data/tmp"
-	targetOrgDir = "internal/independencies/exif_modifier/test_data/org"
+	targetTmpDir = "internal/exif_modifier/test_data/tmp"
+	targetOrgDir = "internal/exif_modifier/test_data/org"
 )
 
 var (
