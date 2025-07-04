@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/independencies/json_iso8601_converter/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/independencies/json_iso8601_converter/usecases/services"
+	"github.com/landmaster135/devbox/internal/json_iso8601_converter/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/json_iso8601_converter/usecases/services"
 )
 
 // exitCode はプログラムの終了コードを表します

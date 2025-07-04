@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/independencies/json_file_merger/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/independencies/json_file_merger/usecases/services"
+	"github.com/landmaster135/devbox/internal/json_file_merger/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/json_file_merger/usecases/services"
 )
 
 func main() {
