@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/independencies/api_client/domain/models"
-	"github.com/landmaster135/devbox/internal/independencies/api_client/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/independencies/api_client/usecases/services"
+	"github.com/landmaster135/devbox/internal/api_client/domain/models"
+	"github.com/landmaster135/devbox/internal/api_client/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/api_client/usecases/services"
 )
 
 // exitCode はプログラムの終了コードを表します
