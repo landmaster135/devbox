@@ -69,6 +69,9 @@ echo "===============  EXIF mirroring  =========================================
 .\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext jpg --target-ext webp
 .\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext png --target-ext webp
 echo "===================================================================================="
+echo "===============  EXIF modification: Part 3  ============================================"
+.\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_05% --from-filename --ext webp --verbose
+echo "===================================================================================="
 echo "===============  EXIF viewer (WEBP)  ================================================="
 .\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -props "File Modification Date/Time"
 .\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -list-props
