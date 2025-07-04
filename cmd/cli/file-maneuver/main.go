@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"strings"
 
-	usecases "github.com/landmaster135/devbox/internal/independencies/file_maneuver/usecases"
+	usecases "github.com/landmaster135/devbox/internal/file_maneuver/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します
