@@ -9,31 +9,24 @@ Based on standard Go project structure:
 - util/: Utility functions.
 
 ## `internal` package
-The directory structure of Internal packages is based on clean architecture patterns.
+The internal package contains private packages organized by functionality. Each CLI tool has its corresponding internal package.
 
-```
-project-root/
-├── cmd/                     # Application entry points
-│   ├── cli/                   # Main function for CLI
-├── internal/                # Private packages
-│   ├── domain/              # Entities (cannot import external packages)
-│   │   ├── models/           # Models and business rules (cannot import external packages)
-│   │   └── repositories/    # Repository interfaces (cannot import external packages)
-│   ├── usecases/            # Use case layer (can import external packages)
-│   │   └── services/       # Application business rule
-│   └── interfaces/          # Interface adapter layer (can import external packages)
-│       └── repositories/    # Repository implementations (can import external packages)
-```
+The actual structure follows a per-tool organization pattern where each tool has its own package under `internal/`. The structure varies by tool complexity:
 
-First, implement the entities. Within the entities, in the models and business rules, data models are defined as structures. For example, files, directories, environment variables, DB, API, etc. Business rules define what values these data models receive, how they are processed, and what values they return. External packages must not be imported.
+- Simple tools: Only `usecases/` directory
+- Complex tools: `domain/`, `interfaces/`, `usecases/` directories following clean architecture
+- Specialized tools: Custom structure based on specific needs
 
-In the repository interfaces within entities, interfaces with methods for retrieving data are defined. External packages must not be imported.
+Architecture patterns used:
+- Clean Architecture Pattern: For complex tools with `domain/`, `interfaces/`, `usecases/`
+- Simple Pattern: For straightforward tools with `usecases/` only
+- Custom Pattern: For specialized tools with unique requirements
 
-Next, in the interface adapter layer, define structures using the interfaces defined in the repository interfaces, and implement the processing contents of the methods of those structures. Those methods may use entities. External packages may be imported.
-
-In the use case layer, implement the actual processing content using the methods of the interface adapter layer. Entities may be used, and external packages may be imported.
-
-In clean architecture, functional programming is generally recommended over procedural programming.
+The implementation follows these principles:
+- `domain/`: Business entities and rules (cannot import external packages)
+- `interfaces/`: Interface adapters (can import external packages)  
+- `usecases/`: Application business logic (can import external packages)
+- Functional programming is generally recommended over procedural programming
 
 ## `cmd` package
 The overview of each entry point is as follows:
@@ -57,7 +50,7 @@ The basic development flow is as follows:
 
 ## Precautions
 - The `cmd` package provides only interface functionality, such as for CLI purposes.
-- Create services corresponding to the packages inside each `cmd` package under the `internal/independencies` package, and implement the functionality as methods of the structs for those services. 
+- Create services corresponding to the packages inside each `cmd` package under the `internal` package, and implement the functionality as methods of the structs for those services. 
 - Make sure the service is implemented as part of the `usecase` layer, rather than directly within the cmd package.
 - Design the service so that its internal functionality is not exposed to the `cmd` package, ensuring clear separation of concerns and encapsulation.
 - Ensure that all fields of the service struct are fully validated at the time of its initialization within the `cmd` package implementation.
