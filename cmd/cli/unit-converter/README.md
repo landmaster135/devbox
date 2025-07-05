@@ -6,7 +6,7 @@
 
 - **依存ゼロ**: すべて標準ライブラリのみ。ビルドして置くだけで利用可能。  
 - **SI プレフィックス対応**: 接頭語 + 指数 (m², m³) も正しく処理。  
-- **疎結合構成**: CLI (`cmd/unit-converter`) とドメインロジック (`internal/independencies/unit_converter/usecases`) を分離。  
+- **疎結合構成**: CLI (`cmd/unit-converter`) とドメインロジック (`internal/unit_converter/usecases`) を分離。  
 - **高カバレッジテスト**: `go test -cover` で 90 %以上。  
 
 ## インストール
@@ -74,7 +74,7 @@ $ unit-converter volume 500 ml cup
 ```
 .
 ├── cmd/unit-converter                # CLI (プレゼンテーション層)
-└── internal/independencies/unit_converter/
+└── internal/unit_converter/
     ├── usecases.go                   # 変換エンジン
     └── usecases_test.go              # ユニットテスト
 ```
@@ -97,7 +97,7 @@ CLI は上記 3 関数のみに依存し、ロジック入れ替えや拡張が�
 ## テスト
 
 ```bash
-go test ./internal/independencies/unit_converter/... -cover
+go test ./internal/unit_converter/... -cover
 ```
 
 - **Convert** の成功・エラーケース

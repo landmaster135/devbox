@@ -101,9 +101,9 @@ function create_project_files() {
   local files=(
     "cmd/cli/${project_name}/main.go"
     "cmd/cli/${project_name}/README.md"
-    "internal/independencies/${snake_case_name}/usecases/services_test.go"
-    "internal/independencies/${snake_case_name}/usecases/services.go"
-    "internal/independencies/${snake_case_name}/.gitkeep"
+    "internal/${snake_case_name}/usecases/services_test.go"
+    "internal/${snake_case_name}/usecases/services.go"
+    "internal/${snake_case_name}/.gitkeep"
   )
 
   for file in "${files[@]}"; do

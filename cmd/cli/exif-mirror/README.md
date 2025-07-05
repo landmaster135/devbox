@@ -187,10 +187,10 @@ go build -o exif-mirror ./cmd/cli/exif-mirror
 
 ```bash
 # ユニットテストの実行
-go test ./internal/independencies/exif_mirror/usecases
+go test ./internal/exif_mirror/usecases
 
 # カバレッジ付きテスト
-go test -cover ./internal/independencies/exif_mirror/usecases
+go test -cover ./internal/exif_mirror/usecases
 ```
 
 ## エラーハンドリング
@@ -256,10 +256,10 @@ go build -o exif-mirror ./cmd/cli/exif-mirror
 
 ```bash
 # ユニットテストの実行
-go test ./internal/independencies/exif_mirror/usecases
+go test ./internal/exif_mirror/usecases
 
 # カバレッジ付きテスト
-go test -cover ./internal/independencies/exif_mirror/usecases
+go test -cover ./internal/exif_mirror/usecases
 ```
 
 ## 制限事項

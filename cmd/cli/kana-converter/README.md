@@ -147,6 +147,6 @@ go get -u golang.org/x/text
 このプログラムは以下のコンポーネントで構成されています：
 
 1. `main.go` - CLIインターフェースとエントリーポイント
-2. `internal/independencies/kana_converter/usecases` - カナ変換のコアロジック
+2. `internal/kana_converter/usecases` - カナ変換のコアロジック
 
 変換機能は再利用可能なパッケージとして実装されており、他のプログラムからも利用できます。

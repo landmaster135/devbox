@@ -1,7 +1,7 @@
 package main
 
 // unit‑converter is a *thin* CLI wrapper. All conversion logic, tables, and prefix handling live
-// in the `github.com/landmaster135/devbox/internal/independencies/unit_converter/usecases`
+// in the `github.com/landmaster135/devbox/internal/unit_converter/usecases`
 // package. That keeps the command layer free of domain rules, achieving loose coupling.
 //
 // Build:

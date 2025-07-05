@@ -19,6 +19,7 @@ type Config struct {
 	Recursive  bool     // 再帰的検索フラグ
 	Workers    int      // ワーカー数
 	DryRun     bool     // ドライランフラグ
+	CopyMode   bool     // コピーモードフラグ
 }
 
 // FileManeuverService はファイル移動サービスを提供する構造体です
@@ -27,7 +28,7 @@ type FileManeuverService struct {
 }
 
 // NewConfig は設定を作成し、全てのバリデーションを実行します
-func NewConfig(srcDirs []string, extensions []string, destDir string, recursive bool, workers int, dryRun bool) (*Config, error) {
+func NewConfig(srcDirs []string, extensions []string, destDir string, recursive bool, workers int, dryRun bool, copyMode bool) (*Config, error) {
 	config := &Config{
 		SrcDirs:    srcDirs,
 		Extensions: extensions,
@@ -35,6 +36,7 @@ func NewConfig(srcDirs []string, extensions []string, destDir string, recursive 
 		Recursive:  recursive,
 		Workers:    workers,
 		DryRun:     dryRun,
+		CopyMode:   copyMode,
 	}
 
 	// 構造体作成時に全てのバリデーションを実行
@@ -240,10 +242,14 @@ func (s *FileManeuverService) findFilesInDirectory(dir string) ([]string, error)
 	return files, nil
 }
 
-// MoveFiles はファイルを移動します
-func (s *FileManeuverService) MoveFiles(files []string, stdout, stderr io.Writer) (int, int, error) {
+// ProcessFiles はファイルを移動またはコピーします
+func (s *FileManeuverService) ProcessFiles(files []string, stdout, stderr io.Writer) (int, int, error) {
 	if len(files) == 0 {
-		fmt.Fprintf(stdout, "移動対象のファイルがありません\n")
+		if s.config.CopyMode {
+			fmt.Fprintf(stdout, "コピー対象のファイルがありません\n")
+		} else {
+			fmt.Fprintf(stdout, "移動対象のファイルがありません\n")
+		}
 		return 0, 0, nil
 	}
 
@@ -262,19 +268,31 @@ func (s *FileManeuverService) MoveFiles(files []string, stdout, stderr io.Writer
 
 	// 衝突するファイルを除外
 	validFiles := s.excludeConflictFiles(files, conflicts)
-	fmt.Fprintf(stdout, "%d ファイルを移動します（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
+	if s.config.CopyMode {
+		fmt.Fprintf(stdout, "%d ファイルをコピーします（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
+	} else {
+		fmt.Fprintf(stdout, "%d ファイルを移動します（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
+	}
 
 	if s.config.DryRun {
-		fmt.Fprintf(stdout, "ドライランモード: 実際の移動は行いません\n")
-		for _, file := range validFiles {
-			destPath := filepath.Join(s.config.DestDir, filepath.Base(file))
-			fmt.Fprintf(stdout, "移動予定: %s -> %s\n", file, destPath)
+		if s.config.CopyMode {
+			fmt.Fprintf(stdout, "ドライランモード: 実際のコピーは行いません\n")
+			for _, file := range validFiles {
+				destPath := filepath.Join(s.config.DestDir, filepath.Base(file))
+				fmt.Fprintf(stdout, "コピー予定: %s -> %s\n", file, destPath)
+			}
+		} else {
+			fmt.Fprintf(stdout, "ドライランモード: 実際の移動は行いません\n")
+			for _, file := range validFiles {
+				destPath := filepath.Join(s.config.DestDir, filepath.Base(file))
+				fmt.Fprintf(stdout, "移動予定: %s -> %s\n", file, destPath)
+			}
 		}
 		return len(validFiles), 0, nil
 	}
 
-	// 並行処理でファイル移動
-	return s.moveFilesParallel(validFiles, stdout, stderr)
+	// 並行処理でファイル処理
+	return s.processFilesParallel(validFiles, stdout, stderr)
 }
 
 // checkFileConflicts はファイル名の衝突をチェックします
@@ -308,14 +326,18 @@ func (s *FileManeuverService) excludeConflictFiles(files []string, conflicts []s
 	return validFiles
 }
 
-// moveFilesParallel は並行処理でファイルを移動します
-func (s *FileManeuverService) moveFilesParallel(files []string, stdout, stderr io.Writer) (int, int, error) {
+// processFilesParallel は並行処理でファイルを移動またはコピーします
+func (s *FileManeuverService) processFilesParallel(files []string, stdout, stderr io.Writer) (int, int, error) {
 	workerCount := s.config.Workers
 	if workerCount > len(files) {
 		workerCount = len(files)
 	}
 
-	fmt.Fprintf(stdout, "ファイル移動に %d ワーカーを使用します\n", workerCount)
+	if s.config.CopyMode {
+		fmt.Fprintf(stdout, "ファイルコピーに %d ワーカーを使用します\n", workerCount)
+	} else {
+		fmt.Fprintf(stdout, "ファイル移動に %d ワーカーを使用します\n", workerCount)
+	}
 
 	// カウンターとワーカーの同期用
 	var mu sync.Mutex
@@ -332,8 +354,12 @@ func (s *FileManeuverService) moveFilesParallel(files []string, stdout, stderr i
 		go func() {
 			defer wg.Done()
 			for file := range jobChan {
-				if err := s.moveFile(file, stdout, stderr); err != nil {
-					fmt.Fprintf(stderr, "エラー: %s の移動に失敗しました: %v\n", file, err)
+				if err := s.processFile(file, stdout, stderr); err != nil {
+					if s.config.CopyMode {
+						fmt.Fprintf(stderr, "エラー: %s のコピーに失敗しました: %v\n", file, err)
+					} else {
+						fmt.Fprintf(stderr, "エラー: %s の移動に失敗しました: %v\n", file, err)
+					}
 					mu.Lock()
 					errorCount++
 					mu.Unlock()
@@ -372,7 +398,61 @@ func (s *FileManeuverService) moveFile(srcPath string, stdout, stderr io.Writer)
 	return nil
 }
 
-// ExecuteFileManeuver はファイル移動処理を一括実行します
+// copyFile は単一ファイルをコピーします
+func (s *FileManeuverService) copyFile(srcPath string, stdout, stderr io.Writer) error {
+	destPath := filepath.Join(s.config.DestDir, filepath.Base(srcPath))
+
+	fmt.Fprintf(stdout, "コピー中: %s -> %s\n", srcPath, destPath)
+
+	// ソースファイルを開く
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("ソースファイルオープンエラー: %w", err)
+	}
+	defer srcFile.Close()
+
+	// ソースファイルの情報を取得
+	srcInfo, err := srcFile.Stat()
+	if err != nil {
+		return fmt.Errorf("ソースファイル情報取得エラー: %w", err)
+	}
+
+	// 宛先ファイルを作成
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("宛先ファイル作成エラー: %w", err)
+	}
+	defer destFile.Close()
+
+	// ファイル内容をコピー
+	_, err = io.Copy(destFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("ファイルコピーエラー: %w", err)
+	}
+
+	// 権限とタイムスタンプを保持
+	err = os.Chmod(destPath, srcInfo.Mode())
+	if err != nil {
+		return fmt.Errorf("権限設定エラー: %w", err)
+	}
+
+	err = os.Chtimes(destPath, srcInfo.ModTime(), srcInfo.ModTime())
+	if err != nil {
+		return fmt.Errorf("タイムスタンプ設定エラー: %w", err)
+	}
+
+	return nil
+}
+
+// processFile はコピーモードに応じてファイルを処理します
+func (s *FileManeuverService) processFile(srcPath string, stdout, stderr io.Writer) error {
+	if s.config.CopyMode {
+		return s.copyFile(srcPath, stdout, stderr)
+	}
+	return s.moveFile(srcPath, stdout, stderr)
+}
+
+// ExecuteFileManeuver はファイル移動またはコピー処理を一括実行します
 func (s *FileManeuverService) ExecuteFileManeuver(stdout, stderr io.Writer) (int, int, error) {
 	// 対象ファイルの検索
 	fmt.Fprintf(stdout, "🔍 対象ファイルを検索中...\n")
@@ -381,18 +461,32 @@ func (s *FileManeuverService) ExecuteFileManeuver(stdout, stderr io.Writer) (int
 		return 0, 0, fmt.Errorf("ファイル検索エラー: %w", err)
 	}
 
+	isCopyMode := s.config.CopyMode
+
 	if len(files) == 0 {
-		fmt.Fprintf(stdout, "✅ 移動対象のファイルが見つかりませんでした\n")
+		if isCopyMode {
+			fmt.Fprintf(stdout, "✅ コピー対象のファイルが見つかりませんでした\n")
+		} else {
+			fmt.Fprintf(stdout, "✅ 移動対象のファイルが見つかりませんでした\n")
+		}
 		return 0, 0, nil
 	}
 
 	fmt.Fprintln(stdout)
 
-	// ファイルの移動
-	fmt.Fprintf(stdout, "📦 ファイル移動を開始します...\n")
-	successCount, errorCount, err := s.MoveFiles(files, stdout, stderr)
+	// ファイルの処理
+	if isCopyMode {
+		fmt.Fprintf(stdout, "📦 ファイルコピーを開始します...\n")
+	} else {
+		fmt.Fprintf(stdout, "📦 ファイル移動を開始します...\n")
+	}
+	successCount, errorCount, err := s.ProcessFiles(files, stdout, stderr)
 	if err != nil {
-		return 0, 0, fmt.Errorf("ファイル移動エラー: %w", err)
+		if isCopyMode {
+			return 0, 0, fmt.Errorf("ファイルコピーエラー: %w", err)
+		} else {
+			return 0, 0, fmt.Errorf("ファイル移動エラー: %w", err)
+		}
 	}
 
 	return successCount, errorCount, nil

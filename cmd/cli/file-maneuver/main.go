@@ -32,6 +32,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	recursive := flagSet.Bool("recursive", false, "recursively scan sub-directories")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
 	dryRun := flagSet.Bool("dry-run", false, "show what would be moved without actually moving files")
+	copyMode := flagSet.Bool("copy", false, "copy files instead of moving them")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
@@ -70,6 +71,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		*recursive,
 		*workers,
 		*dryRun,
+		*copyMode,
 	)
 	if err != nil {
 		fmt.Fprintf(stderr, "設定エラー: %v\n", err)
@@ -80,14 +82,27 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	service := usecases.NewFileManeuverService(config)
 
 	// 処理開始の通知
-	fmt.Fprintf(stdout, "✨ ファイル移動処理を開始します\n")
+	if *copyMode {
+		fmt.Fprintf(stdout, "✨ ファイルコピー処理を開始します\n")
+	} else {
+		fmt.Fprintf(stdout, "✨ ファイル移動処理を開始します\n")
+	}
 	fmt.Fprintf(stdout, "  ソースディレクトリ: %s\n", strings.Join(srcDirs, ", "))
 	fmt.Fprintf(stdout, "  対象拡張子: %s\n", strings.Join(extensions, ", "))
 	fmt.Fprintf(stdout, "  宛先ディレクトリ: %s\n", *destDir)
 	fmt.Fprintf(stdout, "  再帰的検索: %t\n", *recursive)
 	fmt.Fprintf(stdout, "  ワーカー数: %d\n", *workers)
+	if *copyMode {
+		fmt.Fprintf(stdout, "  モード: コピー\n")
+	} else {
+		fmt.Fprintf(stdout, "  モード: 移動\n")
+	}
 	if *dryRun {
-		fmt.Fprintf(stdout, "  モード: ドライラン（実際の移動は行いません）\n")
+		if *copyMode {
+			fmt.Fprintf(stdout, "  ドライラン: 実際のコピーは行いません\n")
+		} else {
+			fmt.Fprintf(stdout, "  ドライラン: 実際の移動は行いません\n")
+		}
 	}
 	fmt.Fprintln(stdout)
 
@@ -100,7 +115,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// 処理結果の出力
 	fmt.Fprintln(stdout)
-	fmt.Fprintf(stdout, "✅ ファイル移動処理が完了しました\n")
+	if *copyMode {
+		fmt.Fprintf(stdout, "✅ ファイルコピー処理が完了しました\n")
+	} else {
+		fmt.Fprintf(stdout, "✅ ファイル移動処理が完了しました\n")
+	}
 	fmt.Fprintf(stdout, "  成功: %d ファイル\n", successCount)
 
 	if errorCount > 0 {

@@ -20,7 +20,7 @@ package main
 
 import (
     "fmt"
-    exif_viewer "github.com/nov/devbox/internal/independencies/exif_viewer"
+    exif_viewer "github.com/nov/devbox/internal/exif_viewer"
 )
 
 func main() {
@@ -86,7 +86,7 @@ for key, value := range exifData.Properties {
 
 ```go
 import (
-    "github.com/nov/devbox/internal/independencies/exif_viewer/usecases"
+    "github.com/nov/devbox/internal/exif_viewer/usecases"
 )
 
 func main() {
