@@ -1,14 +1,15 @@
 # file-maneuver
 
-複数のディレクトリから指定した拡張子のファイルを検索し、単一の宛先ディレクトリに移動するCLIツールです。
+複数のディレクトリから指定した拡張子のファイルを検索し、単一の宛先ディレクトリに移動またはコピーするCLIツールです。
 
 ## 機能
 
 - **複数ソースディレクトリ対応**: カンマ区切りで複数のソースディレクトリを指定可能
 - **複数拡張子対応**: カンマ区切りで複数の拡張子を指定可能
+- **移動・コピー選択**: ファイルの移動またはコピーを選択可能
 - **再帰的検索**: サブディレクトリも含めた検索が可能
-- **並行処理**: マルチワーカーによる高速なファイル移動
-- **ドライランモード**: 実際の移動を行わずに動作確認が可能
+- **並行処理**: マルチワーカーによる高速なファイル処理
+- **ドライランモード**: 実際の処理を行わずに動作確認が可能
 - **衝突検出**: 同名ファイルの衝突を検出し、安全に処理
 - **詳細ログ**: 処理状況の詳細な出力
 
@@ -49,6 +50,21 @@
   --extensions "jpg,png" \
   --dest-dir "/path/to/destination" \
   --workers 8
+
+# ファイルをコピー（移動ではなく）
+./file-maneuver \
+  --src-dirs "/path/to/source" \
+  --extensions "jpg,png" \
+  --dest-dir "/path/to/destination" \
+  --copy
+
+# コピーモードでドライラン
+./file-maneuver \
+  --src-dirs "/path/to/source" \
+  --extensions "pdf,doc" \
+  --dest-dir "/path/to/backup" \
+  --copy \
+  --dry-run
 ```
 
 ## コマンドラインオプション
@@ -58,9 +74,10 @@
 | `--src-dirs` | ✅ | ソースディレクトリ（カンマ区切りで複数指定可能） | - |
 | `--extensions` | ✅ | 対象拡張子（カンマ区切りで複数指定可能） | - |
 | `--dest-dir` | ✅ | 宛先ディレクトリ（単一のみ） | - |
+| `--copy` | ❌ | ファイルを移動ではなくコピーする | `false` |
 | `--recursive` | ❌ | 再帰的にサブディレクトリを検索 | `false` |
 | `--workers` | ❌ | 並行処理のワーカー数 | CPU数 |
-| `--dry-run` | ❌ | 実際の移動を行わずに動作確認のみ | `false` |
+| `--dry-run` | ❌ | 実際の処理を行わずに動作確認のみ | `false` |
 
 ## 実行例
 
@@ -134,7 +151,43 @@
   成功: 5 ファイル
 ```
 
-### 例3: ファイル衝突の処理
+### 例3: ファイルのコピー（バックアップ作成）
+
+```bash
+./file-maneuver \
+  --src-dirs "/Users/user/Documents/Important" \
+  --extensions "pdf,doc,docx,txt" \
+  --dest-dir "/Users/user/Backup/Documents" \
+  --copy \
+  --recursive
+```
+
+**出力例:**
+```
+✨ ファイルコピー処理を開始します
+  ソースディレクトリ: /Users/user/Documents/Important
+  対象拡張子: pdf, doc, docx, txt
+  宛先ディレクトリ: /Users/user/Backup/Documents
+  再帰的検索: true
+  ワーカー数: 8
+  モード: コピー
+
+🔍 対象ファイルを検索中...
+ディレクトリ /Users/user/Documents/Important から 12 ファイルを発見しました
+合計 12 ファイルが見つかりました
+
+📦 ファイルコピーを開始します...
+12 ファイルをコピーします（0 ファイルをスキップ）
+ファイルコピーに 8 ワーカーを使用します
+コピー中: /Users/user/Documents/Important/report.pdf -> /Users/user/Backup/Documents/report.pdf
+コピー中: /Users/user/Documents/Important/memo.txt -> /Users/user/Backup/Documents/memo.txt
+...
+
+✅ ファイルコピー処理が完了しました
+  成功: 12 ファイル
+```
+
+### 例4: ファイル衝突の処理
 
 ```bash
 ./file-maneuver \
@@ -163,6 +216,12 @@
 ```
 
 ## 注意事項
+
+### 移動とコピーの違い
+
+- **移動モード（デフォルト）**: ファイルが宛先に移動され、元の場所からは削除されます
+- **コピーモード（`--copy`）**: ファイルが宛先にコピーされ、元の場所にも残ります
+- コピーモードでは、ファイルの権限とタイムスタンプが保持されます
 
 ### ファイル衝突について
 
@@ -198,14 +257,14 @@ go build -o file-maneuver .
 
 ```bash
 cd /path/to/devbox
-go test ./internal/independencies/file_maneuver/usecases/... -v
+go test ./internal/file_maneuver/usecases/... -v
 ```
 
 ### カバレッジ確認
 
 ```bash
 cd /path/to/devbox
-go test -coverprofile=coverage.out ./internal/independencies/file_maneuver/usecases/...
+go test -coverprofile=coverage.out ./internal/file_maneuver/usecases/...
 go tool cover -html=coverage.out -o coverage.html
 ```
 
@@ -218,7 +277,7 @@ devbox/
 ├── cmd/cli/file-maneuver/
 │   ├── main.go              # CLI層（フラグ処理、UI）
 │   └── README.md            # このファイル
-└── internal/independencies/file_maneuver/usecases/
+└── internal/file_maneuver/usecases/
     ├── services.go          # サービス層（ビジネスロジック）
     └── services_test.go     # テストコード
 ```

@@ -1,5 +1,5 @@
 // Unit tests for the unit_converter/usecases package.
-// Run: go test ./internal/independencies/unit_converter/...
+// Run: go test ./internal/unit_converter/...
 package usecases
 
 import (

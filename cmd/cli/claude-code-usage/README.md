@@ -111,7 +111,7 @@ go build -o claude-code-usage ./cmd/cli/claude-code-usage/main.go
 実装は以下のディレクトリ構造に従っています：
 
 ```
-/home/nov/devbox/internal/independencies/claude_code_usage/
+/home/nov/devbox/internal/claude_code_usage/
 ├── cmd/app.go                 # CLIアプリケーションロジック
 ├── internal/
 │   ├── types.go              # データ構造定義
