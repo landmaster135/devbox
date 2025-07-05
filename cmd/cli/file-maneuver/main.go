@@ -33,6 +33,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
 	dryRun := flagSet.Bool("dry-run", false, "show what would be moved without actually moving files")
 	copyMode := flagSet.Bool("copy", false, "copy files instead of moving them")
+	overwriteMode := flagSet.Bool("overwrite", false, "overwrite existing files in destination")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
@@ -72,6 +73,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		*workers,
 		*dryRun,
 		*copyMode,
+		*overwriteMode,
 	)
 	if err != nil {
 		fmt.Fprintf(stderr, "設定エラー: %v\n", err)
@@ -82,20 +84,22 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	service := usecases.NewFileManeuverService(config)
 
 	// 処理開始の通知
-	if *copyMode {
-		fmt.Fprintf(stdout, "✨ ファイルコピー処理を開始します\n")
-	} else {
-		fmt.Fprintf(stdout, "✨ ファイル移動処理を開始します\n")
-	}
 	fmt.Fprintf(stdout, "  ソースディレクトリ: %s\n", strings.Join(srcDirs, ", "))
 	fmt.Fprintf(stdout, "  対象拡張子: %s\n", strings.Join(extensions, ", "))
 	fmt.Fprintf(stdout, "  宛先ディレクトリ: %s\n", *destDir)
 	fmt.Fprintf(stdout, "  再帰的検索: %t\n", *recursive)
 	fmt.Fprintf(stdout, "  ワーカー数: %d\n", *workers)
 	if *copyMode {
+		fmt.Fprintf(stdout, "✨ ファイルコピー処理を開始します\n")
 		fmt.Fprintf(stdout, "  モード: コピー\n")
 	} else {
+		fmt.Fprintf(stdout, "✨ ファイル移動処理を開始します\n")
 		fmt.Fprintf(stdout, "  モード: 移動\n")
+	}
+	if *overwriteMode {
+		fmt.Fprintf(stdout, "  上書き: 有効\n")
+	} else {
+		fmt.Fprintf(stdout, "  上書き: 無効\n")
 	}
 	if *dryRun {
 		if *copyMode {
