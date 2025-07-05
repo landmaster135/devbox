@@ -13,13 +13,14 @@ import (
 
 // Config はfile-maneuverツールの設定を保持する構造体です
 type Config struct {
-	SrcDirs    []string // ソースディレクトリのリスト
-	Extensions []string // 対象拡張子のリスト
-	DestDir    string   // 宛先ディレクトリ
-	Recursive  bool     // 再帰的検索フラグ
-	Workers    int      // ワーカー数
-	DryRun     bool     // ドライランフラグ
-	CopyMode   bool     // コピーモードフラグ
+	SrcDirs       []string // ソースディレクトリのリスト
+	Extensions    []string // 対象拡張子のリスト
+	DestDir       string   // 宛先ディレクトリ
+	Recursive     bool     // 再帰的検索フラグ
+	Workers       int      // ワーカー数
+	DryRun        bool     // ドライランフラグ
+	CopyMode      bool     // コピーモードフラグ
+	OverwriteMode bool     // 上書きモードフラグ
 }
 
 // FileManeuverService はファイル移動サービスを提供する構造体です
@@ -28,15 +29,16 @@ type FileManeuverService struct {
 }
 
 // NewConfig は設定を作成し、全てのバリデーションを実行します
-func NewConfig(srcDirs []string, extensions []string, destDir string, recursive bool, workers int, dryRun bool, copyMode bool) (*Config, error) {
+func NewConfig(srcDirs []string, extensions []string, destDir string, recursive bool, workers int, dryRun bool, copyMode bool, overwriteMode bool) (*Config, error) {
 	config := &Config{
-		SrcDirs:    srcDirs,
-		Extensions: extensions,
-		DestDir:    destDir,
-		Recursive:  recursive,
-		Workers:    workers,
-		DryRun:     dryRun,
-		CopyMode:   copyMode,
+		SrcDirs:       srcDirs,
+		Extensions:    extensions,
+		DestDir:       destDir,
+		Recursive:     recursive,
+		Workers:       workers,
+		DryRun:        dryRun,
+		CopyMode:      copyMode,
+		OverwriteMode: overwriteMode,
 	}
 
 	// 構造体作成時に全てのバリデーションを実行
@@ -253,39 +255,65 @@ func (s *FileManeuverService) ProcessFiles(files []string, stdout, stderr io.Wri
 		return 0, 0, nil
 	}
 
-	// 重複チェック
-	conflicts, err := s.checkFileConflicts(files)
-	if err != nil {
-		return 0, 0, fmt.Errorf("ファイル衝突チェックエラー: %w", err)
-	}
+	var validFiles []string
+	var conflicts []string
 
-	if len(conflicts) > 0 {
-		fmt.Fprintf(stderr, "警告: 以下のファイルは宛先に同名ファイルが存在するためスキップされます:\n")
-		for _, conflict := range conflicts {
-			fmt.Fprintf(stderr, "  %s\n", conflict)
+	isDryRun := s.config.DryRun
+	isCopyMode := s.config.CopyMode
+	isOverwriteMode := s.config.OverwriteMode
+
+	if isOverwriteMode {
+		// 上書きモード: 全てのファイルを処理対象とする
+		validFiles = files
+		if isCopyMode {
+			fmt.Fprintf(stdout, "%d ファイルをコピーします（上書きモード）\n", len(validFiles))
+		} else {
+			fmt.Fprintf(stdout, "%d ファイルを移動します（上書きモード）\n", len(validFiles))
+		}
+	} else {
+		// 通常モード: 衝突チェックを行う
+		var err error
+		conflicts, err = s.checkFileConflicts(files)
+		if err != nil {
+			return 0, 0, fmt.Errorf("ファイル衝突チェックエラー: %w", err)
+		}
+
+		if len(conflicts) > 0 {
+			fmt.Fprintf(stderr, "警告: 以下のファイルは宛先に同名ファイルが存在するためスキップされます:\n")
+			for _, conflict := range conflicts {
+				fmt.Fprintf(stderr, "  %s\n", conflict)
+			}
+		}
+
+		// 衝突するファイルを除外
+		validFiles = s.excludeConflictFiles(files, conflicts)
+		if isCopyMode {
+			fmt.Fprintf(stdout, "%d ファイルをコピーします（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
+		} else {
+			fmt.Fprintf(stdout, "%d ファイルを移動します（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
 		}
 	}
 
-	// 衝突するファイルを除外
-	validFiles := s.excludeConflictFiles(files, conflicts)
-	if s.config.CopyMode {
-		fmt.Fprintf(stdout, "%d ファイルをコピーします（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
-	} else {
-		fmt.Fprintf(stdout, "%d ファイルを移動します（%d ファイルをスキップ）\n", len(validFiles), len(conflicts))
-	}
-
-	if s.config.DryRun {
-		if s.config.CopyMode {
+	if isDryRun {
+		if isCopyMode {
 			fmt.Fprintf(stdout, "ドライランモード: 実際のコピーは行いません\n")
 			for _, file := range validFiles {
 				destPath := filepath.Join(s.config.DestDir, filepath.Base(file))
-				fmt.Fprintf(stdout, "コピー予定: %s -> %s\n", file, destPath)
+				if isOverwriteMode {
+					fmt.Fprintf(stdout, "コピー予定（上書き）: %s -> %s\n", file, destPath)
+				} else {
+					fmt.Fprintf(stdout, "コピー予定: %s -> %s\n", file, destPath)
+				}
 			}
 		} else {
 			fmt.Fprintf(stdout, "ドライランモード: 実際の移動は行いません\n")
 			for _, file := range validFiles {
 				destPath := filepath.Join(s.config.DestDir, filepath.Base(file))
-				fmt.Fprintf(stdout, "移動予定: %s -> %s\n", file, destPath)
+				if isOverwriteMode {
+					fmt.Fprintf(stdout, "移動予定（上書き）: %s -> %s\n", file, destPath)
+				} else {
+					fmt.Fprintf(stdout, "移動予定: %s -> %s\n", file, destPath)
+				}
 			}
 		}
 		return len(validFiles), 0, nil
@@ -388,7 +416,16 @@ func (s *FileManeuverService) processFilesParallel(files []string, stdout, stder
 func (s *FileManeuverService) moveFile(srcPath string, stdout, stderr io.Writer) error {
 	destPath := filepath.Join(s.config.DestDir, filepath.Base(srcPath))
 
-	fmt.Fprintf(stdout, "移動中: %s -> %s\n", srcPath, destPath)
+	// 上書きかどうかをチェック
+	if s.config.OverwriteMode {
+		if _, err := os.Stat(destPath); err == nil {
+			fmt.Fprintf(stdout, "移動中（上書き）: %s -> %s\n", srcPath, destPath)
+		} else {
+			fmt.Fprintf(stdout, "移動中: %s -> %s\n", srcPath, destPath)
+		}
+	} else {
+		fmt.Fprintf(stdout, "移動中: %s -> %s\n", srcPath, destPath)
+	}
 
 	err := os.Rename(srcPath, destPath)
 	if err != nil {
@@ -402,7 +439,16 @@ func (s *FileManeuverService) moveFile(srcPath string, stdout, stderr io.Writer)
 func (s *FileManeuverService) copyFile(srcPath string, stdout, stderr io.Writer) error {
 	destPath := filepath.Join(s.config.DestDir, filepath.Base(srcPath))
 
-	fmt.Fprintf(stdout, "コピー中: %s -> %s\n", srcPath, destPath)
+	// 上書きかどうかをチェック
+	if s.config.OverwriteMode {
+		if _, err := os.Stat(destPath); err == nil {
+			fmt.Fprintf(stdout, "コピー中（上書き）: %s -> %s\n", srcPath, destPath)
+		} else {
+			fmt.Fprintf(stdout, "コピー中: %s -> %s\n", srcPath, destPath)
+		}
+	} else {
+		fmt.Fprintf(stdout, "コピー中: %s -> %s\n", srcPath, destPath)
+	}
 
 	// ソースファイルを開く
 	srcFile, err := os.Open(srcPath)

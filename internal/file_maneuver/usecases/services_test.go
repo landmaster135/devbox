@@ -29,7 +29,7 @@ func (tc *TestConfigCreation) TestConfigCreation_Normal(t *testing.T) {
 	extensions := []string{"jpg", "png"}
 
 	// Act
-	config, err := NewConfig(srcDirs, extensions, destDir, true, 4, false, false)
+	config, err := NewConfig(srcDirs, extensions, destDir, true, 4, false, false, false)
 
 	// Assert
 	if err != nil {
@@ -73,7 +73,7 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptySrcDirs(t *testing.T) 
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	_, err := NewConfig([]string{}, []string{"jpg"}, destDir, false, 1, false, false)
+	_, err := NewConfig([]string{}, []string{"jpg"}, destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -95,7 +95,7 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptyExtensions(t *testing.
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	_, err := NewConfig([]string{srcDir}, []string{}, destDir, false, 1, false, false)
+	_, err := NewConfig([]string{srcDir}, []string{}, destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -117,7 +117,7 @@ func (tc *TestConfigValidation) TestConfigValidation_NonExistentSrcDir(t *testin
 	nonExistentDir := filepath.Join(tempDir, "nonexistent")
 
 	// Act
-	_, err := NewConfig([]string{nonExistentDir}, []string{"jpg"}, destDir, false, 1, false, false)
+	_, err := NewConfig([]string{nonExistentDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -139,7 +139,7 @@ func (tc *TestConfigValidation) TestConfigValidation_NonExistentDestDir(t *testi
 	nonExistentDir := filepath.Join(tempDir, "nonexistent")
 
 	// Act
-	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, nonExistentDir, false, 1, false, false)
+	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, nonExistentDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -164,7 +164,7 @@ func (tc *TestWorkerNormalization) TestWorkerNormalization_ZeroWorkers(t *testin
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 0, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 0, false, false, false)
 
 	// Assert
 	if err != nil {
@@ -189,7 +189,7 @@ func (tc *TestWorkerNormalization) TestWorkerNormalization_ExcessiveWorkers(t *t
 	excessiveWorkers := runtime.NumCPU()*2 + 10
 
 	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, excessiveWorkers, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, excessiveWorkers, false, false, false)
 
 	// Assert
 	if err != nil {
@@ -221,7 +221,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFiles(t *te
 		os.WriteFile(filePath, []byte("test content"), 0644)
 	}
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, destDir, false, 1, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -273,7 +273,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFilesRecurs
 	// サブディレクトリにファイル作成
 	os.WriteFile(filepath.Join(subDir, "sub.jpg"), []byte("test"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, true, 1, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, true, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -309,7 +309,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_DryRun(t *testing.T) 
 	testFile := filepath.Join(srcDir, "test.jpg")
 	os.WriteFile(testFile, []byte("test content"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, true, false) // ドライランモード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, true, false, false) // ドライランモード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -368,7 +368,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FileConflict(t *testi
 	destFile := filepath.Join(destDir, "test.jpg")
 	os.WriteFile(destFile, []byte("existing content"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -431,7 +431,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_ExecuteFileManeuver(t
 		os.WriteFile(filePath, []byte("test content"), 0644)
 	}
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, destDir, false, 1, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
