@@ -143,8 +143,8 @@ func (s *ImageRenamerService) isImageFile(filePath, targetExtension string) bool
 	return false
 }
 
-// FindImageFiles は指定された設定に基づいて画像ファイルを検索します
-func (s *ImageRenamerService) FindImageFiles(config *Config) ([]string, error) {
+// findImageFiles は指定された設定に基づいて画像ファイルを検索します
+func (s *ImageRenamerService) findImageFiles(config *Config) ([]string, error) {
 	var imageFiles []string
 
 	err := filepath.Walk(config.FolderPath, func(path string, info os.FileInfo, err error) error {
@@ -533,7 +533,7 @@ func (s *ImageRenamerService) renameImageFilesWithInfo(renameInfos []FileRenameI
 // ProcessImageRename は画像ファイルの検索とリネームを一括で処理します
 func (s *ImageRenamerService) ProcessImageRename(config *Config) (int, int, error) {
 	// 画像ファイルを検索
-	imageFiles, err := s.FindImageFiles(config)
+	imageFiles, err := s.findImageFiles(config)
 	if err != nil {
 		return 0, 0, fmt.Errorf("画像ファイルの検索に失敗: %w", err)
 	}
