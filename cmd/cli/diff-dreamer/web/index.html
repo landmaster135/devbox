@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diff Dreamer - テキスト比較ツール</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Diff Dreamer</h1>
+            <p class="subtitle">テキスト比較ツール</p>
+        </header>
+
+        <div class="input-section">
+            <div class="input-panel">
+                <div class="panel-header">
+                    <label for="leftText">左側のテキスト</label>
+                    <button type="button" class="clear-btn" onclick="clearLeft()">クリア</button>
+                </div>
+                <textarea id="leftText" placeholder="比較したいテキストを入力してください..."></textarea>
+            </div>
+
+            <div class="input-panel">
+                <div class="panel-header">
+                    <label for="rightText">右側のテキスト</label>
+                    <button type="button" class="clear-btn" onclick="clearRight()">クリア</button>
+                </div>
+                <textarea id="rightText" placeholder="比較したいテキストを入力してください..."></textarea>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="compareBtn" onclick="performDiff()">比較する</button>
+            <button id="clearAllBtn" onclick="clearAll()">すべてクリア</button>
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-item">
+                <span class="stat-label">追加行:</span>
+                <span id="addedLines" class="stat-value added">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">削除行:</span>
+                <span id="deletedLines" class="stat-value deleted">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">変更行:</span>
+                <span id="modifiedLines" class="stat-value modified">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">同一行:</span>
+                <span id="unchangedLines" class="stat-value unchanged">0</span>
+            </div>
+        </div>
+
+        <div class="result-section" id="resultSection" style="display: none;">
+            <div class="result-header">
+                <h2>比較結果</h2>
+            </div>
+            <div class="diff-container">
+                <div class="diff-panel">
+                    <div class="diff-header">左側</div>
+                    <div id="leftDiff" class="diff-content"></div>
+                </div>
+                <div class="diff-panel">
+                    <div class="diff-header">右側</div>
+                    <div id="rightDiff" class="diff-content"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
