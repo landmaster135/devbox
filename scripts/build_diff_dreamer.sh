@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/depends-visualizer"
+CMD_DIR="cmd/cli/diff-dreamer"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="depends-visualizer"
+OUTPUT_NAME="diff-dreamer"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,6 +38,4 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./depends-visualizer -file main.go -ext .go -format mermaid -out dependencies.md"
-echo "  ./depends-visualizer -dir ./src -r -ext .py -format mermaid-flowchart -out dependencies.md"
-echo "  ./depends-visualizer -dir ./project -r -ext .js -format plantuml -v"
+echo "  ./bin/diff-dreamer"
