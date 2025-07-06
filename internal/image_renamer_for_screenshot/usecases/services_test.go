@@ -19,7 +19,7 @@ func TestValidateConfig_Normal(t *testing.T) {
 	}
 
 	// Act
-	err := ValidateConfig(config, stderr)
+	err := validateConfig(config, stderr)
 
 	// Assert
 	if err != nil {
@@ -37,7 +37,7 @@ func TestValidateConfig_NoPattern(t *testing.T) {
 	}
 
 	// Act
-	err := ValidateConfig(config, stderr)
+	err := validateConfig(config, stderr)
 
 	// Assert
 	if err == nil {
@@ -55,7 +55,7 @@ func TestValidateConfig_BothPatterns(t *testing.T) {
 	}
 
 	// Act
-	err := ValidateConfig(config, stderr)
+	err := validateConfig(config, stderr)
 
 	// Assert
 	if err == nil {
@@ -369,7 +369,7 @@ func TestValidateConfig_InvalidDirectory(t *testing.T) {
 	}
 
 	// Act
-	err := ValidateConfig(config, stderr)
+	err := validateConfig(config, stderr)
 
 	// Assert
 	if err == nil {
@@ -407,7 +407,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - VLCパターンのみ
-	filesVlc, err := FindScreenshotFiles(tempDir, false, true, false, false, stdout, stderr)
+	filesVlc, err := findScreenshotFiles(tempDir, false, true, false, false, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -421,7 +421,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	}
 
 	// Act - Windowsパターンのみ
-	filesWin, err := FindScreenshotFiles(tempDir, false, false, true, false, stdout, stderr)
+	filesWin, err := findScreenshotFiles(tempDir, false, false, true, false, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -465,7 +465,7 @@ func TestFindScreenshotFiles_Recursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索
-	files, err := FindScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
+	files, err := findScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -482,7 +482,7 @@ func TestFindScreenshotFiles_InvalidDirectory(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	_, err := FindScreenshotFiles("/non/existent/directory", false, true, false, false, stdout, stderr)
+	_, err := findScreenshotFiles("/non/existent/directory", false, true, false, false, stdout, stderr)
 
 	// Assert
 	if err == nil {
@@ -508,7 +508,7 @@ func TestGetFileInfos_Normal(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	fileInfos, err := GetFileInfos(files, stderr)
+	fileInfos, err := getFileInfos(files, stderr)
 
 	// Assert
 	if err != nil {
@@ -531,7 +531,7 @@ func TestGetFileInfos_InvalidFile(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	fileInfos, err := GetFileInfos(files, stderr)
+	fileInfos, err := getFileInfos(files, stderr)
 
 	// Assert
 	if err == nil {
@@ -584,7 +584,7 @@ func TestRenameScreenshotFiles_Normal(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	successCount, errorCount := RenameScreenshotFiles(fileInfos, config, stdout, stderr)
+	successCount, errorCount := renameScreenshotFiles(fileInfos, config, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -639,7 +639,7 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	successCount1, _ := RenameScreenshotFiles(fileInfos, config1, stdout, stderr)
+	successCount1, _ := renameScreenshotFiles(fileInfos, config1, stdout, stderr)
 
 	// Assert
 	if successCount1 != 1 {
@@ -675,7 +675,7 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 	stderr = &bytes.Buffer{}
 
 	// Act
-	successCount2, _ := RenameScreenshotFiles(fileInfos, config2, stdout, stderr)
+	successCount2, _ := renameScreenshotFiles(fileInfos, config2, stdout, stderr)
 
 	// Assert
 	if successCount2 != 1 {
@@ -714,7 +714,7 @@ func TestFindScreenshotFiles_WalkDirError(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索でエラーが発生するケース
-	_, err = FindScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
+	_, err = findScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
 
 	// Assert
 	// 権限の問題でエラーが発生する可能性があるが、OSによって動作が異なるため
