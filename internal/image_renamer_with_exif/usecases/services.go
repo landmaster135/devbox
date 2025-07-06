@@ -178,7 +178,6 @@ func (s *ImageRenamerService) FindImageFiles(config *Config) ([]string, error) {
 	return imageFiles, nil
 }
 
-
 // ConflictResolver は競合解決を行います
 type ConflictResolver struct {
 	usedFileNames map[string]bool // 使用済みファイル名を追跡
@@ -444,42 +443,17 @@ func (s *ImageRenamerService) prepareRenameInfo(imageFiles []string, config *Con
 	return renameInfos, nil
 }
 
-// collectExistingFileNames は既存ファイル名を収集します
-func (s *ImageRenamerService) collectExistingFileNames(renameInfos []FileRenameInfo) map[string]bool {
-	existingFiles := make(map[string]bool)
-
-	// 各ディレクトリの既存ファイルを収集
-	processedDirs := make(map[string]bool)
-	for _, info := range renameInfos {
-		if processedDirs[info.Directory] {
-			continue
-		}
-		processedDirs[info.Directory] = true
-
-		// ディレクトリ内の既存ファイルを取得
-		entries, err := os.ReadDir(info.Directory)
-		if err != nil {
-			continue
-		}
-
-		for _, entry := range entries {
-			if !entry.IsDir() {
-				fullPath := filepath.Join(info.Directory, entry.Name())
-				existingFiles[fullPath] = true
-			}
-		}
-	}
-
-	return existingFiles
-}
-
 // resolveConflicts は競合を自動解決します
 func (s *ImageRenamerService) resolveConflicts(renameInfos []FileRenameInfo, config *Config) error {
-	// 既存ファイル名を収集
-	existingFiles := s.collectExistingFileNames(renameInfos)
+	// 使用済みファイル名を追跡するマップ（新しいファイル名のみ）
+	usedFileNames := make(map[string]bool)
 
 	// ConflictResolverを作成
-	resolver := NewConflictResolver(existingFiles)
+	resolver := NewConflictResolver(usedFileNames)
+
+	if config.Verbose {
+		log.Printf("競合解決を開始: %d個のファイルを処理", len(renameInfos))
+	}
 
 	// ディレクトリ別に競合をグループ化
 	dirFileMap := make(map[string]map[string][]*FileRenameInfo)
