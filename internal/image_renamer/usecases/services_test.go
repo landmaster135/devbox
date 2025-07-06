@@ -70,7 +70,7 @@ func TestValidateConfig_Normal(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var stderr bytes.Buffer
-			err := ValidateConfig(tc.config, &stderr)
+			err := validateConfig(tc.config, &stderr)
 			if err != nil {
 				t.Errorf("ValidateConfig() エラーが発生しました: %v", err)
 			}
@@ -150,7 +150,7 @@ func TestValidateConfig_Error(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var stderr bytes.Buffer
-			err := ValidateConfig(tc.config, &stderr)
+			err := validateConfig(tc.config, &stderr)
 			if err == nil {
 				t.Errorf("ValidateConfig() エラーが発生しませんでした。エラーが期待されていました: %s", tc.expectedError)
 			} else if !strings.Contains(err.Error(), tc.expectedError) {
@@ -222,7 +222,7 @@ func TestFindImageFiles_Normal(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			files, err := FindImageFiles(tempDir, tc.recursive, &stdout, &stderr)
+			files, err := findImageFiles(tempDir, tc.recursive, &stdout, &stderr)
 			if err != nil {
 				t.Errorf("FindImageFiles() エラーが発生しました: %v", err)
 			}
@@ -260,13 +260,13 @@ func TestFindImageFiles_Error(t *testing.T) {
 	nonExistentDir := "/non-existent-dir"
 
 	var stdout, stderr bytes.Buffer
-	_, err := FindImageFiles(nonExistentDir, false, &stdout, &stderr)
+	_, err := findImageFiles(nonExistentDir, false, &stdout, &stderr)
 	if err == nil {
 		t.Errorf("FindImageFiles() エラーが発生しませんでした。存在しないディレクトリでエラーが期待されていました。")
 	}
 
 	// 再帰的検索でも同様にテスト
-	_, err = FindImageFiles(nonExistentDir, true, &stdout, &stderr)
+	_, err = findImageFiles(nonExistentDir, true, &stdout, &stderr)
 	if err == nil {
 		t.Errorf("FindImageFiles() エラーが発生しませんでした。存在しないディレクトリでエラーが期待されていました。")
 	}
@@ -304,7 +304,7 @@ func TestGetFileInfos_Normal(t *testing.T) {
 	// テスト実行
 	var stderr bytes.Buffer
 	files := []string{file1, file2}
-	fileInfos, err := GetFileInfos(files, &stderr)
+	fileInfos, err := getFileInfos(files, &stderr)
 	if err != nil {
 		t.Errorf("GetFileInfos() エラーが発生しました: %v", err)
 	}
@@ -350,7 +350,7 @@ func TestGetFileInfos_Error(t *testing.T) {
 	// テスト実行
 	var stderr bytes.Buffer
 	files := []string{existingFile, nonExistingFile}
-	fileInfos, err := GetFileInfos(files, &stderr)
+	fileInfos, err := getFileInfos(files, &stderr)
 
 	// エラーが発生することを確認
 	if err == nil {
@@ -400,7 +400,7 @@ func TestSortFiles_Normal(t *testing.T) {
 		copy(fileInfosCopy, fileInfos)
 
 		var stdout bytes.Buffer
-		SortFiles(fileInfosCopy, false, &stdout)
+		sortFiles(fileInfosCopy, false, &stdout)
 
 		// 名前順にソートされていることを確認
 		expected := []string{"a.jpg", "b.jpg", "c.jpg"}
@@ -423,7 +423,7 @@ func TestSortFiles_Normal(t *testing.T) {
 		copy(fileInfosCopy, fileInfos)
 
 		var stdout bytes.Buffer
-		SortFiles(fileInfosCopy, true, &stdout)
+		sortFiles(fileInfosCopy, true, &stdout)
 
 		// 更新日時順にソートされていることを確認
 		expected := []int64{100, 200, 300}
@@ -708,7 +708,7 @@ func TestRenameFiles_Normal(t *testing.T) {
 
 	// テスト実行
 	var stdout, stderr bytes.Buffer
-	successCount, errorCount := RenameFiles(fileInfos, config, &stdout, &stderr)
+	successCount, errorCount := renameFiles(fileInfos, config, &stdout, &stderr)
 
 	// 結果の確認
 	if successCount != 2 {
@@ -772,15 +772,15 @@ func TestRenameFiles_WithScreenshotFiles(t *testing.T) {
 
 		// ファイルの更新時間を設定（ファイル名の時刻に合わせる）
 		// "Screenshot_20250505-235849_cropped.jpg" から日時部分を抽出
-		dateStr := fileName[11:19]  // "20250505"
-		timeStr := fileName[20:26]  // "235849"
+		dateStr := fileName[11:19] // "20250505"
+		timeStr := fileName[20:26] // "235849"
 
-		year := dateStr[0:4]    // "2025"
-		month := dateStr[4:6]   // "05"
-		day := dateStr[6:8]     // "05"
-		hour := timeStr[0:2]    // "23"
-		minute := timeStr[2:4]  // "58"
-		second := timeStr[4:6]  // "49"
+		year := dateStr[0:4]   // "2025"
+		month := dateStr[4:6]  // "05"
+		day := dateStr[6:8]    // "05"
+		hour := timeStr[0:2]   // "23"
+		minute := timeStr[2:4] // "58"
+		second := timeStr[4:6] // "49"
 
 		// 時刻を解析
 		timeLayout := "2006-01-02 15:04:05"
@@ -866,7 +866,7 @@ func TestRenameFiles_WithScreenshotFiles(t *testing.T) {
 			// テスト実行
 			var stdout, stderr bytes.Buffer
 			config.SrcDir = testDir
-			successCount, errorCount := RenameFiles(testFileInfos, config, &stdout, &stderr)
+			successCount, errorCount := renameFiles(testFileInfos, config, &stdout, &stderr)
 
 			// 結果の確認
 			if successCount != len(fileNames) {
@@ -992,7 +992,7 @@ func TestRenameFiles_WithDifferentWorkers(t *testing.T) {
 
 			// テスト実行
 			var stdout, stderr bytes.Buffer
-			successCount, errorCount := RenameFiles(fileInfos, config, &stdout, &stderr)
+			successCount, errorCount := renameFiles(fileInfos, config, &stdout, &stderr)
 
 			// 結果の確認
 			if successCount != tc.expectedCount {

@@ -62,38 +62,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	// 引数の検証
-	if err := usecases.ValidateConfig(config, stderr); err != nil {
-		return exitCodeError
-	}
-
-	// 画像ファイルの検索
-	files, err := usecases.FindImageFiles(config.SrcDir, config.Recursive, stdout, stderr)
+	// 画像リネーム処理の実行
+	successCount, errorCount, err := usecases.ProcessImageRename(config, stdout, stderr)
 	if err != nil {
 		return exitCodeError
 	}
-
-	if len(files) == 0 {
-		fmt.Fprintln(stdout, "画像ファイルが見つかりませんでした。")
-		return exitCodeOK
-	}
-
-	fmt.Fprintf(stdout, "画像ファイルが %d 件見つかりました。\n", len(files))
-	fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
-	fmt.Fprintf(stdout, "区切り文字: %s\n", config.Delimiter)
-	fmt.Fprintf(stdout, "開始番号: %d\n", config.StartCount)
-
-	// ファイル情報の取得と並べ替え
-	fileInfos, err := usecases.GetFileInfos(files, stderr)
-	if err != nil {
-		// エラーがあっても続行するため、ここではエラーコードを返さない
-	}
-
-	// ファイルの並べ替え
-	usecases.SortFiles(fileInfos, config.SortByTime, stdout)
-
-	// リネーム処理の実行
-	successCount, errorCount := usecases.RenameFiles(fileInfos, config, stdout, stderr)
 
 	// 処理結果の出力
 	fmt.Fprintf(stdout, "✔ ファイルリネームが完了しました\n")
