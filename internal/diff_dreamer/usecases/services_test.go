@@ -7,6 +7,9 @@ import (
 	"testing"
 )
 
+// #==============================================================#
+// ##          Tests                                             ##
+// #==============================================================#
 func TestReadTextFile_Normal(t *testing.T) {
 	// テスト用の一時ファイルを作成
 	tmpDir := t.TempDir()
@@ -19,7 +22,7 @@ func TestReadTextFile_Normal(t *testing.T) {
 	}
 
 	// ファイルを読み取り
-	result, err := ReadTextFile(testFile)
+	result, err := readTextFile(testFile)
 	if err != nil {
 		t.Fatalf("ReadTextFile()でエラーが発生しました: %v", err)
 	}
@@ -30,7 +33,7 @@ func TestReadTextFile_Normal(t *testing.T) {
 }
 
 func TestReadTextFile_EmptyPath(t *testing.T) {
-	result, err := ReadTextFile("")
+	result, err := readTextFile("")
 	if err != nil {
 		t.Fatalf("空のパスでエラーが発生しました: %v", err)
 	}
@@ -41,7 +44,7 @@ func TestReadTextFile_EmptyPath(t *testing.T) {
 }
 
 func TestReadTextFile_NonExistentFile(t *testing.T) {
-	_, err := ReadTextFile("non_existent_file.txt")
+	_, err := readTextFile("non_existent_file.txt")
 	if err == nil {
 		t.Error("存在しないファイルの場合はエラーを返すべきです")
 	}
@@ -53,7 +56,7 @@ func TestGenerateConfigJS_Normal(t *testing.T) {
 		RightText: "Hello\nUniverse",
 	}
 
-	result := GenerateConfigJS(config)
+	result := generateConfigJS(config)
 
 	// 期待される内容を確認
 	if !strings.Contains(result, "const CONFIG = {") {
@@ -80,7 +83,7 @@ func TestGenerateConfigJS_EmptyTexts(t *testing.T) {
 		RightText: "",
 	}
 
-	result := GenerateConfigJS(config)
+	result := generateConfigJS(config)
 
 	// 空文字列が正しく処理されているか確認
 	if !strings.Contains(result, `leftText: ""`) {
@@ -132,7 +135,7 @@ func TestGenerateHTML_Normal(t *testing.T) {
 		ConfigJS: "const CONFIG = {};",
 	}
 
-	result, err := GenerateHTML(tmplStr, data)
+	result, err := generateHTML(tmplStr, data)
 	if err != nil {
 		t.Fatalf("GenerateHTML()でエラーが発生しました: %v", err)
 	}
@@ -172,7 +175,7 @@ func TestGenerateHTML_EmptyTemplate(t *testing.T) {
 		ConfigJS: "test",
 	}
 
-	result, err := GenerateHTML("", data)
+	result, err := generateHTML("", data)
 	if err != nil {
 		t.Fatalf("空のテンプレートでエラーが発生しました: %v", err)
 	}
@@ -214,5 +217,180 @@ func TestTemplateData_Struct(t *testing.T) {
 
 	if data.ConfigJS != "test config" {
 		t.Error("ConfigJS が正しく設定されていません")
+	}
+}
+
+func TestProcessDiffDreamer_Normal(t *testing.T) {
+	// テスト用の一時ディレクトリを作成
+	tmpDir := t.TempDir()
+
+	// テスト用ファイルを作成
+	leftFile := filepath.Join(tmpDir, "left.txt")
+	rightFile := filepath.Join(tmpDir, "right.txt")
+	outputFile := filepath.Join(tmpDir, "output.html")
+
+	leftContent := "Hello\nWorld"
+	rightContent := "Hello\nUniverse"
+
+	err := os.WriteFile(leftFile, []byte(leftContent), 0644)
+	if err != nil {
+		t.Fatalf("左側テストファイルの作成に失敗しました: %v", err)
+	}
+
+	err = os.WriteFile(rightFile, []byte(rightContent), 0644)
+	if err != nil {
+		t.Fatalf("右側テストファイルの作成に失敗しました: %v", err)
+	}
+
+	// テスト用のHTMLテンプレート
+	indexHTML := `<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>`
+
+	styleCSS := "body { color: red; }"
+	scriptJS := "console.log('test');"
+
+	// ProcessDiffDreamerを実行（ブラウザ起動はスキップするためにモック化が必要だが、ここでは基本的な処理のテストのみ）
+	// 実際のテストではブラウザ起動部分をモック化する必要があります
+	err = ProcessDiffDreamer(leftFile, rightFile, outputFile, indexHTML, styleCSS, scriptJS)
+	if err != nil {
+		t.Fatalf("HTMLファイルの作成に失敗しました: %v", err)
+	}
+
+	// ブラウザ起動でエラーが発生する可能性があるため、ファイル作成までの処理をテスト
+	// HTMLファイルが作成されているかを確認
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		// ファイルが作成されていない場合、ブラウザ起動以外のエラーかもしれない
+		if err != nil && !strings.Contains(err.Error(), "ブラウザの起動に失敗しました") {
+			t.Fatalf("ProcessDiffDreamer()で予期しないエラーが発生しました: %v", err)
+		}
+	}
+
+	// HTMLファイルの内容を確認
+	if _, err := os.Stat(outputFile); err == nil {
+		htmlContent, err := os.ReadFile(outputFile)
+		if err != nil {
+			t.Fatalf("出力HTMLファイルの読み取りに失敗しました: %v", err)
+		}
+
+		htmlStr := string(htmlContent)
+
+		// CSS が埋め込まれているか確認
+		if !strings.Contains(htmlStr, "body { color: red; }") {
+			t.Error("CSS が正しく埋め込まれていません")
+		}
+
+		// JavaScript が埋め込まれているか確認
+		if !strings.Contains(htmlStr, "console.log('test');") {
+			t.Error("JavaScript が正しく埋め込まれていません")
+		}
+
+		// 設定が埋め込まれているか確認
+		if !strings.Contains(htmlStr, "const CONFIG = {") {
+			t.Error("設定 JavaScript が埋め込まれていません")
+		}
+
+		// テキスト内容が含まれているか確認
+		if !strings.Contains(htmlStr, "Hello\\nWorld") {
+			t.Error("左側テキストが正しく埋め込まれていません")
+		}
+
+		if !strings.Contains(htmlStr, "Hello\\nUniverse") {
+			t.Error("右側テキストが正しく埋め込まれていません")
+		}
+	}
+}
+
+func TestProcessDiffDreamer_LeftFileError(t *testing.T) {
+	tmpDir := t.TempDir()
+	rightFile := filepath.Join(tmpDir, "right.txt")
+	outputFile := filepath.Join(tmpDir, "output.html")
+
+	// 右側ファイルのみ作成
+	err := os.WriteFile(rightFile, []byte("test"), 0644)
+	if err != nil {
+		t.Fatalf("右側テストファイルの作成に失敗しました: %v", err)
+	}
+
+	// 存在しない左側ファイルを指定
+	err = ProcessDiffDreamer("non_existent_left.txt", rightFile, outputFile, "", "", "")
+	if err == nil {
+		t.Error("存在しない左側ファイルの場合はエラーを返すべきです")
+	}
+
+	if !strings.Contains(err.Error(), "左側ファイルの読み取りエラー") {
+		t.Errorf("期待されるエラーメッセージが含まれていません: %v", err)
+	}
+}
+
+func TestProcessDiffDreamer_RightFileError(t *testing.T) {
+	tmpDir := t.TempDir()
+	leftFile := filepath.Join(tmpDir, "left.txt")
+	outputFile := filepath.Join(tmpDir, "output.html")
+
+	// 左側ファイルのみ作成
+	err := os.WriteFile(leftFile, []byte("test"), 0644)
+	if err != nil {
+		t.Fatalf("左側テストファイルの作成に失敗しました: %v", err)
+	}
+
+	// 存在しない右側ファイルを指定
+	err = ProcessDiffDreamer(leftFile, "non_existent_right.txt", outputFile, "", "", "")
+	if err == nil {
+		t.Error("存在しない右側ファイルの場合はエラーを返すべきです")
+	}
+
+	if !strings.Contains(err.Error(), "右側ファイルの読み取りエラー") {
+		t.Errorf("期待されるエラーメッセージが含まれていません: %v", err)
+	}
+}
+
+func TestProcessDiffDreamer_EmptyFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "output.html")
+
+	// 空のファイルパスを指定
+	indexHTML := `<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>`
+
+	err := ProcessDiffDreamer("", "", outputFile, indexHTML, "", "")
+
+	// ブラウザ起動でエラーが発生する可能性があるが、ファイル処理自体は成功するはず
+	if err != nil && !strings.Contains(err.Error(), "ブラウザの起動に失敗しました") {
+		t.Errorf("空のファイルパスでの処理で予期しないエラーが発生しました: %v", err)
+	}
+
+	// HTMLファイルが作成されているかを確認
+	if _, err := os.Stat(outputFile); err == nil {
+		htmlContent, err := os.ReadFile(outputFile)
+		if err != nil {
+			t.Fatalf("出力HTMLファイルの読み取りに失敗しました: %v", err)
+		}
+
+		htmlStr := string(htmlContent)
+
+		// 空のテキストが正しく処理されているか確認
+		if !strings.Contains(htmlStr, `leftText: ""`) {
+			t.Error("空の左側テキストが正しく処理されていません")
+		}
+
+		if !strings.Contains(htmlStr, `rightText: ""`) {
+			t.Error("空の右側テキストが正しく処理されていません")
+		}
 	}
 }

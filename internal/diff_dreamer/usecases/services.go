@@ -3,7 +3,6 @@ package usecases
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,8 +23,8 @@ type TemplateData struct {
 	ConfigJS string
 }
 
-// ReadTextFile は指定したファイルパスからテキストを読み取ります
-func ReadTextFile(filePath string) (string, error) {
+// readTextFile は指定したファイルパスからテキストを読み取ります
+func readTextFile(filePath string) (string, error) {
 	if filePath == "" {
 		return "", nil
 	}
@@ -36,16 +35,6 @@ func ReadTextFile(filePath string) (string, error) {
 	}
 
 	return string(data), nil
-}
-
-// GenerateConfigJS は設定情報をJavaScript形式に変換します
-func GenerateConfigJS(config DiffConfig) string {
-	var buf bytes.Buffer
-	buf.WriteString("// 自動生成された設定\nconst CONFIG = {\n")
-	buf.WriteString(fmt.Sprintf("  leftText: %s,\n", escapeJSString(config.LeftText)))
-	buf.WriteString(fmt.Sprintf("  rightText: %s\n", escapeJSString(config.RightText)))
-	buf.WriteString("};")
-	return buf.String()
 }
 
 // escapeJSString はJavaScript文字列リテラル用にエスケープします
@@ -64,8 +53,18 @@ func escapeJSString(s string) string {
 	return fmt.Sprintf(`"%s"`, s)
 }
 
-// GenerateHTML はHTMLテンプレートを生成します
-func GenerateHTML(tmplStr string, data TemplateData) (string, error) {
+// generateConfigJS は設定情報をJavaScript形式に変換します
+func generateConfigJS(config DiffConfig) string {
+	var buf bytes.Buffer
+	buf.WriteString("// 自動生成された設定\nconst CONFIG = {\n")
+	buf.WriteString(fmt.Sprintf("  leftText: %s,\n", escapeJSString(config.LeftText)))
+	buf.WriteString(fmt.Sprintf("  rightText: %s\n", escapeJSString(config.RightText)))
+	buf.WriteString("};")
+	return buf.String()
+}
+
+// generateHTML はHTMLテンプレートを生成します
+func generateHTML(tmplStr string, data TemplateData) (string, error) {
 	// 直接文字列置換を使用してテンプレートを処理
 	html := tmplStr
 
@@ -108,8 +107,8 @@ func openBrowser(url string) error {
 	return cmd.Start()
 }
 
-// OpenHTMLPage はHTMLファイルを作成してブラウザで開きます
-func OpenHTMLPage(html, filePath string) error {
+// openHTMLPage はHTMLファイルを作成してブラウザで開きます
+func openHTMLPage(html, filePath string) error {
 	htmlFile, err := os.Create(filePath)
 	if err != nil {
 		return fmt.Errorf("HTMLファイルの作成に失敗しました: %v", err)
@@ -141,23 +140,46 @@ func OpenHTMLPage(html, filePath string) error {
 	return nil
 }
 
-// CopyFile はファイルをコピーする関数
-func CopyFile(src, dst string) error {
-	// 元ファイルを開く
-	srcFile, err := os.Open(src)
+// ProcessDiffDreamer はdiff-dreamerの全処理を統合して実行します
+func ProcessDiffDreamer(leftFile, rightFile, outputFile, indexHTML, styleCSS, scriptJS string) error {
+	// 1. 左右のファイルからテキストを読み込み
+	leftText, err := readTextFile(leftFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("左側ファイルの読み取りエラー: %w", err)
 	}
-	defer srcFile.Close()
 
-	// 宛先ファイルを作成
-	dstFile, err := os.Create(dst)
+	rightText, err := readTextFile(rightFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("右側ファイルの読み取りエラー: %w", err)
 	}
-	defer dstFile.Close()
 
-	// コピー
-	_, err = io.Copy(dstFile, srcFile)
-	return err
+	// 2. 設定情報を作成
+	config := DiffConfig{
+		LeftText:  leftText,
+		RightText: rightText,
+	}
+
+	// 3. JavaScript設定を生成
+	configJS := generateConfigJS(config)
+
+	// 4. HTMLテンプレートのデータを作成
+	data := TemplateData{
+		Style:    styleCSS,
+		Script:   scriptJS,
+		ConfigJS: configJS,
+	}
+
+	// 5. HTMLを生成
+	html, err := generateHTML(indexHTML, data)
+	if err != nil {
+		return fmt.Errorf("HTMLの生成に失敗しました: %w", err)
+	}
+
+	// 6. HTMLファイルを作成してブラウザで開く
+	err = openHTMLPage(html, outputFile)
+	if err != nil {
+		return fmt.Errorf("HTMLページの作成と表示に失敗しました: %w", err)
+	}
+
+	return nil
 }
