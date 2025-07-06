@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -179,20 +178,32 @@ func (s *ImageRenamerService) FindImageFiles(config *Config) ([]string, error) {
 	return imageFiles, nil
 }
 
-// FileRenameInfo はリネーム前の情報を保持します
-type FileRenameInfo struct {
-	OriginalPath string
-	NewFileName  string
-	CreateDate   time.Time
-	Directory    string
+
+// ConflictResolver は競合解決を行います
+type ConflictResolver struct {
+	usedFileNames map[string]bool // 使用済みファイル名を追跡
 }
 
-// RenameResult はファイルリネームの結果を表します
-type RenameResult struct {
-	OriginalPath string
-	NewPath      string
-	Success      bool
-	Error        error
+// NewConflictResolver は新しいConflictResolverを作成します
+func NewConflictResolver(existingFiles map[string]bool) *ConflictResolver {
+	return &ConflictResolver{
+		usedFileNames: existingFiles,
+	}
+}
+
+// findNextAvailableTime は利用可能な次の時刻を検索します
+func (r *ConflictResolver) findNextAvailableTime(baseTime time.Time, ext string, directory string) time.Time {
+	candidate := baseTime
+	for {
+		fileName := candidate.Format("20060102150405") + ext
+		fullPath := filepath.Join(directory, fileName)
+
+		if !r.usedFileNames[fullPath] {
+			r.usedFileNames[fullPath] = true // 使用済みとしてマーク
+			return candidate
+		}
+		candidate = candidate.Add(1 * time.Second) // 1秒進める
+	}
 }
 
 // extractCreateDateFromJpeg はJPEGファイルからCreateDateを抽出します
@@ -266,6 +277,14 @@ func (s *ImageRenamerService) extractCreateDate(filePath string) (time.Time, err
 	default:
 		return time.Time{}, fmt.Errorf("サポートされていないファイル形式: %s", ext)
 	}
+}
+
+// RenameResult はファイルリネームの結果を表します
+type RenameResult struct {
+	OriginalPath string
+	NewPath      string
+	Success      bool
+	Error        error
 }
 
 // generateNewFileName はCreateDateから新しいファイル名を生成します
@@ -363,6 +382,14 @@ func (s *ImageRenamerService) renameSingleFile(filePath string, config *Config) 
 	return result
 }
 
+// FileRenameInfo はリネーム前の情報を保持します
+type FileRenameInfo struct {
+	OriginalPath string
+	NewFileName  string
+	CreateDate   time.Time
+	Directory    string
+}
+
 // prepareRenameInfo は全ファイルのリネーム情報を事前に準備します
 func (s *ImageRenamerService) prepareRenameInfo(imageFiles []string, config *Config) ([]FileRenameInfo, error) {
 	var renameInfos []FileRenameInfo
@@ -417,45 +444,115 @@ func (s *ImageRenamerService) prepareRenameInfo(imageFiles []string, config *Con
 	return renameInfos, nil
 }
 
-// checkForDuplicates は重複するファイル名をチェックします
-func (s *ImageRenamerService) checkForDuplicates(renameInfos []FileRenameInfo) error {
-	// ディレクトリ別にファイル名をグループ化
-	dirFileMap := make(map[string]map[string][]string)
+// collectExistingFileNames は既存ファイル名を収集します
+func (s *ImageRenamerService) collectExistingFileNames(renameInfos []FileRenameInfo) map[string]bool {
+	existingFiles := make(map[string]bool)
 
+	// 各ディレクトリの既存ファイルを収集
+	processedDirs := make(map[string]bool)
 	for _, info := range renameInfos {
-		if dirFileMap[info.Directory] == nil {
-			dirFileMap[info.Directory] = make(map[string][]string)
+		if processedDirs[info.Directory] {
+			continue
 		}
-		dirFileMap[info.Directory][info.NewFileName] = append(
-			dirFileMap[info.Directory][info.NewFileName],
-			info.OriginalPath,
-		)
-	}
+		processedDirs[info.Directory] = true
 
-	// 重複をチェック
-	var conflicts []string
-	for dir, fileMap := range dirFileMap {
-		for newFileName, originalPaths := range fileMap {
-			if len(originalPaths) > 1 {
-				conflicts = append(conflicts, fmt.Sprintf(
-					"  新しいファイル名 '%s' (ディレクトリ: %s) に以下のファイルが競合:",
-					newFileName, dir,
-				))
-				for _, originalPath := range originalPaths {
-					conflicts = append(conflicts, fmt.Sprintf("    - %s", originalPath))
-				}
-				conflicts = append(conflicts, "")
+		// ディレクトリ内の既存ファイルを取得
+		entries, err := os.ReadDir(info.Directory)
+		if err != nil {
+			continue
+		}
+
+		for _, entry := range entries {
+			if !entry.IsDir() {
+				fullPath := filepath.Join(info.Directory, entry.Name())
+				existingFiles[fullPath] = true
 			}
 		}
 	}
 
-	if len(conflicts) > 0 {
-		errorMsg := "ファイル名の競合が検出されました:\n\n" + strings.Join(conflicts, "\n")
-		errorMsg += "\n解決方法:\n"
-		errorMsg += "  1. ファイルの撮影時刻を手動で調整\n"
-		errorMsg += "  2. 一部のファイルを別のディレクトリに移動\n"
-		errorMsg += "  3. --use-file-modtime オプションを試す\n"
-		return errors.New(errorMsg)
+	return existingFiles
+}
+
+// resolveConflicts は競合を自動解決します
+func (s *ImageRenamerService) resolveConflicts(renameInfos []FileRenameInfo, config *Config) error {
+	// 既存ファイル名を収集
+	existingFiles := s.collectExistingFileNames(renameInfos)
+
+	// ConflictResolverを作成
+	resolver := NewConflictResolver(existingFiles)
+
+	// ディレクトリ別に競合をグループ化
+	dirFileMap := make(map[string]map[string][]*FileRenameInfo)
+	for i := range renameInfos {
+		info := &renameInfos[i]
+		if dirFileMap[info.Directory] == nil {
+			dirFileMap[info.Directory] = make(map[string][]*FileRenameInfo)
+		}
+		dirFileMap[info.Directory][info.NewFileName] = append(
+			dirFileMap[info.Directory][info.NewFileName],
+			info,
+		)
+	}
+
+	// 競合を解決
+	var resolvedConflicts []string
+	for dir, fileMap := range dirFileMap {
+		for newFileName, conflictInfos := range fileMap {
+			if len(conflictInfos) > 1 {
+				// 競合が検出された場合
+				resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+					"競合解決: '%s' (ディレクトリ: %s)",
+					newFileName, dir,
+				))
+
+				// 元の時刻順にソート
+				sort.Slice(conflictInfos, func(i, j int) bool {
+					return conflictInfos[i].CreateDate.Before(conflictInfos[j].CreateDate)
+				})
+
+				// 最初のファイルは元の時刻を維持、残りは1秒ずつ後の時刻を割り当て
+				for i, info := range conflictInfos {
+					if i == 0 {
+						// 最初のファイルも既存ファイルとの競合をチェック
+						ext := filepath.Ext(info.OriginalPath)
+						newTime := resolver.findNextAvailableTime(info.CreateDate, ext, info.Directory)
+						if !newTime.Equal(info.CreateDate) {
+							info.CreateDate = newTime
+							info.NewFileName = s.generateNewFileName(newTime, info.OriginalPath)
+							resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+								"  - %s → %s (既存ファイルとの競合回避)",
+								filepath.Base(info.OriginalPath), info.NewFileName,
+							))
+						} else {
+							resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+								"  - %s → %s (元の時刻維持)",
+								filepath.Base(info.OriginalPath), info.NewFileName,
+							))
+						}
+					} else {
+						// 2番目以降のファイルは安全な時刻を検索
+						ext := filepath.Ext(info.OriginalPath)
+						newTime := resolver.findNextAvailableTime(info.CreateDate.Add(time.Duration(i)*time.Second), ext, info.Directory)
+						info.CreateDate = newTime
+						info.NewFileName = s.generateNewFileName(newTime, info.OriginalPath)
+						resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+							"  - %s → %s (%d秒後に調整)",
+							filepath.Base(info.OriginalPath), info.NewFileName, int(newTime.Sub(conflictInfos[0].CreateDate).Seconds()),
+						))
+					}
+				}
+				resolvedConflicts = append(resolvedConflicts, "")
+			}
+		}
+	}
+
+	// 競合解決の結果を表示
+	if len(resolvedConflicts) > 0 {
+		fmt.Println("ファイル名の競合が検出されました。自動解決を実行します:")
+		fmt.Println()
+		for _, msg := range resolvedConflicts {
+			fmt.Println(msg)
+		}
 	}
 
 	return nil
@@ -548,11 +645,11 @@ func (s *ImageRenamerService) ProcessImageRename(config *Config) (int, int, erro
 		return 0, 0, fmt.Errorf("リネーム情報の準備に失敗: %w", err)
 	}
 
-	// 重複チェック
-	if err := s.checkForDuplicates(renameInfos); err != nil {
+	// 競合を自動解決
+	if err := s.resolveConflicts(renameInfos, config); err != nil {
 		return 0, 0, err
 	}
 
-	// 重複がない場合のみリネーム実行
+	// リネーム実行
 	return s.renameImageFiles(imageFiles, config)
 }
