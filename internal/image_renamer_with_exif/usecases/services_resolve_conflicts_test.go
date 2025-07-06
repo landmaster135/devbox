@@ -459,13 +459,6 @@ func TestNewConflictResolver(t *testing.T) {
 	}
 
 	resolver := NewConflictResolver(existingFiles)
-	if resolver == nil {
-		t.Error("NewConflictResolverがnilを返しました")
-	}
-
-	if resolver.usedFileNames == nil {
-		t.Error("usedFileNamesが初期化されていません")
-	}
 
 	if len(resolver.usedFileNames) != 2 {
 		t.Errorf("usedFileNamesの長さが期待値と異なります: 期待値 2, 実際の値 %d", len(resolver.usedFileNames))

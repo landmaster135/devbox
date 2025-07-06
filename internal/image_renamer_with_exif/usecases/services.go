@@ -225,7 +225,7 @@ func (s *ImageRenamerService) extractCreateDateFromJpeg(filePath string) (time.T
 	// Exifセグメントを取得
 	rootIfd, _, err := sl.Exif()
 	if err != nil {
-		return time.Time{}, fmt.Errorf("Exifデータが見つかりません: %v", err)
+		return time.Time{}, fmt.Errorf("exifデータが見つかりません: %v", err)
 	}
 
 	// まずCreateDateを試す
