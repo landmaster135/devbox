@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -178,6 +179,14 @@ func (s *ImageRenamerService) FindImageFiles(config *Config) ([]string, error) {
 	return imageFiles, nil
 }
 
+// FileRenameInfo はリネーム前の情報を保持します
+type FileRenameInfo struct {
+	OriginalPath string
+	NewFileName  string
+	CreateDate   time.Time
+	Directory    string
+}
+
 // RenameResult はファイルリネームの結果を表します
 type RenameResult struct {
 	OriginalPath string
@@ -207,11 +216,6 @@ func (s *ImageRenamerService) extractCreateDateFromJpeg(filePath string) (time.T
 	rootIfd, _, err := sl.Exif()
 	if err != nil {
 		return time.Time{}, fmt.Errorf("Exifデータが見つかりません: %v", err)
-	}
-
-	// CreateDateまたはDateTimeOriginalを取得
-	if err != nil {
-		return time.Time{}, fmt.Errorf("IFDマッピングの作成に失敗: %v", err)
 	}
 
 	// まずCreateDateを試す
@@ -359,8 +363,106 @@ func (s *ImageRenamerService) renameSingleFile(filePath string, config *Config) 
 	return result
 }
 
-// RenameImageFiles は複数のファイルを並行処理でリネームします
-func (s *ImageRenamerService) RenameImageFiles(imageFiles []string, config *Config) (int, int, error) {
+// prepareRenameInfo は全ファイルのリネーム情報を事前に準備します
+func (s *ImageRenamerService) prepareRenameInfo(imageFiles []string, config *Config) ([]FileRenameInfo, error) {
+	var renameInfos []FileRenameInfo
+
+	for _, filePath := range imageFiles {
+		// CreateDateを抽出
+		var createDate time.Time
+		var err error
+
+		if config.UseFileModTime {
+			// ファイルの更新時刻を使用
+			info, err := os.Stat(filePath)
+			if err != nil {
+				return nil, fmt.Errorf("ファイル情報の取得に失敗: %s - %v", filePath, err)
+			}
+			createDate = info.ModTime()
+		} else {
+			// ExifのCreateDateを使用
+			createDate, err = s.extractCreateDate(filePath)
+			if err != nil {
+				if config.Verbose {
+					log.Printf("Exif CreateDateの抽出に失敗: %s - %v", filePath, err)
+				}
+
+				// フォールバックでファイルの更新時刻を使用
+				info, err := os.Stat(filePath)
+				if err != nil {
+					return nil, fmt.Errorf("ファイル情報の取得に失敗: %s - %v", filePath, err)
+				}
+				createDate = info.ModTime()
+
+				if config.Verbose {
+					log.Printf("フォールバック: ファイル更新時刻を使用 %s", filePath)
+				}
+			}
+		}
+
+		// 新しいファイル名を生成
+		newFileName := s.generateNewFileName(createDate, filePath)
+		directory := filepath.Dir(filePath)
+
+		renameInfo := FileRenameInfo{
+			OriginalPath: filePath,
+			NewFileName:  newFileName,
+			CreateDate:   createDate,
+			Directory:    directory,
+		}
+
+		renameInfos = append(renameInfos, renameInfo)
+	}
+
+	return renameInfos, nil
+}
+
+// checkForDuplicates は重複するファイル名をチェックします
+func (s *ImageRenamerService) checkForDuplicates(renameInfos []FileRenameInfo) error {
+	// ディレクトリ別にファイル名をグループ化
+	dirFileMap := make(map[string]map[string][]string)
+
+	for _, info := range renameInfos {
+		if dirFileMap[info.Directory] == nil {
+			dirFileMap[info.Directory] = make(map[string][]string)
+		}
+		dirFileMap[info.Directory][info.NewFileName] = append(
+			dirFileMap[info.Directory][info.NewFileName],
+			info.OriginalPath,
+		)
+	}
+
+	// 重複をチェック
+	var conflicts []string
+	for dir, fileMap := range dirFileMap {
+		for newFileName, originalPaths := range fileMap {
+			if len(originalPaths) > 1 {
+				conflicts = append(conflicts, fmt.Sprintf(
+					"  新しいファイル名 '%s' (ディレクトリ: %s) に以下のファイルが競合:",
+					newFileName, dir,
+				))
+				for _, originalPath := range originalPaths {
+					conflicts = append(conflicts, fmt.Sprintf("    - %s", originalPath))
+				}
+				conflicts = append(conflicts, "")
+			}
+		}
+	}
+
+	if len(conflicts) > 0 {
+		errorMsg := "ファイル名の競合が検出されました:\n\n" + strings.Join(conflicts, "\n")
+		errorMsg += "\n解決方法:\n"
+		errorMsg += "  1. ファイルの撮影時刻を手動で調整\n"
+		errorMsg += "  2. 一部のファイルを別のディレクトリに移動\n"
+		errorMsg += "  3. --use-file-modtime オプションを試す\n"
+		return errors.New(errorMsg)
+	}
+
+	return nil
+}
+
+// renameImageFiles は複数のファイルを並行処理でリネームします
+func (s *ImageRenamerService) renameImageFiles(imageFiles []string, config *Config) (int, int, error) {
 	// ワーカー数のデフォルト設定
 	workerCount := config.WorkerCount
 	if workerCount <= 0 {
@@ -440,6 +542,17 @@ func (s *ImageRenamerService) ProcessImageRename(config *Config) (int, int, erro
 		log.Printf("Found %d image files", len(imageFiles))
 	}
 
-	// ファイルをリネーム
-	return s.RenameImageFiles(imageFiles, config)
+	// 全ファイルのリネーム情報を事前に準備
+	renameInfos, err := s.prepareRenameInfo(imageFiles, config)
+	if err != nil {
+		return 0, 0, fmt.Errorf("リネーム情報の準備に失敗: %w", err)
+	}
+
+	// 重複チェック
+	if err := s.checkForDuplicates(renameInfos); err != nil {
+		return 0, 0, err
+	}
+
+	// 重複がない場合のみリネーム実行
+	return s.renameImageFiles(imageFiles, config)
 }
