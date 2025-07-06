@@ -58,54 +58,12 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	// 引数の検証
-	if err := usecases.ValidateConfig(config, stderr); err != nil {
-		return exitCodeError
-	}
-
-	// スクリーンショットファイルの検索
-	var files []string
-	if config.ToDateTime {
-		files, err = usecases.FindScreenshotFilesForDateTime(config.SrcDir, config.Recursive, stdout, stderr)
-	} else {
-		files, err = usecases.FindScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.AndroidPattern, stdout, stderr)
-	}
+	// スクリーンショットファイルのリネーム処理を統合メソッドで実行
+	_, errorCount, err := usecases.ProcessScreenshotRename(config, stdout, stderr)
 	if err != nil {
-		return exitCodeError
-	}
-
-	if len(files) == 0 {
-		fmt.Fprintln(stdout, "スクリーンショットファイルが見つかりませんでした。")
-		return exitCodeOK
-	}
-
-	fmt.Fprintf(stdout, "スクリーンショットファイルが %d 件見つかりました。\n", len(files))
-
-	if config.ToDateTime {
-		fmt.Fprintln(stdout, "YYYYMMDDHHMMSS形式でのリネームを実行します。")
-	} else if config.VlcPattern {
-		fmt.Fprintln(stdout, "VLCスナップショットパターンを使用します。")
-	} else if config.WinPattern {
-		fmt.Fprintln(stdout, "Windowsスクリーンショットパターンを使用します。")
-	} else if config.AndroidPattern {
-		fmt.Fprintln(stdout, "Androidスクリーンレコードパターンを使用します。")
-	}
-
-	// ファイル情報の取得
-	fileInfos, err := usecases.GetFileInfos(files, stderr)
-	if err != nil {
-		// エラーがあっても続行するため、ここではエラーコードを返さない
-	}
-
-	// リネーム処理の実行
-	successCount, errorCount := usecases.RenameScreenshotFiles(fileInfos, config, stdout, stderr)
-
-	// 処理結果の出力
-	fmt.Fprintf(stdout, "✔ ファイルリネームが完了しました\n")
-	fmt.Fprintf(stdout, "  成功: %d ファイル\n", successCount)
-
-	if errorCount > 0 {
-		fmt.Fprintf(stdout, "  失敗: %d ファイル\n", errorCount)
+		if errorCount > 0 {
+			return exitCodeError
+		}
 		return exitCodeError
 	}
 
