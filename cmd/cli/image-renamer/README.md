@@ -1,4 +1,4 @@
-# File Renamer
+# Image Renamer
 
 画像ファイルを指定したプレフィックスとシリアル番号でリネームするツールです。
 
@@ -13,7 +13,7 @@
 ## 使用方法
 
 ```
-./file-renamer [オプション]
+./image-renamer [オプション]
 ```
 
 ### オプション
@@ -38,33 +38,33 @@
 
 ```bash
 # カレントディレクトリの画像ファイルを日付順に並べ替えてリネーム
-./file-renamer -prefix "20250507" -time
+./image-renamer -prefix "20250507" -time
 
 # 指定したディレクトリの画像ファイルをファイル名順に並べ替えてリネーム
-./file-renamer -src ./photos -prefix "article01" -name
+./image-renamer -src ./photos -prefix "article01" -name
 
 # 3桁のシリアル番号を使用（例: article01_001.jpg）
-./file-renamer -prefix "article01" -digits 3 -time
+./image-renamer -prefix "article01" -digits 3 -time
 
 # 開始番号を10から始める
-./file-renamer -prefix "article01" -start 10 -time
+./image-renamer -prefix "article01" -start 10 -time
 
 # カスタム区切り文字を使用（例: article01-001.jpg）
-./file-renamer -prefix "article01" -delimiter "-" -time
+./image-renamer -prefix "article01" -delimiter "-" -time
 ```
 
 ### 再帰的なスキャン
 
 ```bash
 # サブディレクトリも含めて画像ファイルをリネーム
-./file-renamer -src ./photos -prefix "article01" -time -r
+./image-renamer -src ./photos -prefix "article01" -time -r
 ```
 
 ### 並行処理の調整
 
 ```bash
 # ワーカー数を8に設定
-./file-renamer -prefix "article01" -time -workers 8
+./image-renamer -prefix "article01" -time -workers 8
 ```
 
 ## ビルド方法
@@ -72,7 +72,7 @@
 付属のビルドスクリプトを使用してビルドできます：
 
 ```bash
-./scripts/build_file_renamer.sh
+./scripts/build_image_renamer.sh
 ```
 
 これにより、Linux、Windows、macOS向けのバイナリが `pkg/bin` ディレクトリに生成されます。

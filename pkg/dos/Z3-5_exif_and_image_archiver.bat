@@ -7,6 +7,7 @@
 
 set path_01_01=.\1-1_image_renamer_with_exif
 set path_01_02=.\1-2_image_renamer_for_screenshot
+set path_01_03=.\1-3_image_renamer_with_prefix_input
 set path_01_05=.\1-4_image_converter_to_webp
 set path_01_06=.\1-4_image_converter_to_webp_org
 set path_01_07=.\1-5_image_archiver_terminated
@@ -20,6 +21,12 @@ if not exist "%path_01_01%" (
 )
 if not exist "%path_01_02%" (
   echo [ERROR] The specified path "%path_01_02%" does not exist.
+  echo Input any key to exit...
+  pause > nul
+  exit /b 1
+)
+if not exist "%path_01_03%" (
+  echo [ERROR] The specified path "%path_01_03%" does not exist.
   echo Input any key to exit...
   pause > nul
   exit /b 1
@@ -44,6 +51,16 @@ if not exist "%path_01_07%" (
 )
 
 
+set /p prefix="Input prefix of pictures for LINE (yyyyMMddHH): "
+choice /c nd /n /m "Select how to sort image files to rename  [n]='--name'  [d]='--time' : "
+if %errorlevel% == 1 (
+  set "sort=-name"
+) else (
+  set "sort=-time"
+)
+echo %sort%
+
+
 echo --- ÉvÉçÉOÉâÉÄÇé¿çsÇµÇ‹Ç∑ ---
 echo "===============  EXIF modification: Part 1  ============================================"
 @REM îCà”ÇÃì˙éûÇï∂éöóÒÇ≈ì¸óÕÇµÇƒé©ìÆçÃî‘Ç∑ÇÈèàóù
@@ -61,15 +78,22 @@ echo "===============  EXIF modification: Part 2  ==============================
 .\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_02% --from-filename --ext png --verbose
 .\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_02% --from-filename --ext mp4 --verbose
 echo "===================================================================================="
+echo "===============  JPG renaming for LINE  ============================================"
+.\pkg\bin\win_amd64\image-renamer.exe -src .\1-3_image_renamer_with_prefix_input -digits 4 -delimiter "" -prefix %prefix% -start 1 %sort%
+echo "===================================================================================="
+echo "===============  EXIF modification: Part 3  ============================================"
+.\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_03% --from-filename --ext jpg --verbose
+echo "===================================================================================="
 echo "===============  WEBP conversion  ====================================================="
-.\pkg\bin\win_amd64\image-converter.exe -src %path_01_01% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_05%_org -move
-.\pkg\bin\win_amd64\image-converter.exe -src %path_01_02% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_05%_org -move
+.\pkg\bin\win_amd64\image-converter.exe -src %path_01_01% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
+.\pkg\bin\win_amd64\image-converter.exe -src %path_01_02% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
+.\pkg\bin\win_amd64\image-converter.exe -src %path_01_03% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
 echo "===================================================================================="
 echo "===============  EXIF mirroring  ====================================================="
 .\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext jpg --target-ext webp
 .\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext png --target-ext webp
 echo "===================================================================================="
-echo "===============  EXIF modification: Part 3  ============================================"
+echo "===============  EXIF modification: Part 4  ============================================"
 .\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_05% --from-filename --ext webp --verbose
 echo "===================================================================================="
 echo "===============  EXIF viewer (WEBP)  ================================================="

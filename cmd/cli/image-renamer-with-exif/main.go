@@ -25,6 +25,25 @@ var (
 	useFileModTime = flag.Bool("use-file-modtime", false, "ExifのCreateDateではなくファイルの更新時刻を使用")
 )
 
+// 実行情報を表示
+func printExecutionInfo(config *usecases.Config) {
+	fmt.Printf("ディレクトリ: %s\n", config.FolderPath)
+	if config.UseFileModTime {
+		fmt.Println("モード: ファイルの更新時刻を使用")
+	} else {
+		fmt.Println("モード: EXIF CreateDateを使用（フォールバック: ファイル更新時刻）")
+	}
+	if config.Extension != "" {
+		fmt.Printf("対象拡張子: %s\n", config.Extension)
+	}
+	fmt.Printf("再帰処理: %t\n", config.Recursive)
+	fmt.Printf("ドライラン: %t\n", config.DryRun)
+	fmt.Printf("詳細モード: %t\n", config.Verbose)
+	fmt.Printf("ワーカー数: %d\n", config.WorkerCount)
+	fmt.Println()
+}
+
+
 func main() {
 	// カスタムUsage関数を設定
 	flag.Usage = func() {
@@ -95,27 +114,16 @@ func main() {
 	// ImageRenamerServiceを作成
 	service := usecases.NewImageRenamerService()
 
-	// 画像ファイルを検索
-	imageFiles, err := service.FindImageFiles(config)
+	// 画像ファイルの検索とリネームを一括処理
+	processedCount, errorCount, err := service.ProcessImageRename(config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding image files: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error processing image rename: %v\n", err)
 		os.Exit(1)
 	}
 
-	if len(imageFiles) == 0 {
+	if processedCount == 0 && errorCount == 0 {
 		fmt.Printf("対象の画像ファイルが見つかりませんでした: %s\n", *dirPath)
 		os.Exit(0)
-	}
-
-	if config.Verbose {
-		log.Printf("Found %d image files\n", len(imageFiles))
-	}
-
-	// ファイルをリネーム
-	processedCount, errorCount, err := service.RenameImageFiles(imageFiles, config)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error renaming image files: %v\n", err)
-		os.Exit(1)
 	}
 
 	// 結果を表示
@@ -123,23 +131,5 @@ func main() {
 	if errorCount > 0 {
 		fmt.Printf(" (%d個のエラー)", errorCount)
 	}
-	fmt.Println()
-}
-
-// 実行情報を表示
-func printExecutionInfo(config *usecases.Config) {
-	fmt.Printf("ディレクトリ: %s\n", config.FolderPath)
-	if config.UseFileModTime {
-		fmt.Println("モード: ファイルの更新時刻を使用")
-	} else {
-		fmt.Println("モード: EXIF CreateDateを使用（フォールバック: ファイル更新時刻）")
-	}
-	if config.Extension != "" {
-		fmt.Printf("対象拡張子: %s\n", config.Extension)
-	}
-	fmt.Printf("再帰処理: %t\n", config.Recursive)
-	fmt.Printf("ドライラン: %t\n", config.DryRun)
-	fmt.Printf("詳細モード: %t\n", config.Verbose)
-	fmt.Printf("ワーカー数: %d\n", config.WorkerCount)
 	fmt.Println()
 }
