@@ -423,3 +423,23 @@ func (s *ImageRenamerService) RenameImageFiles(imageFiles []string, config *Conf
 
 	return processedCount, errorCount, nil
 }
+
+// ProcessImageRename は画像ファイルの検索とリネームを一括で処理します
+func (s *ImageRenamerService) ProcessImageRename(config *Config) (int, int, error) {
+	// 画像ファイルを検索
+	imageFiles, err := s.FindImageFiles(config)
+	if err != nil {
+		return 0, 0, fmt.Errorf("画像ファイルの検索に失敗: %w", err)
+	}
+
+	if len(imageFiles) == 0 {
+		return 0, 0, nil
+	}
+
+	if config.Verbose {
+		log.Printf("Found %d image files", len(imageFiles))
+	}
+
+	// ファイルをリネーム
+	return s.RenameImageFiles(imageFiles, config)
+}
