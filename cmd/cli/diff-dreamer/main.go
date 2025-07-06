@@ -44,46 +44,10 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	// ファイルからテキストを読み込み
-	leftText, err := usecases.ReadTextFile(*leftFile)
+	// 統合メソッドを使用してdiff-dreamerの全処理を実行
+	err := usecases.ProcessDiffDreamer(*leftFile, *rightFile, *outputFile, indexHTML, styleCSS, scriptJS)
 	if err != nil {
-		fmt.Fprintf(stderr, "左側ファイルの読み取りエラー: %v\n", err)
-		return exitCodeError
-	}
-
-	rightText, err := usecases.ReadTextFile(*rightFile)
-	if err != nil {
-		fmt.Fprintf(stderr, "右側ファイルの読み取りエラー: %v\n", err)
-		return exitCodeError
-	}
-
-	// 設定情報を作成
-	config := usecases.DiffConfig{
-		LeftText:  leftText,
-		RightText: rightText,
-	}
-
-	// 設定情報をJavaScript形式に変換
-	configJS := usecases.GenerateConfigJS(config)
-
-	// HTMLテンプレートのデータを作成
-	data := usecases.TemplateData{
-		Style:    styleCSS,
-		Script:   scriptJS,
-		ConfigJS: configJS,
-	}
-
-	// HTMLを生成
-	html, err := usecases.GenerateHTML(indexHTML, data)
-	if err != nil {
-		fmt.Fprintf(stderr, "HTMLの生成に失敗しました: %v\n", err)
-		return exitCodeError
-	}
-
-	// HTMLファイルを作成してブラウザで開く
-	err = usecases.OpenHTMLPage(html, *outputFile)
-	if err != nil {
-		fmt.Fprintf(stderr, "HTMLページの作成と表示に失敗しました: %v\n", err)
+		fmt.Fprintf(stderr, "Diff Dreamerの処理に失敗しました: %v\n", err)
 		return exitCodeError
 	}
 
