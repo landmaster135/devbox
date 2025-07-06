@@ -37,8 +37,8 @@ type Config struct {
 	Workers    int
 }
 
-// ValidateConfig は設定の妥当性を検証します
-func ValidateConfig(config Config, stderr io.Writer) error {
+// validateConfig は設定の妥当性を検証します
+func validateConfig(config Config, stderr io.Writer) error {
 	// プレフィックスが指定されていない場合はエラーを表示して終了
 	if config.Prefix == "" {
 		fmt.Fprintln(stderr, "エラー: プレフィックスは必須です。-prefix フラグを使用して記事番号を指定してください。")
@@ -69,8 +69,17 @@ func ValidateConfig(config Config, stderr io.Writer) error {
 	return nil
 }
 
-// FindImageFiles は指定されたディレクトリから画像ファイルを検索します
-func FindImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]string, error) {
+func isImageExt(ext string) bool {
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp", ".avif":
+		return true
+	default:
+		return false
+	}
+}
+
+// findImageFiles は指定されたディレクトリから画像ファイルを検索します
+func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]string, error) {
 	var files []string
 
 	if recursive {
@@ -110,8 +119,8 @@ func FindImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]
 	return files, nil
 }
 
-// GetFileInfos はファイルパスのリストからファイル情報を取得します
-func GetFileInfos(files []string, stderr io.Writer) ([]FileInfo, error) {
+// getFileInfos はファイルパスのリストからファイル情報を取得します
+func getFileInfos(files []string, stderr io.Writer) ([]FileInfo, error) {
 	fileInfos := make([]FileInfo, len(files))
 	var hasError bool
 
@@ -135,8 +144,8 @@ func GetFileInfos(files []string, stderr io.Writer) ([]FileInfo, error) {
 	return fileInfos, nil
 }
 
-// SortFiles はファイル情報を指定された方法で並べ替えます
-func SortFiles(fileInfos []FileInfo, sortByTime bool, stdout io.Writer) {
+// sortFiles はファイル情報を指定された方法で並べ替えます
+func sortFiles(fileInfos []FileInfo, sortByTime bool, stdout io.Writer) {
 	if sortByTime {
 		fmt.Fprintln(stdout, "ファイルを更新日時順に並べ替えています（古い順）")
 		sort.Slice(fileInfos, func(i, j int) bool {
@@ -150,8 +159,8 @@ func SortFiles(fileInfos []FileInfo, sortByTime bool, stdout io.Writer) {
 	}
 }
 
-// RenameFiles はファイルをリネームします
-func RenameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) (int, int) {
+// renameFiles はファイルをリネームします
+func renameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) (int, int) {
 	// ワーカープールの設定
 	workerCount := config.Workers
 	if workerCount < 1 {
@@ -244,11 +253,40 @@ func processRenameJob(job Job, digits int, prefix string, delimiter string, mu *
 	}
 }
 
-func isImageExt(ext string) bool {
-	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".avif":
-		return true
-	default:
-		return false
+// ProcessImageRename は画像ファイルのリネーム処理全体を実行します
+func ProcessImageRename(config Config, stdout, stderr io.Writer) (int, int, error) {
+	// 設定の検証
+	if err := validateConfig(config, stderr); err != nil {
+		return 0, 0, err
 	}
+
+	// 画像ファイルの検索
+	files, err := findImageFiles(config.SrcDir, config.Recursive, stdout, stderr)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	if len(files) == 0 {
+		fmt.Fprintln(stdout, "画像ファイルが見つかりませんでした。")
+		return 0, 0, nil
+	}
+
+	fmt.Fprintf(stdout, "画像ファイルが %d 件見つかりました。\n", len(files))
+	fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
+	fmt.Fprintf(stdout, "区切り文字: %s\n", config.Delimiter)
+	fmt.Fprintf(stdout, "開始番号: %d\n", config.StartCount)
+
+	// ファイル情報の取得と並べ替え
+	fileInfos, err := getFileInfos(files, stderr)
+	if err != nil {
+		// エラーがあっても続行するため、ここではエラーコードを返さない
+	}
+
+	// ファイルの並べ替え
+	sortFiles(fileInfos, config.SortByTime, stdout)
+
+	// リネーム処理の実行
+	successCount, errorCount := renameFiles(fileInfos, config, stdout, stderr)
+
+	return successCount, errorCount, nil
 }
