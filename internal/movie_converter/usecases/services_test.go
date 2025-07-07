@@ -67,7 +67,7 @@ func (ts *TestGenerateOutputFile) TestGenerateOutputFile_MP4ToGIF_Normal() {
 	expected := "video.gif"
 
 	// Act
-	result := GenerateOutputFile(inputFile)
+	result := generateOutputFile(inputFile)
 
 	// Assert
 	if result != expected {
@@ -82,7 +82,7 @@ func (ts *TestGenerateOutputFile) TestGenerateOutputFile_GIFToMP4_Normal() {
 	expected := "animation.mp4"
 
 	// Act
-	result := GenerateOutputFile(inputFile)
+	result := generateOutputFile(inputFile)
 
 	// Assert
 	if result != expected {
@@ -97,7 +97,7 @@ func (ts *TestGenerateOutputFile) TestGenerateOutputFile_MKVToGIF_Normal() {
 	expected := "video.gif"
 
 	// Act
-	result := GenerateOutputFile(inputFile)
+	result := generateOutputFile(inputFile)
 
 	// Assert
 	if result != expected {
@@ -112,7 +112,7 @@ func (ts *TestGenerateOutputFile) TestGenerateOutputFile_UnsupportedExtension_No
 	expected := "document_converted"
 
 	// Act
-	result := GenerateOutputFile(inputFile)
+	result := generateOutputFile(inputFile)
 
 	// Assert
 	if result != expected {
@@ -139,7 +139,7 @@ func (ts *TestValidateConfig) TestValidateConfig_EmptyInputFile() {
 	}
 
 	// Act
-	err := ValidateConfig(config)
+	err := validateSingleConfig(config)
 
 	// Assert
 	if err == nil {
@@ -159,7 +159,7 @@ func (ts *TestValidateConfig) TestValidateConfig_NoExtension() {
 	}
 
 	// Act
-	err := ValidateConfig(config)
+	err := validateSingleConfig(config)
 
 	// Assert
 	if err == nil {
@@ -180,7 +180,7 @@ func (ts *TestValidateConfig) TestValidateConfig_FileNotExists() {
 	}
 
 	// Act
-	err := ValidateConfig(config)
+	err := validateSingleConfig(config)
 
 	// Assert
 	if err == nil {
@@ -210,7 +210,7 @@ func (ts *TestValidateConfig) TestValidateConfig_ValidFile() {
 	}
 
 	// Act
-	err = ValidateConfig(config)
+	err = validateSingleConfig(config)
 
 	// Assert
 	if err != nil {
@@ -412,7 +412,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_EmptyInputDir() {
 	}
 
 	// Act
-	err := ValidateBatchConfig(&config)
+	err := validateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -434,7 +434,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_EmptyInputExt() {
 	}
 
 	// Act
-	err := ValidateBatchConfig(&config)
+	err := validateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -457,7 +457,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_UnsupportedInputExt()
 	}
 
 	// Act
-	err := ValidateBatchConfig(&config)
+	err := validateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -481,7 +481,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_UnsupportedOutputExt(
 	}
 
 	// Act
-	err := ValidateBatchConfig(&config)
+	err := validateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -505,7 +505,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_ValidConfig() {
 	}
 
 	// Act
-	err := ValidateBatchConfig(&config)
+	err := validateBatchConfig(&config)
 
 	// Assert
 	if err != nil {
@@ -525,7 +525,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_ExtensionNormalizatio
 	}
 
 	// Act
-	err := ValidateBatchConfig(&config)
+	err := validateBatchConfig(&config)
 
 	// Assert
 	if err != nil {
