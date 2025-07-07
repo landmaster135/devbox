@@ -175,7 +175,7 @@ func (p *DefaultREADMEParser) ParseUsageExamples(content []byte) ([]string, erro
 		// コードブロック内の行を追加
 		if inCodeBlock {
 			if trimmedLine != "" {
-				usageLines = append(usageLines, fmt.Sprintf("echo \\\"  %s\\\"", trimmedLine))
+				usageLines = append(usageLines, fmt.Sprintf("echo \"  %s\"", trimmedLine))
 			}
 		}
 	}
@@ -195,7 +195,7 @@ func (g *DefaultScriptGenerator) GenerateContent(packageName, packagePath string
 	if len(usageExamples) > 0 {
 		usageExamplesStr = strings.Join(usageExamples, "\n")
 	} else {
-		usageExamplesStr = fmt.Sprintf("echo \\\"  ./%s [options]\\\"", outputName)
+		usageExamplesStr = fmt.Sprintf("echo \"  ./%s [options]\"", outputName)
 	}
 
 	return fmt.Sprintf(`#!/bin/bash
