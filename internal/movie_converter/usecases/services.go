@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -56,8 +57,8 @@ func (s *MovieConverterService) setMP4ToGIFDefaults() {
 	// UseItsScale: trueがデフォルト
 }
 
-// ConvertMP4ToGIF converts MP4 to GIF using ffmpeg-go
-func (s *MovieConverterService) ConvertMP4ToGIF() error {
+// convertMP4ToGIF converts MP4 to GIF using ffmpeg-go
+func (s *MovieConverterService) convertMP4ToGIF() error {
 	log.Printf("MP4からGIFに変換中: %s -> %s", s.config.InputFile, s.config.OutputFile)
 
 	// デフォルト値の設定
@@ -128,8 +129,8 @@ func (s *MovieConverterService) setGIFToMP4Defaults() {
 	}
 }
 
-// ConvertGIFToMP4 converts GIF to MP4 using ffmpeg-go
-func (s *MovieConverterService) ConvertGIFToMP4() error {
+// convertGIFToMP4 converts GIF to MP4 using ffmpeg-go
+func (s *MovieConverterService) convertGIFToMP4() error {
 	log.Printf("GIFからMP4に変換中: %s -> %s", s.config.InputFile, s.config.OutputFile)
 
 	// デフォルト値の設定
@@ -158,8 +159,8 @@ func (s *MovieConverterService) ConvertGIFToMP4() error {
 	return nil
 }
 
-// Convert performs conversion based on file extensions
-func (s *MovieConverterService) Convert() error {
+// convert performs conversion based on file extensions
+func (s *MovieConverterService) convert() error {
 	// 入力ファイルの存在確認
 	if _, err := os.Stat(s.config.InputFile); os.IsNotExist(err) {
 		return fmt.Errorf("入力ファイルが見つかりません: %s", s.config.InputFile)
@@ -176,9 +177,9 @@ func (s *MovieConverterService) Convert() error {
 
 	// 変換方向の判定と実行
 	if (inputExt == ".mp4" || inputExt == ".mkv") && outputExt == ".gif" {
-		return s.ConvertMP4ToGIF()
+		return s.convertMP4ToGIF()
 	} else if inputExt == ".gif" && outputExt == ".mp4" {
-		return s.ConvertGIFToMP4()
+		return s.convertGIFToMP4()
 	} else {
 		return fmt.Errorf("サポートされていない変換: %s -> %s", inputExt, outputExt)
 	}
@@ -220,8 +221,8 @@ func NewBatchMovieConverterService(config BatchConversionConfig) *BatchMovieConv
 	return &BatchMovieConverterService{config: config}
 }
 
-// BatchConvert performs batch conversion of multiple files
-func (bs *BatchMovieConverterService) BatchConvert() (*BatchConversionResult, error) {
+// batchConvert performs batch conversion of multiple files
+func (bs *BatchMovieConverterService) batchConvert() (*BatchConversionResult, error) {
 	log.Printf("バッチ変換を開始: %s (%s) -> %s (%s)", bs.config.InputDir, bs.config.InputExt, bs.config.OutputDir, bs.config.OutputExt)
 
 	// 入力ディレクトリの存在確認
@@ -363,7 +364,7 @@ func (bs *BatchMovieConverterService) convertSingleFile(inputFile string) Conver
 
 	// 変換の実行
 	service := NewMovieConverterService(config)
-	err = service.Convert()
+	err = service.convert()
 
 	return ConversionResult{
 		InputFile:  inputFile,
@@ -390,60 +391,6 @@ func GetSupportedExtensions() map[string][]string {
 		"input":  {".mp4", ".mkv", ".gif"},
 		"output": {".mp4", ".gif"},
 	}
-}
-
-// ValidateBatchConfig validates the batch conversion configuration
-func ValidateBatchConfig(config *BatchConversionConfig) error {
-	if config.InputDir == "" {
-		return fmt.Errorf("入力ディレクトリが指定されていません")
-	}
-
-	if config.InputExt == "" {
-		return fmt.Errorf("入力拡張子が指定されていません")
-	}
-
-	if config.OutputDir == "" {
-		return fmt.Errorf("出力ディレクトリが指定されていません")
-	}
-
-	if config.OutputExt == "" {
-		return fmt.Errorf("出力拡張子が指定されていません")
-	}
-
-	// 拡張子の正規化（ドットを自動追加）
-	config.InputExt = normalizeExtension(config.InputExt)
-	config.OutputExt = normalizeExtension(config.OutputExt)
-
-	// サポートされている拡張子の確認
-	supportedExts := GetSupportedExtensions()
-	inputSupported := false
-	for _, ext := range supportedExts["input"] {
-		if strings.ToLower(config.InputExt) == ext {
-			inputSupported = true
-			break
-		}
-	}
-	if !inputSupported {
-		return fmt.Errorf("サポートされていない入力拡張子: %s", config.InputExt)
-	}
-
-	outputSupported := false
-	for _, ext := range supportedExts["output"] {
-		if strings.ToLower(config.OutputExt) == ext {
-			outputSupported = true
-			break
-		}
-	}
-	if !outputSupported {
-		return fmt.Errorf("サポートされていない出力拡張子: %s", config.OutputExt)
-	}
-
-	// 入力ディレクトリの存在確認
-	if _, err := os.Stat(config.InputDir); os.IsNotExist(err) {
-		return fmt.Errorf("入力ディレクトリが見つかりません: %s", config.InputDir)
-	}
-
-	return nil
 }
 
 // #==============================================================#
@@ -507,8 +454,8 @@ func NewUnifiedMovieConverterService(singleConfig *ConversionConfig, batchConfig
 // #==============================================================#
 // ##          Methods of Unified Service                        ##
 // #==============================================================#
-// ValidateConfig validates the conversion configuration
-func ValidateConfig(config ConversionConfig) error {
+// validateSingleConfig validates the conversion configuration
+func validateSingleConfig(config ConversionConfig) error {
 	if config.InputFile == "" {
 		return fmt.Errorf("入力ファイルが指定されていません")
 	}
@@ -524,8 +471,8 @@ func ValidateConfig(config ConversionConfig) error {
 	return nil
 }
 
-// GenerateOutputFile generates output filename if not provided
-func GenerateOutputFile(inputFile string) string {
+// generateOutputFile generates output filename if not provided
+func generateOutputFile(inputFile string) string {
 	ext := strings.ToLower(filepath.Ext(inputFile))
 	base := strings.TrimSuffix(inputFile, ext)
 
@@ -548,7 +495,7 @@ func (us *UnifiedMovieConverterService) processSingleFile(result *UnifiedConvers
 	}
 
 	// 設定の検証
-	if err := ValidateConfig(*us.config.SingleConfig); err != nil {
+	if err := validateSingleConfig(*us.config.SingleConfig); err != nil {
 		result.Success = false
 		result.Error = fmt.Errorf("設定エラー: %w", err)
 		return result, result.Error
@@ -556,13 +503,13 @@ func (us *UnifiedMovieConverterService) processSingleFile(result *UnifiedConvers
 
 	// 出力ファイルの自動生成
 	if us.config.SingleConfig.OutputFile == "" {
-		us.config.SingleConfig.OutputFile = GenerateOutputFile(us.config.SingleConfig.InputFile)
+		us.config.SingleConfig.OutputFile = generateOutputFile(us.config.SingleConfig.InputFile)
 		log.Printf("出力ファイル名を自動生成しました: %s", us.config.SingleConfig.OutputFile)
 	}
 
 	// 変換サービスの作成と実行
 	service := NewMovieConverterService(*us.config.SingleConfig)
-	err := service.Convert()
+	err := service.convert()
 
 	singleResult := &ConversionResult{
 		InputFile:  us.config.SingleConfig.InputFile,
@@ -582,6 +529,45 @@ func (us *UnifiedMovieConverterService) processSingleFile(result *UnifiedConvers
 	return result, err
 }
 
+// validateBatchConfig validates the batch conversion configuration
+func validateBatchConfig(config *BatchConversionConfig) error {
+	if config.InputDir == "" {
+		return fmt.Errorf("入力ディレクトリが指定されていません")
+	}
+
+	if config.InputExt == "" {
+		return fmt.Errorf("入力拡張子が指定されていません")
+	}
+
+	if config.OutputDir == "" {
+		return fmt.Errorf("出力ディレクトリが指定されていません")
+	}
+
+	if config.OutputExt == "" {
+		return fmt.Errorf("出力拡張子が指定されていません")
+	}
+
+	// 拡張子の正規化（ドットを自動追加）
+	config.InputExt = normalizeExtension(config.InputExt)
+	config.OutputExt = normalizeExtension(config.OutputExt)
+
+	// サポートされている拡張子の確認
+	supportedExts := GetSupportedExtensions()
+	if !slices.Contains(supportedExts["input"], strings.ToLower(config.InputExt)) {
+		return fmt.Errorf("サポートされていない入力拡張子: %s", config.InputExt)
+	}
+	if !slices.Contains(supportedExts["output"], strings.ToLower(config.OutputExt)) {
+		return fmt.Errorf("サポートされていない出力拡張子: %s", config.OutputExt)
+	}
+
+	// 入力ディレクトリの存在確認
+	if _, err := os.Stat(config.InputDir); os.IsNotExist(err) {
+		return fmt.Errorf("入力ディレクトリが見つかりません: %s", config.InputDir)
+	}
+
+	return nil
+}
+
 // processBatchFiles handles batch file conversion
 func (us *UnifiedMovieConverterService) processBatchFiles(result *UnifiedConversionResult) (*UnifiedConversionResult, error) {
 	if us.config.BatchConfig == nil {
@@ -591,7 +577,7 @@ func (us *UnifiedMovieConverterService) processBatchFiles(result *UnifiedConvers
 	}
 
 	// バッチ設定の検証
-	if err := ValidateBatchConfig(us.config.BatchConfig); err != nil {
+	if err := validateBatchConfig(us.config.BatchConfig); err != nil {
 		result.Success = false
 		result.Error = fmt.Errorf("バッチ設定エラー: %w", err)
 		return result, result.Error
@@ -599,7 +585,7 @@ func (us *UnifiedMovieConverterService) processBatchFiles(result *UnifiedConvers
 
 	// バッチ変換サービスの作成と実行
 	batchService := NewBatchMovieConverterService(*us.config.BatchConfig)
-	batchResult, err := batchService.BatchConvert()
+	batchResult, err := batchService.batchConvert()
 
 	result.BatchResult = batchResult
 	result.Success = err == nil
