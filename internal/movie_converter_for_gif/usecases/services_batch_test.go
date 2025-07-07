@@ -41,6 +41,7 @@ func (ts *TestBatchMovieConverterService) TestNewBatchMovieConverterService_Norm
 	// Assert
 	if service == nil {
 		ts.t.Error("NewBatchMovieConverterService should not return nil")
+		return
 	}
 	if service.config.InputDir != config.InputDir {
 		ts.t.Errorf("Expected InputDir %s, got %s", config.InputDir, service.config.InputDir)
@@ -450,6 +451,7 @@ func (ts *TestBatchMovieConverterServiceBatchConvert) TestBatchMovieConverterSer
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.TotalFiles != 0 {
 		ts.t.Errorf("Expected TotalFiles to be 0, got %d", result.TotalFiles)
@@ -592,6 +594,7 @@ func (ts *TestBatchMovieConverterServiceBatchConvertWithFiles) TestBatchMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.TotalFiles != 3 {
 		ts.t.Errorf("Expected TotalFiles to be 3, got %d", result.TotalFiles)
@@ -685,6 +688,7 @@ func (ts *TestBatchMovieConverterServiceBatchConvertWithFiles) TestBatchMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	// Only 2 MP4 files should be processed
 	if result.TotalFiles != 2 {
@@ -742,6 +746,7 @@ func (ts *TestBatchMovieConverterServiceBatchConvertWithFiles) TestBatchMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	// All 3 files should be processed recursively
 	if result.TotalFiles != 3 {

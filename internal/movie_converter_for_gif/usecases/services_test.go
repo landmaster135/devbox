@@ -38,6 +38,7 @@ func (ts *TestMovieConverterService) TestNewMovieConverterService_Normal() {
 	// Assert
 	if service == nil {
 		ts.t.Error("NewMovieConverterService should not return nil")
+		return
 	}
 	if service.config.InputFile != config.InputFile {
 		ts.t.Errorf("Expected InputFile %s, got %s", config.InputFile, service.config.InputFile)
