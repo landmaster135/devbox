@@ -412,7 +412,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_EmptyInputDir() {
 	}
 
 	// Act
-	err := ValidateBatchConfig(config)
+	err := ValidateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -434,7 +434,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_EmptyInputExt() {
 	}
 
 	// Act
-	err := ValidateBatchConfig(config)
+	err := ValidateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -457,7 +457,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_UnsupportedInputExt()
 	}
 
 	// Act
-	err := ValidateBatchConfig(config)
+	err := ValidateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -481,7 +481,7 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_UnsupportedOutputExt(
 	}
 
 	// Act
-	err := ValidateBatchConfig(config)
+	err := ValidateBatchConfig(&config)
 
 	// Assert
 	if err == nil {
@@ -505,11 +505,38 @@ func (ts *TestValidateBatchConfig) TestValidateBatchConfig_ValidConfig() {
 	}
 
 	// Act
-	err := ValidateBatchConfig(config)
+	err := ValidateBatchConfig(&config)
 
 	// Assert
 	if err != nil {
 		ts.t.Errorf("Expected no error for valid config, got %v", err)
+	}
+}
+
+// TestValidateBatchConfig_ExtensionNormalization tests extension normalization (dot addition)
+func (ts *TestValidateBatchConfig) TestValidateBatchConfig_ExtensionNormalization() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  "mp4", // ドットなし
+		OutputDir: "/test/output",
+		OutputExt: "gif", // ドットなし
+	}
+
+	// Act
+	err := ValidateBatchConfig(&config)
+
+	// Assert
+	if err != nil {
+		ts.t.Errorf("Expected no error for valid config with dot-less extensions, got %v", err)
+	}
+	// 拡張子が正規化されていることを確認
+	if config.InputExt != ".mp4" {
+		ts.t.Errorf("Expected InputExt to be normalized to '.mp4', got %s", config.InputExt)
+	}
+	if config.OutputExt != ".gif" {
+		ts.t.Errorf("Expected OutputExt to be normalized to '.gif', got %s", config.OutputExt)
 	}
 }
 
@@ -527,4 +554,5 @@ func TestBatchConfigValidation(t *testing.T) {
 	testService.TestValidateBatchConfig_UnsupportedInputExt()
 	testService.TestValidateBatchConfig_UnsupportedOutputExt()
 	testService.TestValidateBatchConfig_ValidConfig()
+	testService.TestValidateBatchConfig_ExtensionNormalization()
 }

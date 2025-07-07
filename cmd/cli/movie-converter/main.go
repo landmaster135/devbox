@@ -22,9 +22,9 @@ func main() {
 
 	// バッチ処理用のコマンドライン引数
 	flag.StringVar(&batchConfig.InputDir, "input-dir", "", "入力ディレクトリのパス（バッチ処理時）")
-	flag.StringVar(&batchConfig.InputExt, "input-ext", "", "入力ファイルの拡張子（バッチ処理時、例: .mp4）")
+	flag.StringVar(&batchConfig.InputExt, "input-ext", "", "入力ファイルの拡張子（バッチ処理時、例: mp4）")
 	flag.StringVar(&batchConfig.OutputDir, "output-dir", "", "出力ディレクトリのパス（バッチ処理時）")
-	flag.StringVar(&batchConfig.OutputExt, "output-ext", "", "出力ファイルの拡張子（バッチ処理時、例: .gif）")
+	flag.StringVar(&batchConfig.OutputExt, "output-ext", "", "出力ファイルの拡張子（バッチ処理時、例: gif）")
 	flag.BoolVar(&batchConfig.Recursive, "recursive", false, "サブディレクトリも再帰的に処理するか（バッチ処理時）")
 
 	// 共通のオプション
@@ -60,13 +60,13 @@ func main() {
 		fmt.Println()
 		fmt.Println("バッチ処理の例:")
 		fmt.Println("  # MP4ファイルを一括でGIFに変換")
-		fmt.Println("  movie-converter -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif")
+		fmt.Println("  movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif")
 		fmt.Println()
 		fmt.Println("  # GIFファイルを一括でMP4に変換")
-		fmt.Println("  movie-converter -input-dir ./animations -input-ext .gif -output-dir ./videos -output-ext .mp4")
+		fmt.Println("  movie-converter -input-dir ./animations -input-ext gif -output-dir ./videos -output-ext mp4")
 		fmt.Println()
 		fmt.Println("  # 再帰的にサブディレクトリも処理")
-		fmt.Println("  movie-converter -input-dir ./media -input-ext .mp4 -output-dir ./converted -output-ext .gif -recursive")
+		fmt.Println("  movie-converter -input-dir ./media -input-ext mp4 -output-dir ./converted -output-ext gif -recursive")
 		fmt.Println()
 		fmt.Println("サポートされている拡張子:")
 		extensions := usecases.GetSupportedExtensions()
@@ -142,7 +142,7 @@ func executeBatchConversion(batchConfig usecases.BatchConversionConfig, fps, wid
 	batchConfig.UseItsScale = useItsScale
 
 	// バッチ設定の検証
-	if err := usecases.ValidateBatchConfig(batchConfig); err != nil {
+	if err := usecases.ValidateBatchConfig(&batchConfig); err != nil {
 		log.Fatalf("バッチ設定エラー: %v", err)
 	}
 
