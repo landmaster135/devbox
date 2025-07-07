@@ -413,44 +413,55 @@ func (s *ImageRenamerService) resolveConflicts(renameInfos []FileRenameInfo, con
 		fileNameMap[key] = append(fileNameMap[key], info)
 	}
 
+	// 競合解決の順序を決定的にするため、キーをソートしてから処理
+	var sortedKeys []string
+	for fullPath := range fileNameMap {
+		if len(fileNameMap[fullPath]) > 1 {
+			sortedKeys = append(sortedKeys, fullPath)
+		}
+	}
+	sort.Strings(sortedKeys)
+
 	// 競合しているファイルのみを処理
 	var resolvedConflicts []string
-	for fullPath, conflictInfos := range fileNameMap {
-		if len(conflictInfos) > 1 {
-			// 競合が検出された場合
-			dir := filepath.Dir(fullPath)
-			fileName := filepath.Base(fullPath)
-			resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
-				"競合解決: '%s' (ディレクトリ: %s)",
-				fileName, dir,
-			))
+	for _, fullPath := range sortedKeys {
+		conflictInfos := fileNameMap[fullPath]
+		// 競合が検出された場合
+		dir := filepath.Dir(fullPath)
+		fileName := filepath.Base(fullPath)
+		resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+			"競合解決: '%s' (ディレクトリ: %s)",
+			fileName, dir,
+		))
 
-			// 元の時刻順にソート
-			sort.Slice(conflictInfos, func(i, j int) bool {
-				return conflictInfos[i].CreateDate.Before(conflictInfos[j].CreateDate)
-			})
-
-			// 最初のファイルは元の時刻維持、残りは1秒ずつ後の時刻を割り当て
-			for i, info := range conflictInfos {
-				if i == 0 {
-					resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
-						"  - %s → %s (元の時刻維持)",
-						filepath.Base(info.OriginalPath), info.NewFileName,
-					))
-				} else {
-					// 安全な時刻を検索
-					ext := filepath.Ext(info.OriginalPath)
-					newTime := resolver.findNextAvailableTime(info.CreateDate.Add(time.Duration(i)*time.Second), ext, info.Directory)
-					info.CreateDate = newTime
-					info.NewFileName = s.generateNewFileName(newTime, info.OriginalPath)
-					resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
-						"  - %s → %s (%d秒後に調整)",
-						filepath.Base(info.OriginalPath), info.NewFileName, int(newTime.Sub(conflictInfos[0].CreateDate).Seconds()),
-					))
-				}
+		// 元の時刻順にソート（同一時刻の場合はファイル名でソート）
+		sort.Slice(conflictInfos, func(i, j int) bool {
+			if conflictInfos[i].CreateDate.Equal(conflictInfos[j].CreateDate) {
+				return conflictInfos[i].OriginalPath < conflictInfos[j].OriginalPath
 			}
-			resolvedConflicts = append(resolvedConflicts, "")
+			return conflictInfos[i].CreateDate.Before(conflictInfos[j].CreateDate)
+		})
+
+		// 最初のファイルは元の時刻維持、残りは1秒ずつ後の時刻を割り当て
+		for i, info := range conflictInfos {
+			if i == 0 {
+				resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+					"  - %s → %s (元の時刻維持)",
+					filepath.Base(info.OriginalPath), info.NewFileName,
+				))
+			} else {
+				// 安全な時刻を検索
+				ext := filepath.Ext(info.OriginalPath)
+				newTime := resolver.findNextAvailableTime(info.CreateDate.Add(time.Duration(i)*time.Second), ext, info.Directory)
+				info.CreateDate = newTime
+				info.NewFileName = s.generateNewFileName(newTime, info.OriginalPath)
+				resolvedConflicts = append(resolvedConflicts, fmt.Sprintf(
+					"  - %s → %s (%d秒後に調整)",
+					filepath.Base(info.OriginalPath), info.NewFileName, int(newTime.Sub(conflictInfos[0].CreateDate).Seconds()),
+				))
+			}
 		}
+		resolvedConflicts = append(resolvedConflicts, "")
 	}
 
 	// 競合解決の結果を表示
