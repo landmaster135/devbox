@@ -6,7 +6,7 @@ import (
 	"log"
 	"strconv"
 
-	usecases "github.com/landmaster135/devbox/internal/movie_converter/usecases"
+	usecases "github.com/landmaster135/devbox/internal/movie_converter_for_gif/usecases"
 )
 
 func main() {

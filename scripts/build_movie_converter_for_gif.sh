@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/movie-converter"
+CMD_DIR="cmd/cli/movie-converter-for-gif"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="movie-converter"
+OUTPUT_NAME="movie-converter-for-gif"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,11 +38,11 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./movie-converter -input sample.mp4"
-echo "  ./movie-converter -input sample.mp4 -fps 15 -width 480 -speed 1 -loop -1"
-echo "  ./movie-converter -input animation.gif -fps 30"
-echo "  ./movie-converter -input video.mp4 -output converted_video.gif"
-echo "  ./movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif"
-echo "  ./movie-converter -input-dir ./media -input-ext mp4 -output-dir ./converted -output-ext gif -recursive"
-echo "  ./movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif -fps 15 -width 320 -speed 1"
-echo "  ./movie-converter -input-dir ./animations -input-ext gif -output-dir ./videos -output-ext mp4 -fps 24"
+echo "  ./movie-converter-for-gif -input sample.mp4"
+echo "  ./movie-converter-for-gif -input sample.mp4 -fps 15 -width 480 -speed 1 -loop -1"
+echo "  ./movie-converter-for-gif -input animation.gif -fps 30"
+echo "  ./movie-converter-for-gif -input video.mp4 -output converted_video.gif"
+echo "  ./movie-converter-for-gif -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif"
+echo "  ./movie-converter-for-gif -input-dir ./media -input-ext mp4 -output-dir ./converted -output-ext gif -recursive"
+echo "  ./movie-converter-for-gif -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif -fps 15 -width 320 -speed 1"
+echo "  ./movie-converter-for-gif -input-dir ./animations -input-ext gif -output-dir ./videos -output-ext mp4 -fps 24"
