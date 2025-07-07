@@ -76,13 +76,14 @@ func TestResolveConflicts_MultipleConflictGroups(t *testing.T) {
 	}
 
 	// 具体的なNewFileNameの値を検証
+	// 決定的な処理順序: キーをソートして処理するため、20250629130138.jpgが先に処理される
 	expectedResults := map[string]string{
-		"1-1_image_renamer_with_exif/PXL_20250629_040139164.jpg": "20250629130139.jpg", // 最初のファイルは元の時刻維持
-		"1-1_image_renamer_with_exif/PXL_20250629_040139378.jpg": "20250629130140.jpg", // 1秒後
-		"1-1_image_renamer_with_exif/PXL_20250629_040139801.jpg": "20250629130141.jpg", // 2秒後
-		"1-1_image_renamer_with_exif/PXL_20250629_040138106.jpg": "20250629130138.jpg", // 最初のファイルは元の時刻維持
-		"1-1_image_renamer_with_exif/PXL_20250629_040138353.jpg": "20250629130142.jpg", // 4秒後（130139,130140,130141は使用済み）
-		"1-1_image_renamer_with_exif/PXL_20250629_040138704.jpg": "20250629130143.jpg", // 5秒後
+		"1-1_image_renamer_with_exif/PXL_20250629_040138106.jpg": "20250629130138.jpg", // グループ1: 最初のファイルは元の時刻維持
+		"1-1_image_renamer_with_exif/PXL_20250629_040138353.jpg": "20250629130140.jpg", // グループ1: 2秒後
+		"1-1_image_renamer_with_exif/PXL_20250629_040138704.jpg": "20250629130141.jpg", // グループ1: 3秒後
+		"1-1_image_renamer_with_exif/PXL_20250629_040139164.jpg": "20250629130139.jpg", // グループ2: 最初のファイルは元の時刻維持
+		"1-1_image_renamer_with_exif/PXL_20250629_040139378.jpg": "20250629130142.jpg", // グループ2: 3秒後（130140,130141は使用済み）
+		"1-1_image_renamer_with_exif/PXL_20250629_040139801.jpg": "20250629130143.jpg", // グループ2: 4秒後
 	}
 
 	// NewFileNameの値を検証
