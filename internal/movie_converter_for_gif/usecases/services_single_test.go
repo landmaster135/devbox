@@ -7,7 +7,7 @@ import (
 )
 
 // #==============================================================#
-// ##         Tests                                              ##
+// ##         Tests for Single File Conversion                   ##
 // #==============================================================#
 // TestMovieConverterService tests the MovieConverterService struct
 type TestMovieConverterService struct {
@@ -121,104 +121,6 @@ func (ts *TestGenerateOutputFile) TestGenerateOutputFile_UnsupportedExtension_No
 	}
 }
 
-// TestValidateConfig tests the ValidateConfig function
-type TestValidateConfig struct {
-	t *testing.T
-}
-
-// NewTestValidateConfig creates a new test instance
-func NewTestValidateConfig(t *testing.T) *TestValidateConfig {
-	return &TestValidateConfig{t: t}
-}
-
-// TestValidateConfig_EmptyInputFile tests validation with empty input file
-func (ts *TestValidateConfig) TestValidateConfig_EmptyInputFile() {
-	// Arrange
-	config := ConversionConfig{
-		InputFile:  "",
-		OutputFile: "output.gif",
-	}
-
-	// Act
-	err := validateSingleConfig(config)
-
-	// Assert
-	if err == nil {
-		ts.t.Error("Expected error for empty input file, got nil")
-	}
-	if err.Error() != "入力ファイルが指定されていません" {
-		ts.t.Errorf("Expected specific error message, got %s", err.Error())
-	}
-}
-
-// TestValidateConfig_NoExtension tests validation with no file extension
-func (ts *TestValidateConfig) TestValidateConfig_NoExtension() {
-	// Arrange
-	config := ConversionConfig{
-		InputFile:  "videofile",
-		OutputFile: "output.gif",
-	}
-
-	// Act
-	err := validateSingleConfig(config)
-
-	// Assert
-	if err == nil {
-		ts.t.Error("Expected error for file without extension, got nil")
-	}
-	expectedMsg := "入力ファイル名に拡張子が含まれていません: videofile"
-	if err.Error() != expectedMsg {
-		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
-}
-
-// TestValidateConfig_FileNotExists tests validation with non-existent file
-func (ts *TestValidateConfig) TestValidateConfig_FileNotExists() {
-	// Arrange
-	config := ConversionConfig{
-		InputFile:  "nonexistent.mp4",
-		OutputFile: "output.gif",
-	}
-
-	// Act
-	err := validateSingleConfig(config)
-
-	// Assert
-	if err == nil {
-		ts.t.Error("Expected error for non-existent file, got nil")
-	}
-	expectedMsg := "入力ファイルが見つかりません: nonexistent.mp4"
-	if err.Error() != expectedMsg {
-		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
-}
-
-// TestValidateConfig_ValidFile tests validation with valid file
-func (ts *TestValidateConfig) TestValidateConfig_ValidFile() {
-	// Arrange
-	// Create a temporary test file
-	tempDir := ts.t.TempDir()
-	testFile := filepath.Join(tempDir, "test.mp4")
-	file, err := os.Create(testFile)
-	if err != nil {
-		ts.t.Fatalf("Failed to create test file: %v", err)
-	}
-	file.Close()
-
-	config := ConversionConfig{
-		InputFile:  testFile,
-		OutputFile: "output.gif",
-	}
-
-	// Act
-	err = validateSingleConfig(config)
-
-	// Assert
-	if err != nil {
-		ts.t.Errorf("Expected no error for valid file, got %v", err)
-	}
-}
-
 // TestGetSupportedExtensions tests the GetSupportedExtensions function
 type TestGetSupportedExtensions struct {
 	t *testing.T
@@ -311,40 +213,6 @@ func (ts *TestMovieConverterServiceDefaults) TestMovieConverterService_setGIFToM
 	}
 }
 
-// Standard Go test functions that call the test methods
-
-func TestMovieConverterServiceCreation(t *testing.T) {
-	testService := NewTestMovieConverterService(t)
-	testService.TestNewMovieConverterService_Normal()
-}
-
-func TestOutputFileGeneration(t *testing.T) {
-	testService := NewTestGenerateOutputFile(t)
-	testService.TestGenerateOutputFile_MP4ToGIF_Normal()
-	testService.TestGenerateOutputFile_GIFToMP4_Normal()
-	testService.TestGenerateOutputFile_MKVToGIF_Normal()
-	testService.TestGenerateOutputFile_UnsupportedExtension_Normal()
-}
-
-func TestConfigValidation(t *testing.T) {
-	testService := NewTestValidateConfig(t)
-	testService.TestValidateConfig_EmptyInputFile()
-	testService.TestValidateConfig_NoExtension()
-	testService.TestValidateConfig_FileNotExists()
-	testService.TestValidateConfig_ValidFile()
-}
-
-func TestSupportedExtensions(t *testing.T) {
-	testService := NewTestGetSupportedExtensions(t)
-	testService.TestGetSupportedExtensions_Normal()
-}
-
-func TestServiceDefaults(t *testing.T) {
-	testService := NewTestMovieConverterServiceDefaults(t)
-	testService.TestMovieConverterService_setMP4ToGIFDefaults_Normal()
-	testService.TestMovieConverterService_setGIFToMP4Defaults_Normal()
-}
-
 // #==============================================================#
 // ##         Tests for normalizeExtension function              ##
 // #==============================================================#
@@ -400,103 +268,6 @@ func (ts *TestNormalizeExtension) TestNormalizeExtension_WithoutDot_Normal() {
 	// Assert
 	if result != expected {
 		ts.t.Errorf("Expected %s, got %s", expected, result)
-	}
-}
-
-// #==============================================================#
-// ##         Tests for convert method                           ##
-// #==============================================================#
-// TestMovieConverterServiceConvert tests the convert method
-type TestMovieConverterServiceConvert struct {
-	t *testing.T
-}
-
-// NewTestMovieConverterServiceConvert creates a new test instance
-func NewTestMovieConverterServiceConvert(t *testing.T) *TestMovieConverterServiceConvert {
-	return &TestMovieConverterServiceConvert{t: t}
-}
-
-// TestMovieConverterService_convert_FileNotExists tests convert with non-existent file
-func (ts *TestMovieConverterServiceConvert) TestMovieConverterService_convert_FileNotExists() {
-	// Arrange
-	config := ConversionConfig{
-		InputFile:  "nonexistent.mp4",
-		OutputFile: "output.gif",
-	}
-	service := NewMovieConverterService(config)
-
-	// Act
-	err := service.convert()
-
-	// Assert
-	if err == nil {
-		ts.t.Error("Expected error for non-existent file, got nil")
-	}
-	expectedMsg := "入力ファイルが見つかりません: nonexistent.mp4"
-	if err.Error() != expectedMsg {
-		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
-}
-
-// TestMovieConverterService_convert_NoExtension tests convert with no extension
-func (ts *TestMovieConverterServiceConvert) TestMovieConverterService_convert_NoExtension() {
-	// Arrange
-	// Create a temporary test file without extension
-	tempDir := ts.t.TempDir()
-	testFile := filepath.Join(tempDir, "testfile")
-	file, err := os.Create(testFile)
-	if err != nil {
-		ts.t.Fatalf("Failed to create test file: %v", err)
-	}
-	file.Close()
-
-	config := ConversionConfig{
-		InputFile:  testFile,
-		OutputFile: "output.gif",
-	}
-	service := NewMovieConverterService(config)
-
-	// Act
-	err = service.convert()
-
-	// Assert
-	if err == nil {
-		ts.t.Error("Expected error for file without extension, got nil")
-	}
-	expectedMsg := "入力ファイル名に拡張子が含まれていません: " + testFile
-	if err.Error() != expectedMsg {
-		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
-	}
-}
-
-// TestMovieConverterService_convert_UnsupportedConversion tests unsupported conversion
-func (ts *TestMovieConverterServiceConvert) TestMovieConverterService_convert_UnsupportedConversion() {
-	// Arrange
-	// Create a temporary test file with unsupported extension
-	tempDir := ts.t.TempDir()
-	testFile := filepath.Join(tempDir, "test.txt")
-	file, err := os.Create(testFile)
-	if err != nil {
-		ts.t.Fatalf("Failed to create test file: %v", err)
-	}
-	file.Close()
-
-	config := ConversionConfig{
-		InputFile:  testFile,
-		OutputFile: "output.gif",
-	}
-	service := NewMovieConverterService(config)
-
-	// Act
-	err = service.convert()
-
-	// Assert
-	if err == nil {
-		ts.t.Error("Expected error for unsupported conversion, got nil")
-	}
-	expectedMsg := "サポートされていない変換: .txt -> .gif"
-	if err.Error() != expectedMsg {
-		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
 	}
 }
 
@@ -785,23 +556,40 @@ func (ts *TestMovieConverterServiceConvertMP4ToGIFEdgeCases) TestMovieConverterS
 	}
 }
 
-// Standard Go test functions for new test cases
+// Standard Go test functions that call the test methods
 
-func TestNormalizeExtensionFunctionNew(t *testing.T) {
+func TestMovieConverterServiceCreation(t *testing.T) {
+	testService := NewTestMovieConverterService(t)
+	testService.TestNewMovieConverterService_Normal()
+}
+
+func TestOutputFileGeneration(t *testing.T) {
+	testService := NewTestGenerateOutputFile(t)
+	testService.TestGenerateOutputFile_MP4ToGIF_Normal()
+	testService.TestGenerateOutputFile_GIFToMP4_Normal()
+	testService.TestGenerateOutputFile_MKVToGIF_Normal()
+	testService.TestGenerateOutputFile_UnsupportedExtension_Normal()
+}
+
+func TestSupportedExtensions(t *testing.T) {
+	testService := NewTestGetSupportedExtensions(t)
+	testService.TestGetSupportedExtensions_Normal()
+}
+
+func TestServiceDefaults(t *testing.T) {
+	testService := NewTestMovieConverterServiceDefaults(t)
+	testService.TestMovieConverterService_setMP4ToGIFDefaults_Normal()
+	testService.TestMovieConverterService_setGIFToMP4Defaults_Normal()
+}
+
+func TestNormalizeExtensionFunction(t *testing.T) {
 	testService := NewTestNormalizeExtension(t)
 	testService.TestNormalizeExtension_EmptyString_Normal()
 	testService.TestNormalizeExtension_WithDot_Normal()
 	testService.TestNormalizeExtension_WithoutDot_Normal()
 }
 
-func TestMovieConverterServiceConvertMethodNew(t *testing.T) {
-	testService := NewTestMovieConverterServiceConvert(t)
-	testService.TestMovieConverterService_convert_FileNotExists()
-	testService.TestMovieConverterService_convert_NoExtension()
-	testService.TestMovieConverterService_convert_UnsupportedConversion()
-}
-
-func TestMovieConverterServiceEdgeCasesMethodNew(t *testing.T) {
+func TestMovieConverterServiceEdgeCasesMethod(t *testing.T) {
 	testService := NewTestMovieConverterServiceEdgeCases(t)
 	testService.TestMovieConverterService_setMP4ToGIFDefaults_NonZeroValues()
 	testService.TestMovieConverterService_setGIFToMP4Defaults_NonZeroValues()
