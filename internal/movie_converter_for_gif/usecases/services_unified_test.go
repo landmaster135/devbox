@@ -596,3 +596,337 @@ func TestGenerateOutputFileAdditionalMethod(t *testing.T) {
 	testService.TestGenerateOutputFile_NoExtension_Normal()
 	testService.TestGenerateOutputFile_ComplexPath_Normal()
 }
+
+// #==============================================================#
+// ##         Tests for processBatchFiles method                 ##
+// #==============================================================#
+// TestUnifiedMovieConverterServiceProcessBatchFiles tests the processBatchFiles method
+type TestUnifiedMovieConverterServiceProcessBatchFiles struct {
+	t *testing.T
+}
+
+// NewTestUnifiedMovieConverterServiceProcessBatchFiles creates a new test instance
+func NewTestUnifiedMovieConverterServiceProcessBatchFiles(t *testing.T) *TestUnifiedMovieConverterServiceProcessBatchFiles {
+	return &TestUnifiedMovieConverterServiceProcessBatchFiles{t: t}
+}
+
+// TestUnifiedMovieConverterService_processBatchFiles_ValidConfig tests processBatchFiles with valid config
+func (ts *TestUnifiedMovieConverterServiceProcessBatchFiles) TestUnifiedMovieConverterService_processBatchFiles_ValidConfig() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	outputDir := filepath.Join(tempDir, "output")
+
+	// Create test files
+	testFiles := []string{"video1.mp4", "video2.mp4"}
+	for _, fileName := range testFiles {
+		file, err := os.Create(filepath.Join(tempDir, fileName))
+		if err != nil {
+			ts.t.Fatalf("Failed to create test file %s: %v", fileName, err)
+		}
+		file.Close()
+	}
+
+	batchConfig := &BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: outputDir,
+		OutputExt: ".gif",
+		FPS:       30,
+		Width:     320,
+		Speed:     1.5,
+	}
+	service := NewUnifiedMovieConverterService(nil, batchConfig)
+
+	// Act
+	result := &UnifiedConversionResult{
+		Mode: BatchMode,
+	}
+	finalResult, err := service.processBatchFiles(result)
+
+	// Assert
+	if finalResult == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if finalResult.Mode != BatchMode {
+		ts.t.Errorf("Expected BatchMode, got %d", finalResult.Mode)
+	}
+	// The conversion will fail due to ffmpeg not being available, but we test the setup
+	if err != nil {
+		ts.t.Fatalf("Failed to do processBatchFiles: %v", err)
+	}
+	if finalResult.BatchResult == nil {
+		ts.t.Error("Expected BatchResult, got nil")
+	}
+	if finalResult.BatchResult.TotalFiles != 2 {
+		ts.t.Errorf("Expected TotalFiles to be 2, got %d", finalResult.BatchResult.TotalFiles)
+	}
+}
+
+// TestUnifiedMovieConverterService_processBatchFiles_InvalidInputDir tests processBatchFiles with invalid input directory
+func (ts *TestUnifiedMovieConverterServiceProcessBatchFiles) TestUnifiedMovieConverterService_processBatchFiles_InvalidInputDir() {
+	// Arrange
+	batchConfig := &BatchConversionConfig{
+		InputDir:  "", // Empty input directory
+		InputExt:  ".mp4",
+		OutputDir: "/test/output",
+		OutputExt: ".gif",
+	}
+	service := NewUnifiedMovieConverterService(nil, batchConfig)
+
+	// Act
+	result := &UnifiedConversionResult{
+		Mode: BatchMode,
+	}
+	finalResult, err := service.processBatchFiles(result)
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for invalid input directory, got nil")
+	}
+	if finalResult == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if finalResult.Success {
+		ts.t.Error("Expected Success to be false for invalid config")
+	}
+	expectedMsg := "バッチ設定エラー: 入力ディレクトリが指定されていません"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// TestUnifiedMovieConverterService_processBatchFiles_UnsupportedExtension tests processBatchFiles with unsupported extension
+func (ts *TestUnifiedMovieConverterServiceProcessBatchFiles) TestUnifiedMovieConverterService_processBatchFiles_UnsupportedExtension() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	batchConfig := &BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".txt", // Unsupported extension
+		OutputDir: "/test/output",
+		OutputExt: ".gif",
+	}
+	service := NewUnifiedMovieConverterService(nil, batchConfig)
+
+	// Act
+	result := &UnifiedConversionResult{
+		Mode: BatchMode,
+	}
+	finalResult, err := service.processBatchFiles(result)
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for unsupported extension, got nil")
+	}
+	if finalResult == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if finalResult.Success {
+		ts.t.Error("Expected Success to be false for unsupported extension")
+	}
+	expectedMsg := "バッチ設定エラー: サポートされていない入力拡張子: .txt"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// #==============================================================#
+// ##         Tests for processSingleFile success cases          ##
+// #==============================================================#
+// TestUnifiedMovieConverterServiceProcessSingleFileSuccess tests processSingleFile success cases
+type TestUnifiedMovieConverterServiceProcessSingleFileSuccess struct {
+	t *testing.T
+}
+
+// NewTestUnifiedMovieConverterServiceProcessSingleFileSuccess creates a new test instance
+func NewTestUnifiedMovieConverterServiceProcessSingleFileSuccess(t *testing.T) *TestUnifiedMovieConverterServiceProcessSingleFileSuccess {
+	return &TestUnifiedMovieConverterServiceProcessSingleFileSuccess{t: t}
+}
+
+// TestUnifiedMovieConverterService_processSingleFile_ValidFileWithOutputGeneration tests processSingleFile with output generation
+func (ts *TestUnifiedMovieConverterServiceProcessSingleFileSuccess) TestUnifiedMovieConverterService_processSingleFile_ValidFileWithOutputGeneration() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.mp4")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	singleConfig := &ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: "", // Empty output file should trigger auto-generation
+		FPS:        30,
+		Width:      320,
+		Speed:      1.5,
+	}
+	service := NewUnifiedMovieConverterService(singleConfig, nil)
+
+	// Act
+	result := &UnifiedConversionResult{
+		Mode: SingleFileMode,
+	}
+	finalResult, err := service.processSingleFile(result)
+
+	// Assert
+	if finalResult == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if finalResult.Mode != SingleFileMode {
+		ts.t.Errorf("Expected SingleFileMode, got %d", finalResult.Mode)
+	}
+	// The conversion will fail due to ffmpeg not being available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	if finalResult.SingleResult == nil {
+		ts.t.Error("Expected SingleResult, got nil")
+	}
+	// Check that output file was auto-generated
+	expectedOutput := filepath.Join(tempDir, "test.gif")
+	if finalResult.SingleResult.OutputFile != expectedOutput {
+		ts.t.Errorf("Expected auto-generated output file %s, got %s", expectedOutput, finalResult.SingleResult.OutputFile)
+	}
+}
+
+// TestUnifiedMovieConverterService_processSingleFile_GIFToMP4Conversion tests GIF to MP4 conversion
+func (ts *TestUnifiedMovieConverterServiceProcessSingleFileSuccess) TestUnifiedMovieConverterService_processSingleFile_GIFToMP4Conversion() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.gif")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	singleConfig := &ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: filepath.Join(tempDir, "output.mp4"),
+		FPS:        15,
+	}
+	service := NewUnifiedMovieConverterService(singleConfig, nil)
+
+	// Act
+	result := &UnifiedConversionResult{
+		Mode: SingleFileMode,
+	}
+	finalResult, err := service.processSingleFile(result)
+
+	// Assert
+	if finalResult == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	// The conversion will fail due to ffmpeg not being available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	if finalResult.SingleResult == nil {
+		ts.t.Error("Expected SingleResult, got nil")
+	}
+	if finalResult.SingleResult.InputFile != testFile {
+		ts.t.Errorf("Expected InputFile %s, got %s", testFile, finalResult.SingleResult.InputFile)
+	}
+}
+
+// #==============================================================#
+// ##         Tests for edge cases in unified service            ##
+// #==============================================================#
+// TestUnifiedMovieConverterServiceEdgeCases tests edge cases for unified service
+type TestUnifiedMovieConverterServiceEdgeCases struct {
+	t *testing.T
+}
+
+// NewTestUnifiedMovieConverterServiceEdgeCases creates a new test instance
+func NewTestUnifiedMovieConverterServiceEdgeCases(t *testing.T) *TestUnifiedMovieConverterServiceEdgeCases {
+	return &TestUnifiedMovieConverterServiceEdgeCases{t: t}
+}
+
+// TestUnifiedMovieConverterService_ProcessConversion_BatchModeWithPartialConfig tests batch mode with partial config
+func (ts *TestUnifiedMovieConverterServiceEdgeCases) TestUnifiedMovieConverterService_ProcessConversion_BatchModeWithPartialConfig() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	batchConfig := &BatchConversionConfig{
+		InputDir: tempDir, // Only InputDir is set, should still trigger batch mode
+	}
+	service := NewUnifiedMovieConverterService(nil, batchConfig)
+
+	// Act
+	result, err := service.ProcessConversion()
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for incomplete batch config, got nil")
+	}
+	if result == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if result.Mode != BatchMode {
+		ts.t.Errorf("Expected BatchMode, got %d", result.Mode)
+	}
+	if result.Success {
+		ts.t.Error("Expected Success to be false for incomplete config")
+	}
+}
+
+// TestUnifiedMovieConverterService_ProcessConversion_SingleModeWithMKVFile tests single mode with MKV file
+func (ts *TestUnifiedMovieConverterServiceEdgeCases) TestUnifiedMovieConverterService_ProcessConversion_SingleModeWithMKVFile() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.mkv")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	singleConfig := &ConversionConfig{
+		InputFile: testFile,
+		// OutputFile is empty, should be auto-generated
+	}
+	service := NewUnifiedMovieConverterService(singleConfig, nil)
+
+	// Act
+	result, err := service.ProcessConversion()
+
+	// Assert
+	if result == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if result.Mode != SingleFileMode {
+		ts.t.Errorf("Expected SingleFileMode, got %d", result.Mode)
+	}
+	// The conversion will fail due to ffmpeg not being available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	if result.SingleResult == nil {
+		ts.t.Error("Expected SingleResult, got nil")
+	}
+	// Check that output file was auto-generated for MKV -> GIF
+	expectedOutput := filepath.Join(tempDir, "test.gif")
+	if result.SingleResult.OutputFile != expectedOutput {
+		ts.t.Errorf("Expected auto-generated output file %s, got %s", expectedOutput, result.SingleResult.OutputFile)
+	}
+}
+
+// Standard Go test functions for new unified tests
+
+func TestUnifiedMovieConverterServiceProcessBatchFilesMethod(t *testing.T) {
+	testService := NewTestUnifiedMovieConverterServiceProcessBatchFiles(t)
+	testService.TestUnifiedMovieConverterService_processBatchFiles_ValidConfig()
+	testService.TestUnifiedMovieConverterService_processBatchFiles_InvalidInputDir()
+	testService.TestUnifiedMovieConverterService_processBatchFiles_UnsupportedExtension()
+}
+
+func TestUnifiedMovieConverterServiceProcessSingleFileSuccessMethod(t *testing.T) {
+	testService := NewTestUnifiedMovieConverterServiceProcessSingleFileSuccess(t)
+	testService.TestUnifiedMovieConverterService_processSingleFile_ValidFileWithOutputGeneration()
+	testService.TestUnifiedMovieConverterService_processSingleFile_GIFToMP4Conversion()
+}
+
+func TestUnifiedMovieConverterServiceEdgeCasesMethod(t *testing.T) {
+	testService := NewTestUnifiedMovieConverterServiceEdgeCases(t)
+	testService.TestUnifiedMovieConverterService_ProcessConversion_BatchModeWithPartialConfig()
+	testService.TestUnifiedMovieConverterService_ProcessConversion_SingleModeWithMKVFile()
+}

@@ -554,3 +554,268 @@ func (ts *TestMovieConverterServiceEdgeCases) TestMovieConverterService_setGIFTo
 		ts.t.Errorf("Expected FPS to remain 30, got %d", service.config.FPS)
 	}
 }
+
+// #==============================================================#
+// ##         Tests for convertGIFToMP4 method                   ##
+// #==============================================================#
+// TestMovieConverterServiceConvertGIFToMP4 tests the convertGIFToMP4 method
+type TestMovieConverterServiceConvertGIFToMP4 struct {
+	t *testing.T
+}
+
+// NewTestMovieConverterServiceConvertGIFToMP4 creates a new test instance
+func NewTestMovieConverterServiceConvertGIFToMP4(t *testing.T) *TestMovieConverterServiceConvertGIFToMP4 {
+	return &TestMovieConverterServiceConvertGIFToMP4{t: t}
+}
+
+// TestMovieConverterService_convertGIFToMP4_WithSpaceInFilename tests convertGIFToMP4 with space in filename
+func (ts *TestMovieConverterServiceConvertGIFToMP4) TestMovieConverterService_convertGIFToMP4_WithSpaceInFilename() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test file.gif")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: filepath.Join(tempDir, "output.mp4"),
+		FPS:        0, // Will be set to default
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convertGIFToMP4()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we test the setup and warning
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	// The method should have been called and defaults should be set
+	if service.config.FPS != 15 {
+		ts.t.Errorf("Expected FPS to be set to default 15, got %d", service.config.FPS)
+	}
+}
+
+// TestMovieConverterService_convertGIFToMP4_DefaultFPS tests convertGIFToMP4 with default FPS
+func (ts *TestMovieConverterServiceConvertGIFToMP4) TestMovieConverterService_convertGIFToMP4_DefaultFPS() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.gif")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: filepath.Join(tempDir, "output.mp4"),
+		FPS:        0, // Will be set to default
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convertGIFToMP4()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	// The method should have been called and defaults should be set
+	if service.config.FPS != 15 {
+		ts.t.Errorf("Expected FPS to be set to default 15, got %d", service.config.FPS)
+	}
+}
+
+// TestMovieConverterService_convertGIFToMP4_CustomFPS tests convertGIFToMP4 with custom FPS
+func (ts *TestMovieConverterServiceConvertGIFToMP4) TestMovieConverterService_convertGIFToMP4_CustomFPS() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.gif")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: filepath.Join(tempDir, "output.mp4"),
+		FPS:        30, // Custom FPS
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convertGIFToMP4()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	// The custom FPS should remain unchanged
+	if service.config.FPS != 30 {
+		ts.t.Errorf("Expected FPS to remain 30, got %d", service.config.FPS)
+	}
+}
+
+// #==============================================================#
+// ##         Tests for convertMP4ToGIF method edge cases        ##
+// #==============================================================#
+// TestMovieConverterServiceConvertMP4ToGIFEdgeCases tests edge cases for convertMP4ToGIF
+type TestMovieConverterServiceConvertMP4ToGIFEdgeCases struct {
+	t *testing.T
+}
+
+// NewTestMovieConverterServiceConvertMP4ToGIFEdgeCases creates a new test instance
+func NewTestMovieConverterServiceConvertMP4ToGIFEdgeCases(t *testing.T) *TestMovieConverterServiceConvertMP4ToGIFEdgeCases {
+	return &TestMovieConverterServiceConvertMP4ToGIFEdgeCases{t: t}
+}
+
+// TestMovieConverterService_convertMP4ToGIF_WithWidth tests convertMP4ToGIF with width specified
+func (ts *TestMovieConverterServiceConvertMP4ToGIFEdgeCases) TestMovieConverterService_convertMP4ToGIF_WithWidth() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.mp4")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:   testFile,
+		OutputFile:  filepath.Join(tempDir, "output.gif"),
+		FPS:         0,   // Will be set to default
+		Width:       320, // Specified width
+		Speed:       0,   // Will be set to default
+		UseItsScale: true,
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convertMP4ToGIF()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	// Defaults should be set
+	if service.config.FPS != 60 {
+		ts.t.Errorf("Expected FPS to be set to default 60, got %d", service.config.FPS)
+	}
+	if service.config.Speed != 2.0 {
+		ts.t.Errorf("Expected Speed to be set to default 2.0, got %f", service.config.Speed)
+	}
+}
+
+// TestMovieConverterService_convertMP4ToGIF_WithoutItsScale tests convertMP4ToGIF without itsscale
+func (ts *TestMovieConverterServiceConvertMP4ToGIFEdgeCases) TestMovieConverterService_convertMP4ToGIF_WithoutItsScale() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.mp4")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:   testFile,
+		OutputFile:  filepath.Join(tempDir, "output.gif"),
+		FPS:         30,
+		Width:       0, // Default quality
+		Speed:       1.5,
+		UseItsScale: false, // Use setpts instead
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convertMP4ToGIF()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we test the setup
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+	// Values should remain as set
+	if service.config.FPS != 30 {
+		ts.t.Errorf("Expected FPS to remain 30, got %d", service.config.FPS)
+	}
+	if service.config.Speed != 1.5 {
+		ts.t.Errorf("Expected Speed to remain 1.5, got %f", service.config.Speed)
+	}
+}
+
+// TestMovieConverterService_convertMP4ToGIF_WithSpaceInFilename tests convertMP4ToGIF with space in filename
+func (ts *TestMovieConverterServiceConvertMP4ToGIFEdgeCases) TestMovieConverterService_convertMP4ToGIF_WithSpaceInFilename() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test file.mp4")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:   testFile,
+		OutputFile:  filepath.Join(tempDir, "output.gif"),
+		FPS:         30,
+		Width:       0,
+		Speed:       2.0,
+		UseItsScale: true,
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convertMP4ToGIF()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we test the setup and warning
+	if err == nil {
+		ts.t.Error("Expected error due to ffmpeg not being available")
+	}
+}
+
+// Standard Go test functions for new test cases
+
+func TestNormalizeExtensionFunctionNew(t *testing.T) {
+	testService := NewTestNormalizeExtension(t)
+	testService.TestNormalizeExtension_EmptyString_Normal()
+	testService.TestNormalizeExtension_WithDot_Normal()
+	testService.TestNormalizeExtension_WithoutDot_Normal()
+}
+
+func TestMovieConverterServiceConvertMethodNew(t *testing.T) {
+	testService := NewTestMovieConverterServiceConvert(t)
+	testService.TestMovieConverterService_convert_FileNotExists()
+	testService.TestMovieConverterService_convert_NoExtension()
+	testService.TestMovieConverterService_convert_UnsupportedConversion()
+}
+
+func TestMovieConverterServiceEdgeCasesMethodNew(t *testing.T) {
+	testService := NewTestMovieConverterServiceEdgeCases(t)
+	testService.TestMovieConverterService_setMP4ToGIFDefaults_NonZeroValues()
+	testService.TestMovieConverterService_setGIFToMP4Defaults_NonZeroValues()
+}
+
+func TestMovieConverterServiceConvertGIFToMP4Method(t *testing.T) {
+	testService := NewTestMovieConverterServiceConvertGIFToMP4(t)
+	testService.TestMovieConverterService_convertGIFToMP4_WithSpaceInFilename()
+	testService.TestMovieConverterService_convertGIFToMP4_DefaultFPS()
+	testService.TestMovieConverterService_convertGIFToMP4_CustomFPS()
+}
+
+func TestMovieConverterServiceConvertMP4ToGIFEdgeCasesMethod(t *testing.T) {
+	testService := NewTestMovieConverterServiceConvertMP4ToGIFEdgeCases(t)
+	testService.TestMovieConverterService_convertMP4ToGIF_WithWidth()
+	testService.TestMovieConverterService_convertMP4ToGIF_WithoutItsScale()
+	testService.TestMovieConverterService_convertMP4ToGIF_WithSpaceInFilename()
+}
