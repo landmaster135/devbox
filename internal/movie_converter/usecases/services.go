@@ -474,7 +474,8 @@ func validateSingleConfig(config ConversionConfig) error {
 // generateOutputFile generates output filename if not provided
 func generateOutputFile(inputFile string) string {
 	ext := strings.ToLower(filepath.Ext(inputFile))
-	base := strings.TrimSuffix(inputFile, ext)
+	originalExt := filepath.Ext(inputFile)
+	base := strings.TrimSuffix(inputFile, originalExt)
 
 	switch ext {
 	case ".mp4", ".mkv":
