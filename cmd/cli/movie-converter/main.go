@@ -101,80 +101,73 @@ func main() {
 		log.Fatal("エラー: 入力ファイル（-input）または入力ディレクトリ（-input-dir）を指定してください。-help でヘルプを表示します。")
 	}
 
-	if isBatchMode {
-		// バッチ処理モード
-		executeBatchConversion(batchConfig, config.FPS, config.Width, speed, config.Loop, config.UseItsScale)
-	} else {
-		// 単一ファイル処理モード
-		executeSingleConversion(config)
-	}
+	// 統合されたサービスを使用して処理を実行
+	executeUnifiedConversion(config, batchConfig, isBatchMode, speed)
 }
 
-// executeSingleConversion executes single file conversion
-func executeSingleConversion(config usecases.ConversionConfig) {
-	// 設定の検証
-	if err := usecases.ValidateConfig(config); err != nil {
-		log.Fatalf("設定エラー: %v", err)
-	}
-
-	// 出力ファイルの自動生成
-	if config.OutputFile == "" {
-		config.OutputFile = usecases.GenerateOutputFile(config.InputFile)
-		log.Printf("出力ファイル名を自動生成しました: %s", config.OutputFile)
-	}
-
-	// 変換サービスの作成と実行
-	service := usecases.NewMovieConverterService(config)
-	if err := service.Convert(); err != nil {
-		log.Fatalf("変換エラー: %v", err)
-	}
-
-	fmt.Printf("変換が正常に完了しました: %s -> %s\n", config.InputFile, config.OutputFile)
-}
-
-// executeBatchConversion executes batch conversion
-func executeBatchConversion(batchConfig usecases.BatchConversionConfig, fps, width int, speed float64, loop int, useItsScale bool) {
-	// 共通オプションをバッチ設定にコピー
-	batchConfig.FPS = fps
-	batchConfig.Width = width
-	batchConfig.Speed = speed
-	batchConfig.Loop = loop
-	batchConfig.UseItsScale = useItsScale
-
-	// バッチ設定の検証
-	if err := usecases.ValidateBatchConfig(&batchConfig); err != nil {
-		log.Fatalf("バッチ設定エラー: %v", err)
-	}
-
-	// バッチ変換サービスの作成と実行
-	batchService := usecases.NewBatchMovieConverterService(batchConfig)
-	result, err := batchService.BatchConvert()
-	if err != nil {
-		log.Fatalf("バッチ変換エラー: %v", err)
-	}
-
-	// 結果の表示
-	fmt.Printf("\n=== バッチ変換結果 ===\n")
-	fmt.Printf("総ファイル数: %d\n", result.TotalFiles)
-	fmt.Printf("成功: %d\n", result.SuccessCount)
-	fmt.Printf("失敗: %d\n", result.FailureCount)
-
-	if result.FailureCount > 0 {
-		fmt.Printf("\n失敗したファイル:\n")
-		for _, failedFile := range result.FailedFiles {
-			fmt.Printf("  - %s\n", failedFile)
+// displayConversionResult displays the conversion result
+func displayConversionResult(result *usecases.UnifiedConversionResult) {
+	if result.Mode == usecases.SingleFileMode {
+		// 単一ファイル処理の結果表示
+		if result.Success && result.SingleResult != nil {
+			fmt.Printf("変換が正常に完了しました: %s -> %s\n",
+				result.SingleResult.InputFile, result.SingleResult.OutputFile)
 		}
+	} else {
+		// バッチ処理の結果表示
+		if result.BatchResult != nil {
+			fmt.Printf("\n=== バッチ変換結果 ===\n")
+			fmt.Printf("総ファイル数: %d\n", result.BatchResult.TotalFiles)
+			fmt.Printf("成功: %d\n", result.BatchResult.SuccessCount)
+			fmt.Printf("失敗: %d\n", result.BatchResult.FailureCount)
 
-		fmt.Printf("\n詳細なエラー情報:\n")
-		for _, convResult := range result.Results {
-			if !convResult.Success {
-				fmt.Printf("  %s: %v\n", convResult.InputFile, convResult.Error)
+			if result.BatchResult.FailureCount > 0 {
+				fmt.Printf("\n失敗したファイル:\n")
+				for _, failedFile := range result.BatchResult.FailedFiles {
+					fmt.Printf("  - %s\n", failedFile)
+				}
+
+				fmt.Printf("\n詳細なエラー情報:\n")
+				for _, convResult := range result.BatchResult.Results {
+					if !convResult.Success {
+						fmt.Printf("  %s: %v\n", convResult.InputFile, convResult.Error)
+					}
+				}
+			}
+
+			if result.BatchResult.SuccessCount > 0 {
+				fmt.Printf("\nバッチ変換が完了しました\n")
 			}
 		}
 	}
+}
 
-	if result.SuccessCount > 0 {
-		fmt.Printf("\nバッチ変換が完了しました: %s (%s) -> %s (%s)\n",
-			batchConfig.InputDir, batchConfig.InputExt, batchConfig.OutputDir, batchConfig.OutputExt)
+// executeUnifiedConversion executes conversion using the unified service
+func executeUnifiedConversion(config usecases.ConversionConfig, batchConfig usecases.BatchConversionConfig, isBatchMode bool, speed float64) {
+	var singleConfig *usecases.ConversionConfig
+	var batchConfigPtr *usecases.BatchConversionConfig
+
+	if isBatchMode {
+		// 共通オプションをバッチ設定にコピー
+		batchConfig.FPS = config.FPS
+		batchConfig.Width = config.Width
+		batchConfig.Speed = speed
+		batchConfig.Loop = config.Loop
+		batchConfig.UseItsScale = config.UseItsScale
+		batchConfigPtr = &batchConfig
+	} else {
+		// 速度の設定
+		config.Speed = speed
+		singleConfig = &config
 	}
+
+	// 統合サービスの作成と実行
+	unifiedService := usecases.NewUnifiedMovieConverterService(singleConfig, batchConfigPtr)
+	result, err := unifiedService.ProcessConversion()
+	if err != nil {
+		log.Fatalf("変換エラー: %v", err)
+	}
+
+	// 結果の表示
+	displayConversionResult(result)
 }

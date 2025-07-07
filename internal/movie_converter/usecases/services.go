@@ -43,6 +43,19 @@ func NewMovieConverterService(config ConversionConfig) *MovieConverterService {
 	return &MovieConverterService{config: config}
 }
 
+// setMP4ToGIFDefaults sets default values for MP4 to GIF conversion
+func (s *MovieConverterService) setMP4ToGIFDefaults() {
+	if s.config.FPS == 0 {
+		s.config.FPS = 60 // バッチファイルのデフォルト
+	}
+	if s.config.Speed == 0 {
+		s.config.Speed = 2.0 // バッチファイルのデフォルト
+	}
+	// Width: 0はそのまま（デフォルト品質）
+	// Loop: 0はそのまま（無限ループ）
+	// UseItsScale: trueがデフォルト
+}
+
 // ConvertMP4ToGIF converts MP4 to GIF using ffmpeg-go
 func (s *MovieConverterService) ConvertMP4ToGIF() error {
 	log.Printf("MP4からGIFに変換中: %s -> %s", s.config.InputFile, s.config.OutputFile)
@@ -108,6 +121,13 @@ func (s *MovieConverterService) ConvertMP4ToGIF() error {
 	return nil
 }
 
+// setGIFToMP4Defaults sets default values for GIF to MP4 conversion
+func (s *MovieConverterService) setGIFToMP4Defaults() {
+	if s.config.FPS == 0 {
+		s.config.FPS = 15 // PowerShellスクリプトのデフォルト
+	}
+}
+
 // ConvertGIFToMP4 converts GIF to MP4 using ffmpeg-go
 func (s *MovieConverterService) ConvertGIFToMP4() error {
 	log.Printf("GIFからMP4に変換中: %s -> %s", s.config.InputFile, s.config.OutputFile)
@@ -162,58 +182,6 @@ func (s *MovieConverterService) Convert() error {
 	} else {
 		return fmt.Errorf("サポートされていない変換: %s -> %s", inputExt, outputExt)
 	}
-}
-
-// setMP4ToGIFDefaults sets default values for MP4 to GIF conversion
-func (s *MovieConverterService) setMP4ToGIFDefaults() {
-	if s.config.FPS == 0 {
-		s.config.FPS = 60 // バッチファイルのデフォルト
-	}
-	if s.config.Speed == 0 {
-		s.config.Speed = 2.0 // バッチファイルのデフォルト
-	}
-	// Width: 0はそのまま（デフォルト品質）
-	// Loop: 0はそのまま（無限ループ）
-	// UseItsScale: trueがデフォルト
-}
-
-// setGIFToMP4Defaults sets default values for GIF to MP4 conversion
-func (s *MovieConverterService) setGIFToMP4Defaults() {
-	if s.config.FPS == 0 {
-		s.config.FPS = 15 // PowerShellスクリプトのデフォルト
-	}
-}
-
-// GenerateOutputFile generates output filename if not provided
-func GenerateOutputFile(inputFile string) string {
-	ext := strings.ToLower(filepath.Ext(inputFile))
-	base := strings.TrimSuffix(inputFile, ext)
-
-	switch ext {
-	case ".mp4", ".mkv":
-		return base + ".gif"
-	case ".gif":
-		return base + ".mp4"
-	default:
-		return base + "_converted"
-	}
-}
-
-// ValidateConfig validates the conversion configuration
-func ValidateConfig(config ConversionConfig) error {
-	if config.InputFile == "" {
-		return fmt.Errorf("入力ファイルが指定されていません")
-	}
-
-	if !strings.Contains(config.InputFile, ".") {
-		return fmt.Errorf("入力ファイル名に拡張子が含まれていません: %s", config.InputFile)
-	}
-
-	if _, err := os.Stat(config.InputFile); os.IsNotExist(err) {
-		return fmt.Errorf("入力ファイルが見つかりません: %s", config.InputFile)
-	}
-
-	return nil
 }
 
 // #==============================================================#
@@ -405,14 +373,6 @@ func (bs *BatchMovieConverterService) convertSingleFile(inputFile string) Conver
 	}
 }
 
-// GetSupportedExtensions returns supported file extensions
-func GetSupportedExtensions() map[string][]string {
-	return map[string][]string{
-		"input":  {".mp4", ".mkv", ".gif"},
-		"output": {".mp4", ".gif"},
-	}
-}
-
 // normalizeExtension normalizes file extension by adding dot if missing
 func normalizeExtension(ext string) string {
 	if ext == "" {
@@ -422,6 +382,14 @@ func normalizeExtension(ext string) string {
 		return "." + ext
 	}
 	return ext
+}
+
+// GetSupportedExtensions returns supported file extensions
+func GetSupportedExtensions() map[string][]string {
+	return map[string][]string{
+		"input":  {".mp4", ".mkv", ".gif"},
+		"output": {".mp4", ".gif"},
+	}
 }
 
 // ValidateBatchConfig validates the batch conversion configuration
@@ -476,4 +444,190 @@ func ValidateBatchConfig(config *BatchConversionConfig) error {
 	}
 
 	return nil
+}
+
+// #==============================================================#
+// ##          Unified Service for both single and batch         ##
+// #==============================================================#
+
+// ProcessingMode represents the type of processing to be performed
+type ProcessingMode int
+
+const (
+	SingleFileMode ProcessingMode = iota
+	BatchMode
+)
+
+// UnifiedConversionConfig holds configuration for both single and batch processing
+type UnifiedConversionConfig struct {
+	// Single file processing config
+	SingleConfig *ConversionConfig
+	// Batch processing config
+	BatchConfig *BatchConversionConfig
+	// Processing mode
+	Mode ProcessingMode
+}
+
+// UnifiedConversionResult holds the result of unified conversion
+type UnifiedConversionResult struct {
+	Mode    ProcessingMode
+	Success bool
+	Error   error
+	// Single file result
+	SingleResult *ConversionResult
+	// Batch result
+	BatchResult *BatchConversionResult
+}
+
+// UnifiedMovieConverterService handles both single file and batch video conversion operations
+type UnifiedMovieConverterService struct {
+	config UnifiedConversionConfig
+}
+
+// NewUnifiedMovieConverterService creates a new UnifiedMovieConverterService instance
+func NewUnifiedMovieConverterService(singleConfig *ConversionConfig, batchConfig *BatchConversionConfig) *UnifiedMovieConverterService {
+	var mode ProcessingMode
+
+	// Determine processing mode based on provided configurations
+	if batchConfig != nil && (batchConfig.InputDir != "" || batchConfig.InputExt != "" || batchConfig.OutputDir != "" || batchConfig.OutputExt != "") {
+		mode = BatchMode
+	} else {
+		mode = SingleFileMode
+	}
+
+	return &UnifiedMovieConverterService{
+		config: UnifiedConversionConfig{
+			SingleConfig: singleConfig,
+			BatchConfig:  batchConfig,
+			Mode:         mode,
+		},
+	}
+}
+
+// #==============================================================#
+// ##          Methods of Unified Service                        ##
+// #==============================================================#
+// ValidateConfig validates the conversion configuration
+func ValidateConfig(config ConversionConfig) error {
+	if config.InputFile == "" {
+		return fmt.Errorf("入力ファイルが指定されていません")
+	}
+
+	if !strings.Contains(config.InputFile, ".") {
+		return fmt.Errorf("入力ファイル名に拡張子が含まれていません: %s", config.InputFile)
+	}
+
+	if _, err := os.Stat(config.InputFile); os.IsNotExist(err) {
+		return fmt.Errorf("入力ファイルが見つかりません: %s", config.InputFile)
+	}
+
+	return nil
+}
+
+// GenerateOutputFile generates output filename if not provided
+func GenerateOutputFile(inputFile string) string {
+	ext := strings.ToLower(filepath.Ext(inputFile))
+	base := strings.TrimSuffix(inputFile, ext)
+
+	switch ext {
+	case ".mp4", ".mkv":
+		return base + ".gif"
+	case ".gif":
+		return base + ".mp4"
+	default:
+		return base + "_converted"
+	}
+}
+
+// processSingleFile handles single file conversion
+func (us *UnifiedMovieConverterService) processSingleFile(result *UnifiedConversionResult) (*UnifiedConversionResult, error) {
+	if us.config.SingleConfig == nil {
+		result.Success = false
+		result.Error = fmt.Errorf("単一ファイル処理の設定が指定されていません")
+		return result, result.Error
+	}
+
+	// 設定の検証
+	if err := ValidateConfig(*us.config.SingleConfig); err != nil {
+		result.Success = false
+		result.Error = fmt.Errorf("設定エラー: %w", err)
+		return result, result.Error
+	}
+
+	// 出力ファイルの自動生成
+	if us.config.SingleConfig.OutputFile == "" {
+		us.config.SingleConfig.OutputFile = GenerateOutputFile(us.config.SingleConfig.InputFile)
+		log.Printf("出力ファイル名を自動生成しました: %s", us.config.SingleConfig.OutputFile)
+	}
+
+	// 変換サービスの作成と実行
+	service := NewMovieConverterService(*us.config.SingleConfig)
+	err := service.Convert()
+
+	singleResult := &ConversionResult{
+		InputFile:  us.config.SingleConfig.InputFile,
+		OutputFile: us.config.SingleConfig.OutputFile,
+		Success:    err == nil,
+		Error:      err,
+	}
+
+	result.SingleResult = singleResult
+	result.Success = err == nil
+	result.Error = err
+
+	if err == nil {
+		log.Printf("変換が正常に完了しました: %s -> %s", us.config.SingleConfig.InputFile, us.config.SingleConfig.OutputFile)
+	}
+
+	return result, err
+}
+
+// processBatchFiles handles batch file conversion
+func (us *UnifiedMovieConverterService) processBatchFiles(result *UnifiedConversionResult) (*UnifiedConversionResult, error) {
+	if us.config.BatchConfig == nil {
+		result.Success = false
+		result.Error = fmt.Errorf("バッチ処理の設定が指定されていません")
+		return result, result.Error
+	}
+
+	// バッチ設定の検証
+	if err := ValidateBatchConfig(us.config.BatchConfig); err != nil {
+		result.Success = false
+		result.Error = fmt.Errorf("バッチ設定エラー: %w", err)
+		return result, result.Error
+	}
+
+	// バッチ変換サービスの作成と実行
+	batchService := NewBatchMovieConverterService(*us.config.BatchConfig)
+	batchResult, err := batchService.BatchConvert()
+
+	result.BatchResult = batchResult
+	result.Success = err == nil
+	result.Error = err
+
+	if err == nil {
+		log.Printf("バッチ変換が完了しました: %s (%s) -> %s (%s)",
+			us.config.BatchConfig.InputDir, us.config.BatchConfig.InputExt,
+			us.config.BatchConfig.OutputDir, us.config.BatchConfig.OutputExt)
+	}
+
+	return result, err
+}
+
+// ProcessConversion performs conversion based on the configuration mode
+func (us *UnifiedMovieConverterService) ProcessConversion() (*UnifiedConversionResult, error) {
+	result := &UnifiedConversionResult{
+		Mode: us.config.Mode,
+	}
+
+	switch us.config.Mode {
+	case SingleFileMode:
+		return us.processSingleFile(result)
+	case BatchMode:
+		return us.processBatchFiles(result)
+	default:
+		result.Success = false
+		result.Error = fmt.Errorf("不明な処理モード: %d", us.config.Mode)
+		return result, result.Error
+	}
 }
