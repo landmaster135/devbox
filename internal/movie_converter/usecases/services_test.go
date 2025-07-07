@@ -869,3 +869,225 @@ func TestBatchMovieConverterServiceScanFilesMethod(t *testing.T) {
 	testService.TestBatchMovieConverterService_scanFiles_Recursive()
 	testService.TestBatchMovieConverterService_scanFiles_NonRecursive()
 }
+
+// #==============================================================#
+// ##         Tests for batch batchConvert method                ##
+// #==============================================================#
+// TestBatchMovieConverterServiceBatchConvert tests the batchConvert method
+type TestBatchMovieConverterServiceBatchConvert struct {
+	t *testing.T
+}
+
+// NewTestBatchMovieConverterServiceBatchConvert creates a new test instance
+func NewTestBatchMovieConverterServiceBatchConvert(t *testing.T) *TestBatchMovieConverterServiceBatchConvert {
+	return &TestBatchMovieConverterServiceBatchConvert{t: t}
+}
+
+// TestBatchMovieConverterService_batchConvert_InputDirNotExists tests batchConvert with non-existent input directory
+func (ts *TestBatchMovieConverterServiceBatchConvert) TestBatchMovieConverterService_batchConvert_InputDirNotExists() {
+	// Arrange
+	config := BatchConversionConfig{
+		InputDir:  "/nonexistent/directory",
+		InputExt:  ".mp4",
+		OutputDir: "/test/output",
+		OutputExt: ".gif",
+	}
+	service := NewBatchMovieConverterService(config)
+
+	// Act
+	result, err := service.batchConvert()
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for non-existent input directory, got nil")
+	}
+	if result != nil {
+		ts.t.Error("Expected nil result for error case, got non-nil")
+	}
+	expectedMsg := "入力ディレクトリが見つかりません: /nonexistent/directory"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// TestBatchMovieConverterService_batchConvert_NoFiles tests batchConvert with no matching files
+func (ts *TestBatchMovieConverterServiceBatchConvert) TestBatchMovieConverterService_batchConvert_NoFiles() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	outputDir := ts.t.TempDir()
+
+	// Create non-matching files
+	testFiles := []string{"document.txt", "image.jpg"}
+	for _, fileName := range testFiles {
+		file, err := os.Create(filepath.Join(tempDir, fileName))
+		if err != nil {
+			ts.t.Fatalf("Failed to create test file %s: %v", fileName, err)
+		}
+		file.Close()
+	}
+
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: outputDir,
+		OutputExt: ".gif",
+	}
+	service := NewBatchMovieConverterService(config)
+
+	// Act
+	result, err := service.batchConvert()
+
+	// Assert
+	if err != nil {
+		ts.t.Errorf("Expected no error for no files case, got %v", err)
+	}
+	if result == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if result.TotalFiles != 0 {
+		ts.t.Errorf("Expected TotalFiles to be 0, got %d", result.TotalFiles)
+	}
+	if result.SuccessCount != 0 {
+		ts.t.Errorf("Expected SuccessCount to be 0, got %d", result.SuccessCount)
+	}
+	if result.FailureCount != 0 {
+		ts.t.Errorf("Expected FailureCount to be 0, got %d", result.FailureCount)
+	}
+}
+
+// #==============================================================#
+// ##         Tests for additional edge cases                    ##
+// #==============================================================#
+// TestMovieConverterServiceEdgeCases tests edge cases for MovieConverterService
+type TestMovieConverterServiceEdgeCases struct {
+	t *testing.T
+}
+
+// NewTestMovieConverterServiceEdgeCases creates a new test instance
+func NewTestMovieConverterServiceEdgeCases(t *testing.T) *TestMovieConverterServiceEdgeCases {
+	return &TestMovieConverterServiceEdgeCases{t: t}
+}
+
+// TestMovieConverterService_setMP4ToGIFDefaults_NonZeroValues tests setMP4ToGIFDefaults with non-zero values
+func (ts *TestMovieConverterServiceEdgeCases) TestMovieConverterService_setMP4ToGIFDefaults_NonZeroValues() {
+	// Arrange
+	config := ConversionConfig{
+		InputFile:   "test.mp4",
+		OutputFile:  "test.gif",
+		FPS:         30, // Non-zero value should not be changed
+		Speed:       1.5, // Non-zero value should not be changed
+		UseItsScale: true,
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	service.setMP4ToGIFDefaults()
+
+	// Assert
+	if service.config.FPS != 30 {
+		ts.t.Errorf("Expected FPS to remain 30, got %d", service.config.FPS)
+	}
+	if service.config.Speed != 1.5 {
+		ts.t.Errorf("Expected Speed to remain 1.5, got %f", service.config.Speed)
+	}
+}
+
+// TestMovieConverterService_setGIFToMP4Defaults_NonZeroValues tests setGIFToMP4Defaults with non-zero values
+func (ts *TestMovieConverterServiceEdgeCases) TestMovieConverterService_setGIFToMP4Defaults_NonZeroValues() {
+	// Arrange
+	config := ConversionConfig{
+		InputFile:  "test.gif",
+		OutputFile: "test.mp4",
+		FPS:        30, // Non-zero value should not be changed
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	service.setGIFToMP4Defaults()
+
+	// Assert
+	if service.config.FPS != 30 {
+		ts.t.Errorf("Expected FPS to remain 30, got %d", service.config.FPS)
+	}
+}
+
+// #==============================================================#
+// ##         Tests for validateBatchConfig edge cases           ##
+// #==============================================================#
+// TestValidateBatchConfigEdgeCases tests edge cases for validateBatchConfig
+type TestValidateBatchConfigEdgeCases struct {
+	t *testing.T
+}
+
+// NewTestValidateBatchConfigEdgeCases creates a new test instance
+func NewTestValidateBatchConfigEdgeCases(t *testing.T) *TestValidateBatchConfigEdgeCases {
+	return &TestValidateBatchConfigEdgeCases{t: t}
+}
+
+// TestValidateBatchConfig_EmptyOutputDir tests validation with empty output directory
+func (ts *TestValidateBatchConfigEdgeCases) TestValidateBatchConfig_EmptyOutputDir() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: "",
+		OutputExt: ".gif",
+	}
+
+	// Act
+	err := validateBatchConfig(&config)
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for empty output directory, got nil")
+	}
+	expectedMsg := "出力ディレクトリが指定されていません"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// TestValidateBatchConfig_EmptyOutputExt tests validation with empty output extension
+func (ts *TestValidateBatchConfigEdgeCases) TestValidateBatchConfig_EmptyOutputExt() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: "/test/output",
+		OutputExt: "",
+	}
+
+	// Act
+	err := validateBatchConfig(&config)
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for empty output extension, got nil")
+	}
+	expectedMsg := "出力拡張子が指定されていません"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// Standard Go test functions for new tests
+
+func TestBatchMovieConverterServiceBatchConvertMethod(t *testing.T) {
+	testService := NewTestBatchMovieConverterServiceBatchConvert(t)
+	testService.TestBatchMovieConverterService_batchConvert_InputDirNotExists()
+	testService.TestBatchMovieConverterService_batchConvert_NoFiles()
+}
+
+func TestMovieConverterServiceEdgeCasesMethod(t *testing.T) {
+	testService := NewTestMovieConverterServiceEdgeCases(t)
+	testService.TestMovieConverterService_setMP4ToGIFDefaults_NonZeroValues()
+	testService.TestMovieConverterService_setGIFToMP4Defaults_NonZeroValues()
+}
+
+func TestValidateBatchConfigEdgeCasesMethod(t *testing.T) {
+	testService := NewTestValidateBatchConfigEdgeCases(t)
+	testService.TestValidateBatchConfig_EmptyOutputDir()
+	testService.TestValidateBatchConfig_EmptyOutputExt()
+}
