@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -368,4 +370,229 @@ func TestGenerateOutputFileFunctionUnified(t *testing.T) {
 func TestBatchMovieConverterServiceConvertSingleFileMethod(t *testing.T) {
 	testService := NewTestBatchMovieConverterServiceConvertSingleFile(t)
 	testService.TestBatchMovieConverterService_convertSingleFile_RelativePathError()
+}
+
+// #==============================================================#
+// ##         Tests for unknown processing mode                  ##
+// #==============================================================#
+// TestUnifiedMovieConverterServiceUnknownMode tests unknown processing mode
+type TestUnifiedMovieConverterServiceUnknownMode struct {
+	t *testing.T
+}
+
+// NewTestUnifiedMovieConverterServiceUnknownMode creates a new test instance
+func NewTestUnifiedMovieConverterServiceUnknownMode(t *testing.T) *TestUnifiedMovieConverterServiceUnknownMode {
+	return &TestUnifiedMovieConverterServiceUnknownMode{t: t}
+}
+
+// TestUnifiedMovieConverterService_ProcessConversion_UnknownMode tests ProcessConversion with unknown mode
+func (ts *TestUnifiedMovieConverterServiceUnknownMode) TestUnifiedMovieConverterService_ProcessConversion_UnknownMode() {
+	// Arrange
+	service := NewUnifiedMovieConverterService(nil, nil)
+	// Force an unknown mode
+	service.config.Mode = ProcessingMode(999)
+
+	// Act
+	result, err := service.ProcessConversion()
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for unknown processing mode, got nil")
+	}
+	if result == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if result.Success {
+		ts.t.Error("Expected Success to be false for unknown mode")
+	}
+	expectedMsg := "不明な処理モード: 999"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// #==============================================================#
+// ##         Tests for single file processing with valid file   ##
+// #==============================================================#
+// TestUnifiedMovieConverterServiceValidFile tests single file processing with valid file
+type TestUnifiedMovieConverterServiceValidFile struct {
+	t *testing.T
+}
+
+// NewTestUnifiedMovieConverterServiceValidFile creates a new test instance
+func NewTestUnifiedMovieConverterServiceValidFile(t *testing.T) *TestUnifiedMovieConverterServiceValidFile {
+	return &TestUnifiedMovieConverterServiceValidFile{t: t}
+}
+
+// TestUnifiedMovieConverterService_ProcessConversion_ValidFile_AutoGenerateOutput tests ProcessConversion with valid file and auto-generated output
+func (ts *TestUnifiedMovieConverterServiceValidFile) TestUnifiedMovieConverterService_ProcessConversion_ValidFile_AutoGenerateOutput() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.mp4")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	singleConfig := &ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: "", // Empty output file should trigger auto-generation
+	}
+	service := NewUnifiedMovieConverterService(singleConfig, nil)
+
+	// Act
+	result, err := service.ProcessConversion()
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we can test the setup
+	if result == nil {
+		ts.t.Error("Expected result object, got nil")
+	}
+	if result.Mode != SingleFileMode {
+		ts.t.Errorf("Expected SingleFileMode, got %d", result.Mode)
+	}
+	if result.SingleResult == nil {
+		ts.t.Error("Expected SingleResult, got nil")
+	}
+	// Check that output file was auto-generated
+	expectedOutput := filepath.Join(tempDir, "test.gif")
+	if result.SingleResult.OutputFile != expectedOutput {
+		ts.t.Errorf("Expected auto-generated output file %s, got %s", expectedOutput, result.SingleResult.OutputFile)
+	}
+}
+
+// #==============================================================#
+// ##         Tests for batch processing with output dir creation ##
+// #==============================================================#
+// TestBatchMovieConverterServiceOutputDirCreation tests output directory creation
+type TestBatchMovieConverterServiceOutputDirCreation struct {
+	t *testing.T
+}
+
+// NewTestBatchMovieConverterServiceOutputDirCreation creates a new test instance
+func NewTestBatchMovieConverterServiceOutputDirCreation(t *testing.T) *TestBatchMovieConverterServiceOutputDirCreation {
+	return &TestBatchMovieConverterServiceOutputDirCreation{t: t}
+}
+
+// TestBatchMovieConverterService_convertSingleFile_OutputDirCreation tests convertSingleFile with output directory creation
+func (ts *TestBatchMovieConverterServiceOutputDirCreation) TestBatchMovieConverterService_convertSingleFile_OutputDirCreation() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	outputDir := filepath.Join(tempDir, "output")
+
+	// Create input file
+	inputFile := filepath.Join(tempDir, "test.mp4")
+	file, err := os.Create(inputFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: outputDir,
+		OutputExt: ".gif",
+	}
+	service := NewBatchMovieConverterService(config)
+
+	// Act
+	result := service.convertSingleFile(inputFile)
+
+	// Assert
+	// This will fail because ffmpeg is not available, but we can test the setup
+	if result.InputFile != inputFile {
+		ts.t.Errorf("Expected InputFile %s, got %s", inputFile, result.InputFile)
+	}
+	expectedOutput := filepath.Join(outputDir, "test.gif")
+	if result.OutputFile != expectedOutput {
+		ts.t.Errorf("Expected OutputFile %s, got %s", expectedOutput, result.OutputFile)
+	}
+	// Check that output directory was created
+	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+		ts.t.Error("Expected output directory to be created")
+	}
+}
+
+// #==============================================================#
+// ##         Tests for additional generateOutputFile cases      ##
+// #==============================================================#
+// TestGenerateOutputFileAdditional tests additional cases for generateOutputFile
+type TestGenerateOutputFileAdditional struct {
+	t *testing.T
+}
+
+// NewTestGenerateOutputFileAdditional creates a new test instance
+func NewTestGenerateOutputFileAdditional(t *testing.T) *TestGenerateOutputFileAdditional {
+	return &TestGenerateOutputFileAdditional{t: t}
+}
+
+// TestGenerateOutputFile_EmptyString_Normal tests generateOutputFile with empty string
+func (ts *TestGenerateOutputFileAdditional) TestGenerateOutputFile_EmptyString_Normal() {
+	// Arrange
+	inputFile := ""
+	expected := "_converted"
+
+	// Act
+	result := generateOutputFile(inputFile)
+
+	// Assert
+	if result != expected {
+		ts.t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+// TestGenerateOutputFile_NoExtension_Normal tests generateOutputFile with no extension
+func (ts *TestGenerateOutputFileAdditional) TestGenerateOutputFile_NoExtension_Normal() {
+	// Arrange
+	inputFile := "filename"
+	expected := "filename_converted"
+
+	// Act
+	result := generateOutputFile(inputFile)
+
+	// Assert
+	if result != expected {
+		ts.t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+// TestGenerateOutputFile_ComplexPath_Normal tests generateOutputFile with complex path
+func (ts *TestGenerateOutputFileAdditional) TestGenerateOutputFile_ComplexPath_Normal() {
+	// Arrange
+	inputFile := "/path/to/my video file.MP4"
+	expected := "/path/to/my video file.gif"
+
+	// Act
+	result := generateOutputFile(inputFile)
+
+	// Assert
+	if result != expected {
+		ts.t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+// Standard Go test functions for new tests
+
+func TestUnifiedMovieConverterServiceUnknownModeMethod(t *testing.T) {
+	testService := NewTestUnifiedMovieConverterServiceUnknownMode(t)
+	testService.TestUnifiedMovieConverterService_ProcessConversion_UnknownMode()
+}
+
+func TestUnifiedMovieConverterServiceValidFileMethod(t *testing.T) {
+	testService := NewTestUnifiedMovieConverterServiceValidFile(t)
+	testService.TestUnifiedMovieConverterService_ProcessConversion_ValidFile_AutoGenerateOutput()
+}
+
+func TestBatchMovieConverterServiceOutputDirCreationMethod(t *testing.T) {
+	testService := NewTestBatchMovieConverterServiceOutputDirCreation(t)
+	testService.TestBatchMovieConverterService_convertSingleFile_OutputDirCreation()
+}
+
+func TestGenerateOutputFileAdditionalMethod(t *testing.T) {
+	testService := NewTestGenerateOutputFileAdditional(t)
+	testService.TestGenerateOutputFile_EmptyString_Normal()
+	testService.TestGenerateOutputFile_NoExtension_Normal()
+	testService.TestGenerateOutputFile_ComplexPath_Normal()
 }

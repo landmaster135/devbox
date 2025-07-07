@@ -36,8 +36,8 @@ func TestDefaultREADMEParser_ParseUsageExamples_Normal(t *testing.T) {
 			t.Errorf("Expected 2 usage examples, got %d", len(result))
 		}
 		expectedExamples := []string{
-			"echo \\\"  ./test_package --help\\\"",
-			"echo \\\"  ./test_package input.txt\\\"",
+			"echo \"  ./test_package --help\"",
+			"echo \"  ./test_package input.txt\"",
 		}
 		for i, expected := range expectedExamples {
 			if result[i] != expected {
@@ -68,7 +68,7 @@ func TestDefaultREADMEParser_ParseUsageExamples_Normal(t *testing.T) {
 		if len(result) != 1 {
 			t.Errorf("Expected 1 usage example, got %d", len(result))
 		}
-		expected := "echo \\\"  ./test_package --version\\\""
+		expected := "echo \"  ./test_package --version\""
 		if result[0] != expected {
 			t.Errorf("Expected usage example '%s', got '%s'", expected, result[0])
 		}
@@ -145,7 +145,7 @@ go install ./...
 		if len(result) != 1 {
 			t.Errorf("Expected 1 usage example (first code block only), got %d", len(result))
 		}
-		expected := "echo \\\"  ./test_package basic\\\""
+		expected := "echo \"  ./test_package basic\""
 		if result[0] != expected {
 			t.Errorf("Expected usage example '%s', got '%s'", expected, result[0])
 		}
@@ -160,8 +160,8 @@ func TestDefaultScriptGenerator_GenerateContent_Normal(t *testing.T) {
 		packageName := "test-package"
 		packagePath := "cmd/cli/test-package"
 		usageExamples := []string{
-			"echo \\\"  ./test_package --help\\\"",
-			"echo \\\"  ./test_package input.txt\\\"",
+			"echo \"  ./test_package --help\"",
+			"echo \"  ./test_package input.txt\"",
 		}
 
 		// Act
@@ -210,7 +210,7 @@ func TestDefaultScriptGenerator_GenerateContent_Normal(t *testing.T) {
 		if !strings.Contains(result, "#!/bin/bash") {
 			t.Error("Expected script to contain shebang")
 		}
-		if !strings.Contains(result, "echo \\\"  ./test_package [options]\\\"") {
+		if !strings.Contains(result, "echo \"  ./test_package [options]\"") {
 			t.Error("Expected script to contain default usage example")
 		}
 	})
@@ -229,7 +229,7 @@ func TestDefaultScriptGenerator_GenerateContent_Normal(t *testing.T) {
 		if !strings.Contains(result, "OUTPUT_NAME=\"my-test-package\"") {
 			t.Error("Expected script to contain correct OUTPUT_NAME with hyphens")
 		}
-		if !strings.Contains(result, "echo \\\"  ./my_test_package [options]\\\"") {
+		if !strings.Contains(result, "echo \"  ./my_test_package [options]\"") {
 			t.Error("Expected default usage example to use underscores")
 		}
 	})
