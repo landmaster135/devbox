@@ -413,8 +413,19 @@ func GetSupportedExtensions() map[string][]string {
 	}
 }
 
+// normalizeExtension normalizes file extension by adding dot if missing
+func normalizeExtension(ext string) string {
+	if ext == "" {
+		return ext
+	}
+	if !strings.HasPrefix(ext, ".") {
+		return "." + ext
+	}
+	return ext
+}
+
 // ValidateBatchConfig validates the batch conversion configuration
-func ValidateBatchConfig(config BatchConversionConfig) error {
+func ValidateBatchConfig(config *BatchConversionConfig) error {
 	if config.InputDir == "" {
 		return fmt.Errorf("入力ディレクトリが指定されていません")
 	}
@@ -431,13 +442,9 @@ func ValidateBatchConfig(config BatchConversionConfig) error {
 		return fmt.Errorf("出力拡張子が指定されていません")
 	}
 
-	// 拡張子の正規化
-	if !strings.HasPrefix(config.InputExt, ".") {
-		config.InputExt = "." + config.InputExt
-	}
-	if !strings.HasPrefix(config.OutputExt, ".") {
-		config.OutputExt = "." + config.OutputExt
-	}
+	// 拡張子の正規化（ドットを自動追加）
+	config.InputExt = normalizeExtension(config.InputExt)
+	config.OutputExt = normalizeExtension(config.OutputExt)
 
 	// サポートされている拡張子の確認
 	supportedExts := GetSupportedExtensions()

@@ -70,9 +70,9 @@ go build -o movie-converter main.go
 | オプション | 説明 | デフォルト値 |
 |-----------|------|-------------|
 | `-input-dir` | 入力ディレクトリのパス（必須） | - |
-| `-input-ext` | 入力ファイルの拡張子（例: .mp4） | - |
+| `-input-ext` | 入力ファイルの拡張子（例: mp4） | - |
 | `-output-dir` | 出力ディレクトリのパス（必須） | - |
-| `-output-ext` | 出力ファイルの拡張子（例: .gif） | - |
+| `-output-ext` | 出力ファイルの拡張子（例: gif） | - |
 | `-recursive` | サブディレクトリも再帰的に処理するか | false |
 
 ### 共通オプション
@@ -129,19 +129,19 @@ PowerShellスクリプト（Z5-10_convert_gif_to_mp4.ps1）に基づく：
 ./movie-converter -input video.mp4 -output converted_video.gif
 
 # 5. 基本的なバッチ変換
-./movie-converter -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif
+./movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif
 # ./videosディレクトリ内の全ての.mp4ファイルを./gifsディレクトリに.gifとして変換
 
 # 6. 再帰的なバッチ変換
-./movie-converter -input-dir ./media -input-ext .mp4 -output-dir ./converted -output-ext .gif -recursive
+./movie-converter -input-dir ./media -input-ext mp4 -output-dir ./converted -output-ext gif -recursive
 # ./mediaディレクトリとそのサブディレクトリ内の全ての.mp4ファイルを変換
 
 # 7. カスタム設定でのバッチ変換
-./movie-converter -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif -fps 15 -width 320 -speed 1
+./movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif -fps 15 -width 320 -speed 1
 # カスタム設定（FPS=15, 幅=320px, 等倍速）でバッチ変換
 
 # 8. GIFからMP4のバッチ変換
-./movie-converter -input-dir ./animations -input-ext .gif -output-dir ./videos -output-ext .mp4 -fps 24
+./movie-converter -input-dir ./animations -input-ext gif -output-dir ./videos -output-ext mp4 -fps 24
 # 全てのGIFファイルをFPS=24でMP4に変換
 ```
 
