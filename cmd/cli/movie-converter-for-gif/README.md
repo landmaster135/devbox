@@ -16,7 +16,7 @@ GIFとMP4を相互に変換するCLIツールです。PowerShellスクリプト�
 ## インストール
 
 ```bash
-go build -o movie-converter main.go
+go build -o movie-converter-for-gif main.go
 ```
 
 ## 使用方法
@@ -25,35 +25,35 @@ go build -o movie-converter main.go
 
 ```bash
 # MP4からGIF（デフォルト設定）
-./movie-converter -input video.mp4
+./movie-converter-for-gif -input video.mp4
 
 # GIFからMP4（デフォルト設定）
-./movie-converter -input animation.gif
+./movie-converter-for-gif -input animation.gif
 
 # MP4からGIF（カスタム設定）
-./movie-converter -input video.mp4 -output custom.gif -fps 30 -width 320 -speed 1.5 -loop -1
+./movie-converter-for-gif -input video.mp4 -output custom.gif -fps 30 -width 320 -speed 1.5 -loop -1
 
 # GIFからMP4（カスタムFPS）
-./movie-converter -input animation.gif -output video.mp4 -fps 24
+./movie-converter-for-gif -input animation.gif -output video.mp4 -fps 24
 
 # ヘルプを表示
-./movie-converter -help
+./movie-converter-for-gif -help
 ```
 
 ### バッチ処理
 
 ```bash
 # MP4ファイルを一括でGIFに変換
-./movie-converter -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif
+./movie-converter-for-gif -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif
 
 # GIFファイルを一括でMP4に変換
-./movie-converter -input-dir ./animations -input-ext .gif -output-dir ./videos -output-ext .mp4
+./movie-converter-for-gif -input-dir ./animations -input-ext .gif -output-dir ./videos -output-ext .mp4
 
 # 再帰的にサブディレクトリも処理
-./movie-converter -input-dir ./media -input-ext .mp4 -output-dir ./converted -output-ext .gif -recursive
+./movie-converter-for-gif -input-dir ./media -input-ext .mp4 -output-dir ./converted -output-ext .gif -recursive
 
 # バッチ処理でカスタム設定
-./movie-converter -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif -fps 15 -width 480 -speed 1
+./movie-converter-for-gif -input-dir ./videos -input-ext .mp4 -output-dir ./gifs -output-ext .gif -fps 15 -width 480 -speed 1
 ```
 
 ## オプション
@@ -114,34 +114,34 @@ PowerShellスクリプト（Z5-10_convert_gif_to_mp4.ps1）に基づく：
 
 ```bash
 # 1. 基本的なMP4からGIF変換
-./movie-converter -input sample.mp4
+./movie-converter-for-gif -input sample.mp4
 # 出力: sample.gif（FPS=60, 2倍速, 無限ループ）
 
 # 2. カスタム設定でのMP4からGIF変換
-./movie-converter -input sample.mp4 -fps 15 -width 480 -speed 1 -loop -1
+./movie-converter-for-gif -input sample.mp4 -fps 15 -width 480 -speed 1 -loop -1
 # 出力: sample.gif（FPS=15, 幅480px, 等倍速, ループなし）
 
 # 3. GIFからMP4変換
-./movie-converter -input animation.gif -fps 30
+./movie-converter-for-gif -input animation.gif -fps 30
 # 出力: animation.mp4（FPS=30）
 
 # 4. 出力ファイル名を指定
-./movie-converter -input video.mp4 -output converted_video.gif
+./movie-converter-for-gif -input video.mp4 -output converted_video.gif
 
 # 5. 基本的なバッチ変換
-./movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif
+./movie-converter-for-gif -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif
 # ./videosディレクトリ内の全ての.mp4ファイルを./gifsディレクトリに.gifとして変換
 
 # 6. 再帰的なバッチ変換
-./movie-converter -input-dir ./media -input-ext mp4 -output-dir ./converted -output-ext gif -recursive
+./movie-converter-for-gif -input-dir ./media -input-ext mp4 -output-dir ./converted -output-ext gif -recursive
 # ./mediaディレクトリとそのサブディレクトリ内の全ての.mp4ファイルを変換
 
 # 7. カスタム設定でのバッチ変換
-./movie-converter -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif -fps 15 -width 320 -speed 1
+./movie-converter-for-gif -input-dir ./videos -input-ext mp4 -output-dir ./gifs -output-ext gif -fps 15 -width 320 -speed 1
 # カスタム設定（FPS=15, 幅=320px, 等倍速）でバッチ変換
 
 # 8. GIFからMP4のバッチ変換
-./movie-converter -input-dir ./animations -input-ext gif -output-dir ./videos -output-ext mp4 -fps 24
+./movie-converter-for-gif -input-dir ./animations -input-ext gif -output-dir ./videos -output-ext mp4 -fps 24
 # 全てのGIFファイルをFPS=24でMP4に変換
 ```
 
