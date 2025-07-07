@@ -556,3 +556,316 @@ func TestBatchConfigValidation(t *testing.T) {
 	testService.TestValidateBatchConfig_ValidConfig()
 	testService.TestValidateBatchConfig_ExtensionNormalization()
 }
+
+// #==============================================================#
+// ##         Tests for normalizeExtension function              ##
+// #==============================================================#
+// TestNormalizeExtension tests the normalizeExtension function
+type TestNormalizeExtension struct {
+	t *testing.T
+}
+
+// NewTestNormalizeExtension creates a new test instance
+func NewTestNormalizeExtension(t *testing.T) *TestNormalizeExtension {
+	return &TestNormalizeExtension{t: t}
+}
+
+// TestNormalizeExtension_EmptyString_Normal tests empty string handling
+func (ts *TestNormalizeExtension) TestNormalizeExtension_EmptyString_Normal() {
+	// Arrange
+	ext := ""
+	expected := ""
+
+	// Act
+	result := normalizeExtension(ext)
+
+	// Assert
+	if result != expected {
+		ts.t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+// TestNormalizeExtension_WithDot_Normal tests extension with dot
+func (ts *TestNormalizeExtension) TestNormalizeExtension_WithDot_Normal() {
+	// Arrange
+	ext := ".mp4"
+	expected := ".mp4"
+
+	// Act
+	result := normalizeExtension(ext)
+
+	// Assert
+	if result != expected {
+		ts.t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+// TestNormalizeExtension_WithoutDot_Normal tests extension without dot
+func (ts *TestNormalizeExtension) TestNormalizeExtension_WithoutDot_Normal() {
+	// Arrange
+	ext := "mp4"
+	expected := ".mp4"
+
+	// Act
+	result := normalizeExtension(ext)
+
+	// Assert
+	if result != expected {
+		ts.t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+// #==============================================================#
+// ##         Tests for convert method                           ##
+// #==============================================================#
+// TestMovieConverterServiceConvert tests the convert method
+type TestMovieConverterServiceConvert struct {
+	t *testing.T
+}
+
+// NewTestMovieConverterServiceConvert creates a new test instance
+func NewTestMovieConverterServiceConvert(t *testing.T) *TestMovieConverterServiceConvert {
+	return &TestMovieConverterServiceConvert{t: t}
+}
+
+// TestMovieConverterService_convert_FileNotExists tests convert with non-existent file
+func (ts *TestMovieConverterServiceConvert) TestMovieConverterService_convert_FileNotExists() {
+	// Arrange
+	config := ConversionConfig{
+		InputFile:  "nonexistent.mp4",
+		OutputFile: "output.gif",
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err := service.convert()
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for non-existent file, got nil")
+	}
+	expectedMsg := "入力ファイルが見つかりません: nonexistent.mp4"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// TestMovieConverterService_convert_NoExtension tests convert with no extension
+func (ts *TestMovieConverterServiceConvert) TestMovieConverterService_convert_NoExtension() {
+	// Arrange
+	// Create a temporary test file without extension
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "testfile")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: "output.gif",
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convert()
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for file without extension, got nil")
+	}
+	expectedMsg := "入力ファイル名に拡張子が含まれていません: " + testFile
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// TestMovieConverterService_convert_UnsupportedConversion tests unsupported conversion
+func (ts *TestMovieConverterServiceConvert) TestMovieConverterService_convert_UnsupportedConversion() {
+	// Arrange
+	// Create a temporary test file with unsupported extension
+	tempDir := ts.t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	file, err := os.Create(testFile)
+	if err != nil {
+		ts.t.Fatalf("Failed to create test file: %v", err)
+	}
+	file.Close()
+
+	config := ConversionConfig{
+		InputFile:  testFile,
+		OutputFile: "output.gif",
+	}
+	service := NewMovieConverterService(config)
+
+	// Act
+	err = service.convert()
+
+	// Assert
+	if err == nil {
+		ts.t.Error("Expected error for unsupported conversion, got nil")
+	}
+	expectedMsg := "サポートされていない変換: .txt -> .gif"
+	if err.Error() != expectedMsg {
+		ts.t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+// #==============================================================#
+// ##         Tests for batch scanFiles method                   ##
+// #==============================================================#
+// TestBatchMovieConverterServiceScanFiles tests the scanFiles method
+type TestBatchMovieConverterServiceScanFiles struct {
+	t *testing.T
+}
+
+// NewTestBatchMovieConverterServiceScanFiles creates a new test instance
+func NewTestBatchMovieConverterServiceScanFiles(t *testing.T) *TestBatchMovieConverterServiceScanFiles {
+	return &TestBatchMovieConverterServiceScanFiles{t: t}
+}
+
+// TestBatchMovieConverterService_scanFiles_Normal tests normal file scanning
+func (ts *TestBatchMovieConverterServiceScanFiles) TestBatchMovieConverterService_scanFiles_Normal() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+
+	// Create test files
+	testFiles := []string{"video1.mp4", "video2.mp4", "image.jpg"}
+	for _, fileName := range testFiles {
+		file, err := os.Create(filepath.Join(tempDir, fileName))
+		if err != nil {
+			ts.t.Fatalf("Failed to create test file %s: %v", fileName, err)
+		}
+		file.Close()
+	}
+
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: "/test/output",
+		OutputExt: ".gif",
+		Recursive: false,
+	}
+	service := NewBatchMovieConverterService(config)
+
+	// Act
+	files, err := service.scanFiles()
+
+	// Assert
+	if err != nil {
+		ts.t.Errorf("Expected no error, got %v", err)
+	}
+	if len(files) != 2 {
+		ts.t.Errorf("Expected 2 MP4 files, got %d", len(files))
+	}
+}
+
+// TestBatchMovieConverterService_scanFiles_Recursive tests recursive file scanning
+func (ts *TestBatchMovieConverterServiceScanFiles) TestBatchMovieConverterService_scanFiles_Recursive() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.MkdirAll(subDir, 0755)
+	if err != nil {
+		ts.t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+
+	// Create test files in root and subdirectory
+	rootFile := filepath.Join(tempDir, "root.mp4")
+	subFile := filepath.Join(subDir, "sub.mp4")
+
+	for _, fileName := range []string{rootFile, subFile} {
+		file, err := os.Create(fileName)
+		if err != nil {
+			ts.t.Fatalf("Failed to create test file %s: %v", fileName, err)
+		}
+		file.Close()
+	}
+
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: "/test/output",
+		OutputExt: ".gif",
+		Recursive: true,
+	}
+	service := NewBatchMovieConverterService(config)
+
+	// Act
+	files, err := service.scanFiles()
+
+	// Assert
+	if err != nil {
+		ts.t.Errorf("Expected no error, got %v", err)
+	}
+	if len(files) != 2 {
+		ts.t.Errorf("Expected 2 MP4 files (recursive), got %d", len(files))
+	}
+}
+
+// TestBatchMovieConverterService_scanFiles_NonRecursive tests non-recursive file scanning
+func (ts *TestBatchMovieConverterServiceScanFiles) TestBatchMovieConverterService_scanFiles_NonRecursive() {
+	// Arrange
+	tempDir := ts.t.TempDir()
+	subDir := filepath.Join(tempDir, "subdir")
+	err := os.MkdirAll(subDir, 0755)
+	if err != nil {
+		ts.t.Fatalf("Failed to create subdirectory: %v", err)
+	}
+
+	// Create test files in root and subdirectory
+	rootFile := filepath.Join(tempDir, "root.mp4")
+	subFile := filepath.Join(subDir, "sub.mp4")
+
+	for _, fileName := range []string{rootFile, subFile} {
+		file, err := os.Create(fileName)
+		if err != nil {
+			ts.t.Fatalf("Failed to create test file %s: %v", fileName, err)
+		}
+		file.Close()
+	}
+
+	config := BatchConversionConfig{
+		InputDir:  tempDir,
+		InputExt:  ".mp4",
+		OutputDir: "/test/output",
+		OutputExt: ".gif",
+		Recursive: false,
+	}
+	service := NewBatchMovieConverterService(config)
+
+	// Act
+	files, err := service.scanFiles()
+
+	// Assert
+	if err != nil {
+		ts.t.Errorf("Expected no error, got %v", err)
+	}
+	if len(files) != 1 {
+		ts.t.Errorf("Expected 1 MP4 file (non-recursive), got %d", len(files))
+	}
+}
+
+// Standard Go test functions for new tests
+
+func TestNormalizeExtensionFunction(t *testing.T) {
+	testService := NewTestNormalizeExtension(t)
+	testService.TestNormalizeExtension_EmptyString_Normal()
+	testService.TestNormalizeExtension_WithDot_Normal()
+	testService.TestNormalizeExtension_WithoutDot_Normal()
+}
+
+func TestMovieConverterServiceConvertMethod(t *testing.T) {
+	testService := NewTestMovieConverterServiceConvert(t)
+	testService.TestMovieConverterService_convert_FileNotExists()
+	testService.TestMovieConverterService_convert_NoExtension()
+	testService.TestMovieConverterService_convert_UnsupportedConversion()
+}
+
+func TestBatchMovieConverterServiceScanFilesMethod(t *testing.T) {
+	testService := NewTestBatchMovieConverterServiceScanFiles(t)
+	testService.TestBatchMovieConverterService_scanFiles_Normal()
+	testService.TestBatchMovieConverterService_scanFiles_Recursive()
+	testService.TestBatchMovieConverterService_scanFiles_NonRecursive()
+}
