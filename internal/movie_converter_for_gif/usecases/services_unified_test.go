@@ -38,6 +38,7 @@ func (ts *TestUnifiedMovieConverterService) TestNewUnifiedMovieConverterService_
 	// Assert
 	if service == nil {
 		ts.t.Error("NewUnifiedMovieConverterService should not return nil")
+		return
 	}
 	if service.config.Mode != SingleFileMode {
 		ts.t.Errorf("Expected SingleFileMode, got %d", service.config.Mode)
@@ -72,6 +73,7 @@ func (ts *TestUnifiedMovieConverterService) TestNewUnifiedMovieConverterService_
 	// Assert
 	if service == nil {
 		ts.t.Error("NewUnifiedMovieConverterService should not return nil")
+		return
 	}
 	if service.config.Mode != BatchMode {
 		ts.t.Errorf("Expected BatchMode, got %d", service.config.Mode)
@@ -99,6 +101,7 @@ func (ts *TestUnifiedMovieConverterService) TestNewUnifiedMovieConverterService_
 	// Assert
 	if service == nil {
 		ts.t.Error("NewUnifiedMovieConverterService should not return nil")
+		return
 	}
 	if service.config.Mode != SingleFileMode {
 		ts.t.Errorf("Expected SingleFileMode when batch config is empty, got %d", service.config.Mode)
@@ -171,6 +174,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessConversion) TestUnifiedMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Success {
 		ts.t.Error("Expected Success to be false for invalid config")
@@ -200,6 +204,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessConversion) TestUnifiedMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Success {
 		ts.t.Error("Expected Success to be false for invalid config")
@@ -223,6 +228,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessConversion) TestUnifiedMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Success {
 		ts.t.Error("Expected Success to be false for nil config")
@@ -255,6 +261,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessConversion) TestUnifiedMovieCon
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Success {
 		ts.t.Error("Expected Success to be false for nil config")
@@ -401,6 +408,7 @@ func (ts *TestUnifiedMovieConverterServiceUnknownMode) TestUnifiedMovieConverter
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Success {
 		ts.t.Error("Expected Success to be false for unknown mode")
@@ -442,12 +450,13 @@ func (ts *TestUnifiedMovieConverterServiceValidFile) TestUnifiedMovieConverterSe
 	service := NewUnifiedMovieConverterService(singleConfig, nil)
 
 	// Act
-	result, err := service.ProcessConversion()
+	result, _ := service.ProcessConversion()
 
 	// Assert
 	// This will fail because ffmpeg is not available, but we can test the setup
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Mode != SingleFileMode {
 		ts.t.Errorf("Expected SingleFileMode, got %d", result.Mode)
@@ -646,6 +655,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessBatchFiles) TestUnifiedMovieCon
 	// Assert
 	if finalResult == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if finalResult.Mode != BatchMode {
 		ts.t.Errorf("Expected BatchMode, got %d", finalResult.Mode)
@@ -685,6 +695,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessBatchFiles) TestUnifiedMovieCon
 	}
 	if finalResult == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if finalResult.Success {
 		ts.t.Error("Expected Success to be false for invalid config")
@@ -719,6 +730,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessBatchFiles) TestUnifiedMovieCon
 	}
 	if finalResult == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if finalResult.Success {
 		ts.t.Error("Expected Success to be false for unsupported extension")
@@ -771,6 +783,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessSingleFileSuccess) TestUnifiedM
 	// Assert
 	if finalResult == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if finalResult.Mode != SingleFileMode {
 		ts.t.Errorf("Expected SingleFileMode, got %d", finalResult.Mode)
@@ -816,6 +829,7 @@ func (ts *TestUnifiedMovieConverterServiceProcessSingleFileSuccess) TestUnifiedM
 	// Assert
 	if finalResult == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	// The conversion will fail due to ffmpeg not being available, but we test the setup
 	if err == nil {
@@ -860,6 +874,7 @@ func (ts *TestUnifiedMovieConverterServiceEdgeCases) TestUnifiedMovieConverterSe
 	}
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Mode != BatchMode {
 		ts.t.Errorf("Expected BatchMode, got %d", result.Mode)
@@ -892,6 +907,7 @@ func (ts *TestUnifiedMovieConverterServiceEdgeCases) TestUnifiedMovieConverterSe
 	// Assert
 	if result == nil {
 		ts.t.Error("Expected result object, got nil")
+		return
 	}
 	if result.Mode != SingleFileMode {
 		ts.t.Errorf("Expected SingleFileMode, got %d", result.Mode)
