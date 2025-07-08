@@ -35,10 +35,18 @@ func runReadMode(cfg *config.Config) error {
 
 // runRecordMode は記録モードを実行する
 func runRecordMode(cfg *config.Config) error {
-	// 現在のディレクトリを取得
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("現在のディレクトリを取得できませんでした: %w", err)
+	var workingDir string
+	var err error
+
+	if cfg.GitDir != "" {
+		// 指定されたディレクトリを使用
+		workingDir = cfg.GitDir
+	} else {
+		// 現在のディレクトリを使用（後方互換性）
+		workingDir, err = os.Getwd()
+		if err != nil {
+			return fmt.Errorf("現在のディレクトリを取得できませんでした: %w", err)
+		}
 	}
 
 	// 記録サービスを作成
