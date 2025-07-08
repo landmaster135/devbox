@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -197,6 +199,225 @@ func TestStandardOSArgs_Creation(t *testing.T) {
 
 	// 実際のos.Argsを取得できることを確認
 	args := osArgs.Args()
+	if args == nil {
+		t.Error("引数の取得に失敗しました")
+	}
+}
+
+// TestConfigParser_ParseFlags_GenMode は生成モードの正常系テスト
+func TestConfigParser_ParseFlags_GenMode(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder", "--gen-mode", "--git-dir", "/tmp/git"})
+	configParser := NewConfigParser(mockParser, mockOSArgs)
+
+	mockParser.SetBoolValue("gen-mode", true)
+	mockParser.SetStringValue("git-dir", "/tmp/git")
+
+	// Act
+	cfg, err := configParser.ParseFlags()
+
+	// Assert
+	if err != nil {
+		t.Errorf("引数解析でエラーが発生しました: %v", err)
+	}
+	if !cfg.GenMode {
+		t.Error("GenModeがtrueであるべきです")
+	}
+	if cfg.GitDir != "/tmp/git" {
+		t.Errorf("GitDirが期待値と異なります。期待値: /tmp/git, 実際: %s", cfg.GitDir)
+	}
+}
+
+// TestConfigParser_ParseFlags_ReadMode は読み取りモードの正常系テスト
+func TestConfigParser_ParseFlags_ReadMode(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder", "--read-mode", "--source-dir", "/tmp/source", "--repository", "test-repo"})
+	configParser := NewConfigParser(mockParser, mockOSArgs)
+
+	mockParser.SetBoolValue("read-mode", true)
+	mockParser.SetStringValue("source-dir", "/tmp/source")
+	mockParser.SetStringValue("repository", "test-repo")
+
+	// Act
+	cfg, err := configParser.ParseFlags()
+
+	// Assert
+	if err != nil {
+		t.Errorf("引数解析でエラーが発生しました: %v", err)
+	}
+	if !cfg.ReadMode {
+		t.Error("ReadModeがtrueであるべきです")
+	}
+	if cfg.SourceDir != "/tmp/source" {
+		t.Errorf("SourceDirが期待値と異なります。期待値: /tmp/source, 実際: %s", cfg.SourceDir)
+	}
+	if cfg.Repository != "test-repo" {
+		t.Errorf("Repositoryが期待値と異なります。期待値: test-repo, 実際: %s", cfg.Repository)
+	}
+}
+
+// TestConfigParser_validateConfig_GenModeMissingGitDir は生成モードでgit-dir不足のテスト
+func TestConfigParser_validateConfig_GenModeMissingGitDir(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder"})
+	configParser := NewConfigParser(mockParser, mockOSArgs)
+
+	mockParser.SetBoolValue("gen-mode", true)
+	// git-dirを設定しない
+
+	// Act
+	cfg, err := configParser.ParseFlags()
+
+	// Assert
+	if err == nil {
+		t.Error("必須パラメータが不足しているのにエラーが発生しませんでした")
+	}
+	if cfg != nil {
+		t.Error("エラー時にはconfigはnilであるべきです")
+	}
+	if !strings.Contains(err.Error(), "生成モードでは --git-dir は必須パラメータです") {
+		t.Errorf("期待されるエラーメッセージと異なります: %v", err)
+	}
+}
+
+// TestConfigParser_validateConfig_ReadModeMissingSourceDir は読み取りモードでsource-dir不足のテスト
+func TestConfigParser_validateConfig_ReadModeMissingSourceDir(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder"})
+	configParser := NewConfigParser(mockParser, mockOSArgs)
+
+	mockParser.SetBoolValue("read-mode", true)
+	mockParser.SetStringValue("repository", "test-repo")
+	// source-dirを設定しない
+
+	// Act
+	cfg, err := configParser.ParseFlags()
+
+	// Assert
+	if err == nil {
+		t.Error("必須パラメータが不足しているのにエラーが発生しませんでした")
+	}
+	if cfg != nil {
+		t.Error("エラー時にはconfigはnilであるべきです")
+	}
+	if !strings.Contains(err.Error(), "読み取りモードでは --source-dir は必須パラメータです") {
+		t.Errorf("期待されるエラーメッセージと異なります: %v", err)
+	}
+}
+
+// TestConfigParser_validateConfig_RecordModeMissingOutputDir は記録モードでoutput-dir不足のテスト
+func TestConfigParser_validateConfig_RecordModeMissingOutputDir(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder"})
+	configParser := NewConfigParser(mockParser, mockOSArgs)
+
+	// 全てのモードフラグをfalseに設定（記録モードがデフォルト）
+	mockParser.SetBoolValue("read-mode", false)
+	mockParser.SetBoolValue("gen-mode", false)
+	// output-dirを設定しない
+
+	// Act
+	cfg, err := configParser.ParseFlags()
+
+	// Assert
+	if err == nil {
+		t.Error("必須パラメータが不足しているのにエラーが発生しませんでした")
+	}
+	if cfg != nil {
+		t.Error("エラー時にはconfigはnilであるべきです")
+	}
+	if !strings.Contains(err.Error(), "記録モードでは --output-dir は必須パラメータです") {
+		t.Errorf("期待されるエラーメッセージと異なります: %v", err)
+	}
+}
+
+// TestParseFlags_BackwardCompatibility は後方互換性関数のテスト
+func TestParseFlags_BackwardCompatibility(t *testing.T) {
+	// Arrange
+	// 実際のos.Argsを一時的に変更
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	os.Args = []string{"git-diff-recorder", "--output-dir", "/tmp/output"}
+
+	// Act
+	cfg, err := ParseFlags()
+
+	// Assert
+	if err != nil {
+		t.Errorf("ParseFlagsでエラーが発生しました: %v", err)
+	}
+	if cfg == nil {
+		t.Error("configがnilです")
+	}
+}
+
+// TestPrintUsage_Normal はPrintUsage関数のテスト
+func TestPrintUsage_Normal(t *testing.T) {
+	// Arrange
+	// 実際のos.Argsを一時的に変更
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	os.Args = []string{"test-program"}
+
+	// Act & Assert
+	// PrintUsageは出力のみを行うため、パニックしないことを確認
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("PrintUsageでパニックが発生しました: %v", r)
+		}
+	}()
+
+	PrintUsage()
+}
+
+// TestStandardFlagParser_StringVar はStringVar機能のテスト
+func TestStandardFlagParser_StringVar(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+	var testValue string
+
+	// Act
+	parser.StringVar(&testValue, "test-string", "default", "test usage")
+
+	// Assert
+	// StringVarが正常に呼び出せることを確認
+	if testValue != "default" {
+		t.Errorf("デフォルト値が設定されていません。期待値: default, 実際: %s", testValue)
+	}
+}
+
+// TestStandardFlagParser_BoolVar はBoolVar機能のテスト
+func TestStandardFlagParser_BoolVar(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+	var testValue bool
+
+	// Act
+	parser.BoolVar(&testValue, "test-bool", true, "test usage")
+
+	// Assert
+	// BoolVarが正常に呼び出せることを確認
+	if testValue != true {
+		t.Errorf("デフォルト値が設定されていません。期待値: true, 実際: %t", testValue)
+	}
+}
+
+// TestStandardFlagParser_Args はArgs機能のテスト
+func TestStandardFlagParser_Args(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+
+	// Act
+	args := parser.Args()
+
+	// Assert
 	if args == nil {
 		t.Error("引数の取得に失敗しました")
 	}
