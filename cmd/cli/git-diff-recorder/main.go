@@ -8,6 +8,22 @@ import (
 	"github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
 )
 
+// runGenMode は生成モードを実行する
+func runGenMode(cfg *config.Config) error {
+	// 生成サービスを作成
+	service := usecases.NewGitDiffGeneratorService(cfg.GitDir, cfg)
+
+	// 詳細差分を取得
+	detailedDiff, err := service.GetCurrentDetailedDiff()
+	if err != nil {
+		return err
+	}
+
+	// 詳細差分のみを出力
+	fmt.Print(detailedDiff)
+	return nil
+}
+
 // runReadMode は読み取りモードを実行する
 func runReadMode(cfg *config.Config) error {
 	// 読み取りサービスを作成
@@ -41,7 +57,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.ReadMode {
+	if cfg.GenMode {
+		// 生成モード
+		if err := runGenMode(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+			os.Exit(1)
+		}
+	} else if cfg.ReadMode {
 		// 読み取りモード
 		if err := runReadMode(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
