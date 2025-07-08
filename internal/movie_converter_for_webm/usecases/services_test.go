@@ -36,6 +36,7 @@ func TestMovieConverterService_Convert_MP4ToWEBM_Normal(t *testing.T) {
 	// Note: This will fail due to missing ffmpeg, but we test the logic flow
 	err = service.convert()
 
+	// TODO: assertion when missing ffmpeg is wrong
 	// We expect an error due to missing ffmpeg, but the validation should pass
 	if err == nil {
 		t.Error("Expected error due to missing ffmpeg, got nil")
@@ -71,6 +72,7 @@ func TestMovieConverterService_Convert_WEBMToMP4_Normal(t *testing.T) {
 	// Note: This will fail due to missing ffmpeg, but we test the logic flow
 	err = service.convert()
 
+	// TODO: assertion when missing ffmpeg is wrong
 	// We expect an error due to missing ffmpeg, but the validation should pass
 	if err == nil {
 		t.Error("Expected error due to missing ffmpeg, got nil")
@@ -261,6 +263,7 @@ func TestMovieConverterService_ConvertMP4ToWEBM_SpaceInFilename(t *testing.T) {
 	// This will fail due to missing ffmpeg, but should process the space warning
 	err = service.convertMP4ToWEBM()
 
+	// TODO: assertion when missing ffmpeg is wrong
 	// We expect an error due to missing ffmpeg
 	if err == nil {
 		t.Error("Expected error due to missing ffmpeg, got nil")
@@ -296,6 +299,7 @@ func TestMovieConverterService_ConvertMP4ToWEBM_VorbisCodec(t *testing.T) {
 	// This will fail due to missing ffmpeg, but should process the codec setting
 	err = service.convertMP4ToWEBM()
 
+	// TODO: assertion when missing ffmpeg is wrong
 	// We expect an error due to missing ffmpeg
 	if err == nil {
 		t.Error("Expected error due to missing ffmpeg, got nil")
@@ -331,6 +335,7 @@ func TestMovieConverterService_ConvertMP4ToWEBM_CBRMode(t *testing.T) {
 	// This will fail due to missing ffmpeg, but should process CBR mode
 	err = service.convertMP4ToWEBM()
 
+	// TODO: assertion when missing ffmpeg is wrong
 	// We expect an error due to missing ffmpeg
 	if err == nil {
 		t.Error("Expected error due to missing ffmpeg, got nil")
@@ -361,6 +366,7 @@ func TestMovieConverterService_ConvertWEBMToMP4_SpaceInFilename(t *testing.T) {
 	// This will fail due to missing ffmpeg, but should process the space warning
 	err = service.convertWEBMToMP4()
 
+	// TODO: assertion when missing ffmpeg is wrong
 	// We expect an error due to missing ffmpeg
 	if err == nil {
 		t.Error("Expected error due to missing ffmpeg, got nil")
@@ -391,6 +397,7 @@ func TestMovieConverterService_Convert_AllSupportedInputFormats(t *testing.T) {
 		service := NewMovieConverterService(config)
 		err = service.convert()
 
+	// TODO: assertion when missing ffmpeg is wrong
 		// We expect an error due to missing ffmpeg, but validation should pass
 		if err == nil {
 			t.Errorf("Expected error due to missing ffmpeg for %s, got nil", ext)
