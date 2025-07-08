@@ -1,17 +1,18 @@
 # Git Diff Recorder
 
-Git差分を記録するCLIツールです。リポジトリの差分情報を構造化されたフォーマットでファイルに出力します。
+Git差分を記録・読み取りするCLIツールです。リポジトリの差分情報を構造化されたフォーマットでファイルに出力し、後で読み取ることができます。
 
 ## 機能
 
-- Git差分の記録（ステージング済み/全差分）
+- **記録モード**: Git差分の記録（ステージング済み/全差分）
+- **読み取りモード**: 保存されたdiffファイルから詳細差分を表示
 - リポジトリ情報の記録（リポジトリ名、ブランチ、コミットハッシュ）
 - ファイル変更統計の記録
 - 構造化された出力フォーマット（将来のコミットメッセージ生成に対応）
 
 ## 使用方法
 
-### 基本的な使用方法
+### 記録モード（既存機能）
 
 ```bash
 # 全ての差分を記録
@@ -21,20 +22,38 @@ Git差分を記録するCLIツールです。リポジトリの差分情報を�
 ./git-diff-recorder --output-dir /path/to/output --staged-only
 ```
 
-## 使用例
+### 読み取りモード（新機能）
 
 ```bash
+# 指定リポジトリの最新diffファイルから詳細差分を表示
+./git-diff-recorder --read-mode --source-dir /path/to/diffs --repository repo-name
+```
+
+## 使用例
+```bash
 # 全ての差分を記録
-./git-diff-recorder --output-dir /path/to/output
+./git-diff-recorder --output-dir /tmp/diffs
 
 # ステージング済み差分のみを記録
-./git-diff-recorder --output-dir /path/to/output --staged-only
+./git-diff-recorder --output-dir /tmp/diffs --staged-only
+
+# devboxリポジトリの最新差分を表示
+./git-diff-recorder --read-mode --source-dir /tmp/diffs --repository devbox
+
+# 別のリポジトリの差分を表示
+./git-diff-recorder --read-mode --source-dir /home/user/git-diffs --repository my-project
 ```
 
 ### パラメータ
 
+#### 記録モード
 - `--output-dir` (必須): 出力先ディレクトリ
 - `--staged-only` (オプション): ステージング済み差分のみ記録 (デフォルト: false)
+
+#### 読み取りモード
+- `--read-mode` (必須): 読み取りモードを有効にする
+- `--source-dir` (必須): 読み取り対象のディレクトリ
+- `--repository` (必須): 対象リポジトリ名
 
 ### 出力形式
 

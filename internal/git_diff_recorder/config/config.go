@@ -19,18 +19,35 @@ const (
 type Config struct {
 	OutputDir  string
 	StagedOnly bool
+	ReadMode   bool
+	SourceDir  string
+	Repository string
 }
 
 // ParseFlags はコマンドライン引数を解析してConfigを返す
 func ParseFlags() (*Config, error) {
 	var config Config
 
-	flag.StringVar(&config.OutputDir, "output-dir", "", "出力先ディレクトリ (必須)")
+	flag.StringVar(&config.OutputDir, "output-dir", "", "出力先ディレクトリ (記録モード時必須)")
 	flag.BoolVar(&config.StagedOnly, "staged-only", false, "ステージング済み差分のみ記録 (デフォルト: false)")
+	flag.BoolVar(&config.ReadMode, "read-mode", false, "読み取りモードを有効にする")
+	flag.StringVar(&config.SourceDir, "source-dir", "", "読み取り対象のディレクトリ (読み取りモード時必須)")
+	flag.StringVar(&config.Repository, "repository", "", "対象リポジトリ名 (読み取りモード時必須)")
 	flag.Parse()
 
-	if config.OutputDir == "" {
-		return nil, fmt.Errorf("--output-dir は必須パラメータです")
+	if config.ReadMode {
+		// 読み取りモードの場合
+		if config.SourceDir == "" {
+			return nil, fmt.Errorf("読み取りモードでは --source-dir は必須パラメータです")
+		}
+		if config.Repository == "" {
+			return nil, fmt.Errorf("読み取りモードでは --repository は必須パラメータです")
+		}
+	} else {
+		// 記録モードの場合
+		if config.OutputDir == "" {
+			return nil, fmt.Errorf("記録モードでは --output-dir は必須パラメータです")
+		}
 	}
 
 	return &config, nil
