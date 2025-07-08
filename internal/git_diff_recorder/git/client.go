@@ -2,7 +2,6 @@ package git
 
 import (
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -10,21 +9,28 @@ import (
 // Client はGit操作を行うクライアント
 type Client struct {
 	workingDir string
+	executor   GitCommandExecutor
 }
 
 // NewClient は新しいGitクライアントを作成する
 func NewClient(workingDir string) *Client {
 	return &Client{
 		workingDir: workingDir,
+		executor:   NewStandardGitExecutor(),
+	}
+}
+
+// NewClientWithExecutor は依存性注入可能なGitクライアントを作成する
+func NewClientWithExecutor(workingDir string, executor GitCommandExecutor) *Client {
+	return &Client{
+		workingDir: workingDir,
+		executor:   executor,
 	}
 }
 
 // GetRepositoryName はリポジトリ名を取得する
 func (c *Client) GetRepositoryName() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	cmd.Dir = c.workingDir
-
-	output, err := cmd.Output()
+	output, err := c.executor.Execute(c.workingDir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", fmt.Errorf("リポジトリのルートディレクトリを取得できませんでした: %w", err)
 	}
@@ -37,10 +43,7 @@ func (c *Client) GetRepositoryName() (string, error) {
 
 // GetCurrentBranch は現在のブランチ名を取得する
 func (c *Client) GetCurrentBranch() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
-	cmd.Dir = c.workingDir
-
-	output, err := cmd.Output()
+	output, err := c.executor.Execute(c.workingDir, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("現在のブランチを取得できませんでした: %w", err)
 	}
@@ -50,10 +53,7 @@ func (c *Client) GetCurrentBranch() (string, error) {
 
 // GetLatestCommitHash は最新のコミットハッシュを取得する
 func (c *Client) GetLatestCommitHash() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = c.workingDir
-
-	output, err := cmd.Output()
+	output, err := c.executor.Execute(c.workingDir, "rev-parse", "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("最新のコミットハッシュを取得できませんでした: %w", err)
 	}
@@ -69,19 +69,17 @@ func (c *Client) GetLatestCommitHash() (string, error) {
 
 // GetDiff は差分を取得する
 func (c *Client) GetDiff(stagedOnly bool) (string, error) {
-	var cmd *exec.Cmd
+	var output []byte
+	var err error
 
 	if stagedOnly {
 		// ステージング済みの差分のみ
-		cmd = exec.Command("git", "diff", "--cached")
+		output, err = c.executor.Execute(c.workingDir, "diff", "--cached")
 	} else {
 		// 全ての差分（ステージング済み + 未ステージング）
-		cmd = exec.Command("git", "diff", "HEAD")
+		output, err = c.executor.Execute(c.workingDir, "diff", "HEAD")
 	}
 
-	cmd.Dir = c.workingDir
-
-	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("差分を取得できませんでした: %w", err)
 	}
@@ -91,10 +89,7 @@ func (c *Client) GetDiff(stagedOnly bool) (string, error) {
 
 // GetStatus はgit statusの情報を取得する
 func (c *Client) GetStatus() (string, error) {
-	cmd := exec.Command("git", "status", "--porcelain")
-	cmd.Dir = c.workingDir
-
-	output, err := cmd.Output()
+	output, err := c.executor.Execute(c.workingDir, "status", "--porcelain")
 	if err != nil {
 		return "", fmt.Errorf("ステータスを取得できませんでした: %w", err)
 	}
