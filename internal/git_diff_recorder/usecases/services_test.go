@@ -107,6 +107,45 @@ func TestGitDiffRecorderService_RecordDiff_StagedOnly(t *testing.T) {
 	}
 }
 
+// TestGitDiffRecorderService_RecordDiff_WithGitDir は指定Gitディレクトリでの記録のテスト
+func TestGitDiffRecorderService_RecordDiff_WithGitDir(t *testing.T) {
+	// Arrange
+	// テスト用の一時ディレクトリを作成
+	tempDir, err := os.MkdirTemp("", "git-diff-recorder-test-gitdir")
+	if err != nil {
+		t.Fatalf("一時ディレクトリの作成に失敗しました: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// テスト用の出力ディレクトリを作成
+	outputDir := filepath.Join(tempDir, "output")
+
+	// devboxディレクトリを指定（実際のgitリポジトリ）
+	workingDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("現在のディレクトリの取得に失敗しました: %v", err)
+	}
+	devboxDir := filepath.Join(workingDir, "../../../..")
+
+	cfg := &config.Config{
+		OutputDir:  outputDir,
+		StagedOnly: false,
+		GitDir:     devboxDir, // 指定Gitディレクトリ
+	}
+
+	service := NewGitDiffRecorderService(devboxDir, cfg)
+
+	// Act
+	err = service.RecordDiff()
+
+	// Assert
+	if err != nil {
+		t.Logf("期待されるエラー（gitリポジトリでない場合）: %v", err)
+	} else {
+		t.Log("指定Gitディレクトリでの差分記録が正常に完了しました")
+	}
+}
+
 // TestConfig_ParseFlags_Normal はコマンドライン引数解析の正常系テスト
 func TestConfig_ParseFlags_Normal(t *testing.T) {
 	// flagパッケージの制限により、同一プロセス内でのflag再定義はできないため

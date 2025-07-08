@@ -42,11 +42,14 @@ Git差分を記録・読み取りするCLIツールです。リポジトリの�
 
 ## 使用例
 ```bash
-# 全ての差分を記録
+# 全ての差分を記録（現在のディレクトリ）
 ./git-diff-recorder --output-dir /tmp/diffs
 
 # ステージング済み差分のみを記録
 ./git-diff-recorder --output-dir /tmp/diffs --staged-only
+
+# 指定Gitディレクトリの差分を記録
+./git-diff-recorder --output-dir /tmp/diffs --git-dir /home/user/my-project
 
 # devboxリポジトリの最新差分を表示
 ./git-diff-recorder --read-mode --source-dir /tmp/diffs --repository devbox
@@ -65,6 +68,7 @@ Git差分を記録・読み取りするCLIツールです。リポジトリの�
 
 #### 記録モード
 - `--output-dir` (必須): 出力先ディレクトリ
+- `--git-dir` (オプション): 対象Gitディレクトリ（未指定時は現在のディレクトリ）
 - `--staged-only` (オプション): ステージング済み差分のみ記録 (デフォルト: false)
 
 #### 読み取りモード

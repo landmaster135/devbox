@@ -36,7 +36,7 @@ func ParseFlags() (*Config, error) {
 	flag.BoolVar(&config.GenMode, "gen-mode", false, "生成モードを有効にする")
 	flag.StringVar(&config.SourceDir, "source-dir", "", "読み取り対象のディレクトリ (読み取りモード時必須)")
 	flag.StringVar(&config.Repository, "repository", "", "対象リポジトリ名 (読み取りモード時必須)")
-	flag.StringVar(&config.GitDir, "git-dir", "", "対象Gitディレクトリ (生成モード時必須)")
+	flag.StringVar(&config.GitDir, "git-dir", "", "対象Gitディレクトリ (生成モード時必須、記録モード時オプション)")
 	flag.Parse()
 
 	if config.GenMode {
