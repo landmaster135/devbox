@@ -96,11 +96,19 @@ func TestUnifiedMovieConverterService_ProcessSingleFile_Normal(t *testing.T) {
 		Mode: SingleFileMode,
 	}
 
-	// Note: This test will fail during actual conversion due to missing ffmpeg
+	// Note: This test will fail during actual conversion due to invalid dummy file
 	// but we can test the validation and setup logic
 	_, err = service.processSingleFile(result)
 
-	// We expect an error due to missing ffmpeg, but the validation should pass
+	// We expect an error due to invalid dummy file (ffmpeg exit status 183)
+	if err == nil {
+		t.Error("Expected error due to invalid dummy file, got nil")
+	}
+
+	if result.Success {
+		t.Error("Expected Success to be false due to ffmpeg error")
+	}
+
 	if result.SingleResult == nil {
 		t.Error("Expected SingleResult to be set")
 	}
@@ -178,9 +186,18 @@ func TestUnifiedMovieConverterService_ProcessSingleFile_AutoOutputFile(t *testin
 		Mode: SingleFileMode,
 	}
 
-	// Note: This test will fail during actual conversion due to missing ffmpeg
+	// Note: This test will fail during actual conversion due to invalid dummy file
 	// but we can test the auto-generation logic
 	_, err = service.processSingleFile(result)
+
+	// We expect an error due to invalid dummy file (ffmpeg exit status 183)
+	if err == nil {
+		t.Error("Expected error due to invalid dummy file, got nil")
+	}
+
+	if result.Success {
+		t.Error("Expected Success to be false due to ffmpeg error")
+	}
 
 	expectedOutputFile := filepath.Join(tempDir, "test.webm")
 	if service.config.SingleConfig.OutputFile != expectedOutputFile {
@@ -255,15 +272,23 @@ func TestUnifiedMovieConverterService_ProcessConversion_SingleFileMode(t *testin
 	service := NewUnifiedMovieConverterService(singleConfig, nil)
 	result, err := service.ProcessConversion()
 
+	// We expect an error due to invalid dummy file (ffmpeg exit status 183)
+	if err == nil {
+		t.Error("Expected error due to invalid dummy file, got nil")
+	}
+
 	if result == nil {
 		t.Fatal("ProcessConversion returned nil result")
+	}
+
+	if result.Success {
+		t.Error("Expected Success to be false due to ffmpeg error")
 	}
 
 	if result.Mode != SingleFileMode {
 		t.Errorf("Expected SingleFileMode, got %v", result.Mode)
 	}
 
-	// Note: We expect an error due to missing ffmpeg, but the structure should be correct
 	if result.SingleResult == nil {
 		t.Error("Expected SingleResult to be set")
 	}

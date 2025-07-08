@@ -543,6 +543,12 @@ func (us *UnifiedMovieConverterService) processSingleFile(result *UnifiedConvers
 	if err := validateSingleConfig(*us.config.SingleConfig); err != nil {
 		result.Success = false
 		result.Error = fmt.Errorf("設定エラー: %w", err)
+		result.SingleResult = &ConversionResult{
+			InputFile:  us.config.SingleConfig.InputFile,
+			OutputFile: us.config.SingleConfig.OutputFile,
+			Success:    false,
+			Error:      err,
+		}
 		return result, result.Error
 	}
 
