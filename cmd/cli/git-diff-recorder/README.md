@@ -6,6 +6,7 @@ Git差分を記録・読み取りするCLIツールです。リポジトリの�
 
 - **記録モード**: Git差分の記録（ステージング済み/全差分）
 - **読み取りモード**: 保存されたdiffファイルから詳細差分を表示
+- **生成モード**: 指定Gitディレクトリから直接差分を取得・出力
 - リポジトリ情報の記録（リポジトリ名、ブランチ、コミットハッシュ）
 - ファイル変更統計の記録
 - 構造化された出力フォーマット（将来のコミットメッセージ生成に対応）
@@ -22,11 +23,21 @@ Git差分を記録・読み取りするCLIツールです。リポジトリの�
 ./git-diff-recorder --output-dir /path/to/output --staged-only
 ```
 
-### 読み取りモード（新機能）
+### 読み取りモード
 
 ```bash
 # 指定リポジトリの最新diffファイルから詳細差分を表示
 ./git-diff-recorder --read-mode --source-dir /path/to/diffs --repository repo-name
+```
+
+### 生成モード
+
+```bash
+# 指定Gitディレクトリから直接差分を取得
+./git-diff-recorder --gen-mode --git-dir /path/to/git/repository
+
+# ステージング済み差分のみを取得
+./git-diff-recorder --gen-mode --git-dir /path/to/git/repository --staged-only
 ```
 
 ## 使用例
@@ -42,6 +53,12 @@ Git差分を記録・読み取りするCLIツールです。リポジトリの�
 
 # 別のリポジトリの差分を表示
 ./git-diff-recorder --read-mode --source-dir /home/user/git-diffs --repository my-project
+
+# 指定Gitディレクトリから直接差分を取得
+./git-diff-recorder --gen-mode --git-dir /home/user/my-project
+
+# 指定Gitディレクトリのステージング済み差分のみを取得
+./git-diff-recorder --gen-mode --git-dir /home/user/my-project --staged-only
 ```
 
 ### パラメータ
@@ -54,6 +71,11 @@ Git差分を記録・読み取りするCLIツールです。リポジトリの�
 - `--read-mode` (必須): 読み取りモードを有効にする
 - `--source-dir` (必須): 読み取り対象のディレクトリ
 - `--repository` (必須): 対象リポジトリ名
+
+#### 生成モード
+- `--gen-mode` (必須): 生成モードを有効にする
+- `--git-dir` (必須): 対象Gitディレクトリ
+- `--staged-only` (オプション): ステージング済み差分のみ取得 (デフォルト: false)
 
 ### 出力形式
 
