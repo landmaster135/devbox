@@ -18,7 +18,7 @@ Provides utilities for development.
 ## Generate shell scripts to build
 ```bash
 cd devbox
-./pkg/bin/linux_amd64/script-generator-to-build <TOOL_NAME>
+./pkg/bin/cli/linux_amd64/script-generator-to-build <TOOL_NAME>
 ```
 
 # Build
