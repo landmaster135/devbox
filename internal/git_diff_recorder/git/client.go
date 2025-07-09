@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -67,8 +68,120 @@ func (c *Client) GetLatestCommitHash() (string, error) {
 	return hash, nil
 }
 
+// getUntrackedFiles は未追跡ファイルのリストを取得する
+func (c *Client) getUntrackedFiles() ([]string, error) {
+	status, err := c.GetStatus()
+	if err != nil {
+		return nil, err
+	}
+
+	var untrackedFiles []string
+	lines := strings.Split(status, "\n")
+
+	for _, line := range lines {
+		if len(line) >= 3 {
+			statusCode := line[:2]
+			filename := strings.TrimSpace(line[3:])
+
+			// 未追跡ファイル（??）のみを対象
+			if statusCode == "??" {
+				untrackedFiles = append(untrackedFiles, filename)
+			}
+		}
+	}
+
+	return untrackedFiles, nil
+}
+
+// processUntrackedFile は単一の未追跡ファイルを処理する
+func (c *Client) processUntrackedFile(fullPath, relativePath string, diffOutput *strings.Builder) error {
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return err
+	}
+
+	// diff形式で出力
+	diffOutput.WriteString(fmt.Sprintf("diff --git a/%s b/%s\n", relativePath, relativePath))
+	diffOutput.WriteString("new file mode 100644\n")
+	diffOutput.WriteString("index 0000000..0000000\n")
+	diffOutput.WriteString("--- /dev/null\n")
+	diffOutput.WriteString(fmt.Sprintf("+++ b/%s\n", relativePath))
+
+	// ファイル内容を+行として追加
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		diffOutput.WriteString(fmt.Sprintf("+%s\n", line))
+	}
+
+	return nil
+}
+
+// processUntrackedDirectory は未追跡ディレクトリを再帰的に処理する
+func (c *Client) processUntrackedDirectory(dirPath, relativeDirPath string, diffOutput *strings.Builder) error {
+	return filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// ディレクトリはスキップ
+		if info.IsDir() {
+			return nil
+		}
+
+		// 相対パスを計算
+		relPath, err := filepath.Rel(c.workingDir, path)
+		if err != nil {
+			return err
+		}
+
+		return c.processUntrackedFile(path, relPath, diffOutput)
+	})
+}
+
+// getUntrackedFilesDiff は未追跡ファイルの差分を取得する
+func (c *Client) getUntrackedFilesDiff() (string, error) {
+	// 未追跡ファイルのリストを取得
+	untrackedFiles, err := c.getUntrackedFiles()
+	if err != nil {
+		return "", err
+	}
+
+	if len(untrackedFiles) == 0 {
+		return "", nil
+	}
+
+	var diffOutput strings.Builder
+
+	for _, filename := range untrackedFiles {
+		fullPath := filepath.Join(c.workingDir, filename)
+
+		// ファイルかディレクトリかを確認
+		info, err := os.Stat(fullPath)
+		if err != nil {
+			continue
+		}
+
+		if info.IsDir() {
+			// ディレクトリの場合は再帰的に処理
+			err := c.processUntrackedDirectory(fullPath, filename, &diffOutput)
+			if err != nil {
+				continue
+			}
+		} else {
+			// ファイルの場合は直接処理
+			err := c.processUntrackedFile(fullPath, filename, &diffOutput)
+			if err != nil {
+				continue
+			}
+		}
+	}
+
+	return diffOutput.String(), nil
+}
+
 // GetDiff は差分を取得する
 func (c *Client) GetDiff(stagedOnly bool) (string, error) {
+	var diffOutput strings.Builder
 	var output []byte
 	var err error
 
@@ -84,7 +197,26 @@ func (c *Client) GetDiff(stagedOnly bool) (string, error) {
 		return "", fmt.Errorf("差分を取得できませんでした: %w", err)
 	}
 
-	return string(output), nil
+	// 追跡済みファイルの差分を追加
+	if len(output) > 0 {
+		diffOutput.WriteString(string(output))
+	}
+
+	// 未追跡ファイルの差分も含める（stagedOnlyがfalseの場合のみ）
+	if !stagedOnly {
+		untrackedDiff, err := c.getUntrackedFilesDiff()
+		if err != nil {
+			return "", fmt.Errorf("未追跡ファイルの差分取得に失敗しました: %w", err)
+		}
+		if untrackedDiff != "" {
+			if diffOutput.Len() > 0 {
+				diffOutput.WriteString("\n")
+			}
+			diffOutput.WriteString(untrackedDiff)
+		}
+	}
+
+	return diffOutput.String(), nil
 }
 
 // GetStatus はgit statusの情報を取得する
