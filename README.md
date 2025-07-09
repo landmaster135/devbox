@@ -1,6 +1,6 @@
 # devbox
 ![Go](https://img.shields.io/badge/Go-1.23-%2300ADD8?logo=go)
-![Coverage](https://img.shields.io/badge/Coverage-36.2%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-47.3%25-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 Provides utilities for development.
@@ -10,9 +10,20 @@ Provides utilities for development.
 
 # Development
 
+## Generate Go packages
+```bash
+./scripts/create_project_files.sh <PACKAGE_NAME>
+```
+
+## Generate shell scripts to build
+```bash
+cd devbox
+./pkg/bin/linux_amd64/script-generator-to-build <TOOL_NAME>
+```
+
 ## Build
 ```bash
-./scripts/build_file_processor.sh
+./scripts/build.sh
 ```
 
 Confirm compilable distributions.
@@ -22,51 +33,68 @@ go tool dist list
 
 ## Project Structure
 
-`devbox` is based on Clean Architecture. That package dependencies are the following.
+`devbox`は複数のCLIツールを提供する開発ユーティリティ集合体です。Clean Architectureに基づいて設計されており、以下のパッケージ依存関係を持ちます。
 
 ```mermaid
 graph TD
-  A[cmd/file-processor/main.go] --> B[internal/interfaces/repositories]
-  A --> C[internal/usecases/services]
+  A[cmd/cli/*] --> B[internal/*/usecases]
+  A --> C[internal/*/interfaces]
+  A --> D[internal/*/domain]
   
-  C[internal/usecases/services] --> D[internal/domain/repositories]
+  B --> D
+  C --> D
   
-  B[internal/interfaces/repositories] --> D[internal/domain/repositories]
-  B --> E[internal/domain/models]
+  E[scripts/*.sh] --> F[pkg/bin/*/]
+  A --> G[util]
+  B --> G
+  C --> G
   
-  D[internal/domain/repositories] --> E[internal/domain/models]
+  F --> H[DOS Batch Files]
+  F --> I[Cross-platform Binaries]
   
-  F[util] --> G[標準ライブラリ]
-  
-  A --> F[util]
-  C --> F[util]
-  B --> F[util]
+  G --> J[標準ライブラリ]
 
   %% Style Settings
-  classDef main fill:#f96,stroke:#333,stroke-width:2px;
-  classDef domain fill:#bbf,stroke:#333,stroke-width:1px;
-  classDef interfaces fill:#bfb,stroke:#333,stroke-width:1px;
-  classDef usecases fill:#fbf,stroke:#333,stroke-width:1px;
+  classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
+  classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
+  classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
+  classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
   classDef util fill:#ddd,stroke:#333,stroke-width:1px;
   classDef stdlib fill:#eee,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
 
-  class A main;
-  class E domain;
-  class D domain;
-  class B interfaces;
-  class C usecases;
-  class F util;
-  class G stdlib;
+  class A cmd;
+  class B internal;
+  class C internal;
+  class D internal;
+  class E scripts;
+  class F pkg;
+  class G util;
+  class H pkg;
+  class I pkg;
+  class J stdlib;
 ```
 
 ### Package Overview
 
-- **cmd/file-processor/main.go**: アプリケーションのエントリーポイント。コマンドライン引数の解析と依存関係の注入を行います。
-- **internal/domain/models**: ドメインモデル（`FileContent`）の定義。ファイル内容の操作に関するビジネスロジックを実装しています。
-- **internal/domain/repositories**: リポジトリインターフェース（`FileRepository`）の定義。ファイルの読み書きを抽象化します。
-- **internal/interfaces/repositories**: リポジトリの実装（`FileRepositoryImpl`）。実際のファイルシステムとのやり取りを担当します。
-- **internal/usecases/services**: ユースケース（`FileService`）の実装。ドメインモデルとリポジトリを組み合わせてビジネスロジックを実行します。
-- **util**: ロギングやユーティリティ機能を提供します。アプリケーション全体で使用される共通機能です。
+- **cmd/**: 各CLIツールのエントリーポイント群。30以上のコマンドラインツールが含まれており、それぞれが独立したアプリケーションとして動作します。主要ツール例：
+  - `file-processor`: ファイル処理ユーティリティ
+  - `image-converter`: 画像形式変換ツール
+  - `json-formatter-for-agent-interaction`: JSON整形ツール
+  - `code-analyzer`: コード解析ツール
+  - `depends-visualizer`: 依存関係可視化ツール
+
+- **internal/**: 各ツールのビジネスロジック実装。Clean Architectureに従って以下の層に分離：
+  - `domain/`: ドメインモデルとリポジトリインターフェース
+  - `usecases/`: ビジネスロジックとユースケース実装
+  - `interfaces/`: 外部システムとのインターフェース実装
+
+- **pkg/**: ビルド成果物とデプロイメント用ファイル群：
+  - `bin/`: クロスプラットフォーム対応のバイナリファイル（Linux、macOS、Windows）
+  - `dos/`: Windows環境向けのバッチファイル群
+
+- **scripts/**: ビルドとデプロイメント自動化スクリプト群。各ツールの個別ビルドスクリプトと統合ビルドスクリプトを提供します。
+
+- **util/**: 全ツール共通のユーティリティ機能。ロギング、共通処理、ヘルパー関数を提供します。
 
 # License
 MIT License

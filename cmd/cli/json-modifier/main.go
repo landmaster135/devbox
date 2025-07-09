@@ -8,8 +8,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/landmaster135/devbox/internal/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/usecases/services"
+	"github.com/landmaster135/devbox/internal/json_modifier/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/json_modifier/usecases/services"
 )
 
 // exitCode はプログラムの終了コードを表します
