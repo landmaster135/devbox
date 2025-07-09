@@ -21,7 +21,9 @@ cd devbox
 ./pkg/bin/linux_amd64/script-generator-to-build <TOOL_NAME>
 ```
 
-## Build
+# Build
+
+## Common tools
 ```bash
 ./scripts/build.sh
 ```
@@ -31,7 +33,12 @@ Confirm compilable distributions.
 go tool dist list
 ```
 
-## Project Structure
+## MCP tools
+```bash
+./scripts/build_mcp_tools.sh
+```
+
+# Project Structure
 
 `devbox`は複数のCLIツールを提供する開発ユーティリティ集合体です。Clean Architectureに基づいて設計されており、以下のパッケージ依存関係を持ちます。
 
@@ -74,7 +81,7 @@ graph TD
   class J stdlib;
 ```
 
-### Package Overview
+## Package Overview
 
 - **cmd/**: 各CLIツールのエントリーポイント群。30以上のコマンドラインツールが含まれており、それぞれが独立したアプリケーションとして動作します。主要ツール例：
   - `file-processor`: ファイル処理ユーティリティ
