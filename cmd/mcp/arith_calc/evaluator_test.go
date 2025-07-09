@@ -268,7 +268,7 @@ func TestHandleToEvaluateLineCount(t *testing.T) {
 				"threshold": float64(5),
 			},
 			expectError:   true,
-			errorContains: "file_path パラメータが必要です",
+			errorContains: "required argument \"file_path\" not found",
 		},
 		{
 			name: "異常系 - thresholdパラメータなし",
@@ -276,7 +276,7 @@ func TestHandleToEvaluateLineCount(t *testing.T) {
 				"file_path": filePath,
 			},
 			expectError:   true,
-			errorContains: "threshold パラメータが必要です",
+			errorContains: "required argument \"threshold\" not found",
 		},
 		{
 			name: "異常系 - 存在しないファイル",
