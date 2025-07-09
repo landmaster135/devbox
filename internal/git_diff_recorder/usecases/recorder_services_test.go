@@ -24,6 +24,7 @@ func TestGitDiffRecorderService_NewGitDiffRecorderService_Normal(t *testing.T) {
 	// Assert
 	if service == nil {
 		t.Error("サービスの作成に失敗しました")
+		return
 	}
 	if service.config != cfg {
 		t.Error("設定が正しく設定されていません")
