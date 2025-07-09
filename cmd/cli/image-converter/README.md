@@ -29,6 +29,7 @@ image-converter [オプション]
 | `-q` | `80` | 非可逆圧縮フォーマットの品質 (1-100) |
 | `-workers` | CPU数 | 同時実行ワーカー数 |
 | `-R` | `false` | サブディレクトリを再帰的に処理 |
+| `-lossless` | `false` | ロスレス圧縮の有効化 |
 
 ### 使用例
 
@@ -82,6 +83,12 @@ image-converter -src ./photos -ext webp -archive ./originals -move
 - JPEG (jpg)
 - WebP (webp)
 - AVIF (avif)
+
+## 推奨ユースケース
+
+| usecase | settings |
+| --- | --- |
+| Androidでスクショした漫画の画像をPDFにマージする | `-ext jpg -q 20` |
 
 ## ビルド方法
 
