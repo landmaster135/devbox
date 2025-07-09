@@ -123,15 +123,9 @@ func (c *GitHubClient) HandleToListIssues(ctx context.Context, request mcp.CallT
 	}
 
 	// 数値オプションパラメータを追加
-	perPage := request.GetInt("per_page", 30)
-	if perPage != 30 {
-		options["per_page"] = perPage
-	}
+	options["per_page"] = request.GetInt("per_page", 30)
 
-	page := request.GetInt("page", 1)
-	if page != 1 {
-		options["page"] = page
-	}
+	options["page"] = request.GetInt("page", 1)
 
 	result, err := c.ListIssues(owner, repo, options)
 	if err != nil {

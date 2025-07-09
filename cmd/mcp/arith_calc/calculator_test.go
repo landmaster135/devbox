@@ -515,7 +515,7 @@ func TestHandleToCalculateWithArray(t *testing.T) {
 				"numbers":   []interface{}{float64(1), "not a number", float64(3)},
 			},
 			expectError:  true,
-			errorMessage: "not a number is incompatible for float64",
+			errorMessage: "item 1 in argument \"numbers\" cannot be converted to float64",
 		},
 		{
 			name: "正常系 - 不正な操作（デフォルト値を返す）",
