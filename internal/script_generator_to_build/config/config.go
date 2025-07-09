@@ -11,7 +11,7 @@ type AppConfig struct {
 	BaseDir    string // デフォルト: "/home/nov/devbox"
 	CLIDir     string // デフォルト: "cmd/cli"
 	ScriptsDir string // デフォルト: "scripts"
-	OutputDir  string // デフォルト: "./pkg/bin"
+	OutputDir  string // デフォルト: "./pkg/bin/cli"
 }
 
 // SetDefaults はデフォルト値を設定します
@@ -26,7 +26,7 @@ func (c *AppConfig) SetDefaults() {
 		c.ScriptsDir = "scripts"
 	}
 	if c.OutputDir == "" {
-		c.OutputDir = "./pkg/bin"
+		c.OutputDir = "./pkg/bin/cli"
 	}
 }
 
