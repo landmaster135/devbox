@@ -3,331 +3,181 @@ package filesystem
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
+
+	usecases "github.com/landmaster135/devbox/internal/filesystem/usecases"
 )
 
-// FileSystemService はファイルシステム関連の機能を提供する構造体です
-type FileSystemService struct {
-	allowedDirectories []string
-}
-
-// NewFileSystemService は新しいFileSystemServiceを作成します
-func NewFileSystemService(allowedDirs [1]string) *FileSystemService {
-	// パスを正規化し、シンボリックリンクを解決
-	normalizedDirs := make([]string, len(allowedDirs))
-	for i, dir := range allowedDirs {
-		expandedPath := expandHome(dir)
-		absolutePath, err := filepath.Abs(expandedPath)
-		if err != nil {
-			normalizedDirs[i] = filepath.Clean(expandedPath)
-			continue
-		}
-
-		// シンボリックリンクを解決
-		realPath, err := filepath.EvalSymlinks(absolutePath)
-		if err != nil {
-			normalizedDirs[i] = filepath.Clean(absolutePath)
-		} else {
-			normalizedDirs[i] = filepath.Clean(realPath)
-		}
-	}
-	return &FileSystemService{
-		allowedDirectories: normalizedDirs,
-	}
-}
-
-// expandHome はパス内の ~ をホームディレクトリに展開します
-func expandHome(path string) string {
-	if !strings.HasPrefix(path, "~") {
-		return path
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return path
-	}
-	if path == "~" {
-		return home
-	}
-	return filepath.Join(home, path[2:])
-}
-
-// isPathAllowed はパスが許可されたディレクトリ内にあるかチェックします
-func (fs *FileSystemService) isPathAllowed(targetPath string) bool {
-	// 両方のパスでシンボリックリンクを解決して比較
-	targetReal, err := filepath.EvalSymlinks(targetPath)
-	if err != nil {
-		targetReal = targetPath
-	}
-	targetNormalized := filepath.Clean(targetReal)
-
-	for _, dir := range fs.allowedDirectories {
-		dirReal, err := filepath.EvalSymlinks(dir)
-		if err != nil {
-			dirReal = dir
-		}
-		dirNormalized := filepath.Clean(dirReal)
-
-		// パスの比較（末尾のスラッシュを統一）
-		if targetNormalized == dirNormalized || strings.HasPrefix(targetNormalized+string(filepath.Separator), dirNormalized+string(filepath.Separator)) {
-			return true
-		}
-	}
-	return false
-}
-
-// validatePath はパスが許可されたディレクトリ内にあるか確認します
-func (fs *FileSystemService) validatePath(requestedPath string) (string, error) {
-	expandedPath := expandHome(requestedPath)
-	absolutePath, err := filepath.Abs(expandedPath)
-	if err != nil {
-		return "", fmt.Errorf("パスの解決に失敗しました: %v", err)
-	}
-
-	// パスが許可されているかチェック
-	if fs.isPathAllowed(absolutePath) {
-		// シンボリックリンクを解決して返す
-		realPath, err := filepath.EvalSymlinks(absolutePath)
-		if err != nil {
-			return absolutePath, nil
-		}
-		return realPath, nil
-	}
-
-	// 新しいファイルの場合、親ディレクトリを確認
-	parentDir := filepath.Dir(absolutePath)
-	if fs.isPathAllowed(parentDir) {
-		// シンボリックリンクを解決して返す
-		realPath, err := filepath.EvalSymlinks(absolutePath)
-		if err != nil {
-			return absolutePath, nil
-		}
-		return realPath, nil
-	}
-
-	return "", fmt.Errorf("アクセス拒否 - パスが許可されたディレクトリの外にあります: %s", absolutePath)
-}
-
-// ReadFile はファイルの内容を読み取ります
-func (fs *FileSystemService) ReadFile(path string) (string, error) {
-	validPath, err := fs.validatePath(path)
-	if err != nil {
-		return "", err
-	}
-
-	content, err := os.ReadFile(validPath)
-	if err != nil {
-		return "", fmt.Errorf("ファイルの読み取りに失敗しました: %v", err)
-	}
-
-	return string(content), nil
-}
-
-// WriteFile はファイルに内容を書き込みます
-func (fs *FileSystemService) WriteFile(path string, content string) error {
-	validPath, err := fs.validatePath(path)
-	if err != nil {
-		return err
-	}
-
-	// 親ディレクトリが存在することを確認
-	parentDir := filepath.Dir(validPath)
-	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(parentDir, 0755); err != nil {
-			return fmt.Errorf("ディレクトリの作成に失敗しました: %v", err)
-		}
-	}
-
-	err = os.WriteFile(validPath, []byte(content), 0644)
-	if err != nil {
-		return fmt.Errorf("ファイルの書き込みに失敗しました: %v", err)
-	}
-
-	return nil
-}
-
-// CreateDirectory はディレクトリを作成します
-func (fs *FileSystemService) CreateDirectory(path string) error {
-	validPath, err := fs.validatePath(path)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(validPath, 0755)
-	if err != nil {
-		return fmt.Errorf("ディレクトリの作成に失敗しました: %v", err)
-	}
-
-	return nil
-}
-
-// ListDirectory はディレクトリの内容を一覧表示します
-func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
-	validPath, err := fs.validatePath(path)
+// #==============================================================#
+// ##          Handlers                                          ##
+// #==============================================================#
+func handleReadFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
 	if err != nil {
 		return nil, err
 	}
 
-	entries, err := os.ReadDir(validPath)
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	content, err := fsService.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %v", err)
+		return nil, fmt.Errorf("ファイルの読み取りに失敗しました: %v", err)
 	}
 
-	var result []string
-	for _, entry := range entries {
-		prefix := "[FILE]"
-		if entry.IsDir() {
-			prefix = "[DIR]"
-		}
-		result = append(result, fmt.Sprintf("%s %s", prefix, entry.Name()))
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(content), nil
 }
 
-// DirectoryTree はディレクトリの階層構造を返します
-type FileTreeEntry struct {
-	Name     string          `json:"name"`
-	Type     string          `json:"type"`
-	Children []FileTreeEntry `json:"children,omitempty"`
-}
-
-// GetDirectoryTree はディレクトリの階層構造を取得します
-func (fs *FileSystemService) GetDirectoryTree(path string) ([]FileTreeEntry, error) {
-	validPath, err := fs.validatePath(path)
+func handleWriteFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
 	if err != nil {
 		return nil, err
 	}
 
-	entries, err := os.ReadDir(validPath)
-	if err != nil {
-		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %v", err)
-	}
-
-	var result []FileTreeEntry
-	for _, entry := range entries {
-		fileEntry := FileTreeEntry{
-			Name: entry.Name(),
-			Type: "file",
-		}
-
-		if entry.IsDir() {
-			fileEntry.Type = "directory"
-			subPath := filepath.Join(validPath, entry.Name())
-			children, err := fs.GetDirectoryTree(subPath)
-			if err == nil {
-				fileEntry.Children = children
-			}
-		}
-
-		result = append(result, fileEntry)
-	}
-
-	return result, nil
-}
-
-// MoveFile はファイルを移動します
-func (fs *FileSystemService) MoveFile(source, destination string) error {
-	validSource, err := fs.validatePath(source)
-	if err != nil {
-		return err
-	}
-
-	validDest, err := fs.validatePath(destination)
-	if err != nil {
-		return err
-	}
-
-	err = os.Rename(validSource, validDest)
-	if err != nil {
-		return fmt.Errorf("ファイルの移動に失敗しました: %v", err)
-	}
-
-	return nil
-}
-
-// SearchFiles はファイルを検索します
-func (fs *FileSystemService) SearchFiles(rootPath, pattern string, excludePatterns []string) ([]string, error) {
-	validPath, err := fs.validatePath(rootPath)
+	content, err := request.RequireString("content")
 	if err != nil {
 		return nil, err
 	}
 
-	var results []string
-	err = filepath.Walk(validPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil // エラーがあっても続行
-		}
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	err = fsService.WriteFile(path, content)
+	if err != nil {
+		return nil, fmt.Errorf("ファイルの書き込みに失敗しました: %v", err)
+	}
 
-		// 除外パターンに一致するかチェック
-		for _, excludePattern := range excludePatterns {
-			matched, err := filepath.Match(excludePattern, filepath.Base(path))
-			if err == nil && matched {
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-		}
+	return mcp.NewToolResultText(fmt.Sprintf("ファイル %s への書き込みに成功しました", path)), nil
+}
 
-		// パターンに一致するかチェック
-		if strings.Contains(strings.ToLower(filepath.Base(path)), strings.ToLower(pattern)) {
-			results = append(results, path)
-		}
+func handleCreateDirectory(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
+	if err != nil {
+		return nil, err
+	}
 
-		return nil
-	})
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	err = fsService.CreateDirectory(path)
+	if err != nil {
+		return nil, fmt.Errorf("ディレクトリの作成に失敗しました: %v", err)
+	}
 
+	return mcp.NewToolResultText(fmt.Sprintf("ディレクトリ %s の作成に成功しました", path)), nil
+}
+
+func handleListDirectory(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
+	if err != nil {
+		return nil, err
+	}
+
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	entries, err := fsService.ListDirectory(path)
+	if err != nil {
+		return nil, fmt.Errorf("ディレクトリの一覧取得に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(strings.Join(entries, "\n")), nil
+}
+
+func handleDirectoryTree(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
+	if err != nil {
+		return nil, err
+	}
+
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	jsonStr, err := fsService.GetDirectoryTreeAsJSON(path)
+	if err != nil {
+		return nil, fmt.Errorf("ディレクトリツリーの取得に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(jsonStr), nil
+}
+
+func handleMoveFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	source, err := request.RequireString("source")
+	if err != nil {
+		return nil, err
+	}
+
+	destination, err := request.RequireString("destination")
+	if err != nil {
+		return nil, err
+	}
+
+	// サービスの初期化（両方のパスを許可）
+	fsService := usecases.NewFileSystemService([]string{source, destination})
+	err = fsService.MoveFile(source, destination)
+	if err != nil {
+		return nil, fmt.Errorf("ファイルの移動に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("%s から %s への移動に成功しました", source, destination)), nil
+}
+
+func handleSearchFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
+	if err != nil {
+		return nil, err
+	}
+
+	pattern, err := request.RequireString("pattern")
+	if err != nil {
+		return nil, err
+	}
+
+	var excludePatterns []string
+	excludePattern := request.GetString("exclude_pattern", "")
+	if excludePattern != "" {
+		excludePatterns = append(excludePatterns, excludePattern)
+	}
+
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	results, err := fsService.SearchFiles(path, pattern, excludePatterns)
 	if err != nil {
 		return nil, fmt.Errorf("ファイルの検索に失敗しました: %v", err)
 	}
 
-	return results, nil
+	if len(results) == 0 {
+		return mcp.NewToolResultText("一致するものが見つかりませんでした"), nil
+	}
+
+	return mcp.NewToolResultText(strings.Join(results, "\n")), nil
 }
 
-// FileInfo はファイル情報を表す構造体です
-type FileInfo struct {
-	Size        int64     `json:"size"`
-	Created     time.Time `json:"created"`
-	Modified    time.Time `json:"modified"`
-	Accessed    time.Time `json:"accessed"`
-	IsDirectory bool      `json:"isDirectory"`
-	IsFile      bool      `json:"isFile"`
-	Permissions string    `json:"permissions"`
-}
-
-// GetFileInfo はファイル情報を取得します
-func (fs *FileSystemService) GetFileInfo(path string) (*FileInfo, error) {
-	validPath, err := fs.validatePath(path)
+func handleGetFileInfo(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := os.Stat(validPath)
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	result, err := fsService.GetFileInfoAsText(path)
 	if err != nil {
 		return nil, fmt.Errorf("ファイル情報の取得に失敗しました: %v", err)
 	}
 
-	// 一部のプラットフォームでは、これらの時間が利用できない場合があります
-	var created, accessed time.Time
-	// 時間取得
-	created = info.ModTime()  // フォールバックとして変更時間を使用
-	accessed = info.ModTime() // フォールバックとして変更時間を使用
+	return mcp.NewToolResultText(result), nil
+}
 
-	return &FileInfo{
-		Size:        info.Size(),
-		Created:     created,
-		Modified:    info.ModTime(),
-		Accessed:    accessed,
-		IsDirectory: info.IsDir(),
-		IsFile:      !info.IsDir(),
-		Permissions: fmt.Sprintf("%o", info.Mode().Perm()),
-	}, nil
+func handleListAllowedDirectories(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	path, err := request.RequireString("path")
+	if err != nil {
+		return nil, err
+	}
+
+	// サービスの初期化
+	fsService := usecases.NewFileSystemService([]string{path})
+	result := fsService.GetAllowedDirectoriesAsText()
+
+	return mcp.NewToolResultText(result), nil
 }
 
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
@@ -368,30 +218,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(readFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-		expandedDir := expandHome(path)
-		info, err := os.Stat(expandedDir)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", path, err)
-			return nil, err
-		}
-		if !info.IsDir() {
-			fmt.Fprintf(os.Stderr, "エラー: %s はディレクトリではありません\n", path)
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		content, err := fsService.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-		return mcp.NewToolResultText(content), nil
-	})
+	s.AddTool(readFileTool, handleReadFile)
 
 	// ファイル書き込みツール
 	writeFileTool := mcp.NewTool("write_file",
@@ -406,31 +233,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(writeFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-
-		content, err := request.RequireString("content")
-		if err != nil {
-			return nil, err
-		}
-		expandedDir := expandHome(path)
-		_, err = os.Stat(expandedDir)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", path, err)
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		err = fsService.WriteFile(path, content)
-		if err != nil {
-			return nil, err
-		}
-		return mcp.NewToolResultText(fmt.Sprintf("ファイル %s への書き込みに成功しました", path)), nil
-	})
+	s.AddTool(writeFileTool, handleWriteFile)
 
 	// ディレクトリ作成ツール
 	createDirTool := mcp.NewTool("create_directory",
@@ -441,20 +244,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(createDirTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		err = fsService.CreateDirectory(path)
-		if err != nil {
-			return nil, err
-		}
-		return mcp.NewToolResultText(fmt.Sprintf("ディレクトリ %s の作成に成功しました", path)), nil
-	})
+	s.AddTool(createDirTool, handleCreateDirectory)
 
 	// ディレクトリ一覧ツール
 	listDirTool := mcp.NewTool("list_directory",
@@ -465,29 +255,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(listDirTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-		info, err := os.Stat(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", path, err)
-			return nil, err
-		}
-		if !info.IsDir() {
-			fmt.Fprintf(os.Stderr, "エラー: %s はディレクトリではありません\n", path)
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		entries, err := fsService.ListDirectory(path)
-		if err != nil {
-			return nil, err
-		}
-		return mcp.NewToolResultText(strings.Join(entries, "\n")), nil
-	})
+	s.AddTool(listDirTool, handleListDirectory)
 
 	// ディレクトリツリーツール
 	dirTreeTool := mcp.NewTool("directory_tree",
@@ -498,43 +266,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(dirTreeTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-		info, err := os.Stat(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", path, err)
-			return nil, err
-		}
-		if !info.IsDir() {
-			fmt.Fprintf(os.Stderr, "エラー: %s はディレクトリではありません\n", path)
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		tree, err := fsService.GetDirectoryTree(path)
-		if err != nil {
-			return nil, err
-		}
-		// JSONに変換
-		jsonStr := "[\n"
-		for i, entry := range tree {
-			jsonStr += fmt.Sprintf("  {\n    \"name\": \"%s\",\n    \"type\": \"%s\"", entry.Name, entry.Type)
-			if entry.Type == "directory" {
-				jsonStr += ",\n    \"children\": []"
-			}
-			jsonStr += "\n  }"
-			if i < len(tree)-1 {
-				jsonStr += ","
-			}
-			jsonStr += "\n"
-		}
-		jsonStr += "]"
-		return mcp.NewToolResultText(jsonStr), nil
-	})
+	s.AddTool(dirTreeTool, handleDirectoryTree)
 
 	// ファイル移動ツール
 	moveFileTool := mcp.NewTool("move_file",
@@ -549,41 +281,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(moveFileTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		source, err := request.RequireString("source")
-		if err != nil {
-			return nil, err
-		}
-
-		destination, err := request.RequireString("destination")
-		if err != nil {
-			return nil, err
-		}
-		_, err = os.Stat(source)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", source, err)
-			return nil, err
-		}
-		var arr1 [1]string = [1]string{source}
-		// サービスの初期化
-		_ = NewFileSystemService(arr1)
-		var arr2 [1]string = [1]string{destination}
-		fsService := NewFileSystemService(arr2)
-		info, err := os.Stat(destination)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", destination, err)
-			return nil, err
-		}
-		if !info.IsDir() {
-			fmt.Fprintf(os.Stderr, "エラー: %s はディレクトリではありません\n", destination)
-			return nil, err
-		}
-		err = fsService.MoveFile(source, destination)
-		if err != nil {
-			return nil, err
-		}
-		return mcp.NewToolResultText(fmt.Sprintf("%s から %s への移動に成功しました", source, destination)), nil
-	})
+	s.AddTool(moveFileTool, handleMoveFile)
 
 	// ファイル検索ツール
 	searchFilesTool := mcp.NewTool("search_files",
@@ -601,42 +299,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(searchFilesTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-
-		pattern, err := request.RequireString("pattern")
-		if err != nil {
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		info, err := os.Stat(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", path, err)
-			return nil, err
-		}
-		if !info.IsDir() {
-			fmt.Fprintf(os.Stderr, "エラー: %s はディレクトリではありません\n", path)
-			return nil, err
-		}
-		var excludePatterns []string
-		excludePattern := request.GetString("exclude_pattern", "")
-		if excludePattern != "" {
-			excludePatterns = append(excludePatterns, excludePattern)
-		}
-		results, err := fsService.SearchFiles(path, pattern, excludePatterns)
-		if err != nil {
-			return nil, err
-		}
-		if len(results) == 0 {
-			return mcp.NewToolResultText("一致するものが見つかりませんでした"), nil
-		}
-		return mcp.NewToolResultText(strings.Join(results, "\n")), nil
-	})
+	s.AddTool(searchFilesTool, handleSearchFiles)
 
 	// ファイル情報取得ツール
 	fileInfoTool := mcp.NewTool("get_file_info",
@@ -647,32 +310,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(fileInfoTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-		_, err = os.Stat(path)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: ディレクトリ %s へのアクセスに失敗しました: %v\n", path, err)
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		info, err := fsService.GetFileInfo(path)
-		if err != nil {
-			return nil, err
-		}
-		result := fmt.Sprintf("サイズ: %d バイト\n", info.Size)
-		result += fmt.Sprintf("作成日時: %s\n", info.Created.Format(time.RFC3339))
-		result += fmt.Sprintf("最終変更: %s\n", info.Modified.Format(time.RFC3339))
-		result += fmt.Sprintf("最終アクセス: %s\n", info.Accessed.Format(time.RFC3339))
-		result += fmt.Sprintf("ディレクトリ: %t\n", info.IsDirectory)
-		result += fmt.Sprintf("ファイル: %t\n", info.IsFile)
-		result += fmt.Sprintf("権限: %s", info.Permissions)
-		return mcp.NewToolResultText(result), nil
-	})
+	s.AddTool(fileInfoTool, handleGetFileInfo)
 
 	// 許可されたディレクトリ一覧ツール
 	allowedDirsTool := mcp.NewTool("list_allowed_directories",
@@ -683,17 +321,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(allowedDirsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		path, err := request.RequireString("path")
-		if err != nil {
-			return nil, err
-		}
-		var arr [1]string = [1]string{path}
-		// サービスの初期化
-		fsService := NewFileSystemService(arr)
-		result := "許可されたディレクトリ:\n" + strings.Join(fsService.allowedDirectories, "\n")
-		return mcp.NewToolResultText(result), nil
-	})
+	s.AddTool(allowedDirsTool, handleListAllowedDirectories)
 
 	// プロンプト
 	s = addPromptIntoServer(s)
