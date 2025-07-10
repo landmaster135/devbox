@@ -56,8 +56,9 @@ func handleToCalculateWithArray(ctx context.Context, request mcp.CallToolRequest
 	return mcp.FormatNumberResult(result), nil
 }
 
-func SetTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
-	tool := mcp.NewTool("calculate",
+func setTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
+	tool := mcp.NewTool(
+		"calculate",
 		mcp.WithDescription("Perform basic arithmetic calculations with two numbers"),
 		mcp.WithString("operation",
 			mcp.Required(),
@@ -75,14 +76,17 @@ func SetTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
 	)
 	s.AddTool(tool, handleToCalculate)
 
-	toolWithArray := mcp.NewTool("calculate_with_multiple_numbers",
+	toolWithArray := mcp.NewTool(
+		"calculate_with_multiple_numbers",
 		mcp.WithDescription("Perform basic arithmetic calculations with multiple numbers"),
-		mcp.WithString("operation",
+		mcp.WithString(
+			"operation",
 			mcp.Required(),
 			mcp.Description("The arithmetic operation to perform with multiple numbers"),
 			mcp.Enum("sum"),
 		),
-		mcp.WithArray("numbers",
+		mcp.WithArray(
+			"numbers",
 			mcp.Required(),
 			mcp.Description("Multiple numbers"),
 		),
@@ -115,17 +119,20 @@ func handleToEvaluateLineCount(ctx context.Context, request mcp.CallToolRequest)
 	return mcp.NewToolResultText(string(jsonResult)), nil
 }
 
-// SetFileLineCountEvaluatorServer はファイルの行数評価ツールを提供するMCPサーバを設定します
-func SetFileLineCountEvaluatorServer(s *server.MCPServer) *server.MCPServer {
+// setFileLineCountEvaluatorServer はファイルの行数評価ツールを提供するMCPサーバを設定します
+func setFileLineCountEvaluatorServer(s *server.MCPServer) *server.MCPServer {
 
 	// ツール: ファイルの行数評価
-	tool := mcp.NewTool("evaluate_line_count",
+	tool := mcp.NewTool(
+		"evaluate_line_count",
 		mcp.WithDescription("ファイルの行数が指定された閾値より大きいかどうかを評価します"),
-		mcp.WithString("file_path",
+		mcp.WithString(
+			"file_path",
 			mcp.Required(),
 			mcp.Description("評価するファイルの絶対パス"),
 		),
-		mcp.WithNumber("threshold",
+		mcp.WithNumber(
+			"threshold",
 			mcp.Required(),
 			mcp.Description("比較する行数の閾値"),
 		),
@@ -136,7 +143,8 @@ func SetFileLineCountEvaluatorServer(s *server.MCPServer) *server.MCPServer {
 }
 
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
-	prompt := mcp.NewPrompt("system_prompt_01",
+	prompt := mcp.NewPrompt(
+		"system_prompt_01",
 		mcp.WithPromptDescription("This is an arithmetic calculator prompt"),
 	)
 	s.AddPrompt(prompt, func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
@@ -161,8 +169,8 @@ func createArithCalcServer() *server.MCPServer {
 		server.WithPromptCapabilities(true),
 		server.WithLogging(),
 	)
-	s = SetTwoNumbersInputtingCalcServer(s)
-	s = SetFileLineCountEvaluatorServer(s)
+	s = setTwoNumbersInputtingCalcServer(s)
+	s = setFileLineCountEvaluatorServer(s)
 	s = addPromptIntoServer(s)
 	return s
 }
