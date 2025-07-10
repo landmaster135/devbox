@@ -1,4 +1,4 @@
-package datetime_calc
+package usecases
 
 import (
 	"time"
