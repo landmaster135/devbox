@@ -8,7 +8,9 @@ Gitリポジトリのコミット履歴を取得し、フィルタリングし�
 - キーワードによるコミットメッセージの検索
 - 日付範囲によるコミットの絞り込み
 - グラフ形式での履歴表示
-- 「=== Commit History ===」見出し付きの整理された出力
+- **コミット詳細情報の自動取得**: 各コミットの変更ファイル統計を表示
+- 「=== Commit History ===」と「=== Commit Details ===」見出し付きの整理された出力
+- マージコミットやブランチ分岐にも対応
 
 ## インストール
 
@@ -31,6 +33,35 @@ go build -o bin/git-commit-history-retriever ./cmd/cli/git-commit-history-retrie
 * a1b2c3d - (HEAD -> main) feat: add new feature (2 hours ago) <Developer Name>
 * d4e5f6g - fix: resolve bug in authentication (1 day ago) <Developer Name>
 * h7i8j9k - refactor: improve code structure (3 days ago) <Developer Name>
+
+=== Commit Details ===
+commit a1b2c3d
+Author: Developer Name <dev@example.com>
+Date:   Fri Jul 11 08:00:00 2025 +0900
+
+    feat: add new feature
+
+ src/feature.go | 25 +++++++++++++++++++++++++
+ src/main.go    |  3 +++
+ 2 files changed, 28 insertions(+)
+
+commit d4e5f6g
+Author: Developer Name <dev@example.com>
+Date:   Thu Jul 10 08:00:00 2025 +0900
+
+    fix: resolve bug in authentication
+
+ src/auth.go | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+commit h7i8j9k
+Author: Developer Name <dev@example.com>
+Date:   Wed Jul 9 08:00:00 2025 +0900
+
+    refactor: improve code structure
+
+ src/utils.go | 15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
 ```
 
 ### オプション
