@@ -44,7 +44,7 @@ func TestTimezoneService_GetCurrentTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.GetCurrentTime(tt.timezone)
+			result, err := service.getCurrentTime(tt.timezone)
 			if (err != nil) != tt.wantError {
 				t.Errorf("GetCurrentTime() error = %v, wantError %v", err, tt.wantError)
 				return
@@ -104,7 +104,7 @@ func TestTimezoneService_NormalizeTimezone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := service.NormalizeTimezone(tt.input)
+			result := service.normalizeTimezone(tt.input)
 			if result != tt.expected {
 				t.Errorf("NormalizeTimezone() = %v, want %v", result, tt.expected)
 			}
@@ -145,7 +145,7 @@ func TestTimezoneService_FindSimilarTimezones(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := service.FindSimilarTimezones(tt.input)
+			result := service.findSimilarTimezones(tt.input)
 			for _, expected := range tt.contains {
 				if !strings.Contains(result, expected) {
 					t.Errorf("FindSimilarTimezones() = %v, should contain %v", result, expected)
@@ -193,7 +193,7 @@ func TestTimezoneService_IsValidTimezone(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := service.IsValidTimezone(tt.timezone)
+			got := service.isValidTimezone(tt.timezone)
 			if got != tt.want {
 				t.Errorf("IsValidTimezone() = %v, want %v", got, tt.want)
 			}
@@ -227,7 +227,7 @@ func TestAvailableTimezones(t *testing.T) {
 	// すべてのタイムゾーンが有効か確認
 	service := NewTimezoneService()
 	for _, tz := range availableTimezones {
-		if !service.IsValidTimezone(tz) {
+		if !service.isValidTimezone(tz) {
 			t.Errorf("availableTimezones contains invalid timezone: %s", tz)
 		}
 	}
@@ -342,7 +342,7 @@ func TestTimezoneService_ConvertTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.ConvertTime(tt.dateTime, tt.fromTimezone, tt.toTimezone)
+			result, err := service.convertTime(tt.dateTime, tt.fromTimezone, tt.toTimezone)
 			if (err != nil) != tt.wantError {
 				t.Errorf("ConvertTime() error = %v, wantError %v", err, tt.wantError)
 				return
@@ -359,7 +359,7 @@ func TestTimezoneService_ConvertTime(t *testing.T) {
 func TestTimezoneService_GetAvailableTimezones(t *testing.T) {
 	service := NewTimezoneService()
 
-	timezones := service.GetAvailableTimezones()
+	timezones := service.getAvailableTimezones()
 
 	// 結果が空でないことを確認
 	if len(timezones) == 0 {
@@ -392,7 +392,7 @@ func TestTimezoneService_GetAvailableTimezones(t *testing.T) {
 func TestTimezoneService_GetCommonTimezoneAliases(t *testing.T) {
 	service := NewTimezoneService()
 
-	aliases := service.GetCommonTimezoneAliases()
+	aliases := service.getCommonTimezoneAliases()
 
 	// 結果が空でないことを確認
 	if len(aliases) == 0 {

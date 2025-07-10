@@ -58,7 +58,7 @@ func TestCalculatorServiceAdd(t *testing.T) {
 	// 各テストケースを実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := service.Add(tc.x, tc.y)
+			result := service.add(tc.x, tc.y)
 			assert.Equal(t, tc.expected, result, "%f + %f should equal %f", tc.x, tc.y, tc.expected)
 		})
 	}
@@ -117,7 +117,7 @@ func TestCalculatorServiceSubtract(t *testing.T) {
 	// 各テストケースを実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := service.Subtract(tc.x, tc.y)
+			result := service.subtract(tc.x, tc.y)
 			// 小数点の計算誤差を考慮して、ほぼ等しいかをチェック
 			if tc.name == "小数点数の減算" {
 				assert.InDelta(t, tc.expected, result, 0.0001, "%f - %f should approximately equal %f", tc.x, tc.y, tc.expected)
@@ -175,7 +175,7 @@ func TestCalculatorServiceMultiply(t *testing.T) {
 	// 各テストケースを実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := service.Multiply(tc.x, tc.y)
+			result := service.multiply(tc.x, tc.y)
 			assert.Equal(t, tc.expected, result, "%f * %f should equal %f", tc.x, tc.y, tc.expected)
 		})
 	}
@@ -241,7 +241,7 @@ func TestCalculatorServiceDivide(t *testing.T) {
 	// 各テストケースを実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := service.Divide(tc.x, tc.y)
+			result := service.divide(tc.x, tc.y)
 
 			if tc.isInf {
 				// ゼロ除算の場合は無限大が返されることを確認
@@ -260,20 +260,20 @@ func TestCalculatorServiceEdgeCases(t *testing.T) {
 
 	// 大きな数値の演算
 	t.Run("大きな数値の加算", func(t *testing.T) {
-		result := service.Add(1e15, 1e15)
+		result := service.add(1e15, 1e15)
 		assert.Equal(t, 2e15, result)
 	})
 
 	// 非常に小さな数値の演算
 	t.Run("非常に小さな数値の乗算", func(t *testing.T) {
-		result := service.Multiply(1e-15, 1e-15)
+		result := service.multiply(1e-15, 1e-15)
 		assert.Equal(t, 1e-30, result)
 	})
 
 	// 精度の問題を確認
 	t.Run("精度の問題", func(t *testing.T) {
 		// 0.1 + 0.2 は浮動小数点の精度の問題で厳密には 0.3 にならない
-		result := service.Add(0.1, 0.2)
+		result := service.add(0.1, 0.2)
 		assert.InDelta(t, 0.3, result, 1e-10)
 	})
 }
@@ -324,7 +324,7 @@ func TestCalculatorServiceSum(t *testing.T) {
 	// 各テストケースを実行
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := service.Sum(tc.arr)
+			result := service.sum(tc.arr)
 			assert.Equal(t, tc.expected, result, "Sum of %v should equal %f", tc.arr, tc.expected)
 		})
 	}

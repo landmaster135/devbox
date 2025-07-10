@@ -91,7 +91,7 @@ func TestStringToTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := calc.StringToTime(tt.dateStr)
+			result, err := calc.stringToTime(tt.dateStr)
 
 			// エラーの有無をチェック
 			if (err != nil) != tt.wantErr {
@@ -161,7 +161,7 @@ func TestAddDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.AddDuration(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.duration)
+			result := calc.addDuration(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.duration)
 			if result != tt.expected {
 				t.Errorf("AddDuration() = %v, want %v", result, tt.expected)
 			}
@@ -220,7 +220,7 @@ func TestSubtractDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.SubtractDuration(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.duration)
+			result := calc.subtractDuration(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.duration)
 			if result != tt.expected {
 				t.Errorf("SubtractDuration() = %v, want %v", result, tt.expected)
 			}
@@ -315,7 +315,7 @@ func TestAddDatetime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.AddDatetime(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.addYears, tt.addMonths, tt.addDays, tt.addHours, tt.addMinutes, tt.addSeconds)
+			result := calc.addDatetime(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.addYears, tt.addMonths, tt.addDays, tt.addHours, tt.addMinutes, tt.addSeconds)
 			if result != tt.expected {
 				t.Errorf("AddDatetime() = %v, want %v", result, tt.expected)
 			}
@@ -410,7 +410,7 @@ func TestAddDatetimeFloat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.AddDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.addYears, tt.addMonths, tt.addDays, tt.addHours, tt.addMinutes, tt.addSeconds)
+			result := calc.addDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.addYears, tt.addMonths, tt.addDays, tt.addHours, tt.addMinutes, tt.addSeconds)
 			if result != tt.expected {
 				t.Errorf("AddDatetimeFloat() = %v, want %v", result, tt.expected)
 			}
@@ -505,7 +505,7 @@ func TestSubtractDatetime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.SubtractDatetime(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.subYears, tt.subMonths, tt.subDays, tt.subHours, tt.subMinutes, tt.subSeconds)
+			result := calc.subtractDatetime(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.subYears, tt.subMonths, tt.subDays, tt.subHours, tt.subMinutes, tt.subSeconds)
 			if result != tt.expected {
 				t.Errorf("SubtractDatetime() = %v, want %v", result, tt.expected)
 			}
@@ -600,7 +600,7 @@ func TestSubtractDatetimeFloat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.SubtractDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.subYears, tt.subMonths, tt.subDays, tt.subHours, tt.subMinutes, tt.subSeconds)
+			result := calc.subtractDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.subYears, tt.subMonths, tt.subDays, tt.subHours, tt.subMinutes, tt.subSeconds)
 			if result != tt.expected {
 				t.Errorf("SubtractDatetimeFloat() = %v, want %v", result, tt.expected)
 			}
@@ -645,7 +645,7 @@ func TestDiffTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.DiffTime(tt.t1, tt.t2)
+			result := calc.diffTime(tt.t1, tt.t2)
 			if result != tt.expected {
 				t.Errorf("DiffTime() = %v, want %v", result, tt.expected)
 			}
