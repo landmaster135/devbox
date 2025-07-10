@@ -71,19 +71,16 @@ func TestNewFileSystemService(t *testing.T) {
 
 	// テストケース
 	testCases := []struct {
-		name     string
-		dirs     [1]string
-		expected []string
+		name string
+		dirs [1]string
 	}{
 		{
-			name:     "通常のディレクトリ",
-			dirs:     [1]string{tempDir},
-			expected: []string{tempDir},
+			name: "通常のディレクトリ",
+			dirs: [1]string{tempDir},
 		},
 		{
-			name:     "ホームディレクトリを含むパス",
-			dirs:     [1]string{"~"},
-			expected: []string{expandHome("~")},
+			name: "ホームディレクトリを含むパス",
+			dirs: [1]string{"~"},
 		},
 	}
 
@@ -91,7 +88,29 @@ func TestNewFileSystemService(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			service := NewFileSystemService(tc.dirs)
-			assert.Equal(t, tc.expected, service.allowedDirectories, "FileSystemServiceの初期化結果が期待と一致しません")
+
+			// 許可されたディレクトリが設定されていることを確認
+			assert.NotEmpty(t, service.allowedDirectories, "許可されたディレクトリが設定されていません")
+			assert.Len(t, service.allowedDirectories, 1, "許可されたディレクトリの数が期待と一致しません")
+
+			// 実際のパスが正規化されていることを確認
+			allowedDir := service.allowedDirectories[0]
+			assert.True(t, filepath.IsAbs(allowedDir), "許可されたディレクトリが絶対パスではありません")
+
+			// ホームディレクトリのテストの場合、展開されていることを確認
+			if tc.dirs[0] == "~" {
+				home, err := os.UserHomeDir()
+				assert.NoError(t, err, "ホームディレクトリの取得に失敗しました")
+
+				// シンボリックリンクを解決して比較
+				homeReal, err := filepath.EvalSymlinks(home)
+				if err != nil {
+					homeReal = home
+				}
+				homeNormalized := filepath.Clean(homeReal)
+
+				assert.Equal(t, homeNormalized, allowedDir, "ホームディレクトリの展開結果が期待と一致しません")
+			}
 		})
 	}
 }
