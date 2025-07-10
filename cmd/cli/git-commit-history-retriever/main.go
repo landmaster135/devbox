@@ -20,8 +20,8 @@ func main() {
 	// サービスを作成
 	service := usecases.NewGitCommitHistoryService(cfg.GitDir, cfg)
 
-	// コミット履歴を取得
-	result, err := service.GetCommitHistory()
+	// コミット履歴と詳細を取得
+	result, err := service.GetCommitHistoryWithDetails()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)

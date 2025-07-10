@@ -8,6 +8,7 @@ import (
 // 見出し定数
 const (
 	HeaderCommitHistory = "=== Commit History ==="
+	HeaderCommitDetails = "=== Commit Details ==="
 )
 
 // Config はCLI設定を保持する構造体

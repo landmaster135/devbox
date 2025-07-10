@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -68,4 +69,41 @@ func (c *Client) IsValidGitRepository() error {
 		return fmt.Errorf("指定されたディレクトリは有効なGitリポジトリではありません: %s", c.workingDir)
 	}
 	return nil
+}
+
+// ExtractCommitHashes はコミット履歴からコミットハッシュを抽出する
+func (c *Client) ExtractCommitHashes(history string) []string {
+	// git logの出力形式 "%h -%d %s (%cr) <%an>" からハッシュを抽出
+	// * の後にある7文字のコミットハッシュを抽出する正規表現
+	// マージコミットやブランチ表示を考慮して、* の後に任意の文字（スペース、パイプなど）が続く場合も対応
+	hashPattern := regexp.MustCompile(`\*\s*[|\s]*([a-f0-9]{7})\s+-`)
+
+	matches := hashPattern.FindAllStringSubmatch(history, -1)
+	var hashes []string
+
+	for _, match := range matches {
+		if len(match) > 1 {
+			hashes = append(hashes, match[1])
+		}
+	}
+
+	return hashes
+}
+
+// GetCommitDetails はコミットハッシュリストから詳細情報を取得する
+func (c *Client) GetCommitDetails(commitHashes []string) (string, error) {
+	if len(commitHashes) == 0 {
+		return "", nil
+	}
+
+	// git show --stat コマンドの引数を構築
+	args := append([]string{"show", "--stat"}, commitHashes...)
+
+	// Gitコマンドを実行
+	output, err := c.executor.Execute(c.workingDir, args...)
+	if err != nil {
+		return "", fmt.Errorf("コミット詳細の取得に失敗しました: %w", err)
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }
