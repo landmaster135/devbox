@@ -555,3 +555,126 @@ func TestTimezoneService_HandleListAvailableTimezones(t *testing.T) {
 		}
 	}
 }
+
+// TestTimezoneService_ConvertTime_EmptyParameters は ConvertTime メソッドの空パラメータをテストします
+func TestTimezoneService_ConvertTime_EmptyParameters(t *testing.T) {
+	service := NewTimezoneService()
+
+	tests := []struct {
+		name         string
+		dateTime     string
+		fromTimezone string
+		toTimezone   string
+		wantError    bool
+		errorContains string
+	}{
+		{
+			name:         "空の変換元タイムゾーン",
+			dateTime:     "2023-01-02 12:00:00",
+			fromTimezone: "",
+			toTimezone:   "UTC",
+			wantError:    true,
+			errorContains: ErrEmptyTimezone,
+		},
+		{
+			name:         "空の変換先タイムゾーン",
+			dateTime:     "2023-01-02 12:00:00",
+			fromTimezone: "UTC",
+			toTimezone:   "",
+			wantError:    true,
+			errorContains: ErrEmptyTimezone,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.convertTime(tt.dateTime, tt.fromTimezone, tt.toTimezone)
+			if (err != nil) != tt.wantError {
+				t.Errorf("ConvertTime() error = %v, wantError %v", err, tt.wantError)
+				return
+			}
+
+			if tt.wantError && !strings.Contains(err.Error(), tt.errorContains) {
+				t.Errorf("ConvertTime() error = %v, should contain %v", err.Error(), tt.errorContains)
+			}
+
+			if tt.wantError && result != "" {
+				t.Errorf("ConvertTime() result should be empty on error, got %v", result)
+			}
+		})
+	}
+}
+
+// TestTimezoneService_HandleGetCurrentTime_InvalidTimezone は HandleGetCurrentTime メソッドの無効なタイムゾーンをテストします
+func TestTimezoneService_HandleGetCurrentTime_InvalidTimezone(t *testing.T) {
+	service := NewTimezoneService()
+
+	// 無効なタイムゾーンでテスト（isValidTimezone が false を返すケース）
+	result, err := service.HandleGetCurrentTime("Invalid/Timezone")
+	if err == nil {
+		t.Errorf("HandleGetCurrentTime() should return error for invalid timezone, got result: %v", result)
+		return
+	}
+
+	// エラーメッセージに適切な内容が含まれているか確認
+	if !strings.Contains(err.Error(), ErrInvalidTimezone) {
+		t.Errorf("HandleGetCurrentTime() error should contain %s, got: %v", ErrInvalidTimezone, err.Error())
+	}
+
+	if result != "" {
+		t.Errorf("HandleGetCurrentTime() should return empty result on error, got: %v", result)
+	}
+}
+
+// TestTimezoneService_HandleConvertTime_InvalidDatetime は HandleConvertTime メソッドの無効な日時をテストします
+func TestTimezoneService_HandleConvertTime_InvalidDatetime(t *testing.T) {
+	service := NewTimezoneService()
+
+	// 無効な日時形式でテスト
+	result, err := service.HandleConvertTime("invalid-datetime", "UTC", "Asia/Tokyo")
+	if err == nil {
+		t.Errorf("HandleConvertTime() should return error for invalid datetime, got result: %v", result)
+		return
+	}
+
+	if result != "" {
+		t.Errorf("HandleConvertTime() should return empty result on error, got: %v", result)
+	}
+}
+
+// TestTimezoneService_HandleGetCurrentTime_GetCurrentTimeError は HandleGetCurrentTime メソッドの getCurrentTime エラーをテストします
+func TestTimezoneService_HandleGetCurrentTime_GetCurrentTimeError(t *testing.T) {
+	service := NewTimezoneService()
+
+	// 空のタイムゾーンでテスト（getCurrentTime でエラーが発生するケース）
+	result, err := service.HandleGetCurrentTime("")
+	if err == nil {
+		t.Errorf("HandleGetCurrentTime() should return error for empty timezone, got result: %v", result)
+		return
+	}
+
+	if result != "" {
+		t.Errorf("HandleGetCurrentTime() should return empty result on error, got: %v", result)
+	}
+}
+
+// TestTimezoneService_ConvertTime_AllFormatFailures は ConvertTime メソッドの全フォーマット失敗をテストします
+func TestTimezoneService_ConvertTime_AllFormatFailures(t *testing.T) {
+	service := NewTimezoneService()
+
+	// 全ての日時フォーマットで失敗するケース
+	result, err := service.convertTime("completely-invalid-format", "UTC", "Asia/Tokyo")
+	if err == nil {
+		t.Errorf("ConvertTime() should return error for completely invalid format, got result: %v", result)
+		return
+	}
+
+	// エラーメッセージに適切な内容が含まれているか確認
+	if !strings.Contains(err.Error(), ErrInvalidDateFormat) {
+		t.Errorf("ConvertTime() error should contain %s, got: %v", ErrInvalidDateFormat, err.Error())
+	}
+
+	if result != "" {
+		t.Errorf("ConvertTime() should return empty result on error, got: %v", result)
+	}
+}
