@@ -10,6 +10,9 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases"
 )
 
+// #==============================================================#
+// ##          Handlers                                          ##
+// #==============================================================#
 func handleToCalculate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	op, err := request.RequireString("operation")
 	if err != nil {
@@ -56,6 +59,32 @@ func handleToCalculateWithArray(ctx context.Context, request mcp.CallToolRequest
 	return mcp.FormatNumberResult(result), nil
 }
 
+func handleToEvaluateLineCount(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+
+	// 必須パラメータの取得
+	filePath, err := request.RequireString("file_path")
+	if err != nil {
+		return nil, err
+	}
+
+	threshold, err := request.RequireFloat("threshold")
+	if err != nil {
+		return nil, err
+	}
+
+	// FileEvaluatorServiceを初期化
+	service := usecases.NewFileEvaluatorService()
+	jsonResult, err := service.HandleToEvaluateLineCount(filePath, int(threshold))
+	if err != nil {
+		return nil, fmt.Errorf("配列を用いた算術計算に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(string(jsonResult)), nil
+}
+
+// #==============================================================#
+// ##          Servers                                           ##
+// #==============================================================#
 func setTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
 	tool := mcp.NewTool(
 		"calculate",
@@ -94,29 +123,6 @@ func setTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
 	s.AddTool(toolWithArray, handleToCalculateWithArray)
 
 	return s
-}
-
-func handleToEvaluateLineCount(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-
-	// 必須パラメータの取得
-	filePath, err := request.RequireString("file_path")
-	if err != nil {
-		return nil, err
-	}
-
-	threshold, err := request.RequireFloat("threshold")
-	if err != nil {
-		return nil, err
-	}
-
-	// FileEvaluatorServiceを初期化
-	service := usecases.NewFileEvaluatorService()
-	jsonResult, err := service.HandleToEvaluateLineCount(filePath, int(threshold))
-	if err != nil {
-		return nil, fmt.Errorf("配列を用いた算術計算に失敗しました: %v", err)
-	}
-
-	return mcp.NewToolResultText(string(jsonResult)), nil
 }
 
 // setFileLineCountEvaluatorServer はファイルの行数評価ツールを提供するMCPサーバを設定します
