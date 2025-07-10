@@ -6,7 +6,85 @@ import (
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
+
+	usecases "github.com/landmaster135/devbox/internal/datetime_calculator/usecases"
 )
+
+func handleDatetimeCalc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	op, err := request.RequireString("operation")
+	if err != nil {
+		return nil, err
+	}
+
+	year_1, err := request.RequireFloat("year_1")
+	if err != nil {
+		return nil, err
+	}
+
+	month_1, err := request.RequireFloat("month_1")
+	if err != nil {
+		return nil, err
+	}
+
+	day_1, err := request.RequireFloat("day_1")
+	if err != nil {
+		return nil, err
+	}
+
+	hour_1, err := request.RequireFloat("hour_1")
+	if err != nil {
+		return nil, err
+	}
+
+	minute_1, err := request.RequireFloat("minute_1")
+	if err != nil {
+		return nil, err
+	}
+
+	second_1, err := request.RequireFloat("second_1")
+	if err != nil {
+		return nil, err
+	}
+
+	duration_of_year, err := request.RequireFloat("duration_of_year")
+	if err != nil {
+		return nil, err
+	}
+
+	duration_of_month, err := request.RequireFloat("duration_of_month")
+	if err != nil {
+		return nil, err
+	}
+
+	duration_of_day, err := request.RequireFloat("duration_of_day")
+	if err != nil {
+		return nil, err
+	}
+
+	duration_of_hour, err := request.RequireFloat("duration_of_hour")
+	if err != nil {
+		return nil, err
+	}
+
+	duration_of_minute, err := request.RequireFloat("duration_of_minute")
+	if err != nil {
+		return nil, err
+	}
+
+	duration_of_second, err := request.RequireFloat("duration_of_second")
+	if err != nil {
+		return nil, err
+	}
+
+	// DatetimeCalculatorServiceを初期化
+	service := usecases.NewDatetimeCalculatorService()
+	result, err := service.HandleDatetimeCalc(op, year_1, month_1, day_1, hour_1, minute_1, second_1, duration_of_year, duration_of_month, duration_of_day, duration_of_hour, duration_of_minute, duration_of_second)
+	if err != nil {
+		return nil, fmt.Errorf("日時計算に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(result), nil
+}
 
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	prompt := mcp.NewPrompt("system_prompt_01",
@@ -92,85 +170,7 @@ func BuildTimeCalculatorServer() {
 		),
 	)
 
-	s.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		op, err := request.RequireString("operation")
-		if err != nil {
-			return nil, err
-		}
-
-		year_1, err := request.RequireFloat("year_1")
-		if err != nil {
-			return nil, err
-		}
-
-		month_1, err := request.RequireFloat("month_1")
-		if err != nil {
-			return nil, err
-		}
-
-		day_1, err := request.RequireFloat("day_1")
-		if err != nil {
-			return nil, err
-		}
-
-		hour_1, err := request.RequireFloat("hour_1")
-		if err != nil {
-			return nil, err
-		}
-
-		minute_1, err := request.RequireFloat("minute_1")
-		if err != nil {
-			return nil, err
-		}
-
-		second_1, err := request.RequireFloat("second_1")
-		if err != nil {
-			return nil, err
-		}
-
-		duration_of_year, err := request.RequireFloat("duration_of_year")
-		if err != nil {
-			return nil, err
-		}
-
-		duration_of_month, err := request.RequireFloat("duration_of_month")
-		if err != nil {
-			return nil, err
-		}
-
-		duration_of_day, err := request.RequireFloat("duration_of_day")
-		if err != nil {
-			return nil, err
-		}
-
-		duration_of_hour, err := request.RequireFloat("duration_of_hour")
-		if err != nil {
-			return nil, err
-		}
-
-		duration_of_minute, err := request.RequireFloat("duration_of_minute")
-		if err != nil {
-			return nil, err
-		}
-
-		duration_of_second, err := request.RequireFloat("duration_of_second")
-		if err != nil {
-			return nil, err
-		}
-
-		var c DatetimeCalculator
-		var result string
-		switch op {
-		case "add":
-			result = c.AddDatetimeFloat(year_1, month_1, day_1, hour_1, minute_1, second_1, duration_of_year, duration_of_month, duration_of_day, duration_of_hour, duration_of_minute, duration_of_second)
-		case "subtract":
-			result = c.SubtractDatetimeFloat(year_1, month_1, day_1, hour_1, minute_1, second_1, duration_of_year, duration_of_month, duration_of_day, duration_of_hour, duration_of_minute, duration_of_second)
-			// case "diff":
-			// 	result = c.DiffTime(x, y)
-		}
-
-		return mcp.NewToolResultText(result), nil
-	})
+	s.AddTool(tool, handleDatetimeCalc)
 
 	// プロンプト
 	s = addPromptIntoServer(s)
