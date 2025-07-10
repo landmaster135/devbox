@@ -61,4 +61,4 @@ jobs:
           git config --local user.name "GitHub Action"
           git add README.md
           git log -1
-          git diff --cached --quiet || (git commit -m "chore: Updated coverage badge." && git push origin HEAD)
+          git diff --cached --quiet || (git commit -m "chore: Updated coverage badge [skip ci]" && git push origin HEAD)
