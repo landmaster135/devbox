@@ -92,16 +92,6 @@ func TestSetTwoNumbersInputtingCalcServer(t *testing.T) {
 	}
 }
 
-// TestBuildArithCalculatorServer はBuildArithCalculatorServer関数をテストします
-func TestBuildArithCalculatorServer(t *testing.T) {
-	// このテストは実際にサーバーを起動するため、
-	// 単体テストとしては適切ではありません。
-	// 代わりに、BuildArithCalculatorServer関数が内部で
-	// createArithCalcServerとserver.ServeStdioを呼び出すことを
-	// モックを使用して検証することができます。
-	// ここでは簡略化のため、このテストは省略します。
-}
-
 // TestSetFileLineCountEvaluatorServer は SetFileLineCountEvaluatorServer 関数をテストします
 func TestSetFileLineCountEvaluatorServer(t *testing.T) {
 	// モックサーバーを作成
@@ -117,4 +107,14 @@ func TestSetFileLineCountEvaluatorServer(t *testing.T) {
 	// 結果の検証
 	assert.NotNil(t, resultServer, "サーバーが正しく設定されていません")
 	assert.Equal(t, mockServer, resultServer, "返されたサーバーが入力と一致しません")
+}
+
+// TestBuildArithCalculatorServer はBuildArithCalculatorServer関数をテストします
+func TestBuildArithCalculatorServer(t *testing.T) {
+	// このテストは実際にサーバーを起動するため、
+	// 単体テストとしては適切ではありません。
+	// 代わりに、BuildArithCalculatorServer関数が内部で
+	// createArithCalcServerとserver.ServeStdioを呼び出すことを
+	// モックを使用して検証することができます。
+	// ここでは簡略化のため、このテストは省略します。
 }
