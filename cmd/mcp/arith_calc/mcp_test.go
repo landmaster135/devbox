@@ -73,7 +73,7 @@ func TestSetTwoNumbersInputtingCalcServer(t *testing.T) {
 			)
 
 			// テスト対象の関数を実行
-			s := SetTwoNumbersInputtingCalcServer(mockServer)
+			s := setTwoNumbersInputtingCalcServer(mockServer)
 
 			// サーバーの検証
 			if s == nil {
@@ -112,7 +112,7 @@ func TestSetFileLineCountEvaluatorServer(t *testing.T) {
 	)
 
 	// テスト対象の関数を実行
-	resultServer := SetFileLineCountEvaluatorServer(mockServer)
+	resultServer := setFileLineCountEvaluatorServer(mockServer)
 
 	// 結果の検証
 	assert.NotNil(t, resultServer, "サーバーが正しく設定されていません")
