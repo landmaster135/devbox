@@ -19,10 +19,23 @@ type FileSystemService struct {
 
 // NewFileSystemService は新しいFileSystemServiceを作成します
 func NewFileSystemService(allowedDirs [1]string) *FileSystemService {
-	// パスを正規化
+	// パスを正規化し、シンボリックリンクを解決
 	normalizedDirs := make([]string, len(allowedDirs))
 	for i, dir := range allowedDirs {
-		normalizedDirs[i] = filepath.Clean(expandHome(dir))
+		expandedPath := expandHome(dir)
+		absolutePath, err := filepath.Abs(expandedPath)
+		if err != nil {
+			normalizedDirs[i] = filepath.Clean(expandedPath)
+			continue
+		}
+
+		// シンボリックリンクを解決
+		realPath, err := filepath.EvalSymlinks(absolutePath)
+		if err != nil {
+			normalizedDirs[i] = filepath.Clean(absolutePath)
+		} else {
+			normalizedDirs[i] = filepath.Clean(realPath)
+		}
 	}
 	return &FileSystemService{
 		allowedDirectories: normalizedDirs,
@@ -52,7 +65,13 @@ func (fs *FileSystemService) validatePath(requestedPath string) (string, error) 
 		return "", fmt.Errorf("パスの解決に失敗しました: %v", err)
 	}
 
-	normalizedPath := filepath.Clean(absolutePath)
+	// シンボリックリンクを解決（エラーは無視）
+	realPath, err := filepath.EvalSymlinks(absolutePath)
+	if err != nil {
+		realPath = absolutePath
+	}
+
+	normalizedPath := filepath.Clean(realPath)
 
 	// パスが許可されたディレクトリ内にあるか確認
 	isAllowed := false
@@ -64,48 +83,21 @@ func (fs *FileSystemService) validatePath(requestedPath string) (string, error) 
 	}
 
 	if !isAllowed {
-		return "", fmt.Errorf("アクセス拒否 - パスが許可されたディレクトリの外にあります: %s", normalizedPath)
-	}
-
-	// シンボリックリンクの場合、実際のパスも確認
-	realPath, err := filepath.EvalSymlinks(absolutePath)
-	if err == nil && realPath != absolutePath {
-		normalizedRealPath := filepath.Clean(realPath)
-		isRealPathAllowed := false
-		for _, dir := range fs.allowedDirectories {
-			if strings.HasPrefix(normalizedRealPath, dir) {
-				isRealPathAllowed = true
-				break
-			}
-		}
-		if !isRealPathAllowed {
-			return "", fmt.Errorf("アクセス拒否 - シンボリックリンクのターゲットが許可されたディレクトリの外にあります")
-		}
-		return realPath, nil
-	}
-
-	// 新しいファイルの場合、親ディレクトリを確認
-	if os.IsNotExist(err) {
-		parentDir := filepath.Dir(absolutePath)
-		realParentPath, err := filepath.EvalSymlinks(parentDir)
-		if err != nil {
-			return "", fmt.Errorf("親ディレクトリが存在しません: %s", parentDir)
-		}
-		normalizedParent := filepath.Clean(realParentPath)
+		// 新しいファイルの場合、親ディレクトリを確認
+		parentDir := filepath.Dir(normalizedPath)
 		isParentAllowed := false
 		for _, dir := range fs.allowedDirectories {
-			if strings.HasPrefix(normalizedParent, dir) {
+			if strings.HasPrefix(parentDir, dir) {
 				isParentAllowed = true
 				break
 			}
 		}
 		if !isParentAllowed {
-			return "", fmt.Errorf("アクセス拒否 - 親ディレクトリが許可されたディレクトリの外にあります")
+			return "", fmt.Errorf("アクセス拒否 - パスが許可されたディレクトリの外にあります: %s", normalizedPath)
 		}
-		return absolutePath, nil
 	}
 
-	return absolutePath, nil
+	return realPath, nil
 }
 
 // ReadFile はファイルの内容を読み取ります

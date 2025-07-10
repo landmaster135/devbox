@@ -252,7 +252,9 @@ func TestCreateDirectory(t *testing.T) {
 		// ディレクトリが正しく作成されたか確認
 		info, err := os.Stat(newDir)
 		assert.NoError(t, err, "作成したディレクトリの情報取得に失敗しました")
-		assert.True(t, info.IsDir(), "作成したパスがディレクトリではありません")
+		if info != nil {
+			assert.True(t, info.IsDir(), "作成したパスがディレクトリではありません")
+		}
 	})
 
 	// ネストしたディレクトリのテストはスキップ
