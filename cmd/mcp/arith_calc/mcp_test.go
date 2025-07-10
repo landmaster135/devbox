@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	server "github.com/mark3labs/mcp-go/server"
 )
 
@@ -52,7 +54,6 @@ func TestCreateArithCalcServer(t *testing.T) {
 		})
 	}
 }
-
 func TestSetTwoNumbersInputtingCalcServer(t *testing.T) {
 	// テストケース
 	tests := []struct {
@@ -99,4 +100,21 @@ func TestBuildArithCalculatorServer(t *testing.T) {
 	// createArithCalcServerとserver.ServeStdioを呼び出すことを
 	// モックを使用して検証することができます。
 	// ここでは簡略化のため、このテストは省略します。
+}
+
+// TestSetFileLineCountEvaluatorServer は SetFileLineCountEvaluatorServer 関数をテストします
+func TestSetFileLineCountEvaluatorServer(t *testing.T) {
+	// モックサーバーを作成
+	mockServer := server.NewMCPServer(
+		"Test Server",
+		"1.0.0",
+		server.WithResourceCapabilities(true, true),
+	)
+
+	// テスト対象の関数を実行
+	resultServer := SetFileLineCountEvaluatorServer(mockServer)
+
+	// 結果の検証
+	assert.NotNil(t, resultServer, "サーバーが正しく設定されていません")
+	assert.Equal(t, mockServer, resultServer, "返されたサーバーが入力と一致しません")
 }
