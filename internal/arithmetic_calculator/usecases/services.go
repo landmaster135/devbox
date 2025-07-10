@@ -18,32 +18,32 @@ func NewCalculatorService() *CalculatorService {
 	return &CalculatorService{}
 }
 
-// Add は二つの数値を足し算するメソッドです
-func (c *CalculatorService) Add(x float64, y float64) float64 {
+// add は二つの数値を足し算するメソッドです
+func (c *CalculatorService) add(x float64, y float64) float64 {
 	result := x + y
 	return result
 }
 
-// Subtract は二つの数値を引き算するメソッドです
-func (c *CalculatorService) Subtract(x float64, y float64) float64 {
+// subtract は二つの数値を引き算するメソッドです
+func (c *CalculatorService) subtract(x float64, y float64) float64 {
 	result := x - y
 	return result
 }
 
-// Multiply は二つの数値を掛け算するメソッドです
-func (c *CalculatorService) Multiply(x float64, y float64) float64 {
+// multiply は二つの数値を掛け算するメソッドです
+func (c *CalculatorService) multiply(x float64, y float64) float64 {
 	result := x * y
 	return result
 }
 
-// Divide は二つの数値を割り算するメソッドです
-func (c *CalculatorService) Divide(x float64, y float64) float64 {
+// divide は二つの数値を割り算するメソッドです
+func (c *CalculatorService) divide(x float64, y float64) float64 {
 	result := x / y
 	return result
 }
 
-// Sum は複数の数値を合計するメソッドです
-func (c *CalculatorService) Sum(arr []float64) float64 {
+// sum は複数の数値を合計するメソッドです
+func (c *CalculatorService) sum(arr []float64) float64 {
 	result := 0.0
 	for _, number := range arr {
 		result += number
@@ -56,16 +56,16 @@ func (c *CalculatorService) HandleToCalculate(op string, x, y float64) (float64,
 	var result float64
 	switch op {
 	case "add":
-		result = c.Add(x, y)
+		result = c.add(x, y)
 	case "subtract":
-		result = c.Subtract(x, y)
+		result = c.subtract(x, y)
 	case "multiply":
-		result = c.Multiply(x, y)
+		result = c.multiply(x, y)
 	case "divide":
 		if y == 0 {
 			return 0, fmt.Errorf("division by zero is not allowed")
 		}
-		result = c.Divide(x, y)
+		result = c.divide(x, y)
 	}
 	return result, nil
 }
@@ -75,7 +75,7 @@ func (c *CalculatorService) HandleToCalculateWithArray(op string, numbers []floa
 	var result float64
 	switch op {
 	case "sum":
-		result = c.Sum(numbers)
+		result = c.sum(numbers)
 	}
 
 	return result, nil

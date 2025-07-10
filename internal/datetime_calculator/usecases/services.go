@@ -24,9 +24,9 @@ func (s *DatetimeCalculatorService) HandleDatetimeCalc(op string, year1, month1,
 	var result string
 	switch op {
 	case "add":
-		result = s.calculator.AddDatetimeFloat(year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
+		result = s.calculator.addDatetimeFloat(year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
 	case "subtract":
-		result = s.calculator.SubtractDatetimeFloat(year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
+		result = s.calculator.subtractDatetimeFloat(year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
 	default:
 		return "", fmt.Errorf("unsupported operation: %s", op)
 	}

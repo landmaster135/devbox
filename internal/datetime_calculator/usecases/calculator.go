@@ -16,7 +16,7 @@ func (c *DatetimeCalculator) NewTime(year, month, day, hour, minute, second int)
 }
 
 // stringToTime は、指定された日付文字列をtime.Time型に変換する関数です。
-func (c *DatetimeCalculator) StringToTime(dateStr string) (time.Time, error) {
+func (c *DatetimeCalculator) stringToTime(dateStr string) (time.Time, error) {
 	// Goのレイアウトは "2006-01-02" を用います
 	layout := "2006-01-02 15:04:05"
 	t, err := time.Parse(layout, dateStr)
@@ -26,16 +26,16 @@ func (c *DatetimeCalculator) StringToTime(dateStr string) (time.Time, error) {
 	return t, nil
 }
 
-// AddDuration は、string型の日付に time.Duration を加算し、フォーマット済みの文字列を返すメソッドです
-func (c *DatetimeCalculator) AddDuration(year, month, day, hour, minute, second int, d time.Duration) string {
+// addDuration は、string型の日付に time.Duration を加算し、フォーマット済みの文字列を返すメソッドです
+func (c *DatetimeCalculator) addDuration(year, month, day, hour, minute, second int, d time.Duration) string {
 	t1 := c.NewTime(year, month, day, hour, minute, second)
 	newTime := t1.Add(d)
 	// フォーマット例: "2006-01-02 15:04:05"
 	return newTime.Format("2006-01-02 15:04:05")
 }
 
-// AddDatetime は、指定された日付に年月日時分秒を加算し、フォーマット済みの文字列を返すメソッドです
-func (c *DatetimeCalculator) AddDatetime(year, month, day, hour, minute, second int, addYears, addMonths, addDays, addHours, addMinutes, addSeconds int) string {
+// addDatetime は、指定された日付に年月日時分秒を加算し、フォーマット済みの文字列を返すメソッドです
+func (c *DatetimeCalculator) addDatetime(year, month, day, hour, minute, second int, addYears, addMonths, addDays, addHours, addMinutes, addSeconds int) string {
 	t1 := c.NewTime(year, month, day, hour, minute, second)
 
 	// 年月日を加算
@@ -48,8 +48,8 @@ func (c *DatetimeCalculator) AddDatetime(year, month, day, hour, minute, second 
 	return newTime.Format("2006-01-02 15:04:05")
 }
 
-// AddDatetimeFloat は、AddDatetime関数のラッパー関数で、すべての引数をfloat64型で受け取ります
-func (c *DatetimeCalculator) AddDatetimeFloat(year, month, day, hour, minute, second float64, addYears, addMonths, addDays, addHours, addMinutes, addSeconds float64) string {
+// addDatetimeFloat は、AddDatetime関数のラッパー関数で、すべての引数をfloat64型で受け取ります
+func (c *DatetimeCalculator) addDatetimeFloat(year, month, day, hour, minute, second float64, addYears, addMonths, addDays, addHours, addMinutes, addSeconds float64) string {
 	// float64からintに変換
 	yearInt := int(year)
 	monthInt := int(month)
@@ -65,19 +65,19 @@ func (c *DatetimeCalculator) AddDatetimeFloat(year, month, day, hour, minute, se
 	addSecondsInt := int(addSeconds)
 
 	// 元のAddDatetime関数を呼び出す
-	return c.AddDatetime(yearInt, monthInt, dayInt, hourInt, minuteInt, secondInt,
+	return c.addDatetime(yearInt, monthInt, dayInt, hourInt, minuteInt, secondInt,
 		addYearsInt, addMonthsInt, addDaysInt, addHoursInt, addMinutesInt, addSecondsInt)
 }
 
-// SubtractDuration は、string型の日付から time.Duration を減算し、フォーマット済みの文字列を返すメソッドです
-func (c *DatetimeCalculator) SubtractDuration(year, month, day, hour, minute, second int, d time.Duration) string {
+// subtractDuration は、string型の日付から time.Duration を減算し、フォーマット済みの文字列を返すメソッドです
+func (c *DatetimeCalculator) subtractDuration(year, month, day, hour, minute, second int, d time.Duration) string {
 	t1 := c.NewTime(year, month, day, hour, minute, second)
 	newTime := t1.Add(-d) // 減算する時間を正しく計算
 	return newTime.Format("2006-01-02 15:04:05")
 }
 
-// SubtractDatetime は、指定された日付から年月日時分秒を減算し、フォーマット済みの文字列を返すメソッドです
-func (c *DatetimeCalculator) SubtractDatetime(year, month, day, hour, minute, second int, subYears, subMonths, subDays, subHours, subMinutes, subSeconds int) string {
+// subtractDatetime は、指定された日付から年月日時分秒を減算し、フォーマット済みの文字列を返すメソッドです
+func (c *DatetimeCalculator) subtractDatetime(year, month, day, hour, minute, second int, subYears, subMonths, subDays, subHours, subMinutes, subSeconds int) string {
 	t1 := c.NewTime(year, month, day, hour, minute, second)
 
 	// 年月日を減算（負の値を渡して減算）
@@ -90,8 +90,8 @@ func (c *DatetimeCalculator) SubtractDatetime(year, month, day, hour, minute, se
 	return newTime.Format("2006-01-02 15:04:05")
 }
 
-// SubtractDatetimeFloat は、SubtractDatetime関数のラッパー関数で、すべての引数をfloat64型で受け取ります
-func (c *DatetimeCalculator) SubtractDatetimeFloat(year, month, day, hour, minute, second float64, subYears, subMonths, subDays, subHours, subMinutes, subSeconds float64) string {
+// subtractDatetimeFloat は、SubtractDatetime関数のラッパー関数で、すべての引数をfloat64型で受け取ります
+func (c *DatetimeCalculator) subtractDatetimeFloat(year, month, day, hour, minute, second float64, subYears, subMonths, subDays, subHours, subMinutes, subSeconds float64) string {
 	// float64からintに変換
 	yearInt := int(year)
 	monthInt := int(month)
@@ -107,12 +107,12 @@ func (c *DatetimeCalculator) SubtractDatetimeFloat(year, month, day, hour, minut
 	subSecondsInt := int(subSeconds)
 
 	// 元のSubtractDatetime関数を呼び出す
-	return c.SubtractDatetime(yearInt, monthInt, dayInt, hourInt, minuteInt, secondInt,
+	return c.subtractDatetime(yearInt, monthInt, dayInt, hourInt, minuteInt, secondInt,
 		subYearsInt, subMonthsInt, subDaysInt, subHoursInt, subMinutesInt, subSecondsInt)
 }
 
-// DiffTime は、二つの time.Time の差を計算し、time.Duration を時間単位でフォーマットした文字列を返すメソッドです
-func (c *DatetimeCalculator) DiffTime(t1, t2 time.Time) string {
+// diffTime は、二つの time.Time の差を計算し、time.Duration を時間単位でフォーマットした文字列を返すメソッドです
+func (c *DatetimeCalculator) diffTime(t1, t2 time.Time) string {
 	diff := t1.Sub(t2)
 	// time.Duration の String() メソッドは "72h3m0.5s" のように返す
 	return diff.String()

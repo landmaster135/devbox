@@ -109,46 +109,81 @@ func NewTimezoneService() *TimezoneService {
 	return &TimezoneService{}
 }
 
-// GetCurrentTime は指定されたタイムゾーンの現在時刻を取得するメソッドです
-func (ts *TimezoneService) GetCurrentTime(timezone string) (string, error) {
+// normalizeTimezone は一般的なタイムゾーン名を正規のタイムゾーン名に変換するメソッドです
+func (ts *TimezoneService) normalizeTimezone(timezone string) string {
+	// 小文字に変換して検索
+	lowercaseTimezone := strings.ToLower(timezone)
+	if normalized, ok := commonTimezones[lowercaseTimezone]; ok {
+		return normalized
+	}
+	return timezone
+}
+
+// findSimilarTimezones は指定されたタイムゾーンに似たタイムゾーンを見つけるメソッドです
+func (ts *TimezoneService) findSimilarTimezones(timezone string) string {
+	lowercaseTimezone := strings.ToLower(timezone)
+	var similarTimezones []string
+
+	// 部分一致するタイムゾーンを探す
+	for _, tz := range availableTimezones {
+		if strings.Contains(strings.ToLower(tz), lowercaseTimezone) {
+			similarTimezones = append(similarTimezones, tz)
+		}
+	}
+
+	// 最大5つまで表示
+	if len(similarTimezones) > 5 {
+		similarTimezones = similarTimezones[:5]
+	}
+
+	if len(similarTimezones) > 0 {
+		return strings.Join(similarTimezones, ", ")
+	}
+
+	// 似たタイムゾーンが見つからない場合は、一般的なタイムゾーンを提案
+	return "UTC, Asia/Tokyo, America/New_York, Europe/London, Australia/Sydney"
+}
+
+// getCurrentTime は指定されたタイムゾーンの現在時刻を取得するメソッドです
+func (ts *TimezoneService) getCurrentTime(timezone string) (string, error) {
 	// 空のタイムゾーンをチェック
 	if timezone == "" {
 		return "", errors.New(ErrEmptyTimezone)
 	}
 
 	// 一般的なタイムゾーン名の変換を試みる
-	timezone = ts.NormalizeTimezone(timezone)
+	timezone = ts.normalizeTimezone(timezone)
 
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		// より詳細なエラーメッセージを提供
-		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, timezone, ts.FindSimilarTimezones(timezone))
+		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, timezone, ts.findSimilarTimezones(timezone))
 	}
 
 	now := time.Now().In(loc)
 	return now.Format("2006-01-02 15:04:05 MST (Z07:00)"), nil
 }
 
-// ConvertTime は指定された日時を指定されたタイムゾーンに変換するメソッドです
-func (ts *TimezoneService) ConvertTime(dateTime, fromTimezone, toTimezone string) (string, error) {
+// convertTime は指定された日時を指定されたタイムゾーンに変換するメソッドです
+func (ts *TimezoneService) convertTime(dateTime, fromTimezone, toTimezone string) (string, error) {
 	// 空のタイムゾーンをチェック
 	if fromTimezone == "" || toTimezone == "" {
 		return "", errors.New(ErrEmptyTimezone)
 	}
 
 	// タイムゾーン名の正規化
-	fromTimezone = ts.NormalizeTimezone(fromTimezone)
-	toTimezone = ts.NormalizeTimezone(toTimezone)
+	fromTimezone = ts.normalizeTimezone(fromTimezone)
+	toTimezone = ts.normalizeTimezone(toTimezone)
 
 	// タイムゾーンの検証
 	fromLoc, err := time.LoadLocation(fromTimezone)
 	if err != nil {
-		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, fromTimezone, ts.FindSimilarTimezones(fromTimezone))
+		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, fromTimezone, ts.findSimilarTimezones(fromTimezone))
 	}
 
 	toLoc, err := time.LoadLocation(toTimezone)
 	if err != nil {
-		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, toTimezone, ts.FindSimilarTimezones(toTimezone))
+		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, toTimezone, ts.findSimilarTimezones(toTimezone))
 	}
 
 	// 日時のパース
@@ -180,63 +215,28 @@ func (ts *TimezoneService) ConvertTime(dateTime, fromTimezone, toTimezone string
 	return convertedTime.Format("2006-01-02 15:04:05 MST (Z07:00)"), nil
 }
 
-// IsValidTimezone はタイムゾーンが有効かどうかを確認するメソッドです
-func (ts *TimezoneService) IsValidTimezone(timezone string) bool {
+// isValidTimezone はタイムゾーンが有効かどうかを確認するメソッドです
+func (ts *TimezoneService) isValidTimezone(timezone string) bool {
 	// 空のタイムゾーンは無効とする
 	if timezone == "" {
 		return false
 	}
 
 	// 一般的なタイムゾーン名の変換を試みる
-	timezone = ts.NormalizeTimezone(timezone)
+	timezone = ts.normalizeTimezone(timezone)
 
 	_, err := time.LoadLocation(timezone)
 	return err == nil
 }
 
-// NormalizeTimezone は一般的なタイムゾーン名を正規のタイムゾーン名に変換するメソッドです
-func (ts *TimezoneService) NormalizeTimezone(timezone string) string {
-	// 小文字に変換して検索
-	lowercaseTimezone := strings.ToLower(timezone)
-	if normalized, ok := commonTimezones[lowercaseTimezone]; ok {
-		return normalized
-	}
-	return timezone
-}
-
-// FindSimilarTimezones は指定されたタイムゾーンに似たタイムゾーンを見つけるメソッドです
-func (ts *TimezoneService) FindSimilarTimezones(timezone string) string {
-	lowercaseTimezone := strings.ToLower(timezone)
-	var similarTimezones []string
-
-	// 部分一致するタイムゾーンを探す
-	for _, tz := range availableTimezones {
-		if strings.Contains(strings.ToLower(tz), lowercaseTimezone) {
-			similarTimezones = append(similarTimezones, tz)
-		}
-	}
-
-	// 最大5つまで表示
-	if len(similarTimezones) > 5 {
-		similarTimezones = similarTimezones[:5]
-	}
-
-	if len(similarTimezones) > 0 {
-		return strings.Join(similarTimezones, ", ")
-	}
-
-	// 似たタイムゾーンが見つからない場合は、一般的なタイムゾーンを提案
-	return "UTC, Asia/Tokyo, America/New_York, Europe/London, Australia/Sydney"
-}
-
-// GetAvailableTimezones は利用可能なタイムゾーンのリストを取得するメソッドです
-func (ts *TimezoneService) GetAvailableTimezones() []string {
+// getAvailableTimezones は利用可能なタイムゾーンのリストを取得するメソッドです
+func (ts *TimezoneService) getAvailableTimezones() []string {
 	var validTimezones []string
 
 	// 利用可能なタイムゾーンのリストを作成（重複を削除）
 	seen := make(map[string]bool)
 	for _, tz := range availableTimezones {
-		if !seen[tz] && ts.IsValidTimezone(tz) {
+		if !seen[tz] && ts.isValidTimezone(tz) {
 			validTimezones = append(validTimezones, tz)
 			seen[tz] = true
 		}
@@ -245,8 +245,8 @@ func (ts *TimezoneService) GetAvailableTimezones() []string {
 	return validTimezones
 }
 
-// GetCommonTimezoneAliases は一般的なタイムゾーンの別名を取得するメソッドです
-func (ts *TimezoneService) GetCommonTimezoneAliases() map[string]string {
+// getCommonTimezoneAliases は一般的なタイムゾーンの別名を取得するメソッドです
+func (ts *TimezoneService) getCommonTimezoneAliases() map[string]string {
 	return commonTimezones
 }
 
@@ -256,15 +256,15 @@ func (ts *TimezoneService) GetCommonTimezoneAliases() map[string]string {
 
 // HandleGetCurrentTime は現在時刻取得のMCPリクエストを処理するハンドラーです
 func (ts *TimezoneService) HandleGetCurrentTime(timezone string) (string, error) {
-	if !ts.IsValidTimezone(timezone) {
+	if !ts.isValidTimezone(timezone) {
 		// より詳細なエラーメッセージを提供
-		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, timezone, ts.FindSimilarTimezones(timezone))
+		return "", fmt.Errorf("%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, timezone, ts.findSimilarTimezones(timezone))
 	}
 
 	// タイムゾーン名の正規化
-	normalizedTimezone := ts.NormalizeTimezone(timezone)
+	normalizedTimezone := ts.normalizeTimezone(timezone)
 
-	timeStr, err := ts.GetCurrentTime(normalizedTimezone)
+	timeStr, err := ts.getCurrentTime(normalizedTimezone)
 	if err != nil {
 		return "", err
 	}
@@ -275,20 +275,20 @@ func (ts *TimezoneService) HandleGetCurrentTime(timezone string) (string, error)
 // HandleConvertTime は時刻変換のMCPリクエストを処理するハンドラーです
 func (ts *TimezoneService) HandleConvertTime(datetime, fromTimezone, toTimezone string) (string, error) {
 	// タイムゾーンの検証
-	if !ts.IsValidTimezone(fromTimezone) {
-		return "", fmt.Errorf("変換元の%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, fromTimezone, ts.FindSimilarTimezones(fromTimezone))
+	if !ts.isValidTimezone(fromTimezone) {
+		return "", fmt.Errorf("変換元の%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, fromTimezone, ts.findSimilarTimezones(fromTimezone))
 	}
 
-	if !ts.IsValidTimezone(toTimezone) {
-		return "", fmt.Errorf("変換先の%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, toTimezone, ts.FindSimilarTimezones(toTimezone))
+	if !ts.isValidTimezone(toTimezone) {
+		return "", fmt.Errorf("変換先の%s: %s（近いタイムゾーン: %s）", ErrInvalidTimezone, toTimezone, ts.findSimilarTimezones(toTimezone))
 	}
 
 	// タイムゾーン名の正規化
-	normalizedFromTz := ts.NormalizeTimezone(fromTimezone)
-	normalizedToTz := ts.NormalizeTimezone(toTimezone)
+	normalizedFromTz := ts.normalizeTimezone(fromTimezone)
+	normalizedToTz := ts.normalizeTimezone(toTimezone)
 
 	// 時刻変換
-	convertedTime, err := ts.ConvertTime(datetime, normalizedFromTz, normalizedToTz)
+	convertedTime, err := ts.convertTime(datetime, normalizedFromTz, normalizedToTz)
 	if err != nil {
 		return "", err
 	}
@@ -299,10 +299,10 @@ func (ts *TimezoneService) HandleConvertTime(datetime, fromTimezone, toTimezone 
 
 // HandleListAvailableTimezones は利用可能なタイムゾーンリストのMCPリクエストを処理するハンドラーです
 func (ts *TimezoneService) HandleListAvailableTimezones() (string, error) {
-	validTimezones := ts.GetAvailableTimezones()
+	validTimezones := ts.getAvailableTimezones()
 
 	// 一般的なタイムゾーンの別名も表示
-	aliases := ts.GetCommonTimezoneAliases()
+	aliases := ts.getCommonTimezoneAliases()
 	var aliasStrings []string
 	for alias, tz := range aliases {
 		aliasStrings = append(aliasStrings, fmt.Sprintf("%s (%s)", alias, tz))
