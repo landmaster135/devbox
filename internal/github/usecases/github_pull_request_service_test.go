@@ -421,9 +421,19 @@ func TestGitHubPullRequestService_ListPullRequests_Normal(t *testing.T) {
 	// Arrange
 	mockClient := &MockHTTPClient{
 		DoFunc: func(req *http.Request) (*http.Response, error) {
-			expectedURL := "https://api.github.com/repos/owner/repo/pulls?state=open&sort=created"
-			if req.URL.String() != expectedURL {
-				t.Errorf("Expected URL %s, got %s", expectedURL, req.URL.String())
+			// URLのベース部分を確認
+			expectedBaseURL := "https://api.github.com/repos/owner/repo/pulls"
+			if !strings.HasPrefix(req.URL.String(), expectedBaseURL) {
+				t.Errorf("Expected URL to start with %s, got %s", expectedBaseURL, req.URL.String())
+			}
+
+			// クエリパラメータを個別に確認
+			query := req.URL.Query()
+			if query.Get("state") != "open" {
+				t.Errorf("Expected state=open, got state=%s", query.Get("state"))
+			}
+			if query.Get("sort") != "created" {
+				t.Errorf("Expected sort=created, got sort=%s", query.Get("sort"))
 			}
 
 			responseBody := `[{"id": 1, "title": "Test PR 1", "state": "open"}, {"id": 2, "title": "Test PR 2", "state": "open"}]`
