@@ -9,35 +9,6 @@ import (
 	mcp "github.com/mark3labs/mcp-go/mcp"
 )
 
-// ヘルパー関数: 文字列パラメータを取得
-func getStringParam(args map[string]interface{}, key string) (string, bool) {
-	if val, ok := args[key]; ok {
-		return val.(string), true
-	}
-	return "", false
-}
-
-// ヘルパー関数: 必須の文字列パラメータを取得
-func getRequiredStringParam(args map[string]interface{}, key string) string {
-	return args[key].(string)
-}
-
-// ヘルパー関数: 数値パラメータを取得
-func getNumberParam(args map[string]interface{}, key string, defaultVal int) int {
-	if val, ok := args[key]; ok {
-		return int(val.(float64))
-	}
-	return defaultVal
-}
-
-// ヘルパー関数: ブールパラメータを取得
-func getBoolParam(args map[string]interface{}, key string, defaultVal bool) bool {
-	if val, ok := args[key]; ok {
-		return val.(bool)
-	}
-	return defaultVal
-}
-
 // ヘルパー関数: 結果をJSON形式で返却
 func returnJSONResult(result interface{}) (*mcp.CallToolResult, error) {
 	jsonResult, err := json.MarshalIndent(result, "", "  ")
@@ -45,13 +16,6 @@ func returnJSONResult(result interface{}) (*mcp.CallToolResult, error) {
 		return nil, err
 	}
 	return mcp.NewToolResultText(string(jsonResult)), nil
-}
-
-// ヘルパー関数: オプションマップにパラメータを追加
-func addToOptions(options map[string]interface{}, args map[string]interface{}, key string) {
-	if val, ok := args[key]; ok {
-		options[key] = val
-	}
 }
 
 const (

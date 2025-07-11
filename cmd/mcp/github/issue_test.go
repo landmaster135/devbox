@@ -15,6 +15,47 @@ import (
 	server "github.com/mark3labs/mcp-go/server"
 )
 
+func TestAddToOptions(t *testing.T) {
+	tests := []struct {
+		name          string
+		options       map[string]interface{}
+		args          map[string]interface{}
+		key           string
+		expectedValue interface{}
+		expectedExist bool
+	}{
+		{
+			name:          "キーが存在する場合",
+			options:       map[string]interface{}{},
+			args:          map[string]interface{}{"key": "value"},
+			key:           "key",
+			expectedValue: "value",
+			expectedExist: true,
+		},
+		{
+			name:          "キーが存在しない場合",
+			options:       map[string]interface{}{},
+			args:          map[string]interface{}{"other": "value"},
+			key:           "key",
+			expectedValue: nil,
+			expectedExist: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addToOptions(tt.options, tt.args, tt.key)
+			value, exists := tt.options[tt.key]
+			if exists != tt.expectedExist {
+				t.Errorf("addToOptions() key exists = %v, want %v", exists, tt.expectedExist)
+			}
+			if exists && value != tt.expectedValue {
+				t.Errorf("addToOptions() value = %v, want %v", value, tt.expectedValue)
+			}
+		})
+	}
+}
+
 // TestSetGitHubIssueServer はSetGitHubIssueServer関数をテストする
 func TestSetGitHubIssueServer(t *testing.T) {
 	// テストケース
