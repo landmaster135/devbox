@@ -15,35 +15,53 @@ import (
 func TestNewGitHubSearchService(t *testing.T) {
 	// テストケース
 	tests := []struct {
-		name  string
-		token string
+		name        string
+		token       string
+		expectError bool
 	}{
 		{
-			name:  "トークンあり",
-			token: "testtoken",
+			name:        "正常系 - トークンあり",
+			token:       "testtoken",
+			expectError: false,
 		},
 		{
-			name:  "トークンなし",
-			token: "",
+			name:        "異常系 - トークンなし",
+			token:       "",
+			expectError: true,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// 関数を実行
-			service := NewGitHubSearchService(tc.token)
+			service, err := NewGitHubSearchService(tc.token)
 
-			// 検証
-			if service == nil {
-				t.Fatal("サービスがnilです")
+			// エラーの検証
+			if tc.expectError && err == nil {
+				t.Error("エラーが期待されていましたが、エラーは発生しませんでした")
+			}
+			if !tc.expectError && err != nil {
+				t.Errorf("エラーは期待されていませんでしたが、エラーが発生しました: %v", err)
 			}
 
-			if service.clientService == nil {
-				t.Fatal("クライアントサービスがnilです")
-			}
+			// 正常系の場合の検証
+			if !tc.expectError {
+				if service == nil {
+					t.Fatal("サービスがnilです")
+				}
 
-			if service.clientService.token != tc.token {
-				t.Errorf("期待されたトークン: %s, 実際: %s", tc.token, service.clientService.token)
+				if service.clientService == nil {
+					t.Fatal("クライアントサービスがnilです")
+				}
+
+				if service.clientService.token != tc.token {
+					t.Errorf("期待されたトークン: %s, 実際: %s", tc.token, service.clientService.token)
+				}
+			} else {
+				// 異常系の場合はサービスがnilであることを確認
+				if service != nil {
+					t.Error("エラー時にはサービスはnilであるべきです")
+				}
 			}
 		})
 	}
@@ -83,8 +101,8 @@ func TestSearchCode(t *testing.T) {
 			expectError:    false,
 		},
 		{
-			name:  "正常系 - オプションなし",
-			query: "addClass in:file language:js repo:jquery/jquery",
+			name:    "正常系 - オプションなし",
+			query:   "addClass in:file language:js repo:jquery/jquery",
 			options: map[string]interface{}{},
 			mockResponse: map[string]interface{}{
 				"total_count": float64(10),
@@ -101,8 +119,8 @@ func TestSearchCode(t *testing.T) {
 			expectError:    false,
 		},
 		{
-			name:  "異常系 - 認証エラー",
-			query: "addClass in:file language:js repo:jquery/jquery",
+			name:    "異常系 - 認証エラー",
+			query:   "addClass in:file language:js repo:jquery/jquery",
 			options: map[string]interface{}{},
 			mockResponse: map[string]interface{}{
 				"message":           "Bad credentials",
@@ -113,8 +131,8 @@ func TestSearchCode(t *testing.T) {
 			expectError:    true,
 		},
 		{
-			name:  "異常系 - レート制限エラー",
-			query: "addClass in:file language:js repo:jquery/jquery",
+			name:    "異常系 - レート制限エラー",
+			query:   "addClass in:file language:js repo:jquery/jquery",
 			options: map[string]interface{}{},
 			mockResponse: map[string]interface{}{
 				"message":           "API rate limit exceeded",
@@ -125,18 +143,18 @@ func TestSearchCode(t *testing.T) {
 			expectError:    true,
 		},
 		{
-			name:  "異常系 - 不正なJSONレスポンス",
-			query: "addClass in:file language:js repo:jquery/jquery",
-			options: map[string]interface{}{},
+			name:           "異常系 - 不正なJSONレスポンス",
+			query:          "addClass in:file language:js repo:jquery/jquery",
+			options:        map[string]interface{}{},
 			mockResponse:   nil, // 空のレスポンス
 			mockStatusCode: http.StatusOK,
 			mockError:      nil,
 			expectError:    true,
 		},
 		{
-			name:  "異常系 - ネットワークエラー",
-			query: "addClass in:file language:js repo:jquery/jquery",
-			options: map[string]interface{}{},
+			name:           "異常系 - ネットワークエラー",
+			query:          "addClass in:file language:js repo:jquery/jquery",
+			options:        map[string]interface{}{},
 			mockResponse:   nil,
 			mockStatusCode: 0,
 			mockError:      errors.New("ネットワーク接続エラー"),

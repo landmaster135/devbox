@@ -142,13 +142,14 @@ type GitHubSearchService struct {
 }
 
 // NewGitHubSearchService は新しいGitHubSearchServiceを作成します
-func NewGitHubSearchService(token string) *GitHubSearchService {
-	// err := validateParams(token); if err != nil{
-	// 	return nil, err
-	// }
+func NewGitHubSearchService(token string) (*GitHubSearchService, error) {
+	err := validateParams(token)
+	if err != nil {
+		return nil, err
+	}
 	return &GitHubSearchService{
 		clientService: NewGitHubClientService(token),
-	}
+	}, nil
 }
 
 // NewGitHubSearchServiceWithDependencies はテスト用に依存性を注入できるGitHubSearchServiceを作成します
