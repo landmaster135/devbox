@@ -2,41 +2,12 @@ package github
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"strings"
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
+
+	usecases "github.com/landmaster135/devbox/internal/github/usecases"
 )
-
-// ListCommits はリポジトリのコミット一覧を取得します
-func (c *GitHubClient) ListCommits(owner, repo string, page, perPage int, sha string) ([]map[string]interface{}, error) {
-	if page < 1 {
-		page = 1
-	}
-	if perPage < 1 || perPage > 100 {
-		perPage = 30
-	}
-
-	url := fmt.Sprintf("%s/repos/%s/%s/commits?page=%d&per_page=%d", apiBaseURL, owner, repo, page, perPage)
-	if sha != "" {
-		url += fmt.Sprintf("&sha=%s", sha)
-	}
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
 
 // HandleToListCommits はリポジトリのコミット一覧を取得して、結果をJSON形式で返します
 func (c *GitHubClient) HandleToListCommits(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -52,35 +23,14 @@ func (c *GitHubClient) HandleToListCommits(ctx context.Context, request mcp.Call
 	perPage := request.GetInt("per_page", 30)
 	sha := request.GetString("sha", "")
 
-	result, err := c.ListCommits(owner, repo, page, perPage, sha)
+	// usecasesレイヤーのサービスを使用
+	service := usecases.NewGitHubRepositoryService(c.token)
+	result, err := service.HandleToListCommits(owner, repo, page, perPage, sha)
 	if err != nil {
 		return nil, err
 	}
 
 	return returnJSONResult(result)
-}
-
-// SearchRepositories はGitHubリポジトリを検索します
-func (c *GitHubClient) SearchRepositories(query string, page, perPage int) (map[string]interface{}, error) {
-	if page < 1 {
-		page = 1
-	}
-	if perPage < 1 || perPage > 100 {
-		perPage = 30
-	}
-
-	url := fmt.Sprintf("%s/search/repositories?q=%s&page=%d&per_page=%d", apiBaseURL, query, page, perPage)
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 // HandleToSearchRepositories はGitHubリポジトリを検索して、結果をJSON形式で返します
@@ -92,38 +42,14 @@ func (c *GitHubClient) HandleToSearchRepositories(ctx context.Context, request m
 	page := request.GetInt("page", 1)
 	perPage := request.GetInt("per_page", 30)
 
-	result, err := c.SearchRepositories(query, page, perPage)
+	// usecasesレイヤーのサービスを使用
+	service := usecases.NewGitHubRepositoryService(c.token)
+	result, err := service.HandleToSearchRepositories(query, page, perPage)
 	if err != nil {
 		return nil, err
 	}
 
 	return returnJSONResult(result)
-}
-
-// GetUserRepositories はユーザーのリポジトリ一覧を取得します
-func (c *GitHubClient) GetUserRepositories(username string, options map[string]interface{}) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/users/%s/repos", apiBaseURL, username)
-
-	// クエリパラメータを追加
-	queryParams := []string{}
-	for k, v := range options {
-		queryParams = append(queryParams, fmt.Sprintf("%s=%v", k, v))
-	}
-	if len(queryParams) > 0 {
-		url += "?=" + strings.Join(queryParams, "&")
-	}
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 // HandleToGetUserRepositories はユーザーのリポジトリ一覧を取得して、結果をJSON形式で返します
@@ -133,67 +59,21 @@ func (c *GitHubClient) HandleToGetUserRepositories(ctx context.Context, request 
 		return nil, err
 	}
 
-	options := make(map[string]interface{})
-
-	// 数値オプションパラメータを追加
-	perPage := request.GetInt("per_page", 0)
-	if perPage > 0 {
-		options["per_page"] = perPage
-	}
-	page := request.GetInt("page", 0)
-	if page > 0 {
-		options["page"] = page
-	}
-
-	// 文字列オプションパラメータを追加
+	// パラメータを取得
 	sort := request.GetString("sort", "")
-	if sort != "" {
-		options["sort"] = sort
-	}
 	direction := request.GetString("direction", "")
-	if direction != "" {
-		options["direction"] = direction
-	}
 	type_ := request.GetString("type", "")
-	if type_ != "" {
-		options["type"] = type_
-	}
+	perPage := request.GetInt("per_page", 0)
+	page := request.GetInt("page", 0)
 
-	result, err := c.GetUserRepositories(username, options)
+	// usecasesレイヤーのサービスを使用
+	service := usecases.NewGitHubRepositoryService(c.token)
+	result, err := service.HandleToGetUserRepositories(username, sort, direction, type_, perPage, page)
 	if err != nil {
 		return nil, err
 	}
 
 	return returnJSONResult(result)
-}
-
-// GetFileContents はリポジトリからファイルの内容を取得します
-func (c *GitHubClient) GetFileContents(owner, repo, path, branch string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", apiBaseURL, owner, repo, path)
-	if branch != "" {
-		url += fmt.Sprintf("?ref=%s", branch)
-	}
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	// ファイルの内容をデコードする
-	if content, ok := result["content"].(string); ok {
-		decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(content, "\n", ""))
-		if err != nil {
-			return nil, err
-		}
-		result["decoded_content"] = string(decoded)
-	}
-
-	return result, nil
 }
 
 // HandleToGetFileContents はリポジトリからファイルの内容を取得して、結果をJSON形式で返します
@@ -212,7 +92,9 @@ func (c *GitHubClient) HandleToGetFileContents(ctx context.Context, request mcp.
 	}
 	branch := request.GetString("branch", "")
 
-	result, err := c.GetFileContents(owner, repo, path, branch)
+	// usecasesレイヤーのサービスを使用
+	service := usecases.NewGitHubRepositoryService(c.token)
+	result, err := service.HandleToGetFileContents(owner, repo, path, branch)
 	if err != nil {
 		return nil, err
 	}
