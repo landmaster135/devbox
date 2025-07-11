@@ -19,6 +19,49 @@ type Config struct {
 	Until   string // 終了年月日（オプション、YYYY-MM-DD形式）
 }
 
+func NewConfig(gitDir, keyword, since, until string)(*Config, error){
+	c := &Config{
+		GitDir:  gitDir,
+		Keyword: keyword,
+		Since:   since,
+		Until:   until,
+	}
+	var err error
+	c, err = validateConfig(c); if err != nil{
+		return nil, fmt.Errorf("設定の初期化に失敗しました: %v", err)
+	}
+	return c, nil
+}
+
+// validateDateFormat は日付フォーマットを検証する
+func validateDateFormat(date string) error {
+	if date == "" {
+		return nil
+	}
+	datePattern := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	if !datePattern.MatchString(date) {
+		return fmt.Errorf("日付フォーマットが正しくありません。YYYY-MM-DD形式で入力してください: %s", date)
+	}
+	return nil
+}
+
+func validateConfig(config *Config) (*Config, error) {
+	// GitDirは必須
+	if config.GitDir == "" {
+		return nil, fmt.Errorf("--git-dir は必須パラメータです")
+	}
+
+	err := validateDateFormat(config.Since); if err != nil {
+		return nil, fmt.Errorf("--since の日付フォーマットが正しくありません。YYYY-MM-DD形式で入力してください")
+	}
+
+	err = validateDateFormat(config.Until); if err != nil {
+		return nil, fmt.Errorf("--until の日付フォーマットが正しくありません。YYYY-MM-DD形式で入力してください")
+	}
+
+	return config, nil
+}
+
 // ConfigParser はConfig解析を行う構造体
 type ConfigParser struct {
 	flagParser FlagParser
@@ -51,20 +94,9 @@ func (cp *ConfigParser) ParseFlags() (*Config, error) {
 
 // validateConfig は設定の妥当性を検証する
 func (cp *ConfigParser) validateConfig(config *Config) (*Config, error) {
-	// GitDirは必須
-	if config.GitDir == "" {
-		return nil, fmt.Errorf("--git-dir は必須パラメータです")
-	}
-
-	// 日付フォーマットの検証
-	datePattern := regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-
-	if config.Since != "" && !datePattern.MatchString(config.Since) {
-		return nil, fmt.Errorf("--since の日付フォーマットが正しくありません。YYYY-MM-DD形式で入力してください")
-	}
-
-	if config.Until != "" && !datePattern.MatchString(config.Until) {
-		return nil, fmt.Errorf("--until の日付フォーマットが正しくありません。YYYY-MM-DD形式で入力してください")
+	config, err := validateConfig(config)
+	if err != nil {
+		return nil, err
 	}
 
 	return config, nil

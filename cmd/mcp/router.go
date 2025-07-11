@@ -11,6 +11,7 @@ import (
 	everart "github.com/landmaster135/devbox/cmd/mcp/everart"
 	figma "github.com/landmaster135/devbox/cmd/mcp/figma"
 	filesystem "github.com/landmaster135/devbox/cmd/mcp/filesystem"
+	git_commit_history_retriever "github.com/landmaster135/devbox/cmd/mcp/git_commit_history_retriever"
 	git_diff_recorder "github.com/landmaster135/devbox/cmd/mcp/git_diff_recorder"
 	github "github.com/landmaster135/devbox/cmd/mcp/github"
 	http_request "github.com/landmaster135/devbox/cmd/mcp/http_request"
@@ -68,6 +69,8 @@ func Router() {
 		gdrive.BuildGoogleDriveServer()
 	case "git_diff_recorder":
 		git_diff_recorder.BuildMcpServer()
+	case "git_commit_history_retriever":
+		git_commit_history_retriever.BuildMcpServer()
 	default:
 		fmt.Fprintln(os.Stderr, "argument is invalid")
 		os.Exit(1)
