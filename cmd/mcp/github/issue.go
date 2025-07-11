@@ -28,6 +28,13 @@ func (c *GitHubClient) CreateIssue(owner, repo string, options map[string]interf
 	return result, nil
 }
 
+// ヘルパー関数: オプションマップにパラメータを追加
+func addToOptions(options map[string]interface{}, args map[string]interface{}, key string) {
+	if val, ok := args[key]; ok {
+		options[key] = val
+	}
+}
+
 // HandleToCreateIssue は新しいイシューを作成して、結果をJSON形式で返します
 func (c *GitHubClient) HandleToCreateIssue(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
