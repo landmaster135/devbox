@@ -139,6 +139,14 @@
       ],
       "disabled": false,
       "autoApprove": []
+    },
+    "git_commit_history_retriever": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "git_commit_history_retriever"
+      ],
+      "disabled": false,
+      "autoApprove": []
     }
   }
 }
