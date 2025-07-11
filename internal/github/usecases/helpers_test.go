@@ -1,11 +1,16 @@
-package github
+package usecases
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
 )
+
+// #==============================================================#
+// ##          Mock Structures                                   ##
+// #==============================================================#
 
 // MockHTTPClient struct is a mock for HTTP client.
 type MockHTTPClient struct {
@@ -16,6 +21,20 @@ type MockHTTPClient struct {
 func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	return m.DoFunc(req)
 }
+
+// MockJSONMarshaler struct is a mock for JSON marshaler.
+type MockJSONMarshaler struct {
+	MarshalIndentFunc func(v interface{}, prefix, indent string) ([]byte, error)
+}
+
+// MarshalIndent method marshals JSON with indentation.
+func (m *MockJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+	return m.MarshalIndentFunc(v, prefix, indent)
+}
+
+// #==============================================================#
+// ##          Helper Functions                                  ##
+// #==============================================================#
 
 // マップの比較用ヘルパー関数
 func compareMaps(t *testing.T, expected, actual map[string]interface{}) bool {
@@ -53,54 +72,24 @@ func compareMaps(t *testing.T, expected, actual map[string]interface{}) bool {
 	return true
 }
 
-func TestReturnJSONResult(t *testing.T) {
-	tests := []struct {
-		name        string
-		input       interface{}
-		expectError bool
-	}{
-		{
-			name:        "正常系 - 有効なJSONデータ",
-			input:       map[string]interface{}{"key": "value"},
-			expectError: false,
-		},
-		{
-			name: "異常系 - JSONにマーシャルできないデータ",
-			input: func() interface{} {
-				// JSONにマーシャルできない循環参照を持つデータ構造
-				type Circular struct {
-					Self *Circular
-				}
-				c := &Circular{}
-				c.Self = c
-				return c
-			}(),
-			expectError: true,
-		},
-	}
+// #==============================================================#
+// ##          Error Readers for Testing                        ##
+// #==============================================================#
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := returnJSONResult(tt.input)
+// エラーを返すリーダー
+type errorReader struct{}
 
-			if tt.expectError {
-				if err == nil {
-					t.Errorf("returnJSONResult() エラーが期待されていましたが、エラーは発生しませんでした")
-				}
-				// エラーが発生した場合、resultはnilであるべき
-				if result != nil {
-					t.Errorf("returnJSONResult() エラー時にnilではない結果が返されました: %v", result)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("returnJSONResult() error = %v", err)
-					return
-				}
-				// 正常系の場合、resultはnilではないはず
-				if result == nil {
-					t.Errorf("returnJSONResult() 結果がnilです")
-				}
-			}
-		})
-	}
+func (e *errorReader) Read(p []byte) (n int, err error) {
+	return 0, errors.New("読み取りエラー")
+}
+
+// エラーを返すReadCloser
+type errorReadCloser struct{}
+
+func (e *errorReadCloser) Read(p []byte) (n int, err error) {
+	return 0, errors.New("読み取りエラー")
+}
+
+func (e *errorReadCloser) Close() error {
+	return nil
 }

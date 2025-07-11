@@ -1,0 +1,410 @@
+package usecases
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"testing"
+)
+
+// TestNewGitHubSearchService は NewGitHubSearchService 関数をテストする
+func TestNewGitHubSearchService(t *testing.T) {
+	// テストケース
+	tests := []struct {
+		name  string
+		token string
+	}{
+		{
+			name:  "トークンあり",
+			token: "testtoken",
+		},
+		{
+			name:  "トークンなし",
+			token: "",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// 関数を実行
+			service := NewGitHubSearchService(tc.token)
+
+			// 検証
+			if service == nil {
+				t.Fatal("サービスがnilです")
+			}
+
+			if service.clientService == nil {
+				t.Fatal("クライアントサービスがnilです")
+			}
+
+			if service.clientService.token != tc.token {
+				t.Errorf("期待されたトークン: %s, 実際: %s", tc.token, service.clientService.token)
+			}
+		})
+	}
+}
+
+// TestSearchCode はSearchCodeメソッドをテストする
+func TestSearchCode(t *testing.T) {
+	// テストケース
+	tests := []struct {
+		name           string
+		query          string
+		options        map[string]interface{}
+		mockResponse   map[string]interface{}
+		mockStatusCode int
+		mockError      error
+		expectError    bool
+	}{
+		{
+			name:  "正常系 - コード検索成功",
+			query: "addClass in:file language:js repo:jquery/jquery",
+			options: map[string]interface{}{
+				"page":     1,
+				"per_page": 30,
+			},
+			mockResponse: map[string]interface{}{
+				"total_count": float64(10),
+				"items": []interface{}{
+					map[string]interface{}{
+						"name":       "jquery.js",
+						"path":       "src/jquery.js",
+						"repository": map[string]interface{}{"full_name": "jquery/jquery"},
+					},
+				},
+			},
+			mockStatusCode: http.StatusOK,
+			mockError:      nil,
+			expectError:    false,
+		},
+		{
+			name:  "正常系 - オプションなし",
+			query: "addClass in:file language:js repo:jquery/jquery",
+			options: map[string]interface{}{},
+			mockResponse: map[string]interface{}{
+				"total_count": float64(10),
+				"items": []interface{}{
+					map[string]interface{}{
+						"name":       "jquery.js",
+						"path":       "src/jquery.js",
+						"repository": map[string]interface{}{"full_name": "jquery/jquery"},
+					},
+				},
+			},
+			mockStatusCode: http.StatusOK,
+			mockError:      nil,
+			expectError:    false,
+		},
+		{
+			name:  "異常系 - 認証エラー",
+			query: "addClass in:file language:js repo:jquery/jquery",
+			options: map[string]interface{}{},
+			mockResponse: map[string]interface{}{
+				"message":           "Bad credentials",
+				"documentation_url": "https://docs.github.com/rest",
+			},
+			mockStatusCode: http.StatusUnauthorized,
+			mockError:      nil,
+			expectError:    true,
+		},
+		{
+			name:  "異常系 - レート制限エラー",
+			query: "addClass in:file language:js repo:jquery/jquery",
+			options: map[string]interface{}{},
+			mockResponse: map[string]interface{}{
+				"message":           "API rate limit exceeded",
+				"documentation_url": "https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting",
+			},
+			mockStatusCode: http.StatusForbidden,
+			mockError:      nil,
+			expectError:    true,
+		},
+		{
+			name:  "異常系 - 不正なJSONレスポンス",
+			query: "addClass in:file language:js repo:jquery/jquery",
+			options: map[string]interface{}{},
+			mockResponse:   nil, // 空のレスポンス
+			mockStatusCode: http.StatusOK,
+			mockError:      nil,
+			expectError:    true,
+		},
+		{
+			name:  "異常系 - ネットワークエラー",
+			query: "addClass in:file language:js repo:jquery/jquery",
+			options: map[string]interface{}{},
+			mockResponse:   nil,
+			mockStatusCode: 0,
+			mockError:      errors.New("ネットワーク接続エラー"),
+			expectError:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// モックHTTPクライアントの作成
+			mockClient := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					// ネットワークエラーのシミュレーション
+					if tc.mockError != nil {
+						return nil, tc.mockError
+					}
+
+					// リクエストの検証
+					expectedBaseURL := fmt.Sprintf("%s/search/code?q=%s", apiBaseURL, tc.query)
+					actualURL := req.URL.String()
+
+					// ベースURLの検証
+					if !strings.HasPrefix(actualURL, expectedBaseURL) {
+						t.Errorf("期待されたベースURL: %s, 実際: %s", expectedBaseURL, actualURL)
+					}
+
+					// クエリパラメータの検証（順序に依存しない）
+					if len(tc.options) > 0 {
+						// 実際のクエリパラメータを解析
+						actualQueryParams := make(map[string]string)
+						queryParts := strings.Split(actualURL, "&")
+						for i, part := range queryParts {
+							if i == 0 {
+								// 最初の部分はベースURLとクエリパラメータを含む
+								continue
+							}
+							if strings.Contains(part, "=") {
+								kv := strings.Split(part, "=")
+								actualQueryParams[kv[0]] = kv[1]
+							}
+						}
+
+						// 期待されるクエリパラメータと比較
+						for k, v := range tc.options {
+							expectedValue := fmt.Sprintf("%v", v)
+							actualValue, exists := actualQueryParams[k]
+							if !exists {
+								t.Errorf("クエリパラメータ %s が見つかりません", k)
+							} else if actualValue != expectedValue {
+								t.Errorf("クエリパラメータ %s の値が異なります。期待: %s, 実際: %s", k, expectedValue, actualValue)
+							}
+						}
+					}
+
+					if req.Method != "GET" {
+						t.Errorf("期待されたHTTPメソッド: GET, 実際: %s", req.Method)
+					}
+
+					if req.Header.Get("Accept") != "application/vnd.github.v3+json" {
+						t.Errorf("期待されたAcceptヘッダー: application/vnd.github.v3+json, 実際: %s", req.Header.Get("Accept"))
+					}
+
+					if req.Header.Get("Authorization") != "token test_token" {
+						t.Errorf("期待されたAuthorizationヘッダー: token test_token, 実際: %s", req.Header.Get("Authorization"))
+					}
+
+					// モックレスポンスの作成
+					var responseBody []byte
+					if tc.name == "異常系 - 不正なJSONレスポンス" {
+						responseBody = []byte("{invalid json}")
+					} else if tc.mockResponse != nil {
+						responseBody, _ = json.Marshal(tc.mockResponse)
+					}
+
+					return &http.Response{
+						StatusCode: tc.mockStatusCode,
+						Body:       io.NopCloser(bytes.NewReader(responseBody)),
+					}, nil
+				},
+			}
+
+			// GitHubSearchServiceのclientServiceをモックに置き換える
+			clientService := NewGitHubClientServiceWithDependencies(mockClient, "test_token", &DefaultJSONMarshaler{})
+			service := NewGitHubSearchServiceWithDependencies(clientService)
+
+			// テスト対象の関数を実行
+			result, err := service.SearchCode(tc.query, tc.options)
+
+			// エラーの検証
+			if tc.expectError && err == nil {
+				t.Error("エラーが期待されていましたが、エラーは発生しませんでした")
+			}
+			if !tc.expectError && err != nil {
+				t.Errorf("エラーは期待されていませんでしたが、エラーが発生しました: %v", err)
+			}
+
+			// 正常系の場合、結果を検証
+			if !tc.expectError {
+				compareMaps(t, tc.mockResponse, result)
+			}
+		})
+	}
+}
+
+// TestHandleToSearchCode はHandleToSearchCodeメソッドをテストする
+func TestHandleToSearchCode(t *testing.T) {
+	// テストケース
+	tests := []struct {
+		name           string
+		query          string
+		page           int
+		perPage        int
+		mockResponse   map[string]interface{}
+		mockStatusCode int
+		mockError      error
+		expectError    bool
+	}{
+		{
+			name:    "正常系 - デフォルトパラメータ",
+			query:   "addClass in:file language:js repo:jquery/jquery",
+			page:    1,
+			perPage: 30,
+			mockResponse: map[string]interface{}{
+				"total_count": float64(10),
+				"items": []interface{}{
+					map[string]interface{}{
+						"name":       "jquery.js",
+						"path":       "src/jquery.js",
+						"repository": map[string]interface{}{"full_name": "jquery/jquery"},
+					},
+				},
+			},
+			mockStatusCode: http.StatusOK,
+			mockError:      nil,
+			expectError:    false,
+		},
+		{
+			name:    "正常系 - カスタムパラメータ",
+			query:   "addClass in:file language:js repo:jquery/jquery",
+			page:    2,
+			perPage: 50,
+			mockResponse: map[string]interface{}{
+				"total_count": float64(10),
+				"items": []interface{}{
+					map[string]interface{}{
+						"name":       "jquery.js",
+						"path":       "src/jquery.js",
+						"repository": map[string]interface{}{"full_name": "jquery/jquery"},
+					},
+				},
+			},
+			mockStatusCode: http.StatusOK,
+			mockError:      nil,
+			expectError:    false,
+		},
+		{
+			name:    "異常系 - APIエラー",
+			query:   "addClass in:file language:js repo:jquery/jquery",
+			page:    1,
+			perPage: 30,
+			mockResponse: map[string]interface{}{
+				"message":           "API rate limit exceeded",
+				"documentation_url": "https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting",
+			},
+			mockStatusCode: http.StatusForbidden,
+			mockError:      nil,
+			expectError:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// モックHTTPクライアントの作成
+			mockClient := &MockHTTPClient{
+				DoFunc: func(req *http.Request) (*http.Response, error) {
+					// ネットワークエラーのシミュレーション
+					if tc.mockError != nil {
+						return nil, tc.mockError
+					}
+
+					// リクエストの検証
+					expectedBaseURL := fmt.Sprintf("%s/search/code?q=%s", apiBaseURL, tc.query)
+					actualURL := req.URL.String()
+
+					// ベースURLの検証
+					if !strings.HasPrefix(actualURL, expectedBaseURL) {
+						t.Errorf("期待されたベースURL: %s, 実際: %s", expectedBaseURL, actualURL)
+					}
+
+					// クエリパラメータの検証
+					expectedParams := make(map[string]string)
+					if tc.page != 1 {
+						expectedParams["page"] = fmt.Sprintf("%d", tc.page)
+					}
+					if tc.perPage != 30 {
+						expectedParams["per_page"] = fmt.Sprintf("%d", tc.perPage)
+					}
+
+					if len(expectedParams) > 0 {
+						// 実際のクエリパラメータを解析
+						actualQueryParams := make(map[string]string)
+						queryParts := strings.Split(actualURL, "&")
+						for i, part := range queryParts {
+							if i == 0 {
+								// 最初の部分はベースURLとクエリパラメータを含む
+								continue
+							}
+							if strings.Contains(part, "=") {
+								kv := strings.Split(part, "=")
+								actualQueryParams[kv[0]] = kv[1]
+							}
+						}
+
+						// 期待されるクエリパラメータと比較
+						for k, v := range expectedParams {
+							actualValue, exists := actualQueryParams[k]
+							if !exists {
+								t.Errorf("クエリパラメータ %s が見つかりません", k)
+							} else if actualValue != v {
+								t.Errorf("クエリパラメータ %s の値が異なります。期待: %s, 実際: %s", k, v, actualValue)
+							}
+						}
+					}
+
+					if req.Method != "GET" {
+						t.Errorf("期待されたHTTPメソッド: GET, 実際: %s", req.Method)
+					}
+
+					// モックレスポンスの作成
+					responseBody, _ := json.Marshal(tc.mockResponse)
+					return &http.Response{
+						StatusCode: tc.mockStatusCode,
+						Body:       io.NopCloser(bytes.NewReader(responseBody)),
+					}, nil
+				},
+			}
+
+			// GitHubSearchServiceのclientServiceをモックに置き換える
+			clientService := NewGitHubClientServiceWithDependencies(mockClient, "test_token", &DefaultJSONMarshaler{})
+			service := NewGitHubSearchServiceWithDependencies(clientService)
+
+			// テスト対象の関数を実行
+			result, err := service.HandleToSearchCode(tc.query, tc.page, tc.perPage)
+
+			// エラーの検証
+			if tc.expectError && err == nil {
+				t.Error("エラーが期待されていましたが、エラーは発生しませんでした")
+			}
+			if !tc.expectError && err != nil {
+				t.Errorf("エラーは期待されていませんでしたが、エラーが発生しました: %v", err)
+			}
+
+			// 正常系の場合、結果を検証
+			if !tc.expectError {
+				if result == "" {
+					t.Fatal("結果が空文字列です")
+				}
+
+				// JSON形式の結果をパース
+				var parsedResult map[string]interface{}
+				if err := json.Unmarshal([]byte(result), &parsedResult); err != nil {
+					t.Errorf("結果のJSONパースに失敗しました: %v", err)
+					return
+				}
+
+				// 期待される結果と比較
+				compareMaps(t, tc.mockResponse, parsedResult)
+			}
+		})
+	}
+}

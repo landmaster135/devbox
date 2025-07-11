@@ -9,18 +9,8 @@ import (
 	mcp "github.com/mark3labs/mcp-go/mcp"
 )
 
-// ヘルパー関数: 結果をJSON形式で返却
-func returnJSONResult(result interface{}) (*mcp.CallToolResult, error) {
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return mcp.NewToolResultText(string(jsonResult)), nil
-}
-
 const (
 	apiBaseURL = "https://api.github.com"
-	version    = "1.0.0"
 )
 
 // HTTPClient インターフェースを定義
@@ -89,4 +79,13 @@ type GitHubError struct {
 
 func (e *GitHubError) Error() string {
 	return fmt.Sprintf("GitHub API Error: %s (Status: %d)", e.Message, e.StatusCode)
+}
+
+// ヘルパー関数: 結果をJSON形式で返却
+func returnJSONResult(result interface{}) (*mcp.CallToolResult, error) {
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return mcp.NewToolResultText(string(jsonResult)), nil
 }

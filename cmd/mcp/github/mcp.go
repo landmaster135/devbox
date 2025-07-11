@@ -37,7 +37,7 @@ func createGitHubServer() *server.MCPServer {
 	// MCPサーバーを作成
 	s := server.NewMCPServer(
 		"GitHub API Server",
-		version,
+		"1.0.0",
 		server.WithResourceCapabilities(true, true),
 		server.WithPromptCapabilities(true),
 		server.WithLogging(),
