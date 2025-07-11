@@ -11,6 +11,32 @@ import (
 	"github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
 )
 
+func handleGetGitDiff(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	gitDir, err := request.RequireString("git_dir")
+	if err != nil {
+		return nil, err
+	}
+
+	stagedOnly := request.GetBool("staged_only", false)
+
+	// 設定を作成
+	cfg := &config.Config{
+		GitDir:     gitDir,
+		StagedOnly: stagedOnly,
+	}
+
+	// GitDiffGeneratorServiceを作成
+	service := usecases.NewGitDiffGeneratorService(gitDir, cfg)
+
+	// 詳細差分を取得
+	detailedDiff, err := service.GetCurrentDetailedDiff()
+	if err != nil {
+		return nil, fmt.Errorf("git差分の取得に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(detailedDiff), nil
+}
+
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	prompt := mcp.NewPrompt("git_diff_prompt",
 		mcp.WithPromptDescription("This is a prompt for the Git diff recorder."),
@@ -49,31 +75,7 @@ func BuildMcpServer() {
 		),
 	)
 
-	s.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		gitDir, err := request.RequireString("git_dir")
-		if err != nil {
-			return nil, err
-		}
-
-		stagedOnly := request.GetBool("staged_only", false)
-
-		// 設定を作成
-		cfg := &config.Config{
-			GitDir:     gitDir,
-			StagedOnly: stagedOnly,
-		}
-
-		// GitDiffGeneratorServiceを作成
-		service := usecases.NewGitDiffGeneratorService(gitDir, cfg)
-
-		// 詳細差分を取得
-		detailedDiff, err := service.GetCurrentDetailedDiff()
-		if err != nil {
-			return nil, fmt.Errorf("Git差分の取得に失敗しました: %v", err)
-		}
-
-		return mcp.NewToolResultText(detailedDiff), nil
-	})
+	s.AddTool(tool, handleGetGitDiff)
 
 	// プロンプト
 	s = addPromptIntoServer(s)

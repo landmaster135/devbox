@@ -29,6 +29,42 @@ func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	return s
 }
 
+func handleGetCommitHistory(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	cfg, err := createConfigFromRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// GitCommitHistoryServiceを作成
+	service := usecases.NewGitCommitHistoryService(cfg.GitDir, cfg)
+
+	// コミット履歴を取得
+	history, err := service.GetCommitHistory()
+	if err != nil {
+		return nil, fmt.Errorf("gitコミット履歴の取得に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(history), nil
+}
+
+func handleGetCommitHistoryWithDetails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	cfg, err := createConfigFromRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// GitCommitHistoryServiceを作成
+	service := usecases.NewGitCommitHistoryService(cfg.GitDir, cfg)
+
+	// コミット履歴と詳細を取得
+	historyWithDetails, err := service.GetCommitHistoryWithDetails()
+	if err != nil {
+		return nil, fmt.Errorf("gitコミット履歴と詳細の取得に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(historyWithDetails), nil
+}
+
 // createConfigFromRequest はMCPリクエストからConfigを作成する
 func createConfigFromRequest(request mcp.CallToolRequest) (*config.Config, error) {
 	gitDir, err := request.RequireString("git_dir")
@@ -40,7 +76,8 @@ func createConfigFromRequest(request mcp.CallToolRequest) (*config.Config, error
 	since := request.GetString("since", "")
 	until := request.GetString("until", "")
 
-	c, err := config.NewConfig(gitDir, keyword, since, until); if err != nil{
+	c, err := config.NewConfig(gitDir, keyword, since, until)
+	if err != nil {
 		return nil, fmt.Errorf("MCPリクエストからConfigを作成するのに失敗しました: %v", err)
 	}
 	return c, nil
@@ -73,23 +110,7 @@ func BuildMcpServer() {
 		),
 	)
 
-	s.AddTool(historyTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		cfg, err := createConfigFromRequest(request)
-		if err != nil {
-			return nil, err
-		}
-
-		// GitCommitHistoryServiceを作成
-		service := usecases.NewGitCommitHistoryService(cfg.GitDir, cfg)
-
-		// コミット履歴を取得
-		history, err := service.GetCommitHistory()
-		if err != nil {
-			return nil, fmt.Errorf("Gitコミット履歴の取得に失敗しました: %v", err)
-		}
-
-		return mcp.NewToolResultText(history), nil
-	})
+	s.AddTool(historyTool, handleGetCommitHistory)
 
 	// get_git_commit_history_with_details ツール
 	detailsTool := mcp.NewTool("get_git_commit_history_with_details",
@@ -109,23 +130,7 @@ func BuildMcpServer() {
 		),
 	)
 
-	s.AddTool(detailsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		cfg, err := createConfigFromRequest(request)
-		if err != nil {
-			return nil, err
-		}
-
-		// GitCommitHistoryServiceを作成
-		service := usecases.NewGitCommitHistoryService(cfg.GitDir, cfg)
-
-		// コミット履歴と詳細を取得
-		historyWithDetails, err := service.GetCommitHistoryWithDetails()
-		if err != nil {
-			return nil, fmt.Errorf("Gitコミット履歴と詳細の取得に失敗しました: %v", err)
-		}
-
-		return mcp.NewToolResultText(historyWithDetails), nil
-	})
+	s.AddTool(detailsTool, handleGetCommitHistoryWithDetails)
 
 	// プロンプト
 	s = addPromptIntoServer(s)
