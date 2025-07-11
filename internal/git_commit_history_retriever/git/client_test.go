@@ -265,3 +265,251 @@ func TestClient_GetCommitDetails_MultipleHashes(t *testing.T) {
 		t.Error("Expected result to contain second commit hash")
 	}
 }
+
+// TestClient_GetCommitHistory_Normal はGetCommitHistoryの正常系テスト
+func TestClient_GetCommitHistory_Normal(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "log" {
+				return []byte("* abc1234 - feat: test commit (1 hour ago) <test@example.com>\n* def5678 - fix: bug fix (2 hours ago) <test@example.com>"), nil
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Act
+	result, err := client.GetCommitHistory("", "", "")
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if !strings.Contains(result, "abc1234") {
+		t.Error("Expected result to contain first commit hash")
+	}
+
+	if !strings.Contains(result, "def5678") {
+		t.Error("Expected result to contain second commit hash")
+	}
+}
+
+// TestClient_GetCommitHistory_WithKeyword はキーワード検索のテスト
+func TestClient_GetCommitHistory_WithKeyword(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "log" {
+				// --grep=feat が含まれていることを確認
+				for _, arg := range args {
+					if strings.Contains(arg, "--grep=feat") {
+						return []byte("* abc1234 - feat: test commit (1 hour ago) <test@example.com>"), nil
+					}
+				}
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Act
+	result, err := client.GetCommitHistory("feat", "", "")
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if !strings.Contains(result, "abc1234") {
+		t.Error("Expected result to contain commit with feat keyword")
+	}
+}
+
+// TestClient_GetCommitHistory_WithSinceUntil は日付範囲指定のテスト
+func TestClient_GetCommitHistory_WithSinceUntil(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "log" {
+				// --since と --until が含まれていることを確認
+				hasSince := false
+				hasUntil := false
+				for _, arg := range args {
+					if strings.Contains(arg, "--since=2025-01-01") {
+						hasSince = true
+					}
+					if strings.Contains(arg, "--until=2025-01-31") {
+						hasUntil = true
+					}
+				}
+				if hasSince && hasUntil {
+					return []byte("* abc1234 - feat: test commit (1 hour ago) <test@example.com>"), nil
+				}
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Act
+	result, err := client.GetCommitHistory("", "2025-01-01", "2025-01-31")
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if !strings.Contains(result, "abc1234") {
+		t.Error("Expected result to contain commit within date range")
+	}
+}
+
+// TestClient_GetCommitHistory_GitLogError はgit logエラーのテスト
+func TestClient_GetCommitHistory_GitLogError(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "log" {
+				return nil, fmt.Errorf("git log failed")
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Act
+	_, err := client.GetCommitHistory("", "", "")
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for git log failure, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "コミット履歴の取得に失敗しました") {
+		t.Errorf("Expected error message about commit history failure, got %v", err)
+	}
+}
+
+// TestClient_GetCommitHistory_EmptyResult は空の結果のテスト
+func TestClient_GetCommitHistory_EmptyResult(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) > 0 && args[0] == "log" {
+				return []byte(""), nil
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Act
+	result, err := client.GetCommitHistory("", "", "")
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if result != "" {
+		t.Errorf("Expected empty result, got %q", result)
+	}
+}
+
+// TestClient_IsValidGitRepository_Normal はIsValidGitRepositoryの正常系テスト
+func TestClient_IsValidGitRepository_Normal(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) >= 2 && args[0] == "rev-parse" && args[1] == "--git-dir" {
+				return []byte(".git"), nil
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Act
+	err := client.IsValidGitRepository()
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error for valid git repository, got %v", err)
+	}
+}
+
+// TestClient_IsValidGitRepository_InvalidRepo は無効なリポジトリのテスト
+func TestClient_IsValidGitRepository_InvalidRepo(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{
+		ExecuteFunc: func(workingDir string, args ...string) ([]byte, error) {
+			if len(args) >= 2 && args[0] == "rev-parse" && args[1] == "--git-dir" {
+				return nil, fmt.Errorf("not a git repository")
+			}
+			return []byte(""), nil
+		},
+	}
+
+	client := NewClientWithExecutor("/invalid/repo", mockExecutor)
+
+	// Act
+	err := client.IsValidGitRepository()
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for invalid git repository, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "指定されたディレクトリは有効なGitリポジトリではありません") {
+		t.Errorf("Expected error message about invalid git repository, got %v", err)
+	}
+}
+
+// TestClient_NewClient_Normal はNewClientの正常系テスト
+func TestClient_NewClient_Normal(t *testing.T) {
+	// Act
+	client := NewClient("/test/repo")
+
+	// Assert
+	if client == nil {
+		t.Error("Expected client to be non-nil")
+	}
+
+	if client.workingDir != "/test/repo" {
+		t.Errorf("Expected workingDir to be /test/repo, got %s", client.workingDir)
+	}
+
+	if client.executor == nil {
+		t.Error("Expected executor to be non-nil")
+	}
+}
+
+// TestClient_NewClientWithExecutor_Normal はNewClientWithExecutorの正常系テスト
+func TestClient_NewClientWithExecutor_Normal(t *testing.T) {
+	// Arrange
+	mockExecutor := &MockGitExecutor{}
+
+	// Act
+	client := NewClientWithExecutor("/test/repo", mockExecutor)
+
+	// Assert
+	if client == nil {
+		t.Error("Expected client to be non-nil")
+	}
+
+	if client.workingDir != "/test/repo" {
+		t.Errorf("Expected workingDir to be /test/repo, got %s", client.workingDir)
+	}
+
+	if client.executor != mockExecutor {
+		t.Error("Expected executor to be the provided mock executor")
+	}
+}
