@@ -2,38 +2,27 @@ package github
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"strings"
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
+
+	usecases "github.com/landmaster135/devbox/internal/github/usecases"
 )
 
-// CreatePullRequest は新しいプルリクエストを作成します
-func (c *GitHubClient) CreatePullRequest(owner, repo string, options map[string]interface{}) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls", apiBaseURL, owner, repo)
+// PullRequestHandler はPull Request関連のMCPハンドラーを管理します
+type PullRequestHandler struct {
+	pullRequestService *usecases.GitHubPullRequestService
+}
 
-	jsonBody, err := json.Marshal(options)
-	if err != nil {
-		return nil, err
+// NewPullRequestHandler は新しいPullRequestHandlerを作成します
+func NewPullRequestHandler(token string) *PullRequestHandler {
+	return &PullRequestHandler{
+		pullRequestService: usecases.NewGitHubPullRequestService(token),
 	}
-
-	data, err := c.doRequest("POST", url, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 // HandleToCreatePullRequest は新しいプルリクエストを作成して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToCreatePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToCreatePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -42,67 +31,32 @@ func (c *GitHubClient) HandleToCreatePullRequest(ctx context.Context, request mc
 	if err != nil {
 		return nil, err
 	}
-
-	options := make(map[string]interface{})
-
 	title, err := request.RequireString("title")
 	if err != nil {
 		return nil, err
 	}
-	options["title"] = title
-
 	head, err := request.RequireString("head")
 	if err != nil {
 		return nil, err
 	}
-	options["head"] = head
-
 	base, err := request.RequireString("base")
 	if err != nil {
 		return nil, err
 	}
-	options["base"] = base
 
-	// オプションパラメータを追加
 	body := request.GetString("body", "")
-	if body != "" {
-		options["body"] = body
-	}
+	draft := request.GetBool("draft", false)
 
-	options["draft"] = request.GetBool("draft", false)
-
-	result, err := c.CreatePullRequest(owner, repo, options)
+	result, err := h.pullRequestService.HandleToCreatePullRequest(owner, repo, title, head, base, body, draft)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// CreatePullRequestReview はプルリクエストにレビューを作成します
-func (c *GitHubClient) CreatePullRequestReview(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews", apiBaseURL, owner, repo, pullNumber)
-
-	jsonBody, err := json.Marshal(options)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := c.doRequest("POST", url, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToCreatePullRequestReview はプルリクエストにレビューを作成して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToCreatePullRequestReview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToCreatePullRequestReview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -116,50 +70,19 @@ func (c *GitHubClient) HandleToCreatePullRequestReview(ctx context.Context, requ
 		return nil, err
 	}
 
-	options := make(map[string]interface{})
-
-	// 文字列オプションパラメータを追加
 	event := request.GetString("event", "")
-	if event != "" {
-		options["event"] = event
-	}
 	body := request.GetString("body", "")
-	if body != "" {
-		options["body"] = body
-	}
 
-	result, err := c.CreatePullRequestReview(owner, repo, pullNumber, options)
+	result, err := h.pullRequestService.HandleToCreatePullRequestReview(owner, repo, pullNumber, event, body)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// MergePullRequest はプルリクエストをマージします
-func (c *GitHubClient) MergePullRequest(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/merge", apiBaseURL, owner, repo, pullNumber)
-
-	jsonBody, err := json.Marshal(options)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := c.doRequest("PUT", url, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToMergePullRequest はプルリクエストをマージして、結果をJSON形式で返します
-func (c *GitHubClient) HandleToMergePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToMergePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -173,48 +96,20 @@ func (c *GitHubClient) HandleToMergePullRequest(ctx context.Context, request mcp
 		return nil, err
 	}
 
-	options := make(map[string]interface{})
-
 	commitTitle := request.GetString("commit_title", "")
-	if commitTitle != "" {
-		options["commit_title"] = commitTitle
-	}
 	commitMessage := request.GetString("commit_message", "")
-	if commitMessage != "" {
-		options["commit_message"] = commitMessage
-	}
 	mergeMethod := request.GetString("merge_method", "")
-	if mergeMethod != "" {
-		options["merge_method"] = mergeMethod
-	}
 
-	result, err := c.MergePullRequest(owner, repo, pullNumber, options)
+	result, err := h.pullRequestService.HandleToMergePullRequest(owner, repo, pullNumber, commitTitle, commitMessage, mergeMethod)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// GetPullRequestFiles はプルリクエストで変更されたファイル一覧を取得します
-func (c *GitHubClient) GetPullRequestFiles(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/files", apiBaseURL, owner, repo, pullNumber)
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToGetPullRequestFiles はプルリクエストで変更されたファイル一覧を取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToGetPullRequestFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToGetPullRequestFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -228,56 +123,16 @@ func (c *GitHubClient) HandleToGetPullRequestFiles(ctx context.Context, request 
 		return nil, err
 	}
 
-	result, err := c.GetPullRequestFiles(owner, repo, pullNumber)
+	result, err := h.pullRequestService.HandleToGetPullRequestFiles(owner, repo, pullNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// GetPullRequestStatus はプルリクエストのステータスを取得します
-func (c *GitHubClient) GetPullRequestStatus(owner, repo string, pullNumber int) (map[string]interface{}, error) {
-	// プルリクエストの詳細を取得
-	prURL := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", apiBaseURL, owner, repo, pullNumber)
-	prData, err := c.doRequest("GET", prURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var pr map[string]interface{}
-	if err := json.Unmarshal(prData, &pr); err != nil {
-		return nil, err
-	}
-
-	// ステータスチェックを取得
-	headSHA, ok := pr["head"].(map[string]interface{})["sha"].(string)
-	if !ok {
-		return nil, fmt.Errorf("could not get head SHA from pull request")
-	}
-
-	statusURL := fmt.Sprintf("%s/repos/%s/%s/commits/%s/status", apiBaseURL, owner, repo, headSHA)
-	statusData, err := c.doRequest("GET", statusURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var status map[string]interface{}
-	if err := json.Unmarshal(statusData, &status); err != nil {
-		return nil, err
-	}
-
-	// 結果を組み合わせる
-	result := map[string]interface{}{
-		"pull_request": pr,
-		"status":       status,
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToGetPullRequestStatus はプルリクエストのステータスを取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToGetPullRequestStatus(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToGetPullRequestStatus(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -291,43 +146,16 @@ func (c *GitHubClient) HandleToGetPullRequestStatus(ctx context.Context, request
 		return nil, err
 	}
 
-	result, err := c.GetPullRequestStatus(owner, repo, pullNumber)
+	result, err := h.pullRequestService.HandleToGetPullRequestStatus(owner, repo, pullNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// UpdatePullRequestBranch はプルリクエストのブランチを更新します
-func (c *GitHubClient) UpdatePullRequestBranch(owner, repo string, pullNumber int, expectedHeadSHA string) (map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/update-branch", apiBaseURL, owner, repo, pullNumber)
-
-	options := map[string]interface{}{}
-	if expectedHeadSHA != "" {
-		options["expected_head_sha"] = expectedHeadSHA
-	}
-
-	jsonBody, err := json.Marshal(options)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := c.doRequest("PUT", url, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return nil, err
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToUpdatePullRequestBranch はプルリクエストのブランチを更新して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToUpdatePullRequestBranch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToUpdatePullRequestBranch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -343,33 +171,16 @@ func (c *GitHubClient) HandleToUpdatePullRequestBranch(ctx context.Context, requ
 
 	expectedHeadSHA := request.GetString("expected_head_sha", "")
 
-	result, err := c.UpdatePullRequestBranch(owner, repo, pullNumber, expectedHeadSHA)
+	result, err := h.pullRequestService.HandleToUpdatePullRequestBranch(owner, repo, pullNumber, expectedHeadSHA)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// GetPullRequestComments はプルリクエストのコメントを取得します
-func (c *GitHubClient) GetPullRequestComments(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/comments", apiBaseURL, owner, repo, pullNumber)
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToGetPullRequestComments はプルリクエストのコメントを取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToGetPullRequestComments(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToGetPullRequestComments(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -383,33 +194,16 @@ func (c *GitHubClient) HandleToGetPullRequestComments(ctx context.Context, reque
 		return nil, err
 	}
 
-	result, err := c.GetPullRequestComments(owner, repo, pullNumber)
+	result, err := h.pullRequestService.HandleToGetPullRequestComments(owner, repo, pullNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// GetPullRequestReviews はプルリクエストのレビューを取得します
-func (c *GitHubClient) GetPullRequestReviews(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews", apiBaseURL, owner, repo, pullNumber)
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToGetPullRequestReviews はプルリクエストのレビューを取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToGetPullRequestReviews(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToGetPullRequestReviews(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -423,42 +217,16 @@ func (c *GitHubClient) HandleToGetPullRequestReviews(ctx context.Context, reques
 		return nil, err
 	}
 
-	result, err := c.GetPullRequestReviews(owner, repo, pullNumber)
+	result, err := h.pullRequestService.HandleToGetPullRequestReviews(owner, repo, pullNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
-}
-
-// ListPullRequests はリポジトリのプルリクエスト一覧を取得します
-func (c *GitHubClient) ListPullRequests(owner, repo string, options map[string]interface{}) ([]map[string]interface{}, error) {
-	url := fmt.Sprintf("%s/repos/%s/%s/pulls", apiBaseURL, owner, repo)
-
-	// クエリパラメータを追加
-	queryParams := []string{}
-	for k, v := range options {
-		queryParams = append(queryParams, fmt.Sprintf("%s=%v", k, v))
-	}
-	if len(queryParams) > 0 {
-		url += "?" + strings.Join(queryParams, "&")
-	}
-
-	data, err := c.doRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return mcp.NewToolResultText(result), nil
 }
 
 // HandleToListPullRequests はリポジトリのプルリクエスト一覧を取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToListPullRequests(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (h *PullRequestHandler) HandleToListPullRequests(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -468,49 +236,26 @@ func (c *GitHubClient) HandleToListPullRequests(ctx context.Context, request mcp
 		return nil, err
 	}
 
-	options := make(map[string]interface{})
-
 	state := request.GetString("state", "")
-	if state != "" {
-		options["state"] = state
-	}
 	sort := request.GetString("sort", "")
-	if sort != "" {
-		options["sort"] = sort
-	}
 	direction := request.GetString("direction", "")
-	if direction != "" {
-		options["direction"] = direction
-	}
-	perPage := request.GetString("per_page", "")
-	if perPage != "" {
-		options["per_page"] = perPage
-	}
-	page := request.GetString("page", "")
-	if page != "" {
-		options["page"] = page
-	}
 	head := request.GetString("head", "")
-	if head != "" {
-		options["head"] = head
-	}
 	base := request.GetString("base", "")
-	if base != "" {
-		options["base"] = base
-	}
+	perPage := request.GetInt("per_page", 30)
+	page := request.GetInt("page", 1)
 
-	result, err := c.ListPullRequests(owner, repo, options)
+	result, err := h.pullRequestService.HandleToListPullRequests(owner, repo, state, sort, direction, head, base, perPage, page)
 	if err != nil {
 		return nil, err
 	}
 
-	return returnJSONResult(result)
+	return mcp.NewToolResultText(result), nil
 }
 
 // SetGitHubPullRequestServer は受け取ったMCPサーバにGitHubプルリクエスト用のツールを付与して、そのMCPサーバを返します。
 func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPServer {
-	// GitHubクライアントを初期化
-	client := NewGitHubClient(token)
+	// PullRequestHandlerを初期化
+	handler := NewPullRequestHandler(token)
 
 	// ツール1: プルリクエストの作成
 	createPullRequestTool := mcp.NewTool("create_pull_request",
@@ -542,7 +287,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Whether to create a draft pull request"),
 		),
 	)
-	s.AddTool(createPullRequestTool, client.HandleToCreatePullRequest)
+	s.AddTool(createPullRequestTool, handler.HandleToCreatePullRequest)
 
 	// ツール2: プルリクエストレビューの作成
 	createPullRequestReviewTool := mcp.NewTool("create_pull_request_review",
@@ -567,7 +312,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Review body"),
 		),
 	)
-	s.AddTool(createPullRequestReviewTool, client.HandleToCreatePullRequestReview)
+	s.AddTool(createPullRequestReviewTool, handler.HandleToCreatePullRequestReview)
 
 	// ツール3: プルリクエストのマージ
 	mergePullRequestTool := mcp.NewTool("merge_pull_request",
@@ -595,7 +340,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Enum("merge", "squash", "rebase"),
 		),
 	)
-	s.AddTool(mergePullRequestTool, client.HandleToMergePullRequest)
+	s.AddTool(mergePullRequestTool, handler.HandleToMergePullRequest)
 
 	// ツール4: プルリクエストのファイル一覧取得
 	getPullRequestFilesTool := mcp.NewTool("get_pull_request_files",
@@ -613,7 +358,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestFilesTool, client.HandleToGetPullRequestFiles)
+	s.AddTool(getPullRequestFilesTool, handler.HandleToGetPullRequestFiles)
 
 	// ツール5: プルリクエストのステータス取得
 	getPullRequestStatusTool := mcp.NewTool("get_pull_request_status",
@@ -631,7 +376,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestStatusTool, client.HandleToGetPullRequestStatus)
+	s.AddTool(getPullRequestStatusTool, handler.HandleToGetPullRequestStatus)
 
 	// ツール6: プルリクエストブランチの更新
 	updatePullRequestBranchTool := mcp.NewTool("update_pull_request_branch",
@@ -652,7 +397,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("The expected SHA of the pull request head"),
 		),
 	)
-	s.AddTool(updatePullRequestBranchTool, client.HandleToUpdatePullRequestBranch)
+	s.AddTool(updatePullRequestBranchTool, handler.HandleToUpdatePullRequestBranch)
 
 	// ツール7: プルリクエストコメントの取得
 	getPullRequestCommentsTool := mcp.NewTool("get_pull_request_comments",
@@ -670,7 +415,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestCommentsTool, client.HandleToGetPullRequestComments)
+	s.AddTool(getPullRequestCommentsTool, handler.HandleToGetPullRequestComments)
 
 	// ツール8: プルリクエストレビューの取得
 	getPullRequestReviewsTool := mcp.NewTool("get_pull_request_reviews",
@@ -688,7 +433,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestReviewsTool, client.HandleToGetPullRequestReviews)
+	s.AddTool(getPullRequestReviewsTool, handler.HandleToGetPullRequestReviews)
 
 	// ツール9: プルリクエスト一覧の取得
 	listPullRequestsTool := mcp.NewTool("list_pull_requests",
@@ -726,7 +471,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Filter by base branch name"),
 		),
 	)
-	s.AddTool(listPullRequestsTool, client.HandleToListPullRequests)
+	s.AddTool(listPullRequestsTool, handler.HandleToListPullRequests)
 
 	return s
 }
