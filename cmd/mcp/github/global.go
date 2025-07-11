@@ -32,7 +32,10 @@ func (h *GithubHandler) handleToSearchCode(ctx context.Context, request mcp.Call
 	perPage := request.GetInt("per_page", 30)
 
 	// GitHubSearchServiceを初期化
-	service := usecases.NewGitHubSearchService(h.Token)
+	service, err := usecases.NewGitHubSearchService(h.Token)
+	if err != nil {
+		return nil, fmt.Errorf("GitHubSearchServiceの初期化に失敗しました: %v", err)
+	}
 	result, err := service.HandleToSearchCode(query, page, perPage)
 	if err != nil {
 		return nil, fmt.Errorf("GitHub検索に失敗しました: %v", err)
