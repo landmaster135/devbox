@@ -28,7 +28,7 @@ if %errorlevel% == 1 (
 )
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\json-timestamp-modifier.exe %is_jst% %is_recursive% -dir %dirpath% -key %key% -mode %to%
+.\pkg\bin\cli\win_amd64\json-timestamp-modifier.exe %is_jst% %is_recursive% -dir %dirpath% -key %key% -mode %to%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

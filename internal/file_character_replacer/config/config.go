@@ -125,6 +125,16 @@ func NewConfigParser(flagParser FlagParser, osArgs OSArgs) *ConfigParser {
 	}
 }
 
+// validateConfig は設定の妥当性を検証します
+func (cp *ConfigParser) validateConfig(config *Config) (*Config, error) {
+	config, err := validateConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
 // ParseFlags はコマンドライン引数を解析してConfigを返す
 func (cp *ConfigParser) ParseFlags() (*Config, error) {
 	var config Config
@@ -143,16 +153,6 @@ func (cp *ConfigParser) ParseFlags() (*Config, error) {
 	}
 
 	return cp.validateConfig(&config)
-}
-
-// validateConfig は設定の妥当性を検証します
-func (cp *ConfigParser) validateConfig(config *Config) (*Config, error) {
-	config, err := validateConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return config, nil
 }
 
 // ParseFlags は後方互換性のための関数

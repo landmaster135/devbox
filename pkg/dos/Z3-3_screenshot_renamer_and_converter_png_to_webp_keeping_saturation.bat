@@ -18,12 +18,12 @@ if %errorlevel% == 1 (
 )
 
 echo --- リネームプログラムを実行します ---
-.\pkg\bin\win_amd64\image-renamer-for-screenshot.exe -src . %method%
+.\pkg\bin\cli\win_amd64\image-renamer-for-screenshot.exe -src . %method%
 echo.
 echo --- リネームプログラムの実行が完了しました ---
 
 echo --- Webp変換プログラムを実行します ---
-.\pkg\bin\win_amd64\image-converter.exe -src . -ext webp -q 80 -lossless -archive .\5_original_files %moves%
+.\pkg\bin\cli\win_amd64\image-converter.exe -src . -ext webp -q 80 -lossless -archive .\5_original_files %moves%
 echo.
 echo --- Webp変換プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

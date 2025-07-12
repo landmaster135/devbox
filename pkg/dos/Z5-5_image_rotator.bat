@@ -18,7 +18,7 @@ if %errorlevel% == 1 (
 echo %moves%
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\image-rotator.exe -src . -suffix rotated %angle% %moves%
+.\pkg\bin\cli\win_amd64\image-rotator.exe -src . -suffix rotated %angle% %moves%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
