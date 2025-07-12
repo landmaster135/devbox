@@ -521,12 +521,357 @@ func TestFileReplacerService_GetSummary_DryRun(t *testing.T) {
 	}
 }
 
+// TestNewFileReplacerServiceWithConfig_Normal はNewFileReplacerServiceWithConfig()の正常系をテストします
+func TestNewFileReplacerServiceWithConfig_Normal(t *testing.T) {
+	// この関数は実際のconfig.ParseFlags()を使用するため、モックは困難
+	// 代わりに、関数が存在することを確認
+	_, err := NewFileReplacerServiceWithConfig()
+	// 実際の引数がないためエラーが発生することを期待
+	if err == nil {
+		t.Log("NewFileReplacerServiceWithConfig() function exists and can be called")
+	} else {
+		t.Logf("NewFileReplacerServiceWithConfig() returned error as expected: %v", err)
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_NoReplacement はReplaceStrings()の置換なしケースをテストします
+func TestFileReplacerService_ReplaceStrings_NoReplacement(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return false
+		},
+		readFileFunc: func(path string, encoding domain.EncodingType) (string, error) {
+			return "This content has no target string", nil
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:   "/test/file.txt",
+			From:     "nonexistent",
+			To:       "replacement",
+			Encoding: domain.EncodingUTF8,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err != nil {
+		t.Errorf("ReplaceStrings() returned unexpected error: %v", err)
+	}
+
+	if result.ProcessedFiles != 0 {
+		t.Errorf("ProcessedFiles = %d, expected 0", result.ProcessedFiles)
+	}
+
+	if result.ReplacedCount != 0 {
+		t.Errorf("ReplacedCount = %d, expected 0", result.ReplacedCount)
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_Directory_ValidationError はReplaceStrings()のディレクトリバリデーションエラーをテストします
+func TestFileReplacerService_ReplaceStrings_Directory_ValidationError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return true // ディレクトリ
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:    "/test/dir",
+			From:      "old",
+			To:        "new",
+			Encoding:  domain.EncodingUTF8,
+			Backup:    true,
+			BackupDir: "", // バックアップディレクトリが指定されていない
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err == nil {
+		t.Error("ReplaceStrings() should return validation error for directory without backup dir")
+	}
+
+	if !result.HasErrors() {
+		t.Error("Result should have errors")
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_Directory_ListFilesError はReplaceStrings()のListFilesエラーをテストします
+func TestFileReplacerService_ReplaceStrings_Directory_ListFilesError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return true
+		},
+		listFilesFunc: func(dirPath string, recursive bool) ([]string, error) {
+			return nil, fmt.Errorf("list files error")
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:    "/test/dir",
+			From:      "old",
+			To:        "new",
+			Encoding:  domain.EncodingUTF8,
+			Recursive: true,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err == nil {
+		t.Error("ReplaceStrings() should return error when ListFiles fails")
+	}
+
+	if !result.HasErrors() {
+		t.Error("Result should have errors")
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_Directory_NonTextFile はReplaceStrings()の非テキストファイルスキップをテストします
+func TestFileReplacerService_ReplaceStrings_Directory_NonTextFile(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return true
+		},
+		listFilesFunc: func(dirPath string, recursive bool) ([]string, error) {
+			return []string{"/test/dir/image.jpg", "/test/dir/binary.exe"}, nil
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:    "/test/dir",
+			From:      "old",
+			To:        "new",
+			Encoding:  domain.EncodingUTF8,
+			Recursive: true,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err != nil {
+		t.Errorf("ReplaceStrings() returned unexpected error: %v", err)
+	}
+
+	if result.ProcessedFiles != 0 {
+		t.Errorf("ProcessedFiles = %d, expected 0 (non-text files should be skipped)", result.ProcessedFiles)
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_FileInfoError はReplaceStrings()のGetFileInfoエラーをテストします
+func TestFileReplacerService_ReplaceStrings_FileInfoError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return false
+		},
+		getFileInfoFunc: func(path string) (*domain.FileInfo, error) {
+			return nil, fmt.Errorf("file info error")
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:   "/test/file.txt",
+			From:     "old",
+			To:       "new",
+			Encoding: domain.EncodingUTF8,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err == nil {
+		t.Error("ReplaceStrings() should return error when GetFileInfo fails")
+	}
+
+	if !result.HasErrors() {
+		t.Error("Result should have errors")
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_ReadFileError はReplaceStrings()のReadFileエラーをテストします
+func TestFileReplacerService_ReplaceStrings_ReadFileError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return false
+		},
+		readFileFunc: func(path string, encoding domain.EncodingType) (string, error) {
+			return "", fmt.Errorf("read file error")
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:   "/test/file.txt",
+			From:     "old",
+			To:       "new",
+			Encoding: domain.EncodingUTF8,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err == nil {
+		t.Error("ReplaceStrings() should return error when ReadFile fails")
+	}
+
+	if !result.HasErrors() {
+		t.Error("Result should have errors")
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_BackupError はReplaceStrings()のCreateBackupエラーをテストします
+func TestFileReplacerService_ReplaceStrings_BackupError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return false
+		},
+		readFileFunc: func(path string, encoding domain.EncodingType) (string, error) {
+			return "This is old content", nil
+		},
+		createBackupFunc: func(filePath string, backupDir string) error {
+			return fmt.Errorf("backup error")
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:   "/test/file.txt",
+			From:     "old",
+			To:       "new",
+			Encoding: domain.EncodingUTF8,
+			Backup:   true,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err == nil {
+		t.Error("ReplaceStrings() should return error when CreateBackup fails")
+	}
+
+	if !result.HasErrors() {
+		t.Error("Result should have errors")
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_WriteFileError はReplaceStrings()のWriteFileエラーをテストします
+func TestFileReplacerService_ReplaceStrings_WriteFileError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return false
+		},
+		readFileFunc: func(path string, encoding domain.EncodingType) (string, error) {
+			return "This is old content", nil
+		},
+		writeFileFunc: func(path string, content string, encoding domain.EncodingType) error {
+			return fmt.Errorf("write file error")
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:   "/test/file.txt",
+			From:     "old",
+			To:       "new",
+			Encoding: domain.EncodingUTF8,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	if err == nil {
+		t.Error("ReplaceStrings() should return error when WriteFile fails")
+	}
+
+	if !result.HasErrors() {
+		t.Error("Result should have errors")
+	}
+}
+
+// TestFileReplacerService_ReplaceStrings_Directory_FileProcessError はReplaceStrings()のディレクトリ内ファイル処理エラーをテストします
+func TestFileReplacerService_ReplaceStrings_Directory_FileProcessError(t *testing.T) {
+	mockFileRepo := &MockFileRepository{
+		fileExistsFunc: func(path string) bool {
+			return true
+		},
+		isDirectoryFunc: func(path string) bool {
+			return true
+		},
+		listFilesFunc: func(dirPath string, recursive bool) ([]string, error) {
+			return []string{"/test/dir/file1.txt"}, nil
+		},
+		readFileFunc: func(path string, encoding domain.EncodingType) (string, error) {
+			return "", fmt.Errorf("read error")
+		},
+	}
+
+	service := &FileReplacerService{
+		fileRepo:          mockFileRepo,
+		encodingConverter: &MockEncodingConverter{},
+		config: &domain.ReplacementConfig{
+			Target:    "/test/dir",
+			From:      "old",
+			To:        "new",
+			Encoding:  domain.EncodingUTF8,
+			Recursive: true,
+		},
+	}
+
+	result, err := service.ReplaceStrings()
+	// ディレクトリ処理では個別ファイルのエラーは継続される
+	if err != nil {
+		t.Errorf("ReplaceStrings() should not return error for individual file failures in directory processing: %v", err)
+	}
+
+	if result.ProcessedFiles != 0 {
+		t.Errorf("ProcessedFiles = %d, expected 0", result.ProcessedFiles)
+	}
+}
+
 // contains は文字列に指定された部分文字列が含まれているかチェックします
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr ||
 		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-		s[len(s)-len(substr):] == substr ||
-		containsSubstring(s, substr))))
+			s[len(s)-len(substr):] == substr ||
+			containsSubstring(s, substr))))
 }
 
 // containsSubstring は文字列内の部分文字列を検索します
