@@ -10,7 +10,7 @@ if %errorlevel% == 1 (
 echo %moves%
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\image-trimmer.exe -src . -suffix cropped %coordinates% %moves%
+.\pkg\bin\cli\win_amd64\image-trimmer.exe -src . -suffix cropped %coordinates% %moves%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

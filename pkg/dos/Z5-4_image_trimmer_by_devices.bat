@@ -22,7 +22,7 @@ if %errorlevel% == 1 (
 echo %moves%
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\image-trimmer.exe -src . -suffix cropped -x1 %coordinate_x1% -y1 %coordinate_y1% -x2 %coordinate_x2% -y2 %coordinate_y2% %moves%
+.\pkg\bin\cli\win_amd64\image-trimmer.exe -src . -suffix cropped -x1 %coordinate_x1% -y1 %coordinate_y1% -x2 %coordinate_x2% -y2 %coordinate_y2% %moves%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
