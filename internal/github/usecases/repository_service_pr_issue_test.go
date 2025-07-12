@@ -83,7 +83,7 @@ func TestCreatePullRequestReview_ErrorCases(t *testing.T) {
 			// JSONマーシャリングエラーのテストケース
 			if tc.name == "異常系 - JSONマーシャリングエラー" {
 				service := NewGitHubPullRequestService("test_token")
-				_, err := service.CreatePullRequestReview(tc.owner, tc.repo, tc.pullNumber, tc.options)
+				_, err := service.createPullRequestReview(tc.owner, tc.repo, tc.pullNumber, tc.options)
 				if !tc.expectError && err != nil {
 					t.Errorf("エラーは期待されていませんでしたが、エラーが発生しました: %v", err)
 				}
@@ -118,7 +118,7 @@ func TestCreatePullRequestReview_ErrorCases(t *testing.T) {
 			service := NewGitHubPullRequestServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.CreatePullRequestReview(tc.owner, tc.repo, tc.pullNumber, tc.options)
+			result, err := service.createPullRequestReview(tc.owner, tc.repo, tc.pullNumber, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {
@@ -211,7 +211,7 @@ func TestMergePullRequest_ErrorCases(t *testing.T) {
 			// JSONマーシャリングエラーのテストケース
 			if tc.name == "異常系 - JSONマーシャリングエラー" {
 				service := NewGitHubPullRequestService("test_token")
-				_, err := service.MergePullRequest(tc.owner, tc.repo, tc.pullNumber, tc.options)
+				_, err := service.mergePullRequest(tc.owner, tc.repo, tc.pullNumber, tc.options)
 				if !tc.expectError && err != nil {
 					t.Errorf("エラーは期待されていませんでしたが、エラーが発生しました: %v", err)
 				}
@@ -246,7 +246,7 @@ func TestMergePullRequest_ErrorCases(t *testing.T) {
 			service := NewGitHubPullRequestServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.MergePullRequest(tc.owner, tc.repo, tc.pullNumber, tc.options)
+			result, err := service.mergePullRequest(tc.owner, tc.repo, tc.pullNumber, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {
@@ -334,7 +334,7 @@ func TestUpdateIssue_ErrorCases(t *testing.T) {
 			service := NewGitHubIssueServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.UpdateIssue(tc.owner, tc.repo, tc.issueNumber, tc.options)
+			result, err := service.updateIssue(tc.owner, tc.repo, tc.issueNumber, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {
@@ -418,7 +418,7 @@ func TestAddIssueComment_ErrorCases(t *testing.T) {
 			service := NewGitHubIssueServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.AddIssueComment(tc.owner, tc.repo, tc.issueNumber, tc.body)
+			result, err := service.addIssueComment(tc.owner, tc.repo, tc.issueNumber, tc.body)
 
 			// エラーの検証
 			if tc.expectError && err == nil {

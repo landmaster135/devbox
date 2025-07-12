@@ -107,7 +107,7 @@ func TestGetFileContents(t *testing.T) {
 			service := &GitHubRepositoryService{clientService: clientService}
 
 			// テスト対象の関数を実行
-			result, err := service.GetFileContents(tc.owner, tc.repo, tc.path, tc.branch)
+			result, err := service.getFileContents(tc.owner, tc.repo, tc.path, tc.branch)
 
 			// エラーの検証
 			if tc.expectError && err == nil {

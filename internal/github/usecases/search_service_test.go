@@ -241,7 +241,7 @@ func TestSearchCode(t *testing.T) {
 			service := NewGitHubSearchServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.SearchCode(tc.query, tc.options)
+			result, err := service.searchCode(tc.query, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {

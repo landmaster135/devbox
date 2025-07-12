@@ -193,7 +193,7 @@ func TestListCommits(t *testing.T) {
 			service := &GitHubRepositoryService{clientService: clientService}
 
 			// テスト対象の関数を実行
-			result, err := service.ListCommits(tc.owner, tc.repo, tc.page, tc.perPage, tc.sha)
+			result, err := service.listCommits(tc.owner, tc.repo, tc.page, tc.perPage, tc.sha)
 
 			// エラーの検証
 			if tc.expectError && err == nil {

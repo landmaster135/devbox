@@ -63,7 +63,7 @@ func TestGitHubPullRequestService_CreatePullRequest_JSONUnmarshalError(t *testin
 	}
 
 	// Act
-	_, err := service.CreatePullRequest("owner", "repo", options)
+	_, err := service.createPullRequest("owner", "repo", options)
 
 	// Assert
 	if err == nil {
@@ -87,7 +87,7 @@ func TestGitHubPullRequestService_GetPullRequestStatus_InvalidHeadSHA(t *testing
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	_, err := service.GetPullRequestStatus("owner", "repo", 1)
+	_, err := service.getPullRequestStatus("owner", "repo", 1)
 
 	// Assert
 	if err == nil {
@@ -114,7 +114,7 @@ func TestGitHubPullRequestService_GetPullRequestStatus_FirstRequestError(t *test
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	_, err := service.GetPullRequestStatus("owner", "repo", 1)
+	_, err := service.getPullRequestStatus("owner", "repo", 1)
 
 	// Assert
 	if err == nil {
@@ -242,7 +242,7 @@ func TestGitHubPullRequestService_GetPullRequestFiles_JSONUnmarshalError(t *test
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	_, err := service.GetPullRequestFiles("owner", "repo", 1)
+	_, err := service.getPullRequestFiles("owner", "repo", 1)
 
 	// Assert
 	if err == nil {
@@ -265,7 +265,7 @@ func TestGitHubPullRequestService_GetPullRequestComments_JSONUnmarshalError(t *t
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	_, err := service.GetPullRequestComments("owner", "repo", 1)
+	_, err := service.getPullRequestComments("owner", "repo", 1)
 
 	// Assert
 	if err == nil {
@@ -288,7 +288,7 @@ func TestGitHubPullRequestService_GetPullRequestReviews_JSONUnmarshalError(t *te
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	_, err := service.GetPullRequestReviews("owner", "repo", 1)
+	_, err := service.getPullRequestReviews("owner", "repo", 1)
 
 	// Assert
 	if err == nil {
@@ -311,7 +311,7 @@ func TestGitHubPullRequestService_ListPullRequests_JSONUnmarshalError(t *testing
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	_, err := service.ListPullRequests("owner", "repo", map[string]interface{}{})
+	_, err := service.listPullRequests("owner", "repo", map[string]interface{}{})
 
 	// Assert
 	if err == nil {

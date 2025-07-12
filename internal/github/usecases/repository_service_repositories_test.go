@@ -229,7 +229,7 @@ func TestGetUserRepositories(t *testing.T) {
 			service := &GitHubRepositoryService{clientService: clientService}
 
 			// テスト対象の関数を実行
-			result, err := service.GetUserRepositories(tc.username, tc.options)
+			result, err := service.getUserRepositories(tc.username, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {

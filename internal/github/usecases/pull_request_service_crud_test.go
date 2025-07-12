@@ -41,7 +41,7 @@ func TestGitHubPullRequestService_CreatePullRequest_Normal(t *testing.T) {
 	}
 
 	// Act
-	result, err := service.CreatePullRequest("owner", "repo", options)
+	result, err := service.createPullRequest("owner", "repo", options)
 
 	// Assert
 	if err != nil {
@@ -78,7 +78,7 @@ func TestGitHubPullRequestService_CreatePullRequest_Error(t *testing.T) {
 	}
 
 	// Act
-	_, err := service.CreatePullRequest("owner", "repo", options)
+	_, err := service.createPullRequest("owner", "repo", options)
 
 	// Assert
 	if err == nil {
@@ -124,7 +124,7 @@ func TestGitHubPullRequestService_CreatePullRequestReview_Normal(t *testing.T) {
 	}
 
 	// Act
-	result, err := service.CreatePullRequestReview("owner", "repo", 1, options)
+	result, err := service.createPullRequestReview("owner", "repo", 1, options)
 
 	// Assert
 	if err != nil {
@@ -170,7 +170,7 @@ func TestGitHubPullRequestService_MergePullRequest_Normal(t *testing.T) {
 	}
 
 	// Act
-	result, err := service.MergePullRequest("owner", "repo", 1, options)
+	result, err := service.mergePullRequest("owner", "repo", 1, options)
 
 	// Assert
 	if err != nil {
@@ -210,7 +210,7 @@ func TestGitHubPullRequestService_UpdatePullRequestBranch_Normal(t *testing.T) {
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	result, err := service.UpdatePullRequestBranch("owner", "repo", 1, "abc123")
+	result, err := service.updatePullRequestBranch("owner", "repo", 1, "abc123")
 
 	// Assert
 	if err != nil {

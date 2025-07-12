@@ -19,8 +19,8 @@ func NewGitHubRepositoryService(token string) *GitHubRepositoryService {
 	}
 }
 
-// ListCommits はリポジトリのコミット一覧を取得します
-func (s *GitHubRepositoryService) ListCommits(owner, repo string, page, perPage int, sha string) ([]map[string]interface{}, error) {
+// listCommits はリポジトリのコミット一覧を取得します
+func (s *GitHubRepositoryService) listCommits(owner, repo string, page, perPage int, sha string) ([]map[string]interface{}, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -48,7 +48,7 @@ func (s *GitHubRepositoryService) ListCommits(owner, repo string, page, perPage 
 
 // HandleToListCommits はリポジトリのコミット一覧を取得して、結果をJSON形式で返します
 func (s *GitHubRepositoryService) HandleToListCommits(owner, repo string, page, perPage int, sha string) (string, error) {
-	result, err := s.ListCommits(owner, repo, page, perPage, sha)
+	result, err := s.listCommits(owner, repo, page, perPage, sha)
 	if err != nil {
 		return "", err
 	}
@@ -89,8 +89,8 @@ func (s *GitHubRepositoryService) HandleToSearchRepositories(query string, page,
 	return s.clientService.ReturnJSONResult(result)
 }
 
-// GetUserRepositories はユーザーのリポジトリ一覧を取得します
-func (s *GitHubRepositoryService) GetUserRepositories(username string, options map[string]interface{}) ([]map[string]interface{}, error) {
+// getUserRepositories はユーザーのリポジトリ一覧を取得します
+func (s *GitHubRepositoryService) getUserRepositories(username string, options map[string]interface{}) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/users/%s/repos", apiBaseURL, username)
 
 	// クエリパラメータを追加（バグ修正: "?=" を "?" に変更）
@@ -138,7 +138,7 @@ func (s *GitHubRepositoryService) HandleToGetUserRepositories(username, sort, di
 		options["type"] = type_
 	}
 
-	result, err := s.GetUserRepositories(username, options)
+	result, err := s.getUserRepositories(username, options)
 	if err != nil {
 		return "", err
 	}
@@ -146,8 +146,8 @@ func (s *GitHubRepositoryService) HandleToGetUserRepositories(username, sort, di
 	return s.clientService.ReturnJSONResult(result)
 }
 
-// GetFileContents はリポジトリからファイルの内容を取得します
-func (s *GitHubRepositoryService) GetFileContents(owner, repo, path, branch string) (map[string]interface{}, error) {
+// getFileContents はリポジトリからファイルの内容を取得します
+func (s *GitHubRepositoryService) getFileContents(owner, repo, path, branch string) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/contents/%s", apiBaseURL, owner, repo, path)
 	if branch != "" {
 		url += fmt.Sprintf("?ref=%s", branch)
@@ -177,7 +177,7 @@ func (s *GitHubRepositoryService) GetFileContents(owner, repo, path, branch stri
 
 // HandleToGetFileContents はリポジトリからファイルの内容を取得して、結果をJSON形式で返します
 func (s *GitHubRepositoryService) HandleToGetFileContents(owner, repo, path, branch string) (string, error) {
-	result, err := s.GetFileContents(owner, repo, path, branch)
+	result, err := s.getFileContents(owner, repo, path, branch)
 	if err != nil {
 		return "", err
 	}

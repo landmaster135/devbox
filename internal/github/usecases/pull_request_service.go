@@ -33,8 +33,8 @@ func NewGitHubPullRequestServiceWithDependencies(clientService *GitHubClientServ
 // ##          Pull Request Operations                          ##
 // #==============================================================#
 
-// CreatePullRequest は新しいプルリクエストを作成します
-func (s *GitHubPullRequestService) CreatePullRequest(owner, repo string, options map[string]interface{}) (map[string]interface{}, error) {
+// createPullRequest は新しいプルリクエストを作成します
+func (s *GitHubPullRequestService) createPullRequest(owner, repo string, options map[string]interface{}) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls", apiBaseURL, owner, repo)
 
 	jsonBody, err := json.Marshal(options)
@@ -55,8 +55,8 @@ func (s *GitHubPullRequestService) CreatePullRequest(owner, repo string, options
 	return result, nil
 }
 
-// CreatePullRequestReview はプルリクエストにレビューを作成します
-func (s *GitHubPullRequestService) CreatePullRequestReview(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
+// createPullRequestReview はプルリクエストにレビューを作成します
+func (s *GitHubPullRequestService) createPullRequestReview(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews", apiBaseURL, owner, repo, pullNumber)
 
 	jsonBody, err := json.Marshal(options)
@@ -77,8 +77,8 @@ func (s *GitHubPullRequestService) CreatePullRequestReview(owner, repo string, p
 	return result, nil
 }
 
-// MergePullRequest はプルリクエストをマージします
-func (s *GitHubPullRequestService) MergePullRequest(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
+// mergePullRequest はプルリクエストをマージします
+func (s *GitHubPullRequestService) mergePullRequest(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/merge", apiBaseURL, owner, repo, pullNumber)
 
 	jsonBody, err := json.Marshal(options)
@@ -99,8 +99,8 @@ func (s *GitHubPullRequestService) MergePullRequest(owner, repo string, pullNumb
 	return result, nil
 }
 
-// GetPullRequestFiles はプルリクエストで変更されたファイル一覧を取得します
-func (s *GitHubPullRequestService) GetPullRequestFiles(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
+// getPullRequestFiles はプルリクエストで変更されたファイル一覧を取得します
+func (s *GitHubPullRequestService) getPullRequestFiles(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/files", apiBaseURL, owner, repo, pullNumber)
 
 	data, err := s.clientService.DoRequest("GET", url, nil)
@@ -116,8 +116,8 @@ func (s *GitHubPullRequestService) GetPullRequestFiles(owner, repo string, pullN
 	return result, nil
 }
 
-// GetPullRequestStatus はプルリクエストのステータスを取得します
-func (s *GitHubPullRequestService) GetPullRequestStatus(owner, repo string, pullNumber int) (map[string]interface{}, error) {
+// getPullRequestStatus はプルリクエストのステータスを取得します
+func (s *GitHubPullRequestService) getPullRequestStatus(owner, repo string, pullNumber int) (map[string]interface{}, error) {
 	// プルリクエストの詳細を取得
 	prURL := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", apiBaseURL, owner, repo, pullNumber)
 	prData, err := s.clientService.DoRequest("GET", prURL, nil)
@@ -156,8 +156,8 @@ func (s *GitHubPullRequestService) GetPullRequestStatus(owner, repo string, pull
 	return result, nil
 }
 
-// UpdatePullRequestBranch はプルリクエストのブランチを更新します
-func (s *GitHubPullRequestService) UpdatePullRequestBranch(owner, repo string, pullNumber int, expectedHeadSHA string) (map[string]interface{}, error) {
+// updatePullRequestBranch はプルリクエストのブランチを更新します
+func (s *GitHubPullRequestService) updatePullRequestBranch(owner, repo string, pullNumber int, expectedHeadSHA string) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/update-branch", apiBaseURL, owner, repo, pullNumber)
 
 	options := map[string]interface{}{}
@@ -183,8 +183,8 @@ func (s *GitHubPullRequestService) UpdatePullRequestBranch(owner, repo string, p
 	return result, nil
 }
 
-// GetPullRequestComments はプルリクエストのコメントを取得します
-func (s *GitHubPullRequestService) GetPullRequestComments(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
+// getPullRequestComments はプルリクエストのコメントを取得します
+func (s *GitHubPullRequestService) getPullRequestComments(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/comments", apiBaseURL, owner, repo, pullNumber)
 
 	data, err := s.clientService.DoRequest("GET", url, nil)
@@ -200,8 +200,8 @@ func (s *GitHubPullRequestService) GetPullRequestComments(owner, repo string, pu
 	return result, nil
 }
 
-// GetPullRequestReviews はプルリクエストのレビューを取得します
-func (s *GitHubPullRequestService) GetPullRequestReviews(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
+// getPullRequestReviews はプルリクエストのレビューを取得します
+func (s *GitHubPullRequestService) getPullRequestReviews(owner, repo string, pullNumber int) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews", apiBaseURL, owner, repo, pullNumber)
 
 	data, err := s.clientService.DoRequest("GET", url, nil)
@@ -217,8 +217,8 @@ func (s *GitHubPullRequestService) GetPullRequestReviews(owner, repo string, pul
 	return result, nil
 }
 
-// ListPullRequests はリポジトリのプルリクエスト一覧を取得します
-func (s *GitHubPullRequestService) ListPullRequests(owner, repo string, options map[string]interface{}) ([]map[string]interface{}, error) {
+// listPullRequests はリポジトリのプルリクエスト一覧を取得します
+func (s *GitHubPullRequestService) listPullRequests(owner, repo string, options map[string]interface{}) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls", apiBaseURL, owner, repo)
 
 	// クエリパラメータを追加
@@ -260,7 +260,7 @@ func (s *GitHubPullRequestService) HandleToCreatePullRequest(owner, repo, title,
 
 	options["draft"] = draft
 
-	result, err := s.CreatePullRequest(owner, repo, options)
+	result, err := s.createPullRequest(owner, repo, options)
 	if err != nil {
 		return "", err
 	}
@@ -279,7 +279,7 @@ func (s *GitHubPullRequestService) HandleToCreatePullRequestReview(owner, repo s
 		options["body"] = body
 	}
 
-	result, err := s.CreatePullRequestReview(owner, repo, pullNumber, options)
+	result, err := s.createPullRequestReview(owner, repo, pullNumber, options)
 	if err != nil {
 		return "", err
 	}
@@ -301,7 +301,7 @@ func (s *GitHubPullRequestService) HandleToMergePullRequest(owner, repo string, 
 		options["merge_method"] = mergeMethod
 	}
 
-	result, err := s.MergePullRequest(owner, repo, pullNumber, options)
+	result, err := s.mergePullRequest(owner, repo, pullNumber, options)
 	if err != nil {
 		return "", err
 	}
@@ -311,7 +311,7 @@ func (s *GitHubPullRequestService) HandleToMergePullRequest(owner, repo string, 
 
 // HandleToGetPullRequestFiles はプルリクエストで変更されたファイル一覧を取得して、結果をJSON形式で返します
 func (s *GitHubPullRequestService) HandleToGetPullRequestFiles(owner, repo string, pullNumber int) (string, error) {
-	result, err := s.GetPullRequestFiles(owner, repo, pullNumber)
+	result, err := s.getPullRequestFiles(owner, repo, pullNumber)
 	if err != nil {
 		return "", err
 	}
@@ -321,7 +321,7 @@ func (s *GitHubPullRequestService) HandleToGetPullRequestFiles(owner, repo strin
 
 // HandleToGetPullRequestStatus はプルリクエストのステータスを取得して、結果をJSON形式で返します
 func (s *GitHubPullRequestService) HandleToGetPullRequestStatus(owner, repo string, pullNumber int) (string, error) {
-	result, err := s.GetPullRequestStatus(owner, repo, pullNumber)
+	result, err := s.getPullRequestStatus(owner, repo, pullNumber)
 	if err != nil {
 		return "", err
 	}
@@ -331,7 +331,7 @@ func (s *GitHubPullRequestService) HandleToGetPullRequestStatus(owner, repo stri
 
 // HandleToUpdatePullRequestBranch はプルリクエストのブランチを更新して、結果をJSON形式で返します
 func (s *GitHubPullRequestService) HandleToUpdatePullRequestBranch(owner, repo string, pullNumber int, expectedHeadSHA string) (string, error) {
-	result, err := s.UpdatePullRequestBranch(owner, repo, pullNumber, expectedHeadSHA)
+	result, err := s.updatePullRequestBranch(owner, repo, pullNumber, expectedHeadSHA)
 	if err != nil {
 		return "", err
 	}
@@ -341,7 +341,7 @@ func (s *GitHubPullRequestService) HandleToUpdatePullRequestBranch(owner, repo s
 
 // HandleToGetPullRequestComments はプルリクエストのコメントを取得して、結果をJSON形式で返します
 func (s *GitHubPullRequestService) HandleToGetPullRequestComments(owner, repo string, pullNumber int) (string, error) {
-	result, err := s.GetPullRequestComments(owner, repo, pullNumber)
+	result, err := s.getPullRequestComments(owner, repo, pullNumber)
 	if err != nil {
 		return "", err
 	}
@@ -351,7 +351,7 @@ func (s *GitHubPullRequestService) HandleToGetPullRequestComments(owner, repo st
 
 // HandleToGetPullRequestReviews はプルリクエストのレビューを取得して、結果をJSON形式で返します
 func (s *GitHubPullRequestService) HandleToGetPullRequestReviews(owner, repo string, pullNumber int) (string, error) {
-	result, err := s.GetPullRequestReviews(owner, repo, pullNumber)
+	result, err := s.getPullRequestReviews(owner, repo, pullNumber)
 	if err != nil {
 		return "", err
 	}
@@ -385,7 +385,7 @@ func (s *GitHubPullRequestService) HandleToListPullRequests(owner, repo, state, 
 		options["page"] = page
 	}
 
-	result, err := s.ListPullRequests(owner, repo, options)
+	result, err := s.listPullRequests(owner, repo, options)
 	if err != nil {
 		return "", err
 	}
