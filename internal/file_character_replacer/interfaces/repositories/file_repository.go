@@ -108,10 +108,27 @@ func (r *FileRepositoryImpl) ListFiles(dirPath string, recursive bool) ([]string
 }
 
 // CreateBackup はファイルのバックアップを作成します
-func (r *FileRepositoryImpl) CreateBackup(filePath string) error {
-	// バックアップファイル名を生成（元ファイル名 + .backup + タイムスタンプ）
+func (r *FileRepositoryImpl) CreateBackup(filePath string, backupDir string) error {
 	timestamp := time.Now().Format("20060102_150405")
-	backupPath := fmt.Sprintf("%s.backup_%s", filePath, timestamp)
+
+	var backupPath string
+	if backupDir == "" {
+		// バックアップディレクトリが指定されていない場合は従来通り
+		backupPath = fmt.Sprintf("%s.backup_%s", filePath, timestamp)
+	} else {
+		// バックアップディレクトリが指定されている場合
+		// 相対パスを計算してディレクトリ構造を保持
+		fileName := filepath.Base(filePath)
+		dirPath := filepath.Dir(filePath)
+
+		// バックアップディレクトリ内に元のディレクトリ構造を再現
+		backupSubDir := filepath.Join(backupDir, dirPath)
+		if err := os.MkdirAll(backupSubDir, 0755); err != nil {
+			return fmt.Errorf("バックアップディレクトリの作成に失敗しました: %s, エラー: %w", backupSubDir, err)
+		}
+
+		backupPath = filepath.Join(backupSubDir, fmt.Sprintf("%s.backup_%s", fileName, timestamp))
+	}
 
 	sourceFile, err := os.Open(filePath)
 	if err != nil {

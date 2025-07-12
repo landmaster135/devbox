@@ -12,7 +12,7 @@ type FileRepository interface {
 	ListFiles(dirPath string, recursive bool) ([]string, error)
 
 	// CreateBackup はファイルのバックアップを作成します
-	CreateBackup(filePath string) error
+	CreateBackup(filePath string, backupDir string) error
 
 	// FileExists はファイルまたはディレクトリが存在するかを確認します
 	FileExists(path string) bool

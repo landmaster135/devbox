@@ -80,8 +80,17 @@ func (s *FileReplacerService) ReplaceStrings() (*domain.FileProcessResult, error
 		return result, err
 	}
 
+	// ディレクトリかファイルかを判定
+	isDirectory := s.fileRepo.IsDirectory(s.config.Target)
+
+	// ファイルシステムの状態を考慮した設定の妥当性を検証
+	if err := s.config.ValidateWithFileSystem(isDirectory); err != nil {
+		result.AddError(err)
+		return result, err
+	}
+
 	// ディレクトリかファイルかで処理を分岐
-	if s.fileRepo.IsDirectory(s.config.Target) {
+	if isDirectory {
 		return s.replaceInDirectory(result)
 	} else {
 		return s.replaceInFile(s.config.Target, result)
@@ -161,7 +170,7 @@ func (s *FileReplacerService) replaceInFile(filePath string, result *domain.File
 
 	// バックアップを作成
 	if s.config.Backup {
-		if err := s.fileRepo.CreateBackup(filePath); err != nil {
+		if err := s.fileRepo.CreateBackup(filePath, s.config.BackupDir); err != nil {
 			result.AddError(fmt.Errorf("バックアップ作成に失敗しました: %s, エラー: %w", filePath, err))
 			return result, err
 		}

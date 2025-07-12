@@ -38,6 +38,7 @@ file-character-replacer [オプション]
 | `-encoding` | string | - | utf-8 | 文字エンコーディング |
 | `-recursive` | bool | - | false | ディレクトリの場合、再帰的に処理 |
 | `-backup` | bool | - | false | バックアップファイルを作成 |
+| `-backup-dir` | string | - | - | バックアップディレクトリ（ディレクトリ処理時は必須） |
 | `-dry-run` | bool | - | false | 実際の変更を行わず、変更予定を表示のみ |
 
 ### 対応エンコーディング
@@ -60,41 +61,25 @@ file-character-replacer [オプション]
 
 ## 使用例
 
-### 1. 単一ファイルの文字列置換
-
 ```bash
-# 基本的な置換
-./bin/file-character-replacer -target=./test.txt -from="old" -to="new"
-
+# 単一ファイルの文字列置換
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./test.txt -from="old" -to="new"
 # バックアップ付きで置換
-./bin/file-character-replacer -target=./test.txt -from="old" -to="new" -backup
-```
-
-### 2. ディレクトリ内の一括置換
-
-```bash
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./test.txt -from="old" -to="new" -backup
+# バックアップディレクトリを指定
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go  -target=./test.txt -from="old" -to="new" -backup -backup-dir=./backups
 # ディレクトリ内のファイルを再帰的に処理
-./bin/file-character-replacer -target=./src -from="TODO" -to="DONE" -recursive
-
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./src -from="TODO" -to="DONE" -recursive
 # バックアップ付きで再帰的に処理
-./bin/file-character-replacer -target=./src -from="TODO" -to="DONE" -recursive -backup
-```
-
-### 3. 文字エンコーディング指定
-
-```bash
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./src -from="TODO" -to="DONE" -recursive -backup
+# エスケープが必要なケース
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=$HOME/devbox/pkg/dos/test_file.bat -from=".\\pkg\\bin\\" -to=".\\pkg\\bin\cli\\" -encoding=shift_jis
 # Shift_JISファイルの処理
-./bin/file-character-replacer -target=./data.txt -from="古い" -to="新しい" -encoding=shift_jis
-
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./data.txt -from="古い" -to="新しい" -encoding=shift_jis
 # EUC-JPファイルの処理
-./bin/file-character-replacer -target=./legacy.txt -from="旧" -to="新" -encoding=euc-jp
-```
-
-### 4. ドライラン（事前確認）
-
-```bash
-# 実際の変更を行わず、変更予定を確認
-./bin/file-character-replacer -target=./project -from="debug" -to="release" -recursive -dry-run
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./legacy.txt -from="旧" -to="新" -encoding=euc-jp
+# ドライラン（事前確認）
+go run $HOME/devbox/cmd/cli/file-character-replacer/main.go -target=./project -from="debug" -to="release" -recursive -dry-run
 ```
 
 ## 出力例
@@ -142,16 +127,43 @@ file-character-replacer [オプション]
 
 `-backup` オプションを使用すると、元ファイルのバックアップが作成されます。
 
+### バックアップの動作
+
+**単一ファイル処理時:**
+- `-backup-dir`が指定されていない場合：元ファイルと同じディレクトリにバックアップを作成
+- `-backup-dir`が指定されている場合：指定されたディレクトリにバックアップを作成
+
+**ディレクトリ処理時:**
+- `-backup-dir`の指定が**必須**
+- 元のディレクトリ構造を保持してバックアップディレクトリ内に再現
+
 ### バックアップファイル名の形式
 
 ```
 {元ファイル名}.backup_{YYYYMMDD_HHMMSS}
 ```
 
-### 例
+### バックアップ構造の例
 
+**単一ファイル処理時（バックアップディレクトリ指定なし）:**
 ```
-test.txt → test.txt.backup_20250712_162007
+./test.txt → ./test.txt.backup_20250712_162007
+```
+
+**単一ファイル処理時（バックアップディレクトリ指定あり）:**
+```
+./test.txt → ./backups/test.txt.backup_20250712_162007
+```
+
+**ディレクトリ処理時（ディレクトリ構造保持）:**
+```
+元の構造:
+./src/main.go
+./src/config/app.json
+
+バックアップ構造（./backups指定時）:
+./backups/src/main.go.backup_20250712_162007
+./backups/src/config/app.json.backup_20250712_162007
 ```
 
 ## 注意事項
