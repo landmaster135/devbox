@@ -32,7 +32,7 @@ func TestSetGitHubGlobalServer(t *testing.T) {
 			s := server.NewMCPServer("test-server", "1.0.0")
 
 			// テスト対象の関数を実行
-			result := SetGitHubGlobalServer(tc.token, s)
+			result := setGitHubGlobalServer(tc.token, s)
 
 			// 関数が正常に実行され、サーバーが返されることを確認
 			if result == nil {

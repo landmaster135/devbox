@@ -59,7 +59,7 @@ func TestSetGitHubPullRequestServer(t *testing.T) {
 			s := server.NewMCPServer("test-server", "1.0.0")
 
 			// テスト対象の関数を実行
-			result := SetGitHubPullRequestServer(tc.token, s)
+			result := setGitHubPullRequestServer(tc.token, s)
 
 			// 関数が正常に実行され、サーバーが返されることを確認
 			if result == nil {
@@ -92,7 +92,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	// HandleToCreatePullRequestメソッドが存在し、呼び出し可能であることを確認
 	// 注意: 実際のGitHub APIを呼び出すため、エラーが発生することが予想されます
 	// ここではメソッドが存在し、パニックしないことを確認します
-	_, err := handler.HandleToCreatePullRequest(ctx, request)
+	_, err := handler.handleToCreatePullRequest(ctx, request)
 	// エラーが発生することは予想されるため、パニックしなければOK
 	if err == nil {
 		t.Log("HandleToCreatePullRequest: 予期しない成功（実際のAPIが呼ばれた可能性があります）")
@@ -107,7 +107,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 		"repo":        "test_repo",
 		"pull_number": float64(1),
 	}
-	_, err = handler.HandleToCreatePullRequestReview(ctx, request)
+	_, err = handler.handleToCreatePullRequestReview(ctx, request)
 	if err == nil {
 		t.Log("HandleToCreatePullRequestReview: 予期しない成功")
 	} else {
@@ -120,7 +120,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 		"repo":        "test_repo",
 		"pull_number": float64(1),
 	}
-	_, err = handler.HandleToMergePullRequest(ctx, request)
+	_, err = handler.handleToMergePullRequest(ctx, request)
 	if err == nil {
 		t.Log("HandleToMergePullRequest: 予期しない成功")
 	} else {
@@ -128,7 +128,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	}
 
 	request.Params.Name = "get_pull_request_files"
-	_, err = handler.HandleToGetPullRequestFiles(ctx, request)
+	_, err = handler.handleToGetPullRequestFiles(ctx, request)
 	if err == nil {
 		t.Log("HandleToGetPullRequestFiles: 予期しない成功")
 	} else {
@@ -136,7 +136,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	}
 
 	request.Params.Name = "get_pull_request_status"
-	_, err = handler.HandleToGetPullRequestStatus(ctx, request)
+	_, err = handler.handleToGetPullRequestStatus(ctx, request)
 	if err == nil {
 		t.Log("HandleToGetPullRequestStatus: 予期しない成功")
 	} else {
@@ -144,7 +144,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	}
 
 	request.Params.Name = "update_pull_request_branch"
-	_, err = handler.HandleToUpdatePullRequestBranch(ctx, request)
+	_, err = handler.handleToUpdatePullRequestBranch(ctx, request)
 	if err == nil {
 		t.Log("HandleToUpdatePullRequestBranch: 予期しない成功")
 	} else {
@@ -152,7 +152,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	}
 
 	request.Params.Name = "get_pull_request_comments"
-	_, err = handler.HandleToGetPullRequestComments(ctx, request)
+	_, err = handler.handleToGetPullRequestComments(ctx, request)
 	if err == nil {
 		t.Log("HandleToGetPullRequestComments: 予期しない成功")
 	} else {
@@ -160,7 +160,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	}
 
 	request.Params.Name = "get_pull_request_reviews"
-	_, err = handler.HandleToGetPullRequestReviews(ctx, request)
+	_, err = handler.handleToGetPullRequestReviews(ctx, request)
 	if err == nil {
 		t.Log("HandleToGetPullRequestReviews: 予期しない成功")
 	} else {
@@ -168,7 +168,7 @@ func TestPullRequestHandlerMethods(t *testing.T) {
 	}
 
 	request.Params.Name = "list_pull_requests"
-	_, err = handler.HandleToListPullRequests(ctx, request)
+	_, err = handler.handleToListPullRequests(ctx, request)
 	if err == nil {
 		t.Log("HandleToListPullRequests: 予期しない成功")
 	} else {

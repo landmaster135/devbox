@@ -9,8 +9,8 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/github/usecases"
 )
 
-// HandleToListCommits はリポジトリのコミット一覧を取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToListCommits(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToListCommits はリポジトリのコミット一覧を取得して、結果をJSON形式で返します
+func (c *GitHubClient) handleToListCommits(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -33,8 +33,8 @@ func (c *GitHubClient) HandleToListCommits(ctx context.Context, request mcp.Call
 	return returnJSONResult(result)
 }
 
-// HandleToSearchRepositories はGitHubリポジトリを検索して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToSearchRepositories(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToSearchRepositories はGitHubリポジトリを検索して、結果をJSON形式で返します
+func (c *GitHubClient) handleToSearchRepositories(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	query, err := request.RequireString("query")
 	if err != nil {
 		return nil, err
@@ -52,8 +52,8 @@ func (c *GitHubClient) HandleToSearchRepositories(ctx context.Context, request m
 	return returnJSONResult(result)
 }
 
-// HandleToGetUserRepositories はユーザーのリポジトリ一覧を取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToGetUserRepositories(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToGetUserRepositories はユーザーのリポジトリ一覧を取得して、結果をJSON形式で返します
+func (c *GitHubClient) handleToGetUserRepositories(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	username, err := request.RequireString("username")
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func (c *GitHubClient) HandleToGetUserRepositories(ctx context.Context, request 
 	return returnJSONResult(result)
 }
 
-// HandleToGetFileContents はリポジトリからファイルの内容を取得して、結果をJSON形式で返します
-func (c *GitHubClient) HandleToGetFileContents(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToGetFileContents はリポジトリからファイルの内容を取得して、結果をJSON形式で返します
+func (c *GitHubClient) handleToGetFileContents(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -102,8 +102,8 @@ func (c *GitHubClient) HandleToGetFileContents(ctx context.Context, request mcp.
 	return returnJSONResult(result)
 }
 
-// SetGitHubRepositoryServer は受け取ったMCPサーバにGitHubリポジトリ用のツールを付与して、そのMCPサーバを返します。
-func SetGitHubRepositoryServer(token string, s *server.MCPServer) *server.MCPServer {
+// setGitHubRepositoryServer は受け取ったMCPサーバにGitHubリポジトリ用のツールを付与して、そのMCPサーバを返します。
+func setGitHubRepositoryServer(token string, s *server.MCPServer) *server.MCPServer {
 	// GitHubクライアントを初期化
 	client := NewGitHubClient(token)
 
@@ -121,7 +121,7 @@ func SetGitHubRepositoryServer(token string, s *server.MCPServer) *server.MCPSer
 			mcp.Description("Results per page (default: 30, max: 100)"),
 		),
 	)
-	s.AddTool(searchRepositoriesTool, client.HandleToSearchRepositories)
+	s.AddTool(searchRepositoriesTool, client.handleToSearchRepositories)
 
 	// ツール2: ユーザーリポジトリの検索
 	getUserRepositoriesTool := mcp.NewTool("get_user_repositories",
@@ -149,7 +149,7 @@ func SetGitHubRepositoryServer(token string, s *server.MCPServer) *server.MCPSer
 			mcp.Enum("all", "owner", "member", "public", "private"),
 		),
 	)
-	s.AddTool(getUserRepositoriesTool, client.HandleToGetUserRepositories)
+	s.AddTool(getUserRepositoriesTool, client.handleToGetUserRepositories)
 
 	// ツール3: ファイル内容の取得
 	getFileContentsTool := mcp.NewTool("get_file_contents",
@@ -170,7 +170,7 @@ func SetGitHubRepositoryServer(token string, s *server.MCPServer) *server.MCPSer
 			mcp.Description("Branch name (default: repository's default branch)"),
 		),
 	)
-	s.AddTool(getFileContentsTool, client.HandleToGetFileContents)
+	s.AddTool(getFileContentsTool, client.handleToGetFileContents)
 
 	// ツール4: コミット一覧の取得
 	listCommitsTool := mcp.NewTool("list_commits",
@@ -193,7 +193,7 @@ func SetGitHubRepositoryServer(token string, s *server.MCPServer) *server.MCPSer
 			mcp.Description("SHA or branch name to start listing commits from"),
 		),
 	)
-	s.AddTool(listCommitsTool, client.HandleToListCommits)
+	s.AddTool(listCommitsTool, client.handleToListCommits)
 
 	return s
 }

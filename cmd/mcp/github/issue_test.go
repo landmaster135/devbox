@@ -59,7 +59,7 @@ func TestSetGitHubIssueServer(t *testing.T) {
 			s := server.NewMCPServer("test-server", "1.0.0")
 
 			// テスト対象の関数を実行
-			result := SetGitHubIssueServer(tc.token, s)
+			result := setGitHubIssueServer(tc.token, s)
 
 			// 関数が正常に実行され、サーバーが返されることを確認
 			if result == nil {
@@ -90,7 +90,7 @@ func TestIssueHandlerMethods(t *testing.T) {
 	// HandleToCreateIssueメソッドが存在し、呼び出し可能であることを確認
 	// 注意: 実際のGitHub APIを呼び出すため、エラーが発生することが予想されます
 	// ここではメソッドが存在し、パニックしないことを確認します
-	_, err := handler.HandleToCreateIssue(ctx, request)
+	_, err := handler.handleToCreateIssue(ctx, request)
 	// エラーが発生することは予想されるため、パニックしなければOK
 	if err == nil {
 		t.Log("HandleToCreateIssue: 予期しない成功（実際のAPIが呼ばれた可能性があります）")
@@ -100,7 +100,7 @@ func TestIssueHandlerMethods(t *testing.T) {
 
 	// 他のメソッドも同様にテスト
 	request.Params.Name = "list_issues"
-	_, err = handler.HandleToListIssues(ctx, request)
+	_, err = handler.handleToListIssues(ctx, request)
 	if err == nil {
 		t.Log("HandleToListIssues: 予期しない成功")
 	} else {
@@ -111,7 +111,7 @@ func TestIssueHandlerMethods(t *testing.T) {
 	request.Params.Arguments = map[string]interface{}{
 		"issue_number": float64(1),
 	}
-	_, err = handler.HandleToUpdateIssue(ctx, request)
+	_, err = handler.handleToUpdateIssue(ctx, request)
 	if err == nil {
 		t.Log("HandleToUpdateIssue: 予期しない成功")
 	} else {
@@ -122,7 +122,7 @@ func TestIssueHandlerMethods(t *testing.T) {
 	request.Params.Arguments = map[string]interface{}{
 		"body": "テストコメント",
 	}
-	_, err = handler.HandleToAddIssueComment(ctx, request)
+	_, err = handler.handleToAddIssueComment(ctx, request)
 	if err == nil {
 		t.Log("HandleToAddIssueComment: 予期しない成功")
 	} else {

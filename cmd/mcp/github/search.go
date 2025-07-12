@@ -44,8 +44,8 @@ func (h *GithubHandler) handleToSearchCode(ctx context.Context, request mcp.Call
 	return returnJSONResult(result)
 }
 
-// SetGitHubGlobalServer は受け取ったMCPサーバにGitHubグローバル検索用のツールを付与して、そのMCPサーバを返します。
-func SetGitHubGlobalServer(token string, s *server.MCPServer) *server.MCPServer {
+// setGitHubGlobalServer は受け取ったMCPサーバにGitHubグローバル検索用のツールを付与して、そのMCPサーバを返します。
+func setGitHubGlobalServer(token string, s *server.MCPServer) *server.MCPServer {
 	// ツール1: コード検索
 	searchCodeTool := mcp.NewTool("search_code",
 		mcp.WithDescription("Search for code across GitHub repositories"),
