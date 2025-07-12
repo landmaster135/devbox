@@ -14,11 +14,12 @@ type Config struct {
 	Encoding  string // 文字エンコーディング（オプション、デフォルト: utf-8）
 	Recursive bool   // 再帰的処理（オプション）
 	Backup    bool   // バックアップ作成（オプション）
+	BackupDir string // バックアップディレクトリ（オプション）
 	DryRun    bool   // ドライラン（オプション）
 }
 
 // NewConfig は新しいConfigを作成します
-func NewConfig(target, from, to, encoding string, recursive, backup, dryRun bool) (*Config, error) {
+func NewConfig(target, from, to, encoding, backupDir string, recursive, backup, dryRun bool) (*Config, error) {
 	c := &Config{
 		Target:    target,
 		From:      from,
@@ -26,6 +27,7 @@ func NewConfig(target, from, to, encoding string, recursive, backup, dryRun bool
 		Encoding:  encoding,
 		Recursive: recursive,
 		Backup:    backup,
+		BackupDir: backupDir,
 		DryRun:    dryRun,
 	}
 
@@ -51,6 +53,7 @@ func (c *Config) ToReplacementConfig() *domain.ReplacementConfig {
 		Encoding:  encoding,
 		Recursive: c.Recursive,
 		Backup:    c.Backup,
+		BackupDir: c.BackupDir,
 		DryRun:    c.DryRun,
 	}
 }
@@ -130,6 +133,7 @@ func (cp *ConfigParser) ParseFlags() (*Config, error) {
 	cp.flagParser.StringVar(&config.From, "from", "", "置換元文字列（必須）")
 	cp.flagParser.StringVar(&config.To, "to", "", "置換先文字列（必須）")
 	cp.flagParser.StringVar(&config.Encoding, "encoding", "utf-8", "文字エンコーディング（utf-8, shift_jis, euc-jp, iso-2022-jp）")
+	cp.flagParser.StringVar(&config.BackupDir, "backup-dir", "", "バックアップディレクトリ（ディレクトリ処理時は必須）")
 	cp.flagParser.BoolVar(&config.Recursive, "recursive", false, "ディレクトリの場合、再帰的に処理")
 	cp.flagParser.BoolVar(&config.Backup, "backup", false, "バックアップファイルを作成")
 	cp.flagParser.BoolVar(&config.DryRun, "dry-run", false, "実際の変更を行わず、変更予定を表示のみ")
@@ -178,11 +182,14 @@ func PrintUsage() {
 	fmt.Printf("        ディレクトリの場合、再帰的に処理\n")
 	fmt.Printf("  -backup\n")
 	fmt.Printf("        バックアップファイルを作成\n")
+	fmt.Printf("  -backup-dir string\n")
+	fmt.Printf("        バックアップディレクトリ（ディレクトリ処理時は必須）\n")
 	fmt.Printf("  -dry-run\n")
 	fmt.Printf("        実際の変更を行わず、変更予定を表示のみ\n")
 	fmt.Printf("\n使用例:\n")
 	fmt.Printf("  %s -target=./test.txt -from=\"old\" -to=\"new\"\n", osArgs.Args()[0])
-	fmt.Printf("  %s -target=./src -from=\"TODO\" -to=\"DONE\" -recursive -backup\n", osArgs.Args()[0])
+	fmt.Printf("  %s -target=./test.txt -from=\"old\" -to=\"new\" -backup -backup-dir=./backups\n", osArgs.Args()[0])
+	fmt.Printf("  %s -target=./src -from=\"TODO\" -to=\"DONE\" -recursive -backup -backup-dir=./backups\n", osArgs.Args()[0])
 	fmt.Printf("  %s -target=./data.txt -from=\"古い\" -to=\"新しい\" -encoding=shift_jis\n", osArgs.Args()[0])
 	fmt.Printf("  %s -target=./project -from=\"debug\" -to=\"release\" -recursive -dry-run\n", osArgs.Args()[0])
 }

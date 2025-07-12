@@ -30,6 +30,7 @@ type ReplacementConfig struct {
 	Encoding  EncodingType // 文字エンコーディング
 	Recursive bool         // 再帰的処理
 	Backup    bool         // バックアップ作成
+	BackupDir string       // バックアップディレクトリ
 	DryRun    bool         // ドライラン
 }
 
@@ -47,6 +48,21 @@ func (c *ReplacementConfig) Validate() error {
 	if !c.Encoding.IsValid() {
 		return fmt.Errorf("無効な文字エンコーディングです: %s", c.Encoding)
 	}
+	return nil
+}
+
+// ValidateWithFileSystem はファイルシステムの状態を考慮した設定の妥当性を検証します
+func (c *ReplacementConfig) ValidateWithFileSystem(isDirectory bool) error {
+	// 基本的なバリデーション
+	if err := c.Validate(); err != nil {
+		return err
+	}
+
+	// ディレクトリ処理時のバックアップディレクトリチェック
+	if isDirectory && c.Backup && c.BackupDir == "" {
+		return fmt.Errorf("ディレクトリ処理時はバックアップディレクトリの指定が必須です（--backup-dir オプションを使用してください）")
+	}
+
 	return nil
 }
 
