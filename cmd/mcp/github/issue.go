@@ -3,9 +3,9 @@ package github
 import (
 	"context"
 
+	"github.com/landmaster135/devbox/internal/github/usecases"
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
-	"github.com/landmaster135/devbox/internal/github/usecases"
 )
 
 // IssueHandler はIssue関連のMCPハンドラーを管理します
@@ -20,8 +20,8 @@ func NewIssueHandler(token string) *IssueHandler {
 	}
 }
 
-// HandleToCreateIssue は新しいイシューを作成して、結果をJSON形式で返します
-func (h *IssueHandler) HandleToCreateIssue(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToCreateIssue は新しいイシューを作成して、結果をJSON形式で返します
+func (h *IssueHandler) handleToCreateIssue(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -64,8 +64,8 @@ func (h *IssueHandler) HandleToCreateIssue(ctx context.Context, request mcp.Call
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToListIssues はリポジトリのイシュー一覧を取得して、結果をJSON形式で返します
-func (h *IssueHandler) HandleToListIssues(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToListIssues はリポジトリのイシュー一覧を取得して、結果をJSON形式で返します
+func (h *IssueHandler) handleToListIssues(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -90,8 +90,8 @@ func (h *IssueHandler) HandleToListIssues(ctx context.Context, request mcp.CallT
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToUpdateIssue は既存のイシューを更新して、結果をJSON形式で返します
-func (h *IssueHandler) HandleToUpdateIssue(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToUpdateIssue は既存のイシューを更新して、結果をJSON形式で返します
+func (h *IssueHandler) handleToUpdateIssue(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -132,8 +132,8 @@ func (h *IssueHandler) HandleToUpdateIssue(ctx context.Context, request mcp.Call
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToAddIssueComment はイシューにコメントを追加して、結果をJSON形式で返します
-func (h *IssueHandler) HandleToAddIssueComment(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToAddIssueComment はイシューにコメントを追加して、結果をJSON形式で返します
+func (h *IssueHandler) handleToAddIssueComment(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -159,8 +159,8 @@ func (h *IssueHandler) HandleToAddIssueComment(ctx context.Context, request mcp.
 	return mcp.NewToolResultText(result), nil
 }
 
-// SetGitHubIssueServer は受け取ったMCPサーバにGitHub用のツールを付与して、そのMCPサーバを返します。
-func SetGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
+// setGitHubIssueServer は受け取ったMCPサーバにGitHub用のツールを付与して、そのMCPサーバを返します。
+func setGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 	// IssueHandlerを初期化
 	handler := NewIssueHandler(token)
 
@@ -189,7 +189,7 @@ func SetGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 			mcp.Description("Users to assign to this issue"),
 		),
 	)
-	s.AddTool(createIssueTool, handler.HandleToCreateIssue)
+	s.AddTool(createIssueTool, handler.handleToCreateIssue)
 
 	// ツール2: イシュー一覧の取得
 	listIssuesTool := mcp.NewTool("list_issues",
@@ -221,7 +221,7 @@ func SetGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 			mcp.Description("Page number (default: 1)"),
 		),
 	)
-	s.AddTool(listIssuesTool, handler.HandleToListIssues)
+	s.AddTool(listIssuesTool, handler.handleToListIssues)
 
 	// ツール3: イシューの更新
 	updateIssueTool := mcp.NewTool("update_issue",
@@ -256,7 +256,7 @@ func SetGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 		),
 	)
 
-	s.AddTool(updateIssueTool, handler.HandleToUpdateIssue)
+	s.AddTool(updateIssueTool, handler.handleToUpdateIssue)
 
 	// ツール4: イシューコメントの追加
 	addIssueCommentTool := mcp.NewTool("add_issue_comment",
@@ -279,7 +279,7 @@ func SetGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 		),
 	)
 
-	s.AddTool(addIssueCommentTool, handler.HandleToAddIssueComment)
+	s.AddTool(addIssueCommentTool, handler.handleToAddIssueComment)
 
 	return s
 }

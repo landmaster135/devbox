@@ -21,8 +21,8 @@ func NewPullRequestHandler(token string) *PullRequestHandler {
 	}
 }
 
-// HandleToCreatePullRequest は新しいプルリクエストを作成して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToCreatePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToCreatePullRequest は新しいプルリクエストを作成して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToCreatePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ func (h *PullRequestHandler) HandleToCreatePullRequest(ctx context.Context, requ
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToCreatePullRequestReview はプルリクエストにレビューを作成して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToCreatePullRequestReview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToCreatePullRequestReview はプルリクエストにレビューを作成して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToCreatePullRequestReview(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -81,8 +81,8 @@ func (h *PullRequestHandler) HandleToCreatePullRequestReview(ctx context.Context
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToMergePullRequest はプルリクエストをマージして、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToMergePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToMergePullRequest はプルリクエストをマージして、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToMergePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -108,8 +108,8 @@ func (h *PullRequestHandler) HandleToMergePullRequest(ctx context.Context, reque
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToGetPullRequestFiles はプルリクエストで変更されたファイル一覧を取得して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToGetPullRequestFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToGetPullRequestFiles はプルリクエストで変更されたファイル一覧を取得して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToGetPullRequestFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -131,8 +131,8 @@ func (h *PullRequestHandler) HandleToGetPullRequestFiles(ctx context.Context, re
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToGetPullRequestStatus はプルリクエストのステータスを取得して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToGetPullRequestStatus(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToGetPullRequestStatus はプルリクエストのステータスを取得して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToGetPullRequestStatus(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -154,8 +154,8 @@ func (h *PullRequestHandler) HandleToGetPullRequestStatus(ctx context.Context, r
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToUpdatePullRequestBranch はプルリクエストのブランチを更新して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToUpdatePullRequestBranch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToUpdatePullRequestBranch はプルリクエストのブランチを更新して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToUpdatePullRequestBranch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -179,8 +179,8 @@ func (h *PullRequestHandler) HandleToUpdatePullRequestBranch(ctx context.Context
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToGetPullRequestComments はプルリクエストのコメントを取得して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToGetPullRequestComments(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToGetPullRequestComments はプルリクエストのコメントを取得して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToGetPullRequestComments(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -202,8 +202,8 @@ func (h *PullRequestHandler) HandleToGetPullRequestComments(ctx context.Context,
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToGetPullRequestReviews はプルリクエストのレビューを取得して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToGetPullRequestReviews(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToGetPullRequestReviews はプルリクエストのレビューを取得して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToGetPullRequestReviews(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -225,8 +225,8 @@ func (h *PullRequestHandler) HandleToGetPullRequestReviews(ctx context.Context, 
 	return mcp.NewToolResultText(result), nil
 }
 
-// HandleToListPullRequests はリポジトリのプルリクエスト一覧を取得して、結果をJSON形式で返します
-func (h *PullRequestHandler) HandleToListPullRequests(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+// handleToListPullRequests はリポジトリのプルリクエスト一覧を取得して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToListPullRequests(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	owner, err := request.RequireString("owner")
 	if err != nil {
 		return nil, err
@@ -252,8 +252,8 @@ func (h *PullRequestHandler) HandleToListPullRequests(ctx context.Context, reque
 	return mcp.NewToolResultText(result), nil
 }
 
-// SetGitHubPullRequestServer は受け取ったMCPサーバにGitHubプルリクエスト用のツールを付与して、そのMCPサーバを返します。
-func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPServer {
+// setGitHubPullRequestServer は受け取ったMCPサーバにGitHubプルリクエスト用のツールを付与して、そのMCPサーバを返します。
+func setGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPServer {
 	// PullRequestHandlerを初期化
 	handler := NewPullRequestHandler(token)
 
@@ -287,7 +287,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Whether to create a draft pull request"),
 		),
 	)
-	s.AddTool(createPullRequestTool, handler.HandleToCreatePullRequest)
+	s.AddTool(createPullRequestTool, handler.handleToCreatePullRequest)
 
 	// ツール2: プルリクエストレビューの作成
 	createPullRequestReviewTool := mcp.NewTool("create_pull_request_review",
@@ -312,7 +312,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Review body"),
 		),
 	)
-	s.AddTool(createPullRequestReviewTool, handler.HandleToCreatePullRequestReview)
+	s.AddTool(createPullRequestReviewTool, handler.handleToCreatePullRequestReview)
 
 	// ツール3: プルリクエストのマージ
 	mergePullRequestTool := mcp.NewTool("merge_pull_request",
@@ -340,7 +340,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Enum("merge", "squash", "rebase"),
 		),
 	)
-	s.AddTool(mergePullRequestTool, handler.HandleToMergePullRequest)
+	s.AddTool(mergePullRequestTool, handler.handleToMergePullRequest)
 
 	// ツール4: プルリクエストのファイル一覧取得
 	getPullRequestFilesTool := mcp.NewTool("get_pull_request_files",
@@ -358,7 +358,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestFilesTool, handler.HandleToGetPullRequestFiles)
+	s.AddTool(getPullRequestFilesTool, handler.handleToGetPullRequestFiles)
 
 	// ツール5: プルリクエストのステータス取得
 	getPullRequestStatusTool := mcp.NewTool("get_pull_request_status",
@@ -376,7 +376,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestStatusTool, handler.HandleToGetPullRequestStatus)
+	s.AddTool(getPullRequestStatusTool, handler.handleToGetPullRequestStatus)
 
 	// ツール6: プルリクエストブランチの更新
 	updatePullRequestBranchTool := mcp.NewTool("update_pull_request_branch",
@@ -397,7 +397,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("The expected SHA of the pull request head"),
 		),
 	)
-	s.AddTool(updatePullRequestBranchTool, handler.HandleToUpdatePullRequestBranch)
+	s.AddTool(updatePullRequestBranchTool, handler.handleToUpdatePullRequestBranch)
 
 	// ツール7: プルリクエストコメントの取得
 	getPullRequestCommentsTool := mcp.NewTool("get_pull_request_comments",
@@ -415,7 +415,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestCommentsTool, handler.HandleToGetPullRequestComments)
+	s.AddTool(getPullRequestCommentsTool, handler.handleToGetPullRequestComments)
 
 	// ツール8: プルリクエストレビューの取得
 	getPullRequestReviewsTool := mcp.NewTool("get_pull_request_reviews",
@@ -433,7 +433,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Pull request number"),
 		),
 	)
-	s.AddTool(getPullRequestReviewsTool, handler.HandleToGetPullRequestReviews)
+	s.AddTool(getPullRequestReviewsTool, handler.handleToGetPullRequestReviews)
 
 	// ツール9: プルリクエスト一覧の取得
 	listPullRequestsTool := mcp.NewTool("list_pull_requests",
@@ -471,7 +471,7 @@ func SetGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 			mcp.Description("Filter by base branch name"),
 		),
 	)
-	s.AddTool(listPullRequestsTool, handler.HandleToListPullRequests)
+	s.AddTool(listPullRequestsTool, handler.handleToListPullRequests)
 
 	return s
 }

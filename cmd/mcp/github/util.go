@@ -3,14 +3,9 @@ package github
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
-)
-
-const (
-	apiBaseURL = "https://api.github.com"
 )
 
 // HTTPClient インターフェースを定義
@@ -30,44 +25,6 @@ func NewGitHubClient(token string) *GitHubClient {
 		httpClient: &http.Client{},
 		token:      token,
 	}
-}
-
-// doRequest はHTTPリクエストを実行し、レスポンスを処理します（テスト用に簡略化）
-func (c *GitHubClient) doRequest(method, url string, body io.Reader) ([]byte, error) {
-	req, err := http.NewRequest(method, url, body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-	if c.token != "" {
-		req.Header.Set("Authorization", "token "+c.token)
-	}
-	if method == "POST" || method == "PATCH" || method == "PUT" {
-		req.Header.Set("Content-Type", "application/json")
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode >= 400 {
-		var ghError GitHubError
-		if err := json.Unmarshal(respBody, &ghError); err != nil {
-			return nil, fmt.Errorf("HTTP error: %d - %s", resp.StatusCode, string(respBody))
-		}
-		ghError.StatusCode = resp.StatusCode
-		return nil, &ghError
-	}
-
-	return respBody, nil
 }
 
 // GitHubError はGitHub APIからのエラーを表します

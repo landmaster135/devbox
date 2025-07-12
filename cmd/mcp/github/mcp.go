@@ -42,10 +42,10 @@ func createGitHubServer() *server.MCPServer {
 		server.WithPromptCapabilities(true),
 		server.WithLogging(),
 	)
-	s = SetGitHubIssueServer(token, s)
-	s = SetGitHubPullRequestServer(token, s)
-	s = SetGitHubRepositoryServer(token, s)
-	s = SetGitHubGlobalServer(token, s)
+	s = setGitHubIssueServer(token, s)
+	s = setGitHubPullRequestServer(token, s)
+	s = setGitHubRepositoryServer(token, s)
+	s = setGitHubGlobalServer(token, s)
 
 	// プロンプト
 	s = addPromptIntoServer(s)
