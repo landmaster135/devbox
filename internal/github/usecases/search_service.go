@@ -40,8 +40,8 @@ func NewGitHubSearchServiceWithDependencies(clientService *GitHubClientService) 
 	}
 }
 
-// SearchCode はGitHub全体でコードを検索します
-func (s *GitHubSearchService) SearchCode(query string, options map[string]interface{}) (map[string]interface{}, error) {
+// searchCode はGitHub全体でコードを検索します
+func (s *GitHubSearchService) searchCode(query string, options map[string]interface{}) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/search/code?q=%s", apiBaseURL, query)
 
 	// クエリパラメータを追加
@@ -75,7 +75,7 @@ func (s *GitHubSearchService) HandleToSearchCode(query string, page, perPage int
 		options["per_page"] = perPage
 	}
 
-	result, err := s.SearchCode(query, options)
+	result, err := s.searchCode(query, options)
 	if err != nil {
 		return "", err
 	}

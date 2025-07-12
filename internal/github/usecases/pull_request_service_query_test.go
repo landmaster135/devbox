@@ -31,7 +31,7 @@ func TestGitHubPullRequestService_GetPullRequestFiles_Normal(t *testing.T) {
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	result, err := service.GetPullRequestFiles("owner", "repo", 1)
+	result, err := service.getPullRequestFiles("owner", "repo", 1)
 
 	// Assert
 	if err != nil {
@@ -89,7 +89,7 @@ func TestGitHubPullRequestService_GetPullRequestStatus_Normal(t *testing.T) {
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	result, err := service.GetPullRequestStatus("owner", "repo", 1)
+	result, err := service.getPullRequestStatus("owner", "repo", 1)
 
 	// Assert
 	if err != nil {
@@ -131,7 +131,7 @@ func TestGitHubPullRequestService_GetPullRequestComments_Normal(t *testing.T) {
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	result, err := service.GetPullRequestComments("owner", "repo", 1)
+	result, err := service.getPullRequestComments("owner", "repo", 1)
 
 	// Assert
 	if err != nil {
@@ -171,7 +171,7 @@ func TestGitHubPullRequestService_GetPullRequestReviews_Normal(t *testing.T) {
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	result, err := service.GetPullRequestReviews("owner", "repo", 1)
+	result, err := service.getPullRequestReviews("owner", "repo", 1)
 
 	// Assert
 	if err != nil {
@@ -226,7 +226,7 @@ func TestGitHubPullRequestService_ListPullRequests_Normal(t *testing.T) {
 	}
 
 	// Act
-	result, err := service.ListPullRequests("owner", "repo", options)
+	result, err := service.listPullRequests("owner", "repo", options)
 
 	// Assert
 	if err != nil {
@@ -262,7 +262,7 @@ func TestGitHubPullRequestService_ListPullRequests_EmptyOptions(t *testing.T) {
 	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
 
 	// Act
-	result, err := service.ListPullRequests("owner", "repo", map[string]interface{}{})
+	result, err := service.listPullRequests("owner", "repo", map[string]interface{}{})
 
 	// Assert
 	if err != nil {

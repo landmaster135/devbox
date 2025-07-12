@@ -44,8 +44,8 @@ func AddToOptions(options map[string]interface{}, args map[string]interface{}, k
 // ##          Issue Operations                                 ##
 // #==============================================================#
 
-// CreateIssue は新しいイシューを作成します
-func (s *GitHubIssueService) CreateIssue(owner, repo string, options map[string]interface{}) (map[string]interface{}, error) {
+// createIssue は新しいイシューを作成します
+func (s *GitHubIssueService) createIssue(owner, repo string, options map[string]interface{}) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues", apiBaseURL, owner, repo)
 	jsonBody, err := json.Marshal(options)
 	if err != nil {
@@ -62,8 +62,8 @@ func (s *GitHubIssueService) CreateIssue(owner, repo string, options map[string]
 	return result, nil
 }
 
-// ListIssues はリポジトリのイシュー一覧を取得します
-func (s *GitHubIssueService) ListIssues(owner, repo string, options map[string]interface{}) ([]map[string]interface{}, error) {
+// listIssues はリポジトリのイシュー一覧を取得します
+func (s *GitHubIssueService) listIssues(owner, repo string, options map[string]interface{}) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues", apiBaseURL, owner, repo)
 
 	// クエリパラメータを追加
@@ -88,8 +88,8 @@ func (s *GitHubIssueService) ListIssues(owner, repo string, options map[string]i
 	return result, nil
 }
 
-// UpdateIssue は既存のイシューを更新します
-func (s *GitHubIssueService) UpdateIssue(owner, repo string, issueNumber int, options map[string]interface{}) (map[string]interface{}, error) {
+// updateIssue は既存のイシューを更新します
+func (s *GitHubIssueService) updateIssue(owner, repo string, issueNumber int, options map[string]interface{}) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d", apiBaseURL, owner, repo, issueNumber)
 
 	jsonBody, err := json.Marshal(options)
@@ -110,8 +110,8 @@ func (s *GitHubIssueService) UpdateIssue(owner, repo string, issueNumber int, op
 	return result, nil
 }
 
-// AddIssueComment はイシューにコメントを追加します
-func (s *GitHubIssueService) AddIssueComment(owner, repo string, issueNumber int, body string) (map[string]interface{}, error) {
+// addIssueComment はイシューにコメントを追加します
+func (s *GitHubIssueService) addIssueComment(owner, repo string, issueNumber int, body string) (map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/comments", apiBaseURL, owner, repo, issueNumber)
 
 	jsonBody, err := json.Marshal(map[string]string{"body": body})
@@ -153,7 +153,7 @@ func (s *GitHubIssueService) HandleToCreateIssue(owner, repo, title, body string
 		options["assignees"] = assignees
 	}
 
-	result, err := s.CreateIssue(owner, repo, options)
+	result, err := s.createIssue(owner, repo, options)
 	if err != nil {
 		return "", err
 	}
@@ -180,7 +180,7 @@ func (s *GitHubIssueService) HandleToListIssues(owner, repo, state, sort, direct
 	options["per_page"] = perPage
 	options["page"] = page
 
-	result, err := s.ListIssues(owner, repo, options)
+	result, err := s.listIssues(owner, repo, options)
 	if err != nil {
 		return "", err
 	}
@@ -212,7 +212,7 @@ func (s *GitHubIssueService) HandleToUpdateIssue(owner, repo string, issueNumber
 		options["assignees"] = assignees
 	}
 
-	result, err := s.UpdateIssue(owner, repo, issueNumber, options)
+	result, err := s.updateIssue(owner, repo, issueNumber, options)
 	if err != nil {
 		return "", err
 	}
@@ -222,7 +222,7 @@ func (s *GitHubIssueService) HandleToUpdateIssue(owner, repo string, issueNumber
 
 // HandleToAddIssueComment はイシューにコメントを追加して、結果をJSON形式で返します
 func (s *GitHubIssueService) HandleToAddIssueComment(owner, repo string, issueNumber int, body string) (string, error) {
-	result, err := s.AddIssueComment(owner, repo, issueNumber, body)
+	result, err := s.addIssueComment(owner, repo, issueNumber, body)
 	if err != nil {
 		return "", err
 	}

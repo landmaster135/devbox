@@ -193,7 +193,7 @@ func TestListIssues(t *testing.T) {
 			service := NewGitHubIssueServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.ListIssues(tc.owner, tc.repo, tc.options)
+			result, err := service.listIssues(tc.owner, tc.repo, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {
@@ -293,7 +293,7 @@ func TestUpdateIssue(t *testing.T) {
 			// JSONマーシャリングエラーのテストケース
 			if tc.name == "異常系 - JSONマーシャリングエラー" {
 				service := NewGitHubIssueService("test_token")
-				_, err := service.UpdateIssue(tc.owner, tc.repo, tc.issueNumber, tc.options)
+				_, err := service.updateIssue(tc.owner, tc.repo, tc.issueNumber, tc.options)
 				if !tc.expectError && err != nil {
 					t.Errorf("エラーは期待されていませんでしたが、エラーが発生しました: %v", err)
 				}
@@ -339,7 +339,7 @@ func TestUpdateIssue(t *testing.T) {
 			service := NewGitHubIssueServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.UpdateIssue(tc.owner, tc.repo, tc.issueNumber, tc.options)
+			result, err := service.updateIssue(tc.owner, tc.repo, tc.issueNumber, tc.options)
 
 			// エラーの検証
 			if tc.expectError && err == nil {
