@@ -6,6 +6,7 @@ import (
 
 	arith_calc "github.com/landmaster135/devbox/cmd/mcp/arith_calc"
 	brave_search "github.com/landmaster135/devbox/cmd/mcp/brave_search"
+	context7 "github.com/landmaster135/devbox/cmd/mcp/context7"
 	datetime_calc "github.com/landmaster135/devbox/cmd/mcp/datetime_calc"
 	duckduckgo_search "github.com/landmaster135/devbox/cmd/mcp/duckduckgo_search"
 	everart "github.com/landmaster135/devbox/cmd/mcp/everart"
@@ -41,6 +42,8 @@ func Router() {
 	switch a1 {
 	case "arith_calc":
 		arith_calc.BuildArithCalculatorServer()
+	case "context7":
+		context7.BuildContext7Server()
 	case "datetime_calc":
 		datetime_calc.BuildTimeCalculatorServer()
 	case "http_request":
