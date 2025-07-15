@@ -1,4 +1,4 @@
-# APIクライアント
+# HTTPリクエスト
 
 任意のURLのAPIにリクエストを送信するコマンドラインツールです。
 
@@ -15,7 +15,7 @@
 
 ```bash
 # リポジトリのルートディレクトリで実行
-./scripts/build_api_client.sh
+./scripts/build_http_request.sh
 ```
 
 ## 使用方法
@@ -23,25 +23,25 @@
 ### GETリクエスト
 
 ```bash
-./bin/api-client -url https://example.com/api
+./bin/http-request -url https://example.com/api
 ```
 
 ### POSTリクエスト（JSONファイル使用）
 
 ```bash
-./bin/api-client -url https://example.com/api -method POST -json path/to/data.json
+./bin/http-request -url https://example.com/api -method POST -json path/to/data.json
 ```
 
 ### PUTリクエスト（JSONファイル使用）
 
 ```bash
-./bin/api-client -url https://example.com/api -method PUT -json path/to/data.json
+./bin/http-request -url https://example.com/api -method PUT -json path/to/data.json
 ```
 
 ### DELETEリクエスト
 
 ```bash
-./bin/api-client -url https://example.com/api -method DELETE
+./bin/http-request -url https://example.com/api -method DELETE
 ```
 
 ## オプション
@@ -58,22 +58,22 @@
 
 ```bash
 # ユーザー情報の取得（GET）
-./bin/api-client -url https://jsonplaceholder.typicode.com/users/1
+./bin/http-request -url https://jsonplaceholder.typicode.com/users/1
 
 # 新しい投稿の作成（POST）
-./bin/api-client -url https://jsonplaceholder.typicode.com/posts -method POST -json testdata/sample_request.json
+./bin/http-request -url https://jsonplaceholder.typicode.com/posts -method POST -json testdata/sample_request.json
 
 # 認証トークンを使用したリクエスト
-./bin/api-client -url https://api.example.com/secured-endpoint -token your-api-token
+./bin/http-request -url https://api.example.com/secured-endpoint -token your-api-token
 
 # 認証トークンとJSONファイルを使用したPOSTリクエスト
-./bin/api-client -url https://api.example.com/secured-endpoint -method POST -json testdata/sample_request.json -token your-api-token
+./bin/http-request -url https://api.example.com/secured-endpoint -method POST -json testdata/sample_request.json -token your-api-token
 
 # Shift_JISエンコーディングのHTMLページを取得
-./bin/api-client -url http://abehiroshi.la.coocan.jp/ -encoding shift_jis
+./bin/http-request -url http://abehiroshi.la.coocan.jp/ -encoding shift_jis
 
 # エンコーディング自動検出でHTMLページを取得
-./bin/api-client -url http://example.com -encoding auto
+./bin/http-request -url http://example.com -encoding auto
 ```
 
 ## エンコーディング機能

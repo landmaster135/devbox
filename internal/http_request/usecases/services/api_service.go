@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	models "github.com/landmaster135/devbox/internal/api_client/domain/models"
-	repo "github.com/landmaster135/devbox/internal/api_client/interfaces/repositories"
+	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
+	repo "github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
 )
 
 // APIService はAPIリクエストを処理するサービスです

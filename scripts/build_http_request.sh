@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/api-client"
+CMD_DIR="cmd/cli/http-request"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin/cli"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="api-client"
+OUTPUT_NAME="http-request"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,5 +38,5 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  GET Request: ./pkg/bin/api-client -url https://example.com/api"
-echo "  POST Request: ./pkg/bin/api-client -url https://example.com/api -method POST -json path/to/data.json"
+echo "  GET Request: ./pkg/bin/http-request -url https://example.com/api"
+echo "  POST Request: ./pkg/bin/http-request -url https://example.com/api -method POST -json path/to/data.json"
