@@ -8,6 +8,8 @@
 - JSONファイルをリクエストボディとして送信可能
 - レスポンスのステータスコード、ヘッダー、ボディを表示
 - JSONレスポンスを自動的に整形して表示
+- 文字エンコーディング対応（Shift_JIS、UTF-8、EUC-JP、自動検出）
+- HTMLレスポンスの文字化け解消
 
 ## ビルド方法
 
@@ -48,6 +50,7 @@
 - `-method`: HTTPメソッド（デフォルト: GET）
 - `-json`: リクエストボディとして送信するJSONファイルのパス（POST/PUT/PATCHの場合は必須）
 - `-token`: 認証トークン（指定した場合、「Bearer <token>」形式でAuthorizationヘッダーに設定されます）
+- `-encoding`: レスポンスの文字エンコーディング指定（shift_jis, utf-8, euc-jp, auto）
 
 ## 使用例
 
@@ -65,7 +68,36 @@
 
 # 認証トークンとJSONファイルを使用したPOSTリクエスト
 ./bin/api-client -url https://api.example.com/secured-endpoint -method POST -json testdata/sample_request.json -token your-api-token
+
+# Shift_JISエンコーディングのHTMLページを取得
+./bin/api-client -url http://abehiroshi.la.coocan.jp/ -encoding shift_jis
+
+# エンコーディング自動検出でHTMLページを取得
+./bin/api-client -url http://example.com -encoding auto
 ```
+
+## エンコーディング機能
+
+### 対応エンコーディング
+
+- `shift_jis` (または `shift-jis`): Shift_JIS形式のレスポンスをUTF-8に変換
+- `utf-8`: UTF-8形式（デフォルト、変換なし）
+- `euc-jp`: EUC-JP形式のレスポンスをUTF-8に変換
+- `auto`: Content-TypeヘッダーやHTMLメタタグから自動検出
+
+### 自動検出の仕組み
+
+`-encoding auto`を指定した場合、以下の順序で文字エンコーディングを検出します：
+
+1. HTTPレスポンスのContent-Typeヘッダーからcharsetを抽出
+2. HTMLの`<meta charset="...">`タグから検出
+3. HTMLの`<meta http-equiv="Content-Type" content="text/html; charset=...">`タグから検出
+
+### 注意事項
+
+- エンコーディング変換はHTMLコンテンツ（Content-Type: text/html）にのみ適用されます
+- JSONレスポンスなど、他のコンテンツタイプでは変換は行われません
+- 不正なエンコーディング指定の場合、元のバイト列がそのまま表示されます
 
 ## エラー処理
 
