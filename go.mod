@@ -3,6 +3,7 @@ module github.com/landmaster135/devbox
 go 1.23.5
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/anthonynsimon/bild v0.14.0
 	github.com/dsoprea/go-exif/v3 v3.0.1
