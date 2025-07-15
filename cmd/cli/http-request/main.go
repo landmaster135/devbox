@@ -53,11 +53,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	// 依存関係の注入
-	apiRepo := repositories.NewAPIRepository()
-	apiService := services.NewAPIService(apiRepo)
+	apiRepo := repositories.NewHTTPRepository()
+	apiService := services.NewHTTPService(apiRepo)
 
 	// APIリクエストを送信
-	var response *models.APIResponse
+	var response *models.HTTPResponse
 	var err error
 
 	// ヘッダーの準備

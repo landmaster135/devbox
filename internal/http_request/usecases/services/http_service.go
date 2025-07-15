@@ -9,20 +9,20 @@ import (
 	repo "github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
 )
 
-// APIService はAPIリクエストを処理するサービスです
-type APIService struct {
-	apiRepo repo.APIRepository
+// HTTPService はHTTPリクエストを処理するサービスです
+type HTTPService struct {
+	httpRepo repo.HTTPRepository
 }
 
-// NewAPIService は新しいAPIServiceインスタンスを作成します
-func NewAPIService(apiRepo repo.APIRepository) *APIService {
-	return &APIService{
-		apiRepo: apiRepo,
+// NewHTTPService は新しいHTTPServiceインスタンスを作成します
+func NewHTTPService(httpRepo repo.HTTPRepository) *HTTPService {
+	return &HTTPService{
+		httpRepo: httpRepo,
 	}
 }
 
-// SendRequestWithJSONFile はJSONファイルの内容をボディとしてAPIリクエストを送信します
-func (s *APIService) SendRequestWithJSONFile(url, method, jsonFilePath string) (*models.APIResponse, error) {
+// SendRequestWithJSONFile はJSONファイルの内容をボディとしてHTTPリクエストを送信します
+func (s *HTTPService) SendRequestWithJSONFile(url, method, jsonFilePath string) (*models.HTTPResponse, error) {
 	// デフォルトのヘッダーを設定
 	headers := map[string]string{
 		"Content-Type": "application/json",
@@ -33,10 +33,10 @@ func (s *APIService) SendRequestWithJSONFile(url, method, jsonFilePath string) (
 	return s.SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath, headers, "auto")
 }
 
-// SendRequestWithJSONFileAndHeaders はJSONファイルの内容をボディとして、指定されたヘッダーを含むAPIリクエストを送信します
-func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath string, headers map[string]string, encoding string) (*models.APIResponse, error) {
+// SendRequestWithJSONFileAndHeaders はJSONファイルの内容をボディとして、指定されたヘッダーを含むHTTPリクエストを送信します
+func (s *HTTPService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath string, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
 	// JSONファイルを読み込む
-	jsonBody, err := s.apiRepo.LoadJSONFile(jsonFilePath)
+	jsonBody, err := s.httpRepo.LoadJSONFile(jsonFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
 	}
@@ -47,7 +47,7 @@ func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath
 	}
 
 	// リクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:      url,
 		Method:   method,
 		Headers:  headers,
@@ -56,17 +56,17 @@ func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath
 	}
 
 	// リクエストを送信
-	response, err := s.apiRepo.SendRequest(request)
+	response, err := s.httpRepo.SendRequest(request)
 	if err != nil {
-		return nil, fmt.Errorf("APIリクエストの送信に失敗しました: %w", err)
+		return nil, fmt.Errorf("HTTPリクエストの送信に失敗しました: %w", err)
 	}
 
 	return response, nil
 }
 
-func (s *APIService) SendRequestWithoutJSONFile(url, method string, headers map[string]string, encoding string) (*models.APIResponse, error) {
+func (s *HTTPService) SendRequestWithoutJSONFile(url, method string, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
 	// リクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:      url,
 		Method:   method,
 		Headers:  headers,
@@ -75,16 +75,16 @@ func (s *APIService) SendRequestWithoutJSONFile(url, method string, headers map[
 	}
 
 	// リクエストを送信
-	response, err := s.apiRepo.SendRequest(request)
+	response, err := s.httpRepo.SendRequest(request)
 	if err != nil {
-		return nil, fmt.Errorf("APIリクエストの送信に失敗しました: %w", err)
+		return nil, fmt.Errorf("HTTPリクエストの送信に失敗しました: %w", err)
 	}
 
 	return response, nil
 }
 
-// FormatResponse はAPIレスポンスを整形して文字列として返します
-func (s *APIService) FormatResponse(response *models.APIResponse) (string, error) {
+// FormatResponse はHTTPレスポンスを整形して文字列として返します
+func (s *HTTPService) FormatResponse(response *models.HTTPResponse) (string, error) {
 	// レスポンスボディがJSONの場合は整形する
 	var prettyJSON bytes.Buffer
 	if len(response.Body) > 0 {

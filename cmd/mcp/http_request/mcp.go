@@ -30,19 +30,19 @@ func handleHttpRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	encoding := request.GetString("encoding", "auto")
 
 	// 依存関係の注入
-	apiRepo := repositories.NewAPIRepository()
-	apiService := services.NewAPIService(apiRepo)
+	apiRepo := repositories.NewHTTPRepository()
+	apiService := services.NewHTTPService(apiRepo)
 
 	// ヘッダーの準備
 	headers := map[string]string{"Accept": "application/json"}
 
-	var response *models.APIResponse
+	var response *models.HTTPResponse
 	if body != "" {
 		// Content-Typeヘッダーを追加
 		headers["Content-Type"] = "application/json"
 
 		// リクエストを作成
-		apiRequest := &models.APIRequest{
+		apiRequest := &models.HTTPRequest{
 			URL:      url,
 			Method:   method,
 			Headers:  headers,

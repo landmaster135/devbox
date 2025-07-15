@@ -14,12 +14,12 @@ import (
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
-func TestAPIRepositoryImpl_SendRequest_InvalidURL(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_InvalidURL(t *testing.T) {
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// 無効なURLを含むリクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:     "://invalid-url", // 無効なURL
 		Method:  "GET",
 		Headers: map[string]string{"Accept": "application/json"},
@@ -35,12 +35,12 @@ func TestAPIRepositoryImpl_SendRequest_InvalidURL(t *testing.T) {
 	assert.Contains(t, err.Error(), "HTTPリクエストの作成に失敗しました")
 }
 
-func TestAPIRepositoryImpl_SendRequest_ConnectionError(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_ConnectionError(t *testing.T) {
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// 存在しないサーバーへのリクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:     "http://localhost:12345", // 存在しないポート
 		Method:  "GET",
 		Headers: map[string]string{"Accept": "application/json"},
@@ -53,10 +53,10 @@ func TestAPIRepositoryImpl_SendRequest_ConnectionError(t *testing.T) {
 	// 検証
 	assert.Error(t, err)
 	assert.Nil(t, response)
-	assert.Contains(t, err.Error(), "APIリクエストの送信に失敗しました")
+	assert.Contains(t, err.Error(), "HTTPリクエストの送信に失敗しました")
 }
 
-func TestAPIRepositoryImpl_SendRequest_Normal(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_Normal(t *testing.T) {
 	// テスト用のHTTPサーバーを作成
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// リクエストメソッドの検証
@@ -73,10 +73,10 @@ func TestAPIRepositoryImpl_SendRequest_Normal(t *testing.T) {
 	defer server.Close()
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// リクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: map[string]string{"Accept": "application/json"},
@@ -99,9 +99,9 @@ func TestAPIRepositoryImpl_SendRequest_Normal(t *testing.T) {
 	assert.Equal(t, "success", responseBody["message"])
 }
 
-func TestAPIRepositoryImpl_LoadJSONFile_Normal(t *testing.T) {
+func TestHTTPRepositoryImpl_LoadJSONFile_Normal(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "api-repo-test")
+	tempDir, err := os.MkdirTemp("", "http-repo-test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -112,7 +112,7 @@ func TestAPIRepositoryImpl_LoadJSONFile_Normal(t *testing.T) {
 	assert.NoError(t, err)
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// JSONファイルを読み込む
 	content, err := repo.LoadJSONFile(jsonFilePath)
@@ -129,12 +129,12 @@ func TestAPIRepositoryImpl_LoadJSONFile_Normal(t *testing.T) {
 	assert.Equal(t, float64(42), jsonData["number"])
 }
 
-func TestAPIRepositoryImpl_LoadJSONFile_FileNotFound(t *testing.T) {
+func TestHTTPRepositoryImpl_LoadJSONFile_FileNotFound(t *testing.T) {
 	// 存在しないファイルパス
 	nonExistentFilePath := "/path/to/non/existent/file.json"
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// JSONファイルを読み込む
 	content, err := repo.LoadJSONFile(nonExistentFilePath)
@@ -145,9 +145,9 @@ func TestAPIRepositoryImpl_LoadJSONFile_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "JSONファイルを開けませんでした")
 }
 
-func TestAPIRepositoryImpl_LoadJSONFile_InvalidJSON(t *testing.T) {
+func TestHTTPRepositoryImpl_LoadJSONFile_InvalidJSON(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "api-repo-test")
+	tempDir, err := os.MkdirTemp("", "http-repo-test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -158,7 +158,7 @@ func TestAPIRepositoryImpl_LoadJSONFile_InvalidJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// JSONファイルを読み込む
 	content, err := repo.LoadJSONFile(invalidJSONFilePath)
@@ -169,9 +169,9 @@ func TestAPIRepositoryImpl_LoadJSONFile_InvalidJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "無効なJSON形式です")
 }
 
-func TestAPIRepositoryImpl_LoadJSONFile_ReadError(t *testing.T) {
+func TestHTTPRepositoryImpl_LoadJSONFile_ReadError(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "api-repo-test")
+	tempDir, err := os.MkdirTemp("", "http-repo-test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -181,7 +181,7 @@ func TestAPIRepositoryImpl_LoadJSONFile_ReadError(t *testing.T) {
 	assert.NoError(t, err)
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// ディレクトリを読み込もうとする（失敗するはず）
 	content, err := repo.LoadJSONFile(dirPath)
@@ -192,9 +192,9 @@ func TestAPIRepositoryImpl_LoadJSONFile_ReadError(t *testing.T) {
 	assert.Contains(t, err.Error(), "JSONファイルの読み込みに失敗しました")
 }
 
-func TestAPIRepositoryImpl_LoadJSONFile_WithBOM(t *testing.T) {
+func TestHTTPRepositoryImpl_LoadJSONFile_WithBOM(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "api-repo-test")
+	tempDir, err := os.MkdirTemp("", "http-repo-test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
@@ -205,7 +205,7 @@ func TestAPIRepositoryImpl_LoadJSONFile_WithBOM(t *testing.T) {
 	assert.NoError(t, err)
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// JSONファイルを読み込む
 	content, err := repo.LoadJSONFile(jsonFilePath)
@@ -221,7 +221,7 @@ func TestAPIRepositoryImpl_LoadJSONFile_WithBOM(t *testing.T) {
 	assert.Equal(t, "value", jsonData["key"])
 }
 
-func TestAPIRepositoryImpl_LoadJSONFile_WithCRLF(t *testing.T) {
+func TestHTTPRepositoryImpl_LoadJSONFile_WithCRLF(t *testing.T) {
 	// プロジェクトルートからの相対パスでテストデータのパスを取得
 	testDataPath := "./test_data/org/sample_request_with_crlf.json"
 
@@ -230,7 +230,7 @@ func TestAPIRepositoryImpl_LoadJSONFile_WithCRLF(t *testing.T) {
 	assert.NoError(t, err, "テストデータファイルが見つかりません: %s", testDataPath)
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// JSONファイルを読み込む
 	content, err := repo.LoadJSONFile(testDataPath)
@@ -263,16 +263,16 @@ func TestAPIRepositoryImpl_LoadJSONFile_WithCRLF(t *testing.T) {
 	assert.Equal(t, "東京", address["city"], "address.cityフィールドの値が一致しません")
 }
 
-func TestNewAPIRepository_Normal(t *testing.T) {
+func TestNewHTTPRepository_Normal(t *testing.T) {
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// 検証
 	assert.NotNil(t, repo, "リポジトリがnilです")
 	assert.NotNil(t, repo.client, "HTTPクライアントがnilです")
 }
 
-func TestAPIRepositoryImpl_SendRequest_MultipleHeaderValues(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_MultipleHeaderValues(t *testing.T) {
 	// テスト用のHTTPサーバーを作成
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// リクエストヘッダーの検証
@@ -290,10 +290,10 @@ func TestAPIRepositoryImpl_SendRequest_MultipleHeaderValues(t *testing.T) {
 	defer server.Close()
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// リクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:    server.URL,
 		Method: "POST",
 		Headers: map[string]string{
@@ -322,7 +322,7 @@ func TestAPIRepositoryImpl_SendRequest_MultipleHeaderValues(t *testing.T) {
 	assert.Equal(t, "success", responseBody["result"])
 }
 
-func TestAPIRepositoryImpl_SendRequest_DifferentStatusCodes(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_DifferentStatusCodes(t *testing.T) {
 	testCases := []struct {
 		name           string
 		statusCode     int
@@ -366,10 +366,10 @@ func TestAPIRepositoryImpl_SendRequest_DifferentStatusCodes(t *testing.T) {
 			defer server.Close()
 
 			// テスト対象のリポジトリを作成
-			repo := NewAPIRepository()
+			repo := NewHTTPRepository()
 
 			// リクエストを作成
-			request := &models.APIRequest{
+			request := &models.HTTPRequest{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: map[string]string{"Accept": "application/json"},
@@ -389,7 +389,7 @@ func TestAPIRepositoryImpl_SendRequest_DifferentStatusCodes(t *testing.T) {
 	}
 }
 
-func TestAPIRepositoryImpl_SendRequest_DifferentMethods(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_DifferentMethods(t *testing.T) {
 	testCases := []struct {
 		name   string
 		method string
@@ -443,10 +443,10 @@ func TestAPIRepositoryImpl_SendRequest_DifferentMethods(t *testing.T) {
 			defer server.Close()
 
 			// テスト対象のリポジトリを作成
-			repo := NewAPIRepository()
+			repo := NewHTTPRepository()
 
 			// リクエストを作成
-			request := &models.APIRequest{
+			request := &models.HTTPRequest{
 				URL:     server.URL,
 				Method:  tc.method,
 				Headers: map[string]string{"Accept": "application/json"},
@@ -465,7 +465,7 @@ func TestAPIRepositoryImpl_SendRequest_DifferentMethods(t *testing.T) {
 	}
 }
 
-func TestAPIRepositoryImpl_SendRequest_EmptyResponse(t *testing.T) {
+func TestHTTPRepositoryImpl_SendRequest_EmptyResponse(t *testing.T) {
 	// テスト用のHTTPサーバーを作成（空のレスポンス）
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -474,10 +474,10 @@ func TestAPIRepositoryImpl_SendRequest_EmptyResponse(t *testing.T) {
 	defer server.Close()
 
 	// テスト対象のリポジトリを作成
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// リクエストを作成
-	request := &models.APIRequest{
+	request := &models.HTTPRequest{
 		URL:     server.URL,
 		Method:  "DELETE",
 		Headers: map[string]string{"Accept": "application/json"},

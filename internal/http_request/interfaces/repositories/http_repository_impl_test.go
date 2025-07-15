@@ -15,10 +15,10 @@ import (
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
-// TestNewAPIRepository はNewAPIRepositoryメソッドのテストです
-func TestNewAPIRepository(t *testing.T) {
+// TestNewHTTPRepository はNewHTTPRepositoryメソッドのテストです
+func TestNewHTTPRepository(t *testing.T) {
 	// Act
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// Assert
 	if repo == nil {
@@ -112,8 +112,8 @@ func TestSendRequest_UserAgentSet(t *testing.T) {
 	}))
 	defer server.Close()
 
-	repo := NewAPIRepository()
-	request := &models.APIRequest{
+	repo := NewHTTPRepository()
+	request := &models.HTTPRequest{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: map[string]string{},
@@ -146,8 +146,8 @@ func TestSendRequest_CustomUserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	repo := NewAPIRepository()
-	request := &models.APIRequest{
+	repo := NewHTTPRepository()
+	request := &models.HTTPRequest{
 		URL:    server.URL,
 		Method: "GET",
 		Headers: map[string]string{
@@ -166,7 +166,7 @@ func TestSendRequest_CustomUserAgent(t *testing.T) {
 
 // TestConvertEncoding_ShiftJIS はShift_JIS変換のテストです
 func TestConvertEncoding_ShiftJIS(t *testing.T) {
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// Shift_JISエンコードされたHTMLサンプル
 	htmlContent := `<html><head><title>阿部寛のホームページ</title></head><body>テスト</body></html>`
@@ -247,7 +247,7 @@ func TestConvertEncoding_ShiftJIS(t *testing.T) {
 
 // TestConvertEncoding_AutoDetection は自動検出のテストです
 func TestConvertEncoding_AutoDetection(t *testing.T) {
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	testCases := []struct {
 		name           string
@@ -334,7 +334,7 @@ func TestSendRequest_WithEncoding(t *testing.T) {
 	}))
 	defer server.Close()
 
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	testCases := []struct {
 		name             string
@@ -361,7 +361,7 @@ func TestSendRequest_WithEncoding(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Arrange
-			request := &models.APIRequest{
+			request := &models.HTTPRequest{
 				URL:      server.URL,
 				Method:   "GET",
 				Headers:  map[string]string{"Accept": "text/html"},
@@ -394,7 +394,7 @@ func TestSendRequest_WithEncoding(t *testing.T) {
 
 // TestExtractCharsetFromContentType はContent-Typeからのcharset抽出テストです
 func TestExtractCharsetFromContentType(t *testing.T) {
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	testCases := []struct {
 		name        string
@@ -443,7 +443,7 @@ func TestExtractCharsetFromContentType(t *testing.T) {
 
 // TestExtractCharsetFromHTML はHTMLからのcharset抽出テストです
 func TestExtractCharsetFromHTML(t *testing.T) {
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	testCases := []struct {
 		name     string
@@ -487,7 +487,7 @@ func TestExtractCharsetFromHTML(t *testing.T) {
 
 // TestConvertEncoding_SpecificShiftJISBytes は特定のShift_JISバイト列のテストです
 func TestConvertEncoding_SpecificShiftJISBytes(t *testing.T) {
-	repo := NewAPIRepository()
+	repo := NewHTTPRepository()
 
 	// 「阿部寛のホームページ」のShift_JISバイト列
 	// [136 162 149 148 138 176 130 204 131 122 129 91 131 128 131 121 129 91 131 87]
