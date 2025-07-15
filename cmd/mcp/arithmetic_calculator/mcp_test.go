@@ -1,4 +1,4 @@
-package arith_calc
+package arithmetic_calculator
 
 import (
 	"bytes"

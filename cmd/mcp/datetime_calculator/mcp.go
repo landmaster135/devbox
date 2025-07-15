@@ -1,4 +1,4 @@
-package datetime_calc
+package datetime_calculator
 
 import (
 	"context"

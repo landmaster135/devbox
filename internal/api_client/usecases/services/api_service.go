@@ -5,17 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/landmaster135/devbox/internal/api_client/domain/models"
-	"github.com/landmaster135/devbox/internal/api_client/domain/repositories"
+	models "github.com/landmaster135/devbox/internal/api_client/domain/models"
+	repo "github.com/landmaster135/devbox/internal/api_client/interfaces/repositories"
 )
 
 // APIService はAPIリクエストを処理するサービスです
 type APIService struct {
-	apiRepo repositories.APIRepository
+	apiRepo repo.APIRepository
 }
 
 // NewAPIService は新しいAPIServiceインスタンスを作成します
-func NewAPIService(apiRepo repositories.APIRepository) *APIService {
+func NewAPIService(apiRepo repo.APIRepository) *APIService {
 	return &APIService{
 		apiRepo: apiRepo,
 	}
@@ -63,13 +63,31 @@ func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath
 	return response, nil
 }
 
+func (s *APIService) SendRequestWithoutJSONFile(url, method string, headers map[string]string) (*models.APIResponse, error) {
+	// リクエストを作成
+	request := &models.APIRequest{
+		URL:     url,
+		Method:  method,
+		Headers: headers,
+		Body:    nil,
+	}
+
+	// リクエストを送信
+	response, err := s.apiRepo.SendRequest(request)
+	if err != nil {
+		return nil, fmt.Errorf("APIリクエストの送信に失敗しました: %w", err)
+	}
+
+	return response, nil
+}
+
 // FormatResponse はAPIレスポンスを整形して文字列として返します
 func (s *APIService) FormatResponse(response *models.APIResponse) (string, error) {
 	// レスポンスボディがJSONの場合は整形する
 	var prettyJSON bytes.Buffer
 	if len(response.Body) > 0 {
 		// JSONとして解析を試みる
-		var jsonObj interface{}
+		var jsonObj any
 		if err := json.Unmarshal(response.Body, &jsonObj); err == nil {
 			// 整形したJSONを作成
 			encoder := json.NewEncoder(&prettyJSON)
