@@ -66,13 +66,6 @@ func createMockResponse(statusCode int, body interface{}) *http.Response {
 	}
 }
 
-// resetRateLimit はレート制限をリセットするヘルパー関数（廃止予定）
-// 新しいテストではMockRateLimiterを使用してください
-func resetRateLimit() {
-	// この関数は後方互換性のために残していますが、
-	// 新しいテストではMockRateLimiterを使用することを推奨します
-}
-
 // #==============================================================#
 // ##          BraveSearchService Tests                          ##
 // #==============================================================#
@@ -117,8 +110,6 @@ func TestBraveSearchService_HandleWebSearch_Normal(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -166,8 +157,6 @@ func TestBraveSearchService_HandleWebSearch_JSONDecodeError(t *testing.T) {
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
-	resetRateLimit()
-
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
 
@@ -196,8 +185,6 @@ func TestBraveSearchService_getPoisData_JSONDecodeError(t *testing.T) {
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
-	resetRateLimit()
-
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
 
@@ -225,8 +212,6 @@ func TestBraveSearchService_getDescriptionsData_JSONDecodeError(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -383,12 +368,14 @@ func TestBraveSearchService_HandleLocalSearch_GoroutineError(t *testing.T) {
 
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
-	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
+	mockRateLimiter := &MockRateLimiter{}
+	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
-	resetRateLimit()
+	// レート制限を無効化
+	mockRateLimiter.On("CheckLimit").Return(nil)
 
-	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(3) // 3回のAPI呼び出し用
+	// モックの設定（goroutineでエラーが発生するため、すべてのAPI呼び出しが実行されるとは限らない）
+	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Maybe()
 
 	// Web検索レスポンス（ロケーションIDを含む）
 	webResponseData := BraveWebResponse{}
@@ -401,15 +388,20 @@ func TestBraveSearchService_HandleLocalSearch_GoroutineError(t *testing.T) {
 
 	webMockResponse := createMockResponse(http.StatusOK, webResponseData)
 	poisErrorResponse := createMockResponse(http.StatusInternalServerError, map[string]string{"error": "POI Error"})
+	descErrorResponse := createMockResponse(http.StatusInternalServerError, map[string]string{"error": "Description Error"})
 
-	// Web検索は成功、POI取得でエラー
+	// Web検索は成功、POI取得とDescription取得でエラー（goroutineで並行実行されるため両方設定）
 	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
 		return req.URL.Path == "/res/v1/web/search"
 	})).Return(webMockResponse, nil).Once()
 
 	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
 		return req.URL.Path == "/res/v1/local/pois"
-	})).Return(poisErrorResponse, nil).Once()
+	})).Return(poisErrorResponse, nil).Maybe()
+
+	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+		return req.URL.Path == "/res/v1/local/descriptions"
+	})).Return(descErrorResponse, nil).Maybe()
 
 	// テストの実行
 	result, err := service.HandleLocalSearch("test local query", 5)
@@ -457,8 +449,6 @@ func TestBraveSearchService_HandleWebSearch_NoAPIKey(t *testing.T) {
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
-	resetRateLimit()
-
 	// モックの設定（APIキーなし）
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
 
@@ -478,8 +468,6 @@ func TestBraveSearchService_HandleWebSearch_HTTPError(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -507,8 +495,6 @@ func TestBraveSearchService_HandleLocalSearch_NoAPIKey(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定（APIキーなし）
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
@@ -644,9 +630,11 @@ func TestBraveSearchService_HandleLocalSearch_Normal(t *testing.T) {
 
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
-	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
+	mockRateLimiter := &MockRateLimiter{}
+	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
-	resetRateLimit()
+	// レート制限を無効化
+	mockRateLimiter.On("CheckLimit").Return(nil)
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(3) // 3回のAPI呼び出し用
@@ -725,9 +713,11 @@ func TestBraveSearchService_HandleLocalSearch_FallbackToWebSearch(t *testing.T) 
 
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
-	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
+	mockRateLimiter := &MockRateLimiter{}
+	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
-	resetRateLimit()
+	// レート制限を無効化
+	mockRateLimiter.On("CheckLimit").Return(nil)
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(2) // 2回のAPI呼び出し用
@@ -774,8 +764,6 @@ func TestBraveSearchService_HandleLocalSearch_HTTPError(t *testing.T) {
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
-	resetRateLimit()
-
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
 
@@ -802,8 +790,6 @@ func TestBraveSearchService_getPoisData_Normal(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -841,8 +827,6 @@ func TestBraveSearchService_getPoisData_NoAPIKey(t *testing.T) {
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
-	resetRateLimit()
-
 	// モックの設定（APIキーなし）
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
 
@@ -862,8 +846,6 @@ func TestBraveSearchService_getPoisData_HTTPError(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -888,8 +870,6 @@ func TestBraveSearchService_getPoisData_EmptyIDs(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -920,8 +900,6 @@ func TestBraveSearchService_getDescriptionsData_Normal(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -955,8 +933,6 @@ func TestBraveSearchService_getDescriptionsData_NoAPIKey(t *testing.T) {
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
-	resetRateLimit()
-
 	// モックの設定（APIキーなし）
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
 
@@ -976,8 +952,6 @@ func TestBraveSearchService_getDescriptionsData_HTTPError(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -1002,8 +976,6 @@ func TestBraveSearchService_getDescriptionsData_EmptyIDs(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -1034,8 +1006,6 @@ func TestBraveSearchService_HandleWebSearch_CountLimit(t *testing.T) {
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
-
-	resetRateLimit()
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
@@ -1068,9 +1038,11 @@ func TestBraveSearchService_HandleLocalSearch_CountLimit(t *testing.T) {
 
 	mockHTTPClient := &MockHTTPClient{}
 	mockEnvReader := &MockEnvironmentReader{}
-	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
+	mockRateLimiter := &MockRateLimiter{}
+	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
-	resetRateLimit()
+	// レート制限を無効化
+	mockRateLimiter.On("CheckLimit").Return(nil)
 
 	// モックの設定
 	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(2) // 2回のAPI呼び出し用
@@ -1081,11 +1053,18 @@ func TestBraveSearchService_HandleLocalSearch_CountLimit(t *testing.T) {
 		{Title: "Fallback", Description: "Fallback", URL: "https://example.com"},
 	}
 
-	mockResponse := createMockResponse(http.StatusOK, webResponseData)
+	webMockResponse := createMockResponse(http.StatusOK, webResponseData)
+	fallbackMockResponse := createMockResponse(http.StatusOK, webResponseData)
+
+	// 最初のWeb検索（ロケーション検索）
 	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		// count=20が設定されていることを確認（25を指定したが20に制限される）
-		return req.URL.Query().Get("count") == "20"
-	})).Return(mockResponse, nil).Times(2) // 最初の検索とフォールバック
+		return req.URL.Path == "/res/v1/web/search" && req.URL.Query().Get("count") == "20" && req.URL.RawQuery != ""
+	})).Return(webMockResponse, nil).Once()
+
+	// フォールバック用のWeb検索
+	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
+		return req.URL.Path == "/res/v1/web/search" && req.URL.Query().Get("count") == "20"
+	})).Return(fallbackMockResponse, nil).Once()
 
 	// テストの実行（制限を超えるcount=25を指定）
 	result, err := service.HandleLocalSearch("test query", 25)
