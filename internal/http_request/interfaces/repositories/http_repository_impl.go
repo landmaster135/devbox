@@ -17,15 +17,15 @@ import (
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
-// APIRepositoryImpl はAPIRepositoryインターフェースの実装です
-type APIRepositoryImpl struct {
+// HTTPRepositoryImpl はHTTPRepositoryインターフェースの実装です
+type HTTPRepositoryImpl struct {
 	client    *http.Client
 	userAgent string
 }
 
-// NewAPIRepository は新しいAPIRepositoryインスタンスを作成します
-func NewAPIRepository() *APIRepositoryImpl {
-	return &APIRepositoryImpl{
+// NewHTTPRepository は新しいHTTPRepositoryインスタンスを作成します
+func NewHTTPRepository() *HTTPRepositoryImpl {
+	return &HTTPRepositoryImpl{
 		client:    &http.Client{},
 		userAgent: buildDefaultUserAgent(),
 	}
@@ -55,8 +55,8 @@ func getOSVersion() string {
 	}
 }
 
-// SendRequest はAPIリクエストを送信し、レスポンスを返します
-func (r *APIRepositoryImpl) SendRequest(request *models.APIRequest) (*models.APIResponse, error) {
+// SendRequest はHTTPリクエストを送信し、レスポンスを返します
+func (r *HTTPRepositoryImpl) SendRequest(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 	// HTTPリクエストを作成
 	req, err := http.NewRequest(request.Method, request.URL, bytes.NewBuffer(request.Body))
 	if err != nil {
@@ -74,7 +74,7 @@ func (r *APIRepositoryImpl) SendRequest(request *models.APIRequest) (*models.API
 	// リクエストを送信
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("APIリクエストの送信に失敗しました: %w", err)
+		return nil, fmt.Errorf("HTTPリクエストの送信に失敗しました: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -99,8 +99,8 @@ func (r *APIRepositoryImpl) SendRequest(request *models.APIRequest) (*models.API
 		convertedBody = body
 	}
 
-	// APIResponseを作成して返す
-	return &models.APIResponse{
+	// HTTPResponseを作成して返す
+	return &models.HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Headers:    headers,
 		Body:       convertedBody,
@@ -108,7 +108,7 @@ func (r *APIRepositoryImpl) SendRequest(request *models.APIRequest) (*models.API
 }
 
 // LoadJSONFile はJSONファイルを読み込み、バイト配列として返します
-func (r *APIRepositoryImpl) LoadJSONFile(filePath string) ([]byte, error) {
+func (r *HTTPRepositoryImpl) LoadJSONFile(filePath string) ([]byte, error) {
 	// ファイルを開く
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -137,7 +137,7 @@ func (r *APIRepositoryImpl) LoadJSONFile(filePath string) ([]byte, error) {
 }
 
 // convertEncoding は文字エンコーディングを検出・変換します
-func (r *APIRepositoryImpl) convertEncoding(body []byte, contentType string, specifiedEncoding string) ([]byte, error) {
+func (r *HTTPRepositoryImpl) convertEncoding(body []byte, contentType string, specifiedEncoding string) ([]byte, error) {
 	// HTMLの場合のみ文字エンコーディング変換を実行
 	if !strings.Contains(strings.ToLower(contentType), "text/html") {
 		return body, nil
@@ -172,7 +172,7 @@ func (r *APIRepositoryImpl) convertEncoding(body []byte, contentType string, spe
 }
 
 // extractCharsetFromContentType はContent-Typeヘッダーからcharsetを抽出します
-func (r *APIRepositoryImpl) extractCharsetFromContentType(contentType string) string {
+func (r *HTTPRepositoryImpl) extractCharsetFromContentType(contentType string) string {
 	re := regexp.MustCompile(`charset=([^;]+)`)
 	matches := re.FindStringSubmatch(contentType)
 	if len(matches) > 1 {
@@ -182,7 +182,7 @@ func (r *APIRepositoryImpl) extractCharsetFromContentType(contentType string) st
 }
 
 // extractCharsetFromHTML はHTMLのmetaタグからcharsetを抽出します
-func (r *APIRepositoryImpl) extractCharsetFromHTML(html string) string {
+func (r *HTTPRepositoryImpl) extractCharsetFromHTML(html string) string {
 	// 大文字小文字を区別しない検索のため、小文字に変換
 	lowerHTML := strings.ToLower(html)
 

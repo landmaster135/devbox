@@ -10,37 +10,37 @@ import (
 )
 
 // ///////////////////////
-// MockAPIRepository はAPIRepositoryのモック実装です
+// MockHTTPRepository はHTTPRepositoryのモック実装です
 // ///////////////////////
-type MockAPIRepository struct {
+type MockHTTPRepository struct {
 	LoadJSONFileFunc func(filePath string) ([]byte, error)
-	SendRequestFunc  func(request *models.APIRequest) (*models.APIResponse, error)
+	SendRequestFunc  func(request *models.HTTPRequest) (*models.HTTPResponse, error)
 }
 
 // LoadJSONFile はJSONファイルを読み込むモックメソッドです
-func (m *MockAPIRepository) LoadJSONFile(filePath string) ([]byte, error) {
+func (m *MockHTTPRepository) LoadJSONFile(filePath string) ([]byte, error) {
 	return m.LoadJSONFileFunc(filePath)
 }
 
-// SendRequest はAPIリクエストを送信するモックメソッドです
-func (m *MockAPIRepository) SendRequest(request *models.APIRequest) (*models.APIResponse, error) {
+// SendRequest はHTTPリクエストを送信するモックメソッドです
+func (m *MockHTTPRepository) SendRequest(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 	return m.SendRequestFunc(request)
 }
 
-// TestNewAPIService はNewAPIServiceメソッドのテストです
-func TestNewAPIService(t *testing.T) {
+// TestNewHTTPService はNewHTTPServiceメソッドのテストです
+func TestNewHTTPService(t *testing.T) {
 	// Arrange
-	mockRepo := &MockAPIRepository{}
+	mockRepo := &MockHTTPRepository{}
 
 	// Act
-	service := NewAPIService(mockRepo)
+	service := NewHTTPService(mockRepo)
 
 	// Assert
 	if service == nil {
 		t.Fatal("Expected service to be created, got nil")
 	}
-	if service.apiRepo != mockRepo {
-		t.Errorf("Expected apiRepo to be %v, got %v", mockRepo, service.apiRepo)
+	if service.httpRepo != mockRepo {
+		t.Errorf("Expected apiRepo to be %v, got %v", mockRepo, service.httpRepo)
 	}
 }
 
@@ -53,7 +53,7 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 		method       string
 		jsonFilePath string
 		mockJSON     []byte
-		mockResponse *models.APIResponse
+		mockResponse *models.HTTPResponse
 		mockError    error
 		expectError  bool
 	}{
@@ -63,7 +63,7 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 			method:       "POST",
 			jsonFilePath: "test.json",
 			mockJSON:     []byte(`{"test": "data"}`),
-			mockResponse: &models.APIResponse{
+			mockResponse: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"success": true}`),
@@ -82,7 +82,7 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 			expectError:  true,
 		},
 		{
-			name:         "APIリクエスト送信エラー",
+			name:         "HTTPリクエスト送信エラー",
 			url:          "https://api.example.com",
 			method:       "POST",
 			jsonFilePath: "test.json",
@@ -96,14 +96,14 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockAPIRepository{
+			mockRepo := &MockHTTPRepository{
 				LoadJSONFileFunc: func(filePath string) ([]byte, error) {
 					if tc.mockError != nil && filePath == "invalid.json" {
 						return nil, tc.mockError
 					}
 					return tc.mockJSON, nil
 				},
-				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+				SendRequestFunc: func(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 					// URLとメソッドが正しく設定されているか確認
 					if request.URL != tc.url {
 						t.Errorf("Expected URL %s, got %s", tc.url, request.URL)
@@ -120,7 +120,7 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 						t.Errorf("Expected Accept header with value application/json, got %s", value)
 					}
 
-					if tc.name == "APIリクエスト送信エラー" {
+					if tc.name == "HTTPリクエスト送信エラー" {
 						return nil, tc.mockError
 					}
 
@@ -129,7 +129,7 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 			}
 
 			// テスト対象のサービスを作成
-			service := NewAPIService(mockRepo)
+			service := NewHTTPService(mockRepo)
 
 			// メソッドを実行
 			response, err := service.SendRequestWithJSONFile(tc.url, tc.method, tc.jsonFilePath)
@@ -215,11 +215,11 @@ func TestSendRequestWithJSONFileAndHeaders_Encoding(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockAPIRepository{
+			mockRepo := &MockHTTPRepository{
 				LoadJSONFileFunc: func(filePath string) ([]byte, error) {
 					return []byte(`{"test": "data"}`), nil
 				},
-				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+				SendRequestFunc: func(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 					// エンコーディングが正しく設定されているか確認
 					if request.Encoding != tc.expectedEncoding {
 						t.Errorf("Expected encoding %s, got %s", tc.expectedEncoding, request.Encoding)
@@ -234,7 +234,7 @@ func TestSendRequestWithJSONFileAndHeaders_Encoding(t *testing.T) {
 					}
 
 					// モックレスポンスを返す
-					return &models.APIResponse{
+					return &models.HTTPResponse{
 						StatusCode: 200,
 						Headers:    map[string]string{"Content-Type": "application/json"},
 						Body:       []byte(`{"success": true}`),
@@ -243,7 +243,7 @@ func TestSendRequestWithJSONFileAndHeaders_Encoding(t *testing.T) {
 			}
 
 			// テスト対象のサービスを作成
-			service := NewAPIService(mockRepo)
+			service := NewHTTPService(mockRepo)
 
 			// メソッドを実行
 			response, err := service.SendRequestWithJSONFileAndHeaders(tc.url, tc.method, tc.jsonFilePath, tc.headers, tc.encoding)
@@ -254,7 +254,7 @@ func TestSendRequestWithJSONFileAndHeaders_Encoding(t *testing.T) {
 			}
 
 			// レスポンスが期待通りであることを確認
-			expectedResponse := &models.APIResponse{
+			expectedResponse := &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"success": true}`),
@@ -315,8 +315,8 @@ func TestSendRequestWithoutJSONFile_Encoding(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockAPIRepository{
-				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+			mockRepo := &MockHTTPRepository{
+				SendRequestFunc: func(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 					// エンコーディングが正しく設定されているか確認
 					if request.Encoding != tc.expectedEncoding {
 						t.Errorf("Expected encoding %s, got %s", tc.expectedEncoding, request.Encoding)
@@ -336,7 +336,7 @@ func TestSendRequestWithoutJSONFile_Encoding(t *testing.T) {
 					}
 
 					// モックレスポンスを返す
-					return &models.APIResponse{
+					return &models.HTTPResponse{
 						StatusCode: 200,
 						Headers:    map[string]string{"Content-Type": "text/html; charset=shift_jis"},
 						Body:       []byte(`<html><head><title>テストページ</title></head><body>こんにちは</body></html>`),
@@ -345,7 +345,7 @@ func TestSendRequestWithoutJSONFile_Encoding(t *testing.T) {
 			}
 
 			// テスト対象のサービスを作成
-			service := NewAPIService(mockRepo)
+			service := NewHTTPService(mockRepo)
 
 			// メソッドを実行
 			response, err := service.SendRequestWithoutJSONFile(tc.url, tc.method, tc.headers, tc.encoding)
@@ -356,7 +356,7 @@ func TestSendRequestWithoutJSONFile_Encoding(t *testing.T) {
 			}
 
 			// レスポンスが期待通りであることを確認
-			expectedResponse := &models.APIResponse{
+			expectedResponse := &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "text/html; charset=shift_jis"},
 				Body:       []byte(`<html><head><title>テストページ</title></head><body>こんにちは</body></html>`),
@@ -377,7 +377,7 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 		url          string
 		method       string
 		headers      map[string]string
-		mockResponse *models.APIResponse
+		mockResponse *models.HTTPResponse
 		mockError    error
 		expectError  bool
 	}{
@@ -388,7 +388,7 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 			headers: map[string]string{
 				"Accept": "application/json",
 			},
-			mockResponse: &models.APIResponse{
+			mockResponse: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"users": []}`),
@@ -403,7 +403,7 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 			headers: map[string]string{
 				"Authorization": "Bearer token123",
 			},
-			mockResponse: &models.APIResponse{
+			mockResponse: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "text/plain"},
 				Body:       []byte("pong"),
@@ -418,7 +418,7 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 			headers: map[string]string{
 				"Authorization": "Bearer token123",
 			},
-			mockResponse: &models.APIResponse{
+			mockResponse: &models.HTTPResponse{
 				StatusCode: 204,
 				Headers:    map[string]string{},
 				Body:       []byte{},
@@ -438,11 +438,11 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 			expectError:  true,
 		},
 		{
-			name:        "正常系 - 空のヘッダー",
-			url:         "https://api.example.com/public",
-			method:      "GET",
-			headers:     map[string]string{},
-			mockResponse: &models.APIResponse{
+			name:    "正常系 - 空のヘッダー",
+			url:     "https://api.example.com/public",
+			method:  "GET",
+			headers: map[string]string{},
+			mockResponse: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"message": "public data"}`),
@@ -455,8 +455,8 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockAPIRepository{
-				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+			mockRepo := &MockHTTPRepository{
+				SendRequestFunc: func(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 					// URLとメソッドが正しく設定されているか確認
 					if request.URL != tc.url {
 						t.Errorf("Expected URL %s, got %s", tc.url, request.URL)
@@ -486,7 +486,7 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 			}
 
 			// テスト対象のサービスを作成
-			service := NewAPIService(mockRepo)
+			service := NewHTTPService(mockRepo)
 
 			// メソッドを実行
 			response, err := service.SendRequestWithoutJSONFile(tc.url, tc.method, tc.headers, "auto")
@@ -525,13 +525,13 @@ func TestFormatResponse(t *testing.T) {
 	// テストケース
 	testCases := []struct {
 		name           string
-		response       *models.APIResponse
+		response       *models.HTTPResponse
 		expectedPrefix string
 		expectError    bool
 	}{
 		{
 			name: "正常系 - JSONレスポンス",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"success": true, "message": "OK"}`),
@@ -541,7 +541,7 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - 空のボディ",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 204,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte{},
@@ -551,7 +551,7 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - テキストレスポンス",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "text/plain"},
 				Body:       []byte("Plain text response"),
@@ -561,7 +561,7 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - 無効なJSONレスポンス（テキストとして処理）",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"invalid": json}`),
@@ -571,7 +571,7 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - 空のヘッダー",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 500,
 				Headers:    map[string]string{},
 				Body:       []byte(`Internal Server Error`),
@@ -581,12 +581,12 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - 複数のヘッダー",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 201,
 				Headers: map[string]string{
-					"Content-Type":   "application/json",
-					"Location":       "/api/users/123",
-					"Cache-Control":  "no-cache",
+					"Content-Type":  "application/json",
+					"Location":      "/api/users/123",
+					"Cache-Control": "no-cache",
 				},
 			},
 			expectedPrefix: "Status: 201",
@@ -594,7 +594,7 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - 大きなJSONレスポンス",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}, {"id": 3, "name": "Charlie"}], "total": 3, "page": 1}`),
@@ -604,7 +604,7 @@ func TestFormatResponse(t *testing.T) {
 		},
 		{
 			name: "正常系 - 特殊文字を含むレスポンス",
-			response: &models.APIResponse{
+			response: &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"message": "こんにちは世界", "emoji": "🌍", "special": "\"quoted\""}`),
@@ -617,10 +617,10 @@ func TestFormatResponse(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockAPIRepository{}
+			mockRepo := &MockHTTPRepository{}
 
 			// テスト対象のサービスを作成
-			service := NewAPIService(mockRepo)
+			service := NewHTTPService(mockRepo)
 
 			// メソッドを実行
 			result, err := service.FormatResponse(tc.response)
@@ -699,11 +699,11 @@ func TestSendRequestWithJSONFileAndHeaders(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockAPIRepository{
+			mockRepo := &MockHTTPRepository{
 				LoadJSONFileFunc: func(filePath string) ([]byte, error) {
 					return []byte(`{"test": "data"}`), nil
 				},
-				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+				SendRequestFunc: func(request *models.HTTPRequest) (*models.HTTPResponse, error) {
 					// ヘッダーが正しく設定されているか確認
 					if value, exists := request.Headers[tc.expectedHeader]; !exists || value != tc.expectedValue {
 						t.Errorf("Expected header %s with value %s, got %s", tc.expectedHeader, tc.expectedValue, value)
@@ -718,7 +718,7 @@ func TestSendRequestWithJSONFileAndHeaders(t *testing.T) {
 					}
 
 					// モックレスポンスを返す
-					return &models.APIResponse{
+					return &models.HTTPResponse{
 						StatusCode: 200,
 						Headers:    map[string]string{"Content-Type": "application/json"},
 						Body:       []byte(`{"success": true}`),
@@ -727,7 +727,7 @@ func TestSendRequestWithJSONFileAndHeaders(t *testing.T) {
 			}
 
 			// テスト対象のサービスを作成
-			service := NewAPIService(mockRepo)
+			service := NewHTTPService(mockRepo)
 
 			// メソッドを実行
 			response, err := service.SendRequestWithJSONFileAndHeaders(tc.url, tc.method, tc.jsonFilePath, tc.headers, "auto")
@@ -738,7 +738,7 @@ func TestSendRequestWithJSONFileAndHeaders(t *testing.T) {
 			}
 
 			// レスポンスが期待通りであることを確認
-			expectedResponse := &models.APIResponse{
+			expectedResponse := &models.HTTPResponse{
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "application/json"},
 				Body:       []byte(`{"success": true}`),
