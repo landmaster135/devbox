@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -25,6 +26,141 @@ func TestNewAPIRepository(t *testing.T) {
 	}
 	if repo.client == nil {
 		t.Error("Expected HTTP client to be initialized")
+	}
+	if repo.userAgent == "" {
+		t.Error("Expected User-Agent to be initialized")
+	}
+}
+
+// TestBuildDefaultUserAgent はデフォルトUser-Agent構築のテストです
+func TestBuildDefaultUserAgent(t *testing.T) {
+	// Act
+	userAgent := buildDefaultUserAgent()
+
+	// Assert
+	if userAgent == "" {
+		t.Fatal("Expected User-Agent to be non-empty")
+	}
+
+	// User-Agentに必要な情報が含まれていることを確認
+	if !strings.Contains(userAgent, "HTTP-Request-CLI/1.0") {
+		t.Error("Expected User-Agent to contain application name and version")
+	}
+	if !strings.Contains(userAgent, runtime.GOOS) {
+		t.Error("Expected User-Agent to contain OS information")
+	}
+	if !strings.Contains(userAgent, runtime.GOARCH) {
+		t.Error("Expected User-Agent to contain architecture information")
+	}
+	if !strings.Contains(userAgent, "Go/") {
+		t.Error("Expected User-Agent to contain Go version")
+	}
+}
+
+// TestGetOSVersion はOS情報取得のテストです
+func TestGetOSVersion(t *testing.T) {
+	// Act
+	osVersion := getOSVersion()
+
+	// Assert
+	if osVersion == "" {
+		t.Fatal("Expected OS version to be non-empty")
+	}
+
+	// 現在のOSに応じた適切な情報が返されることを確認
+	switch runtime.GOOS {
+	case "windows":
+		if !strings.Contains(osVersion, "Windows NT") {
+			t.Error("Expected Windows OS version to contain 'Windows NT'")
+		}
+	case "darwin":
+		if !strings.Contains(osVersion, "Macintosh") {
+			t.Error("Expected macOS version to contain 'Macintosh'")
+		}
+	case "linux":
+		if !strings.Contains(osVersion, "Linux") {
+			t.Error("Expected Linux version to contain 'Linux'")
+		}
+	default:
+		if osVersion != runtime.GOOS {
+			t.Errorf("Expected OS version to be %s for unknown OS, got %s", runtime.GOOS, osVersion)
+		}
+	}
+}
+
+// TestSendRequest_UserAgentSet はUser-Agentが正しく設定されるテストです
+func TestSendRequest_UserAgentSet(t *testing.T) {
+	// HTTPサーバーのモックを作成
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userAgent := r.Header.Get("User-Agent")
+
+		// User-Agentが設定されていることを確認
+		if userAgent == "" {
+			t.Error("Expected User-Agent header to be set")
+		}
+
+		// User-Agentに必要な情報が含まれていることを確認
+		if !strings.Contains(userAgent, "HTTP-Request-CLI/1.0") {
+			t.Errorf("Expected User-Agent to contain application name, got: %s", userAgent)
+		}
+		if !strings.Contains(userAgent, runtime.GOOS) {
+			t.Errorf("Expected User-Agent to contain OS info, got: %s", userAgent)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	}))
+	defer server.Close()
+
+	repo := NewAPIRepository()
+	request := &models.APIRequest{
+		URL:     server.URL,
+		Method:  "GET",
+		Headers: map[string]string{},
+	}
+
+	// Act
+	_, err := repo.SendRequest(request)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+// TestSendRequest_CustomUserAgent はカスタムUser-Agentが上書きされるテストです
+func TestSendRequest_CustomUserAgent(t *testing.T) {
+	customUserAgent := "Custom-Client/2.0"
+
+	// HTTPサーバーのモックを作成
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userAgent := r.Header.Get("User-Agent")
+
+		// カスタムUser-Agentが設定されていることを確認
+		if userAgent != customUserAgent {
+			t.Errorf("Expected User-Agent to be %s, got: %s", customUserAgent, userAgent)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	}))
+	defer server.Close()
+
+	repo := NewAPIRepository()
+	request := &models.APIRequest{
+		URL:    server.URL,
+		Method: "GET",
+		Headers: map[string]string{
+			"User-Agent": customUserAgent,
+		},
+	}
+
+	// Act
+	_, err := repo.SendRequest(request)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
 	}
 }
 
