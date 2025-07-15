@@ -9,15 +9,18 @@ import (
 	server "github.com/mark3labs/mcp-go/server"
 )
 
+const (
+	version = "1.0.0"
+)
+
 // setPostgreSQLQueryServer は受け取ったMCPサーバにPostgreSQL用のツールを付与して、そのMCPサーバを返します。
 func setPostgreSQLQueryServer(databaseURL string, s *server.MCPServer) *server.MCPServer {
-	// PostgreSQLクライアントを初期化
-	client, err := NewPostgreSQLClient(databaseURL)
+	// PostgreSQLハンドラーを初期化
+	handler, err := NewPostgreSQLMCPHandler(databaseURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to create PostgreSQL client: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to create PostgreSQL handler: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Fprintln(os.Stderr, client)
 
 	// ツール1: SQL読み取り専用クエリの実行
 	queryTool := mcp.NewTool("query",
@@ -27,7 +30,7 @@ func setPostgreSQLQueryServer(databaseURL string, s *server.MCPServer) *server.M
 			mcp.Description("SQL query to execute"),
 		),
 	)
-	s.AddTool(queryTool, client.HandleToQuery)
+	s.AddTool(queryTool, handler.HandleToQuery)
 
 	// ツール2: テーブルスキーマの取得
 	getTableSchemaTool := mcp.NewTool("get_table_schema",
@@ -37,13 +40,13 @@ func setPostgreSQLQueryServer(databaseURL string, s *server.MCPServer) *server.M
 			mcp.Description("Name of the table"),
 		),
 	)
-	s.AddTool(getTableSchemaTool, client.HandleToGetTableSchema)
+	s.AddTool(getTableSchemaTool, handler.HandleToGetTableSchema)
 
 	// ツール3: テーブル一覧の取得（最小限の情報）
 	listTablesMinimumTool := mcp.NewTool("list_tables_minimum",
 		mcp.WithDescription("List all tables in the database"),
 	)
-	s.AddTool(listTablesMinimumTool, client.HandleToListTablesMinimum)
+	s.AddTool(listTablesMinimumTool, handler.HandleToListTablesMinimum)
 
 	// ツール4: テーブルの最小限のスキーマ情報を取得
 	getTableSchemaMinimumTool := mcp.NewTool("get_table_schema_minimum",
@@ -53,13 +56,13 @@ func setPostgreSQLQueryServer(databaseURL string, s *server.MCPServer) *server.M
 			mcp.Description("Name of the table"),
 		),
 	)
-	s.AddTool(getTableSchemaMinimumTool, client.HandleToGetTableSchemaMinimum)
+	s.AddTool(getTableSchemaMinimumTool, handler.HandleToGetTableSchemaMinimum)
 
 	// ツール5: テーブル一覧の取得
 	listTablesTool := mcp.NewTool("list_tables",
 		mcp.WithDescription("List all tables in the database"),
 	)
-	s.AddTool(listTablesTool, client.HandleToListTables)
+	s.AddTool(listTablesTool, handler.HandleToListTables)
 
 	return s
 }

@@ -3,7 +3,6 @@ module github.com/landmaster135/devbox
 go 1.23.5
 
 require (
-	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/anthonynsimon/bild v0.14.0
 	github.com/dsoprea/go-exif/v3 v3.0.1
@@ -55,6 +54,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
