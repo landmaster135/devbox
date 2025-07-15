@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"golang.org/x/text/encoding/japanese"
@@ -18,13 +19,39 @@ import (
 
 // APIRepositoryImpl はAPIRepositoryインターフェースの実装です
 type APIRepositoryImpl struct {
-	client *http.Client
+	client    *http.Client
+	userAgent string
 }
 
 // NewAPIRepository は新しいAPIRepositoryインスタンスを作成します
 func NewAPIRepository() *APIRepositoryImpl {
 	return &APIRepositoryImpl{
-		client: &http.Client{},
+		client:    &http.Client{},
+		userAgent: buildDefaultUserAgent(),
+	}
+}
+
+// buildDefaultUserAgent はデフォルトのUser-Agentを構築します
+func buildDefaultUserAgent() string {
+	return fmt.Sprintf(
+		"HTTP-Request-CLI/1.0 (%s %s; %s) Go/%s",
+		runtime.GOOS,
+		runtime.GOARCH,
+		getOSVersion(),
+		runtime.Version())
+}
+
+// getOSVersion はOS情報を取得します
+func getOSVersion() string {
+	switch runtime.GOOS {
+	case "windows":
+		return "Windows NT 10.0; Win64; x64"
+	case "darwin":
+		return "Macintosh; Intel Mac OS X 10_15_7"
+	case "linux":
+		return "X11; Linux x86_64"
+	default:
+		return runtime.GOOS
 	}
 }
 
@@ -36,7 +63,10 @@ func (r *APIRepositoryImpl) SendRequest(request *models.APIRequest) (*models.API
 		return nil, fmt.Errorf("HTTPリクエストの作成に失敗しました: %w", err)
 	}
 
-	// ヘッダーを設定
+	// デフォルトのUser-Agentを設定（Windows Defender誤検知対策）
+	req.Header.Set("User-Agent", r.userAgent)
+
+	// ヘッダーを設定（User-Agentが明示的に指定されている場合は上書き）
 	for key, value := range request.Headers {
 		req.Header.Set(key, value)
 	}
