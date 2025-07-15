@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -260,4 +261,235 @@ func TestAPIRepositoryImpl_LoadJSONFile_WithCRLF(t *testing.T) {
 	assert.True(t, ok, "addressフィールドがオブジェクトではありません")
 	assert.Equal(t, "日本", address["country"], "address.countryフィールドの値が一致しません")
 	assert.Equal(t, "東京", address["city"], "address.cityフィールドの値が一致しません")
+}
+
+func TestNewAPIRepository_Normal(t *testing.T) {
+	// テスト対象のリポジトリを作成
+	repo := NewAPIRepository()
+
+	// 検証
+	assert.NotNil(t, repo, "リポジトリがnilです")
+	assert.NotNil(t, repo.client, "HTTPクライアントがnilです")
+}
+
+func TestAPIRepositoryImpl_SendRequest_MultipleHeaderValues(t *testing.T) {
+	// テスト用のHTTPサーバーを作成
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// リクエストヘッダーの検証
+		assert.Equal(t, "Bearer token123", r.Header.Get("Authorization"))
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		// レスポンスヘッダーに複数の値を設定
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("X-Custom-Header", "custom-value")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"result": "success"}`))
+	}))
+	defer server.Close()
+
+	// テスト対象のリポジトリを作成
+	repo := NewAPIRepository()
+
+	// リクエストを作成
+	request := &models.APIRequest{
+		URL:    server.URL,
+		Method: "POST",
+		Headers: map[string]string{
+			"Authorization": "Bearer token123",
+			"Content-Type":  "application/json",
+			"Accept":        "application/json",
+		},
+		Body: []byte(`{"test": "data"}`),
+	}
+
+	// リクエストを送信
+	response, err := repo.SendRequest(request)
+
+	// 検証
+	assert.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.Equal(t, "application/json", response.Headers["Content-Type"])
+	assert.Equal(t, "no-cache", response.Headers["Cache-Control"])
+	assert.Equal(t, "custom-value", response.Headers["X-Custom-Header"])
+
+	// レスポンスボディを検証
+	var responseBody map[string]interface{}
+	err = json.Unmarshal(response.Body, &responseBody)
+	assert.NoError(t, err)
+	assert.Equal(t, "success", responseBody["result"])
+}
+
+func TestAPIRepositoryImpl_SendRequest_DifferentStatusCodes(t *testing.T) {
+	testCases := []struct {
+		name           string
+		statusCode     int
+		responseBody   string
+		expectedStatus int
+	}{
+		{
+			name:           "201 Created",
+			statusCode:     http.StatusCreated,
+			responseBody:   `{"id": 123, "created": true}`,
+			expectedStatus: http.StatusCreated,
+		},
+		{
+			name:           "400 Bad Request",
+			statusCode:     http.StatusBadRequest,
+			responseBody:   `{"error": "Invalid request"}`,
+			expectedStatus: http.StatusBadRequest,
+		},
+		{
+			name:           "404 Not Found",
+			statusCode:     http.StatusNotFound,
+			responseBody:   `{"error": "Resource not found"}`,
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "500 Internal Server Error",
+			statusCode:     http.StatusInternalServerError,
+			responseBody:   `{"error": "Internal server error"}`,
+			expectedStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// テスト用のHTTPサーバーを作成
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tc.statusCode)
+				w.Write([]byte(tc.responseBody))
+			}))
+			defer server.Close()
+
+			// テスト対象のリポジトリを作成
+			repo := NewAPIRepository()
+
+			// リクエストを作成
+			request := &models.APIRequest{
+				URL:     server.URL,
+				Method:  "GET",
+				Headers: map[string]string{"Accept": "application/json"},
+				Body:    nil,
+			}
+
+			// リクエストを送信
+			response, err := repo.SendRequest(request)
+
+			// 検証
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, tc.expectedStatus, response.StatusCode)
+			assert.Equal(t, "application/json", response.Headers["Content-Type"])
+			assert.Equal(t, tc.responseBody, string(response.Body))
+		})
+	}
+}
+
+func TestAPIRepositoryImpl_SendRequest_DifferentMethods(t *testing.T) {
+	testCases := []struct {
+		name   string
+		method string
+		body   []byte
+	}{
+		{
+			name:   "GET request",
+			method: "GET",
+			body:   nil,
+		},
+		{
+			name:   "POST request",
+			method: "POST",
+			body:   []byte(`{"data": "test"}`),
+		},
+		{
+			name:   "PUT request",
+			method: "PUT",
+			body:   []byte(`{"update": "data"}`),
+		},
+		{
+			name:   "DELETE request",
+			method: "DELETE",
+			body:   nil,
+		},
+		{
+			name:   "PATCH request",
+			method: "PATCH",
+			body:   []byte(`{"patch": "data"}`),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// テスト用のHTTPサーバーを作成
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// リクエストメソッドの検証
+				assert.Equal(t, tc.method, r.Method)
+
+				// ボディがある場合は検証
+				if tc.body != nil {
+					body, err := io.ReadAll(r.Body)
+					assert.NoError(t, err)
+					assert.Equal(t, tc.body, body)
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"method": "` + tc.method + `"}`))
+			}))
+			defer server.Close()
+
+			// テスト対象のリポジトリを作成
+			repo := NewAPIRepository()
+
+			// リクエストを作成
+			request := &models.APIRequest{
+				URL:     server.URL,
+				Method:  tc.method,
+				Headers: map[string]string{"Accept": "application/json"},
+				Body:    tc.body,
+			}
+
+			// リクエストを送信
+			response, err := repo.SendRequest(request)
+
+			// 検証
+			assert.NoError(t, err)
+			assert.NotNil(t, response)
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Contains(t, string(response.Body), tc.method)
+		})
+	}
+}
+
+func TestAPIRepositoryImpl_SendRequest_EmptyResponse(t *testing.T) {
+	// テスト用のHTTPサーバーを作成（空のレスポンス）
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		// ボディは書き込まない
+	}))
+	defer server.Close()
+
+	// テスト対象のリポジトリを作成
+	repo := NewAPIRepository()
+
+	// リクエストを作成
+	request := &models.APIRequest{
+		URL:     server.URL,
+		Method:  "DELETE",
+		Headers: map[string]string{"Accept": "application/json"},
+		Body:    nil,
+	}
+
+	// リクエストを送信
+	response, err := repo.SendRequest(request)
+
+	// 検証
+	assert.NoError(t, err)
+	assert.NotNil(t, response)
+	assert.Equal(t, http.StatusNoContent, response.StatusCode)
+	assert.Empty(t, response.Body)
 }
