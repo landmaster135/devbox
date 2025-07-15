@@ -13,7 +13,7 @@ import (
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
 
-	models "github.com/landmaster135/devbox/internal/api_client/domain/models"
+	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
 // APIRepositoryImpl はAPIRepositoryインターフェースの実装です

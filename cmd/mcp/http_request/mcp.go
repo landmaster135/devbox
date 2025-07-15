@@ -7,9 +7,9 @@ import (
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
 
-	"github.com/landmaster135/devbox/internal/api_client/domain/models"
-	"github.com/landmaster135/devbox/internal/api_client/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/api_client/usecases/services"
+	"github.com/landmaster135/devbox/internal/http_request/domain/models"
+	"github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/http_request/usecases/services"
 )
 
 // #==============================================================#

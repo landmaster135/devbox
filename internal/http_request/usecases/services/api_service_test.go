@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	models "github.com/landmaster135/devbox/internal/api_client/domain/models"
+	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
 // ///////////////////////

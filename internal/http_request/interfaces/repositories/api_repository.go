@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	models "github.com/landmaster135/devbox/internal/api_client/domain/models"
+	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
 // APIRepository はAPIリクエストを実行するためのインターフェースです

@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/api_client/domain/models"
-	"github.com/landmaster135/devbox/internal/api_client/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/api_client/usecases/services"
+	"github.com/landmaster135/devbox/internal/http_request/domain/models"
+	"github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/http_request/usecases/services"
 )
 
 // exitCode はプログラムの終了コードを表します
@@ -22,7 +22,7 @@ const (
 // run はAPIクライアントの主要なロジックを実行します
 func run(args []string, stdout, stderr io.Writer) exitCode {
 	// フラグセットを作成
-	fs := flag.NewFlagSet("api-client", flag.ContinueOnError)
+	fs := flag.NewFlagSet("http-request", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
 	// コマンドライン引数の定義
