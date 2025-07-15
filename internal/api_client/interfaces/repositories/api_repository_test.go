@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/landmaster135/devbox/internal/api_client/domain/models"
+	models "github.com/landmaster135/devbox/internal/api_client/domain/models"
 )
 
 func TestAPIRepositoryImpl_SendRequest_InvalidURL(t *testing.T) {

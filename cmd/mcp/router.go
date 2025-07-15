@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	arith_calc "github.com/landmaster135/devbox/cmd/mcp/arith_calc"
+	arithmetic_calculator "github.com/landmaster135/devbox/cmd/mcp/arithmetic_calculator"
 	brave_search "github.com/landmaster135/devbox/cmd/mcp/brave_search"
 	context7 "github.com/landmaster135/devbox/cmd/mcp/context7"
-	datetime_calc "github.com/landmaster135/devbox/cmd/mcp/datetime_calc"
+	datetime_calculator "github.com/landmaster135/devbox/cmd/mcp/datetime_calculator"
 	duckduckgo_search "github.com/landmaster135/devbox/cmd/mcp/duckduckgo_search"
 	everart "github.com/landmaster135/devbox/cmd/mcp/everart"
 	figma "github.com/landmaster135/devbox/cmd/mcp/figma"
@@ -41,11 +41,11 @@ func Router() {
 	a1 := args[1]
 	switch a1 {
 	case "arith_calc":
-		arith_calc.BuildArithCalculatorServer()
+		arithmetic_calculator.BuildArithCalculatorServer()
 	case "context7":
 		context7.BuildContext7Server()
 	case "datetime_calc":
-		datetime_calc.BuildTimeCalculatorServer()
+		datetime_calculator.BuildTimeCalculatorServer()
 	case "http_request":
 		http_request.BuildMcpServer()
 	case "brave_web_search":

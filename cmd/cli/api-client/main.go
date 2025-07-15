@@ -72,13 +72,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		response, err = apiService.SendRequestWithJSONFileAndHeaders(*url, *method, *jsonFile, headers)
 	} else {
 		// JSONファイルなしでリクエストを送信（GETなど）
-		request := &models.APIRequest{
-			URL:     *url,
-			Method:  *method,
-			Headers: headers,
-			Body:    nil,
-		}
-		response, err = apiRepo.SendRequest(request)
+		response, err = apiService.SendRequestWithoutJSONFile(*url, *method, headers)
 	}
 
 	if err != nil {
