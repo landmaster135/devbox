@@ -153,6 +153,147 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 	}
 }
 
+// TestSendRequestWithoutJSONFile はSendRequestWithoutJSONFileメソッドのテストです
+func TestSendRequestWithoutJSONFile(t *testing.T) {
+	// テストケース
+	testCases := []struct {
+		name         string
+		url          string
+		method       string
+		headers      map[string]string
+		mockResponse *models.APIResponse
+		mockError    error
+		expectError  bool
+	}{
+		{
+			name:   "正常系 - GETリクエスト",
+			url:    "https://api.example.com/users",
+			method: "GET",
+			headers: map[string]string{
+				"Accept": "application/json",
+			},
+			mockResponse: &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"users": []}`),
+			},
+			mockError:   nil,
+			expectError: false,
+		},
+		{
+			name:   "正常系 - POSTリクエスト（ボディなし）",
+			url:    "https://api.example.com/ping",
+			method: "POST",
+			headers: map[string]string{
+				"Authorization": "Bearer token123",
+			},
+			mockResponse: &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "text/plain"},
+				Body:       []byte("pong"),
+			},
+			mockError:   nil,
+			expectError: false,
+		},
+		{
+			name:   "正常系 - DELETEリクエスト",
+			url:    "https://api.example.com/users/123",
+			method: "DELETE",
+			headers: map[string]string{
+				"Authorization": "Bearer token123",
+			},
+			mockResponse: &models.APIResponse{
+				StatusCode: 204,
+				Headers:    map[string]string{},
+				Body:       []byte{},
+			},
+			mockError:   nil,
+			expectError: false,
+		},
+		{
+			name:   "エラー系 - APIリクエスト送信失敗",
+			url:    "https://api.example.com/error",
+			method: "GET",
+			headers: map[string]string{
+				"Accept": "application/json",
+			},
+			mockResponse: nil,
+			mockError:    errors.New("接続エラー"),
+			expectError:  true,
+		},
+		{
+			name:        "正常系 - 空のヘッダー",
+			url:         "https://api.example.com/public",
+			method:      "GET",
+			headers:     map[string]string{},
+			mockResponse: &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"message": "public data"}`),
+			},
+			mockError:   nil,
+			expectError: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// モックリポジトリの設定
+			mockRepo := &MockAPIRepository{
+				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+					// URLとメソッドが正しく設定されているか確認
+					if request.URL != tc.url {
+						t.Errorf("Expected URL %s, got %s", tc.url, request.URL)
+					}
+					if request.Method != tc.method {
+						t.Errorf("Expected method %s, got %s", tc.method, request.Method)
+					}
+
+					// ヘッダーが正しく設定されているか確認
+					for key, expectedValue := range tc.headers {
+						if actualValue, exists := request.Headers[key]; !exists || actualValue != expectedValue {
+							t.Errorf("Expected header %s with value %s, got %s", key, expectedValue, actualValue)
+						}
+					}
+
+					// ボディがnilであることを確認
+					if request.Body != nil {
+						t.Errorf("Expected body to be nil, got %v", request.Body)
+					}
+
+					if tc.mockError != nil {
+						return nil, tc.mockError
+					}
+
+					return tc.mockResponse, nil
+				},
+			}
+
+			// テスト対象のサービスを作成
+			service := NewAPIService(mockRepo)
+
+			// メソッドを実行
+			response, err := service.SendRequestWithoutJSONFile(tc.url, tc.method, tc.headers)
+
+			// エラー発生の期待値と実際の結果を比較
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Expected no error, got %v", err)
+				}
+
+				// レスポンスが期待通りであることを確認
+				if !reflect.DeepEqual(response, tc.mockResponse) {
+					t.Errorf("Expected response %+v, got %+v", tc.mockResponse, response)
+				}
+			}
+		})
+	}
+}
+
 // MockJSONEncoder はJSONエンコーダーをモックするための構造体です
 type MockJSONEncoder struct {
 	EncodeFunc func(v interface{}) error
@@ -202,10 +343,59 @@ func TestFormatResponse(t *testing.T) {
 			expectedPrefix: "Status: 200",
 			expectError:    false,
 		},
-		// 注意: 現在の実装では、JSONエンコードエラーをテストするのが難しいため、
-		// このテストケースは省略します。実際のコードでは、json.Unmarshalは成功し、
-		// json.Encoderのエラーをシミュレートするのは困難です。
-		// 実際のアプリケーションでは、このエラーケースは非常にまれです。
+		{
+			name: "正常系 - 無効なJSONレスポンス（テキストとして処理）",
+			response: &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"invalid": json}`),
+			},
+			expectedPrefix: "Status: 200",
+			expectError:    false,
+		},
+		{
+			name: "正常系 - 空のヘッダー",
+			response: &models.APIResponse{
+				StatusCode: 500,
+				Headers:    map[string]string{},
+				Body:       []byte(`Internal Server Error`),
+			},
+			expectedPrefix: "Status: 500",
+			expectError:    false,
+		},
+		{
+			name: "正常系 - 複数のヘッダー",
+			response: &models.APIResponse{
+				StatusCode: 201,
+				Headers: map[string]string{
+					"Content-Type":   "application/json",
+					"Location":       "/api/users/123",
+					"Cache-Control":  "no-cache",
+				},
+			},
+			expectedPrefix: "Status: 201",
+			expectError:    false,
+		},
+		{
+			name: "正常系 - 大きなJSONレスポンス",
+			response: &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}, {"id": 3, "name": "Charlie"}], "total": 3, "page": 1}`),
+			},
+			expectedPrefix: "Status: 200",
+			expectError:    false,
+		},
+		{
+			name: "正常系 - 特殊文字を含むレスポンス",
+			response: &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"message": "こんにちは世界", "emoji": "🌍", "special": "\"quoted\""}`),
+			},
+			expectedPrefix: "Status: 200",
+			expectError:    false,
+		},
 	}
 
 	for _, tc := range testCases {
