@@ -273,7 +273,7 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 			service := NewAPIService(mockRepo)
 
 			// メソッドを実行
-			response, err := service.SendRequestWithoutJSONFile(tc.url, tc.method, tc.headers)
+			response, err := service.SendRequestWithoutJSONFile(tc.url, tc.method, tc.headers, "auto")
 
 			// エラー発生の期待値と実際の結果を比較
 			if tc.expectError {
@@ -514,7 +514,7 @@ func TestSendRequestWithJSONFileAndHeaders(t *testing.T) {
 			service := NewAPIService(mockRepo)
 
 			// メソッドを実行
-			response, err := service.SendRequestWithJSONFileAndHeaders(tc.url, tc.method, tc.jsonFilePath, tc.headers)
+			response, err := service.SendRequestWithJSONFileAndHeaders(tc.url, tc.method, tc.jsonFilePath, tc.headers, "auto")
 
 			// エラーがないことを確認
 			if err != nil {
