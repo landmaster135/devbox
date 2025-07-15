@@ -153,6 +153,222 @@ func TestSendRequestWithJSONFile(t *testing.T) {
 	}
 }
 
+// TestSendRequestWithJSONFileAndHeaders_Encoding はエンコーディング指定のテストです
+func TestSendRequestWithJSONFileAndHeaders_Encoding(t *testing.T) {
+	// テストケース
+	testCases := []struct {
+		name             string
+		url              string
+		method           string
+		jsonFilePath     string
+		headers          map[string]string
+		encoding         string
+		expectedEncoding string
+	}{
+		{
+			name:             "Shift_JIS指定",
+			url:              "https://api.example.com",
+			method:           "POST",
+			jsonFilePath:     "test.json",
+			headers:          map[string]string{"Accept": "application/json"},
+			encoding:         "shift_jis",
+			expectedEncoding: "shift_jis",
+		},
+		{
+			name:             "UTF-8指定",
+			url:              "https://api.example.com",
+			method:           "POST",
+			jsonFilePath:     "test.json",
+			headers:          map[string]string{"Accept": "application/json"},
+			encoding:         "utf-8",
+			expectedEncoding: "utf-8",
+		},
+		{
+			name:             "EUC-JP指定",
+			url:              "https://api.example.com",
+			method:           "POST",
+			jsonFilePath:     "test.json",
+			headers:          map[string]string{"Accept": "application/json"},
+			encoding:         "euc-jp",
+			expectedEncoding: "euc-jp",
+		},
+		{
+			name:             "auto指定",
+			url:              "https://api.example.com",
+			method:           "POST",
+			jsonFilePath:     "test.json",
+			headers:          map[string]string{"Accept": "application/json"},
+			encoding:         "auto",
+			expectedEncoding: "auto",
+		},
+		{
+			name:             "空文字列指定（autoとして扱われる）",
+			url:              "https://api.example.com",
+			method:           "POST",
+			jsonFilePath:     "test.json",
+			headers:          map[string]string{"Accept": "application/json"},
+			encoding:         "",
+			expectedEncoding: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// モックリポジトリの設定
+			mockRepo := &MockAPIRepository{
+				LoadJSONFileFunc: func(filePath string) ([]byte, error) {
+					return []byte(`{"test": "data"}`), nil
+				},
+				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+					// エンコーディングが正しく設定されているか確認
+					if request.Encoding != tc.expectedEncoding {
+						t.Errorf("Expected encoding %s, got %s", tc.expectedEncoding, request.Encoding)
+					}
+
+					// URLとメソッドが正しく設定されているか確認
+					if request.URL != tc.url {
+						t.Errorf("Expected URL %s, got %s", tc.url, request.URL)
+					}
+					if request.Method != tc.method {
+						t.Errorf("Expected method %s, got %s", tc.method, request.Method)
+					}
+
+					// モックレスポンスを返す
+					return &models.APIResponse{
+						StatusCode: 200,
+						Headers:    map[string]string{"Content-Type": "application/json"},
+						Body:       []byte(`{"success": true}`),
+					}, nil
+				},
+			}
+
+			// テスト対象のサービスを作成
+			service := NewAPIService(mockRepo)
+
+			// メソッドを実行
+			response, err := service.SendRequestWithJSONFileAndHeaders(tc.url, tc.method, tc.jsonFilePath, tc.headers, tc.encoding)
+
+			// エラーがないことを確認
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+
+			// レスポンスが期待通りであることを確認
+			expectedResponse := &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "application/json"},
+				Body:       []byte(`{"success": true}`),
+			}
+
+			if !reflect.DeepEqual(response, expectedResponse) {
+				t.Errorf("Expected response %+v, got %+v", expectedResponse, response)
+			}
+		})
+	}
+}
+
+// TestSendRequestWithoutJSONFile_Encoding はエンコーディング指定のテストです
+func TestSendRequestWithoutJSONFile_Encoding(t *testing.T) {
+	// テストケース
+	testCases := []struct {
+		name             string
+		url              string
+		method           string
+		headers          map[string]string
+		encoding         string
+		expectedEncoding string
+	}{
+		{
+			name:             "Shift_JIS指定",
+			url:              "https://example.com",
+			method:           "GET",
+			headers:          map[string]string{"Accept": "text/html"},
+			encoding:         "shift_jis",
+			expectedEncoding: "shift_jis",
+		},
+		{
+			name:             "UTF-8指定",
+			url:              "https://example.com",
+			method:           "GET",
+			headers:          map[string]string{"Accept": "text/html"},
+			encoding:         "utf-8",
+			expectedEncoding: "utf-8",
+		},
+		{
+			name:             "EUC-JP指定",
+			url:              "https://example.com",
+			method:           "GET",
+			headers:          map[string]string{"Accept": "text/html"},
+			encoding:         "euc-jp",
+			expectedEncoding: "euc-jp",
+		},
+		{
+			name:             "auto指定",
+			url:              "https://example.com",
+			method:           "GET",
+			headers:          map[string]string{"Accept": "text/html"},
+			encoding:         "auto",
+			expectedEncoding: "auto",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// モックリポジトリの設定
+			mockRepo := &MockAPIRepository{
+				SendRequestFunc: func(request *models.APIRequest) (*models.APIResponse, error) {
+					// エンコーディングが正しく設定されているか確認
+					if request.Encoding != tc.expectedEncoding {
+						t.Errorf("Expected encoding %s, got %s", tc.expectedEncoding, request.Encoding)
+					}
+
+					// URLとメソッドが正しく設定されているか確認
+					if request.URL != tc.url {
+						t.Errorf("Expected URL %s, got %s", tc.url, request.URL)
+					}
+					if request.Method != tc.method {
+						t.Errorf("Expected method %s, got %s", tc.method, request.Method)
+					}
+
+					// ボディがnilであることを確認
+					if request.Body != nil {
+						t.Errorf("Expected body to be nil, got %v", request.Body)
+					}
+
+					// モックレスポンスを返す
+					return &models.APIResponse{
+						StatusCode: 200,
+						Headers:    map[string]string{"Content-Type": "text/html; charset=shift_jis"},
+						Body:       []byte(`<html><head><title>テストページ</title></head><body>こんにちは</body></html>`),
+					}, nil
+				},
+			}
+
+			// テスト対象のサービスを作成
+			service := NewAPIService(mockRepo)
+
+			// メソッドを実行
+			response, err := service.SendRequestWithoutJSONFile(tc.url, tc.method, tc.headers, tc.encoding)
+
+			// エラーがないことを確認
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+
+			// レスポンスが期待通りであることを確認
+			expectedResponse := &models.APIResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "text/html; charset=shift_jis"},
+				Body:       []byte(`<html><head><title>テストページ</title></head><body>こんにちは</body></html>`),
+			}
+
+			if !reflect.DeepEqual(response, expectedResponse) {
+				t.Errorf("Expected response %+v, got %+v", expectedResponse, response)
+			}
+		})
+	}
+}
+
 // TestSendRequestWithoutJSONFile はSendRequestWithoutJSONFileメソッドのテストです
 func TestSendRequestWithoutJSONFile(t *testing.T) {
 	// テストケース
