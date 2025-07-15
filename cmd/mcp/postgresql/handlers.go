@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
+
 	usecases "github.com/landmaster135/devbox/internal/postgresql/usecases"
 )
 
