@@ -16,25 +16,50 @@ import (
 // #==============================================================#
 // ##          Rate Limiting                                     ##
 // #==============================================================#
-// レート制限の定義
-var rateLimit = struct {
-	perSecond int
-	perMonth  int
-}{
-	perSecond: 1,
-	perMonth:  15000,
+// RateLimiter はレート制限をチェックするインターフェース
+type RateLimiter interface {
+	CheckLimit() error
 }
 
-// リクエストカウンターの定義
-var requestCount = struct {
+// BraveRateLimiter はBrave APIのレート制限を管理する構造体
+type BraveRateLimiter struct {
+	perSecond int
+	perMonth  int
 	second    int
 	month     int
 	lastReset time.Time
 	mu        sync.Mutex
-}{
-	second:    0,
-	month:     0,
-	lastReset: time.Now(),
+}
+
+// NewBraveRateLimiter は新しいBraveRateLimiterを作成します
+func NewBraveRateLimiter() *BraveRateLimiter {
+	return &BraveRateLimiter{
+		perSecond: 1,
+		perMonth:  15000,
+		second:    0,
+		month:     0,
+		lastReset: time.Now(),
+	}
+}
+
+// CheckLimit はレート制限をチェックします
+func (r *BraveRateLimiter) CheckLimit() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	if now.Sub(r.lastReset) > time.Second {
+		r.second = 0
+		r.lastReset = now
+	}
+
+	if r.second >= r.perSecond || r.month >= r.perMonth {
+		return errors.New("rate limit exceeded")
+	}
+
+	r.second++
+	r.month++
+	return nil
 }
 
 // #==============================================================#
@@ -129,23 +154,35 @@ func (e *DefaultEnvironmentReader) Getenv(key string) string {
 // #==============================================================#
 // BraveSearchService はBrave検索を行うサービスです
 type BraveSearchService struct {
-	httpClient HTTPClient
-	envReader  EnvironmentReader
+	httpClient  HTTPClient
+	envReader   EnvironmentReader
+	rateLimiter RateLimiter
 }
 
 // NewBraveSearchService は新しいBraveSearchServiceを作成します
 func NewBraveSearchService() *BraveSearchService {
 	return &BraveSearchService{
-		httpClient: &DefaultHTTPClient{},
-		envReader:  &DefaultEnvironmentReader{},
+		httpClient:  &DefaultHTTPClient{},
+		envReader:   &DefaultEnvironmentReader{},
+		rateLimiter: NewBraveRateLimiter(),
 	}
 }
 
 // NewBraveSearchServiceWithDependencies はテスト用に依存性を注入できるBraveSearchServiceを作成します
 func NewBraveSearchServiceWithDependencies(httpClient HTTPClient, envReader EnvironmentReader) *BraveSearchService {
 	return &BraveSearchService{
-		httpClient: httpClient,
-		envReader:  envReader,
+		httpClient:  httpClient,
+		envReader:   envReader,
+		rateLimiter: NewBraveRateLimiter(),
+	}
+}
+
+// NewBraveSearchServiceWithAllDependencies はすべての依存性を注入できるBraveSearchServiceを作成します
+func NewBraveSearchServiceWithAllDependencies(httpClient HTTPClient, envReader EnvironmentReader, rateLimiter RateLimiter) *BraveSearchService {
+	return &BraveSearchService{
+		httpClient:  httpClient,
+		envReader:   envReader,
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -154,22 +191,7 @@ func NewBraveSearchServiceWithDependencies(httpClient HTTPClient, envReader Envi
 // #==============================================================#
 // checkRateLimit はレート制限をチェックする関数
 func (s *BraveSearchService) checkRateLimit() error {
-	requestCount.mu.Lock()
-	defer requestCount.mu.Unlock()
-
-	now := time.Now()
-	if now.Sub(requestCount.lastReset) > time.Second {
-		requestCount.second = 0
-		requestCount.lastReset = now
-	}
-
-	if requestCount.second >= rateLimit.perSecond || requestCount.month >= rateLimit.perMonth {
-		return errors.New("rate limit exceeded")
-	}
-
-	requestCount.second++
-	requestCount.month++
-	return nil
+	return s.rateLimiter.CheckLimit()
 }
 
 // #==============================================================#
