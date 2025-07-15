@@ -29,12 +29,12 @@ func (s *APIService) SendRequestWithJSONFile(url, method, jsonFilePath string) (
 		"Accept":       "application/json",
 	}
 
-	// カスタムヘッダーを指定せずに送信
-	return s.SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath, headers)
+	// カスタムヘッダーを指定せずに送信（デフォルトエンコーディング: auto）
+	return s.SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath, headers, "auto")
 }
 
 // SendRequestWithJSONFileAndHeaders はJSONファイルの内容をボディとして、指定されたヘッダーを含むAPIリクエストを送信します
-func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath string, headers map[string]string) (*models.APIResponse, error) {
+func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath string, headers map[string]string, encoding string) (*models.APIResponse, error) {
 	// JSONファイルを読み込む
 	jsonBody, err := s.apiRepo.LoadJSONFile(jsonFilePath)
 	if err != nil {
@@ -48,10 +48,11 @@ func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath
 
 	// リクエストを作成
 	request := &models.APIRequest{
-		URL:     url,
-		Method:  method,
-		Headers: headers,
-		Body:    jsonBody,
+		URL:      url,
+		Method:   method,
+		Headers:  headers,
+		Body:     jsonBody,
+		Encoding: encoding,
 	}
 
 	// リクエストを送信
@@ -63,13 +64,14 @@ func (s *APIService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath
 	return response, nil
 }
 
-func (s *APIService) SendRequestWithoutJSONFile(url, method string, headers map[string]string) (*models.APIResponse, error) {
+func (s *APIService) SendRequestWithoutJSONFile(url, method string, headers map[string]string, encoding string) (*models.APIResponse, error) {
 	// リクエストを作成
 	request := &models.APIRequest{
-		URL:     url,
-		Method:  method,
-		Headers: headers,
-		Body:    nil,
+		URL:      url,
+		Method:   method,
+		Headers:  headers,
+		Body:     nil,
+		Encoding: encoding,
 	}
 
 	// リクエストを送信

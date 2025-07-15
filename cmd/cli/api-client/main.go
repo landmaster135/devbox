@@ -30,6 +30,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	method := fs.String("method", "GET", "HTTPメソッド（GET, POST, PUT, DELETE, etc.）")
 	jsonFile := fs.String("json", "", "リクエストボディとして送信するJSONファイルのパス")
 	token := fs.String("token", "", "認証トークン（Bearer トークンとして送信されます）")
+	encoding := fs.String("encoding", "auto", "文字エンコーディング（shift_jis, utf-8, euc-jp, auto）")
 
 	// 引数の解析
 	if err := fs.Parse(args); err != nil {
@@ -69,10 +70,10 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	if *jsonFile != "" {
 		// JSONファイルを使用してリクエストを送信
-		response, err = apiService.SendRequestWithJSONFileAndHeaders(*url, *method, *jsonFile, headers)
+		response, err = apiService.SendRequestWithJSONFileAndHeaders(*url, *method, *jsonFile, headers, *encoding)
 	} else {
 		// JSONファイルなしでリクエストを送信（GETなど）
-		response, err = apiService.SendRequestWithoutJSONFile(*url, *method, headers)
+		response, err = apiService.SendRequestWithoutJSONFile(*url, *method, headers, *encoding)
 	}
 
 	if err != nil {

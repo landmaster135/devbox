@@ -3,14 +3,76 @@ package http_request
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
+
+	"github.com/landmaster135/devbox/internal/api_client/domain/models"
+	"github.com/landmaster135/devbox/internal/api_client/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/api_client/usecases/services"
 )
 
+// #==============================================================#
+// ##          Handlers                                          ##
+// #==============================================================#
+func handleHttpRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	method, err := request.RequireString("method")
+	if err != nil {
+		return nil, err
+	}
+
+	url, err := request.RequireString("url")
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.GetString("body", "")
+	encoding := request.GetString("encoding", "auto")
+
+	// 依存関係の注入
+	apiRepo := repositories.NewAPIRepository()
+	apiService := services.NewAPIService(apiRepo)
+
+	// ヘッダーの準備
+	headers := map[string]string{"Accept": "application/json"}
+
+	var response *models.APIResponse
+	if body != "" {
+		// Content-Typeヘッダーを追加
+		headers["Content-Type"] = "application/json"
+
+		// リクエストを作成
+		apiRequest := &models.APIRequest{
+			URL:      url,
+			Method:   method,
+			Headers:  headers,
+			Body:     []byte(body),
+			Encoding: encoding,
+		}
+
+		// リクエストを送信
+		response, err = apiRepo.SendRequest(apiRequest)
+	} else {
+		// JSONファイルなしでリクエストを送信（GETなど）
+		response, err = apiService.SendRequestWithoutJSONFile(url, method, headers, encoding)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("HTTPリクエストの送信に失敗しました: %v", err)
+	}
+
+	// レスポンスを整形
+	formattedResponse, err := apiService.FormatResponse(response)
+	if err != nil {
+		return nil, fmt.Errorf("レスポンスの整形に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(formattedResponse), nil
+}
+
+// #==============================================================#
+// ##          Servers                                           ##
+// #==============================================================#
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	prompt := mcp.NewPrompt("system_prompt_01",
 		mcp.WithPromptDescription("This is a prompt for the HTTP client."),
@@ -29,14 +91,7 @@ func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	return s
 }
 
-func BuildMcpServer() {
-	s := server.NewMCPServer(
-		"HTTP requestor",
-		"1.0.0",
-		server.WithResourceCapabilities(true, true),
-		server.WithPromptCapabilities(true),
-		server.WithLogging(),
-	)
+func setHttpRequestServer(s *server.MCPServer) *server.MCPServer {
 	tool := mcp.NewTool("http_request",
 		mcp.WithDescription("Make HTTP requests to external APIs"),
 		mcp.WithString("method",
@@ -52,50 +107,29 @@ func BuildMcpServer() {
 		mcp.WithString("body",
 			mcp.Description("Request body (for POST/PUT)"),
 		),
+		mcp.WithString("encoding",
+			mcp.Description("Character encoding (shift_jis, utf-8, euc-jp, auto)"),
+		),
 	)
+	s.AddTool(tool, handleHttpRequest)
+	return s
+}
 
-	s.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		method, err := request.RequireString("method")
-		if err != nil {
-			return nil, err
-		}
-		url, err := request.RequireString("url")
-		if err != nil {
-			return nil, err
-		}
-		body := request.GetString("body", "")
-
-		// Create and send request
-		var req *http.Request
-		var reqErr error
-		if body != "" {
-			req, reqErr = http.NewRequest(method, url, strings.NewReader(body))
-		} else {
-			req, reqErr = http.NewRequest(method, url, nil)
-		}
-		if reqErr != nil {
-			return nil, fmt.Errorf("failed to create request: %v", reqErr)
-		}
-
-		client := &http.Client{}
-		resp, respErr := client.Do(req)
-		if respErr != nil {
-			return nil, fmt.Errorf("request failed: %v", respErr)
-		}
-		defer resp.Body.Close()
-
-		// Return response
-		respBody, bodyErr := io.ReadAll(resp.Body)
-		if bodyErr != nil {
-			return nil, fmt.Errorf("failed to read response: %v", bodyErr)
-		}
-
-		return mcp.NewToolResultText(fmt.Sprintf("Status: %d\nBody: %s", resp.StatusCode, string(respBody))), nil
-	})
-
-	// プロンプト
+func createHTTPRequestServer() *server.MCPServer {
+	s := server.NewMCPServer(
+		"HTTP requestor",
+		"1.0.0",
+		server.WithResourceCapabilities(true, true),
+		server.WithPromptCapabilities(true),
+		server.WithLogging(),
+	)
+	s = setHttpRequestServer(s)
 	s = addPromptIntoServer(s)
+	return s
+}
 
+func BuildMcpServer() {
+	s := createHTTPRequestServer()
 	if err := server.ServeStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 	}
