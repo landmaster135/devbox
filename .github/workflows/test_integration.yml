@@ -30,15 +30,18 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update
-          sudo apt install ffmpeg -y
+          sudo apt install -y ffmpeg
+          sudo apt install -y tesseract-ocr libtesseract-dev libleptonica-dev
       - name: Install dependencies (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew install ffmpeg
+          brew install tesseract
       - name: Install dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          choco install ffmpeg -y
+          choco install -y ffmpeg
+          choco install -y tesseract
       - name: Set up Golang
         uses: actions/setup-go@v5
         with:
