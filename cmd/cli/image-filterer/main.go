@@ -39,8 +39,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	move := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
 	recursive := flagSet.Bool("r", false, "recursively scan sub-directories")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
-	mode := flagSet.String("mode", "blur", "filter mode (currently only 'blur' is supported)")
+	mode := flagSet.String("mode", "blur", "filter mode ('blur' or 'grayscale')")
 	radius := flagSet.Float64("radius", 10.0, "blur radius (effective only with -mode=blur)")
+	rWeight := flagSet.Float64("r-weight", 0.3, "red weight for grayscale conversion (0.0-1.0)")
+	gWeight := flagSet.Float64("g-weight", 0.6, "green weight for grayscale conversion (0.0-1.0)")
+	bWeight := flagSet.Float64("b-weight", 0.1, "blue weight for grayscale conversion (0.0-1.0)")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
@@ -63,15 +66,38 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// 処理情報の表示
 	fmt.Fprintf(stdout, "画像フィルタリング処理を開始します\n")
 	fmt.Fprintf(stdout, "指定された範囲: (%d,%d)-(%d,%d)\n", *x1, *y1, *x2, *y2)
-	fmt.Fprintf(stdout, "フィルターモード: %s, 半径: %.1f\n", *mode, *radius)
+	if strings.ToLower(*mode) == "grayscale" {
+		fmt.Fprintf(stdout, "フィルターモード: %s, RGB重み: (%.2f, %.2f, %.2f)\n", *mode, *rWeight, *gWeight, *bWeight)
+	} else {
+		fmt.Fprintf(stdout, "フィルターモード: %s, 半径: %.1f\n", *mode, *radius)
+	}
 
 	// フィルターモードのバリデーション
 	var filterMode usecases.FilterMode
 	switch strings.ToLower(*mode) {
 	case "blur":
 		filterMode = usecases.BlurMode
+	case "grayscale":
+		filterMode = usecases.GrayscaleMode
 	default:
 		fmt.Fprintf(stderr, "エラー: サポートされていないフィルターモードです: %s\n", *mode)
+		flagSet.Usage()
+		return exitCodeError
+	}
+
+	// RGB重みのバリデーション
+	if *rWeight < 0.0 || *rWeight > 1.0 {
+		fmt.Fprintf(stderr, "エラー: r-weightは0.0-1.0の範囲で指定してください: %.2f\n", *rWeight)
+		flagSet.Usage()
+		return exitCodeError
+	}
+	if *gWeight < 0.0 || *gWeight > 1.0 {
+		fmt.Fprintf(stderr, "エラー: g-weightは0.0-1.0の範囲で指定してください: %.2f\n", *gWeight)
+		flagSet.Usage()
+		return exitCodeError
+	}
+	if *bWeight < 0.0 || *bWeight > 1.0 {
+		fmt.Fprintf(stderr, "エラー: b-weightは0.0-1.0の範囲で指定してください: %.2f\n", *bWeight)
 		flagSet.Usage()
 		return exitCodeError
 	}
@@ -130,7 +156,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 			defer wg.Done()
 			for p := range paths {
 				// 画像にフィルターを適用して保存
-				if err := usecases.ApplyFilterAndSave(p, *outDir, *x1, *y1, *x2, *y2, *suffix, filterMode, *radius); err != nil {
+				if err := usecases.ApplyFilterAndSave(p, *outDir, *x1, *y1, *x2, *y2, *suffix, filterMode, *radius, *rWeight, *gWeight, *bWeight); err != nil {
 					fmt.Fprintf(stderr, "警告: %v\n", err)
 					countMutex.Lock()
 					errorCount++

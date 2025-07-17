@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/anthonynsimon/bild/blur"
+	"github.com/anthonynsimon/bild/effect"
 	"github.com/anthonynsimon/bild/imgio"
 	"github.com/anthonynsimon/bild/transform"
 	"github.com/gen2brain/webp"
@@ -21,6 +22,8 @@ type FilterMode string
 const (
 	// BlurMode はぼかしフィルターを表します
 	BlurMode FilterMode = "blur"
+	// GrayscaleMode はグレースケールフィルターを表します
+	GrayscaleMode FilterMode = "grayscale"
 )
 
 func multiplyAndRound(value int, multiplier float64) int {
@@ -31,7 +34,7 @@ func multiplyAndRound(value int, multiplier float64) int {
 	return rounded
 }
 // 画像を読み込み、指定した領域にフィルターを適用して outDir に保存
-func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string, mode FilterMode, radius float64) error {
+func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string, mode FilterMode, radius float64, rWeight, gWeight, bWeight float64) error {
 	// ログ出力用のフォーマット文字列
 	logFormat := "処理情報: ファイル=%s, 範囲=(%d,%d)-(%d,%d), モード=%s, 半径=%.1f"
 	fmt.Printf(logFormat+"\n", filepath.Base(inPath), x1, y1, x2, y2, mode, radius)
@@ -72,6 +75,8 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 	switch mode {
 	case BlurMode:
 		filtered = blur.Gaussian(subImg, radius)
+	case GrayscaleMode:
+		filtered = effect.GrayscaleWithWeights(subImg, rWeight, gWeight, bWeight)
 	default:
 		return fmt.Errorf("unsupported filter mode: %s", mode)
 	}
