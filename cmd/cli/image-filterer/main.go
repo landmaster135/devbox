@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 
 	usecases "github.com/landmaster135/devbox/internal/image_filterer/usecases"
 )
@@ -23,6 +21,35 @@ const (
 
 // run は画像フィルタリングツールの主要なロジックを実行します
 func run(args []string, stdout, stderr io.Writer) exitCode {
+	// フラグ解析
+	procConfig, filterConfig, err := parseFlags(args, stderr)
+	if err != nil {
+		return exitCodeError
+	}
+
+	// 処理情報の表示
+	printProcessingInfo(procConfig, filterConfig, stdout)
+
+	// サービス作成（バリデーション含む）
+	service, err := usecases.NewImageFilterService(procConfig, filterConfig)
+	if err != nil {
+		fmt.Fprintf(stderr, "設定エラー: %v\n", err)
+		return exitCodeError
+	}
+
+	// 処理実行
+	result, err := service.ProcessImages()
+	if err != nil {
+		fmt.Fprintf(stderr, "処理エラー: %v\n", err)
+		return exitCodeError
+	}
+
+	// 結果出力
+	return printResults(result, stdout)
+}
+
+// parseFlags はコマンドライン引数を解析してコンフィグを作成します
+func parseFlags(args []string, stderr io.Writer) (*usecases.ProcessingConfig, *usecases.FilterConfig, error) {
 	// フラグセットを作成
 	flagSet := flag.NewFlagSet("image-filterer", flag.ContinueOnError)
 	flagSet.SetOutput(stderr)
@@ -34,7 +61,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	x1 := flagSet.Int("x1", 0, "X-coordinate on upper left")
 	y1 := flagSet.Int("y1", 0, "Y-coordinate on upper left")
 	x2 := flagSet.Int("x2", 0, "X-coordinate on lower right")
-	y2 := flagSet.Int("y2", 0,  "Y-coordinate on lower right")
+	y2 := flagSet.Int("y2", 0, "Y-coordinate on lower right")
 	suffix := flagSet.String("suffix", "filtered", "suffix to attach to file name to save")
 	move := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
 	recursive := flagSet.Bool("r", false, "recursively scan sub-directories")
@@ -47,8 +74,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitCodeError
+		return nil, nil, err
 	}
 
 	// 出力ディレクトリが指定されていない場合は入力ディレクトリと同じに
@@ -56,23 +82,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		*outDir = *srcDir
 	}
 
-	// フィルタリング座標のバリデーション
-	if *x2 <= *x1 || *y2 <= *y1 {
-		fmt.Fprintf(stderr, "エラー: 無効な座標です。x2 > x1, y2 > y1 である必要があります。\n")
-		flagSet.Usage()
-		return exitCodeError
-	}
-
-	// 処理情報の表示
-	fmt.Fprintf(stdout, "画像フィルタリング処理を開始します\n")
-	fmt.Fprintf(stdout, "指定された範囲: (%d,%d)-(%d,%d)\n", *x1, *y1, *x2, *y2)
-	if strings.ToLower(*mode) == "grayscale" {
-		fmt.Fprintf(stdout, "フィルターモード: %s, RGB重み: (%.2f, %.2f, %.2f)\n", *mode, *rWeight, *gWeight, *bWeight)
-	} else {
-		fmt.Fprintf(stdout, "フィルターモード: %s, 半径: %.1f\n", *mode, *radius)
-	}
-
-	// フィルターモードのバリデーション
+	// フィルターモードの変換
 	var filterMode usecases.FilterMode
 	switch strings.ToLower(*mode) {
 	case "blur":
@@ -80,116 +90,60 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	case "grayscale":
 		filterMode = usecases.GrayscaleMode
 	default:
-		fmt.Fprintf(stderr, "エラー: サポートされていないフィルターモードです: %s\n", *mode)
-		flagSet.Usage()
-		return exitCodeError
+		return nil, nil, fmt.Errorf("サポートされていないフィルターモードです: %s", *mode)
 	}
 
-	// RGB重みのバリデーション
-	if *rWeight < 0.0 || *rWeight > 1.0 {
-		fmt.Fprintf(stderr, "エラー: r-weightは0.0-1.0の範囲で指定してください: %.2f\n", *rWeight)
-		flagSet.Usage()
-		return exitCodeError
-	}
-	if *gWeight < 0.0 || *gWeight > 1.0 {
-		fmt.Fprintf(stderr, "エラー: g-weightは0.0-1.0の範囲で指定してください: %.2f\n", *gWeight)
-		flagSet.Usage()
-		return exitCodeError
-	}
-	if *bWeight < 0.0 || *bWeight > 1.0 {
-		fmt.Fprintf(stderr, "エラー: b-weightは0.0-1.0の範囲で指定してください: %.2f\n", *bWeight)
-		flagSet.Usage()
-		return exitCodeError
+	// コンフィグ作成
+	procConfig := &usecases.ProcessingConfig{
+		SrcDir:    *srcDir,
+		OutDir:    *outDir,
+		ArcDir:    *arcDir,
+		X1:        *x1,
+		Y1:        *y1,
+		X2:        *x2,
+		Y2:        *y2,
+		Suffix:    *suffix,
+		Move:      *move,
+		Recursive: *recursive,
+		Workers:   *workers,
 	}
 
-	// 処理対象ファイルのパスを収集
-	paths := make(chan string, 512)
-	go func() {
-		defer close(paths)
-
-		walkFunc := func(path string, d os.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return nil
-			}
-			ext := strings.ToLower(filepath.Ext(path))
-			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
-				paths <- path
-			}
-			return nil
-		}
-
-		if *recursive {
-			// 再帰的にディレクトリを走査
-			err := filepath.WalkDir(*srcDir, walkFunc)
-			if err != nil {
-				fmt.Fprintf(stderr, "エラー: ディレクトリの走査中にエラーが発生しました: %v\n", err)
-			}
-		} else {
-			// 単一ディレクトリのみ処理
-			entries, err := os.ReadDir(*srcDir)
-			if err != nil {
-				fmt.Fprintf(stderr, "エラー: ディレクトリの読み込みに失敗しました: %v\n", err)
-				return
-			}
-
-			for _, e := range entries {
-				if e.IsDir() {
-					continue
-				}
-				ext := strings.ToLower(filepath.Ext(e.Name()))
-				if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
-					paths <- filepath.Join(*srcDir, e.Name())
-				}
-			}
-		}
-	}()
-
-	// ワーカープールの作成と実行
-	var wg sync.WaitGroup
-	errorCount := 0
-	successCount := 0
-	var countMutex sync.Mutex
-
-	for i := 0; i < *workers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for p := range paths {
-				// 画像にフィルターを適用して保存
-				if err := usecases.ApplyFilterAndSave(p, *outDir, *x1, *y1, *x2, *y2, *suffix, filterMode, *radius, *rWeight, *gWeight, *bWeight); err != nil {
-					fmt.Fprintf(stderr, "警告: %v\n", err)
-					countMutex.Lock()
-					errorCount++
-					countMutex.Unlock()
-					continue
-				}
-
-				// 元ファイルを移動（オプションが有効な場合）
-				if *move {
-					if err := usecases.MoveOriginal(p, *arcDir); err != nil {
-						fmt.Fprintf(stderr, "警告: %v\n", err)
-						countMutex.Lock()
-						errorCount++
-						countMutex.Unlock()
-					}
-				}
-
-				countMutex.Lock()
-				successCount++
-				countMutex.Unlock()
-			}
-		}()
+	filterConfig := &usecases.FilterConfig{
+		Mode:    filterMode,
+		Radius:  *radius,
+		RWeight: *rWeight,
+		GWeight: *gWeight,
+		BWeight: *bWeight,
 	}
 
-	// すべてのワーカーの完了を待機
-	wg.Wait()
+	return procConfig, filterConfig, nil
+}
 
-	// 処理結果の出力
+// printProcessingInfo は処理情報を表示します
+func printProcessingInfo(procConfig *usecases.ProcessingConfig, filterConfig *usecases.FilterConfig, stdout io.Writer) {
+	fmt.Fprintf(stdout, "画像フィルタリング処理を開始します\n")
+
+	if procConfig.X1 == 0 && procConfig.Y1 == 0 && procConfig.X2 == 0 && procConfig.Y2 == 0 {
+		fmt.Fprintf(stdout, "画像全体にフィルターを適用します\n")
+	} else {
+		fmt.Fprintf(stdout, "指定された範囲: (%d,%d)-(%d,%d)\n", procConfig.X1, procConfig.Y1, procConfig.X2, procConfig.Y2)
+	}
+
+	if filterConfig.Mode == usecases.GrayscaleMode {
+		fmt.Fprintf(stdout, "フィルターモード: %s, RGB重み: (%.2f, %.2f, %.2f)\n",
+			filterConfig.Mode, filterConfig.RWeight, filterConfig.GWeight, filterConfig.BWeight)
+	} else {
+		fmt.Fprintf(stdout, "フィルターモード: %s, 半径: %.1f\n", filterConfig.Mode, filterConfig.Radius)
+	}
+}
+
+// printResults は処理結果を表示します
+func printResults(result *usecases.ProcessingResult, stdout io.Writer) exitCode {
 	fmt.Fprintf(stdout, "\n✔ 画像フィルタリングが完了しました\n")
-	fmt.Fprintf(stdout, "  成功: %d ファイル\n", successCount)
+	fmt.Fprintf(stdout, "  成功: %d ファイル\n", result.SuccessCount)
 
-	if errorCount > 0 {
-		fmt.Fprintf(stdout, "  失敗: %d ファイル\n", errorCount)
+	if result.ErrorCount > 0 {
+		fmt.Fprintf(stdout, "  失敗: %d ファイル\n", result.ErrorCount)
 		return exitCodeError
 	}
 
