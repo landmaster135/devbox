@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/anthonynsimon/bild/blur"
 	"github.com/anthonynsimon/bild/effect"
@@ -26,15 +26,221 @@ const (
 	GrayscaleMode FilterMode = "grayscale"
 )
 
-func multiplyAndRound(value int, multiplier float64) int {
-	// 整数値をfloat64に変換して指定された倍率で掛ける
-	multiplied := float64(value) * multiplier
-	// 四捨五入して整数に変換
-	rounded := int(math.Round(multiplied))
-	return rounded
+// ProcessingConfig は画像処理の設定を表します
+type ProcessingConfig struct {
+	SrcDir         string
+	OutDir         string
+	ArcDir         string
+	X1, Y1, X2, Y2 int
+	Suffix         string
+	Move           bool
+	Recursive      bool
+	Workers        int
 }
-// 画像を読み込み、指定した領域にフィルターを適用して outDir に保存
-func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string, mode FilterMode, radius float64, rWeight, gWeight, bWeight float64) error {
+
+// FilterConfig はフィルター設定を表します
+type FilterConfig struct {
+	Mode    FilterMode
+	Radius  float64
+	RWeight float64
+	GWeight float64
+	BWeight float64
+}
+
+// ProcessingResult は処理結果を表します
+type ProcessingResult struct {
+	SuccessCount int
+	ErrorCount   int
+}
+
+// ImageFilterService は画像フィルタリングサービスを表します
+type ImageFilterService struct {
+	ProcessingConfig *ProcessingConfig
+	FilterConfig     *FilterConfig
+}
+
+// NewImageFilterService は新しいImageFilterServiceを作成します
+func NewImageFilterService(procConfig *ProcessingConfig, filterConfig *FilterConfig) (*ImageFilterService, error) {
+	service := &ImageFilterService{
+		ProcessingConfig: procConfig,
+		FilterConfig:     filterConfig,
+	}
+
+	// バリデーション実行
+	if err := service.validate(); err != nil {
+		return nil, err
+	}
+
+	return service, nil
+}
+
+// validate はサービスの設定をバリデーションします
+func (s *ImageFilterService) validate() error {
+	if err := s.validateProcessingConfig(); err != nil {
+		return fmt.Errorf("processing config validation failed: %w", err)
+	}
+
+	if err := s.validateFilterConfig(); err != nil {
+		return fmt.Errorf("filter config validation failed: %w", err)
+	}
+
+	return nil
+}
+
+// validateProcessingConfig は処理設定をバリデーションします
+func (s *ImageFilterService) validateProcessingConfig() error {
+	config := s.ProcessingConfig
+
+	// 座標バリデーション
+	if !(config.X1 == 0 && config.Y1 == 0 && config.X2 == 0 && config.Y2 == 0) {
+		if config.X2 <= config.X1 || config.Y2 <= config.Y1 {
+			return fmt.Errorf("invalid coordinates: x2 > x1, y2 > y1 required")
+		}
+	}
+
+	// ワーカー数バリデーション
+	if config.Workers <= 0 {
+		return fmt.Errorf("workers must be positive: %d", config.Workers)
+	}
+
+	return nil
+}
+
+// validateFilterConfig はフィルター設定をバリデーションします
+func (s *ImageFilterService) validateFilterConfig() error {
+	config := s.FilterConfig
+
+	// フィルターモードバリデーション
+	if config.Mode != BlurMode && config.Mode != GrayscaleMode {
+		return fmt.Errorf("unsupported filter mode: %s", config.Mode)
+	}
+
+	// RGB重みバリデーション
+	if config.RWeight < 0.0 || config.RWeight > 1.0 {
+		return fmt.Errorf("r-weight must be 0.0-1.0: %.2f", config.RWeight)
+	}
+	if config.GWeight < 0.0 || config.GWeight > 1.0 {
+		return fmt.Errorf("g-weight must be 0.0-1.0: %.2f", config.GWeight)
+	}
+	if config.BWeight < 0.0 || config.BWeight > 1.0 {
+		return fmt.Errorf("b-weight must be 0.0-1.0: %.2f", config.BWeight)
+	}
+
+	return nil
+}
+
+// ProcessImages は画像処理のメイン処理を実行します
+func (s *ImageFilterService) ProcessImages() (*ProcessingResult, error) {
+	// ファイルパス収集
+	paths, err := s.CollectImagePaths()
+	if err != nil {
+		return nil, err
+	}
+
+	// ワーカープールで並行処理
+	return s.ProcessImagesWithWorkers(paths)
+}
+
+// CollectImagePaths は処理対象の画像ファイルパスを収集します
+func (s *ImageFilterService) CollectImagePaths() ([]string, error) {
+	var paths []string
+	config := s.ProcessingConfig
+
+	walkFunc := func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
+			paths = append(paths, path)
+		}
+		return nil
+	}
+
+	if config.Recursive {
+		// 再帰的にディレクトリを走査
+		err := filepath.WalkDir(config.SrcDir, walkFunc)
+		if err != nil {
+			return nil, fmt.Errorf("directory walk failed: %w", err)
+		}
+	} else {
+		// 単一ディレクトリのみ処理
+		entries, err := os.ReadDir(config.SrcDir)
+		if err != nil {
+			return nil, fmt.Errorf("directory read failed: %w", err)
+		}
+
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			ext := strings.ToLower(filepath.Ext(e.Name()))
+			if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" {
+				paths = append(paths, filepath.Join(config.SrcDir, e.Name()))
+			}
+		}
+	}
+
+	return paths, nil
+}
+
+// ProcessImagesWithWorkers はワーカープールを使用して画像を並行処理します
+func (s *ImageFilterService) ProcessImagesWithWorkers(paths []string) (*ProcessingResult, error) {
+	config := s.ProcessingConfig
+	pathsChan := make(chan string, 512)
+
+	// パスをチャンネルに送信
+	go func() {
+		defer close(pathsChan)
+		for _, path := range paths {
+			pathsChan <- path
+		}
+	}()
+
+	// ワーカープールの作成と実行
+	var wg sync.WaitGroup
+	result := &ProcessingResult{}
+	var countMutex sync.Mutex
+
+	for i := 0; i < config.Workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for path := range pathsChan {
+				// 画像にフィルターを適用して保存
+				if err := s.ApplyFilterAndSave(path); err != nil {
+					fmt.Printf("警告: %v\n", err)
+					countMutex.Lock()
+					result.ErrorCount++
+					countMutex.Unlock()
+					continue
+				}
+
+				// 元ファイルを移動（オプションが有効な場合）
+				if config.Move {
+					if err := s.MoveOriginal(path); err != nil {
+						fmt.Printf("警告: %v\n", err)
+						countMutex.Lock()
+						result.ErrorCount++
+						countMutex.Unlock()
+					}
+				}
+
+				countMutex.Lock()
+				result.SuccessCount++
+				countMutex.Unlock()
+			}
+		}()
+	}
+
+	// すべてのワーカーの完了を待機
+	wg.Wait()
+
+	return result, nil
+}
+
+// applyFilterAndSave は画像を読み込み、指定した領域にフィルターを適用して outDir に保存します
+func applyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string, mode FilterMode, radius float64, rWeight, gWeight, bWeight float64) error {
 	// ログ出力用のフォーマット文字列
 	logFormat := "処理情報: ファイル=%s, 範囲=(%d,%d)-(%d,%d), モード=%s, 半径=%.1f"
 	fmt.Printf(logFormat+"\n", filepath.Base(inPath), x1, y1, x2, y2, mode, radius)
@@ -53,6 +259,12 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 
 	fmt.Printf("画像情報: サイズ=%dx%d, 境界=(%d,%d)-(%d,%d)\n",
 		bounds.Dx(), bounds.Dy(), minX, minY, maxX, maxY)
+
+	// 全て0の場合は画像全体を対象にする
+	if x1 == 0 && y1 == 0 && x2 == 0 && y2 == 0 {
+		x1, y1, x2, y2 = minX, minY, maxX, maxY
+		fmt.Printf("画像全体を処理対象に設定: (%d,%d)-(%d,%d)\n", x1, y1, x2, y2)
+	}
 
 	// 座標が画像の範囲内かチェック
 	if x1 < minX || y1 < minY || x2 > maxX || y2 > maxY || x2 <= x1 || y2 <= y1 {
@@ -123,11 +335,32 @@ func ApplyFilterAndSave(inPath, outDir string, x1, y1, x2, y2 int, suffix string
 	return err
 }
 
-// 元画像を arcDir に移動
-func MoveOriginal(src, arcDir string) error {
+// ApplyFilterAndSave は画像にフィルターを適用して保存します（サービスメソッド版）
+func (s *ImageFilterService) ApplyFilterAndSave(inPath string) error {
+	config := s.ProcessingConfig
+	filterConfig := s.FilterConfig
+
+	return applyFilterAndSave(
+		inPath,
+		config.OutDir,
+		config.X1, config.Y1, config.X2, config.Y2,
+		config.Suffix,
+		filterConfig.Mode,
+		filterConfig.Radius,
+		filterConfig.RWeight, filterConfig.GWeight, filterConfig.BWeight,
+	)
+}
+
+// moveOriginal は元画像を arcDir に移動します
+func moveOriginal(src, arcDir string) error {
 	if err := os.MkdirAll(arcDir, 0o755); err != nil {
 		return err
 	}
 	dst := filepath.Join(arcDir, filepath.Base(src))
 	return os.Rename(src, dst)
+}
+
+// MoveOriginal は元画像を移動します（サービスメソッド版）
+func (s *ImageFilterService) MoveOriginal(src string) error {
+	return moveOriginal(src, s.ProcessingConfig.ArcDir)
 }
