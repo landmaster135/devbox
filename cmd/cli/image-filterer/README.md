@@ -5,7 +5,9 @@
 ## 機能
 
 - 指定したディレクトリ内の画像ファイル（PNG、JPG、JPEG、WebP）の特定領域にフィルターを適用
-- 現在サポートしているフィルター：ぼかし（Gaussianブラー）
+- サポートしているフィルター：
+  - ぼかし（Gaussianブラー）
+  - グレースケール（カスタムRGB重み対応）
 - 再帰的なサブディレクトリの処理
 - 並行処理による高速な処理
 - 元ファイルのアーカイブ機能
@@ -33,8 +35,11 @@ image-filterer [オプション]
 | `-y1` | `0` | フィルター適用領域の左上Y座標 |
 | `-x2` | - | フィルター適用領域の右下X座標（必須） |
 | `-y2` | - | フィルター適用領域の右下Y座標（必須） |
-| `-mode` | `blur` | フィルターモード（現在は「blur」のみサポート） |
-| `-radius` | `10.0` | ぼかしの半径（値が大きいほど強いぼかし効果） |
+| `-mode` | `blur` | フィルターモード（`blur` または `grayscale`） |
+| `-radius` | `10.0` | ぼかしの半径（値が大きいほど強いぼかし効果、blurモード時のみ有効） |
+| `-r-weight` | `0.3` | グレースケール変換時の赤チャンネルの重み（0.0-1.0、grayscaleモード時のみ有効） |
+| `-g-weight` | `0.6` | グレースケール変換時の緑チャンネルの重み（0.0-1.0、grayscaleモード時のみ有効） |
+| `-b-weight` | `0.1` | グレースケール変換時の青チャンネルの重み（0.0-1.0、grayscaleモード時のみ有効） |
 | `-suffix` | `filtered` | 出力ファイル名に付加するサフィックス |
 | `-move` | `false` | 元ファイルを移動する（コピーではなく） |
 | `-r` | `false` | サブディレクトリを再帰的に処理 |
@@ -42,48 +47,54 @@ image-filterer [オプション]
 
 ## 使用例
 
-### 基本的な使用方法
-
 カレントディレクトリ内の画像の座標(10,20)から(300,400)までの領域をぼかし処理：
-
 ```bash
 image-filterer -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### 特定のディレクトリの画像を処理
-
+特定のディレクトリの画像を処理：
 ```bash
 image-filterer -src ./images -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### 出力先を指定
-
+出力先を指定：
 ```bash
 image-filterer -src ./images -out ./filtered_images -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### ぼかしの強さを調整
-
+ぼかしの強さを調整：
 ```bash
 image-filterer -src ./images -x1 10 -y1 20 -x2 300 -y2 400 -radius 5.0
 ```
 
-### サブディレクトリも含めて処理
-
+サブディレクトリも含めて処理：
 ```bash
 image-filterer -src ./images -r -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### 元ファイルを移動
-
+元ファイルを移動：
 ```bash
 image-filterer -src ./images -move -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### カスタムサフィックスを指定
-
+カスタムサフィックスを指定：
 ```bash
 image-filterer -src ./images -suffix blurred -x1 10 -y1 20 -x2 300 -y2 400
+```
+
+グレースケール変換（デフォルト重み）：
+```bash
+image-filterer -src ./images -mode grayscale -x1 10 -y1 20 -x2 300 -y2 400
+```
+
+グレースケール変換（カスタム重み）- 青チャンネルを強調：
+```bash
+image-filterer -src ./images -mode grayscale -r-weight 0.2 -g-weight 0.3 -b-weight 0.5 -x1 10 -y1 20 -x2 300 -y2 400
+```
+
+グレースケール変換（セピア調）：
+```bash
+image-filterer -src ./images -mode grayscale -r-weight 0.4 -g-weight 0.4 -b-weight 0.2 -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ## 注意事項
