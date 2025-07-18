@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	gosseract "github.com/otiai10/gosseract/v2"
+	tesseract_wrapper "github.com/landmaster135/devbox/internal/ocr_executor/lib/tesseract_wrapper"
 )
 
 // OCRExecutorService は画像ファイルのOCR処理を行うサービス
@@ -137,23 +137,26 @@ func (s *OCRExecutorService) performOCR(filePath string) OCRResult {
 	}
 
 	// Tesseractクライアントを作成
-	client := gosseract.NewClient()
-	defer client.Close()
+	var client *tesseract_wrapper.TesseractClient
+	var err error
 
-	// 言語設定
-	if err := client.SetLanguage(s.languages); err != nil {
-		result.Error = fmt.Sprintf("言語設定エラー: %v", err)
-		return result
+	if s.languages != "" {
+		// 言語設定を含めてクライアントを作成
+		client, err = tesseract_wrapper.NewTesseractClient(
+			tesseract_wrapper.WithLanguages(s.languages),
+		)
+	} else {
+		// デフォルト設定でクライアントを作成
+		client, err = tesseract_wrapper.NewTesseractClient()
 	}
 
-	// 画像ファイルを設定
-	if err := client.SetImage(filePath); err != nil {
-		result.Error = fmt.Sprintf("画像読み込みエラー: %v", err)
+	if err != nil {
+		result.Error = fmt.Sprintf("Tesseractクライアント作成エラー: %v", err)
 		return result
 	}
 
 	// OCR実行
-	text, err := client.Text()
+	text, err := client.TextFromImageFile(filePath)
 	if err != nil {
 		result.Error = fmt.Sprintf("OCR実行エラー: %v", err)
 		return result

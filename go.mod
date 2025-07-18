@@ -12,7 +12,6 @@ require (
 	github.com/gen2brain/webp v0.5.4
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.33.0
-	github.com/otiai10/gosseract/v2 v2.4.1
 	github.com/pdfcpu/pdfcpu v0.10.2
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
