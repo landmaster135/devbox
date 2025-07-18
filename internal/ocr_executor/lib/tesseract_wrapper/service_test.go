@@ -1,7 +1,6 @@
 package tesseract_wrapper
 
 import (
-	"bytes"
 	"errors"
 	"os/exec"
 	"strings"
@@ -37,21 +36,6 @@ type MockCommand struct {
 
 func (m *MockCommand) Output() ([]byte, error) {
 	return m.output, m.err
-}
-
-// createMockCmd はモックコマンドを作成するヘルパー関数
-func createMockCmd(output string, err error) *exec.Cmd {
-	cmd := &exec.Cmd{}
-	// 実際のコマンドの代わりにモックの出力を返すように設定
-	if err == nil {
-		cmd.Stdout = bytes.NewBufferString(output)
-	}
-	return cmd
-}
-
-// TestTesseractClient はTesseractClientのテストクラス
-type TestTesseractClient struct {
-	t *testing.T
 }
 
 func TestNewTesseractClient_Normal(t *testing.T) {
