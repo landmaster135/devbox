@@ -4,204 +4,13 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
 
-// TestConfigCreation はConfig作成のテストクラスです
-type TestConfigCreation struct{}
-
-// TestConfigCreation_Normal は正常なConfig作成をテストします
-func (tc *TestConfigCreation) TestConfigCreation_Normal(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	srcDir1 := filepath.Join(tempDir, "src1")
-	srcDir2 := filepath.Join(tempDir, "src2")
-	destDir := filepath.Join(tempDir, "dest")
-
-	// テスト用ディレクトリを作成
-	os.MkdirAll(srcDir1, 0755)
-	os.MkdirAll(srcDir2, 0755)
-	os.MkdirAll(destDir, 0755)
-
-	srcDirs := []string{srcDir1, srcDir2}
-	extensions := []string{"jpg", "png"}
-
-	// Act
-	config, err := NewConfig(srcDirs, extensions, destDir, true, 4, false, false, false)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("設定作成に失敗しました: %v", err)
-	}
-
-	if len(config.SrcDirs) != 2 {
-		t.Errorf("ソースディレクトリ数が期待値と異なります。期待値: 2, 実際: %d", len(config.SrcDirs))
-	}
-
-	if len(config.Extensions) != 2 {
-		t.Errorf("拡張子数が期待値と異なります。期待値: 2, 実際: %d", len(config.Extensions))
-	}
-
-	// 拡張子の正規化確認
-	if config.Extensions[0] != ".jpg" || config.Extensions[1] != ".png" {
-		t.Errorf("拡張子の正規化が正しくありません。実際: %v", config.Extensions)
-	}
-
-	if config.DestDir != destDir {
-		t.Errorf("宛先ディレクトリが期待値と異なります。期待値: %s, 実際: %s", destDir, config.DestDir)
-	}
-
-	if !config.Recursive {
-		t.Error("再帰フラグが期待値と異なります")
-	}
-
-	if config.Workers != 4 {
-		t.Errorf("ワーカー数が期待値と異なります。期待値: 4, 実際: %d", config.Workers)
-	}
-}
-
-// TestConfigValidation はConfig検証のテストクラスです
-type TestConfigValidation struct{}
-
-// TestConfigValidation_EmptySrcDirs は空のソースディレクトリでエラーになることをテストします
-func (tc *TestConfigValidation) TestConfigValidation_EmptySrcDirs(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	destDir := filepath.Join(tempDir, "dest")
-	os.MkdirAll(destDir, 0755)
-
-	// Act
-	_, err := NewConfig([]string{}, []string{"jpg"}, destDir, false, 1, false, false, false)
-
-	// Assert
-	if err == nil {
-		t.Error("空のソースディレクトリでエラーが発生しませんでした")
-	}
-
-	if !strings.Contains(err.Error(), "ソースディレクトリが指定されていません") {
-		t.Errorf("期待されるエラーメッセージが含まれていません。実際: %s", err.Error())
-	}
-}
-
-// TestConfigValidation_EmptyExtensions は空の拡張子でエラーになることをテストします
-func (tc *TestConfigValidation) TestConfigValidation_EmptyExtensions(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	srcDir := filepath.Join(tempDir, "src")
-	destDir := filepath.Join(tempDir, "dest")
-	os.MkdirAll(srcDir, 0755)
-	os.MkdirAll(destDir, 0755)
-
-	// Act
-	_, err := NewConfig([]string{srcDir}, []string{}, destDir, false, 1, false, false, false)
-
-	// Assert
-	if err == nil {
-		t.Error("空の拡張子でエラーが発生しませんでした")
-	}
-
-	if !strings.Contains(err.Error(), "拡張子が指定されていません") {
-		t.Errorf("期待されるエラーメッセージが含まれていません。実際: %s", err.Error())
-	}
-}
-
-// TestConfigValidation_NonExistentSrcDir は存在しないソースディレクトリでエラーになることをテストします
-func (tc *TestConfigValidation) TestConfigValidation_NonExistentSrcDir(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	destDir := filepath.Join(tempDir, "dest")
-	os.MkdirAll(destDir, 0755)
-
-	nonExistentDir := filepath.Join(tempDir, "nonexistent")
-
-	// Act
-	_, err := NewConfig([]string{nonExistentDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
-
-	// Assert
-	if err == nil {
-		t.Error("存在しないソースディレクトリでエラーが発生しませんでした")
-	}
-
-	if !strings.Contains(err.Error(), "にアクセスできません") {
-		t.Errorf("期待されるエラーメッセージが含まれていません。実際: %s", err.Error())
-	}
-}
-
-// TestConfigValidation_NonExistentDestDir は存在しない宛先ディレクトリでエラーになることをテストします
-func (tc *TestConfigValidation) TestConfigValidation_NonExistentDestDir(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	srcDir := filepath.Join(tempDir, "src")
-	os.MkdirAll(srcDir, 0755)
-
-	nonExistentDir := filepath.Join(tempDir, "nonexistent")
-
-	// Act
-	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, nonExistentDir, false, 1, false, false, false)
-
-	// Assert
-	if err == nil {
-		t.Error("存在しない宛先ディレクトリでエラーが発生しませんでした")
-	}
-
-	if !strings.Contains(err.Error(), "にアクセスできません") {
-		t.Errorf("期待されるエラーメッセージが含まれていません。実際: %s", err.Error())
-	}
-}
-
-// TestWorkerNormalization はワーカー数正規化のテストクラスです
-type TestWorkerNormalization struct{}
-
-// TestWorkerNormalization_ZeroWorkers はワーカー数0の場合の正規化をテストします
-func (tc *TestWorkerNormalization) TestWorkerNormalization_ZeroWorkers(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	srcDir := filepath.Join(tempDir, "src")
-	destDir := filepath.Join(tempDir, "dest")
-	os.MkdirAll(srcDir, 0755)
-	os.MkdirAll(destDir, 0755)
-
-	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 0, false, false, false)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("設定作成に失敗しました: %v", err)
-	}
-
-	expectedWorkers := runtime.NumCPU()
-	if config.Workers != expectedWorkers {
-		t.Errorf("ワーカー数が期待値と異なります。期待値: %d, 実際: %d", expectedWorkers, config.Workers)
-	}
-}
-
-// TestWorkerNormalization_ExcessiveWorkers は過剰なワーカー数の場合の正規化をテストします
-func (tc *TestWorkerNormalization) TestWorkerNormalization_ExcessiveWorkers(t *testing.T) {
-	// Arrange
-	tempDir := t.TempDir()
-	srcDir := filepath.Join(tempDir, "src")
-	destDir := filepath.Join(tempDir, "dest")
-	os.MkdirAll(srcDir, 0755)
-	os.MkdirAll(destDir, 0755)
-
-	excessiveWorkers := runtime.NumCPU()*2 + 10
-
-	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, excessiveWorkers, false, false, false)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("設定作成に失敗しました: %v", err)
-	}
-
-	expectedMaxWorkers := runtime.NumCPU() * 2
-	if config.Workers != expectedMaxWorkers {
-		t.Errorf("ワーカー数が期待値と異なります。期待値: %d, 実際: %d", expectedMaxWorkers, config.Workers)
-	}
-}
-
+// #==============================================================#
+// ##          Tests for FileManeuverService                     ##
+// #==============================================================#
 // TestFileManeuverService はFileManeuverServiceのテストクラスです
 type TestFileManeuverService struct{}
 
@@ -258,6 +67,11 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFiles(t *te
 	}
 }
 
+func TestFileManeuverService_FindTargetFiles(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_FindTargetFiles(t)
+}
+
 // TestFileManeuverService_FindTargetFilesRecursive は再帰的ファイル検索をテストします
 func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFilesRecursive(t *testing.T) {
 	// Arrange
@@ -294,6 +108,11 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFilesRecurs
 	if len(files) != expectedCount {
 		t.Errorf("見つかったファイル数が期待値と異なります。期待値: %d, 実際: %d", expectedCount, len(files))
 	}
+}
+
+func TestFileManeuverService_FindTargetFilesRecursive(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_FindTargetFilesRecursive(t)
 }
 
 // TestFileManeuverService_DryRun はドライランモードをテストします
@@ -349,6 +168,11 @@ func (tc *TestFileManeuverService) TestFileManeuverService_DryRun(t *testing.T) 
 	if !strings.Contains(output, "ドライランモード") {
 		t.Error("ドライランメッセージが出力されませんでした")
 	}
+}
+
+func TestFileManeuverService_DryRun(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_DryRun(t)
 }
 
 // TestFileManeuverService_FileConflict はファイル衝突処理をテストします
@@ -415,6 +239,11 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FileConflict(t *testi
 	}
 }
 
+func TestFileManeuverService_FileConflict(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_FileConflict(t)
+}
+
 // TestFileManeuverService_ExecuteFileManeuver は統合テストを実行します
 func (tc *TestFileManeuverService) TestFileManeuverService_ExecuteFileManeuver(t *testing.T) {
 	// Arrange
@@ -472,63 +301,570 @@ func (tc *TestFileManeuverService) TestFileManeuverService_ExecuteFileManeuver(t
 	}
 }
 
-// 各テストクラスのインスタンスを作成してテストを実行
-func TestConfigCreation_Normal(t *testing.T) {
-	tc := &TestConfigCreation{}
-	tc.TestConfigCreation_Normal(t)
-}
-
-func TestConfigValidation_EmptySrcDirs(t *testing.T) {
-	tc := &TestConfigValidation{}
-	tc.TestConfigValidation_EmptySrcDirs(t)
-}
-
-func TestConfigValidation_EmptyExtensions(t *testing.T) {
-	tc := &TestConfigValidation{}
-	tc.TestConfigValidation_EmptyExtensions(t)
-}
-
-func TestConfigValidation_NonExistentSrcDir(t *testing.T) {
-	tc := &TestConfigValidation{}
-	tc.TestConfigValidation_NonExistentSrcDir(t)
-}
-
-func TestConfigValidation_NonExistentDestDir(t *testing.T) {
-	tc := &TestConfigValidation{}
-	tc.TestConfigValidation_NonExistentDestDir(t)
-}
-
-func TestWorkerNormalization_ZeroWorkers(t *testing.T) {
-	tc := &TestWorkerNormalization{}
-	tc.TestWorkerNormalization_ZeroWorkers(t)
-}
-
-func TestWorkerNormalization_ExcessiveWorkers(t *testing.T) {
-	tc := &TestWorkerNormalization{}
-	tc.TestWorkerNormalization_ExcessiveWorkers(t)
-}
-
-func TestFileManeuverService_FindTargetFiles(t *testing.T) {
-	tc := &TestFileManeuverService{}
-	tc.TestFileManeuverService_FindTargetFiles(t)
-}
-
-func TestFileManeuverService_FindTargetFilesRecursive(t *testing.T) {
-	tc := &TestFileManeuverService{}
-	tc.TestFileManeuverService_FindTargetFilesRecursive(t)
-}
-
-func TestFileManeuverService_DryRun(t *testing.T) {
-	tc := &TestFileManeuverService{}
-	tc.TestFileManeuverService_DryRun(t)
-}
-
-func TestFileManeuverService_FileConflict(t *testing.T) {
-	tc := &TestFileManeuverService{}
-	tc.TestFileManeuverService_FileConflict(t)
-}
-
 func TestFileManeuverService_ExecuteFileManeuver(t *testing.T) {
 	tc := &TestFileManeuverService{}
 	tc.TestFileManeuverService_ExecuteFileManeuver(t)
+}
+
+// TestFileManeuverService_CopyMode はコピーモードをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_CopyMode(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// テストファイルを作成
+	testFile := filepath.Join(srcDir, "test.jpg")
+	testContent := "test content for copy"
+	os.WriteFile(testFile, []byte(testContent), 0644)
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, true, false) // コピーモード
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイルコピー処理に失敗しました: %v", err)
+	}
+
+	if successCount != 1 {
+		t.Errorf("成功カウントが期待値と異なります。期待値: 1, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 元ファイルが残っていることを確認（コピーモード）
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		t.Error("コピーモードで元ファイルが削除されました")
+	}
+
+	// 宛先ファイルが存在することを確認
+	destFile := filepath.Join(destDir, "test.jpg")
+	if _, err := os.Stat(destFile); os.IsNotExist(err) {
+		t.Error("宛先ファイルが作成されていません")
+	}
+
+	// ファイル内容が正しくコピーされていることを確認
+	copiedContent, err := os.ReadFile(destFile)
+	if err != nil {
+		t.Fatalf("コピーされたファイルの読み取りに失敗しました: %v", err)
+	}
+
+	if string(copiedContent) != testContent {
+		t.Errorf("ファイル内容が正しくコピーされていません。期待値: %s, 実際: %s", testContent, string(copiedContent))
+	}
+
+	// 出力にコピーメッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "ファイルコピーを開始します") {
+		t.Error("コピーメッセージが出力されませんでした")
+	}
+}
+
+func TestFileManeuverService_CopyMode(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_CopyMode(t)
+}
+
+// TestFileManeuverService_OverwriteMode は上書きモードをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_OverwriteMode(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// ソースファイルを作成
+	srcFile := filepath.Join(srcDir, "test.jpg")
+	srcContent := "new content"
+	os.WriteFile(srcFile, []byte(srcContent), 0644)
+
+	// 宛先に同名ファイルを作成（上書き対象）
+	destFile := filepath.Join(destDir, "test.jpg")
+	oldContent := "old content"
+	os.WriteFile(destFile, []byte(oldContent), 0644)
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, true) // 上書きモード
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル移動処理に失敗しました: %v", err)
+	}
+
+	if successCount != 1 {
+		t.Errorf("成功カウントが期待値と異なります。期待値: 1, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 元ファイルが削除されていることを確認
+	if _, err := os.Stat(srcFile); !os.IsNotExist(err) {
+		t.Error("上書きモードで元ファイルが削除されていません")
+	}
+
+	// 宛先ファイルが新しい内容で上書きされていることを確認
+	newContent, err := os.ReadFile(destFile)
+	if err != nil {
+		t.Fatalf("宛先ファイルの読み取りに失敗しました: %v", err)
+	}
+
+	if string(newContent) != srcContent {
+		t.Errorf("ファイルが正しく上書きされていません。期待値: %s, 実際: %s", srcContent, string(newContent))
+	}
+
+	// 出力に上書きメッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "上書きモード") {
+		t.Error("上書きメッセージが出力されませんでした")
+	}
+}
+
+func TestFileManeuverService_OverwriteMode(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_OverwriteMode(t)
+}
+
+// TestFileManeuverService_CopyModeWithOverwrite はコピーモード＋上書きモードをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_CopyModeWithOverwrite(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// ソースファイルを作成
+	srcFile := filepath.Join(srcDir, "test.jpg")
+	srcContent := "new content for copy"
+	os.WriteFile(srcFile, []byte(srcContent), 0644)
+
+	// 宛先に同名ファイルを作成（上書き対象）
+	destFile := filepath.Join(destDir, "test.jpg")
+	oldContent := "old content"
+	os.WriteFile(destFile, []byte(oldContent), 0644)
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, true, true) // コピー＋上書きモード
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイルコピー処理に失敗しました: %v", err)
+	}
+
+	if successCount != 1 {
+		t.Errorf("成功カウントが期待値と異なります。期待値: 1, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 元ファイルが残っていることを確認（コピーモード）
+	if _, err := os.Stat(srcFile); os.IsNotExist(err) {
+		t.Error("コピーモードで元ファイルが削除されました")
+	}
+
+	// 宛先ファイルが新しい内容で上書きされていることを確認
+	newContent, err := os.ReadFile(destFile)
+	if err != nil {
+		t.Fatalf("宛先ファイルの読み取りに失敗しました: %v", err)
+	}
+
+	if string(newContent) != srcContent {
+		t.Errorf("ファイルが正しく上書きコピーされていません。期待値: %s, 実際: %s", srcContent, string(newContent))
+	}
+
+	// 出力にコピー＋上書きメッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "ファイルコピーを開始します") {
+		t.Error("コピーメッセージが出力されませんでした")
+	}
+	if !strings.Contains(output, "上書きモード") {
+		t.Error("上書きメッセージが出力されませんでした")
+	}
+}
+
+func TestFileManeuverService_CopyModeWithOverwrite(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_CopyModeWithOverwrite(t)
+}
+
+// TestFileManeuverService_MultipleWorkers は複数ワーカーでの処理をテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_MultipleWorkers(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// 複数のテストファイルを作成
+	testFiles := []string{"file1.jpg", "file2.jpg", "file3.jpg", "file4.jpg", "file5.jpg"}
+	for _, file := range testFiles {
+		filePath := filepath.Join(srcDir, file)
+		os.WriteFile(filePath, []byte("test content"), 0644)
+	}
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 3, false, false, false) // 3ワーカー
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル移動処理に失敗しました: %v", err)
+	}
+
+	if successCount != len(testFiles) {
+		t.Errorf("成功カウントが期待値と異なります。期待値: %d, 実際: %d", len(testFiles), successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 出力にワーカー数メッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "3 ワーカーを使用します") {
+		t.Error("ワーカー数メッセージが出力されませんでした")
+	}
+
+	// 全ファイルが正しく移動されたことを確認
+	for _, file := range testFiles {
+		srcPath := filepath.Join(srcDir, file)
+		destPath := filepath.Join(destDir, file)
+
+		// 元ファイルが削除されていることを確認
+		if _, err := os.Stat(srcPath); !os.IsNotExist(err) {
+			t.Errorf("元ファイルが削除されていません: %s", srcPath)
+		}
+
+		// 宛先ファイルが存在することを確認
+		if _, err := os.Stat(destPath); os.IsNotExist(err) {
+			t.Errorf("宛先ファイルが作成されていません: %s", destPath)
+		}
+	}
+}
+
+func TestFileManeuverService_MultipleWorkers(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_MultipleWorkers(t)
+}
+
+// TestFileManeuverService_WorkersMoreThanFiles はワーカー数がファイル数より多い場合をテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_WorkersMoreThanFiles(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// 少数のテストファイルを作成
+	testFiles := []string{"file1.jpg", "file2.jpg"}
+	for _, file := range testFiles {
+		filePath := filepath.Join(srcDir, file)
+		os.WriteFile(filePath, []byte("test content"), 0644)
+	}
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 10, false, false, false) // 10ワーカー（ファイル数より多い）
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル移動処理に失敗しました: %v", err)
+	}
+
+	if successCount != len(testFiles) {
+		t.Errorf("成功カウントが期待値と異なります。期待値: %d, 実際: %d", len(testFiles), successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 出力にワーカー数がファイル数に調整されたメッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "2 ワーカーを使用します") {
+		t.Error("調整されたワーカー数メッセージが出力されませんでした")
+	}
+}
+
+func TestFileManeuverService_WorkersMoreThanFiles(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_WorkersMoreThanFiles(t)
+}
+
+// TestFileManeuverService_MultipleSrcDirs は複数ソースディレクトリをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_MultipleSrcDirs(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir1 := filepath.Join(tempDir, "src1")
+	srcDir2 := filepath.Join(tempDir, "src2")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir1, 0755)
+	os.MkdirAll(srcDir2, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// 各ソースディレクトリにファイルを作成
+	os.WriteFile(filepath.Join(srcDir1, "file1.jpg"), []byte("content1"), 0644)
+	os.WriteFile(filepath.Join(srcDir1, "file2.png"), []byte("content2"), 0644)
+	os.WriteFile(filepath.Join(srcDir2, "file3.jpg"), []byte("content3"), 0644)
+	os.WriteFile(filepath.Join(srcDir2, "file4.png"), []byte("content4"), 0644)
+
+	config, err := NewConfig([]string{srcDir1, srcDir2}, []string{"jpg", "png"}, destDir, false, 2, false, false, false)
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル移動処理に失敗しました: %v", err)
+	}
+
+	if successCount != 4 {
+		t.Errorf("成功カウントが期待値と異なります。期待値: 4, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 各ディレクトリからファイルが発見されたメッセージを確認
+	output := stdout.String()
+	if !strings.Contains(output, "から 2 ファイルを発見しました") {
+		t.Error("各ディレクトリからのファイル発見メッセージが出力されませんでした")
+	}
+
+	// 全ファイルが正しく移動されたことを確認
+	expectedFiles := []string{"file1.jpg", "file2.png", "file3.jpg", "file4.png"}
+	for _, file := range expectedFiles {
+		destPath := filepath.Join(destDir, file)
+		if _, err := os.Stat(destPath); os.IsNotExist(err) {
+			t.Errorf("宛先ファイルが作成されていません: %s", destPath)
+		}
+	}
+}
+
+func TestFileManeuverService_MultipleSrcDirs(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_MultipleSrcDirs(t)
+}
+
+// TestFileManeuverService_NonRecursiveMode は非再帰モードをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_NonRecursiveMode(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	subDir := filepath.Join(srcDir, "subdir")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(subDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// ルートディレクトリにファイル作成
+	os.WriteFile(filepath.Join(srcDir, "root.jpg"), []byte("root content"), 0644)
+	// サブディレクトリにファイル作成（非再帰モードでは無視される）
+	os.WriteFile(filepath.Join(subDir, "sub.jpg"), []byte("sub content"), 0644)
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, false) // 非再帰モード
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	files, err := service.FindTargetFiles(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル検索に失敗しました: %v", err)
+	}
+
+	// 非再帰モードではルートディレクトリのファイルのみが見つかる
+	expectedCount := 1
+	if len(files) != expectedCount {
+		t.Errorf("見つかったファイル数が期待値と異なります。期待値: %d, 実際: %d", expectedCount, len(files))
+	}
+
+	// ルートファイルのみが含まれることを確認
+	foundFiles := make(map[string]bool)
+	for _, file := range files {
+		foundFiles[filepath.Base(file)] = true
+	}
+
+	if !foundFiles["root.jpg"] {
+		t.Error("ルートディレクトリのファイルが見つかりませんでした")
+	}
+
+	if foundFiles["sub.jpg"] {
+		t.Error("非再帰モードでサブディレクトリのファイルが見つかりました")
+	}
+}
+
+func TestFileManeuverService_NonRecursiveMode(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_NonRecursiveMode(t)
+}
+
+// TestFileManeuverService_EmptyDirectory は空のディレクトリ処理をテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_EmptyDirectory(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// 空のディレクトリ（対象ファイルなし）
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル移動処理に失敗しました: %v", err)
+	}
+
+	if successCount != 0 {
+		t.Errorf("成功カウントが期待値と異なります。期待値: 0, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// 出力に対象ファイルなしメッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "移動対象のファイルが見つかりませんでした") {
+		t.Error("対象ファイルなしメッセージが出力されませんでした")
+	}
+}
+
+func TestFileManeuverService_EmptyDirectory(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_EmptyDirectory(t)
+}
+
+// TestFileManeuverService_DryRunCopyMode はドライランコピーモードをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_DryRunCopyMode(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// テストファイルを作成
+	testFile := filepath.Join(srcDir, "test.jpg")
+	os.WriteFile(testFile, []byte("test content"), 0644)
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, true, true, false) // ドライラン＋コピーモード
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := service.ExecuteFileManeuver(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイルコピー処理に失敗しました: %v", err)
+	}
+
+	if successCount != 1 {
+		t.Errorf("成功カウントが期待値と異なります。期待値: 1, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラーカウントが期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// ドライランなので元ファイルが残っていることを確認
+	if _, err := os.Stat(testFile); os.IsNotExist(err) {
+		t.Error("ドライランモードで元ファイルが削除されました")
+	}
+
+	// 宛先にファイルがコピーされていないことを確認
+	destFile := filepath.Join(destDir, "test.jpg")
+	if _, err := os.Stat(destFile); !os.IsNotExist(err) {
+		t.Error("ドライランモードで宛先にファイルが作成されました")
+	}
+
+	// 出力にドライラン＋コピーメッセージが含まれることを確認
+	output := stdout.String()
+	if !strings.Contains(output, "ドライランモード") {
+		t.Error("ドライランメッセージが出力されませんでした")
+	}
+	if !strings.Contains(output, "コピー予定") {
+		t.Error("コピー予定メッセージが出力されませんでした")
+	}
+}
+
+func TestFileManeuverService_DryRunCopyMode(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_DryRunCopyMode(t)
 }
