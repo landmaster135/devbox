@@ -147,7 +147,10 @@ func (s *ImageFilterService) CollectImagePaths() ([]string, error) {
 	config := s.ProcessingConfig
 
 	walkFunc := func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
+			return err // エラーがある場合はそのまま返す
+		}
+		if d.IsDir() {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(path))
