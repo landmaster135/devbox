@@ -691,3 +691,57 @@ func TestExitCodes(t *testing.T) {
 		}
 	})
 }
+
+// TestApp_Run_ErrorCases は Run メソッドのエラーケーステストです
+func TestApp_Run_ErrorCases(t *testing.T) {
+	t.Run("Run_PackageSelectionError", func(t *testing.T) {
+		// Arrange
+		cfg := &config.AppConfig{
+			PackageName: "",
+			ShowHelp:    false,
+		}
+		mockFS := &MockFileSystem{}
+		mockReader := NewMockInputReader([]string{})
+
+		mockFS.ReadDirFunc = func(dirname string) ([]os.DirEntry, error) {
+			return nil, fmt.Errorf("directory read error")
+		}
+
+		app := NewAppWithDependencies(cfg, mockFS, mockReader, nil, nil)
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		// Act
+		exitCode := app.Run(stdout, stderr)
+
+		// Assert
+		if exitCode != ExitCodeError {
+			t.Errorf("Expected exit code %d, got %d", ExitCodeError, exitCode)
+		}
+	})
+
+	t.Run("Run_GenerateBuildScriptError", func(t *testing.T) {
+		// Arrange
+		cfg := &config.AppConfig{
+			PackageName: "non-existent-package",
+			ShowHelp:    false,
+		}
+		mockFS := &MockFileSystem{}
+
+		mockFS.StatFunc = func(name string) (os.FileInfo, error) {
+			return nil, os.ErrNotExist
+		}
+
+		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		// Act
+		exitCode := app.Run(stdout, stderr)
+
+		// Assert
+		if exitCode != ExitCodeError {
+			t.Errorf("Expected exit code %d, got %d", ExitCodeError, exitCode)
+		}
+	})
+}
