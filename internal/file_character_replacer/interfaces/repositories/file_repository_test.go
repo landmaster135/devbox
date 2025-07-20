@@ -628,3 +628,257 @@ func TestFileRepositoryImpl_IsTextFile_Normal(t *testing.T) {
 		})
 	}
 }
+
+// TestFileRepositoryImpl_WriteFile_WriteError はWriteFile()の書き込みエラーをテストします
+func TestFileRepositoryImpl_WriteFile_WriteError(t *testing.T) {
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	// 存在しないディレクトリに書き込み（権限エラーをシミュレート）
+	err := repo.WriteFile("/root/readonly/test.txt", "test content", domain.EncodingUTF8)
+	if err == nil {
+		t.Error("WriteFile() should return error when writing to inaccessible directory")
+	}
+}
+
+// TestFileRepositoryImpl_GetFileInfo_EncodingDetectionError はGetFileInfo()のエンコーディング検出エラーをテストします
+func TestFileRepositoryImpl_GetFileInfo_EncodingDetectionError(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	testContent := "Hello, World!"
+
+	// ファイルを作成
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	mockConverter := &MockEncodingConverter{
+		detectEncodingFunc: func(content []byte) (domain.EncodingType, error) {
+			return "", fmt.Errorf("detection error")
+		},
+	}
+	repo := NewFileRepository(mockConverter)
+
+	fileInfo, err := repo.GetFileInfo(testFile)
+	if err != nil {
+		t.Errorf("GetFileInfo() returned unexpected error: %v", err)
+	}
+
+	// エラーが発生してもデフォルトのUTF-8が設定されることを確認
+	if fileInfo.Encoding != domain.EncodingUTF8 {
+		t.Errorf("FileInfo.Encoding = %s, expected %s", fileInfo.Encoding, domain.EncodingUTF8)
+	}
+}
+
+// TestFileRepositoryImpl_GetFileInfo_EmptyFile はGetFileInfo()の空ファイルをテストします
+func TestFileRepositoryImpl_GetFileInfo_EmptyFile(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "empty.txt")
+
+	// 空ファイルを作成
+	err := os.WriteFile(testFile, []byte{}, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create empty test file: %v", err)
+	}
+
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	fileInfo, err := repo.GetFileInfo(testFile)
+	if err != nil {
+		t.Errorf("GetFileInfo() returned unexpected error: %v", err)
+	}
+
+	if fileInfo.Size != 0 {
+		t.Errorf("FileInfo.Size = %d, expected 0", fileInfo.Size)
+	}
+
+	if fileInfo.Encoding != domain.EncodingUTF8 {
+		t.Errorf("FileInfo.Encoding = %s, expected %s", fileInfo.Encoding, domain.EncodingUTF8)
+	}
+}
+
+// TestFileRepositoryImpl_CreateBackup_BackupDirCreationError はCreateBackup()のバックアップディレクトリ作成エラーをテストします
+func TestFileRepositoryImpl_CreateBackup_BackupDirCreationError(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	testContent := "Hello, World!"
+
+	// 元ファイルを作成
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	// 無効なバックアップディレクトリパス（権限エラーをシミュレート）
+	err = repo.CreateBackup(testFile, "/root/readonly")
+	if err == nil {
+		t.Error("CreateBackup() should return error when backup directory creation fails")
+	}
+}
+
+// TestFileRepositoryImpl_ListFiles_WalkError はListFiles()の再帰処理エラーをテストします
+func TestFileRepositoryImpl_ListFiles_WalkError(t *testing.T) {
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	// 権限のないディレクトリでの再帰処理（エラーをシミュレート）
+	_, err := repo.ListFiles("/root", true)
+	if err == nil {
+		t.Error("ListFiles() should return error when walking inaccessible directory")
+	}
+}
+
+// TestFileRepositoryImpl_ReadFile_ReadError はReadFile()の読み込みエラーをテストします
+func TestFileRepositoryImpl_ReadFile_ReadError(t *testing.T) {
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	// 権限のないファイルの読み込み
+	_, err := repo.ReadFile("/root/.bashrc", domain.EncodingUTF8)
+	if err == nil {
+		t.Error("ReadFile() should return error when reading inaccessible file")
+	}
+}
+
+// TestFileRepositoryImpl_CreateBackup_CopyError はCreateBackup()のコピーエラーをテストします
+func TestFileRepositoryImpl_CreateBackup_CopyError(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	testContent := "Hello, World!"
+
+	// 元ファイルを作成
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// ファイルを読み取り専用にする
+	err = os.Chmod(testFile, 0444)
+	if err != nil {
+		t.Fatalf("Failed to change file permissions: %v", err)
+	}
+
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	// バックアップを作成（正常に動作するはず）
+	err = repo.CreateBackup(testFile, "")
+	if err != nil {
+		t.Errorf("CreateBackup() returned unexpected error: %v", err)
+	}
+}
+
+// TestFileRepositoryImpl_CreateBackup_DeepDirectory はCreateBackup()の深いディレクトリ構造をテストします
+func TestFileRepositoryImpl_CreateBackup_DeepDirectory(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 深いディレクトリ構造を作成
+	deepDir := filepath.Join(tempDir, "level1", "level2", "level3")
+	err := os.MkdirAll(deepDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create deep directory: %v", err)
+	}
+
+	testFile := filepath.Join(deepDir, "test.txt")
+	testContent := "Hello, World!"
+
+	// ファイルを作成
+	err = os.WriteFile(testFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	backupDir := filepath.Join(tempDir, "backups")
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	err = repo.CreateBackup(testFile, backupDir)
+	if err != nil {
+		t.Errorf("CreateBackup() returned unexpected error: %v", err)
+	}
+
+	// バックアップファイルが正しい場所に作成されたかチェック
+	expectedBackupSubDir := filepath.Join(backupDir, deepDir)
+	if _, err := os.Stat(expectedBackupSubDir); os.IsNotExist(err) {
+		t.Error("Deep backup directory structure was not created")
+	}
+}
+
+// TestFileRepositoryImpl_ListFiles_SymbolicLinks はListFiles()のシンボリックリンク処理をテストします
+func TestFileRepositoryImpl_ListFiles_SymbolicLinks(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// 元ファイルを作成
+	originalFile := filepath.Join(tempDir, "original.txt")
+	err := os.WriteFile(originalFile, []byte("test content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create original file: %v", err)
+	}
+
+	// シンボリックリンクを作成
+	linkFile := filepath.Join(tempDir, "link.txt")
+	err = os.Symlink(originalFile, linkFile)
+	if err != nil {
+		t.Skipf("Skipping symlink test: %v", err) // シンボリックリンクが作成できない環境ではスキップ
+	}
+
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	files, err := repo.ListFiles(tempDir, false)
+	if err != nil {
+		t.Errorf("ListFiles() returned unexpected error: %v", err)
+	}
+
+	// 元ファイルとシンボリックリンクの両方がリストされることを確認
+	if len(files) < 2 {
+		t.Errorf("ListFiles() returned %d files, expected at least 2", len(files))
+	}
+}
+
+// TestFileRepositoryImpl_GetFileInfo_ReadFileError はGetFileInfo()のファイル読み込みエラーをテストします
+func TestFileRepositoryImpl_GetFileInfo_ReadFileError(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+
+	// ファイルを作成
+	err := os.WriteFile(testFile, []byte("test content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// ファイルを読み取り不可にする（権限を変更）
+	err = os.Chmod(testFile, 0000)
+	if err != nil {
+		t.Fatalf("Failed to change file permissions: %v", err)
+	}
+
+	// テスト後に権限を戻す
+	defer func() {
+		os.Chmod(testFile, 0644)
+	}()
+
+	mockConverter := &MockEncodingConverter{}
+	repo := NewFileRepository(mockConverter)
+
+	fileInfo, err := repo.GetFileInfo(testFile)
+	if err != nil {
+		t.Errorf("GetFileInfo() returned unexpected error: %v", err)
+	}
+
+	// ファイル読み込みに失敗してもファイル情報は取得できる
+	if fileInfo == nil {
+		t.Error("GetFileInfo() should not return nil even when file read fails")
+		return
+	}
+
+	// エンコーディングはデフォルトのUTF-8になる
+	if fileInfo.Encoding != domain.EncodingUTF8 {
+		t.Errorf("FileInfo.Encoding = %s, expected %s", fileInfo.Encoding, domain.EncodingUTF8)
+	}
+}
