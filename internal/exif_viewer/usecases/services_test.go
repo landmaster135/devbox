@@ -385,3 +385,129 @@ func TestExifViewerService_containsString(t *testing.T) {
 		}
 	}
 }
+
+func TestExifViewerService_EnsureUTF8String(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"valid UTF-8 string", "valid UTF-8 string"},
+		{"", ""},
+		{"日本語テスト", "日本語テスト"},
+	}
+
+	for _, tc := range testCases {
+		result := service.EnsureUTF8String(tc.input)
+		if result != tc.expected {
+			t.Errorf("EnsureUTF8String(%s) = %s, expected %s", tc.input, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_ValidateConfig(t *testing.T) {
+	service := NewExifViewerService()
+
+	// 存在するディレクトリのテスト
+	tempDir, err := os.MkdirTemp("", "exif_validate_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	validConfig := &Config{
+		Directory: tempDir,
+	}
+
+	err = service.ValidateConfig(validConfig)
+	if err != nil {
+		t.Errorf("ValidateConfig with valid directory should not return error, got: %v", err)
+	}
+
+	// 存在しないディレクトリのテスト
+	invalidConfig := &Config{
+		Directory: "/non/existent/directory",
+	}
+
+	err = service.ValidateConfig(invalidConfig)
+	if err == nil {
+		t.Error("ValidateConfig with invalid directory should return error")
+	}
+
+	if !strings.Contains(err.Error(), "does not exist") {
+		t.Errorf("Expected error message to contain 'does not exist', got: %v", err)
+	}
+}
+
+func TestExifViewerService_ProcessExifViewing(t *testing.T) {
+	service := NewExifViewerService()
+
+	// テスト用の一時ディレクトリを作成
+	tempDir, err := os.MkdirTemp("", "exif_process_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// 存在しないディレクトリでのテスト
+	invalidConfig := &Config{
+		Directory: "/non/existent/directory",
+	}
+
+	_, err = service.ProcessExifViewing(invalidConfig)
+	if err == nil {
+		t.Error("ProcessExifViewing with invalid directory should return error")
+	}
+
+	// 空のディレクトリでのテスト
+	emptyConfig := &Config{
+		Directory:  tempDir,
+		Extensions: []string{"jpg", "png"},
+	}
+
+	output, err := service.ProcessExifViewing(emptyConfig)
+	if err != nil {
+		t.Errorf("ProcessExifViewing with empty directory should not return error, got: %v", err)
+	}
+
+	if !strings.Contains(output, "No image files found") {
+		t.Errorf("Expected output to contain 'No image files found', got: %s", output)
+	}
+}
+
+func TestExifViewerService_ProcessExifViewing_WithFiles(t *testing.T) {
+	service := NewExifViewerService()
+
+	// テスト用の一時ディレクトリを作成
+	tempDir, err := os.MkdirTemp("", "exif_process_files_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// テスト用のダミーファイルを作成（実際の画像ファイルではないが、拡張子のテスト用）
+	testFile := filepath.Join(tempDir, "test.jpg")
+	file, err := os.Create(testFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+
+	config := &Config{
+		Directory:  tempDir,
+		Extensions: []string{"jpg"},
+		Verbose:    false,
+	}
+
+	// ファイルが見つかることを確認（EXIFデータがないためエラーにはならないが、ファイルは検出される）
+	output, err := service.ProcessExifViewing(config)
+	if err != nil {
+		t.Errorf("ProcessExifViewing should not return error for valid config, got: %v", err)
+	}
+
+	// 出力が空でないことを確認
+	if output == "" {
+		t.Error("ProcessExifViewing should return non-empty output")
+	}
+}
