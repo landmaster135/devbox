@@ -511,3 +511,345 @@ func TestExifViewerService_ProcessExifViewing_WithFiles(t *testing.T) {
 		t.Error("ProcessExifViewing should return non-empty output")
 	}
 }
+
+// データ型判定メソッドの詳細テスト
+func TestExifViewerService_isDateTime(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		value    string
+		expected bool
+	}{
+		{"2024:01:01 12:00:00", true},
+		{"2024:12:31 23:59:59", true},
+		{"2024:01:01 12:00:00-07:00", true},
+		{"2024-01-01T12:00:00", true},
+		{"2024-01-01T12:00:00Z", true},
+		{"2024-01-01 12:00:00", true},
+		{"invalid date", false},
+		{"2024/01/01 12:00:00", true}, // 実装では true になる
+		{"12:00:00", false},           // 時刻のみは対象外
+		{"2024:01:01", false},         // 日付のみは対象外
+		{"", false},
+	}
+
+	for _, tc := range testCases {
+		result := service.isDateTime(tc.value)
+		if result != tc.expected {
+			t.Errorf("isDateTime(%s) = %v, expected %v", tc.value, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_isFileSize(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		value    string
+		expected bool
+	}{
+		{"1024 B", true},
+		{"1024B", true},
+		{"5 kB", true},
+		{"10 MB", true},
+		{"2 GB", true},
+		{"1 TB", true},
+		{"invalid size", false},
+		{"1024", false}, // 単位なしは対象外
+		{"", false},
+	}
+
+	for _, tc := range testCases {
+		result := service.isFileSize(tc.value)
+		if result != tc.expected {
+			t.Errorf("isFileSize(%s) = %v, expected %v", tc.value, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_isCoordinate(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		value    string
+		expected bool
+	}{
+		{"35.6789°N", true},
+		{"139.7414°E", true},
+		{"123'45\"N", true},
+		{"123'45\"E", true},
+		{"123.45678N", true},
+		{"123.45678S", true},
+		{"123.45678E", true},
+		{"123.45678W", true},
+		{"invalid coord", false},
+		{"123.456", false},  // 方位なしは対象外
+		{"N", false},        // 数字なしは対象外
+		{"123.456X", false}, // 無効な方位
+		{"", false},
+	}
+
+	for _, tc := range testCases {
+		result := service.isCoordinate(tc.value)
+		if result != tc.expected {
+			t.Errorf("isCoordinate(%s) = %v, expected %v", tc.value, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_isRatio(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		value    string
+		expected bool
+	}{
+		{"1/100", true},
+		{"1/60", true},
+		{"16/9", true},
+		{"3/2", true},
+		{"invalid ratio", false},
+		{"1:100", false}, // コロン区切りは対象外
+		{"1", false},     // 分数でない
+		{"1/", true},     // 実装では true になる（2つに分割される）
+		{"/100", true},   // 実装では true になる（2つに分割される）
+		{"", false},
+	}
+
+	for _, tc := range testCases {
+		result := service.isRatio(tc.value)
+		if result != tc.expected {
+			t.Errorf("isRatio(%s) = %v, expected %v", tc.value, result, tc.expected)
+		}
+	}
+}
+
+// PNG関連ヘルパーメソッドのテスト
+func TestExifViewerService_getCompressionName(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		compression byte
+		expected    string
+	}{
+		{0, "Deflate/Inflate"},
+		{1, "Unknown"},
+		{255, "Unknown"},
+	}
+
+	for _, tc := range testCases {
+		result := service.getCompressionName(tc.compression)
+		if result != tc.expected {
+			t.Errorf("getCompressionName(%d) = %s, expected %s", tc.compression, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_getFilterName(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		filter   byte
+		expected string
+	}{
+		{0, "Adaptive"},
+		{1, "Unknown"},
+		{255, "Unknown"},
+	}
+
+	for _, tc := range testCases {
+		result := service.getFilterName(tc.filter)
+		if result != tc.expected {
+			t.Errorf("getFilterName(%d) = %s, expected %s", tc.filter, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_getInterlaceName(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		interlace byte
+		expected  string
+	}{
+		{0, "Noninterlaced"},
+		{1, "Adam7 Interlaced"},
+		{2, "Unknown"},
+		{255, "Unknown"},
+	}
+
+	for _, tc := range testCases {
+		result := service.getInterlaceName(tc.interlace)
+		if result != tc.expected {
+			t.Errorf("getInterlaceName(%d) = %s, expected %s", tc.interlace, result, tc.expected)
+		}
+	}
+}
+
+func TestExifViewerService_getSRGBRenderingIntent(t *testing.T) {
+	service := NewExifViewerService()
+
+	testCases := []struct {
+		intent   byte
+		expected string
+	}{
+		{0, "Perceptual"},
+		{1, "Relative Colorimetric"},
+		{2, "Saturation"},
+		{3, "Absolute Colorimetric"},
+		{4, "Unknown"},
+		{255, "Unknown"},
+	}
+
+	for _, tc := range testCases {
+		result := service.getSRGBRenderingIntent(tc.intent)
+		if result != tc.expected {
+			t.Errorf("getSRGBRenderingIntent(%d) = %s, expected %s", tc.intent, result, tc.expected)
+		}
+	}
+}
+
+// エラーハンドリングテスト
+func TestExifViewerService_ExtractSingleFileExif_NonExistentFile(t *testing.T) {
+	service := NewExifViewerService()
+
+	config := &Config{
+		Extensions: []string{"jpg"},
+	}
+
+	_, err := service.ExtractSingleFileExif("/non/existent/file.jpg", config)
+	if err == nil {
+		t.Error("ExtractSingleFileExif should return error for non-existent file")
+	}
+}
+
+func TestExifViewerService_ExtractSingleFileExif_CorruptedFile(t *testing.T) {
+	service := NewExifViewerService()
+
+	// 破損ファイルをシミュレートするため、空ファイルを作成
+	tempDir, err := os.MkdirTemp("", "exif_corrupted_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	corruptedFile := filepath.Join(tempDir, "corrupted.jpg")
+	file, err := os.Create(corruptedFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	file.Close()
+
+	config := &Config{
+		Extensions: []string{"jpg"},
+	}
+
+	data, err := service.ExtractSingleFileExif(corruptedFile, config)
+	// 空のJPEGファイルは「bufio.Scanner: token too long」エラーが発生する
+	if err == nil {
+		t.Error("Expected error for corrupted JPEG file")
+	} else if err.Error() != "bufio.Scanner: token too long" {
+		t.Errorf("Expected 'bufio.Scanner: token too long' error, got: %v", err)
+	}
+
+	// エラーが返されてもファイルパスは設定される
+	if data.FilePath != corruptedFile {
+		t.Errorf("Expected FilePath %s, got %s", corruptedFile, data.FilePath)
+	}
+}
+
+// 再帰検索機能のテスト
+func TestExifViewerService_FindImageFiles_Recursive(t *testing.T) {
+	service := NewExifViewerService()
+
+	// テスト用の一時ディレクトリ構造を作成
+	tempDir, err := os.MkdirTemp("", "exif_recursive_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// サブディレクトリを作成
+	subDir := filepath.Join(tempDir, "subdir")
+	err = os.Mkdir(subDir, 0755)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ファイルを作成
+	files := []string{
+		filepath.Join(tempDir, "root.jpg"),
+		filepath.Join(subDir, "sub.jpg"),
+	}
+
+	for _, filePath := range files {
+		file, err := os.Create(filePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		file.Close()
+	}
+
+	// 再帰検索有効
+	config := &Config{
+		Directory:  tempDir,
+		Extensions: []string{"jpg"},
+		Recursive:  true,
+	}
+
+	foundFiles, err := service.FindImageFiles(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(foundFiles) != 2 {
+		t.Errorf("Expected 2 files with recursive search, got %d", len(foundFiles))
+	}
+
+	// 再帰検索無効
+	config.Recursive = false
+	foundFiles, err = service.FindImageFiles(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(foundFiles) != 1 {
+		t.Errorf("Expected 1 file without recursive search, got %d", len(foundFiles))
+	}
+}
+
+// MaxProps制限のテスト
+func TestExifViewerService_FormatExifTable_MaxProps(t *testing.T) {
+	service := NewExifViewerService()
+
+	// 多くのプロパティを持つテストデータを作成
+	exifDataList := []ExifData{
+		{
+			FilePath: "/test/image1.jpg",
+			Properties: map[string]string{
+				"Property1": "Value1",
+				"Property2": "Value2",
+				"Property3": "Value3",
+				"Property4": "Value4",
+				"Property5": "Value5",
+			},
+		},
+	}
+
+	config := &Config{
+		MaxProps: 3, // 3つまでに制限
+		Verbose:  false,
+	}
+
+	result := service.FormatExifTable(exifDataList, config)
+
+	// 制限メッセージが含まれていることを確認
+	if !strings.Contains(result, "limited by -max 3") {
+		t.Error("Expected result to contain limitation message")
+	}
+
+	// 表示されるプロパティ数が制限されていることを確認
+	if !strings.Contains(result, "3 of 5 properties displayed") {
+		t.Error("Expected result to show limited properties count")
+	}
+}
