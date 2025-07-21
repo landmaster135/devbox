@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	usecases "github.com/landmaster135/devbox/internal/exif_viewer/usecases"
 )
@@ -51,18 +50,10 @@ func main() {
 		log.SetFlags(log.Ldate | log.Ltime)
 	}
 
-	config := &usecases.Config{
-		Directory:      *directory,
-		Extensions:     strings.Split(strings.ToLower(*extensionsStr), ","),
-		MaxProps:       *maxProps,
-		Verbose:        *verbose,
-		Recursive:      *recursive,
-		ShowProperties: *showProperties,
-		ShowDataTypes:  *showDataTypes,
-	}
-
-	if *propertiesStr != "" {
-		config.Properties = strings.Split(*propertiesStr, ",")
+	config, err := usecases.NewConfig(*directory, *extensionsStr, *propertiesStr, *maxProps, *verbose, *recursive, *showProperties, *showDataTypes)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Configuration error: %v\n", err)
+		os.Exit(1)
 	}
 
 	// ヘルプまたはバージョン表示
