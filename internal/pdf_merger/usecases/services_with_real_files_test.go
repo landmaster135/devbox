@@ -6,6 +6,9 @@ import (
 	"testing"
 )
 
+// #==============================================================#
+// ##         Tests                                              ##
+// #==============================================================#
 // extractPageNumber のテスト
 func TestImageExtractionService_extractPageNumber(t *testing.T) {
 	service := NewImageExtractionService()
