@@ -6,35 +6,11 @@ import (
 	"log"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	usecases "github.com/landmaster135/devbox/internal/exif_viewer/usecases"
 )
 
 const version = "1.0.0"
-
-// ensureUTF8 は文字列がUTF-8として有効かチェックし、無効な場合は修正する
-func ensureUTF8(s string) string {
-	if utf8.ValidString(s) {
-		return s
-	}
-	// 無効なUTF-8文字を置換
-	return strings.ToValidUTF8(s, "�")
-}
-
-// printUTF8 はUTF-8文字列を安全に出力する
-func printUTF8(format string, args ...interface{}) {
-	// 全ての引数をUTF-8として有効にする
-	validArgs := make([]interface{}, len(args))
-	for i, arg := range args {
-		if str, ok := arg.(string); ok {
-			validArgs[i] = ensureUTF8(str)
-		} else {
-			validArgs[i] = arg
-		}
-	}
-	fmt.Printf(ensureUTF8(format), validArgs...)
-}
 
 func main() {
 	// フラグを定義
@@ -100,47 +76,24 @@ func main() {
 		os.Exit(0)
 	}
 
-	// ディレクトリの存在確認
-	if _, err := os.Stat(config.Directory); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "Error: Directory '%s' does not exist\n", config.Directory)
-		os.Exit(1)
-	}
-
 	// ExifViewerServiceを作成
 	service := usecases.NewExifViewerService()
 
-	// 画像ファイルを検索
-	imageFiles, err := service.FindImageFiles(config)
+	// EXIF表示処理を実行
+	output, err := service.ProcessExifViewing(config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error finding image files: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
-	}
-
-	if len(imageFiles) == 0 {
-		printUTF8("No image files found in directory: %s\n", config.Directory)
-		os.Exit(0)
 	}
 
 	if config.Verbose {
-		log.Printf("Found %d image files\n", len(imageFiles))
+		// ファイル数をログ出力するために画像ファイルを検索
+		imageFiles, err := service.FindImageFiles(config)
+		if err == nil {
+			log.Printf("Found %d image files\n", len(imageFiles))
+		}
 	}
 
-	// Exif情報を抽出
-	exifDataList, err := service.ExtractExifData(imageFiles, config)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error extracting EXIF data: %v\n", err)
-		os.Exit(1)
-	}
-
-	// プロパティ一覧表示の場合
-	if config.ShowProperties || config.ShowDataTypes {
-		propertyInfos := service.AnalyzeProperties(exifDataList)
-		output := service.FormatPropertyList(propertyInfos, len(exifDataList))
-		printUTF8("%s", ensureUTF8(output))
-		return
-	}
-
-	// 結果をテーブル形式で表示
-	output := service.FormatExifTable(exifDataList, config)
-	printUTF8("%s", ensureUTF8(output))
+	// 結果を出力
+	fmt.Print(output)
 }

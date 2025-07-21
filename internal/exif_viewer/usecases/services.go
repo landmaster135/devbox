@@ -51,6 +51,55 @@ func NewExifViewerService() *ExifViewerService {
 	return &ExifViewerService{}
 }
 
+// EnsureUTF8String は文字列がUTF-8として有効かチェックし、無効な場合は修正する（公開メソッド）
+func (s *ExifViewerService) EnsureUTF8String(str string) string {
+	return s.ensureUTF8String(str)
+}
+
+// ValidateConfig は設定の検証を行います
+func (s *ExifViewerService) ValidateConfig(config *Config) error {
+	// ディレクトリの存在確認
+	if _, err := os.Stat(config.Directory); os.IsNotExist(err) {
+		return fmt.Errorf("directory '%s' does not exist", config.Directory)
+	}
+	return nil
+}
+
+// ProcessExifViewing はEXIF表示処理の統合メソッドです
+func (s *ExifViewerService) ProcessExifViewing(config *Config) (string, error) {
+	// 設定の検証
+	if err := s.ValidateConfig(config); err != nil {
+		return "", err
+	}
+
+	// 画像ファイルを検索
+	imageFiles, err := s.FindImageFiles(config)
+	if err != nil {
+		return "", fmt.Errorf("error finding image files: %w", err)
+	}
+
+	if len(imageFiles) == 0 {
+		return fmt.Sprintf("No image files found in directory: %s\n", config.Directory), nil
+	}
+
+	// Exif情報を抽出
+	exifDataList, err := s.ExtractExifData(imageFiles, config)
+	if err != nil {
+		return "", fmt.Errorf("error extracting EXIF data: %w", err)
+	}
+
+	// プロパティ一覧表示の場合
+	if config.ShowProperties || config.ShowDataTypes {
+		propertyInfos := s.AnalyzeProperties(exifDataList)
+		output := s.FormatPropertyList(propertyInfos, len(exifDataList))
+		return s.EnsureUTF8String(output), nil
+	}
+
+	// 結果をテーブル形式で表示
+	output := s.FormatExifTable(exifDataList, config)
+	return s.EnsureUTF8String(output), nil
+}
+
 // ensureUTF8String は文字列がUTF-8として有効かチェックし、無効な場合は修正する
 func (s *ExifViewerService) ensureUTF8String(str string) string {
 	if utf8.ValidString(str) {
@@ -642,12 +691,12 @@ func (s *ExifViewerService) isCoordinate(value string) bool {
 	if strings.Contains(value, "°") {
 		return true
 	}
-	
+
 	// 分記号(')が含まれており、かつ数字と組み合わされている場合
 	if strings.Contains(value, "'") && strings.ContainsAny(value, "0123456789") {
 		return true
 	}
-	
+
 	// N, S, E, W が文字列の最後にあり、かつ数字が含まれている場合のみ
 	if strings.ContainsAny(value, "0123456789") {
 		if strings.HasSuffix(value, "N") || strings.HasSuffix(value, "S") ||
@@ -655,7 +704,7 @@ func (s *ExifViewerService) isCoordinate(value string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
