@@ -1,25 +1,25 @@
 {
   "mcpServers": {
     "arithmetic_calculator": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "arith_calc"
       ]
     },
     "datetime_calculator": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "datetime_calc"
       ]
     },
     "http_request": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "http_request"
       ]
     },
     "brave_web_search": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "brave_web_search"
       ],
@@ -28,25 +28,25 @@
       }
     },
     "get-current-timezone": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "timezone"
       ]
     },
     "filesystem": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "filesystem"
       ]
     },
     "get_youtube_transcript": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "youtube_transcript"
       ]
     },
     "github": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "github"
       ],
@@ -55,7 +55,7 @@
       }
     },
     "postgresql": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "postgresql"
       ],
@@ -64,59 +64,55 @@
       }
     },
     "everart": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "everart"
       ],
       "env": {
         "EVERART_API_KEY": "YOUR_KEY"
-      },
-      "disabled": false,
-      "autoApprove": []
+      }
     },
     "sequentialthinking": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "sequentialthinking"
-      ],
-      "disabled": false,
-      "autoApprove": []
+      ]
     },
     "figma": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "figma"
       ],
       "env": {
         "FIGMA_API_KEY": "YOUR_KEY"
-      },
-      "disabled": false,
-      "autoApprove": []
+      }
     },
     "google_drive": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "gdrive"
       ],
       "env": {
         "GDRIVE_CREDENTIALS_PATH": "YOUR_PATH"
-      },
-      "disabled": false,
-      "autoApprove": []
-    },
-    "duckduckgo_instant_search": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
-      "args": [
-        "duckduckgo_search"
-      ]
+      }
     },
     "git_commit_message_generator": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\mcp-tools.exe",
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
         "git_diff_recorder"
-      ],
-      "disabled": false,
-      "autoApprove": []
+      ]
+    },
+    "git_commit_history_retriever": {
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
+      "args": [
+        "git_commit_history_retriever"
+      ]
+    },
+    "context7": {
+      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
+      "args": [
+        "context7"
+      ]
     },
     "claude_code": {
       "command": "wsl",

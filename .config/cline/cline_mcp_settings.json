@@ -129,7 +129,7 @@
       "args": [
         "duckduckgo_search"
       ],
-      "disabled": false,
+      "disabled": true,
       "autoApprove": []
     },
     "git_commit_message_generator": {
