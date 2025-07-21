@@ -29,6 +29,65 @@ type Config struct {
 	ShowDataTypes  bool // データ型を表示するフラグ
 }
 
+// validateConfigParams は設定パラメータのバリデーションを行います
+func validateConfigParams(directory, extensionsStr string, maxProps int) error {
+	// ディレクトリの存在確認
+	if _, err := os.Stat(directory); os.IsNotExist(err) {
+		return fmt.Errorf("directory '%s' does not exist", directory)
+	}
+
+	// 拡張子文字列が空でないことを確認
+	if strings.TrimSpace(extensionsStr) == "" {
+		return fmt.Errorf("extensions string cannot be empty")
+	}
+
+	// MaxPropsが負の値でないことを確認
+	if maxProps < 0 {
+		return fmt.Errorf("maxProps cannot be negative, got: %d", maxProps)
+	}
+
+	// 拡張子の形式チェック（空の拡張子がないか）
+	extensions := strings.Split(strings.ToLower(extensionsStr), ",")
+	for i, ext := range extensions {
+		ext = strings.TrimSpace(ext)
+		if ext == "" {
+			return fmt.Errorf("extension at position %d is empty", i)
+		}
+		extensions[i] = ext
+	}
+
+	return nil
+}
+
+// NewConfig は新しいConfig構造体を作成し、バリデーションを行います
+func NewConfig(directory, extensionsStr, propertiesStr string, maxProps int, verbose, recursive, showProperties, showDataTypes bool) (*Config, error) {
+	// パラメータのバリデーション
+	if err := validateConfigParams(directory, extensionsStr, maxProps); err != nil {
+		return nil, err
+	}
+
+	// Config構造体を初期化
+	config := &Config{
+		Directory:      directory,
+		Extensions:     strings.Split(strings.ToLower(extensionsStr), ","),
+		MaxProps:       maxProps,
+		Verbose:        verbose,
+		Recursive:      recursive,
+		ShowProperties: showProperties,
+		ShowDataTypes:  showDataTypes,
+	}
+
+	// プロパティが指定されている場合は設定
+	if propertiesStr != "" {
+		config.Properties = strings.Split(propertiesStr, ",")
+	}
+
+	return config, nil
+}
+
+// ExifViewerService はEXIF表示サービスです
+type ExifViewerService struct{}
+
 // ExifData は単一ファイルのEXIF情報を保持します
 type ExifData struct {
 	FilePath   string
@@ -39,12 +98,9 @@ type ExifData struct {
 type PropertyInfo struct {
 	Name     string
 	DataType string
-	Count    int // このプロパティが見つかったファイル数
+	Count    int      // このプロパティが見つかったファイル数
 	Examples []string // 値の例（最大3つ）
 }
-
-// ExifViewerService はEXIF表示サービスです
-type ExifViewerService struct{}
 
 // NewExifViewerService は新しいExifViewerServiceを作成します
 func NewExifViewerService() *ExifViewerService {
@@ -700,7 +756,7 @@ func (s *ExifViewerService) isCoordinate(value string) bool {
 	// N, S, E, W が文字列の最後にあり、かつ数字が含まれている場合のみ
 	if strings.ContainsAny(value, "0123456789") {
 		if strings.HasSuffix(value, "N") || strings.HasSuffix(value, "S") ||
-		   strings.HasSuffix(value, "E") || strings.HasSuffix(value, "W") {
+			strings.HasSuffix(value, "E") || strings.HasSuffix(value, "W") {
 			return true
 		}
 	}
