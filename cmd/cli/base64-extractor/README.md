@@ -20,7 +20,7 @@
 ## インストール
 
 ```bash
-cd /home/nov/devbox/cmd/cli/base64-extractor
+cd ~/devbox/cmd/cli/base64-extractor
 go build -o base64-extractor main.go
 ```
 
@@ -99,14 +99,14 @@ Base64: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGA
 ### テストの実行
 
 ```bash
-cd /home/nov/devbox
+cd $HOME/devbox
 go test ./internal/base64_extractor/...
 ```
 
 ### カバレッジの確認
 
 ```bash
-cd /home/nov/devbox
+cd $HOME/devbox
 go test -coverprofile=coverage.out ./internal/base64_extractor/...
 go tool cover -html=coverage.out -o coverage.html
 ```
