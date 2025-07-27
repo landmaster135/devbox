@@ -178,4 +178,4 @@ go test ./...
 
 ## CLI Tool
 
-This library is also used by the CLI tool located at `/home/nov/devbox/cmd/cli/exif-viewer/`. The CLI provides command-line access to all the library functionality.
+This library is also used by the CLI tool located at `~/devbox/cmd/cli/exif-viewer/`. The CLI provides command-line access to all the library functionality.

@@ -17,7 +17,7 @@
 ## インストール
 
 ```bash
-cd /home/nov/devbox/cmd/cli/exif-viewer
+cd ~/devbox/cmd/cli/exif-viewer
 go build -o exif-viewer main.go
 ```
 

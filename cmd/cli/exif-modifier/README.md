@@ -22,7 +22,7 @@
 ## ビルド
 
 ```bash
-cd /home/nov/devbox/cmd/cli/exif-modifier
+cd ~/devbox/cmd/cli/exif-modifier
 go build -o exif-modifier main.go
 ```
 
