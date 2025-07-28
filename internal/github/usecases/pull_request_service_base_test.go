@@ -5,13 +5,35 @@ import (
 )
 
 // #==============================================================#
+// ##          Test Mock Implementations                        ##
+// #==============================================================#
+
+// MockGitBranchProvider はテスト用のGitBranchProviderモックです
+type MockGitBranchProvider struct {
+	CurrentBranch string
+	Error         error
+}
+
+// GetCurrentBranchFromPath はモックの実装です
+func (m *MockGitBranchProvider) GetCurrentBranchFromPath(absolutePath string) (string, error) {
+	if m.Error != nil {
+		return "", m.Error
+	}
+	return m.CurrentBranch, nil
+}
+
+// #==============================================================#
 // ##          Test Helper Functions                            ##
 // #==============================================================#
 
 // createMockPullRequestService はテスト用のGitHubPullRequestServiceを作成します
 func createMockPullRequestService(mockClient HTTPClient, jsonMarshaler JSONMarshaler) *GitHubPullRequestService {
 	clientService := NewGitHubClientServiceWithDependencies(mockClient, "test-token", jsonMarshaler)
-	return NewGitHubPullRequestServiceWithDependencies(clientService)
+	mockGitBranchProvider := &MockGitBranchProvider{
+		CurrentBranch: "test-branch",
+		Error:         nil,
+	}
+	return NewGitHubPullRequestServiceWithDependencies(clientService, mockGitBranchProvider)
 }
 
 // #==============================================================#
@@ -51,9 +73,13 @@ func TestNewGitHubPullRequestService(t *testing.T) {
 func TestNewGitHubPullRequestServiceWithDependencies(t *testing.T) {
 	// Arrange
 	clientService := NewGitHubClientService("test-token")
+	mockGitBranchProvider := &MockGitBranchProvider{
+		CurrentBranch: "test-branch",
+		Error:         nil,
+	}
 
 	// Act
-	service := NewGitHubPullRequestServiceWithDependencies(clientService)
+	service := NewGitHubPullRequestServiceWithDependencies(clientService, mockGitBranchProvider)
 
 	// Assert
 	if service == nil {
@@ -62,5 +88,9 @@ func TestNewGitHubPullRequestServiceWithDependencies(t *testing.T) {
 
 	if service.clientService != clientService {
 		t.Fatal("クライアントサービスが正しく設定されていません")
+	}
+
+	if service.gitBranchProvider != mockGitBranchProvider {
+		t.Fatal("GitBranchProviderが正しく設定されていません")
 	}
 }

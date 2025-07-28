@@ -252,6 +252,40 @@ func (h *PullRequestHandler) handleToListPullRequests(ctx context.Context, reque
 	return mcp.NewToolResultText(result), nil
 }
 
+// handleToCreatePullRequestWithCurrentBranch は指定されたリポジトリパスの現在のブランチを使用してプルリクエストを作成して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToCreatePullRequestWithCurrentBranch(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := request.RequireString("owner")
+	if err != nil {
+		return nil, err
+	}
+	repo, err := request.RequireString("repo")
+	if err != nil {
+		return nil, err
+	}
+	title, err := request.RequireString("title")
+	if err != nil {
+		return nil, err
+	}
+	base, err := request.RequireString("base")
+	if err != nil {
+		return nil, err
+	}
+	repoPath, err := request.RequireString("repo_path")
+	if err != nil {
+		return nil, err
+	}
+
+	body := request.GetString("body", "")
+	draft := request.GetBool("draft", false)
+
+	result, err := h.pullRequestService.HandleToCreatePullRequestWithCurrentBranch(owner, repo, title, base, body, draft, repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcp.NewToolResultText(result), nil
+}
+
 // setGitHubPullRequestServer は受け取ったMCPサーバにGitHubプルリクエスト用のツールを付与して、そのMCPサーバを返します。
 func setGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPServer {
 	// PullRequestHandlerを初期化
@@ -472,6 +506,38 @@ func setGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 		),
 	)
 	s.AddTool(listPullRequestsTool, handler.handleToListPullRequests)
+
+	// ツール10: 現在のブランチを使用したプルリクエストの作成
+	createPullRequestWithCurrentBranchTool := mcp.NewTool("create_pull_request_with_current_branch",
+		mcp.WithDescription("Create a new pull request using the current Git branch from specified repository path"),
+		mcp.WithString("owner",
+			mcp.Required(),
+			mcp.Description("Repository owner"),
+		),
+		mcp.WithString("repo",
+			mcp.Required(),
+			mcp.Description("Repository name"),
+		),
+		mcp.WithString("title",
+			mcp.Required(),
+			mcp.Description("Pull request title"),
+		),
+		mcp.WithString("base",
+			mcp.Required(),
+			mcp.Description("The name of the branch you want the changes pulled into"),
+		),
+		mcp.WithString("repo_path",
+			mcp.Required(),
+			mcp.Description("Absolute path to the local Git repository"),
+		),
+		mcp.WithString("body",
+			mcp.Description("Pull request body"),
+		),
+		mcp.WithBoolean("draft",
+			mcp.Description("Whether to create a draft pull request"),
+		),
+	)
+	s.AddTool(createPullRequestWithCurrentBranchTool, handler.handleToCreatePullRequestWithCurrentBranch)
 
 	return s
 }
