@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"fmt"
 	"math"
 	"testing"
 )
@@ -80,6 +81,158 @@ func TestDatetimeCalculator_sumTimeFloat_Normal(t *testing.T) {
 			// Assert
 			if result != tc.expected {
 				t.Errorf("Expected %f, got %f", tc.expected, result)
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculator_GetUnitName_Normal はGetUnitName関数の正常系テスト
+func TestDatetimeCalculator_GetUnitName_Normal(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	testCases := []struct {
+		name     string
+		unit     string
+		expected string
+	}{
+		{
+			name:     "年単位",
+			unit:     "year",
+			expected: "年",
+		},
+		{
+			name:     "月単位",
+			unit:     "month",
+			expected: "月",
+		},
+		{
+			name:     "日単位",
+			unit:     "day",
+			expected: "日",
+		},
+		{
+			name:     "時間単位",
+			unit:     "hour",
+			expected: "時間",
+		},
+		{
+			name:     "分単位",
+			unit:     "minute",
+			expected: "分",
+		},
+		{
+			name:     "秒単位",
+			unit:     "second",
+			expected: "秒",
+		},
+		{
+			name:     "無効な単位_そのまま返す",
+			unit:     "invalid_unit",
+			expected: "invalid_unit",
+		},
+		{
+			name:     "空文字列",
+			unit:     "",
+			expected: "",
+		},
+		{
+			name:     "大文字混在_そのまま返す",
+			unit:     "Year",
+			expected: "Year",
+		},
+		{
+			name:     "複数形_そのまま返す",
+			unit:     "years",
+			expected: "years",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			result := calculator.GetUnitName(tc.unit)
+
+			// Assert
+			if result != tc.expected {
+				t.Errorf("Expected %s, got %s", tc.expected, result)
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculator_GetUnitName_AllValidUnits は全ての有効な単位のテスト
+func TestDatetimeCalculator_GetUnitName_AllValidUnits(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	validUnits := map[string]string{
+		"year":   "年",
+		"month":  "月",
+		"day":    "日",
+		"hour":   "時間",
+		"minute": "分",
+		"second": "秒",
+	}
+
+	for unit, expectedJapanese := range validUnits {
+		t.Run(fmt.Sprintf("単位_%s", unit), func(t *testing.T) {
+			// Act
+			result := calculator.GetUnitName(unit)
+
+			// Assert
+			if result != expectedJapanese {
+				t.Errorf("Unit %s: expected %s, got %s", unit, expectedJapanese, result)
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculator_GetUnitName_EdgeCases はエッジケースのテスト
+func TestDatetimeCalculator_GetUnitName_EdgeCases(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	testCases := []struct {
+		name     string
+		unit     string
+		expected string
+	}{
+		{
+			name:     "スペースを含む文字列",
+			unit:     "hour minute",
+			expected: "hour minute",
+		},
+		{
+			name:     "数字を含む文字列",
+			unit:     "hour1",
+			expected: "hour1",
+		},
+		{
+			name:     "特殊文字を含む文字列",
+			unit:     "hour@#$",
+			expected: "hour@#$",
+		},
+		{
+			name:     "非常に長い文字列",
+			unit:     "this_is_a_very_long_unit_name_that_should_be_returned_as_is",
+			expected: "this_is_a_very_long_unit_name_that_should_be_returned_as_is",
+		},
+		{
+			name:     "日本語文字列",
+			unit:     "時間単位",
+			expected: "時間単位",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			result := calculator.GetUnitName(tc.unit)
+
+			// Assert
+			if result != tc.expected {
+				t.Errorf("Expected %s, got %s", tc.expected, result)
 			}
 		})
 	}
@@ -307,19 +460,19 @@ func TestDatetimeCalculator_extractTimeFromText_ComplexText(t *testing.T) {
 			text: `プロジェクトは2024年に開始され、合計180分掛かった。
 			参加者は15名で、合計60分掛かった。`,
 			outputUnit: "minute",
-			expected: 240,
+			expected:   240,
 		},
 		{
-			name: "改行を含むテキスト",
-			text: "第1フェーズは合計45分掛かった。\n第2フェーズは合計75分掛かった。\n第3フェーズは合計30分掛かった。",
+			name:       "改行を含むテキスト",
+			text:       "第1フェーズは合計45分掛かった。\n第2フェーズは合計75分掛かった。\n第3フェーズは合計30分掛かった。",
 			outputUnit: "hour",
-			expected: 2.5,
+			expected:   2.5,
 		},
 		{
-			name: "特殊文字を含むテキスト",
-			text: "タスク①は合計20分掛かった。タスク②は合計40分掛かった。タスク③は合計60分掛かった。",
+			name:       "特殊文字を含むテキスト",
+			text:       "タスク①は合計20分掛かった。タスク②は合計40分掛かった。タスク③は合計60分掛かった。",
 			outputUnit: "minute",
-			expected: 120,
+			expected:   120,
 		},
 	}
 

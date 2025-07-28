@@ -129,6 +129,26 @@ func (c *DatetimeCalculator) sumTimeFloat(figures []float64) float64 {
 	return sum
 }
 
+// getUnitName は時間単位の日本語名を返す
+func (c *DatetimeCalculator) GetUnitName(unit string) string {
+	switch unit {
+	case "year":
+		return "年"
+	case "month":
+		return "月"
+	case "day":
+		return "日"
+	case "hour":
+		return "時間"
+	case "minute":
+		return "分"
+	case "second":
+		return "秒"
+	default:
+		return unit
+	}
+}
+
 // convertTimeUnit は時間単位間の変換を行うメソッドです
 func (c *DatetimeCalculator) convertTimeUnit(value float64, inputUnit, outputUnit string) (float64, error) {
 	var secondToMinute float64 = 60

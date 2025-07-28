@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/datetime_calculator/config"
+	config "github.com/landmaster135/devbox/internal/datetime_calculator/config"
 )
 
 // #==============================================================#
@@ -30,6 +30,10 @@ func NewDatetimeCalculatorServiceWithFileReader(fileReader config.FileReader) *D
 		calculator: &DatetimeCalculator{},
 		fileReader: fileReader,
 	}
+}
+
+func (s *DatetimeCalculatorService) GetCalculator() *DatetimeCalculator {
+	return s.calculator
 }
 
 // HandleDatetimeCalc はMCPリクエストを処理して日時計算結果を返すハンドラーです
