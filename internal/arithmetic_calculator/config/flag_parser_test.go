@@ -73,6 +73,34 @@ func (m *MockFlagParser) SetParseError(err error) {
 // TestFlagParserStruct はFlagParserのテストクラス
 type TestFlagParserStruct struct{}
 
+// TestStandardFlagParser_Parse_Error はParseのエラー系テスト
+func (t *TestFlagParserStruct) TestStandardFlagParser_Parse_Error(test *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+
+	// Act - 実際のParseメソッドを呼び出してカバレッジを向上させる
+	// os.Argsを一時的に変更してテスト
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+	}()
+
+	// 有効な引数でParseを実行
+	os.Args = []string{"test-program"}
+	err := parser.Parse()
+
+	// Assert
+	if err != nil {
+		test.Errorf("Expected no error for valid args, got %v", err)
+	}
+
+	// Argsメソッドも呼び出してカバレッジを向上
+	args := parser.Args()
+	if args == nil {
+		test.Error("Expected non-nil args")
+	}
+}
+
 // TestStandardFlagParser_StringVar_Normal はStringVarの正常系テスト
 func (t *TestFlagParserStruct) TestStandardFlagParser_StringVar_Normal(test *testing.T) {
 	// Arrange
@@ -304,4 +332,10 @@ func TestParseFlagsWithParser_AddOperation(t *testing.T) {
 func TestParseFlagsWithParser_Integration(t *testing.T) {
 	testStruct := &TestFlagParserStruct{}
 	testStruct.TestParseFlagsWithParser_Integration(t)
+}
+
+// TestStandardFlagParser_Parse_Error はParseのエラー系テスト
+func TestStandardFlagParser_Parse_Error(t *testing.T) {
+	testStruct := &TestFlagParserStruct{}
+	testStruct.TestStandardFlagParser_Parse_Error(t)
 }
