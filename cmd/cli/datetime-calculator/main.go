@@ -8,29 +8,15 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/datetime_calculator/usecases"
 )
 
-func main() {
-	// コマンドライン引数を解析
-	cfg, err := config.ParseFlags()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		config.PrintUsage()
-		os.Exit(1)
-	}
-
-	// ヘルプが要求された場合
-	if cfg.Help {
-		config.PrintUsage()
-		return
-	}
-
-	// 操作タイプに応じて処理を実行
-	switch cfg.Operation {
-	case "add", "subtract":
-		handleDatetimeCalculation(cfg)
+// getOperationSymbol は操作タイプに対応する記号を返す
+func getOperationSymbol(operation string) string {
+	switch operation {
+	case "add":
+		return "+"
+	case "subtract":
+		return "-"
 	default:
-		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
-		config.PrintUsage()
-		os.Exit(1)
+		return operation
 	}
 }
 
@@ -99,14 +85,46 @@ func formatDuration(year, month, day, hour, minute, second float64) string {
 	return result
 }
 
-// getOperationSymbol は操作タイプに対応する記号を返す
-func getOperationSymbol(operation string) string {
-	switch operation {
-	case "add":
-		return "+"
-	case "subtract":
-		return "-"
+// handleTimeUnitSum は時間単位の合計計算を処理する
+func handleTimeUnitSum(cfg *config.Config) {
+	// DatetimeCalculatorServiceを初期化
+	service := usecases.NewDatetimeCalculatorService()
+
+	// 計算を実行
+	result, err := service.HandleTimeUnitSum(cfg.Figures, cfg.InputUnit, cfg.OutputUnit)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("sum(%v %s) = %.6f %s\n", cfg.Figures, cfg.InputUnit, result, cfg.OutputUnit)
+}
+
+func main() {
+	// コマンドライン引数を解析
+	cfg, err := config.ParseFlags()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+
+	// ヘルプが要求された場合
+	if cfg.Help {
+		config.PrintUsage()
+		return
+	}
+
+	// 操作タイプに応じて処理を実行
+	switch cfg.Operation {
+	case "add", "subtract":
+		handleDatetimeCalculation(cfg)
+	case "sum":
+		handleTimeUnitSum(cfg)
 	default:
-		return operation
+		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
+		config.PrintUsage()
+		os.Exit(1)
 	}
 }

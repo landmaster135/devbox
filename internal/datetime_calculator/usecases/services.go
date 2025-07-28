@@ -32,3 +32,24 @@ func (s *DatetimeCalculatorService) HandleDatetimeCalc(op string, year1, month1,
 	}
 	return result, nil
 }
+
+// HandleTimeUnitSum は時間単位での合計計算を処理するハンドラーです
+func (s *DatetimeCalculatorService) HandleTimeUnitSum(figures []float64, inputUnit, outputUnit string) (float64, error) {
+	if len(figures) == 0 {
+		return 0, fmt.Errorf("数値の配列が空です")
+	}
+
+	// 入力単位で合計を計算
+	sum := 0.0
+	for _, figure := range figures {
+		sum += figure
+	}
+
+	// 時間単位変換を実行
+	result, err := s.calculator.convertTimeUnit(sum, inputUnit, outputUnit)
+	if err != nil {
+		return 0, fmt.Errorf("時間単位変換に失敗しました: %v", err)
+	}
+
+	return result, nil
+}
