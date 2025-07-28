@@ -107,14 +107,37 @@ func handleTimeExtraction(cfg *config.Config) {
 	service := usecases.NewDatetimeCalculatorService()
 
 	// 時間抽出を実行
-	result, err := service.HandleTimeExtraction(cfg.FilePath, cfg.TextInput)
+	result, err := service.HandleTimeExtraction(cfg.FilePath, cfg.TextInput, cfg.OutputUnit)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
 
+	// 単位名を取得
+	unitName := getUnitName(cfg.OutputUnit)
+
 	// 結果を出力
-	fmt.Printf("抽出された時間の合計: %.0f分\n", result)
+	fmt.Printf("抽出された時間の合計: %.6f%s\n", result, unitName)
+}
+
+// getUnitName は時間単位の日本語名を返す
+func getUnitName(unit string) string {
+	switch unit {
+	case "year":
+		return "年"
+	case "month":
+		return "月"
+	case "day":
+		return "日"
+	case "hour":
+		return "時間"
+	case "minute":
+		return "分"
+	case "second":
+		return "秒"
+	default:
+		return unit
+	}
 }
 
 func main() {

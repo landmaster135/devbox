@@ -47,7 +47,7 @@ func (s *DatetimeCalculatorService) HandleDatetimeCalc(op string, year1, month1,
 }
 
 // HandleTimeExtraction はファイルまたはテキストから時間を抽出し合計を計算する
-func (s *DatetimeCalculatorService) HandleTimeExtraction(filePath, textInput string) (float64, error) {
+func (s *DatetimeCalculatorService) HandleTimeExtraction(filePath, textInput, outputUnit string) (float64, error) {
 	// 排他制御
 	if filePath != "" && textInput != "" {
 		return 0, fmt.Errorf("ファイルパスとテキスト入力は同時に指定できません")
@@ -73,7 +73,7 @@ func (s *DatetimeCalculatorService) HandleTimeExtraction(filePath, textInput str
 		content = textInput
 	}
 
-	return s.calculator.extractTimeFromText(content)
+	return s.calculator.extractTimeFromText(content, outputUnit)
 }
 
 // HandleTimeUnitSum は時間単位での合計計算を処理するハンドラーです

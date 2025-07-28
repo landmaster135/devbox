@@ -176,7 +176,7 @@ func (c *DatetimeCalculator) convertTimeUnit(value float64, inputUnit, outputUni
 }
 
 // extractTimeFromText は文字列から「合計[数値]分掛かった。」パターンを抽出し合計を計算する
-func (c *DatetimeCalculator) extractTimeFromText(text string) (float64, error) {
+func (c *DatetimeCalculator) extractTimeFromText(text string, outputUnit string) (float64, error) {
 	// 「合計[数値]分掛かった。」を抽出する正規表現
 	pattern := `合計(\d+)分掛かった。`
 	re := regexp.MustCompile(pattern)
@@ -191,5 +191,14 @@ func (c *DatetimeCalculator) extractTimeFromText(text string) (float64, error) {
 		}
 	}
 
-	return c.sumTimeFloat(figures), nil
+	// 分単位で合計を計算
+	totalMinutes := c.sumTimeFloat(figures)
+
+	// 指定された出力単位に変換
+	result, err := c.convertTimeUnit(totalMinutes, "minute", outputUnit)
+	if err != nil {
+		return 0, fmt.Errorf("時間単位変換に失敗しました: %v", err)
+	}
+
+	return result, nil
 }

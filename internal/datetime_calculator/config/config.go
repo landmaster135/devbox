@@ -112,7 +112,7 @@ func NewConfigForSum(operation string, figures []float64, inputUnit, outputUnit 
 }
 
 // NewConfigForParseTime はparse-time操作用の新しいConfigを作成する
-func NewConfigForParseTime(operation, filePath, textInput string) (*Config, error) {
+func NewConfigForParseTime(operation, filePath, textInput, outputUnit string) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
@@ -136,10 +136,29 @@ func NewConfigForParseTime(operation, filePath, textInput string) (*Config, erro
 		}
 	}
 
+	// outputUnitのデフォルト値設定
+	if outputUnit == "" {
+		outputUnit = "minute"
+	}
+
+	// 時間単位の検証
+	validUnits := []string{"year", "month", "day", "hour", "minute", "second"}
+	isValidOutput := false
+	for _, unit := range validUnits {
+		if outputUnit == unit {
+			isValidOutput = true
+			break
+		}
+	}
+	if !isValidOutput {
+		return nil, fmt.Errorf("無効な出力時間単位です: %s", outputUnit)
+	}
+
 	return &Config{
-		Operation: operation,
-		FilePath:  filePath,
-		TextInput: textInput,
+		Operation:  operation,
+		FilePath:   filePath,
+		TextInput:  textInput,
+		OutputUnit: outputUnit,
 	}, nil
 }
 
@@ -311,7 +330,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	// parse-time操作の場合は専用の処理を行う
 	if operation == "parse-time" {
-		return NewConfigForParseTime(operation, filePath, textInput)
+		return NewConfigForParseTime(operation, filePath, textInput, outputUnit)
 	}
 
 	return NewConfig(operation, year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
@@ -345,11 +364,14 @@ func PrintUsage() {
   時間抽出（テキストから）:
     %s -operation parse-time -text-input "作業は合計30分掛かった。別の作業は合計45分掛かった。"
 
+  時間抽出（単位変換）:
+    %s -operation parse-time -text-input "合計120分掛かった。" -output-unit hour
+
   短縮形:
     %s -o add -y 2025 -m 1 -d 15 -hr 12 -min 30 -s 0 -dy 1 -dm 2 -dd 10 -dh 5 -dmin 30 -ds 45
     %s -o sum -iu second -ou hour -f 3600,1800,7200
     %s -o parse-time -fp /path/to/file.md
-    %s -o parse-time -ti "合計120分掛かった。"
+    %s -o parse-time -ti "合計120分掛かった。" -ou second
 
 オプション:
   -operation, -o       日時操作 (add, subtract, sum, parse-time)
@@ -367,10 +389,10 @@ func PrintUsage() {
   -duration-second, -ds 加算/減算する秒 (デフォルト: 0)
   -figures, -f        カンマ区切りの数値リスト (sum操作用)
   -input-unit, -iu    入力時間単位 (sum操作用: year, month, day, hour, minute, second)
-  -output-unit, -ou   出力時間単位 (sum操作用: year, month, day, hour, minute, second)
+  -output-unit, -ou   出力時間単位 (sum, parse-time操作用: year, month, day, hour, minute, second, デフォルト: minute)
   -file-path, -fp     ファイルパス (parse-time操作用: .mdまたは.txt)
   -text-input, -ti    テキスト入力 (parse-time操作用)
   -help, -h           このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
