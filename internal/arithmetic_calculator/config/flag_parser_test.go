@@ -70,11 +70,8 @@ func (m *MockFlagParser) SetParseError(err error) {
 	m.parseError = err
 }
 
-// TestFlagParserStruct はFlagParserのテストクラス
-type TestFlagParserStruct struct{}
-
 // TestStandardFlagParser_Parse_Error はParseのエラー系テスト
-func (t *TestFlagParserStruct) TestStandardFlagParser_Parse_Error(test *testing.T) {
+func TestStandardFlagParser_Parse_Error(t *testing.T) {
 	// Arrange
 	parser := NewStandardFlagParser()
 
@@ -91,18 +88,18 @@ func (t *TestFlagParserStruct) TestStandardFlagParser_Parse_Error(test *testing.
 
 	// Assert
 	if err != nil {
-		test.Errorf("Expected no error for valid args, got %v", err)
+		t.Errorf("Expected no error for valid args, got %v", err)
 	}
 
 	// Argsメソッドも呼び出してカバレッジを向上
 	args := parser.Args()
 	if args == nil {
-		test.Error("Expected non-nil args")
+		t.Error("Expected non-nil args")
 	}
 }
 
 // TestStandardFlagParser_StringVar_Normal はStringVarの正常系テスト
-func (t *TestFlagParserStruct) TestStandardFlagParser_StringVar_Normal(test *testing.T) {
+func TestStandardFlagParser_StringVar_Normal(t *testing.T) {
 	// Arrange
 	parser := NewStandardFlagParser()
 	var testValue string
@@ -113,12 +110,12 @@ func (t *TestFlagParserStruct) TestStandardFlagParser_StringVar_Normal(test *tes
 
 	// Assert
 	if testValue != dv {
-		test.Errorf("Expected initial value to be '%s', got %s", dv, testValue)
+		t.Errorf("Expected initial value to be '%s', got %s", dv, testValue)
 	}
 }
 
 // TestStandardFlagParser_BoolVar_Normal はBoolVarの正常系テスト
-func (t *TestFlagParserStruct) TestStandardFlagParser_BoolVar_Normal(test *testing.T) {
+func TestStandardFlagParser_BoolVar_Normal(t *testing.T) {
 	// Arrange
 	parser := NewStandardFlagParser()
 	var testValue bool
@@ -128,12 +125,12 @@ func (t *TestFlagParserStruct) TestStandardFlagParser_BoolVar_Normal(test *testi
 
 	// Assert
 	if testValue != false {
-		test.Errorf("Expected initial value to be false, got %t", testValue)
+		t.Errorf("Expected initial value to be false, got %t", testValue)
 	}
 }
 
 // TestStandardFlagParser_Parse_Normal はParseの正常系テスト
-func (t *TestFlagParserStruct) TestStandardFlagParser_Parse_Normal(test *testing.T) {
+func TestStandardFlagParser_Parse_Normal(t *testing.T) {
 	// Arrange
 	testFlagSet := flag.NewFlagSet("test", flag.ContinueOnError)
 	parser := &StandardFlagParser{
@@ -155,20 +152,20 @@ func (t *TestFlagParserStruct) TestStandardFlagParser_Parse_Normal(test *testing
 
 	// Assert
 	if err != nil {
-		test.Errorf("Expected no error, got %v", err)
+		t.Errorf("Expected no error, got %v", err)
 	}
 
 	if testString != ts {
-		test.Errorf("Expected string flag to be '%s', got %s", ts, testString)
+		t.Errorf("Expected string flag to be '%s', got %s", ts, testString)
 	}
 
 	if testBool != true {
-		test.Errorf("Expected bool flag to be true, got %t", testBool)
+		t.Errorf("Expected bool flag to be true, got %t", testBool)
 	}
 }
 
 // TestStandardFlagParser_Args_Normal はArgsの正常系テスト
-func (t *TestFlagParserStruct) TestStandardFlagParser_Args_Normal(test *testing.T) {
+func TestStandardFlagParser_Args_Normal(t *testing.T) {
 	// Arrange
 	testFlagSet := flag.NewFlagSet("test", flag.ContinueOnError)
 	parser := &StandardFlagParser{
@@ -183,7 +180,7 @@ func (t *TestFlagParserStruct) TestStandardFlagParser_Args_Normal(test *testing.
 	// Act
 	err := testFlagSet.Parse(testArgs)
 	if err != nil {
-		test.Fatalf("Parse failed: %v", err)
+		t.Fatalf("Parse failed: %v", err)
 	}
 
 	args := parser.Args()
@@ -191,37 +188,37 @@ func (t *TestFlagParserStruct) TestStandardFlagParser_Args_Normal(test *testing.
 	// Assert
 	expectedArgs := []string{"arg1", "arg2"}
 	if len(args) != len(expectedArgs) {
-		test.Errorf("Expected %d args, got %d", len(expectedArgs), len(args))
+		t.Errorf("Expected %d args, got %d", len(expectedArgs), len(args))
 	}
 
 	for i, expected := range expectedArgs {
 		if i >= len(args) || args[i] != expected {
-			test.Errorf("Expected arg[%d] to be %s, got %s", i, expected, args[i])
+			t.Errorf("Expected arg[%d] to be %s, got %s", i, expected, args[i])
 		}
 	}
 }
 
 // TestNewStandardFlagParser_Normal はNewStandardFlagParserの正常系テスト
-func (t *TestFlagParserStruct) TestNewStandardFlagParser_Normal(test *testing.T) {
+func TestNewStandardFlagParser_Normal(t *testing.T) {
 	// Act
 	parser := NewStandardFlagParser()
 
 	// Assert
 	if parser == nil {
-		test.Error("Expected parser to be non-nil")
+		t.Fatal("Expected parser to be non-nil")
 	}
 
 	if parser.flagSet == nil {
-		test.Error("Expected flagSet to be non-nil")
+		t.Error("Expected flagSet to be non-nil")
 	}
 
 	if parser.flagSet != flag.CommandLine {
-		test.Error("Expected flagSet to be flag.CommandLine")
+		t.Error("Expected flagSet to be flag.CommandLine")
 	}
 }
 
 // TestParseFlagsWithParser_AddOperation はadd操作のフラグ解析テスト
-func (t *TestFlagParserStruct) TestParseFlagsWithParser_AddOperation(test *testing.T) {
+func TestParseFlagsWithParser_AddOperation(t *testing.T) {
 	// Arrange
 	testFlagSet := flag.NewFlagSet("test-add", flag.ContinueOnError)
 	parser := &StandardFlagParser{
@@ -241,23 +238,23 @@ func (t *TestFlagParserStruct) TestParseFlagsWithParser_AddOperation(test *testi
 	// Act
 	err := testFlagSet.Parse(testArgs)
 	if err != nil {
-		test.Fatalf("Parse failed: %v", err)
+		t.Fatalf("Parse failed: %v", err)
 	}
 
 	// Assert
 	if operation != "add" {
-		test.Errorf("Expected operation to be 'add', got %s", operation)
+		t.Errorf("Expected operation to be 'add', got %s", operation)
 	}
 	if xStr != "10" {
-		test.Errorf("Expected x to be '10', got %s", xStr)
+		t.Errorf("Expected x to be '10', got %s", xStr)
 	}
 	if yStr != "5" {
-		test.Errorf("Expected y to be '5', got %s", yStr)
+		t.Errorf("Expected y to be '5', got %s", yStr)
 	}
 }
 
 // TestParseFlagsWithParser_Integration は統合テスト
-func (t *TestFlagParserStruct) TestParseFlagsWithParser_Integration(test *testing.T) {
+func TestParseFlagsWithParser_Integration(t *testing.T) {
 	// Arrange
 	originalArgs := os.Args
 	defer func() {
@@ -282,60 +279,18 @@ func (t *TestFlagParserStruct) TestParseFlagsWithParser_Integration(test *testin
 
 	// Assert
 	if err != nil {
-		test.Errorf("Expected no error, got %v", err)
+		t.Errorf("Expected no error, got %v", err)
 	}
 
 	if operation != "multiply" {
-		test.Errorf("Expected operation to be 'multiply', got %s", operation)
+		t.Errorf("Expected operation to be 'multiply', got %s", operation)
 	}
 
 	if xStr != "7" {
-		test.Errorf("Expected x to be '7', got %s", xStr)
+		t.Errorf("Expected x to be '7', got %s", xStr)
 	}
 
 	if yStr != "8" {
-		test.Errorf("Expected y to be '8', got %s", yStr)
+		t.Errorf("Expected y to be '8', got %s", yStr)
 	}
-}
-
-// 実際のテスト関数
-func TestStandardFlagParser_StringVar_Normal(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestStandardFlagParser_StringVar_Normal(t)
-}
-
-func TestStandardFlagParser_BoolVar_Normal(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestStandardFlagParser_BoolVar_Normal(t)
-}
-
-func TestStandardFlagParser_Parse_Normal(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestStandardFlagParser_Parse_Normal(t)
-}
-
-func TestStandardFlagParser_Args_Normal(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestStandardFlagParser_Args_Normal(t)
-}
-
-func TestNewStandardFlagParser_Normal(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestNewStandardFlagParser_Normal(t)
-}
-
-func TestParseFlagsWithParser_AddOperation(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestParseFlagsWithParser_AddOperation(t)
-}
-
-func TestParseFlagsWithParser_Integration(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestParseFlagsWithParser_Integration(t)
-}
-
-// TestStandardFlagParser_Parse_Error はParseのエラー系テスト
-func TestStandardFlagParser_Parse_Error(t *testing.T) {
-	testStruct := &TestFlagParserStruct{}
-	testStruct.TestStandardFlagParser_Parse_Error(t)
 }
