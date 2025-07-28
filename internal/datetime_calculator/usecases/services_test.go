@@ -1,8 +1,34 @@
 package usecases
 
 import (
+	"fmt"
 	"testing"
+
+	config "github.com/landmaster135/devbox/internal/datetime_calculator/config"
 )
+
+// MockFileReader はテスト用のFileReaderモック実装
+type MockFileReader struct {
+	readFileFunc func(filename string) ([]byte, error)
+}
+
+// ReadFile はファイル読み込みをモックする
+func (m *MockFileReader) ReadFile(filename string) ([]byte, error) {
+	if m.readFileFunc != nil {
+		return m.readFileFunc(filename)
+	}
+	return nil, fmt.Errorf("mock not configured")
+}
+
+// NewMockFileReader は新しいMockFileReaderを作成する
+func NewMockFileReader() *MockFileReader {
+	return &MockFileReader{}
+}
+
+// SetReadFileFunc はReadFile関数の動作を設定する
+func (m *MockFileReader) SetReadFileFunc(fn func(filename string) ([]byte, error)) {
+	m.readFileFunc = fn
+}
 
 // TestNewDatetimeCalculatorService は NewDatetimeCalculatorService のテストです
 func TestNewDatetimeCalculatorService(t *testing.T) {
@@ -29,6 +55,363 @@ func TestNewDatetimeCalculatorService(t *testing.T) {
 				t.Error("NewDatetimeCalculatorService() calculator field is nil")
 			}
 		})
+	}
+}
+
+// TestNewDatetimeCalculatorServiceWithFileReader は NewDatetimeCalculatorServiceWithFileReader のテストです
+func TestNewDatetimeCalculatorServiceWithFileReader(t *testing.T) {
+	// Arrange
+	mockFileReader := NewMockFileReader()
+
+	// Act
+	service := NewDatetimeCalculatorServiceWithFileReader(mockFileReader)
+
+	// Assert
+	if service == nil {
+		t.Error("NewDatetimeCalculatorServiceWithFileReader() returned nil")
+		return
+	}
+
+	// calculatorフィールドがnilでないことを確認
+	if service.calculator == nil {
+		t.Error("NewDatetimeCalculatorServiceWithFileReader() calculator field is nil")
+	}
+
+	// fileReaderフィールドが注入されたものであることを確認
+	if service.fileReader != mockFileReader {
+		t.Error("NewDatetimeCalculatorServiceWithFileReader() fileReader field is not the injected one")
+	}
+}
+
+// TestDatetimeCalculatorService_HandleTimeExtraction は HandleTimeExtraction のテストです
+func TestDatetimeCalculatorService_HandleTimeExtraction(t *testing.T) {
+	tests := []struct {
+		name       string
+		filePath   string
+		textInput  string
+		outputUnit string
+		fileContent string
+		fileError   error
+		expected    float64
+		wantErr     bool
+	}{
+		{
+			name:       "テキスト入力_正常ケース",
+			filePath:   "",
+			textInput:  "作業は合計30分掛かった。別の作業は合計45分掛かった。",
+			outputUnit: "minute",
+			expected:   75,
+			wantErr:    false,
+		},
+		{
+			name:       "テキスト入力_時間変換",
+			filePath:   "",
+			textInput:  "会議は合計120分掛かった。",
+			outputUnit: "hour",
+			expected:   2,
+			wantErr:    false,
+		},
+		{
+			name:        "ファイル入力_正常ケース",
+			filePath:    "/path/to/test.txt",
+			textInput:   "",
+			outputUnit:  "minute",
+			fileContent: "プロジェクトは合計90分掛かった。レビューは合計30分掛かった。",
+			expected:    120,
+			wantErr:     false,
+		},
+		{
+			name:        "ファイル入力_mdファイル",
+			filePath:    "/path/to/test.md",
+			textInput:   "",
+			outputUnit:  "hour",
+			fileContent: "# 作業報告\n\n午前の作業は合計180分掛かった。\n午後の作業は合計120分掛かった。",
+			expected:    5,
+			wantErr:     false,
+		},
+		{
+			name:       "両方指定_エラーケース",
+			filePath:   "/path/to/test.txt",
+			textInput:  "テキスト",
+			outputUnit: "minute",
+			expected:   0,
+			wantErr:    true,
+		},
+		{
+			name:       "両方未指定_エラーケース",
+			filePath:   "",
+			textInput:  "",
+			outputUnit: "minute",
+			expected:   0,
+			wantErr:    true,
+		},
+		{
+			name:       "無効なファイル拡張子_エラーケース",
+			filePath:   "/path/to/test.pdf",
+			textInput:  "",
+			outputUnit: "minute",
+			expected:   0,
+			wantErr:    true,
+		},
+		{
+			name:        "ファイル読み込みエラー_エラーケース",
+			filePath:    "/path/to/test.txt",
+			textInput:   "",
+			outputUnit:  "minute",
+			fileError:   fmt.Errorf("file not found"),
+			expected:    0,
+			wantErr:     true,
+		},
+		{
+			name:       "無効な出力単位_エラーケース",
+			filePath:   "",
+			textInput:  "作業は合計30分掛かった。",
+			outputUnit: "invalid",
+			expected:   0,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			mockFileReader := NewMockFileReader()
+			if tt.filePath != "" {
+				if tt.fileError != nil {
+					mockFileReader.SetReadFileFunc(func(filename string) ([]byte, error) {
+						return nil, tt.fileError
+					})
+				} else {
+					mockFileReader.SetReadFileFunc(func(filename string) ([]byte, error) {
+						return []byte(tt.fileContent), nil
+					})
+				}
+			}
+
+			service := NewDatetimeCalculatorServiceWithFileReader(mockFileReader)
+
+			// Act
+			result, err := service.HandleTimeExtraction(tt.filePath, tt.textInput, tt.outputUnit)
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HandleTimeExtraction() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				if result != tt.expected {
+					t.Errorf("HandleTimeExtraction() = %v, want %v", result, tt.expected)
+				}
+			} else {
+				if result != 0 {
+					t.Errorf("HandleTimeExtraction() error case result = %v, want 0", result)
+				}
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculatorService_HandleTimeExtraction_EdgeCases はエッジケースのテストです
+func TestDatetimeCalculatorService_HandleTimeExtraction_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		filePath    string
+		textInput   string
+		outputUnit  string
+		fileContent string
+		expected    float64
+		wantErr     bool
+	}{
+		{
+			name:       "マッチしないテキスト",
+			filePath:   "",
+			textInput:  "今日は良い天気です。",
+			outputUnit: "minute",
+			expected:   0,
+			wantErr:    false,
+		},
+		{
+			name:        "空のファイル",
+			filePath:    "/path/to/empty.txt",
+			textInput:   "",
+			outputUnit:  "minute",
+			fileContent: "",
+			expected:    0,
+			wantErr:     false,
+		},
+		{
+			name:       "空のテキスト入力",
+			filePath:   "",
+			textInput:  "",
+			outputUnit: "minute",
+			expected:   0,
+			wantErr:    true, // 両方未指定のエラー
+		},
+		{
+			name:        "複雑なファイル内容",
+			filePath:    "/path/to/complex.md",
+			textInput:   "",
+			outputUnit:  "hour",
+			fileContent: "# プロジェクト報告\n\n## フェーズ1\n設計は合計240分掛かった。\n\n## フェーズ2\n実装は合計360分掛かった。\n\n## フェーズ3\nテストは合計120分掛かった。",
+			expected:    12,
+			wantErr:     false,
+		},
+		{
+			name:       "デフォルト出力単位",
+			filePath:   "",
+			textInput:  "作業は合計60分掛かった。",
+			outputUnit: "",
+			expected:   0,
+			wantErr:    true, // outputUnitが空の場合はエラー（HandleTimeExtractionでは検証されない）
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			mockFileReader := NewMockFileReader()
+			if tt.filePath != "" {
+				mockFileReader.SetReadFileFunc(func(filename string) ([]byte, error) {
+					return []byte(tt.fileContent), nil
+				})
+			}
+
+			service := NewDatetimeCalculatorServiceWithFileReader(mockFileReader)
+
+			// Act
+			result, err := service.HandleTimeExtraction(tt.filePath, tt.textInput, tt.outputUnit)
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HandleTimeExtraction() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				if result != tt.expected {
+					t.Errorf("HandleTimeExtraction() = %v, want %v", result, tt.expected)
+				}
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculatorService_HandleTimeExtraction_FileExtensions はファイル拡張子のテストです
+func TestDatetimeCalculatorService_HandleTimeExtraction_FileExtensions(t *testing.T) {
+	tests := []struct {
+		name     string
+		filePath string
+		wantErr  bool
+	}{
+		{
+			name:     "txtファイル_正常",
+			filePath: "/path/to/test.txt",
+			wantErr:  false,
+		},
+		{
+			name:     "mdファイル_正常",
+			filePath: "/path/to/test.md",
+			wantErr:  false,
+		},
+		{
+			name:     "pdfファイル_エラー",
+			filePath: "/path/to/test.pdf",
+			wantErr:  true,
+		},
+		{
+			name:     "docファイル_エラー",
+			filePath: "/path/to/test.doc",
+			wantErr:  true,
+		},
+		{
+			name:     "拡張子なし_エラー",
+			filePath: "/path/to/test",
+			wantErr:  true,
+		},
+		{
+			name:     "複数ドット_正常",
+			filePath: "/path/to/test.backup.txt",
+			wantErr:  false,
+		},
+		{
+			name:     "複数ドット_エラー",
+			filePath: "/path/to/test.backup.pdf",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			mockFileReader := NewMockFileReader()
+			mockFileReader.SetReadFileFunc(func(filename string) ([]byte, error) {
+				return []byte("作業は合計30分掛かった。"), nil
+			})
+
+			service := NewDatetimeCalculatorServiceWithFileReader(mockFileReader)
+
+			// Act
+			result, err := service.HandleTimeExtraction(tt.filePath, "", "minute")
+
+			// Assert
+			if (err != nil) != tt.wantErr {
+				t.Errorf("HandleTimeExtraction() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !tt.wantErr {
+				if result != 30 {
+					t.Errorf("HandleTimeExtraction() = %v, want 30", result)
+				}
+			}
+		})
+	}
+}
+
+// TestMockFileReader_Interface はMockFileReaderがconfig.FileReaderインターフェースを実装していることを確認するテスト
+func TestMockFileReader_Interface(t *testing.T) {
+	// Arrange & Act
+	var reader config.FileReader = NewMockFileReader()
+
+	// Assert - インターフェースのメソッドが呼び出せることを確認
+	_, err := reader.ReadFile("test.txt")
+	if err == nil {
+		t.Error("Expected error from unconfigured mock, got nil")
+	}
+}
+
+// TestMockFileReader_SetReadFileFunc はSetReadFileFuncの動作テスト
+func TestMockFileReader_SetReadFileFunc(t *testing.T) {
+	// Arrange
+	mockReader := NewMockFileReader()
+	expectedContent := "test content"
+	expectedError := fmt.Errorf("test error")
+
+	// Act & Assert - 正常ケース
+	mockReader.SetReadFileFunc(func(filename string) ([]byte, error) {
+		return []byte(expectedContent), nil
+	})
+
+	content, err := mockReader.ReadFile("test.txt")
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if string(content) != expectedContent {
+		t.Errorf("Expected content %s, got %s", expectedContent, string(content))
+	}
+
+	// Act & Assert - エラーケース
+	mockReader.SetReadFileFunc(func(filename string) ([]byte, error) {
+		return nil, expectedError
+	})
+
+	content, err = mockReader.ReadFile("test.txt")
+	if err != expectedError {
+		t.Errorf("Expected error %v, got %v", expectedError, err)
+	}
+	if content != nil {
+		t.Errorf("Expected nil content, got %v", content)
 	}
 }
 
