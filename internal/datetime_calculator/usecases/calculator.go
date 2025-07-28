@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -116,4 +117,50 @@ func (c *DatetimeCalculator) diffTime(t1, t2 time.Time) string {
 	diff := t1.Sub(t2)
 	// time.Duration の String() メソッドは "72h3m0.5s" のように返す
 	return diff.String()
+}
+
+// convertTimeUnit は時間単位間の変換を行うメソッドです
+func (c *DatetimeCalculator) convertTimeUnit(value float64, inputUnit, outputUnit string) (float64, error) {
+	var secondToMinute float64 = 60
+	var secondToHour float64 = 60 * 60
+	var secondToDay float64 = 24 * 60 * 60
+	var secondToMonth float64 = 30 * 24 * 60 * 60
+	var secondToYear float64 = 365 * 24 * 60 * 60
+
+	// 秒を基準単位として変換係数を定義
+	inputToSeconds := map[string]float64{
+		"second": 1,
+		"minute": secondToMinute,
+		"hour":   secondToHour,
+		"day":    secondToDay,
+		"month":  secondToMonth, // 30日として計算
+		"year":   secondToYear,  // 365日として計算
+	}
+
+	secondsToOutput := map[string]float64{
+		"second": 1,
+		"minute": 1.0 / secondToMinute,
+		"hour":   1.0 / secondToHour,
+		"day":    1.0 / secondToDay,
+		"month":  1.0 / secondToMonth, // 30日として計算
+		"year":   1.0 / secondToYear,  // 365日として計算
+	}
+
+	// 入力単位の検証
+	inputFactor, inputExists := inputToSeconds[inputUnit]
+	if !inputExists {
+		return 0, fmt.Errorf("無効な入力時間単位です: %s", inputUnit)
+	}
+
+	// 出力単位の検証
+	outputFactor, outputExists := secondsToOutput[outputUnit]
+	if !outputExists {
+		return 0, fmt.Errorf("無効な出力時間単位です: %s", outputUnit)
+	}
+
+	// 変換: 入力単位 → 秒 → 出力単位
+	seconds := value * inputFactor
+	result := seconds * outputFactor
+
+	return result, nil
 }

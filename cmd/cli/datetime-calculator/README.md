@@ -6,6 +6,8 @@
 
 - **日時加算**: 基準日時に指定された期間を加算
 - **日時減算**: 基準日時から指定された期間を減算
+- **時間単位計算**: 複数の時間単位値を合計し、異なる時間単位に変換
+- **時間単位変換**: 単一の時間単位値を別の時間単位に変換
 - **柔軟な期間指定**: 年、月、日、時、分、秒を個別に指定可能
 - **短縮オプション**: 全てのオプションに短縮形を提供
 - **直感的な出力**: 計算式と結果を分かりやすく表示
@@ -32,9 +34,17 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 
 ### オプション
 
+#### 基本オプション
+
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
-| `-operation` | `-o` | 日時操作 (add, subtract) | | `-o add` |
+| `-operation` | `-o` | 日時操作 (add, subtract, sum) | | `-o add` |
+| `-help` | `-h` | ヘルプを表示 | | `-h` |
+
+#### 日時加算・減算用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト | 例 |
+|-----------|--------|------|-----------|-----|
 | `-year` | `-y` | 基準日時の年 | 2025 | `-y 2025` |
 | `-month` | `-m` | 基準日時の月 | 1 | `-m 1` |
 | `-day` | `-d` | 基準日時の日 | 1 | `-d 15` |
@@ -47,7 +57,14 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 | `-duration-hour` | `-dh` | 加算/減算する時 | 0 | `-dh 5` |
 | `-duration-minute` | `-dmin` | 加算/減算する分 | 0 | `-dmin 30` |
 | `-duration-second` | `-ds` | 加算/減算する秒 | 0 | `-ds 45` |
-| `-help` | `-h` | ヘルプを表示 | | `-h` |
+
+#### 時間単位計算・変換用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト | 例 |
+|-----------|--------|------|-----------|-----|
+| `-figures` | `-f` | カンマ区切りの数値リスト | | `-f 3600,1800,7200` |
+| `-input-unit` | `-iu` | 入力時間単位 (year, month, day, hour, minute, second) | | `-iu second` |
+| `-output-unit` | `-ou` | 出力時間単位 (year, month, day, hour, minute, second) | | `-ou hour` |
 
 ## 使用例
 
@@ -77,6 +94,32 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 ./bin/datetime-calculator -o subtract -y 2025 -m 12 -d 31 -dd 10
 ```
 
+### 時間単位計算（合計）
+
+```bash
+# 複数の秒数を合計して時間単位で表示
+./bin/datetime-calculator -operation sum -input-unit second -output-unit hour -figures 3600,1800,7200
+
+# 複数の日数を合計して月単位で表示
+./bin/datetime-calculator -operation sum -input-unit day -output-unit month -figures 30,15,45
+
+# 短縮形を使用
+./bin/datetime-calculator -o sum -iu second -ou hour -f 3600,1800,7200
+```
+
+### 時間単位変換
+
+```bash
+# 時間を分に変換
+./bin/datetime-calculator -operation sum -input-unit hour -output-unit minute -figures 2.5
+
+# 日数を週に変換
+./bin/datetime-calculator -operation sum -input-unit day -output-unit week -figures 14
+
+# 短縮形を使用
+./bin/datetime-calculator -o sum -iu hour -ou minute -f 2.5
+```
+
 ## 出力フォーマット
 
 ### 加算の出力
@@ -91,6 +134,14 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 ```
 2025-3-25 18:0:45 - 1月5日2時間15分30秒 = 2025-02-20 15:45:15
 2025-12-31 0:0:0 - 10日 = 2025-12-21 00:00:00
+```
+
+### 時間単位計算の出力
+
+```
+sum([3600 1800 7200] second) = 3.500000 hour
+sum([30 15 45] day) = 3.000000 month
+sum([2.5] hour) = 150.000000 minute
 ```
 
 ## エラーハンドリング
