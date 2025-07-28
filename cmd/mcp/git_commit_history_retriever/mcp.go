@@ -109,7 +109,6 @@ func BuildMcpServer() {
 			mcp.Description("End date (optional, YYYY-MM-DD format)"),
 		),
 	)
-
 	s.AddTool(historyTool, handleGetCommitHistory)
 
 	// get_git_commit_history_with_details ツール
@@ -129,7 +128,6 @@ func BuildMcpServer() {
 			mcp.Description("End date (optional, YYYY-MM-DD format)"),
 		),
 	)
-
 	s.AddTool(detailsTool, handleGetCommitHistoryWithDetails)
 
 	// プロンプト
