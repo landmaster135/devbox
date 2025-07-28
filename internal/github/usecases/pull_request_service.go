@@ -3,8 +3,49 @@ package usecases
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 )
+
+// #==============================================================#
+// ##          Git Branch Provider Interface                    ##
+// #==============================================================#
+
+// GitBranchProvider はGitブランチ情報を取得するためのインターフェース
+type GitBranchProvider interface {
+	GetCurrentBranchFromPath(absolutePath string) (string, error)
+}
+
+// DefaultGitBranchProvider はデフォルトのGitブランチプロバイダー
+type DefaultGitBranchProvider struct{}
+
+// GetCurrentBranchFromPath は指定された絶対パスのリポジトリから現在のGitブランチ名を取得します
+func (g *DefaultGitBranchProvider) GetCurrentBranchFromPath(absolutePath string) (string, error) {
+	// 絶対パスの検証
+	if !filepath.IsAbs(absolutePath) {
+		return "", fmt.Errorf("repo_path must be an absolute path, got: %s", absolutePath)
+	}
+
+	// ディレクトリの存在確認
+	if _, err := os.Stat(absolutePath); os.IsNotExist(err) {
+		return "", fmt.Errorf("repository path does not exist: %s", absolutePath)
+	}
+
+	// Gitリポジトリかどうかの確認
+	gitDir := filepath.Join(absolutePath, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return "", fmt.Errorf("not a git repository: %s", absolutePath)
+	}
+
+	cmd := exec.Command("git", "-C", absolutePath, "rev-parse", "--abbrev-ref", "HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current branch from %s: %w", absolutePath, err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
 
 // #==============================================================#
 // ##          GitHubPullRequestService                         ##
@@ -12,20 +53,23 @@ import (
 
 // GitHubPullRequestService はGitHub Pull Request関連機能のビジネスロジックを提供します
 type GitHubPullRequestService struct {
-	clientService *GitHubClientService
+	clientService     *GitHubClientService
+	gitBranchProvider GitBranchProvider
 }
 
 // NewGitHubPullRequestService は新しいGitHubPullRequestServiceを作成します
 func NewGitHubPullRequestService(token string) *GitHubPullRequestService {
 	return &GitHubPullRequestService{
-		clientService: NewGitHubClientService(token),
+		clientService:     NewGitHubClientService(token),
+		gitBranchProvider: &DefaultGitBranchProvider{},
 	}
 }
 
 // NewGitHubPullRequestServiceWithDependencies はテスト用に依存性を注入できるGitHubPullRequestServiceを作成します
-func NewGitHubPullRequestServiceWithDependencies(clientService *GitHubClientService) *GitHubPullRequestService {
+func NewGitHubPullRequestServiceWithDependencies(clientService *GitHubClientService, gitBranchProvider GitBranchProvider) *GitHubPullRequestService {
 	return &GitHubPullRequestService{
-		clientService: clientService,
+		clientService:     clientService,
+		gitBranchProvider: gitBranchProvider,
 	}
 }
 
@@ -391,4 +435,16 @@ func (s *GitHubPullRequestService) HandleToListPullRequests(owner, repo, state, 
 	}
 
 	return s.clientService.ReturnJSONResult(result)
+}
+
+// HandleToCreatePullRequestWithCurrentBranch は指定されたリポジトリパスの現在のブランチを使用してプルリクエストを作成して、結果をJSON形式で返します
+func (s *GitHubPullRequestService) HandleToCreatePullRequestWithCurrentBranch(owner, repo, title, base, body string, draft bool, repoPath string) (string, error) {
+	// 指定された絶対パスからブランチを取得
+	currentBranch, err := s.gitBranchProvider.GetCurrentBranchFromPath(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	// 既存のHandleToCreatePullRequestを呼び出し
+	return s.HandleToCreatePullRequest(owner, repo, title, currentBranch, base, body, draft)
 }

@@ -115,7 +115,11 @@ func TestCreatePullRequestReview_ErrorCases(t *testing.T) {
 
 			// GitHubPullRequestServiceの作成
 			clientService := NewGitHubClientServiceWithDependencies(mockClient, "test_token", &DefaultJSONMarshaler{})
-			service := NewGitHubPullRequestServiceWithDependencies(clientService)
+			mockGitBranchProvider := &MockGitBranchProvider{
+				CurrentBranch: "test-branch",
+				Error:         nil,
+			}
+			service := NewGitHubPullRequestServiceWithDependencies(clientService, mockGitBranchProvider)
 
 			// テスト対象の関数を実行
 			result, err := service.createPullRequestReview(tc.owner, tc.repo, tc.pullNumber, tc.options)
@@ -243,7 +247,11 @@ func TestMergePullRequest_ErrorCases(t *testing.T) {
 
 			// GitHubPullRequestServiceの作成
 			clientService := NewGitHubClientServiceWithDependencies(mockClient, "test_token", &DefaultJSONMarshaler{})
-			service := NewGitHubPullRequestServiceWithDependencies(clientService)
+			mockGitBranchProvider := &MockGitBranchProvider{
+				CurrentBranch: "test-branch",
+				Error:         nil,
+			}
+			service := NewGitHubPullRequestServiceWithDependencies(clientService, mockGitBranchProvider)
 
 			// テスト対象の関数を実行
 			result, err := service.mergePullRequest(tc.owner, tc.repo, tc.pullNumber, tc.options)
