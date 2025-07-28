@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -650,5 +651,196 @@ func TestDiffTime(t *testing.T) {
 				t.Errorf("DiffTime() = %v, want %v", result, tt.expected)
 			}
 		})
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_Normal は時間単位変換の正常系テスト
+func TestDatetimeCalculator_convertTimeUnit_Normal(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	testCases := []struct {
+		name       string
+		value      float64
+		inputUnit  string
+		outputUnit string
+		expected   float64
+	}{
+		{"SecondToMinute", 60, "second", "minute", 1},
+		{"MinuteToSecond", 1, "minute", "second", 60},
+		{"HourToMinute", 1, "hour", "minute", 60},
+		{"MinuteToHour", 60, "minute", "hour", 1},
+		{"DayToHour", 1, "day", "hour", 24},
+		{"HourToDay", 24, "hour", "day", 1},
+		{"MonthToDay", 1, "month", "day", 30},
+		{"DayToMonth", 30, "day", "month", 1},
+		{"YearToMonth", 1, "year", "month", 12.166667}, // 365/30 = 12.166667
+		{"MonthToYear", 12, "month", "year", 0.986301}, // 12*30/365 = 0.986301
+		{"YearToDay", 1, "year", "day", 365},
+		{"DayToYear", 365, "day", "year", 1},
+		{"SameUnit", 100, "hour", "hour", 100},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			result, err := calculator.convertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
+
+			// Assert
+			if err != nil {
+				t.Errorf("convertTimeUnit returned error: %v", err)
+			}
+			// 浮動小数点の精度問題を考慮して、小さな誤差を許容
+			tolerance := 0.000001
+			if math.Abs(result-tc.expected) > tolerance {
+				t.Errorf("Expected %f, got %f (difference: %f)", tc.expected, result, math.Abs(result-tc.expected))
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_ComplexConversions は複雑な時間単位変換のテスト
+func TestDatetimeCalculator_convertTimeUnit_ComplexConversions(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	testCases := []struct {
+		name       string
+		value      float64
+		inputUnit  string
+		outputUnit string
+		expected   float64
+	}{
+		{"SecondToHour", 3600, "second", "hour", 1},
+		{"HourToSecond", 1, "hour", "second", 3600},
+		{"SecondToDay", 86400, "second", "day", 1},
+		{"DayToSecond", 1, "day", "second", 86400},
+		{"MinuteToDay", 1440, "minute", "day", 1},
+		{"DayToMinute", 1, "day", "minute", 1440},
+		{"HourToMonth", 720, "hour", "month", 1}, // 720 / (30 * 24) = 1
+		{"MonthToHour", 1, "month", "hour", 720},
+		{"SecondToYear", 31536000, "second", "year", 1}, // 365 * 24 * 60 * 60
+		{"YearToSecond", 1, "year", "second", 31536000},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			result, err := calculator.convertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
+
+			// Assert
+			if err != nil {
+				t.Errorf("convertTimeUnit returned error: %v", err)
+			}
+			// 浮動小数点の精度問題を考慮して、小さな誤差を許容
+			tolerance := 0.000001
+			if math.Abs(result-tc.expected) > tolerance {
+				t.Errorf("Expected %f, got %f (difference: %f)", tc.expected, result, math.Abs(result-tc.expected))
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_DecimalValues は小数値の時間単位変換テスト
+func TestDatetimeCalculator_convertTimeUnit_DecimalValues(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	testCases := []struct {
+		name       string
+		value      float64
+		inputUnit  string
+		outputUnit string
+		expected   float64
+	}{
+		{"HalfHourToMinute", 0.5, "hour", "minute", 30},
+		{"TwoAndHalfHoursToMinute", 2.5, "hour", "minute", 150},
+		{"OneAndHalfDayToHour", 1.5, "day", "hour", 36},
+		{"QuarterDayToMinute", 0.25, "day", "minute", 360}, // 0.25 * 24 * 60
+		{"HalfMonthToDay", 0.5, "month", "day", 15},
+		{"ThreeQuarterYearToMonth", 0.75, "year", "month", 9.125}, // 0.75 * 365 / 30 = 9.125
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			result, err := calculator.convertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
+
+			// Assert
+			if err != nil {
+				t.Errorf("convertTimeUnit returned error: %v", err)
+			}
+			if result != tc.expected {
+				t.Errorf("Expected %f, got %f", tc.expected, result)
+			}
+		})
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_InvalidInputUnit は無効な入力単位のテスト
+func TestDatetimeCalculator_convertTimeUnit_InvalidInputUnit(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	// Act
+	result, err := calculator.convertTimeUnit(100, "invalid", "hour")
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for invalid input unit, got nil")
+	}
+	if result != 0 {
+		t.Errorf("Expected result 0 for error case, got %f", result)
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_InvalidOutputUnit は無効な出力単位のテスト
+func TestDatetimeCalculator_convertTimeUnit_InvalidOutputUnit(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	// Act
+	result, err := calculator.convertTimeUnit(100, "hour", "invalid")
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for invalid output unit, got nil")
+	}
+	if result != 0 {
+		t.Errorf("Expected result 0 for error case, got %f", result)
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_ZeroValue はゼロ値の変換テスト
+func TestDatetimeCalculator_convertTimeUnit_ZeroValue(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	// Act
+	result, err := calculator.convertTimeUnit(0, "hour", "minute")
+
+	// Assert
+	if err != nil {
+		t.Errorf("convertTimeUnit returned error: %v", err)
+	}
+	if result != 0 {
+		t.Errorf("Expected 0, got %f", result)
+	}
+}
+
+// TestDatetimeCalculator_convertTimeUnit_NegativeValue は負の値の変換テスト
+func TestDatetimeCalculator_convertTimeUnit_NegativeValue(t *testing.T) {
+	// Arrange
+	calculator := &DatetimeCalculator{}
+
+	// Act
+	result, err := calculator.convertTimeUnit(-2, "hour", "minute")
+
+	// Assert
+	if err != nil {
+		t.Errorf("convertTimeUnit returned error: %v", err)
+	}
+	if result != -120 {
+		t.Errorf("Expected -120, got %f", result)
 	}
 }
