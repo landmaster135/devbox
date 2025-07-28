@@ -86,6 +86,50 @@ func handleDatetimeCalc(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 	return mcp.NewToolResultText(result), nil
 }
 
+func handleTimeUnitSum(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	numbers, err := request.RequireFloatSlice("numbers")
+	if err != nil {
+		return nil, err
+	}
+
+	inputUnit, err := request.RequireString("input_unit")
+	if err != nil {
+		return nil, err
+	}
+
+	outputUnit, err := request.RequireString("output_unit")
+	if err != nil {
+		return nil, err
+	}
+
+	// DatetimeCalculatorServiceを初期化
+	service := usecases.NewDatetimeCalculatorService()
+	result, err := service.HandleTimeUnitSum(numbers, inputUnit, outputUnit)
+	if err != nil {
+		return nil, fmt.Errorf("時間単位合計計算に失敗しました: %v", err)
+	}
+
+	return mcp.FormatNumberResult(result), nil
+}
+
+func handleTimeExtractionFromSentence(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	filePath := request.GetString("file_path", "")
+	textInput := request.GetString("text_input", "")
+	outputUnit, err := request.RequireString("output_unit")
+	if err != nil {
+		return nil, err
+	}
+
+	// DatetimeCalculatorServiceを初期化
+	service := usecases.NewDatetimeCalculatorService()
+	result, err := service.HandleTimeExtraction(filePath, textInput, outputUnit)
+	if err != nil {
+		return nil, fmt.Errorf("時間抽出に失敗しました: %v", err)
+	}
+
+	return mcp.FormatNumberResult(result), nil
+}
+
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	prompt := mcp.NewPrompt("system_prompt_01",
 		mcp.WithPromptDescription("This is a datetime calculator prompt"),
@@ -112,13 +156,13 @@ func BuildTimeCalculatorServer() {
 		server.WithPromptCapabilities(true),
 		server.WithLogging(),
 	)
-	tool := mcp.NewTool("datetime_calc",
+
+	datetimeCalcTool := mcp.NewTool("datetime_calc",
 		mcp.WithDescription("Perform basic time calculations"),
 		mcp.WithString("operation",
 			mcp.Required(),
 			mcp.Description("The operation to calculate datetime"),
 			mcp.Enum("add", "subtract"),
-			// mcp.Enum("add", "subtract"),
 		),
 		mcp.WithNumber("year_1",
 			mcp.Required(),
@@ -169,8 +213,43 @@ func BuildTimeCalculatorServer() {
 			mcp.Description("Duration of second"),
 		),
 	)
+	s.AddTool(datetimeCalcTool, handleDatetimeCalc)
 
-	s.AddTool(tool, handleDatetimeCalc)
+	timeUnitSumTool := mcp.NewTool("time_unit_sum",
+		mcp.WithDescription("Calculate sum of time values with unit conversion"),
+		mcp.WithArray("numbers",
+			mcp.Required(),
+			mcp.Description("Array of numbers to sum"),
+		),
+		mcp.WithString("input_unit",
+			mcp.Required(),
+			mcp.Description("Input time unit"),
+			mcp.Enum("year", "month", "day", "hour", "minute", "second"),
+		),
+		mcp.WithString("output_unit",
+			mcp.Required(),
+			mcp.Description("Output time unit"),
+			mcp.Enum("year", "month", "day", "hour", "minute", "second"),
+		),
+	)
+	s.AddTool(timeUnitSumTool, handleTimeUnitSum)
+
+	// 新しいtime_extraction_from_sentenceツール
+	timeExtractionTool := mcp.NewTool("time_extraction_from_sentence",
+		mcp.WithDescription("Extract time values from text or file content"),
+		mcp.WithString("file_path",
+			mcp.Description("Absolute path to file (.md or .txt format)"),
+		),
+		mcp.WithString("text_input",
+			mcp.Description("Text input to extract time from"),
+		),
+		mcp.WithString("output_unit",
+			mcp.Required(),
+			mcp.Description("Output time unit"),
+			mcp.Enum("year", "month", "day", "hour", "minute", "second"),
+		),
+	)
+	s.AddTool(timeExtractionTool, handleTimeExtractionFromSentence)
 
 	// プロンプト
 	s = addPromptIntoServer(s)

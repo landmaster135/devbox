@@ -18,6 +18,7 @@ import (
 	http_request "github.com/landmaster135/devbox/cmd/mcp/http_request"
 	postgresql "github.com/landmaster135/devbox/cmd/mcp/postgresql"
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
+	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
 	gdrive "github.com/landmaster135/devbox/cmd/mcp/gdrive"
 	// shell "github.com/landmaster135/devbox/cmd/mcp/shell" // TODO: unapplicable for WSL...
 	timezone "github.com/landmaster135/devbox/cmd/mcp/timezone"
@@ -74,6 +75,8 @@ func Router() {
 		git_diff_recorder.BuildMcpServer()
 	case "git_commit_history_retriever":
 		git_commit_history_retriever.BuildMcpServer()
+	case "service_implementing_viewer":
+		service_implementing_viewer.BuildServiceImplementingViewerServer()
 	default:
 		fmt.Fprintln(os.Stderr, "argument is invalid")
 		os.Exit(1)
