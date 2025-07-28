@@ -12,6 +12,7 @@ type MockFlagParser struct {
 	boolFlags   map[string]bool
 	parseError  error
 	args        []string
+	stringVars  map[*string]string // ポインタと最後に設定された値のマッピング
 }
 
 // NewMockFlagParser は新しいMockFlagParserを作成する
@@ -20,15 +21,33 @@ func NewMockFlagParser() *MockFlagParser {
 		stringFlags: make(map[string]string),
 		boolFlags:   make(map[string]bool),
 		args:        []string{},
+		stringVars:  make(map[*string]string),
 	}
 }
 
 // StringVar は文字列フラグを設定する（モック用）
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
+	// フラグが設定されている場合は、その値を使用
 	if val, exists := m.stringFlags[name]; exists {
 		*p = val
+		m.stringVars[p] = val
 	} else {
-		*p = value
+		// フラグが設定されていない場合は、デフォルト値を設定
+		// ただし、既に同じポインタに非空の値が設定されている場合は保持
+		if existingVal, hasExisting := m.stringVars[p]; hasExisting && existingVal != "" {
+			// 既存の非空値を保持
+			*p = existingVal
+		} else {
+			// 新しいデフォルト値を設定（空文字列でない場合のみ）
+			if value != "" {
+				*p = value
+				m.stringVars[p] = value
+			} else if !hasExisting {
+				// 初回の場合のみ空文字列を設定
+				*p = value
+				m.stringVars[p] = value
+			}
+		}
 	}
 }
 
@@ -172,7 +191,7 @@ func TestNewConfig_InvalidOperation(t *testing.T) {
 
 // TestNewConfig_AllValidOperations は全ての有効な操作タイプのテスト
 func TestNewConfig_AllValidOperations(t *testing.T) {
-	validOperations := []string{"add", "subtract"}
+	validOperations := []string{"add", "subtract", "sum"}
 
 	for _, operation := range validOperations {
 		// Arrange & Act
@@ -525,6 +544,333 @@ func TestParseFlagsWithParser_ParseError(t *testing.T) {
 	}
 	if config != nil {
 		t.Error("Expected nil config for parse error")
+	}
+}
+
+// TestNewConfigForSum_Normal はNewConfigForSum関数の正常系テスト
+func TestNewConfigForSum_Normal(t *testing.T) {
+	// Arrange
+	operation := "sum"
+	figures := []float64{3600, 1800, 7200}
+	inputUnit := "second"
+	outputUnit := "hour"
+
+	// Act
+	config, err := NewConfigForSum(operation, figures, inputUnit, outputUnit)
+
+	// Assert
+	if err != nil {
+		t.Errorf("NewConfigForSum returned error: %v", err)
+	}
+	if config.Operation != operation {
+		t.Errorf("Expected operation %s, got %s", operation, config.Operation)
+	}
+	if len(config.Figures) != len(figures) {
+		t.Errorf("Expected %d figures, got %d", len(figures), len(config.Figures))
+	}
+	for i, expected := range figures {
+		if config.Figures[i] != expected {
+			t.Errorf("Expected figure[%d] %f, got %f", i, expected, config.Figures[i])
+		}
+	}
+	if config.InputUnit != inputUnit {
+		t.Errorf("Expected InputUnit %s, got %s", inputUnit, config.InputUnit)
+	}
+	if config.OutputUnit != outputUnit {
+		t.Errorf("Expected OutputUnit %s, got %s", outputUnit, config.OutputUnit)
+	}
+}
+
+// TestNewConfigForSum_EmptyOperation は操作タイプが空の場合のテスト
+func TestNewConfigForSum_EmptyOperation(t *testing.T) {
+	// Arrange
+	operation := ""
+	figures := []float64{3600, 1800}
+	inputUnit := "second"
+	outputUnit := "hour"
+
+	// Act
+	config, err := NewConfigForSum(operation, figures, inputUnit, outputUnit)
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for empty operation, got nil")
+	}
+	if config != nil {
+		t.Error("Expected nil config for empty operation")
+	}
+}
+
+// TestNewConfigForSum_InvalidOperation は無効な操作タイプの場合のテスト
+func TestNewConfigForSum_InvalidOperation(t *testing.T) {
+	// Arrange
+	operation := "add"
+	figures := []float64{3600, 1800}
+	inputUnit := "second"
+	outputUnit := "hour"
+
+	// Act
+	config, err := NewConfigForSum(operation, figures, inputUnit, outputUnit)
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for invalid operation, got nil")
+	}
+	if config != nil {
+		t.Error("Expected nil config for invalid operation")
+	}
+}
+
+// TestNewConfigForSum_EmptyFigures は数値配列が空の場合のテスト
+func TestNewConfigForSum_EmptyFigures(t *testing.T) {
+	// Arrange
+	operation := "sum"
+	figures := []float64{}
+	inputUnit := "second"
+	outputUnit := "hour"
+
+	// Act
+	config, err := NewConfigForSum(operation, figures, inputUnit, outputUnit)
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for empty figures, got nil")
+	}
+	if config != nil {
+		t.Error("Expected nil config for empty figures")
+	}
+}
+
+// TestNewConfigForSum_EmptyUnits は時間単位が空の場合のテスト
+func TestNewConfigForSum_EmptyUnits(t *testing.T) {
+	// Arrange
+	operation := "sum"
+	figures := []float64{3600, 1800}
+
+	testCases := []struct {
+		name       string
+		inputUnit  string
+		outputUnit string
+	}{
+		{"EmptyInputUnit", "", "hour"},
+		{"EmptyOutputUnit", "second", ""},
+		{"BothEmpty", "", ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			config, err := NewConfigForSum(operation, figures, tc.inputUnit, tc.outputUnit)
+
+			// Assert
+			if err == nil {
+				t.Error("Expected error for empty units, got nil")
+			}
+			if config != nil {
+				t.Error("Expected nil config for empty units")
+			}
+		})
+	}
+}
+
+// TestNewConfigForSum_InvalidUnits は無効な時間単位の場合のテスト
+func TestNewConfigForSum_InvalidUnits(t *testing.T) {
+	// Arrange
+	operation := "sum"
+	figures := []float64{3600, 1800}
+
+	testCases := []struct {
+		name       string
+		inputUnit  string
+		outputUnit string
+	}{
+		{"InvalidInputUnit", "invalid", "hour"},
+		{"InvalidOutputUnit", "second", "invalid"},
+		{"BothInvalid", "invalid1", "invalid2"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Act
+			config, err := NewConfigForSum(operation, figures, tc.inputUnit, tc.outputUnit)
+
+			// Assert
+			if err == nil {
+				t.Error("Expected error for invalid units, got nil")
+			}
+			if config != nil {
+				t.Error("Expected nil config for invalid units")
+			}
+		})
+	}
+}
+
+// TestNewConfigForSum_ValidUnits は全ての有効な時間単位のテスト
+func TestNewConfigForSum_ValidUnits(t *testing.T) {
+	// Arrange
+	operation := "sum"
+	figures := []float64{1, 2, 3}
+	validUnits := []string{"year", "month", "day", "hour", "minute", "second"}
+
+	for _, inputUnit := range validUnits {
+		for _, outputUnit := range validUnits {
+			t.Run(fmt.Sprintf("%s_to_%s", inputUnit, outputUnit), func(t *testing.T) {
+				// Act
+				config, err := NewConfigForSum(operation, figures, inputUnit, outputUnit)
+
+				// Assert
+				if err != nil {
+					t.Errorf("NewConfigForSum returned error for valid units %s->%s: %v", inputUnit, outputUnit, err)
+				}
+				if config == nil {
+					t.Errorf("Expected non-nil config for valid units %s->%s", inputUnit, outputUnit)
+				}
+				if config != nil {
+					if config.InputUnit != inputUnit {
+						t.Errorf("Expected InputUnit %s, got %s", inputUnit, config.InputUnit)
+					}
+					if config.OutputUnit != outputUnit {
+						t.Errorf("Expected OutputUnit %s, got %s", outputUnit, config.OutputUnit)
+					}
+				}
+			})
+		}
+	}
+}
+
+// TestParseFlagsWithParser_SumOperation はsum操作のフラグ解析テスト
+func TestParseFlagsWithParser_SumOperation(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockParser.SetStringFlag("operation", "sum")
+	mockParser.SetStringFlag("figures", "3600,1800,7200")
+	mockParser.SetStringFlag("input-unit", "second")
+	mockParser.SetStringFlag("output-unit", "hour")
+
+	// Act
+	config, err := ParseFlagsWithParser(mockParser)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ParseFlagsWithParser returned error: %v", err)
+		return
+	}
+	if config == nil {
+		t.Fatal("Expected non-nil config")
+	}
+	if config.Operation != "sum" {
+		t.Errorf("Expected operation 'sum', got %s", config.Operation)
+	}
+	expectedFigures := []float64{3600, 1800, 7200}
+	if len(config.Figures) != len(expectedFigures) {
+		t.Errorf("Expected %d figures, got %d", len(expectedFigures), len(config.Figures))
+	}
+	for i, expected := range expectedFigures {
+		if config.Figures[i] != expected {
+			t.Errorf("Expected figure[%d] %f, got %f", i, expected, config.Figures[i])
+		}
+	}
+	if config.InputUnit != "second" {
+		t.Errorf("Expected InputUnit 'second', got %s", config.InputUnit)
+	}
+	if config.OutputUnit != "hour" {
+		t.Errorf("Expected OutputUnit 'hour', got %s", config.OutputUnit)
+	}
+}
+
+// TestParseFlagsWithParser_SumOperationShortFlags はsum操作の短縮形フラグテスト
+func TestParseFlagsWithParser_SumOperationShortFlags(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockParser.SetStringFlag("o", "sum")
+	mockParser.SetStringFlag("f", "2.5,3.5")
+	mockParser.SetStringFlag("iu", "hour")
+	mockParser.SetStringFlag("ou", "minute")
+
+	// Act
+	config, err := ParseFlagsWithParser(mockParser)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ParseFlagsWithParser returned error: %v", err)
+	}
+	if config.Operation != "sum" {
+		t.Errorf("Expected operation 'sum', got %s", config.Operation)
+	}
+	expectedFigures := []float64{2.5, 3.5}
+	if len(config.Figures) != len(expectedFigures) {
+		t.Errorf("Expected %d figures, got %d", len(expectedFigures), len(config.Figures))
+	}
+	for i, expected := range expectedFigures {
+		if config.Figures[i] != expected {
+			t.Errorf("Expected figure[%d] %f, got %f", i, expected, config.Figures[i])
+		}
+	}
+	if config.InputUnit != "hour" {
+		t.Errorf("Expected InputUnit 'hour', got %s", config.InputUnit)
+	}
+	if config.OutputUnit != "minute" {
+		t.Errorf("Expected OutputUnit 'minute', got %s", config.OutputUnit)
+	}
+}
+
+// TestParseFlagsWithParser_SumOperationInvalidFigures は無効な数値のテスト
+func TestParseFlagsWithParser_SumOperationInvalidFigures(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	mockParser.SetStringFlag("operation", "sum")
+	mockParser.SetStringFlag("figures", "3600,invalid,7200")
+	mockParser.SetStringFlag("input-unit", "second")
+	mockParser.SetStringFlag("output-unit", "hour")
+
+	// Act
+	config, err := ParseFlagsWithParser(mockParser)
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for invalid figures, got nil")
+	}
+	if config != nil {
+		t.Error("Expected nil config for invalid figures")
+	}
+}
+
+// TestParseFlagsWithParser_SumOperationMissingUnits は時間単位が不足している場合のテスト
+func TestParseFlagsWithParser_SumOperationMissingUnits(t *testing.T) {
+	testCases := []struct {
+		name       string
+		inputUnit  string
+		outputUnit string
+	}{
+		{"MissingInputUnit", "", "hour"},
+		{"MissingOutputUnit", "second", ""},
+		{"BothMissing", "", ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Arrange
+			mockParser := NewMockFlagParser()
+			mockParser.SetStringFlag("operation", "sum")
+			mockParser.SetStringFlag("figures", "3600,1800")
+			if tc.inputUnit != "" {
+				mockParser.SetStringFlag("input-unit", tc.inputUnit)
+			}
+			if tc.outputUnit != "" {
+				mockParser.SetStringFlag("output-unit", tc.outputUnit)
+			}
+
+			// Act
+			config, err := ParseFlagsWithParser(mockParser)
+
+			// Assert
+			if err == nil {
+				t.Error("Expected error for missing units, got nil")
+			}
+			if config != nil {
+				t.Error("Expected nil config for missing units")
+			}
+		})
 	}
 }
 
