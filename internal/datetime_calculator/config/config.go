@@ -109,11 +109,6 @@ func NewConfigForSum(operation string, figures []float64, inputUnit, outputUnit 
 	}, nil
 }
 
-// ParseFlags はコマンドライン引数を解析してConfigを作成する
-func ParseFlags() (*Config, error) {
-	return ParseFlagsWithParser(NewStandardFlagParser())
-}
-
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析する
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
@@ -248,6 +243,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return nil, fmt.Errorf("無効な期間秒の値です: %s", durationSecondStr)
 	}
 
+	// 操作タイプが指定されていない場合のエラーチェック
+	if operation == "" {
+		return nil, fmt.Errorf("操作タイプが指定されていません")
+	}
+
 	// sum操作の場合は専用の処理を行う
 	if operation == "sum" {
 		// figures文字列を[]float64に変換
@@ -268,6 +268,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	}
 
 	return NewConfig(operation, year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
+}
+
+// ParseFlags はコマンドライン引数を解析してConfigを作成する
+func ParseFlags() (*Config, error) {
+	return ParseFlagsWithParser(NewStandardFlagParser())
 }
 
 // PrintUsage は使用方法を表示する

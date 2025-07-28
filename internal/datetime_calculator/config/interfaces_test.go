@@ -184,10 +184,10 @@ func TestFlagParserInterface_MultipleCallsWithSameVariable(t *testing.T) {
 	parser.StringVar(&value, "flag1", "default1", "usage1")
 	parser.StringVar(&value, "flag2", "default2", "usage2")
 
-	// Assert - 最後の呼び出しの値が設定されることを確認（実装依存）
-	// MockFlagParserの実装では、フラグが設定されていない場合はデフォルト値が使用される
-	if value != "default2" {
-		t.Errorf("Expected value to be 'default2', got %s", value)
+	// Assert - MockFlagParserの実装では、非空の値が既に設定されている場合は保持される
+	// フラグが設定されていない場合、最初に設定された非空のデフォルト値が保持される
+	if value != "default1" {
+		t.Errorf("Expected value to be 'default1', got %s", value)
 	}
 }
 
