@@ -9,7 +9,7 @@ import (
 
 // Config は日時計算CLIの設定を保持する構造体
 type Config struct {
-	Operation      string    // 操作タイプ (add, subtract, sum)
+	Operation      string    // 操作タイプ (add, subtract, sum, parse-time)
 	Year1          float64   // 基準日時の年
 	Month1         float64   // 基準日時の月
 	Day1           float64   // 基準日時の日
@@ -25,6 +25,8 @@ type Config struct {
 	Figures        []float64 // 時間単位計算用の数値配列 (sum操作用)
 	InputUnit      string    // 入力時間単位 (sum操作用)
 	OutputUnit     string    // 出力時間単位 (sum操作用)
+	FilePath       string    // ファイルパス (parse-time操作用)
+	TextInput      string    // テキスト入力 (parse-time操作用)
 	Help           bool      // ヘルプ表示フラグ
 }
 
@@ -109,6 +111,38 @@ func NewConfigForSum(operation string, figures []float64, inputUnit, outputUnit 
 	}, nil
 }
 
+// NewConfigForParseTime はparse-time操作用の新しいConfigを作成する
+func NewConfigForParseTime(operation, filePath, textInput string) (*Config, error) {
+	if operation == "" {
+		return nil, fmt.Errorf("操作タイプが指定されていません")
+	}
+
+	if operation != "parse-time" {
+		return nil, fmt.Errorf("この関数はparse-time操作専用です: %s", operation)
+	}
+
+	// 排他制御
+	if filePath != "" && textInput != "" {
+		return nil, fmt.Errorf("ファイルパスとテキスト入力は同時に指定できません")
+	}
+	if filePath == "" && textInput == "" {
+		return nil, fmt.Errorf("ファイルパスまたはテキスト入力のいずれかを指定してください")
+	}
+
+	// ファイル拡張子の検証
+	if filePath != "" {
+		if !strings.HasSuffix(filePath, ".md") && !strings.HasSuffix(filePath, ".txt") {
+			return nil, fmt.Errorf("ファイルは.mdまたは.txt形式である必要があります")
+		}
+	}
+
+	return &Config{
+		Operation: operation,
+		FilePath:  filePath,
+		TextInput: textInput,
+	}, nil
+}
+
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析する
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
@@ -128,10 +162,12 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		figures           = ""
 		inputUnit         = ""
 		outputUnit        = ""
+		filePath          = ""
+		textInput         = ""
 		help              = false
 	)
 
-	parser.StringVar(&operation, "operation", "", "日時操作 (add, subtract, sum)")
+	parser.StringVar(&operation, "operation", "", "日時操作 (add, subtract, sum, parse-time)")
 	parser.StringVar(&operation, "o", "", "操作の短縮形")
 
 	// 基準日時のパラメータ
@@ -169,6 +205,12 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&inputUnit, "iu", "", "入力時間単位の短縮形")
 	parser.StringVar(&outputUnit, "output-unit", "", "出力時間単位 (sum操作用)")
 	parser.StringVar(&outputUnit, "ou", "", "出力時間単位の短縮形")
+
+	// 時間抽出用のパラメータ (parse-time操作用)
+	parser.StringVar(&filePath, "file-path", "", "ファイルパス (parse-time操作用)")
+	parser.StringVar(&filePath, "fp", "", "ファイルパスの短縮形")
+	parser.StringVar(&textInput, "text-input", "", "テキスト入力 (parse-time操作用)")
+	parser.StringVar(&textInput, "ti", "", "テキスト入力の短縮形")
 
 	parser.BoolVar(&help, "help", false, "ヘルプを表示")
 	parser.BoolVar(&help, "h", false, "ヘルプの短縮形")
@@ -267,6 +309,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return NewConfigForSum(operation, figuresSlice, inputUnit, outputUnit)
 	}
 
+	// parse-time操作の場合は専用の処理を行う
+	if operation == "parse-time" {
+		return NewConfigForParseTime(operation, filePath, textInput)
+	}
+
 	return NewConfig(operation, year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
 }
 
@@ -292,12 +339,20 @@ func PrintUsage() {
   時間単位変換:
     %s -operation sum -input-unit hour -output-unit minute -figures 2.5
 
+  時間抽出（ファイルから）:
+    %s -operation parse-time -file-path /path/to/file.txt
+
+  時間抽出（テキストから）:
+    %s -operation parse-time -text-input "作業は合計30分掛かった。別の作業は合計45分掛かった。"
+
   短縮形:
     %s -o add -y 2025 -m 1 -d 15 -hr 12 -min 30 -s 0 -dy 1 -dm 2 -dd 10 -dh 5 -dmin 30 -ds 45
     %s -o sum -iu second -ou hour -f 3600,1800,7200
+    %s -o parse-time -fp /path/to/file.md
+    %s -o parse-time -ti "合計120分掛かった。"
 
 オプション:
-  -operation, -o       日時操作 (add, subtract, sum)
+  -operation, -o       日時操作 (add, subtract, sum, parse-time)
   -year, -y           基準日時の年 (デフォルト: 2025)
   -month, -m          基準日時の月 (デフォルト: 1)
   -day, -d            基準日時の日 (デフォルト: 1)
@@ -313,7 +368,9 @@ func PrintUsage() {
   -figures, -f        カンマ区切りの数値リスト (sum操作用)
   -input-unit, -iu    入力時間単位 (sum操作用: year, month, day, hour, minute, second)
   -output-unit, -ou   出力時間単位 (sum操作用: year, month, day, hour, minute, second)
+  -file-path, -fp     ファイルパス (parse-time操作用: .mdまたは.txt)
+  -text-input, -ti    テキスト入力 (parse-time操作用)
   -help, -h           このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }

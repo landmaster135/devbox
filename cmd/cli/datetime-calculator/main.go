@@ -101,6 +101,22 @@ func handleTimeUnitSum(cfg *config.Config) {
 	fmt.Printf("sum(%v %s) = %.6f %s\n", cfg.Figures, cfg.InputUnit, result, cfg.OutputUnit)
 }
 
+// handleTimeExtraction は時間抽出処理を処理する
+func handleTimeExtraction(cfg *config.Config) {
+	// DatetimeCalculatorServiceを初期化
+	service := usecases.NewDatetimeCalculatorService()
+
+	// 時間抽出を実行
+	result, err := service.HandleTimeExtraction(cfg.FilePath, cfg.TextInput)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("抽出された時間の合計: %.0f分\n", result)
+}
+
 func main() {
 	// コマンドライン引数を解析
 	cfg, err := config.ParseFlags()
@@ -122,6 +138,8 @@ func main() {
 		handleDatetimeCalculation(cfg)
 	case "sum":
 		handleTimeUnitSum(cfg)
+	case "parse-time":
+		handleTimeExtraction(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
 		config.PrintUsage()

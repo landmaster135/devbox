@@ -2,6 +2,8 @@ package usecases
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"time"
 )
 
@@ -119,6 +121,14 @@ func (c *DatetimeCalculator) diffTime(t1, t2 time.Time) string {
 	return diff.String()
 }
 
+func (c *DatetimeCalculator) sumTimeFloat(figures []float64) float64 {
+	sum := 0.0
+	for _, figure := range figures {
+		sum += figure
+	}
+	return sum
+}
+
 // convertTimeUnit は時間単位間の変換を行うメソッドです
 func (c *DatetimeCalculator) convertTimeUnit(value float64, inputUnit, outputUnit string) (float64, error) {
 	var secondToMinute float64 = 60
@@ -163,4 +173,23 @@ func (c *DatetimeCalculator) convertTimeUnit(value float64, inputUnit, outputUni
 	result := seconds * outputFactor
 
 	return result, nil
+}
+
+// extractTimeFromText は文字列から「合計[数値]分掛かった。」パターンを抽出し合計を計算する
+func (c *DatetimeCalculator) extractTimeFromText(text string) (float64, error) {
+	// 「合計[数値]分掛かった。」を抽出する正規表現
+	pattern := `合計(\d+)分掛かった。`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	var figures []float64
+	for _, match := range matches {
+		if len(match) > 1 {
+			if minutes, err := strconv.Atoi(match[1]); err == nil {
+				figures = append(figures, float64(minutes))
+			}
+		}
+	}
+
+	return c.sumTimeFloat(figures), nil
 }
