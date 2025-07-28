@@ -8,6 +8,7 @@
 - **日時減算**: 基準日時から指定された期間を減算
 - **時間単位計算**: 複数の時間単位値を合計し、異なる時間単位に変換
 - **時間単位変換**: 単一の時間単位値を別の時間単位に変換
+- **時間抽出**: テキストやファイルから「合計[数値]分掛かった。」パターンを抽出して合計時間を計算
 - **柔軟な期間指定**: 年、月、日、時、分、秒を個別に指定可能
 - **短縮オプション**: 全てのオプションに短縮形を提供
 - **直感的な出力**: 計算式と結果を分かりやすく表示
@@ -38,7 +39,7 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
-| `-operation` | `-o` | 日時操作 (add, subtract, sum) | | `-o add` |
+| `-operation` | `-o` | 日時操作 (add, subtract, sum, parse-time) | | `-o add` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
 
 #### 日時加算・減算用オプション
@@ -65,6 +66,13 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 | `-figures` | `-f` | カンマ区切りの数値リスト | | `-f 3600,1800,7200` |
 | `-input-unit` | `-iu` | 入力時間単位 (year, month, day, hour, minute, second) | | `-iu second` |
 | `-output-unit` | `-ou` | 出力時間単位 (year, month, day, hour, minute, second) | | `-ou hour` |
+
+#### 時間抽出用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト | 例 |
+|-----------|--------|------|-----------|-----|
+| `-file-path` | `-fp` | ファイルパス (.mdまたは.txt形式) | | `-fp /path/to/file.txt` |
+| `-text-input` | `-ti` | テキスト入力 | | `-ti "合計30分掛かった。"` |
 
 ## 使用例
 
@@ -120,6 +128,22 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 ./bin/datetime-calculator -o sum -iu hour -ou minute -f 2.5
 ```
 
+### 時間抽出
+
+```bash
+# ファイルから時間を抽出
+./bin/datetime-calculator -operation parse-time -file-path /path/to/file.txt
+
+# テキストから時間を抽出
+./bin/datetime-calculator -operation parse-time -text-input "作業は合計30分掛かった。別の作業は合計45分掛かった。"
+
+# 短縮形を使用（ファイルから）
+./bin/datetime-calculator -o parse-time -fp /path/to/work_log.md
+
+# 短縮形を使用（テキストから）
+./bin/datetime-calculator -o parse-time -ti "合計120分掛かった。"
+```
+
 ## 出力フォーマット
 
 ### 加算の出力
@@ -142,6 +166,13 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 sum([3600 1800 7200] second) = 3.500000 hour
 sum([30 15 45] day) = 3.000000 month
 sum([2.5] hour) = 150.000000 minute
+```
+
+### 時間抽出の出力
+
+```
+抽出された時間の合計: 75分
+抽出された時間の合計: 120分
 ```
 
 ## エラーハンドリング
@@ -279,6 +310,49 @@ MCPツールを使用することで、Model Context Protocol経由で同じ日�
 # 残業時間を加算
 ./bin/datetime-calculator -o add -y 2025 -m 1 -d 20 -hr 17 -min 0 -dh 2 -dmin 30
 ```
+
+### 作業時間の集計
+
+```bash
+# 作業ログファイルから時間を抽出して合計
+./bin/datetime-calculator -o parse-time -fp work_log.md
+
+# 複数の作業報告から時間を抽出
+./bin/datetime-calculator -o parse-time -ti "タスクAは合計60分掛かった。タスクBは合計90分掛かった。タスクCは合計45分掛かった。"
+```
+
+### 時間抽出の対応パターン
+
+時間抽出機能は以下のパターンに対応しています：
+
+- **基本パターン**: `合計[数値]分掛かった。`
+- **例**: 
+  - `合計30分掛かった。`
+  - `合計120分掛かった。`
+  - `作業は合計45分掛かった。`
+
+**対応ファイル形式**:
+- `.md` (Markdown)
+- `.txt` (テキスト)
+
+**使用例のファイル内容**:
+```
+# 作業ログ
+
+## タスクA
+詳細な作業内容...
+合計60分掛かった。
+
+## タスクB  
+別の作業内容...
+合計90分掛かった。
+
+## タスクC
+さらに別の作業...
+合計45分掛かった。
+```
+
+上記のファイルを処理すると、`抽出された時間の合計: 195分` が出力されます。
 
 ## ライセンス
 
