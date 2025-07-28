@@ -128,7 +128,8 @@ func (s *ServiceImplementingViewerService) formatAsTable(serviceStatuses []Servi
 
 	// ヘッダー行を作成
 	result.WriteString("| service")
-	maxServiceNameLen := 7 // "service"の長さ
+	defaultSerNameLen := 7 // "service"の長さ
+	maxServiceNameLen := defaultSerNameLen
 	for _, status := range serviceStatuses {
 		if len(status.ServiceName) > maxServiceNameLen {
 			maxServiceNameLen = len(status.ServiceName)
@@ -136,7 +137,7 @@ func (s *ServiceImplementingViewerService) formatAsTable(serviceStatuses []Servi
 	}
 
 	// サービス名の列幅を調整
-	for i := 7; i < maxServiceNameLen; i++ {
+	for i := defaultSerNameLen; i < maxServiceNameLen; i++ {
 		result.WriteString(" ")
 	}
 
@@ -148,13 +149,13 @@ func (s *ServiceImplementingViewerService) formatAsTable(serviceStatuses []Servi
 
 	// セパレーター行を作成
 	result.WriteString("| :")
-	for i := 1; i < maxServiceNameLen; i++ {
+	for i := 1; i < maxServiceNameLen - 1; i++ {
 		result.WriteString("-")
 	}
-	result.WriteString(":")
+	result.WriteString(": ")
 
 	for range s.targetDirs {
-		result.WriteString(" | :-: ")
+		result.WriteString("| :-: ")
 	}
 	result.WriteString("|\n")
 
