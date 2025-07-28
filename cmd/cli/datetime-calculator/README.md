@@ -73,6 +73,7 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 |-----------|--------|------|-----------|-----|
 | `-file-path` | `-fp` | ファイルパス (.mdまたは.txt形式) | | `-fp /path/to/file.txt` |
 | `-text-input` | `-ti` | テキスト入力 | | `-ti "合計30分掛かった。"` |
+| `-output-unit` | `-ou` | 出力時間単位 (year, month, day, hour, minute, second) | minute | `-ou hour` |
 
 ## 使用例
 
@@ -131,17 +132,23 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 ### 時間抽出
 
 ```bash
-# ファイルから時間を抽出
+# ファイルから時間を抽出（デフォルト：分単位）
 ./bin/datetime-calculator -operation parse-time -file-path /path/to/file.txt
 
-# テキストから時間を抽出
+# テキストから時間を抽出（デフォルト：分単位）
 ./bin/datetime-calculator -operation parse-time -text-input "作業は合計30分掛かった。別の作業は合計45分掛かった。"
+
+# 時間単位で出力
+./bin/datetime-calculator -operation parse-time -text-input "合計120分掛かった。" -output-unit hour
+
+# 秒単位で出力
+./bin/datetime-calculator -operation parse-time -file-path /path/to/file.txt -output-unit second
 
 # 短縮形を使用（ファイルから）
 ./bin/datetime-calculator -o parse-time -fp /path/to/work_log.md
 
-# 短縮形を使用（テキストから）
-./bin/datetime-calculator -o parse-time -ti "合計120分掛かった。"
+# 短縮形を使用（テキストから、時間単位で出力）
+./bin/datetime-calculator -o parse-time -ti "合計120分掛かった。" -ou hour
 ```
 
 ## 出力フォーマット
@@ -171,8 +178,17 @@ sum([2.5] hour) = 150.000000 minute
 ### 時間抽出の出力
 
 ```
-抽出された時間の合計: 75分
-抽出された時間の合計: 120分
+# デフォルト（分単位）
+抽出された時間の合計: 75.000000分
+抽出された時間の合計: 120.000000分
+
+# 時間単位で出力
+抽出された時間の合計: 1.250000時間
+抽出された時間の合計: 2.000000時間
+
+# 秒単位で出力
+抽出された時間の合計: 4500.000000秒
+抽出された時間の合計: 7200.000000秒
 ```
 
 ## エラーハンドリング
@@ -314,11 +330,17 @@ MCPツールを使用することで、Model Context Protocol経由で同じ日�
 ### 作業時間の集計
 
 ```bash
-# 作業ログファイルから時間を抽出して合計
+# 作業ログファイルから時間を抽出して合計（デフォルト：分単位）
 ./bin/datetime-calculator -o parse-time -fp work_log.md
 
-# 複数の作業報告から時間を抽出
+# 作業ログファイルから時間を抽出して時間単位で表示
+./bin/datetime-calculator -o parse-time -fp work_log.md -ou hour
+
+# 複数の作業報告から時間を抽出（デフォルト：分単位）
 ./bin/datetime-calculator -o parse-time -ti "タスクAは合計60分掛かった。タスクBは合計90分掛かった。タスクCは合計45分掛かった。"
+
+# 複数の作業報告から時間を抽出して時間単位で表示
+./bin/datetime-calculator -o parse-time -ti "タスクAは合計60分掛かった。タスクBは合計90分掛かった。タスクCは合計45分掛かった。" -ou hour
 ```
 
 ### 時間抽出の対応パターン

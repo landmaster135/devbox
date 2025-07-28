@@ -86,10 +86,10 @@ func TestNewDatetimeCalculatorServiceWithFileReader(t *testing.T) {
 // TestDatetimeCalculatorService_HandleTimeExtraction は HandleTimeExtraction のテストです
 func TestDatetimeCalculatorService_HandleTimeExtraction(t *testing.T) {
 	tests := []struct {
-		name       string
-		filePath   string
-		textInput  string
-		outputUnit string
+		name        string
+		filePath    string
+		textInput   string
+		outputUnit  string
 		fileContent string
 		fileError   error
 		expected    float64
@@ -154,13 +154,13 @@ func TestDatetimeCalculatorService_HandleTimeExtraction(t *testing.T) {
 			wantErr:    true,
 		},
 		{
-			name:        "ファイル読み込みエラー_エラーケース",
-			filePath:    "/path/to/test.txt",
-			textInput:   "",
-			outputUnit:  "minute",
-			fileError:   fmt.Errorf("file not found"),
-			expected:    0,
-			wantErr:     true,
+			name:       "ファイル読み込みエラー_エラーケース",
+			filePath:   "/path/to/test.txt",
+			textInput:  "",
+			outputUnit: "minute",
+			fileError:  fmt.Errorf("file not found"),
+			expected:   0,
+			wantErr:    true,
 		},
 		{
 			name:       "無効な出力単位_エラーケース",

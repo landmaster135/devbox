@@ -114,30 +114,10 @@ func handleTimeExtraction(cfg *config.Config) {
 	}
 
 	// 単位名を取得
-	unitName := getUnitName(cfg.OutputUnit)
+	unitName := service.GetCalculator().GetUnitName(cfg.OutputUnit)
 
 	// 結果を出力
 	fmt.Printf("抽出された時間の合計: %.6f%s\n", result, unitName)
-}
-
-// getUnitName は時間単位の日本語名を返す
-func getUnitName(unit string) string {
-	switch unit {
-	case "year":
-		return "年"
-	case "month":
-		return "月"
-	case "day":
-		return "日"
-	case "hour":
-		return "時間"
-	case "minute":
-		return "分"
-	case "second":
-		return "秒"
-	default:
-		return unit
-	}
 }
 
 func main() {
