@@ -14,14 +14,6 @@ type MemoryService struct {
 	manager *KnowledgeGraphManager
 }
 
-// NewMemoryService は新しいMemoryServiceを作成する（ファイルベース）
-func NewMemoryService(memoryFile string) *MemoryService {
-	fileRepo := NewFileRepository(memoryFile)
-	return &MemoryService{
-		manager: NewKnowledgeGraphManager(fileRepo),
-	}
-}
-
 // NewMemoryServiceWithFile はファイルベースのMemoryServiceを作成する
 func NewMemoryServiceWithFile(memoryFile string) *MemoryService {
 	fileRepo := NewFileRepository(memoryFile)
@@ -42,11 +34,17 @@ func NewMemoryServiceWithValkey(valkeyURL string, key string) (*MemoryService, e
 	}, nil
 }
 
-// NewMemoryServiceWithDependencies は依存性注入版のMemoryServiceを作成する
-func NewMemoryServiceWithDependencies(fileReader config.FileReader, fileWriter config.FileWriter, memoryFile string) *MemoryService {
-	fileRepo := NewFileRepositoryWithDependencies(fileReader, fileWriter, memoryFile)
-	return &MemoryService{
-		manager: NewKnowledgeGraphManager(fileRepo),
+// NewMemoryService は設定に基づいてMemoryServiceを作成する
+func NewMemoryService(cfg *config.Config) (*MemoryService, error) {
+	t := cfg.StorageType
+	switch t {
+	case "file":
+		return NewMemoryServiceWithFile(cfg.MemoryFile), nil
+	case "valkey":
+		valkeyURL := cfg.BuildValkeyURL()
+		return NewMemoryServiceWithValkey(valkeyURL, cfg.ValkeyKey)
+	default:
+		return nil, fmt.Errorf("ストレージタイプが設定されていません: %v", t)
 	}
 }
 
