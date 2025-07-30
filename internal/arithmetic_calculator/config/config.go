@@ -82,25 +82,25 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		help         = false
 	)
 
-	parser.StringVar(&operation, "operation", "", "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count)")
-	parser.StringVar(&operation, "o", "", "算術操作の短縮形")
+	parser.StringVar(&operation, "operation", operation, "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count)")
+	parser.StringVar(&operation, "o", operation, "算術操作の短縮形")
 
 	// 基本計算用のパラメータ
-	parser.StringVar(&xStr, "x", "0", "第一オペランド")
-	parser.StringVar(&yStr, "y", "0", "第二オペランド")
+	parser.StringVar(&xStr, "x", xStr, "第一オペランド")
+	parser.StringVar(&yStr, "y", yStr, "第二オペランド")
 
 	// 配列計算用のパラメータ
-	parser.StringVar(&numbers, "numbers", "", "カンマ区切りの数値リスト (sum操作用)")
-	parser.StringVar(&numbers, "n", "", "数値リストの短縮形")
+	parser.StringVar(&numbers, "numbers", numbers, "カンマ区切りの数値リスト (sum操作用)")
+	parser.StringVar(&numbers, "n", numbers, "数値リストの短縮形")
 
 	// ファイル評価用のパラメータ
-	parser.StringVar(&filePath, "file", "", "評価するファイルのパス")
-	parser.StringVar(&filePath, "f", "", "ファイルパスの短縮形")
-	parser.StringVar(&thresholdStr, "threshold", "0", "行数の閾値")
-	parser.StringVar(&thresholdStr, "t", "0", "閾値の短縮形")
+	parser.StringVar(&filePath, "file", filePath, "評価するファイルのパス")
+	parser.StringVar(&filePath, "f", filePath, "ファイルパスの短縮形")
+	parser.StringVar(&thresholdStr, "threshold", thresholdStr, "行数の閾値")
+	parser.StringVar(&thresholdStr, "t", thresholdStr, "閾値の短縮形")
 
-	parser.BoolVar(&help, "help", false, "ヘルプを表示")
-	parser.BoolVar(&help, "h", false, "ヘルプの短縮形")
+	parser.BoolVar(&help, "help", help, "ヘルプを表示")
+	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
 
 	if err := parser.Parse(); err != nil {
 		return nil, fmt.Errorf("フラグの解析に失敗しました: %v", err)
