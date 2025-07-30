@@ -24,10 +24,30 @@ type OcrExecutorService struct {
 
 // NewOcrExecutorService は新しいOcrExecutorServiceを作成する
 func NewOcrExecutorService(cfg *config.Config) (*OcrExecutorService, error) {
-	// Gemini APIクライアントを作成
-	client, err := genai.NewClient(context.Background(), nil)
+	var client *genai.Client
+	var err error
+
+	// AIタイプに応じてクライアントを作成
+	switch cfg.AiType {
+	case "gemini":
+		clientConfig := &genai.ClientConfig{
+			APIKey:  cfg.APIKey,
+			Backend: genai.BackendGeminiAPI,
+		}
+		client, err = genai.NewClient(context.Background(), clientConfig)
+	case "vertex":
+		clientConfig := &genai.ClientConfig{
+			Project:  cfg.Project,
+			Location: cfg.Location,
+			Backend:  genai.BackendVertexAI,
+		}
+		client, err = genai.NewClient(context.Background(), clientConfig)
+	default:
+		return nil, fmt.Errorf("無効なAIタイプです: %s (gemini または vertex を指定してください)", cfg.AiType)
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("Gemini APIクライアントの作成に失敗しました: %v", err)
+		return nil, fmt.Errorf("gemini APIクライアントの作成に失敗しました: %v", err)
 	}
 
 	// Base64変換サービスを作成
@@ -112,6 +132,7 @@ func (s *OcrExecutorService) callGeminiAPI(imageData []byte, mimeType string) (s
 		Temperature:     &temperature,
 		MaxOutputTokens: maxTokens,
 		SystemInstruction: &genai.Content{
+			Role:  "system",
 			Parts: []*genai.Part{{Text: s.config.SystemInstruction}},
 		},
 		SafetySettings: []*genai.SafetySetting{
@@ -136,6 +157,7 @@ func (s *OcrExecutorService) callGeminiAPI(imageData []byte, mimeType string) (s
 
 	// コンテンツを作成（テキストと画像）
 	content := &genai.Content{
+		Role: "user",
 		Parts: []*genai.Part{
 			{Text: s.config.Prompt},
 			{
