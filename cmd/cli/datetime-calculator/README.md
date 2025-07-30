@@ -33,16 +33,16 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 2025-1-15 12:30:0 + 1年2月10日5時間30分45秒 = 2026-03-25 18:00:45
 ```
 
-### オプション
+## オプション
 
-#### 基本オプション
+### 基本オプション
 
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
 | `-operation` | `-o` | 日時操作 (add, subtract, sum, parse-time) | | `-o add` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
 
-#### 日時加算・減算用オプション
+### 日時加算・減算用オプション
 
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
@@ -59,7 +59,7 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 | `-duration-minute` | `-dmin` | 加算/減算する分 | 0 | `-dmin 30` |
 | `-duration-second` | `-ds` | 加算/減算する秒 | 0 | `-ds 45` |
 
-#### 時間単位計算・変換用オプション
+### 時間単位計算・変換用オプション
 
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
@@ -67,7 +67,7 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 | `-input-unit` | `-iu` | 入力時間単位 (year, month, day, hour, minute, second) | | `-iu second` |
 | `-output-unit` | `-ou` | 出力時間単位 (year, month, day, hour, minute, second) | | `-ou hour` |
 
-#### 時間抽出用オプション
+### 時間抽出用オプション
 
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
