@@ -73,6 +73,13 @@ func TestSomething(t *testing.T) {
 }
 EOF
       ;;
+    *config.go)
+      cat <<EOF > "$full_path"
+package config
+
+// TODO: implement configuration
+EOF
+      ;;
     *)
       touch "$full_path" || {
         echo "[ERROR] [$FUNC] ファイル作成に失敗しました: $full_path"
@@ -103,6 +110,7 @@ function create_project_files() {
     "cmd/cli/${project_name}/README.md"
     "internal/${snake_case_name}/usecases/services_test.go"
     "internal/${snake_case_name}/usecases/services.go"
+    "internal/${snake_case_name}/config/config.go"
     "internal/${snake_case_name}/.gitkeep"
   )
 
