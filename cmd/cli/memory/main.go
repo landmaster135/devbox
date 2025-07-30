@@ -8,25 +8,18 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/memory/usecases"
 )
 
-// createMemoryService は設定に基づいてMemoryServiceを作成する
 func createMemoryService(cfg *config.Config) (*usecases.MemoryService, error) {
-	t := cfg.StorageType
-	switch t {
-	case "file":
-		return usecases.NewMemoryServiceWithFile(cfg.MemoryFile), nil
-	case "valkey":
-		valkeyURL := cfg.BuildValkeyURL()
-		return usecases.NewMemoryServiceWithValkey(valkeyURL, cfg.ValkeyKey)
-	default:
-		return nil, fmt.Errorf("ストレージタイプが設定されていません: %v", t)
+	service, err := usecases.NewMemoryService(cfg); if err != nil {
+		return nil, fmt.Errorf("サービスの初期化エラー: %v", err)
 	}
+	return service, nil
 }
 
 // handleCreateEntities はエンティティ作成を処理する
 func handleCreateEntities(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -43,7 +36,7 @@ func handleCreateEntities(cfg *config.Config) {
 func handleCreateRelations(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -60,7 +53,7 @@ func handleCreateRelations(cfg *config.Config) {
 func handleAddObservations(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -77,7 +70,7 @@ func handleAddObservations(cfg *config.Config) {
 func handleDeleteEntities(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -94,7 +87,7 @@ func handleDeleteEntities(cfg *config.Config) {
 func handleDeleteObservations(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -111,7 +104,7 @@ func handleDeleteObservations(cfg *config.Config) {
 func handleDeleteRelations(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -128,7 +121,7 @@ func handleDeleteRelations(cfg *config.Config) {
 func handleReadGraph(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -145,7 +138,7 @@ func handleReadGraph(cfg *config.Config) {
 func handleSearchNodes(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 
@@ -162,7 +155,7 @@ func handleSearchNodes(cfg *config.Config) {
 func handleOpenNodes(cfg *config.Config) {
 	service, err := createMemoryService(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "サービスの初期化エラー: %v\n", err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 

@@ -53,7 +53,7 @@ go build -o bin/memory ./cmd/cli/memory
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
 | `-operation` | `-o` | メモリ操作 (create-entities, create-relations, add-observations, delete-entities, delete-observations, delete-relations, read-graph, search-nodes, open-nodes) | | `-o create-entities` |
-| `-storage-type` | `-s` | ストレージタイプ (file, valkey) | file | `-s valkey` |
+| `-storage-type` | `-s` | ストレージタイプ (file, valkey) | | `-s valkey` |
 | `-memory-file` | `-f` | メモリファイルパス | ./memory.json | `-f /path/to/memory.json` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
 
