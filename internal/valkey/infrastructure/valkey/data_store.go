@@ -14,8 +14,8 @@ type DataStore struct {
 }
 
 // NewDataStore は新しいDataStoreを作成します
-func NewDataStore(addr string) (*DataStore, error) {
-	opt, err := valkey.ParseURL(fmt.Sprintf("valkey://%s", addr))
+func NewDataStore(valkeyURL string) (*DataStore, error) {
+	opt, err := valkey.ParseURL(valkeyURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse valkey URL: %w", err)
 	}

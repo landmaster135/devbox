@@ -326,15 +326,15 @@ func TestDeleteKeys_Error(t *testing.T) {
 	assert.Equal(t, expectedResults, results, "エラー発生時の結果が正しくない")
 }
 
-// TestSelectData_AllArgumentsEmpty は全ての引数がゼロ値の場合のエラーテスト
-func TestSelectData_AllArgumentsEmpty(t *testing.T) {
+// TestSelectValues_AllArgumentsEmpty は全ての引数がゼロ値の場合のエラーテスト
+func TestSelectValues_AllArgumentsEmpty(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "", []string{}, "", false)
+	result, err := service.SelectKeys(ctx, "", []string{}, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -342,15 +342,15 @@ func TestSelectData_AllArgumentsEmpty(t *testing.T) {
 	assert.Nil(t, result, "結果はnilであるべき")
 }
 
-// TestSelectData_MultipleArgumentsProvided は複数の引数が同時に指定された場合のエラーテスト
-func TestSelectData_MultipleArgumentsProvided(t *testing.T) {
+// TestSelectValues_MultipleArgumentsProvided は複数の引数が同時に指定された場合のエラーテスト
+func TestSelectValues_MultipleArgumentsProvided(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "testKey", []string{"key1"}, "", false)
+	result, err := service.SelectKeys(ctx, "testKey", []string{"key1"}, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -358,15 +358,15 @@ func TestSelectData_MultipleArgumentsProvided(t *testing.T) {
 	assert.Nil(t, result, "結果はnilであるべき")
 }
 
-// TestSelectData_AllTrueWithOtherArguments はall=trueで他の引数が指定された場合のエラーテスト
-func TestSelectData_AllTrueWithOtherArguments(t *testing.T) {
+// TestSelectValues_AllTrueWithOtherArguments はall=trueで他の引数が指定された場合のエラーテスト
+func TestSelectValues_AllTrueWithOtherArguments(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "testKey", []string{}, "", true)
+	result, err := service.SelectKeys(ctx, "testKey", []string{}, "", true)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -374,8 +374,8 @@ func TestSelectData_AllTrueWithOtherArguments(t *testing.T) {
 	assert.Nil(t, result, "結果はnilであるべき")
 }
 
-// TestSelectData_KeyProvided_Normal はkey指定時の正常系テスト
-func TestSelectData_KeyProvided_Normal(t *testing.T) {
+// TestSelectValues_KeyProvided_Normal はkey指定時の正常系テスト
+func TestSelectValues_KeyProvided_Normal(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	key := "testKey"
@@ -396,7 +396,7 @@ func TestSelectData_KeyProvided_Normal(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, key, []string{}, "", false)
+	result, err := service.SelectKeys(ctx, key, []string{}, "", false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -409,8 +409,8 @@ func TestSelectData_KeyProvided_Normal(t *testing.T) {
 	assert.Equal(t, expectedType, resultMap["type"], "型が正しくない")
 }
 
-// TestSelectData_KeyProvided_GetValueError はkey指定時のGetValueエラーテスト
-func TestSelectData_KeyProvided_GetValueError(t *testing.T) {
+// TestSelectValues_KeyProvided_GetValueError はkey指定時のGetValueエラーテスト
+func TestSelectValues_KeyProvided_GetValueError(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	key := "testKey"
@@ -425,7 +425,7 @@ func TestSelectData_KeyProvided_GetValueError(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, key, []string{}, "", false)
+	result, err := service.SelectKeys(ctx, key, []string{}, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -433,8 +433,8 @@ func TestSelectData_KeyProvided_GetValueError(t *testing.T) {
 	assert.Nil(t, result, "結果はnilであるべき")
 }
 
-// TestSelectData_KeyProvided_GetTypeError はkey指定時のGetTypeエラーテスト
-func TestSelectData_KeyProvided_GetTypeError(t *testing.T) {
+// TestSelectValues_KeyProvided_GetTypeError はkey指定時のGetTypeエラーテスト
+func TestSelectValues_KeyProvided_GetTypeError(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	key := "testKey"
@@ -453,7 +453,7 @@ func TestSelectData_KeyProvided_GetTypeError(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, key, []string{}, "", false)
+	result, err := service.SelectKeys(ctx, key, []string{}, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -461,8 +461,8 @@ func TestSelectData_KeyProvided_GetTypeError(t *testing.T) {
 	assert.Nil(t, result, "結果はnilであるべき")
 }
 
-// TestSelectData_KeysProvided_Normal はkeys指定時の正常系テスト
-func TestSelectData_KeysProvided_Normal(t *testing.T) {
+// TestSelectValues_KeysProvided_Normal はkeys指定時の正常系テスト
+func TestSelectValues_KeysProvided_Normal(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	keys := []string{"pattern1*", "pattern2*"}
@@ -485,7 +485,7 @@ func TestSelectData_KeysProvided_Normal(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "", keys, "", false)
+	result, err := service.SelectKeys(ctx, "", keys, "", false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -501,8 +501,8 @@ func TestSelectData_KeysProvided_Normal(t *testing.T) {
 	assert.Equal(t, len(expectedAllKeys), resultMap["count"], "カウントが正しくない")
 }
 
-// TestSelectData_KeysProvided_Error はkeys指定時のエラーテスト
-func TestSelectData_KeysProvided_Error(t *testing.T) {
+// TestSelectValues_KeysProvided_Error はkeys指定時のエラーテスト
+func TestSelectValues_KeysProvided_Error(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	keys := []string{"pattern1*", "pattern2*"}
@@ -520,7 +520,7 @@ func TestSelectData_KeysProvided_Error(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "", keys, "", false)
+	result, err := service.SelectKeys(ctx, "", keys, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -528,8 +528,8 @@ func TestSelectData_KeysProvided_Error(t *testing.T) {
 	assert.Nil(t, result, "結果はnilであるべき")
 }
 
-// TestSelectData_PatternProvided_Normal はpattern指定時の正常系テスト
-func TestSelectData_PatternProvided_Normal(t *testing.T) {
+// TestSelectValues_PatternProvided_Normal はpattern指定時の正常系テスト
+func TestSelectValues_PatternProvided_Normal(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	pattern := "test*"
@@ -545,7 +545,7 @@ func TestSelectData_PatternProvided_Normal(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "", []string{}, pattern, false)
+	result, err := service.SelectKeys(ctx, "", []string{}, pattern, false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -560,8 +560,8 @@ func TestSelectData_PatternProvided_Normal(t *testing.T) {
 	assert.Equal(t, len(expectedKeys), resultMap["count"], "カウントが正しくない")
 }
 
-// TestSelectData_AllTrue_Normal はall=true指定時の正常系テスト
-func TestSelectData_AllTrue_Normal(t *testing.T) {
+// TestSelectValues_AllTrue_Normal はall=true指定時の正常系テスト
+func TestSelectValues_AllTrue_Normal(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	expectedKeys := []string{"key1", "key2", "key3"}
@@ -576,7 +576,7 @@ func TestSelectData_AllTrue_Normal(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "", []string{}, "", true)
+	result, err := service.SelectKeys(ctx, "", []string{}, "", true)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -591,8 +591,8 @@ func TestSelectData_AllTrue_Normal(t *testing.T) {
 	assert.Equal(t, len(expectedKeys), resultMap["count"], "カウントが正しくない")
 }
 
-// TestSelectData_PatternProvided_Error はpattern指定時のエラーテスト
-func TestSelectData_PatternProvided_Error(t *testing.T) {
+// TestSelectValues_PatternProvided_Error はpattern指定時のエラーテスト
+func TestSelectValues_PatternProvided_Error(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	pattern := "test*"
@@ -607,7 +607,7 @@ func TestSelectData_PatternProvided_Error(t *testing.T) {
 	service := NewDataService(mockRepo)
 
 	// Act
-	result, err := service.SelectData(ctx, "", []string{}, pattern, false)
+	result, err := service.SelectKeys(ctx, "", []string{}, pattern, false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")

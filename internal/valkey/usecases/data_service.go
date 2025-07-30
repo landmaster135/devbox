@@ -64,8 +64,8 @@ func (s *DataService) DeleteKeys(ctx context.Context, keys []string) (map[string
 	return results, nil
 }
 
-// SelectData はValkeyデータを選択して結果を返します
-func (s *DataService) SelectData(ctx context.Context, key string, keys []string, pattern string, all bool) (any, error) {
+// SelectKeys はValkeyデータを選択して結果を返します
+func (s *DataService) SelectKeys(ctx context.Context, key string, keys []string, pattern string, all bool) (any, error) {
 	// 引数のバリデーション
 	keyProvided := key != ""
 	keysProvided := len(keys) > 0
