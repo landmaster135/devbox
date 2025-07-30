@@ -15,6 +15,10 @@ type Config struct {
 	SystemInstruction string  // システム指示
 	Temperature       float64 // 生成パラメータ
 	MaxTokens         int     // 最大トークン数
+	AiType            string  // AIタイプ ("gemini" または "vertex")
+	APIKey            string  // Gemini API キー
+	Project           string  // Google Cloud プロジェクトID
+	Location          string  // Google Cloud ロケーション
 	Help              bool    // ヘルプ表示フラグ
 }
 
@@ -25,10 +29,12 @@ const (
 	DefaultSystemInstruction = "OCRして。"
 	DefaultTemperature = 1.0
 	DefaultMaxTokens   = 8192
+	DefaultAiType      = "gemini"
+	DefaultLocation    = "us-central1"
 )
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(path string, recursive bool, model, prompt, systemInstruction string, temperature float64, maxTokens int) (*Config, error) {
+func NewConfig(path string, recursive bool, model, prompt, systemInstruction string, temperature float64, maxTokens int, aiType, apiKey, project, location string) (*Config, error) {
 	if path == "" {
 		return nil, fmt.Errorf("パスが指定されていません")
 	}
@@ -48,6 +54,19 @@ func NewConfig(path string, recursive bool, model, prompt, systemInstruction str
 		return nil, fmt.Errorf("最大トークン数は正の値で指定してください: %d", maxTokens)
 	}
 
+	// AIタイプの検証
+	if aiType != "gemini" && aiType != "vertex" {
+		return nil, fmt.Errorf("無効なAIタイプです: %s (gemini または vertex を指定してください)", aiType)
+	}
+
+	// 認証情報の検証
+	if aiType == "gemini" && apiKey == "" {
+		return nil, fmt.Errorf("Gemini API使用時はapi-keyが必要です")
+	}
+	if aiType == "vertex" && project == "" {
+		return nil, fmt.Errorf("Vertex AI使用時はprojectが必要です")
+	}
+
 	return &Config{
 		Path:              path,
 		Recursive:         recursive,
@@ -56,6 +75,10 @@ func NewConfig(path string, recursive bool, model, prompt, systemInstruction str
 		SystemInstruction: systemInstruction,
 		Temperature:       temperature,
 		MaxTokens:         maxTokens,
+		AiType:            aiType,
+		APIKey:            apiKey,
+		Project:           project,
+		Location:          location,
 	}, nil
 }
 
@@ -91,6 +114,10 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		systemInstruction = DefaultSystemInstruction
 		temperature       = DefaultTemperature
 		maxTokens         = DefaultMaxTokens
+		aiType            = DefaultAiType
+		apiKey            = ""
+		project           = ""
+		location          = DefaultLocation
 		help              = false
 	)
 
@@ -116,6 +143,16 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.IntVar(&maxTokens, "max-tokens", maxTokens, "最大トークン数")
 	parser.IntVar(&maxTokens, "mt", maxTokens, "最大トークンの短縮形")
 
+	// 認証関連のフラグ
+	parser.StringVar(&aiType, "ai-type", aiType, "AIタイプ (gemini, vertex)")
+	parser.StringVar(&aiType, "at", aiType, "AIタイプの短縮形")
+	parser.StringVar(&apiKey, "api-key", apiKey, "Gemini API キー")
+	parser.StringVar(&apiKey, "ak", apiKey, "APIキーの短縮形")
+	parser.StringVar(&project, "project", project, "Google Cloud プロジェクトID")
+	parser.StringVar(&project, "pj", project, "プロジェクトの短縮形")
+	parser.StringVar(&location, "location", location, "Google Cloud ロケーション")
+	parser.StringVar(&location, "loc", location, "ロケーションの短縮形")
+
 	// ヘルプ
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -129,7 +166,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(path, recursive, model, prompt, systemInstruction, temperature, maxTokens)
+	return NewConfig(path, recursive, model, prompt, systemInstruction, temperature, maxTokens, aiType, apiKey, project, location)
 }
 
 // ParseFlags はコマンドライン引数を解析してConfigを作成する
@@ -142,27 +179,28 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, `AI OCR実行CLIツール
 
 使用方法:
-  単一画像ファイル:
-    %s -path /path/to/image.webp
+  Gemini API使用:
+    %s -path /path/to/image.webp -ai-type gemini -api-key "your-api-key"
 
-  ディレクトリ内の画像（非再帰）:
-    %s -path /path/to/directory
+  Vertex AI使用:
+    %s -path /path/to/image.webp -ai-type vertex -project "your-project-id"
 
   ディレクトリ内の画像（再帰）:
-    %s -path /path/to/directory -recursive
-
-  カスタムプロンプト:
-    %s -path /path/to/image.png -prompt "この画像からテキストを抽出して"
+    %s -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
 
   詳細設定:
-    %s -path /path/to/screenshots -recursive -model gemini-2.0-flash -temperature 0.8 -max-tokens 4096
+    %s -path /path/to/screenshots -recursive -ai-type gemini -api-key "your-api-key" -model gemini-2.0-flash -temperature 0.8 -max-tokens 4096
 
   短縮形:
-    %s -p /path/to/image.webp -r -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
+    %s -p /path/to/image.webp -at gemini -ak "your-api-key" -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
 
 オプション:
   -path, -p              画像ファイルまたはディレクトリのパス (必須)
   -recursive, -r         ディレクトリを再帰的に検索 (デフォルト: false)
+  -ai-type, -at          AIタイプ (gemini, vertex) (デフォルト: %s)
+  -api-key, -ak          Gemini API キー (Gemini使用時必須)
+  -project, -pj          Google Cloud プロジェクトID (Vertex AI使用時必須)
+  -location, -loc        Google Cloud ロケーション (デフォルト: %s)
   -model, -m             使用するGeminiモデル (デフォルト: %s)
   -prompt, -pr           OCR用プロンプト
   -system-instruction, -si システム指示
@@ -173,11 +211,9 @@ func PrintUsage() {
 サポートされる画像形式:
   .jpg, .jpeg, .png, .gif, .bmp, .webp
 
-環境変数:
-  GOOGLE_API_KEY         Gemini API キー (Gemini Developer API使用時)
-  GOOGLE_GENAI_USE_VERTEXAI=true  Vertex AI使用時
-  GOOGLE_CLOUD_PROJECT   Google Cloud プロジェクトID (Vertex AI使用時)
-  GOOGLE_CLOUD_LOCATION  Google Cloud ロケーション (Vertex AI使用時)
+認証について:
+  - Gemini API使用時: -api-key が必要
+  - Vertex AI使用時: -project が必要、-location はオプション
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], DefaultModel, DefaultTemperature, DefaultMaxTokens)
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], DefaultAiType, DefaultLocation, DefaultModel, DefaultTemperature, DefaultMaxTokens)
 }

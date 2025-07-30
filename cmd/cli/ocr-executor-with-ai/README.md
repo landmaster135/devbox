@@ -22,54 +22,56 @@ cd /home/nov/devbox
 go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 ```
 
-## 環境設定
-
-### Gemini Developer API使用時
-```bash
-export GOOGLE_API_KEY="your-api-key"
-```
-
-### Vertex AI使用時
-```bash
-export GOOGLE_GENAI_USE_VERTEXAI=true
-export GOOGLE_CLOUD_PROJECT="your-project-id"
-export GOOGLE_CLOUD_LOCATION="us-central1"
-```
-
 ## 使用方法
 
 ### 基本的な使用方法
 
 ```bash
-# 単一画像ファイル
-./bin/ocr-executor-with-ai -path /path/to/image.webp
+# Gemini API使用（単一画像ファイル）
+./bin/ocr-executor-with-ai -path /path/to/image.webp -ai-type gemini -api-key "your-api-key"
 
-# ディレクトリ内の画像（非再帰）
-./bin/ocr-executor-with-ai -path /path/to/directory
+# Vertex AI使用（単一画像ファイル）
+./bin/ocr-executor-with-ai -path /path/to/image.webp -ai-type vertex -project "your-project-id"
 
 # ディレクトリ内の画像（再帰）
-./bin/ocr-executor-with-ai -path /path/to/directory -recursive
+./bin/ocr-executor-with-ai -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
 ```
 
 ### 詳細設定
 
 ```bash
-# カスタムプロンプトとモデル指定
+# Gemini APIでカスタムプロンプトとモデル指定
 ./bin/ocr-executor-with-ai \
   -path /path/to/screenshots \
   -recursive \
+  -ai-type gemini \
+  -api-key "your-api-key" \
   -model gemini-2.0-flash \
   -prompt "この画像からテキストを抽出して" \
   -system-instruction "OCRして。" \
   -temperature 0.8 \
   -max-tokens 4096
+
+# Vertex AIで詳細設定
+./bin/ocr-executor-with-ai \
+  -path /path/to/screenshots \
+  -recursive \
+  -ai-type vertex \
+  -project "your-project-id" \
+  -location "us-central1" \
+  -model gemini-1.5-pro-002 \
+  -temperature 0.5 \
+  -max-tokens 2048
 ```
 
 ### 短縮形オプション
 
 ```bash
-# 短縮形を使用した例
-./bin/ocr-executor-with-ai -p /path/to/image.webp -r -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
+# Gemini API使用（短縮形）
+./bin/ocr-executor-with-ai -p /path/to/image.webp -at gemini -ak "your-api-key" -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
+
+# Vertex AI使用（短縮形）
+./bin/ocr-executor-with-ai -p /path/to/image.webp -at vertex -pj "your-project-id" -loc "us-central1"
 ```
 
 ## オプション
@@ -78,6 +80,10 @@ export GOOGLE_CLOUD_LOCATION="us-central1"
 |-----------|--------|------|-------------|
 | `-path` | `-p` | 画像ファイルまたはディレクトリのパス（必須） | - |
 | `-recursive` | `-r` | ディレクトリを再帰的に検索 | false |
+| `-ai-type` | `-at` | AIタイプ（gemini, vertex） | gemini |
+| `-api-key` | `-ak` | Gemini API キー（Gemini使用時必須） | - |
+| `-project` | `-pj` | Google Cloud プロジェクトID（Vertex AI使用時必須） | - |
+| `-location` | `-loc` | Google Cloud ロケーション | us-central1 |
 | `-model` | `-m` | 使用するGeminiモデル | gemini-2.5-flash-lite |
 | `-prompt` | `-pr` | OCR用プロンプト | "OCRして。補足や説明は不要です。" |
 | `-system-instruction` | `-si` | システム指示 | "OCRして。" |
