@@ -5,23 +5,48 @@ import (
 	"context"
 	"fmt"
 
+	config "github.com/landmaster135/devbox/internal/valkey/config"
 	loggerRepo "github.com/landmaster135/devbox/internal/valkey/infrastructure/logger/repository"
-	repo "github.com/landmaster135/devbox/internal/valkey/infrastructure/valkey/repository"
+	valkeyRepo "github.com/landmaster135/devbox/internal/valkey/infrastructure/valkey/repository"
 )
 
 // DataService はValkeyデータ操作のためのサービス
 type DataService struct {
-	repo repo.DataRepository
+	repo   valkeyRepo.DataRepository
+	logger loggerRepo.Logger
 }
 
 // GetRepository はリポジトリを返します
-func (s *DataService) GetRepository() repo.DataRepository {
+func (s *DataService) GetRepository() valkeyRepo.DataRepository {
 	return s.repo
 }
 
 // NewDataService は新しいDataServiceを作成します
-func NewDataService(repo repo.DataRepository) *DataService {
-	return &DataService{repo: repo}
+func NewDataService(repo valkeyRepo.DataRepository, logger loggerRepo.Logger) *DataService {
+	return &DataService{
+		repo:   repo,
+		logger: logger,
+	}
+}
+
+// NewDataServiceWithConfig は新しいDataServiceを作成します
+func NewDataServiceWithConfig(cfg *config.Config) (*DataService, error) {
+	// Valkey接続URLを構築
+	valkeyURL := cfg.BuildValkeyURL()
+
+	// リポジトリを初期化
+	repo, err := valkeyRepo.NewDataRepository(valkeyURL)
+	if err != nil {
+		return nil, fmt.Errorf("リポジトリの初期化に失敗しました: %v", err)
+	}
+
+	// ロガーを初期化
+	logger := loggerRepo.NewDefaultLogger()
+
+	return &DataService{
+		repo:   repo,
+		logger: logger,
+	}, nil
 }
 
 // GetKeys はパターンに一致するすべてのキーを取得します
@@ -158,7 +183,7 @@ func (s *DataService) SelectKeys(ctx context.Context, key string, keys []string,
 }
 
 // GetAllValues はすべてのキーの値を取得して結果を返します
-func (s *DataService) GetAllValues(ctx context.Context, keys []string, logger loggerRepo.Logger) (any, error) {
+func (s *DataService) GetAllValues(ctx context.Context, keys []string) (any, error) {
 	if len(keys) == 0 {
 		return map[string]any{
 			"values": []any{},
@@ -177,13 +202,13 @@ func (s *DataService) GetAllValues(ctx context.Context, keys []string, logger lo
 	for _, key := range keys {
 		value, err := s.GetValue(ctx, key)
 		if err != nil {
-			logger.Warn(fmt.Sprintf("キー '%s' の値の取得に失敗しました", key))
+			s.logger.Warn(fmt.Sprintf("キー '%s' の値の取得に失敗しました", key))
 			continue
 		}
 
 		keyType, err := s.GetType(ctx, key)
 		if err != nil {
-			logger.Warn(fmt.Sprintf("キー '%s' の型の取得に失敗しました", key))
+			s.logger.Warn(fmt.Sprintf("キー '%s' の型の取得に失敗しました", key))
 			continue
 		}
 
@@ -211,10 +236,10 @@ func (s *DataService) GetAllValues(ctx context.Context, keys []string, logger lo
 }
 
 // DeleteData はValkeyデータを削除します
-func (s *DataService) DeleteData(ctx context.Context, key string, keys []string, pattern string, dryRun bool, logger loggerRepo.Logger) (any, error) {
+func (s *DataService) DeleteData(ctx context.Context, key string, keys []string, pattern string, dryRun bool) (any, error) {
 	// ドライランモードの場合
 	if dryRun {
-		logger.Info("ドライランモードで実行中 - 実際のデータ削除は行いません")
+		s.logger.Info("ドライランモードで実行中 - 実際のデータ削除は行いません")
 
 		// 単一のキーが指定されている場合
 		if key != "" {

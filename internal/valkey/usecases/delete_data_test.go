@@ -14,10 +14,10 @@ func TestDeleteData_DryRun_SingleKey(t *testing.T) {
 	key := "testKey"
 	mockRepo := &MockDataRepository{}
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, key, []string{}, "", true, mockLogger)
+	result, err := service.DeleteData(ctx, key, []string{}, "", true)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -37,10 +37,10 @@ func TestDeleteData_DryRun_MultipleKeys(t *testing.T) {
 	keys := []string{"key1", "key2", "key3"}
 	mockRepo := &MockDataRepository{}
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", keys, "", true, mockLogger)
+	result, err := service.DeleteData(ctx, "", keys, "", true)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -69,10 +69,10 @@ func TestDeleteData_DryRun_Pattern(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, pattern, true, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, pattern, true)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -99,10 +99,10 @@ func TestDeleteData_DryRun_PatternNoMatch(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, pattern, true, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, pattern, true)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -120,10 +120,10 @@ func TestDeleteData_DryRun_NoArguments(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, "", true, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, "", true)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -146,10 +146,10 @@ func TestDeleteData_Actual_SingleKey(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, key, []string{}, "", false, mockLogger)
+	result, err := service.DeleteData(ctx, key, []string{}, "", false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -175,10 +175,10 @@ func TestDeleteData_Actual_SingleKey_Error(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, key, []string{}, "", false, mockLogger)
+	result, err := service.DeleteData(ctx, key, []string{}, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -207,10 +207,10 @@ func TestDeleteData_Actual_MultipleKeys(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", keys, "", false, mockLogger)
+	result, err := service.DeleteData(ctx, "", keys, "", false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -243,10 +243,10 @@ func TestDeleteData_Actual_MultipleKeys_Error(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", keys, "", false, mockLogger)
+	result, err := service.DeleteData(ctx, "", keys, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -279,10 +279,10 @@ func TestDeleteData_Actual_Pattern(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, pattern, false, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, pattern, false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -310,10 +310,10 @@ func TestDeleteData_Actual_Pattern_GetKeysError(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, pattern, false, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, pattern, false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -334,10 +334,10 @@ func TestDeleteData_Actual_Pattern_NoMatch(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, pattern, false, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, pattern, false)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -372,10 +372,10 @@ func TestDeleteData_Actual_Pattern_DeleteKeysError(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, pattern, false, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, pattern, false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
@@ -389,10 +389,10 @@ func TestDeleteData_Actual_NoArguments(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.DeleteData(ctx, "", []string{}, "", false, mockLogger)
+	result, err := service.DeleteData(ctx, "", []string{}, "", false)
 
 	// Assert
 	assert.Error(t, err, "エラーが発生するべき")
