@@ -4,6 +4,7 @@ package valkey
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	infraValkey "github.com/landmaster135/devbox/internal/valkey/infrastructure/valkey"
 )
@@ -19,13 +20,17 @@ type DataRepositoryImpl struct {
 var _ DataRepository = (*DataRepositoryImpl)(nil)
 
 // NewDataRepository は新しいDataRepositoryImplを作成します
-func NewDataRepository(addr string) (DataRepository, error) {
+func NewDataRepository(valkeyURL string) (DataRepository, error) {
+	// URLからアドレス部分を抽出（サーバー用）
+	// 簡易的にhost:portを抽出
+	addr := extractAddrFromURL(valkeyURL)
+
 	server, err := infraValkey.NewServer(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	dataStore, err := infraValkey.NewDataStore(addr)
+	dataStore, err := infraValkey.NewDataStore(valkeyURL)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +42,8 @@ func NewDataRepository(addr string) (DataRepository, error) {
 	}, nil
 }
 
-func NewDataRepositoryToStart(addr string) (DataRepository, error) {
-	repo, err := NewDataRepository(addr)
+func NewDataRepositoryToStart(valkeyURL string) (DataRepository, error) {
+	repo, err := NewDataRepository(valkeyURL)
 	if err != nil {
 		return nil, fmt.Errorf("valkeyデータリポジトリの初期化に失敗しました: %w", err)
 	}
@@ -49,6 +54,30 @@ func NewDataRepositoryToStart(addr string) (DataRepository, error) {
 	}
 
 	return repo, nil
+}
+
+// extractAddrFromURL はValkeyURLからhost:port部分を抽出します
+func extractAddrFromURL(valkeyURL string) string {
+	// 簡易的な実装：valkey://[user:pass@]host:port[/db] からhost:portを抽出
+	// より厳密な実装が必要な場合はurl.Parseを使用
+	if len(valkeyURL) > 9 && valkeyURL[:9] == "valkey://" {
+		remaining := valkeyURL[9:]
+
+		// @がある場合は認証情報をスキップ
+		if atIndex := strings.Index(remaining, "@"); atIndex != -1 {
+			remaining = remaining[atIndex+1:]
+		}
+
+		// /がある場合はデータベース番号をスキップ
+		if slashIndex := strings.Index(remaining, "/"); slashIndex != -1 {
+			remaining = remaining[:slashIndex]
+		}
+
+		return remaining
+	}
+
+	// フォールバック
+	return "localhost:6379"
 }
 
 // GetKeys はパターンに一致するすべてのキーを取得します
