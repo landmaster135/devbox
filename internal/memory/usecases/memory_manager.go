@@ -1,81 +1,30 @@
 package usecases
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
-
-	config "github.com/landmaster135/devbox/internal/memory/config"
 )
 
 // KnowledgeGraphManager は知識グラフの管理を行う構造体
 type KnowledgeGraphManager struct {
-	fileReader config.FileReader
-	fileWriter config.FileWriter
-	memoryFile string
+	repository KnowledgeGraphRepository
 }
 
 // NewKnowledgeGraphManager は新しいKnowledgeGraphManagerを作成する
-func NewKnowledgeGraphManager(memoryFile string) *KnowledgeGraphManager {
+func NewKnowledgeGraphManager(repository KnowledgeGraphRepository) *KnowledgeGraphManager {
 	return &KnowledgeGraphManager{
-		fileReader: &config.StandardFileReader{},
-		fileWriter: &config.StandardFileWriter{},
-		memoryFile: memoryFile,
+		repository: repository,
 	}
 }
 
-// NewKnowledgeGraphManagerWithDependencies は依存性注入版のKnowledgeGraphManagerを作成する
-func NewKnowledgeGraphManagerWithDependencies(fileReader config.FileReader, fileWriter config.FileWriter, memoryFile string) *KnowledgeGraphManager {
-	return &KnowledgeGraphManager{
-		fileReader: fileReader,
-		fileWriter: fileWriter,
-		memoryFile: memoryFile,
-	}
-}
-
-// loadGraph は知識グラフをファイルから読み込む
+// loadGraph は知識グラフをリポジトリから読み込む
 func (m *KnowledgeGraphManager) loadGraph() (*KnowledgeGraph, error) {
-	// ファイルが存在しない場合は空のグラフを返す
-	if _, err := os.Stat(m.memoryFile); os.IsNotExist(err) {
-		return &KnowledgeGraph{
-			Entities:  []Entity{},
-			Relations: []Relation{},
-		}, nil
-	}
-
-	data, err := m.fileReader.ReadFile(m.memoryFile)
-	if err != nil {
-		return nil, fmt.Errorf("ファイル読み込みエラー: %v", err)
-	}
-
-	var graph KnowledgeGraph
-	if err := json.Unmarshal(data, &graph); err != nil {
-		return nil, fmt.Errorf("JSON解析エラー: %v", err)
-	}
-
-	return &graph, nil
+	return m.repository.LoadGraph()
 }
 
-// saveGraph は知識グラフをファイルに保存する
+// saveGraph は知識グラフをリポジトリに保存する
 func (m *KnowledgeGraphManager) saveGraph(graph *KnowledgeGraph) error {
-	// ディレクトリが存在しない場合は作成
-	dir := filepath.Dir(m.memoryFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("ディレクトリ作成エラー: %v", err)
-	}
-
-	data, err := json.MarshalIndent(graph, "", "  ")
-	if err != nil {
-		return fmt.Errorf("JSON変換エラー: %v", err)
-	}
-
-	if err := m.fileWriter.WriteFile(m.memoryFile, data, 0644); err != nil {
-		return fmt.Errorf("ファイル書き込みエラー: %v", err)
-	}
-
-	return nil
+	return m.repository.SaveGraph(graph)
 }
 
 // CreateEntities は複数のエンティティを作成する

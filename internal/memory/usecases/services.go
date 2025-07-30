@@ -14,17 +14,39 @@ type MemoryService struct {
 	manager *KnowledgeGraphManager
 }
 
-// NewMemoryService は新しいMemoryServiceを作成する
+// NewMemoryService は新しいMemoryServiceを作成する（ファイルベース）
 func NewMemoryService(memoryFile string) *MemoryService {
+	fileRepo := NewFileRepository(memoryFile)
 	return &MemoryService{
-		manager: NewKnowledgeGraphManager(memoryFile),
+		manager: NewKnowledgeGraphManager(fileRepo),
 	}
+}
+
+// NewMemoryServiceWithFile はファイルベースのMemoryServiceを作成する
+func NewMemoryServiceWithFile(memoryFile string) *MemoryService {
+	fileRepo := NewFileRepository(memoryFile)
+	return &MemoryService{
+		manager: NewKnowledgeGraphManager(fileRepo),
+	}
+}
+
+// NewMemoryServiceWithValkey はキーを指定してValkeyベースのMemoryServiceを作成する
+func NewMemoryServiceWithValkey(valkeyURL string, key string) (*MemoryService, error) {
+	valkeyRepo, err := NewValkeyRepositoryWithKey(valkeyURL, key)
+	if err != nil {
+		return nil, fmt.Errorf("valkeyリポジトリの作成に失敗しました: %v", err)
+	}
+
+	return &MemoryService{
+		manager: NewKnowledgeGraphManager(valkeyRepo),
+	}, nil
 }
 
 // NewMemoryServiceWithDependencies は依存性注入版のMemoryServiceを作成する
 func NewMemoryServiceWithDependencies(fileReader config.FileReader, fileWriter config.FileWriter, memoryFile string) *MemoryService {
+	fileRepo := NewFileRepositoryWithDependencies(fileReader, fileWriter, memoryFile)
 	return &MemoryService{
-		manager: NewKnowledgeGraphManagerWithDependencies(fileReader, fileWriter, memoryFile),
+		manager: NewKnowledgeGraphManager(fileRepo),
 	}
 }
 

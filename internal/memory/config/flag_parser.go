@@ -27,6 +27,11 @@ func (p *StandardFlagParser) BoolVar(ptr *bool, name string, value bool, usage s
 	p.flagSet.BoolVar(ptr, name, value, usage)
 }
 
+// IntVar は整数フラグを定義する
+func (p *StandardFlagParser) IntVar(ptr *int, name string, value int, usage string) {
+	p.flagSet.IntVar(ptr, name, value, usage)
+}
+
 // Parse はコマンドライン引数を解析する
 func (p *StandardFlagParser) Parse() error {
 	return p.flagSet.Parse(os.Args[1:])

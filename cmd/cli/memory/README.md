@@ -11,7 +11,9 @@
 - **ノード検索**: 名前、タイプ、観察事項による検索
 - **特定ノード取得**: 指定したエンティティとその関係を取得
 - **JSON形式**: 構造化されたデータの入出力
+- **マルチストレージ対応**: ファイルまたはValkey DBでのデータ保存
 - **ファイル永続化**: memory.jsonファイルでのデータ保存
+- **Valkey DB対応**: Redis互換のValkey DBでのデータ保存
 - **短縮オプション**: 全てのオプションに短縮形を提供
 
 ## インストール
@@ -51,8 +53,19 @@ go build -o bin/memory ./cmd/cli/memory
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
 | `-operation` | `-o` | メモリ操作 (create-entities, create-relations, add-observations, delete-entities, delete-observations, delete-relations, read-graph, search-nodes, open-nodes) | | `-o create-entities` |
+| `-storage-type` | `-s` | ストレージタイプ (file, valkey) | file | `-s valkey` |
 | `-memory-file` | `-f` | メモリファイルパス | ./memory.json | `-f /path/to/memory.json` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
+
+### Valkey接続オプション
+
+| オプション | 短縮形 | 説明 | デフォルト | 例 |
+|-----------|--------|------|-----------|-----|
+| `-valkey-host` | `-vh` | Valkeyホスト | localhost | `-vh redis.example.com` |
+| `-valkey-port` | `-vp` | Valkeyポート | 6379 | `-vp 6380` |
+| `-valkey-password` | `-vpass` | Valkeyパスワード | | `-vpass mypassword` |
+| `-valkey-database` | `-vdb` | データベース番号 | 0 | `-vdb 1` |
+| `-valkey-key` | `-vk` | Valkeyキー | knowledge_graph:main | `-vk my_graph` |
 
 ### エンティティ関連オプション
 
@@ -82,6 +95,49 @@ go build -o bin/memory ./cmd/cli/memory
 | `-names` | `-n` | カンマ区切りの名前リスト | `-n "John,Company"` |
 
 ## 使用例
+
+### ストレージタイプの選択
+
+```bash
+# ファイルベース（デフォルト）
+./bin/memory -operation read-graph
+
+# Valkey DBベース
+./bin/memory -operation read-graph -storage-type valkey
+
+# 短縮形でValkey DB使用
+./bin/memory -o read-graph -s valkey
+```
+
+### Valkey DB使用例
+
+```bash
+# 基本的なValkey DB使用
+./bin/memory -o create-entities -s valkey -e '[{"name":"John","entityType":"person","observations":["speaks English"]}]'
+
+# カスタムホストとポート
+./bin/memory -o read-graph -s valkey -valkey-host redis.example.com -valkey-port 6380
+
+# パスワード認証付き
+./bin/memory -o read-graph -s valkey -valkey-password mypassword
+
+# 特定のデータベースを使用
+./bin/memory -o read-graph -s valkey -valkey-database 1
+
+# カスタムキーを使用
+./bin/memory -o read-graph -s valkey -valkey-key my_custom_graph
+
+# 全ての設定を指定
+./bin/memory -o read-graph -s valkey \
+  -valkey-host redis.example.com \
+  -valkey-port 6380 \
+  -valkey-password mypassword \
+  -valkey-database 1 \
+  -valkey-key production_graph
+
+# 短縮形を使用
+./bin/memory -o read-graph -s valkey -vh redis.example.com -vp 6380 -vpass mypass -vdb 1 -vk prod_graph
+```
 
 ### エンティティ作成
 
