@@ -17,6 +17,7 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/stretchr/testify v1.10.0
 	github.com/u2takey/ffmpeg-go v0.5.0
+	github.com/valkey-io/valkey-go v1.0.63
 	golang.org/x/image v0.26.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/text v0.26.0
