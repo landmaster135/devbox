@@ -7,8 +7,6 @@ import (
 	"os"
 
 	config "github.com/landmaster135/devbox/internal/valkey/config"
-	loggerRepo "github.com/landmaster135/devbox/internal/valkey/infrastructure/logger/repository"
-	valkeyRepo "github.com/landmaster135/devbox/internal/valkey/infrastructure/valkey/repository"
 	usecases "github.com/landmaster135/devbox/internal/valkey/usecases"
 )
 
@@ -128,10 +126,10 @@ func handleSelectKeys(cfg *config.Config, service *usecases.DataService) {
 }
 
 // handleGetAllValues は全値取得を処理する
-func handleGetAllValues(cfg *config.Config, service *usecases.DataService, logger loggerRepo.Logger) {
+func handleGetAllValues(cfg *config.Config, service *usecases.DataService) {
 	ctx := context.Background()
 
-	result, err := service.GetAllValues(ctx, cfg.Keys, logger)
+	result, err := service.GetAllValues(ctx, cfg.Keys)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
@@ -148,10 +146,10 @@ func handleGetAllValues(cfg *config.Config, service *usecases.DataService, logge
 }
 
 // handleDeleteData はデータ削除を処理する
-func handleDeleteData(cfg *config.Config, service *usecases.DataService, logger loggerRepo.Logger) {
+func handleDeleteData(cfg *config.Config, service *usecases.DataService) {
 	ctx := context.Background()
 
-	result, err := service.DeleteData(ctx, cfg.Key, cfg.Keys, cfg.Pattern, cfg.DryRun, logger)
+	result, err := service.DeleteData(ctx, cfg.Key, cfg.Keys, cfg.Pattern, cfg.DryRun)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
@@ -186,21 +184,12 @@ func main() {
 		return
 	}
 
-	// Valkey接続URLを構築
-	valkeyURL := cfg.BuildValkeyURL()
-
-	// リポジトリを初期化
-	repo, err := valkeyRepo.NewDataRepository(valkeyURL)
+	// サービスを初期化
+	service, err := usecases.NewDataServiceWithConfig(cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "リポジトリの初期化に失敗しました: %v\n", err)
+		fmt.Fprintf(os.Stderr, "サービスの初期化に失敗しました: %v\n", err)
 		os.Exit(1)
 	}
-
-	// サービスを初期化
-	service := usecases.NewDataService(repo)
-
-	// ロガーを初期化
-	logger := loggerRepo.NewDefaultLogger()
 
 	// 操作タイプに応じて処理を実行
 	switch cfg.Operation {
@@ -247,9 +236,9 @@ func main() {
 			fmt.Fprintf(os.Stderr, "エラー: get-all-values操作にはkeysが必要です\n")
 			os.Exit(1)
 		}
-		handleGetAllValues(cfg, service, logger)
+		handleGetAllValues(cfg, service)
 	case "delete-data":
-		handleDeleteData(cfg, service, logger)
+		handleDeleteData(cfg, service)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
 		config.PrintUsage()

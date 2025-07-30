@@ -120,20 +120,23 @@ func (m *MockDataRepository) DeleteKey(ctx context.Context, key string) (bool, e
 func TestNewDataService_Normal(t *testing.T) {
 	// Arrange
 	mockRepo := &MockDataRepository{}
+	mockLogger := &MockLogger{}
 
 	// Act
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Assert
 	assert.NotNil(t, service, "サービスがnilであってはならない")
 	assert.Equal(t, mockRepo, service.repo, "リポジトリが正しく設定されていない")
+	assert.Equal(t, mockLogger, service.logger, "ロガーが正しく設定されていない")
 }
 
 // TestGetRepository_Normal はリポジトリを取得するテスト
 func TestGetRepository_Normal(t *testing.T) {
 	// Arrange
 	mockRepo := &MockDataRepository{}
-	service := NewDataService(mockRepo)
+	mockLogger := &MockLogger{}
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	repo := service.GetRepository()
@@ -155,8 +158,9 @@ func TestGetKeys_Normal(t *testing.T) {
 			return expectedKeys, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	keys, err := service.GetKeys(ctx, pattern)
@@ -179,8 +183,9 @@ func TestGetValue_Normal(t *testing.T) {
 			return expectedValue, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	value, err := service.GetValue(ctx, key)
@@ -203,8 +208,9 @@ func TestGetType_Normal(t *testing.T) {
 			return expectedType, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	typeStr, err := service.GetType(ctx, key)
@@ -228,8 +234,9 @@ func TestSetValue_Normal(t *testing.T) {
 			return nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	err := service.SetValue(ctx, key, valueJSON)
@@ -251,8 +258,9 @@ func TestDeleteKey_Normal(t *testing.T) {
 			return expectedResult, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.DeleteKey(ctx, key)
@@ -281,8 +289,9 @@ func TestDeleteKeys_Normal(t *testing.T) {
 			return result, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	results, err := service.DeleteKeys(ctx, keys)
@@ -309,8 +318,9 @@ func TestDeleteKeys_Error(t *testing.T) {
 			return true, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	results, err := service.DeleteKeys(ctx, keys)
@@ -331,7 +341,8 @@ func TestSelectValues_AllArgumentsEmpty(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
-	service := NewDataService(mockRepo)
+	mockLogger := &MockLogger{}
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "", []string{}, "", false)
@@ -347,7 +358,8 @@ func TestSelectValues_MultipleArgumentsProvided(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
-	service := NewDataService(mockRepo)
+	mockLogger := &MockLogger{}
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "testKey", []string{"key1"}, "", false)
@@ -363,7 +375,8 @@ func TestSelectValues_AllTrueWithOtherArguments(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	mockRepo := &MockDataRepository{}
-	service := NewDataService(mockRepo)
+	mockLogger := &MockLogger{}
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "testKey", []string{}, "", true)
@@ -392,8 +405,9 @@ func TestSelectValues_KeyProvided_Normal(t *testing.T) {
 			return expectedType, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, key, []string{}, "", false)
@@ -421,8 +435,9 @@ func TestSelectValues_KeyProvided_GetValueError(t *testing.T) {
 			return "", expectedError
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, key, []string{}, "", false)
@@ -449,8 +464,9 @@ func TestSelectValues_KeyProvided_GetTypeError(t *testing.T) {
 			return "", expectedError
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, key, []string{}, "", false)
@@ -481,8 +497,9 @@ func TestSelectValues_KeysProvided_Normal(t *testing.T) {
 			}
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "", keys, "", false)
@@ -516,8 +533,9 @@ func TestSelectValues_KeysProvided_Error(t *testing.T) {
 			return nil, expectedError
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "", keys, "", false)
@@ -541,8 +559,9 @@ func TestSelectValues_PatternProvided_Normal(t *testing.T) {
 			return expectedKeys, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "", []string{}, pattern, false)
@@ -572,8 +591,9 @@ func TestSelectValues_AllTrue_Normal(t *testing.T) {
 			return expectedKeys, nil
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "", []string{}, "", true)
@@ -603,8 +623,9 @@ func TestSelectValues_PatternProvided_Error(t *testing.T) {
 			return nil, expectedError
 		},
 	}
+	mockLogger := &MockLogger{}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
 	result, err := service.SelectKeys(ctx, "", []string{}, pattern, false)
@@ -622,10 +643,10 @@ func TestGetAllValues_EmptyKeys(t *testing.T) {
 	keys := []string{}
 	mockRepo := &MockDataRepository{}
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.GetAllValues(ctx, keys, mockLogger)
+	result, err := service.GetAllValues(ctx, keys)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -672,10 +693,10 @@ func TestGetAllValues_Normal(t *testing.T) {
 	}
 
 	mockLogger := &MockLogger{}
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.GetAllValues(ctx, keys, mockLogger)
+	result, err := service.GetAllValues(ctx, keys)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -727,10 +748,10 @@ func TestGetAllValues_GetValueError(t *testing.T) {
 		},
 	}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.GetAllValues(ctx, keys, mockLogger)
+	result, err := service.GetAllValues(ctx, keys)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -776,10 +797,10 @@ func TestGetAllValues_GetTypeError(t *testing.T) {
 		},
 	}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.GetAllValues(ctx, keys, mockLogger)
+	result, err := service.GetAllValues(ctx, keys)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
@@ -828,10 +849,10 @@ func TestGetAllValues_BothErrors(t *testing.T) {
 		},
 	}
 
-	service := NewDataService(mockRepo)
+	service := NewDataService(mockRepo, mockLogger)
 
 	// Act
-	result, err := service.GetAllValues(ctx, keys, mockLogger)
+	result, err := service.GetAllValues(ctx, keys)
 
 	// Assert
 	assert.NoError(t, err, "エラーが発生してはならない")
