@@ -50,6 +50,19 @@ func (m *MockJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) 
 	return []byte(`{"mocked":"json"}`), nil
 }
 
+// モック用のFileReaderインターフェース実装
+type MockFileReader struct {
+	dataToReturn []byte
+	errToReturn  error
+}
+
+func (m *MockFileReader) ReadFile(filename string) ([]byte, error) {
+	if m.errToReturn != nil {
+		return nil, m.errToReturn
+	}
+	return m.dataToReturn, nil
+}
+
 // テスト用の一時ファイルを作成する関数
 func createTempFileWithLines(t *testing.T, lines []string) string {
 	// 一時ファイルを作成
