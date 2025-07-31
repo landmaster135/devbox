@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
+
+	config "github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
 )
 
 // #==============================================================#
@@ -216,4 +221,81 @@ func (e *FileEvaluatorService) HandleToEvaluateLineCount(filePath string, thresh
 	}
 
 	return string(jsonResult), nil
+}
+
+// #==============================================================#
+// ##          ApiCostExtractorService                           ##
+// #==============================================================#
+// ApiCostExtractorService はAPI料金抽出を行うサービスです
+type ApiCostExtractorService struct {
+	fileReader config.FileReader
+}
+
+// NewApiCostExtractorService は新しいApiCostExtractorServiceを作成します
+func NewApiCostExtractorService() *ApiCostExtractorService {
+	return &ApiCostExtractorService{
+		fileReader: &config.StandardFileReader{},
+	}
+}
+
+// NewApiCostExtractorServiceWithFileReader はFileReaderを注入した新しいApiCostExtractorServiceを作成します
+func NewApiCostExtractorServiceWithFileReader(fileReader config.FileReader) *ApiCostExtractorService {
+	return &ApiCostExtractorService{
+		fileReader: fileReader,
+	}
+}
+
+// extractApiCostFromText は文字列から「API料金が[数値]円掛かった」パターンを抽出し合計を計算する
+func (s *ApiCostExtractorService) extractApiCostFromText(text string) (float64, error) {
+	// 「API料金が[数値]円掛かった」を抽出する正規表現
+	pattern := `API料金が(\d+)円掛かった`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindAllStringSubmatch(text, -1)
+
+	var costs []float64
+	for _, match := range matches {
+		if len(match) > 1 {
+			if cost, err := strconv.Atoi(match[1]); err == nil {
+				costs = append(costs, float64(cost))
+			}
+		}
+	}
+
+	// 合計を計算
+	total := 0.0
+	for _, cost := range costs {
+		total += cost
+	}
+
+	return total, nil
+}
+
+// HandleApiCostExtraction はファイルまたはテキストからAPI料金を抽出し合計を計算する
+func (s *ApiCostExtractorService) HandleApiCostExtraction(filePath, textInput string) (float64, error) {
+	// 排他制御
+	if filePath != "" && textInput != "" {
+		return 0, fmt.Errorf("ファイルパスとテキスト入力は同時に指定できません")
+	}
+	if filePath == "" && textInput == "" {
+		return 0, fmt.Errorf("ファイルパスまたはテキスト入力のいずれかを指定してください")
+	}
+
+	var content string
+	if filePath != "" {
+		// ファイル拡張子の検証
+		if !strings.HasSuffix(filePath, ".md") && !strings.HasSuffix(filePath, ".txt") {
+			return 0, fmt.Errorf("ファイルは.mdまたは.txt形式である必要があります")
+		}
+
+		// ファイル読み込み（依存性注入されたFileReaderを使用）
+		data, err := s.fileReader.ReadFile(filePath)
+		if err != nil {
+			return 0, fmt.Errorf("ファイル読み込みエラー: %v", err)
+		}
+		content = string(data)
+	} else {
+		content = textInput
+	}
+
+	return s.extractApiCostFromText(content)
 }

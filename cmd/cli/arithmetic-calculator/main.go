@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
-	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases"
+	config "github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
+	usecases "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases"
 )
 
 func main() {
@@ -31,6 +31,8 @@ func main() {
 		handleArrayCalculation(cfg)
 	case "evaluate_line_count":
 		handleFileEvaluation(cfg)
+	case "parse-api-cost":
+		handleApiCostExtraction(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -84,6 +86,22 @@ func handleFileEvaluation(cfg *config.Config) {
 
 	// 結果を出力
 	fmt.Print(jsonResult)
+}
+
+// handleApiCostExtraction はAPI料金抽出を処理する
+func handleApiCostExtraction(cfg *config.Config) {
+	// ApiCostExtractorServiceを初期化
+	service := usecases.NewApiCostExtractorService()
+
+	// API料金抽出を実行
+	result, err := service.HandleApiCostExtraction(cfg.FilePath, cfg.TextInput)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("抽出されたAPI料金の合計: %.0f円\n", result)
 }
 
 // getOperationSymbol は操作タイプに対応する記号を返す
