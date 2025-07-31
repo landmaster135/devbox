@@ -9,6 +9,7 @@ AI（Gemini API）を使用して画像からテキストを抽出するCLIツ�
 ## 機能
 
 - **画像OCR**: Gemini APIを使用した高精度なテキスト抽出
+- **Markdownテーブル生成**: 表形式の画像をMarkdownテーブル形式で出力
 - **複数画像対応**: ディレクトリ内の画像を一括処理
 - **再帰検索**: サブディレクトリも含めた画像検索
 - **カスタマイズ可能**: プロンプト、システム指示、生成パラメータの調整
@@ -22,7 +23,7 @@ cd /home/nov/devbox
 go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 ```
 
-## 使用方法
+## 使用例
 
 ### 基本的な使用方法
 
@@ -74,6 +75,19 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 ./bin/ocr-executor-with-ai -p /path/to/image.webp -at vertex -pj "your-project-id" -loc "us-central1"
 ```
 
+### Markdownテーブル生成
+
+```bash
+# Markdownテーブル形式でOCRを実行
+./bin/ocr-executor-with-ai -path /path/to/table-image.webp -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+
+# 短縮形
+./bin/ocr-executor-with-ai -p /path/to/table-image.webp -gmt -at gemini -ak "your-api-key"
+
+# ディレクトリ内の複数画像をMarkdownテーブル形式で処理
+./bin/ocr-executor-with-ai -path /path/to/table-images -recursive -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+```
+
 ## オプション
 
 | オプション | 短縮形 | 説明 | デフォルト値 |
@@ -85,8 +99,9 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 | `-project` | `-pj` | Google Cloud プロジェクトID（Vertex AI使用時必須） | - |
 | `-location` | `-loc` | Google Cloud ロケーション | us-central1 |
 | `-model` | `-m` | 使用するGeminiモデル | gemini-2.5-flash-lite |
-| `-prompt` | `-pr` | OCR用プロンプト | "OCRして。補足や説明は不要です。" |
+| `-prompt` | `-pr` | OCR用プロンプト（-generates-markdown-tableと併用不可） | "OCRして。補足や説明は不要です。" |
 | `-system-instruction` | `-si` | システム指示 | "OCRして。" |
+| `-generates-markdown-table` | `-gmt` | Markdownテーブル形式でOCRを実行 | false |
 | `-temperature` | `-t` | 生成パラメータ（0.0-2.0） | 1.0 |
 | `-max-tokens` | `-mt` | 最大トークン数 | 8192 |
 | `-help` | `-h` | ヘルプを表示 | - |
