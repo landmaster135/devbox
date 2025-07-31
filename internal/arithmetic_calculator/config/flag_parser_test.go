@@ -9,30 +9,44 @@ import (
 
 // MockFlagParser はテスト用のFlagParserモック
 type MockFlagParser struct {
-	stringVars map[string]*string
-	boolVars   map[string]*bool
-	args       []string
-	parseError error
+	stringVars   map[string]*string
+	boolVars     map[string]*bool
+	stringValues map[string]string // 事前設定された文字列値
+	boolValues   map[string]bool   // 事前設定されたブール値
+	args         []string
+	parseError   error
 }
 
 // NewMockFlagParser は新しいMockFlagParserを作成する
 func NewMockFlagParser() *MockFlagParser {
 	return &MockFlagParser{
-		stringVars: make(map[string]*string),
-		boolVars:   make(map[string]*bool),
-		args:       []string{},
+		stringVars:   make(map[string]*string),
+		boolVars:     make(map[string]*bool),
+		stringValues: make(map[string]string),
+		boolValues:   make(map[string]bool),
+		args:         []string{},
 	}
 }
 
 // StringVar は文字列フラグを定義する（モック）
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-	*p = value // デフォルト値を設定
+	// 事前設定された値があるかチェック
+	if presetValue, exists := m.stringValues[name]; exists {
+		*p = presetValue
+	} else {
+		*p = value // デフォルト値を設定
+	}
 	m.stringVars[name] = p
 }
 
 // BoolVar はブールフラグを定義する（モック）
 func (m *MockFlagParser) BoolVar(p *bool, name string, value bool, usage string) {
-	*p = value // デフォルト値を設定
+	// 事前設定された値があるかチェック
+	if presetValue, exists := m.boolValues[name]; exists {
+		*p = presetValue
+	} else {
+		*p = value // デフォルト値を設定
+	}
 	m.boolVars[name] = p
 }
 
@@ -48,6 +62,7 @@ func (m *MockFlagParser) Args() []string {
 
 // SetStringFlag はテスト用に文字列フラグの値を設定する
 func (m *MockFlagParser) SetStringFlag(name, value string) {
+	m.stringValues[name] = value
 	if p, exists := m.stringVars[name]; exists {
 		*p = value
 	}
@@ -55,6 +70,7 @@ func (m *MockFlagParser) SetStringFlag(name, value string) {
 
 // SetBoolFlag はテスト用にブールフラグの値を設定する
 func (m *MockFlagParser) SetBoolFlag(name string, value bool) {
+	m.boolValues[name] = value
 	if p, exists := m.boolVars[name]; exists {
 		*p = value
 	}
@@ -292,5 +308,183 @@ func TestParseFlagsWithParser_Integration(t *testing.T) {
 
 	if yStr != "8" {
 		t.Errorf("Expected y to be '8', got %s", yStr)
+	}
+}
+
+// TestMockFlagParser_DefaultValues はMockFlagParserのデフォルト値テスト
+func TestMockFlagParser_DefaultValues(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	var stringFlag string
+	var boolFlag bool
+
+	// Act
+	mockParser.StringVar(&stringFlag, "string-flag", "default-string", "string flag")
+	mockParser.BoolVar(&boolFlag, "bool-flag", true, "bool flag")
+
+	// Assert
+	if stringFlag != "default-string" {
+		t.Errorf("Expected default string 'default-string', got '%s'", stringFlag)
+	}
+	if !boolFlag {
+		t.Error("Expected default bool true, got false")
+	}
+}
+
+// TestMockFlagParser_EmptyArgs は空の引数リストのテスト
+func TestMockFlagParser_EmptyArgs(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+
+	// Act
+	args := mockParser.Args()
+
+	// Assert
+	if args == nil {
+		t.Error("Expected non-nil args, got nil")
+	}
+	if len(args) != 0 {
+		t.Errorf("Expected empty args, got %d items", len(args))
+	}
+}
+
+// TestMockFlagParser_ParseWithoutError はエラーなしのパースのテスト
+func TestMockFlagParser_ParseWithoutError(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+
+	// Act
+	err := mockParser.Parse()
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+}
+
+// TestStandardFlagParser_MultipleFlags は複数フラグの処理テスト
+func TestStandardFlagParser_MultipleFlags(t *testing.T) {
+	// Arrange
+	testFlagSet := flag.NewFlagSet("multi-flags-test", flag.ContinueOnError)
+	parser := &StandardFlagParser{
+		flagSet: testFlagSet,
+	}
+
+	var operation, file, numbers string
+	var threshold int
+	var help bool
+
+	// Act
+	parser.StringVar(&operation, "operation", "", "算術操作")
+	parser.StringVar(&file, "file", "", "ファイルパス")
+	parser.StringVar(&numbers, "numbers", "", "数値リスト")
+	parser.BoolVar(&help, "help", false, "ヘルプ")
+
+	testArgs := []string{"-operation=sum", "-numbers=1,2,3", "-help=true"}
+	err := testFlagSet.Parse(testArgs)
+
+	// Assert
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if operation != "sum" {
+		t.Errorf("Expected operation 'sum', got '%s'", operation)
+	}
+	if numbers != "1,2,3" {
+		t.Errorf("Expected numbers '1,2,3', got '%s'", numbers)
+	}
+	if !help {
+		t.Error("Expected help true, got false")
+	}
+	if file != "" {
+		t.Errorf("Expected empty file, got '%s'", file)
+	}
+	if threshold != 0 {
+		t.Errorf("Expected threshold 0, got %d", threshold)
+	}
+}
+
+// TestStandardFlagParser_FlagSetReference はflagSetの参照テスト
+func TestStandardFlagParser_FlagSetReference(t *testing.T) {
+	// Arrange & Act
+	parser := NewStandardFlagParser()
+
+	// Assert
+	if parser.flagSet != flag.CommandLine {
+		t.Error("Expected flagSet to reference flag.CommandLine")
+	}
+}
+
+// TestMockFlagParser_OverwriteFlags はフラグの上書きテスト
+func TestMockFlagParser_OverwriteFlags(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	var testFlag string
+
+	mockParser.StringVar(&testFlag, "test-flag", "initial", "test flag")
+
+	// Act
+	mockParser.SetStringFlag("test-flag", "first-update")
+	firstValue := testFlag
+
+	mockParser.SetStringFlag("test-flag", "second-update")
+	secondValue := testFlag
+
+	// Assert
+	if firstValue != "first-update" {
+		t.Errorf("Expected first update 'first-update', got '%s'", firstValue)
+	}
+	if secondValue != "second-update" {
+		t.Errorf("Expected second update 'second-update', got '%s'", secondValue)
+	}
+}
+
+// TestMockFlagParser_MixedFlagTypes は文字列とブールフラグの混合テスト
+func TestMockFlagParser_MixedFlagTypes(t *testing.T) {
+	// Arrange
+	mockParser := NewMockFlagParser()
+	var stringFlag1, stringFlag2 string
+	var boolFlag1, boolFlag2 bool
+
+	// Act
+	mockParser.StringVar(&stringFlag1, "str1", "default1", "string flag 1")
+	mockParser.StringVar(&stringFlag2, "str2", "default2", "string flag 2")
+	mockParser.BoolVar(&boolFlag1, "bool1", false, "bool flag 1")
+	mockParser.BoolVar(&boolFlag2, "bool2", true, "bool flag 2")
+
+	mockParser.SetStringFlag("str1", "updated1")
+	mockParser.SetBoolFlag("bool1", true)
+	mockParser.SetBoolFlag("bool2", false)
+
+	// Assert
+	if stringFlag1 != "updated1" {
+		t.Errorf("Expected stringFlag1 'updated1', got '%s'", stringFlag1)
+	}
+	if stringFlag2 != "default2" {
+		t.Errorf("Expected stringFlag2 'default2', got '%s'", stringFlag2)
+	}
+	if !boolFlag1 {
+		t.Error("Expected boolFlag1 true, got false")
+	}
+	if boolFlag2 {
+		t.Error("Expected boolFlag2 false, got true")
+	}
+}
+
+// TestStandardFlagParser_ErrorHandling はエラーハンドリングのテスト
+func TestStandardFlagParser_ErrorHandling(t *testing.T) {
+	// Arrange
+	testFlagSet := flag.NewFlagSet("error-test", flag.ContinueOnError)
+
+	var intFlag int
+	testFlagSet.IntVar(&intFlag, "int-flag", 0, "integer flag")
+
+	// Act - 無効な整数値を渡す
+	testArgs := []string{"-int-flag=invalid"}
+	err := testFlagSet.Parse(testArgs)
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for invalid integer flag, got nil")
 	}
 }

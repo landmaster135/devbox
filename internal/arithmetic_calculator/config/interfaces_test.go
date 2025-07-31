@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"os"
 	"testing"
 )
 
@@ -182,5 +183,166 @@ func TestMockFlagParser_MultipleBoolVars(t *testing.T) {
 	}
 	if !flag3 {
 		t.Error("Expected flag3 true, got false")
+	}
+}
+
+// TestStandardFileReader_ReadFile_Normal はStandardFileReaderの正常系テスト
+func TestStandardFileReader_ReadFile_Normal(t *testing.T) {
+	// Arrange
+	reader := &StandardFileReader{}
+
+	// テスト用の一時ファイルを作成
+	testContent := "test file content for reading"
+	tmpFile := "/tmp/test_file_reader.txt"
+
+	// テストファイルを作成
+	err := os.WriteFile(tmpFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(tmpFile) // テスト後にクリーンアップ
+
+	// Act
+	content, err := reader.ReadFile(tmpFile)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ReadFile returned error: %v", err)
+	}
+	if string(content) != testContent {
+		t.Errorf("Expected content '%s', got '%s'", testContent, string(content))
+	}
+}
+
+// TestStandardFileReader_ReadFile_FileNotFound はファイルが存在しない場合のテスト
+func TestStandardFileReader_ReadFile_FileNotFound(t *testing.T) {
+	// Arrange
+	reader := &StandardFileReader{}
+	nonExistentFile := "/tmp/non_existent_file_12345.txt"
+
+	// Act
+	content, err := reader.ReadFile(nonExistentFile)
+
+	// Assert
+	if err == nil {
+		t.Error("Expected error for non-existent file, got nil")
+	}
+	if content != nil {
+		t.Error("Expected nil content for non-existent file")
+	}
+}
+
+// TestStandardFileReader_ReadFile_EmptyFile は空ファイルの場合のテスト
+func TestStandardFileReader_ReadFile_EmptyFile(t *testing.T) {
+	// Arrange
+	reader := &StandardFileReader{}
+	tmpFile := "/tmp/empty_test_file.txt"
+
+	// 空のテストファイルを作成
+	err := os.WriteFile(tmpFile, []byte(""), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create empty test file: %v", err)
+	}
+	defer os.Remove(tmpFile) // テスト後にクリーンアップ
+
+	// Act
+	content, err := reader.ReadFile(tmpFile)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ReadFile returned error for empty file: %v", err)
+	}
+	if len(content) != 0 {
+		t.Errorf("Expected empty content, got %d bytes", len(content))
+	}
+}
+
+// TestFileReaderInterface_StandardImplementation はFileReaderインターフェースの標準実装テスト
+func TestFileReaderInterface_StandardImplementation(t *testing.T) {
+	// Arrange
+	standardReader := &StandardFileReader{}
+
+	// Act & Assert - インターフェースが正しく実装されているかテスト
+	var reader FileReader = standardReader
+
+	// テスト用の一時ファイルを作成
+	testContent := "interface test content"
+	tmpFile := "/tmp/interface_test_file.txt"
+
+	err := os.WriteFile(tmpFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+	defer os.Remove(tmpFile)
+
+	// ReadFileメソッドのテスト
+	content, err := reader.ReadFile(tmpFile)
+	if err != nil {
+		t.Errorf("ReadFile returned error: %v", err)
+	}
+	if string(content) != testContent {
+		t.Errorf("Expected content '%s', got '%s'", testContent, string(content))
+	}
+}
+
+// TestStandardFileReader_ReadFile_LargeFile は大きなファイルの場合のテスト
+func TestStandardFileReader_ReadFile_LargeFile(t *testing.T) {
+	// Arrange
+	reader := &StandardFileReader{}
+	tmpFile := "/tmp/large_test_file.txt"
+
+	// 大きなテストコンテンツを作成（1000文字）
+	largeContent := ""
+	for i := 0; i < 100; i++ {
+		largeContent += "0123456789"
+	}
+
+	err := os.WriteFile(tmpFile, []byte(largeContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create large test file: %v", err)
+	}
+	defer os.Remove(tmpFile)
+
+	// Act
+	content, err := reader.ReadFile(tmpFile)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ReadFile returned error for large file: %v", err)
+	}
+	if string(content) != largeContent {
+		t.Errorf("Expected content length %d, got %d", len(largeContent), len(content))
+	}
+}
+
+// TestStandardFileReader_ReadFile_BinaryFile はバイナリファイルの場合のテスト
+func TestStandardFileReader_ReadFile_BinaryFile(t *testing.T) {
+	// Arrange
+	reader := &StandardFileReader{}
+	tmpFile := "/tmp/binary_test_file.bin"
+
+	// バイナリデータを作成
+	binaryData := []byte{0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD}
+
+	err := os.WriteFile(tmpFile, binaryData, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create binary test file: %v", err)
+	}
+	defer os.Remove(tmpFile)
+
+	// Act
+	content, err := reader.ReadFile(tmpFile)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ReadFile returned error for binary file: %v", err)
+	}
+	if len(content) != len(binaryData) {
+		t.Errorf("Expected content length %d, got %d", len(binaryData), len(content))
+	}
+	for i, expected := range binaryData {
+		if content[i] != expected {
+			t.Errorf("Expected byte[%d] %02x, got %02x", i, expected, content[i])
+		}
 	}
 }
