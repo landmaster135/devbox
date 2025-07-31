@@ -9,12 +9,13 @@ import (
 
 // Config は算術計算CLIの設定を保持する構造体
 type Config struct {
-	Operation string    // 操作タイプ (add, subtract, multiply, divide, sum, evaluate_line_count)
+	Operation string    // 操作タイプ (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost)
 	X         float64   // 第一オペランド
 	Y         float64   // 第二オペランド
 	Numbers   []float64 // 複数の数値（sum操作用）
-	FilePath  string    // ファイルパス（evaluate_line_count操作用）
+	FilePath  string    // ファイルパス（evaluate_line_count, parse-api-cost操作用）
 	Threshold int       // 閾値（evaluate_line_count操作用）
+	TextInput string    // テキスト入力（parse-api-cost操作用）
 	Help      bool      // ヘルプ表示フラグ
 }
 
@@ -25,7 +26,7 @@ func NewConfig(operation string, x, y float64, numbers []float64, filePath strin
 	}
 
 	// 操作タイプの検証
-	validOperations := []string{"add", "subtract", "multiply", "divide", "sum", "evaluate_line_count"}
+	validOperations := []string{"add", "subtract", "multiply", "divide", "sum", "evaluate_line_count", "parse-api-cost"}
 	isValid := false
 	for _, op := range validOperations {
 		if operation == op {
@@ -65,6 +66,38 @@ func NewConfig(operation string, x, y float64, numbers []float64, filePath strin
 	}, nil
 }
 
+// NewConfigForParseApiCost はparse-api-cost操作用の新しいConfigを作成する
+func NewConfigForParseApiCost(operation, filePath, textInput string) (*Config, error) {
+	if operation == "" {
+		return nil, fmt.Errorf("操作タイプが指定されていません")
+	}
+
+	if operation != "parse-api-cost" {
+		return nil, fmt.Errorf("この関数はparse-api-cost操作専用です: %s", operation)
+	}
+
+	// 排他制御
+	if filePath != "" && textInput != "" {
+		return nil, fmt.Errorf("ファイルパスとテキスト入力は同時に指定できません")
+	}
+	if filePath == "" && textInput == "" {
+		return nil, fmt.Errorf("ファイルパスまたはテキスト入力のいずれかを指定してください")
+	}
+
+	// ファイル拡張子の検証
+	if filePath != "" {
+		if !strings.HasSuffix(filePath, ".md") && !strings.HasSuffix(filePath, ".txt") {
+			return nil, fmt.Errorf("ファイルは.mdまたは.txt形式である必要があります")
+		}
+	}
+
+	return &Config{
+		Operation: operation,
+		FilePath:  filePath,
+		TextInput: textInput,
+	}, nil
+}
+
 // ParseFlags はコマンドライン引数を解析してConfigを作成する
 func ParseFlags() (*Config, error) {
 	return ParseFlagsWithParser(NewStandardFlagParser())
@@ -79,10 +112,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		numbers      = ""
 		filePath     = ""
 		thresholdStr = "0"
+		textInput    = ""
 		help         = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count)")
+	parser.StringVar(&operation, "operation", operation, "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost)")
 	parser.StringVar(&operation, "o", operation, "算術操作の短縮形")
 
 	// 基本計算用のパラメータ
@@ -98,6 +132,10 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&filePath, "f", filePath, "ファイルパスの短縮形")
 	parser.StringVar(&thresholdStr, "threshold", thresholdStr, "行数の閾値")
 	parser.StringVar(&thresholdStr, "t", thresholdStr, "閾値の短縮形")
+
+	// API料金抽出用のパラメータ (parse-api-cost操作用)
+	parser.StringVar(&textInput, "text-input", textInput, "テキスト入力 (parse-api-cost操作用)")
+	parser.StringVar(&textInput, "ti", textInput, "テキスト入力の短縮形")
 
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -159,6 +197,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		}
 	}
 
+	// parse-api-cost操作の場合は専用の処理を行う
+	if operation == "parse-api-cost" {
+		return NewConfigForParseApiCost(operation, filePath, textInput)
+	}
+
 	return NewConfig(operation, x, y, numbersSlice, filePath, threshold)
 }
 
@@ -179,14 +222,23 @@ func PrintUsage() {
     %s -operation evaluate_line_count -file /path/to/file -threshold 100
     %s -o evaluate_line_count -f /path/to/file 100
 
+  API料金抽出（ファイルから）:
+    %s -operation parse-api-cost -file /path/to/file.txt
+    %s -o parse-api-cost -f /path/to/file.md
+
+  API料金抽出（テキストから）:
+    %s -operation parse-api-cost -text-input "API料金が100円掛かった。別のAPI料金が200円掛かった。"
+    %s -o parse-api-cost -ti "API料金が150円掛かった。"
+
 オプション:
-  -operation, -o    算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count)
+  -operation, -o    算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost)
   -x               第一オペランド (基本計算用)
   -y               第二オペランド (基本計算用)
   -numbers, -n     カンマ区切りの数値リスト (sum操作用)
-  -file, -f        評価するファイルのパス (evaluate_line_count操作用)
+  -file, -f        評価するファイルのパス (evaluate_line_count, parse-api-cost操作用)
   -threshold, -t   行数の閾値 (evaluate_line_count操作用)
+  -text-input, -ti テキスト入力 (parse-api-cost操作用)
   -help, -h        このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }

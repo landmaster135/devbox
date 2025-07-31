@@ -1,12 +1,13 @@
 # Arithmetic Calculator
 
-算術計算を行うCLIツールです。基本的な四則演算、配列の合計計算、ファイルの行数評価機能を提供します。
+算術計算を行うCLIツールです。基本的な四則演算、配列の合計計算、ファイルの行数評価、API料金抽出機能を提供します。
 
 ## 機能
 
 - **基本計算**: 加算、減算、乗算、除算の四則演算
 - **配列計算**: 複数の数値の合計計算
 - **ファイル評価**: ファイルの行数が指定された閾値を超えているかの評価
+- **API料金抽出**: ファイルまたはテキストから「API料金が○円掛かった」形式の文字列を抽出し合計を計算
 - **柔軟な入力方式**: フラグ指定と位置引数の両方に対応
 - **短縮オプション**: 全てのオプションに短縮形を提供
 - **JSON出力**: ファイル評価結果を構造化されたJSON形式で出力
@@ -35,12 +36,13 @@ go build -o bin/arithmetic-calculator ./cmd/cli/arithmetic-calculator
 
 | オプション | 短縮形 | 説明 | 必須 | 例 |
 |-----------|--------|------|------|-----|
-| `-operation` | `-o` | 実行する操作 (add, subtract, multiply, divide, sum, evaluate_line_count) | ✓ | `-o add` |
+| `-operation` | `-o` | 実行する操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost) | ✓ | `-o add` |
 | `-x` | | 第一オペランド (基本計算用) | | `-x 10` |
 | `-y` | | 第二オペランド (基本計算用) | | `-y 5` |
 | `-numbers` | `-n` | カンマ区切りの数値リスト (sum操作用) | | `-n 1,2,3,4,5` |
-| `-file` | `-f` | 評価するファイルのパス (evaluate_line_count操作用) | | `-f /path/to/file.txt` |
+| `-file` | `-f` | 評価するファイルのパス (evaluate_line_count, parse-api-cost操作用) | | `-f /path/to/file.txt` |
 | `-threshold` | `-t` | 行数の閾値 (evaluate_line_count操作用) | | `-t 100` |
+| `-text-input` | `-ti` | テキスト入力 (parse-api-cost操作用) | | `-ti "API料金が100円掛かった。"` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
 
 ## 使用例
@@ -80,6 +82,21 @@ go build -o bin/arithmetic-calculator ./cmd/cli/arithmetic-calculator
 ./bin/arithmetic-calculator -o evaluate_line_count -f /path/to/file.txt 100  # 位置引数
 ```
 
+### API料金抽出
+
+```bash
+# ファイルからAPI料金を抽出
+./bin/arithmetic-calculator -operation parse-api-cost -file /path/to/api_log.txt
+./bin/arithmetic-calculator -o parse-api-cost -f /path/to/api_log.md
+
+# テキストからAPI料金を抽出
+./bin/arithmetic-calculator -operation parse-api-cost -text-input "API料金が100円掛かった。別のAPI料金が200円掛かった。"
+./bin/arithmetic-calculator -o parse-api-cost -ti "API料金が150円掛かった。"
+
+# 短縮形での使用
+./bin/arithmetic-calculator -o parse-api-cost -ti "今日の処理でAPI料金が300円掛かった。"
+```
+
 ## 出力フォーマット
 
 ### 基本計算の出力
@@ -101,6 +118,12 @@ sum([1 2 3 4 5]) = 15.00
 
 ```json
 {"file_path":"/path/to/file.txt","line_count":150,"threshold":100,"exceeds_threshold":true}
+```
+
+### API料金抽出の出力
+
+```
+抽出されたAPI料金の合計: 300円
 ```
 
 ## エラーハンドリング
