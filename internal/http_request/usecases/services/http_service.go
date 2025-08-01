@@ -33,14 +33,9 @@ func (s *HTTPService) SendRequestWithJSONFile(url, method, jsonFilePath string) 
 	return s.SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath, headers, "auto")
 }
 
-// SendRequestWithJSONFileAndHeaders はJSONファイルの内容をボディとして、指定されたヘッダーを含むHTTPリクエストを送信します
-func (s *HTTPService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath string, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
-	// JSONファイルを読み込む
-	jsonBody, err := s.httpRepo.LoadJSONFile(jsonFilePath)
-	if err != nil {
-		return nil, fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
-	}
 
+// SendRequestWithJSONBody はメモリ上のJSONバイト配列をボディとしてHTTPリクエストを送信します
+func (s *HTTPService) SendRequestWithJSONBody(url, method string, jsonBody []byte, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
 	// Content-Typeが設定されていない場合は追加
 	if _, exists := headers["Content-Type"]; !exists {
 		headers["Content-Type"] = "application/json"
@@ -62,6 +57,17 @@ func (s *HTTPService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePat
 	}
 
 	return response, nil
+}
+
+// SendRequestWithJSONFileAndHeaders はJSONファイルの内容をボディとして、指定されたヘッダーを含むHTTPリクエストを送信します
+func (s *HTTPService) SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath string, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
+	// JSONファイルを読み込む
+	jsonBody, err := s.httpRepo.LoadJSONFile(jsonFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
+	}
+
+	return s.SendRequestWithJSONBody(url, method, jsonBody, headers, encoding)
 }
 
 func (s *HTTPService) SendRequestWithoutJSONFile(url, method string, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
