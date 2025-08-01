@@ -7,12 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/landmaster135/devbox/internal/mcp_remote/config"
+	config "github.com/landmaster135/devbox/internal/mcp_remote/config"
+	transport "github.com/landmaster135/devbox/internal/mcp_remote/interface/transport"
 )
 
 // ProxyService はMCPプロキシサービスを提供する
 type ProxyService struct {
-	logger *log.Logger
+	logger         *log.Logger
+	proxyTransport *transport.ProxyTransport
 }
 
 // NewProxyService は新しいProxyServiceを作成する
@@ -72,20 +74,29 @@ func (s *ProxyService) validateServerURL(cfg *config.Config) error {
 
 // initializeProxy はプロキシを初期化する
 func (s *ProxyService) initializeProxy(cfg *config.Config) error {
-	// TODO: プロキシ初期化の実装
-	// 1. OAuth認証の設定
-	// 2. トランスポートの選択と初期化
-	// 3. 双方向プロキシの開始
 	s.logger.Printf("プロキシを初期化中...")
+
+	// プロキシトランスポートを作成
+	s.proxyTransport = transport.NewProxyTransport(cfg)
+
+	// プロキシを開始
+	if err := s.proxyTransport.Start(); err != nil {
+		return fmt.Errorf("プロキシトランスポートの開始に失敗しました: %v", err)
+	}
+
 	return nil
 }
 
 // cleanup はリソースのクリーンアップを行う
 func (s *ProxyService) cleanup() error {
-	// TODO: クリーンアップの実装
-	// - 接続の切断
-	// - リソースの解放
 	s.logger.Printf("リソースをクリーンアップ中...")
+
+	if s.proxyTransport != nil {
+		if err := s.proxyTransport.Stop(); err != nil {
+			return fmt.Errorf("プロキシトランスポートの停止に失敗しました: %v", err)
+		}
+	}
+
 	return nil
 }
 

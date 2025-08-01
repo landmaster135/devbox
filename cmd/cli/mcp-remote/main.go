@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/mcp_remote/config"
-	"github.com/landmaster135/devbox/internal/mcp_remote/usecases"
+	config "github.com/landmaster135/devbox/internal/mcp_remote/config"
+	usecases "github.com/landmaster135/devbox/internal/mcp_remote/usecases"
 )
 
 func main() {
