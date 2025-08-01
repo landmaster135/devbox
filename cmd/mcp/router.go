@@ -16,6 +16,7 @@ import (
 	git_diff_recorder "github.com/landmaster135/devbox/cmd/mcp/git_diff_recorder"
 	github "github.com/landmaster135/devbox/cmd/mcp/github"
 	http_request "github.com/landmaster135/devbox/cmd/mcp/http_request"
+	notion_sync "github.com/landmaster135/devbox/cmd/mcp/notion_sync"
 	postgresql "github.com/landmaster135/devbox/cmd/mcp/postgresql"
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
 	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
@@ -75,6 +76,8 @@ func Router() {
 		git_diff_recorder.BuildMcpServer()
 	case "git_commit_history_retriever":
 		git_commit_history_retriever.BuildMcpServer()
+	case "notion_sync":
+		notion_sync.BuildNotionSyncServer()
 	case "service_implementing_viewer":
 		service_implementing_viewer.BuildServiceImplementingViewerServer()
 	default:
