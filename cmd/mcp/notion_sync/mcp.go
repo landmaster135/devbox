@@ -82,7 +82,7 @@ func handlePatchPage(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	// Notion同期を実行
 	result, err := service.HandleNotionSync(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("Notion同期に失敗しました: %v", err)
+		return nil, fmt.Errorf("notion同期に失敗しました: %v", err)
 	}
 
 	return mcp.NewToolResultText(result), nil
