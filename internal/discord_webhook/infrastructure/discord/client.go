@@ -107,13 +107,22 @@ type EmbedFooter struct {
 	IconURL string `json:"icon_url"`
 }
 
+// EmbedField はEmbedのフィールド情報を保持する構造体
+type EmbedField struct {
+	Name   string `json:"name"`
+	Value  string `json:"value"`
+	Inline bool   `json:"inline"`
+}
+
 // Embed はDiscord Embedの構造体
 type Embed struct {
-	Title     string       `json:"title"`
-	Color     int          `json:"color"`
-	URL       string       `json:"url,omitempty"`
-	Timestamp string       `json:"timestamp,omitempty"`
-	Footer    *EmbedFooter `json:"footer,omitempty"`
+	Title       string        `json:"title"`
+	Description string        `json:"description,omitempty"`
+	Color       int           `json:"color"`
+	URL         string        `json:"url,omitempty"`
+	Timestamp   string        `json:"timestamp,omitempty"`
+	Footer      *EmbedFooter  `json:"footer,omitempty"`
+	Fields      []*EmbedField `json:"fields,omitempty"`
 }
 
 // Payload はDiscord Webhookのペイロード構造体
@@ -237,6 +246,60 @@ func (c *DiscordClient) CreatePayload(botName string, content string, embeds []*
 
 	c.logger.Info("payload created", "payload", payload)
 	return payload, nil
+}
+
+// CreateWeatherEmbed は天気予報専用のDiscord Embedを作成します
+func (c *DiscordClient) CreateWeatherEmbed(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*Embed, error) {
+	// 入力値の検証
+	if title == "" {
+		return nil, fmt.Errorf("'title' must not be empty")
+	}
+	if footerText == "" {
+		return nil, fmt.Errorf("'footerText' must not be empty")
+	}
+	if footerIconURL == "" {
+		return nil, fmt.Errorf("'footerIconURL' must not be empty")
+	}
+	if len(fields) > 25 {
+		return nil, fmt.Errorf("fields count must be 25 or less")
+	}
+
+	// embedを作成
+	embed := &Embed{
+		Title:       title,
+		Description: description,
+		Color:       colorInDecimal,
+		Fields:      fields,
+		Footer: &EmbedFooter{
+			Text:    footerText,
+			IconURL: footerIconURL,
+		},
+	}
+
+	// タイムスタンプを表示する場合は追加
+	if displaysTimestamp {
+		// ISO 8601形式のタイムスタンプを生成
+		embed.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	return embed, nil
+}
+
+// CreateWeatherEmbeds は天気予報専用のDiscord Embedsを作成します
+func (c *DiscordClient) CreateWeatherEmbeds(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) ([]*Embed, error) {
+	embed, err := c.CreateWeatherEmbed(title, description, colorInDecimal, fields, footerText, footerIconURL, displaysTimestamp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create weather embed: %v", err)
+	}
+
+	// 入力値の検証
+	if embed == nil {
+		return nil, fmt.Errorf("embed must not be nil")
+	}
+
+	// 配列に格納して返す
+	embeds := []*Embed{embed}
+	return embeds, nil
 }
 
 // GetAvailableColors は使用可能な色のリストを取得します
