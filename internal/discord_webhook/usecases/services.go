@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	botName = "VSCode生徒会長"
+	botName           = "VSCode生徒会長"
 	footerTextInEmbed = "VSCode"
-	vsCodeIconURL = "https://code.visualstudio.com/assets/images/code-stable.png"
+	vsCodeIconURL     = "https://code.visualstudio.com/assets/images/code-stable.png"
 )
 
 // DiscordWebhookService はDiscord Webhook通知のサービス
@@ -31,74 +31,19 @@ func NewDefaultDiscordWebhookService() *DiscordWebhookService {
 	return NewDiscordWebhookService(repository)
 }
 
-// SendNotification はDiscordに通知を送信します
-func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL, contentText, embedType, embedText, embedColor, embedURLLinkedText string) error {
-	// embed-typeに応じた処理
-	switch embedType {
-	case "none":
-		return s.sendSimpleNotification(ctx, webhookURL, contentText)
-	case "vscode":
-		return s.sendVSCodeNotification(ctx, webhookURL, contentText, embedText, embedColor, embedURLLinkedText)
-	default:
-		return fmt.Errorf("未対応のembed-typeです: %s", embedType)
-	}
-}
-
-// sendSimpleNotification はembedなしの簡単な通知を送信します
-func (s *DiscordWebhookService) sendSimpleNotification(ctx context.Context, webhookURL, contentText string) error {
-	// embedなしのペイロードを作成
-	payload, err := s.repository.CreatePayload("Webhook Bot", contentText, nil, false)
-	if err != nil {
-		return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
-	}
-
-	// Webhookを送信
-	if err := s.repository.SendWebhook(ctx, webhookURL, payload); err != nil {
-		return fmt.Errorf("webhook送信に失敗しました: %w", err)
-	}
-
-	return nil
-}
-
-// SendWeatherNotification は天気予報専用のDiscord通知を送信します
-func (s *DiscordWebhookService) SendWeatherNotification(ctx context.Context, webhookURL, title, description, embedColor string, fields []*discord.EmbedField) error {
-	// 色を10進数に変換
-	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
-	if err != nil {
-		availableColors := s.repository.GetAvailableColors()
-		return fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
-	}
-
-	// 天気予報専用のembedsを作成
-	embeds, err := s.repository.CreateWeatherEmbeds(
-		title,
-		description,
-		colorInDecimal,
-		fields,
-		footerTextInEmbed,
-		vsCodeIconURL,
-		true, // タイムスタンプを表示
-	)
-	if err != nil {
-		return fmt.Errorf("embedsの作成に失敗しました: %w", err)
-	}
-
+// createSimplePayload はembedなしの簡単な通知を送信します
+func (s *DiscordWebhookService) createSimplePayload(contentText string) (*discord.Payload, error) {
 	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botName, "", embeds, false)
+	payload, err := s.repository.CreatePayload(botName, contentText, nil, false)
 	if err != nil {
-		return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
 
-	// Webhookを送信
-	if err := s.repository.SendWebhook(ctx, webhookURL, payload); err != nil {
-		return fmt.Errorf("webhook送信に失敗しました: %w", err)
-	}
-
-	return nil
+	return payload, nil
 }
 
-// sendVSCodeNotification はVSCode風のembed付き通知を送信します
-func (s *DiscordWebhookService) sendVSCodeNotification(ctx context.Context, webhookURL, contentText, embedText, embedColor, embedURLLinkedText string) error {
+// createVSCodePayload はVSCode風のembed付き通知を送信します
+func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
 	// デフォルト値の設定
 	if embedText == "" {
 		embedText = "通知"
@@ -111,7 +56,7 @@ func (s *DiscordWebhookService) sendVSCodeNotification(ctx context.Context, webh
 	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
 	if err != nil {
 		availableColors := s.repository.GetAvailableColors()
-		return fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
+		return nil, fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
 	}
 
 	// embedsを作成
@@ -124,18 +69,89 @@ func (s *DiscordWebhookService) sendVSCodeNotification(ctx context.Context, webh
 		true, // タイムスタンプを表示
 	)
 	if err != nil {
-		return fmt.Errorf("embedsの作成に失敗しました: %w", err)
+		return nil, fmt.Errorf("embedsの作成に失敗しました: %w", err)
 	}
 
 	// ペイロードを作成
 	payload, err := s.repository.CreatePayload(botName, contentText, embeds, false)
+	if err != nil {
+		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+	}
+
+	return payload, nil
+}
+
+func (s *DiscordWebhookService) SendWebhook(ctx context.Context, webhookURL string, payload *discord.Payload) error {
+	// Webhookを送信
+	if err := s.repository.SendWebhook(ctx, webhookURL, payload); err != nil {
+		return fmt.Errorf("webhook送信に失敗しました: %w", err)
+	}
+	return nil
+}
+
+// SendNotification はDiscordに通知を送信します
+func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL, contentText, embedType, embedText, embedColor, embedURLLinkedText string) error {
+	// embed-typeに応じた処理
+	var payload *discord.Payload
+	var err error
+	switch embedType {
+	case "none":
+		payload, err = s.createSimplePayload(contentText)
+		if err != nil {
+			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+		}
+	case "vscode":
+		payload, err = s.createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText)
+		if err != nil {
+			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+		}
+	default:
+		return fmt.Errorf("未対応のembed-typeです: %s", embedType)
+	}
+
+	// Webhookを送信
+	if err := s.SendWebhook(ctx, webhookURL, payload); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *DiscordWebhookService) CreateWeatherEmbed(title, description string, fields []*discord.EmbedField) (*discord.Embed, error) {
+	// 色を10進数に変換
+	embedColor := "orange"
+	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
+	if err != nil {
+		availableColors := s.repository.GetAvailableColors()
+		return nil, fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
+	}
+
+	embed, err := s.repository.CreateWeatherEmbed(
+		title,
+		description,
+		colorInDecimal,
+		fields,
+		footerTextInEmbed,
+		vsCodeIconURL,
+		true, // タイムスタンプを表示
+	)
+	if err != nil {
+		return nil, fmt.Errorf("embedsの作成に失敗しました: %w", err)
+	}
+	return embed, nil
+}
+
+// SendWeatherNotification は天気予報専用のDiscord通知を送信します
+func (s *DiscordWebhookService) SendWeatherNotification(ctx context.Context, webhookURL string, embeds []*discord.Embed) error {
+	// ペイロードを作成
+	payload, err := s.repository.CreatePayload(botName, "", embeds, false)
 	if err != nil {
 		return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
 
 	// Webhookを送信
 	if err := s.repository.SendWebhook(ctx, webhookURL, payload); err != nil {
-		return fmt.Errorf("webhook送信に失敗しました: %w", err)
+		return err
 	}
 
 	return nil

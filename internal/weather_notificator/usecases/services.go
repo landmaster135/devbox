@@ -4,13 +4,15 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	discord "github.com/landmaster135/devbox/internal/discord_webhook/infrastructure/discord"
 	discordUsecases "github.com/landmaster135/devbox/internal/discord_webhook/usecases"
 	weatherUsecases "github.com/landmaster135/devbox/internal/open_weather_map/usecases"
 )
 
+// #==============================================================#
+// ##          Consts and Types                                  ##
+// #==============================================================#
 // WeatherNotificatorService は天気通知サービス
 type WeatherNotificatorService struct {
 	weatherService *weatherUsecases.WeatherService
@@ -36,47 +38,20 @@ func NewWeatherNotificatorServiceWithDependencies(
 	}
 }
 
-// SendWeatherNotification は指定した都市の天気予報をDiscordに通知する
-func (s *WeatherNotificatorService) SendWeatherNotification(ctx context.Context, apiKey, city string, maxDays int, webhookURL string) error {
-	// 天気予報を取得
-	forecasts, err := s.weatherService.GetForecastByDays(apiKey, city, maxDays)
-	if err != nil {
-		return fmt.Errorf("天気予報の取得に失敗しました: %w", err)
-	}
-
-	if len(forecasts) == 0 {
-		return fmt.Errorf("天気予報データが取得できませんでした")
-	}
-
-	// 各日の天気予報をDiscordに送信
-	for i, forecast := range forecasts {
-		embedTitle := s.createEmbedTitle(city, forecast, i+1, maxDays)
-		embedDescription := s.createEmbedDescription(forecast)
-		embedColor := "orange"
-		fields := s.createEmbedFields(forecast)
-
-		// 新しい天気予報専用の通知を送信
-		err := s.discordService.SendWeatherNotification(
-			ctx,
-			webhookURL,
-			embedTitle,
-			embedDescription,
-			embedColor,
-			fields,
-		)
-		if err != nil {
-			return fmt.Errorf("Discord通知の送信に失敗しました（%d日目）: %w", i+1, err)
-		}
-
-		// 連続送信時の負荷軽減のため少し待機
-		if i < len(forecasts)-1 {
-			time.Sleep(500 * time.Millisecond)
-		}
-	}
-
-	return nil
+// #==============================================================#
+// ##          Getter                                            ##
+// #==============================================================#
+func (s *WeatherNotificatorService) GetWeatherService() *weatherUsecases.WeatherService {
+	return s.weatherService
 }
 
+func (s *WeatherNotificatorService) GetDiscordService() *discordUsecases.DiscordWebhookService {
+	return s.discordService
+}
+
+// #==============================================================#
+// ##          Function                                          ##
+// #==============================================================#
 // createEmbedTitle はembedのタイトルを作成する
 func (s *WeatherNotificatorService) createEmbedTitle(city string, forecast weatherUsecases.DayForecast, dayIndex, totalDays int) string {
 	return fmt.Sprintf("%s %s の天気予報 (%d/%d日目)", forecast.EmojiOfWeather, city, dayIndex, totalDays)
@@ -146,6 +121,37 @@ func (s *WeatherNotificatorService) createEmbedFields(forecast weatherUsecases.D
 	}
 
 	return fields
+}
+
+// SendWeatherNotification は指定した都市の天気予報をDiscordに通知する
+func (s *WeatherNotificatorService) SendWeatherNotification(ctx context.Context, apiKey, city string, maxDays int, webhookURL string) error {
+	// 天気予報を取得
+	forecasts, err := s.GetWeatherService().GetForecastByDays(apiKey, city, maxDays)
+	if err != nil {
+		return fmt.Errorf("天気予報の取得に失敗しました: %w", err)
+	}
+	if len(forecasts) == 0 {
+		return fmt.Errorf("天気予報データが取得できませんでした")
+	}
+
+	// 各日の天気予報をDiscordに送信
+	var embeds []*discord.Embed
+	for i, forecast := range forecasts {
+		embedTitle := s.createEmbedTitle(city, forecast, i+1, maxDays)
+		embedDescription := s.createEmbedDescription(forecast)
+		fields := s.createEmbedFields(forecast)
+		embed, err := s.GetDiscordService().CreateWeatherEmbed(embedTitle, embedDescription, fields)
+		if err != nil {
+			return fmt.Errorf("embedの作成に失敗しました（%d日目）: %w", i+1, err)
+		}
+		embeds = append(embeds, embed)
+	}
+
+	if err = s.GetDiscordService().SendWeatherNotification(ctx, webhookURL, embeds); err != nil {
+		return fmt.Errorf("discord通知の送信に失敗しました: %w", err)
+	}
+
+	return nil
 }
 
 // HandleWeatherNotification は天気通知のメインハンドラー
