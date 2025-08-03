@@ -12,15 +12,17 @@ import (
 	everart "github.com/landmaster135/devbox/cmd/mcp/everart"
 	figma "github.com/landmaster135/devbox/cmd/mcp/figma"
 	filesystem "github.com/landmaster135/devbox/cmd/mcp/filesystem"
+	gdrive "github.com/landmaster135/devbox/cmd/mcp/gdrive"
 	git_commit_history_retriever "github.com/landmaster135/devbox/cmd/mcp/git_commit_history_retriever"
 	git_diff_recorder "github.com/landmaster135/devbox/cmd/mcp/git_diff_recorder"
 	github "github.com/landmaster135/devbox/cmd/mcp/github"
 	http_request "github.com/landmaster135/devbox/cmd/mcp/http_request"
 	notion_sync "github.com/landmaster135/devbox/cmd/mcp/notion_sync"
+	open_weather_map "github.com/landmaster135/devbox/cmd/mcp/open_weather_map"
 	postgresql "github.com/landmaster135/devbox/cmd/mcp/postgresql"
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
 	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
-	gdrive "github.com/landmaster135/devbox/cmd/mcp/gdrive"
+
 	// shell "github.com/landmaster135/devbox/cmd/mcp/shell" // TODO: unapplicable for WSL...
 	timezone "github.com/landmaster135/devbox/cmd/mcp/timezone"
 	util "github.com/landmaster135/devbox/cmd/mcp/util"
@@ -81,6 +83,8 @@ func Router() {
 		notion_sync.BuildNotionSyncServer()
 	case "service_implementing_viewer":
 		service_implementing_viewer.BuildServiceImplementingViewerServer()
+	case "open_weather_map":
+		open_weather_map.BuildOpenWeatherMapServer()
 	case "weather_notificator":
 		weather_notificator.BuildWeatherNotificatorServer()
 	default:
