@@ -8,9 +8,10 @@ import (
 )
 
 const (
-	botName           = "VSCode生徒会長"
-	footerTextInEmbed = "VSCode"
-	vsCodeIconURL     = "https://code.visualstudio.com/assets/images/code-stable.png"
+	botNameForVSCODE      = "VSCode生徒会長"
+	botNameForOpenWeather = "お天気あゆ"
+	footerTextInEmbed     = "VSCode"
+	vsCodeIconURL         = "https://code.visualstudio.com/assets/images/code-stable.png"
 )
 
 // DiscordWebhookService はDiscord Webhook通知のサービス
@@ -34,7 +35,7 @@ func NewDefaultDiscordWebhookService() *DiscordWebhookService {
 // createSimplePayload はembedなしの簡単な通知を送信します
 func (s *DiscordWebhookService) createSimplePayload(contentText string) (*discord.Payload, error) {
 	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botName, contentText, nil, false)
+	payload, err := s.repository.CreatePayload(botNameForVSCODE, contentText, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
@@ -73,7 +74,7 @@ func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embe
 	}
 
 	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botName, contentText, embeds, false)
+	payload, err := s.repository.CreatePayload(botNameForVSCODE, contentText, embeds, false)
 	if err != nil {
 		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
@@ -144,7 +145,7 @@ func (s *DiscordWebhookService) CreateWeatherEmbed(title, description string, fi
 // SendWeatherNotification は天気予報専用のDiscord通知を送信します
 func (s *DiscordWebhookService) SendWeatherNotification(ctx context.Context, webhookURL string, embeds []*discord.Embed) error {
 	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botName, "", embeds, false)
+	payload, err := s.repository.CreatePayload(botNameForOpenWeather, "", embeds, false)
 	if err != nil {
 		return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}

@@ -24,6 +24,7 @@ import (
 	// shell "github.com/landmaster135/devbox/cmd/mcp/shell" // TODO: unapplicable for WSL...
 	timezone "github.com/landmaster135/devbox/cmd/mcp/timezone"
 	util "github.com/landmaster135/devbox/cmd/mcp/util"
+	weather_notificator "github.com/landmaster135/devbox/cmd/mcp/weather_notificator"
 	youtube_transcript "github.com/landmaster135/devbox/cmd/mcp/youtube_transcript"
 )
 
@@ -80,6 +81,8 @@ func Router() {
 		notion_sync.BuildNotionSyncServer()
 	case "service_implementing_viewer":
 		service_implementing_viewer.BuildServiceImplementingViewerServer()
+	case "weather_notificator":
+		weather_notificator.BuildWeatherNotificatorServer()
 	default:
 		fmt.Fprintln(os.Stderr, "argument is invalid")
 		os.Exit(1)
