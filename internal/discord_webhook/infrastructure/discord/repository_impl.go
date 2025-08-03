@@ -46,6 +46,16 @@ func (r *DiscordRepositoryImpl) CreatePayload(botName string, content string, em
 	return r.client.CreatePayload(botName, content, embeds, isTTS)
 }
 
+// CreateWeatherEmbed は天気予報専用のDiscord Embedを作成します
+func (r *DiscordRepositoryImpl) CreateWeatherEmbed(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*Embed, error) {
+	return r.client.CreateWeatherEmbed(title, description, colorInDecimal, fields, footerText, footerIconURL, displaysTimestamp)
+}
+
+// CreateWeatherEmbeds は天気予報専用のDiscord Embedsを作成します
+func (r *DiscordRepositoryImpl) CreateWeatherEmbeds(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) ([]*Embed, error) {
+	return r.client.CreateWeatherEmbeds(title, description, colorInDecimal, fields, footerText, footerIconURL, displaysTimestamp)
+}
+
 // GetAvailableColors は使用可能な色のリストを取得します
 func (r *DiscordRepositoryImpl) GetAvailableColors() []string {
 	return r.client.GetAvailableColors()

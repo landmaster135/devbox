@@ -10,6 +10,7 @@ import (
 const (
 	botName = "VSCode生徒会長"
 	footerTextInEmbed = "VSCode"
+	vsCodeIconURL = "https://code.visualstudio.com/assets/images/code-stable.png"
 )
 
 // DiscordWebhookService はDiscord Webhook通知のサービス
@@ -59,6 +60,43 @@ func (s *DiscordWebhookService) sendSimpleNotification(ctx context.Context, webh
 	return nil
 }
 
+// SendWeatherNotification は天気予報専用のDiscord通知を送信します
+func (s *DiscordWebhookService) SendWeatherNotification(ctx context.Context, webhookURL, title, description, embedColor string, fields []*discord.EmbedField) error {
+	// 色を10進数に変換
+	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
+	if err != nil {
+		availableColors := s.repository.GetAvailableColors()
+		return fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
+	}
+
+	// 天気予報専用のembedsを作成
+	embeds, err := s.repository.CreateWeatherEmbeds(
+		title,
+		description,
+		colorInDecimal,
+		fields,
+		footerTextInEmbed,
+		vsCodeIconURL,
+		true, // タイムスタンプを表示
+	)
+	if err != nil {
+		return fmt.Errorf("embedsの作成に失敗しました: %w", err)
+	}
+
+	// ペイロードを作成
+	payload, err := s.repository.CreatePayload(botName, "", embeds, false)
+	if err != nil {
+		return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+	}
+
+	// Webhookを送信
+	if err := s.repository.SendWebhook(ctx, webhookURL, payload); err != nil {
+		return fmt.Errorf("webhook送信に失敗しました: %w", err)
+	}
+
+	return nil
+}
+
 // sendVSCodeNotification はVSCode風のembed付き通知を送信します
 func (s *DiscordWebhookService) sendVSCodeNotification(ctx context.Context, webhookURL, contentText, embedText, embedColor, embedURLLinkedText string) error {
 	// デフォルト値の設定
@@ -75,9 +113,6 @@ func (s *DiscordWebhookService) sendVSCodeNotification(ctx context.Context, webh
 		availableColors := s.repository.GetAvailableColors()
 		return fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
 	}
-
-	// VSCodeアイコンのURLを設定（公開されているVSCodeアイコンを使用）
-	vsCodeIconURL := "https://code.visualstudio.com/assets/images/code-stable.png"
 
 	// embedsを作成
 	embeds, err := s.repository.CreateEmbeds(

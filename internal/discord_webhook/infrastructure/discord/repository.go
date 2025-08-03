@@ -20,6 +20,12 @@ type DiscordRepository interface {
 	// CreatePayload はDiscord通知用のペイロードを作成します
 	CreatePayload(botName string, content string, embeds []*Embed, isTTS bool) (*Payload, error)
 
+	// CreateWeatherEmbed は天気予報専用のDiscord Embedを作成します
+	CreateWeatherEmbed(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*Embed, error)
+
+	// CreateWeatherEmbeds は天気予報専用のDiscord Embedsを作成します
+	CreateWeatherEmbeds(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) ([]*Embed, error)
+
 	// GetAvailableColors は使用可能な色のリストを取得します
 	GetAvailableColors() []string
 }
