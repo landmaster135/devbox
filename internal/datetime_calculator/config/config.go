@@ -9,7 +9,7 @@ import (
 
 // Config は日時計算CLIの設定を保持する構造体
 type Config struct {
-	Operation      string    // 操作タイプ (add, subtract, sum, parse-time)
+	Operation      string    // 操作タイプ (add, subtract, sum, parse-time, generate-daily-heading)
 	Year1          float64   // 基準日時の年
 	Month1         float64   // 基準日時の月
 	Day1           float64   // 基準日時の日
@@ -27,6 +27,7 @@ type Config struct {
 	OutputUnit     string    // 出力時間単位 (sum操作用)
 	FilePath       string    // ファイルパス (parse-time操作用)
 	TextInput      string    // テキスト入力 (parse-time操作用)
+	DayOffset      int       // 日付オフセット (generate-daily-heading操作用)
 	Help           bool      // ヘルプ表示フラグ
 }
 
@@ -162,6 +163,22 @@ func NewConfigForParseTime(operation, filePath, textInput, outputUnit string) (*
 	}, nil
 }
 
+// NewConfigForGenerateDailyHeading はgenerate-daily-heading操作用の新しいConfigを作成する
+func NewConfigForGenerateDailyHeading(operation string, dayOffset int) (*Config, error) {
+	if operation == "" {
+		return nil, fmt.Errorf("操作タイプが指定されていません")
+	}
+
+	if operation != "generate-daily-heading" {
+		return nil, fmt.Errorf("この関数はgenerate-daily-heading操作専用です: %s", operation)
+	}
+
+	return &Config{
+		Operation: operation,
+		DayOffset: dayOffset,
+	}, nil
+}
+
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析する
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
@@ -183,10 +200,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		outputUnit        = ""
 		filePath          = ""
 		textInput         = ""
+		dayOffsetStr      = "0"
 		help              = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "日時操作 (add, subtract, sum, parse-time)")
+	parser.StringVar(&operation, "operation", operation, "日時操作 (add, subtract, sum, parse-time, generate-daily-heading)")
 	parser.StringVar(&operation, "o", operation, "操作の短縮形")
 
 	// 基準日時のパラメータ
@@ -230,6 +248,10 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&filePath, "fp", filePath, "ファイルパスの短縮形")
 	parser.StringVar(&textInput, "text-input", textInput, "テキスト入力 (parse-time操作用)")
 	parser.StringVar(&textInput, "ti", textInput, "テキスト入力の短縮形")
+
+	// 日付オフセット用のパラメータ (generate-daily-heading操作用)
+	parser.StringVar(&dayOffsetStr, "day-offset", dayOffsetStr, "日付オフセット (generate-daily-heading操作用)")
+	parser.StringVar(&dayOffsetStr, "do", dayOffsetStr, "日付オフセットの短縮形")
 
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -333,6 +355,15 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return NewConfigForParseTime(operation, filePath, textInput, outputUnit)
 	}
 
+	// generate-daily-heading操作の場合は専用の処理を行う
+	if operation == "generate-daily-heading" {
+		dayOffset, err := strconv.Atoi(dayOffsetStr)
+		if err != nil {
+			return nil, fmt.Errorf("無効な日付オフセットの値です: %s", dayOffsetStr)
+		}
+		return NewConfigForGenerateDailyHeading(operation, dayOffset)
+	}
+
 	return NewConfig(operation, year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)
 }
 
@@ -367,14 +398,18 @@ func PrintUsage() {
   時間抽出（単位変換）:
     %s -operation parse-time -text-input "合計120分掛かった。" -output-unit hour
 
+  日次見出し生成:
+    %s -operation generate-daily-heading -day-offset -1
+
   短縮形:
     %s -o add -y 2025 -m 1 -d 15 -hr 12 -min 30 -s 0 -dy 1 -dm 2 -dd 10 -dh 5 -dmin 30 -ds 45
     %s -o sum -iu second -ou hour -f 3600,1800,7200
     %s -o parse-time -fp /path/to/file.md
     %s -o parse-time -ti "合計120分掛かった。" -ou second
+    %s -o generate-daily-heading -do -1
 
 オプション:
-  -operation, -o       日時操作 (add, subtract, sum, parse-time)
+  -operation, -o       日時操作 (add, subtract, sum, parse-time, generate-daily-heading)
   -year, -y           基準日時の年 (デフォルト: 2025)
   -month, -m          基準日時の月 (デフォルト: 1)
   -day, -d            基準日時の日 (デフォルト: 1)
@@ -392,7 +427,8 @@ func PrintUsage() {
   -output-unit, -ou   出力時間単位 (sum, parse-time操作用: year, month, day, hour, minute, second, デフォルト: minute)
   -file-path, -fp     ファイルパス (parse-time操作用: .mdまたは.txt)
   -text-input, -ti    テキスト入力 (parse-time操作用)
+  -day-offset, -do    日付オフセット (generate-daily-heading操作用: デフォルト: 0)
   -help, -h           このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }

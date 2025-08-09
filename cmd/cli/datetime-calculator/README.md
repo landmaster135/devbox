@@ -9,6 +9,7 @@
 - **時間単位計算**: 複数の時間単位値を合計し、異なる時間単位に変換
 - **時間単位変換**: 単一の時間単位値を別の時間単位に変換
 - **時間抽出**: テキストやファイルから「合計[数値]分掛かった。」パターンを抽出して合計時間を計算
+- **日次見出し生成**: 実行日からのオフセットを指定して日次タスク用のMarkdown見出しを生成
 - **柔軟な期間指定**: 年、月、日、時、分、秒を個別に指定可能
 - **短縮オプション**: 全てのオプションに短縮形を提供
 - **直感的な出力**: 計算式と結果を分かりやすく表示
@@ -39,7 +40,7 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
-| `-operation` | `-o` | 日時操作 (add, subtract, sum, parse-time) | | `-o add` |
+| `-operation` | `-o` | 日時操作 (add, subtract, sum, parse-time, generate-daily-heading) | | `-o add` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
 
 ### 日時加算・減算用オプション
@@ -74,6 +75,12 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 | `-file-path` | `-fp` | ファイルパス (.mdまたは.txt形式) | | `-fp /path/to/file.txt` |
 | `-text-input` | `-ti` | テキスト入力 | | `-ti "合計30分掛かった。"` |
 | `-output-unit` | `-ou` | 出力時間単位 (year, month, day, hour, minute, second) | minute | `-ou hour` |
+
+### 日次見出し生成用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト | 例 |
+|-----------|--------|------|-----------|-----|
+| `-day-offset` | `-do` | 日付オフセット（実行日からの日数） | 0 | `-do -1` |
 
 ## 使用例
 
@@ -151,6 +158,22 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 ./bin/datetime-calculator -o parse-time -ti "合計120分掛かった。" -ou hour
 ```
 
+### 日次見出し生成
+
+```bash
+# 昨日から今日にかけての見出しを生成
+./bin/datetime-calculator -operation generate-daily-heading -day-offset -1
+
+# 今日から明日にかけての見出しを生成（デフォルト）
+./bin/datetime-calculator -operation generate-daily-heading -day-offset 0
+
+# 3日後から4日後にかけての見出しを生成
+./bin/datetime-calculator -operation generate-daily-heading -day-offset 3
+
+# 短縮形を使用
+./bin/datetime-calculator -o generate-daily-heading -do -1
+```
+
 ## 出力フォーマット
 
 ### 加算の出力
@@ -189,6 +212,24 @@ sum([2.5] hour) = 150.000000 minute
 # 秒単位で出力
 抽出された時間の合計: 4500.000000秒
 抽出された時間の合計: 7200.000000秒
+```
+
+### 日次見出し生成の出力
+
+```
+# 2025-08-10に実行した場合の例
+
+# day-offset=-1（昨日から今日）
+## 2025-08-09(Sat)から2025-08-10(Sun)にかけて（）
+- [ ]  2025-08-09(Sat)から2025-08-10(Sun)にかけて進める。・・・合計0分掛かった。
+
+# day-offset=0（今日から明日）
+## 2025-08-10(Sun)から2025-08-11(Mon)にかけて（）
+- [ ]  2025-08-10(Sun)から2025-08-11(Mon)にかけて進める。・・・合計0分掛かった。
+
+# day-offset=3（3日後から4日後）
+## 2025-08-13(Wed)から2025-08-14(Thu)にかけて（）
+- [ ]  2025-08-13(Wed)から2025-08-14(Thu)にかけて進める。・・・合計0分掛かった。
 ```
 
 ## エラーハンドリング
