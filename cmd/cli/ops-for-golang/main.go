@@ -46,11 +46,14 @@ func handleTestCoverage(cfg *config.Config) {
 	service := usecases.NewGolangOpsService()
 
 	// テストカバレッジを実行
-	err := service.HandleTestCoverage(cfg.Directory)
+	result, err := service.HandleTestCoverage(cfg.Directory, cfg.GrepPattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
+
+	// 結果を標準出力に表示
+	fmt.Print(result)
 }
 
 // handleTestCoverageProject はプロジェクト全体のテストカバレッジを処理する
@@ -59,11 +62,14 @@ func handleTestCoverageProject(cfg *config.Config) {
 	service := usecases.NewGolangOpsService()
 
 	// プロジェクト全体のテストカバレッジを実行
-	err := service.HandleTestCoverageProject(cfg.Directory)
+	result, err := service.HandleTestCoverageProject(cfg.Directory)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
+
+	// 結果を標準出力に表示
+	fmt.Print(result)
 }
 
 // handleCoverageFunc はカバレッジ関数情報を処理する
@@ -72,11 +78,14 @@ func handleCoverageFunc(cfg *config.Config) {
 	service := usecases.NewGolangOpsService()
 
 	// カバレッジ関数情報を実行
-	err := service.HandleCoverageFunc(cfg.CoverageFile)
+	result, err := service.HandleCoverageFunc(cfg.CoverageFile, cfg.GrepPattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
+
+	// 結果を標準出力に表示
+	fmt.Print(result)
 }
 
 // handleGoRun はgo runを処理する
@@ -85,9 +94,12 @@ func handleGoRun(cfg *config.Config) {
 	service := usecases.NewGolangOpsService()
 
 	// go runを実行
-	err := service.HandleGoRun(cfg.ExecutionFile, cfg.Parameters)
+	result, err := service.HandleGoRun(cfg.ExecutionFile, cfg.Parameters)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
+
+	// 結果を標準出力に表示
+	fmt.Print(result)
 }
