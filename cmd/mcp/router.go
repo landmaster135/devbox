@@ -19,6 +19,7 @@ import (
 	http_request "github.com/landmaster135/devbox/cmd/mcp/http_request"
 	notion_sync "github.com/landmaster135/devbox/cmd/mcp/notion_sync"
 	open_weather_map "github.com/landmaster135/devbox/cmd/mcp/open_weather_map"
+	ops_for_golang "github.com/landmaster135/devbox/cmd/mcp/ops_for_golang"
 	postgresql "github.com/landmaster135/devbox/cmd/mcp/postgresql"
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
 	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
@@ -87,6 +88,8 @@ func Router() {
 		open_weather_map.BuildOpenWeatherMapServer()
 	case "weather_notificator":
 		weather_notificator.BuildWeatherNotificatorServer()
+	case "ops_for_golang":
+		ops_for_golang.BuildGolangOpsServer()
 	default:
 		fmt.Fprintln(os.Stderr, "argument is invalid")
 		os.Exit(1)

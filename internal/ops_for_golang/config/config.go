@@ -12,11 +12,12 @@ type Config struct {
 	ExecutionFile string // 実行ファイル (run用)
 	Parameters    string // 実行パラメータ (run用)
 	CoverageFile  string // カバレッジファイル (coverage-func用)
+	GrepPattern   string // 出力フィルタリング用のgrepパターン (全操作共通)
 	Help          bool   // ヘルプ表示フラグ
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(operation, directory, executionFile, parameters, coverageFile string) (*Config, error) {
+func NewConfig(operation, directory, executionFile, parameters, coverageFile, grepPattern string) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
@@ -56,6 +57,7 @@ func NewConfig(operation, directory, executionFile, parameters, coverageFile str
 		ExecutionFile: executionFile,
 		Parameters:    parameters,
 		CoverageFile:  coverageFile,
+		GrepPattern:   grepPattern,
 	}, nil
 }
 
@@ -72,6 +74,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		executionFile = ""
 		parameters    = ""
 		coverageFile  = ""
+		grepPattern   = ""
 		help          = false
 	)
 
@@ -92,6 +95,10 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&coverageFile, "coverage_file", coverageFile, "カバレッジファイルパス (coverage-func操作用)")
 	parser.StringVar(&coverageFile, "c", coverageFile, "カバレッジファイルパスの短縮形")
 
+	// grep用のパラメータ（全操作共通）
+	parser.StringVar(&grepPattern, "grep_pattern", grepPattern, "出力フィルタリング用のgrepパターン (全操作共通)")
+	parser.StringVar(&grepPattern, "g", grepPattern, "grepパターンの短縮形")
+
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
 
@@ -104,7 +111,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, directory, executionFile, parameters, coverageFile)
+	return NewConfig(operation, directory, executionFile, parameters, coverageFile, grepPattern)
 }
 
 // PrintUsage は使用方法を表示する
@@ -128,13 +135,18 @@ func PrintUsage() {
     %s -ops run -execution_file ./main.go -parameters "-dry-run -token 'test_token'"
     %s -o run -e ./main.go -p "-dry-run -token 'test_token'"
 
+  grepパターンでフィルタリング:
+    %s -ops coverage-func -coverage_file coverage.out -grep_pattern "100.0%%"
+    %s -o test-coverage -d /path/to/project -g "PASS"
+
 オプション:
   -ops, -o           操作タイプ (test-coverage, test-coverage-project, run, coverage-func)
   -directory, -d     対象ディレクトリパス (test-coverage, test-coverage-project用)
   -execution_file, -e 実行ファイルパス (run用)
   -parameters, -p    実行パラメータ (run用)
   -coverage_file, -c カバレッジファイルパス (coverage-func用)
+  -grep_pattern, -g  出力フィルタリング用のgrepパターン (全操作共通)
   -help, -h          このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
