@@ -50,6 +50,116 @@ fmt.Printf("実行コマンド: %s\n", cmd)
 // 進捗表示や実行コマンドの出力は行わない
 ```
 
+### ディレクトリ操作の注意点
+- `cmd.Dir = dir` の設定は必須
+- 相対パスは `filepath.Abs()` で絶対パスに変換
+- ディレクトリの存在確認と種別確認を実装
+
+実装例:
+```go
+// ✅ 正しい実装: ExecuteInDirメソッドでcmd.Dirを設定
+func (e *DefaultCommandExecutor) ExecuteInDir(dir, name string, args ...string) ([]byte, error) {
+    cmd := exec.Command(name, args...)
+    cmd.Dir = dir  // 重要: 実行ディレクトリを設定
+    return cmd.CombinedOutput()
+}
+
+// ✅ 正しい実装: 絶対パス変換とディレクトリ確認
+func (s *Service) ExecuteOperation(directory string) (string, error) {
+    // ディレクトリの存在確認
+    if !s.directoryChecker.Exists(directory) {
+        return "", fmt.Errorf("指定されたディレクトリが存在しません: %s", directory)
+    }
+    if !s.directoryChecker.IsDirectory(directory) {
+        return "", fmt.Errorf("指定されたパスはディレクトリではありません: %s", directory)
+    }
+
+    // 絶対パスに変換（重要）
+    absDir, err := filepath.Abs(directory)
+    if err != nil {
+        return "", fmt.Errorf("ディレクトリパスの変換に失敗しました: %v", err)
+    }
+
+    // 指定されたディレクトリでコマンド実行
+    output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "./...")
+    // ...
+}
+```
+
+### exec.ExitErrorのExitCode()による分岐処理
+- `err.(*exec.ExitError)` で型アサーション
+- `exitError.ExitCode()` で終了コードを取得
+- 終了コードに応じた適切な処理分岐
+
+実装例:
+```go
+// ✅ 正しい実装: ExitErrorの型アサーションと終了コード判定
+output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
+if err != nil {
+    // エラーの種類を判定
+    if exitError, ok := err.(*exec.ExitError); ok {
+        // exec.ExitErrorの場合は終了コードを確認
+        if exitError.ExitCode() == 1 {
+            // exit status 1: テスト失敗（正常な動作として扱う）
+            // 何もしない - 出力を返却する
+        } else {
+            // exit status 1以外: 実際のエラー
+            return "", fmt.Errorf("コマンド実行でエラーが発生しました: %v\n出力: %s", err, string(output))
+        }
+    } else {
+        // exec.ExitError以外のエラー（コマンドが見つからない等）
+        return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
+    }
+}
+```
+
+### テスト失敗（exit status 1）と実際のエラーの区別
+- **exit status 1**: テスト失敗 → 正常な動作として扱い、出力を返却
+- **exit status 2以上**: システムエラー → エラーとして処理
+- **その他のエラー**: コマンド未発見等 → エラーとして処理
+
+例えば、Goのテストコマンドでは、テスト失敗とシステムエラーを区別する必要があります：
+
+実装例:
+```go
+// ✅ 正しい実装: テスト失敗を正常な動作として扱う
+func (s *GolangOpsService) ExecuteTestCoverage(directory, grepPattern string) (string, error) {
+    // ... ディレクトリ確認等の処理 ...
+
+    // go test -cover ./... を実行
+    output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
+    if err != nil {
+        if exitError, ok := err.(*exec.ExitError); ok {
+            if exitError.ExitCode() == 1 {
+                // テスト失敗は正常な動作として扱う
+                // エラーを返さず、出力をそのまま処理する
+            } else {
+                // exit code が1以外の場合は実際のエラー
+                return "", fmt.Errorf("テストカバレッジの実行でエラーが発生しました: %v\n出力: %s", err, string(output))
+            }
+        } else {
+            // exec.ExitError以外のエラー
+            return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
+        }
+    }
+
+    // テスト失敗の場合でも出力を処理して返却
+    result.Write(output)
+    return result.String(), nil
+}
+```
+
+テスト実装での注意点:
+```go
+// テスト用の実際のExitErrorを作成
+cmd := exec.Command("sh", "-c", "exit 1")
+err := cmd.Run()
+exitError, _ := err.(*exec.ExitError)
+
+// モックでExitErrorを返却
+mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-cover", "./..."}).Return(expectedOutput, exitError)
+```
+
 ## 実装パターン
 
 ### 1. CLIツールのmain.go構造

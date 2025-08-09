@@ -134,7 +134,19 @@ func (s *GolangOpsService) ExecuteTestCoverage(directory, grepPattern string) (s
 	// go test -cover ./... を実行
 	output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
 	if err != nil {
-		return "", fmt.Errorf("テストカバレッジの実行に失敗しました: %v\n出力: %s", err, string(output))
+		// エラーの種類を判定
+		if exitError, ok := err.(*exec.ExitError); ok {
+			// テストの失敗（exit status 1など）の場合は、出力を返してエラーにしない
+			if exitError.ExitCode() == 1 {
+				// テスト失敗は正常な動作として扱う（何もしない）
+			} else {
+				// exit code が1以外の場合は実際のエラー
+				return "", fmt.Errorf("テストカバレッジの実行でエラーが発生しました: %v\n出力: %s", err, string(output))
+			}
+		} else {
+			// exec.ExitError以外のエラー（コマンドが見つからない等）
+			return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
+		}
 	}
 
 	// grepパターンが指定されている場合はフィルタリング
@@ -147,6 +159,11 @@ func (s *GolangOpsService) ExecuteTestCoverage(directory, grepPattern string) (s
 	result.WriteString("\n\nテストカバレッジの実行が完了しました。")
 
 	return result.String(), nil
+}
+
+// HandleTestCoverage はテストカバレッジのハンドラーです
+func (s *GolangOpsService) HandleTestCoverage(directory, grepPattern string) (string, error) {
+	return s.ExecuteTestCoverage(directory, grepPattern)
 }
 
 // ExecuteTestCoverageProject はプロジェクト全体のテストカバレッジを実行します
@@ -173,7 +190,19 @@ func (s *GolangOpsService) ExecuteTestCoverageProject(directory string) (string,
 	result.WriteString("Step 1: テストカバレッジプロファイルを生成中...\n")
 	output1, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-coverprofile=coverage.out", "./...")
 	if err != nil {
-		return "", fmt.Errorf("テストカバレッジプロファイルの生成に失敗しました: %v\n出力: %s", err, string(output1))
+		// エラーの種類を判定
+		if exitError, ok := err.(*exec.ExitError); ok {
+			// テストの失敗（exit status 1など）の場合は、出力を返してエラーにしない
+			if exitError.ExitCode() == 1 {
+				// テスト失敗は正常な動作として扱う（何もしない）
+			} else {
+				// exit code が1以外の場合は実際のエラー
+				return "", fmt.Errorf("テストカバレッジプロファイルの生成でエラーが発生しました: %v\n出力: %s", err, string(output1))
+			}
+		} else {
+			// exec.ExitError以外のエラー（コマンドが見つからない等）
+			return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
+		}
 	}
 	result.Write(output1)
 
@@ -195,7 +224,7 @@ func (s *GolangOpsService) ExecuteTestCoverageProject(directory string) (string,
 		result.Write(output3)
 	}
 
-	result.WriteString(fmt.Sprintf("\nプロジェクト全体のテストカバレッジの実行が完了しました。\n"))
+	result.WriteString("\nプロジェクト全体のテストカバレッジの実行が完了しました。\n")
 	result.WriteString(fmt.Sprintf("HTMLレポートが生成されました: %s/coverage.html\n", absDir))
 
 	return result.String(), nil
@@ -235,11 +264,6 @@ func (s *GolangOpsService) ExecuteGoRun(executionFile, parameters string) (strin
 	result.WriteString("\n\ngo runの実行が完了しました。")
 
 	return result.String(), nil
-}
-
-// HandleTestCoverage はテストカバレッジのハンドラーです
-func (s *GolangOpsService) HandleTestCoverage(directory, grepPattern string) (string, error) {
-	return s.ExecuteTestCoverage(directory, grepPattern)
 }
 
 // HandleTestCoverageProject はプロジェクト全体のテストカバレッジのハンドラーです
