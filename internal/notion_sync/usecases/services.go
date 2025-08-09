@@ -21,6 +21,18 @@ type PatchRequest struct {
 	ToggleH3        bool   `json:"toggle_h3"`
 }
 
+func NewPatchRequest(token, conID, pageID, markdownContent string, toggleH1, toggleH2, toggleH3 bool) *PatchRequest {
+	return &PatchRequest{
+		Token:           token,
+		ConID:           conID,
+		PageID:          pageID,
+		MarkdownContent: markdownContent,
+		ToggleH1:        toggleH1,
+		ToggleH2:        toggleH2,
+		ToggleH3:        toggleH3,
+	}
+}
+
 // NotionSyncService はNotion同期を行うサービス
 type NotionSyncService struct {
 	httpService *services.HTTPService
@@ -46,15 +58,15 @@ func NewNotionSyncServiceWithDependencies(httpService *services.HTTPService) *No
 // SendPatchRequest はページパッチリクエストを送信する
 func (s *NotionSyncService) SendPatchRequest(cfg *config.Config) (string, error) {
 	// PatchRequest構造体を作成
-	patchReq := PatchRequest{
-		Token:           cfg.Token,
-		ConID:           cfg.ConID,
-		PageID:          cfg.PageID,
-		MarkdownContent: cfg.MarkdownContent,
-		ToggleH1:        cfg.ToggleH1,
-		ToggleH2:        cfg.ToggleH2,
-		ToggleH3:        cfg.ToggleH3,
-	}
+	patchReq := NewPatchRequest(
+		cfg.Token,
+		cfg.ConID,
+		cfg.PageID,
+		cfg.MarkdownContent,
+		cfg.ToggleH1,
+		cfg.ToggleH2,
+		cfg.ToggleH3,
+	)
 
 	// JSONにマーシャル
 	jsonBody, err := json.Marshal(patchReq)
