@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	dashboard "cloud.google.com/go/monitoring/dashboard/apiv1"
 	dashboardpb "cloud.google.com/go/monitoring/dashboard/apiv1/dashboardpb"
@@ -11,6 +12,9 @@ import (
 	runpb "cloud.google.com/go/run/apiv2/runpb"
 	"google.golang.org/api/impersonate"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // Service はGoogle Cloud Monitoringサービスの操作を提供する
@@ -68,24 +72,40 @@ func (s *Service) verifyCloudRunService(ctx context.Context) (bool, error) {
 	// Cloud Run クライアントの作成
 	client, err := run.NewServicesClient(ctx, opts...)
 	if err != nil {
-		return false, fmt.Errorf("Cloud Runクライアントの作成に失敗しました: %v", err)
+		return false, fmt.Errorf("cloud Runクライアントの作成に失敗しました: %v", err)
 	}
 	defer client.Close()
 
 	// サービス名の構築
 	servicePath := fmt.Sprintf("projects/%s/locations/%s/services/%s", s.project, s.location, s.serviceName)
+	log.Printf("サービスパスを確認中: %s", servicePath)
 
 	// サービスの取得
 	req := &runpb.GetServiceRequest{
 		Name: servicePath,
 	}
 
-	_, err = client.GetService(ctx, req)
+	service, err := client.GetService(ctx, req)
 	if err != nil {
-		// サービスが見つからない場合
-		return false, nil
+		// gRPCステータスコードを確認
+		if st, ok := status.FromError(err); ok {
+			switch st.Code() {
+			case codes.NotFound:
+				log.Printf("Cloud Runサービスが見つかりません: %s", servicePath)
+				return false, nil
+			case codes.PermissionDenied:
+				return false, fmt.Errorf("cloud Runサービスへのアクセス権限がありません: %v", err)
+			case codes.Unauthenticated:
+				return false, fmt.Errorf("認証に失敗しました: %v", err)
+			default:
+				return false, fmt.Errorf("cloud Runサービスの取得中にエラーが発生しました: %v", err)
+			}
+		}
+		// gRPCエラーでない場合
+		return false, fmt.Errorf("予期しないエラーが発生しました: %v", err)
 	}
 
+	log.Printf("Cloud Runサービスが見つかりました: %s (状態: %s)", service.Name, service.GetConditions())
 	return true, nil
 }
 
@@ -150,46 +170,57 @@ func (s *Service) getClientOptions(ctx context.Context) ([]option.ClientOption, 
 func (s *Service) buildDashboardConfig() *dashboardpb.Dashboard {
 	return &dashboardpb.Dashboard{
 		DisplayName: fmt.Sprintf("Cloud Run Monitoring - %s", s.serviceName),
-		Layout: &dashboardpb.Dashboard_GridLayout{
-			GridLayout: &dashboardpb.GridLayout{
+		Layout: &dashboardpb.Dashboard_MosaicLayout{
+			MosaicLayout: &dashboardpb.MosaicLayout{
 				Columns: 12,
-				Widgets: s.buildDashboardWidgets(),
+				Tiles:   s.buildDashboardTiles(),
 			},
 		},
 	}
 }
 
-// buildDashboardWidgets はダッシュボードのウィジェットを構築する
-func (s *Service) buildDashboardWidgets() []*dashboardpb.Widget {
-	var widgets []*dashboardpb.Widget
+// buildDashboardTiles はダッシュボードのタイルを構築する
+func (s *Service) buildDashboardTiles() []*dashboardpb.MosaicLayout_Tile {
+	var tiles []*dashboardpb.MosaicLayout_Tile
 
 	// 行1: リクエスト概要 (4つのウィジェット、各3列幅)
-	widgets = append(widgets, s.createTextWidget("リクエスト数 (req/sec)", "リクエスト数/秒の監視"))
-	widgets = append(widgets, s.createTextWidget("ステータス別リクエスト (2xx/4xx/5xx)", "ステータスコード別リクエスト数"))
-	widgets = append(widgets, s.createTextWidget("累積リクエスト数 (24h total)", "24時間の累積リクエスト数"))
-	widgets = append(widgets, s.createTextWidget("リクエスト時間分布 (heatmap)", "時間別リクエストパターン"))
+	tiles = append(tiles, s.createTile(s.createRequestCountWidget(), 0, 0, 3, 4))
+	tiles = append(tiles, s.createTile(s.createRequestsByStatusWidget(), 3, 0, 3, 4))
+	tiles = append(tiles, s.createTile(s.createTotalRequestsWidget(), 6, 0, 3, 4))
+	tiles = append(tiles, s.createTile(s.createRequestHeatmapWidget(), 9, 0, 3, 4))
 
 	// 行2: パフォーマンス指標 (4つのウィジェット、各3列幅)
-	widgets = append(widgets, s.createTextWidget("リクエストレイテンシ (P50,P95,P99)", "レスポンス時間のパーセンタイル"))
-	widgets = append(widgets, s.createTextWidget("エラー率", "エラーリクエストの割合"))
-	widgets = append(widgets, s.createTextWidget("最大同時リクエスト", "同時処理リクエスト数"))
-	widgets = append(widgets, s.createTextWidget("レスポンス時間 (Mean/Max)", "平均・最大レスポンス時間"))
+	tiles = append(tiles, s.createTile(s.createRequestLatencyWidget(), 0, 4, 3, 4))
+	tiles = append(tiles, s.createTile(s.createErrorRateWidget(), 3, 4, 3, 4))
+	tiles = append(tiles, s.createTile(s.createMaxConcurrentRequestsWidget(), 6, 4, 3, 4))
+	tiles = append(tiles, s.createTile(s.createResponseTimeWidget(), 9, 4, 3, 4))
 
 	// 行3: コンテナ指標 (3つのウィジェット、各4列幅)
-	widgets = append(widgets, s.createTextWidget("インスタンス数", "コンテナインスタンス数"))
-	widgets = append(widgets, s.createTextWidget("起動レイテンシ", "コンテナ起動時間"))
-	widgets = append(widgets, s.createTextWidget("課金時間", "課金対象インスタンス時間"))
+	tiles = append(tiles, s.createTile(s.createTextWidget("インスタンス数", "コンテナインスタンス数"), 0, 8, 4, 4))
+	tiles = append(tiles, s.createTile(s.createTextWidget("起動レイテンシ", "コンテナ起動時間"), 4, 8, 4, 4))
+	tiles = append(tiles, s.createTile(s.createTextWidget("課金時間", "課金対象インスタンス時間"), 8, 8, 4, 4))
 
 	// 行4: リソース使用状況 (3つのウィジェット、各4列幅)
-	widgets = append(widgets, s.createTextWidget("CPU使用率", "CPU使用率の監視"))
-	widgets = append(widgets, s.createTextWidget("メモリ使用率", "メモリ使用率の監視"))
-	widgets = append(widgets, s.createTextWidget("メモリ使用量", "メモリ使用量の監視"))
+	tiles = append(tiles, s.createTile(s.createTextWidget("CPU使用率", "CPU使用率の監視"), 0, 12, 4, 4))
+	tiles = append(tiles, s.createTile(s.createTextWidget("メモリ使用率", "メモリ使用率の監視"), 4, 12, 4, 4))
+	tiles = append(tiles, s.createTile(s.createTextWidget("メモリ使用量", "メモリ使用量の監視"), 8, 12, 4, 4))
 
 	// 行5: ネットワーク (2つのウィジェット、各6列幅)
-	widgets = append(widgets, s.createTextWidget("送信バイト数", "ネットワーク送信量"))
-	widgets = append(widgets, s.createTextWidget("受信バイト数", "ネットワーク受信量"))
+	tiles = append(tiles, s.createTile(s.createTextWidget("送信バイト数", "ネットワーク送信量"), 0, 16, 6, 4))
+	tiles = append(tiles, s.createTile(s.createTextWidget("受信バイト数", "ネットワーク受信量"), 6, 16, 6, 4))
 
-	return widgets
+	return tiles
+}
+
+// createTile はウィジェットとレイアウト情報からタイルを作成する
+func (s *Service) createTile(widget *dashboardpb.Widget, xPos, yPos, width, height int32) *dashboardpb.MosaicLayout_Tile {
+	return &dashboardpb.MosaicLayout_Tile{
+		XPos:   xPos,
+		YPos:   yPos,
+		Width:  width,
+		Height: height,
+		Widget: widget,
+	}
 }
 
 // createTextWidget はテキストウィジェットを作成する
@@ -200,6 +231,372 @@ func (s *Service) createTextWidget(title, content string) *dashboardpb.Widget {
 			Text: &dashboardpb.Text{
 				Content: fmt.Sprintf("**%s**\n\n%s\n\nサービス: %s", title, content, s.serviceName),
 				Format:  dashboardpb.Text_MARKDOWN,
+			},
+		},
+	}
+}
+
+func (s *Service) createPromQL() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count"`, s.serviceName)
+}
+
+// createRequestCountWidget はリクエスト数（req/sec）ウィジェットを作成する
+func (s *Service) createRequestCountWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Requests per Second",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQL(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+									},
+								},
+							},
+						},
+						PlotType: dashboardpb.XyChart_DataSet_LINE,
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "requests/second",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+			},
+		},
+	}
+}
+
+// createRequestsByStatusWidget はステータス別リクエスト数ウィジェットを作成する
+func (s *Service) createRequestsByStatusWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Requests by Status Code",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQL(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+										GroupByFields:      []string{"metric.label.response_code_class"},
+									},
+								},
+							},
+						},
+						PlotType: dashboardpb.XyChart_DataSet_STACKED_AREA,
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "requests/second",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+			},
+		},
+	}
+}
+
+// createTotalRequestsWidget は累積リクエスト数ウィジェットを作成する
+func (s *Service) createTotalRequestsWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Total Requests (24h)",
+		Content: &dashboardpb.Widget_Scorecard{
+			Scorecard: &dashboardpb.Scorecard{
+				TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+					Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+						TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+							Filter: s.createPromQL(),
+							Aggregation: &dashboardpb.Aggregation{
+								AlignmentPeriod:    durationpb.New(86400 * time.Second), // 24時間
+								PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_SUM,
+								CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+							},
+						},
+					},
+				},
+				DataView: &dashboardpb.Scorecard_SparkChartView_{
+					SparkChartView: &dashboardpb.Scorecard_SparkChartView{
+						SparkChartType: dashboardpb.SparkChartType_SPARK_LINE,
+					},
+				},
+			},
+		},
+	}
+}
+
+// createRequestHeatmapWidget はリクエスト時間分布ウィジェットを作成する
+func (s *Service) createRequestHeatmapWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Request Pattern by Hour",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQL(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(3600 * time.Second), // 1時間
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+									},
+								},
+							},
+						},
+						PlotType: dashboardpb.XyChart_DataSet_HEATMAP,
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "requests/second",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+			},
+		},
+	}
+}
+
+// createRequestLatencyWidget はリクエストレイテンシ (P50,P95,P99) ウィジェットを作成する
+func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Request Latency (P50, P95, P99)",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P50",
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P95",
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P99",
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "latency (ms)",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+			},
+		},
+	}
+}
+
+// createErrorRateWidget はエラー率ウィジェットを作成する
+func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Error Rate (%)",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilterRatio{
+								TimeSeriesFilterRatio: &dashboardpb.TimeSeriesFilterRatio{
+									Numerator: &dashboardpb.TimeSeriesFilterRatio_RatioPart{
+										Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count" metric.label.response_code_class!="2xx"`, s.serviceName),
+										Aggregation: &dashboardpb.Aggregation{
+											AlignmentPeriod:    durationpb.New(60 * time.Second),
+											PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
+											CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+										},
+									},
+									Denominator: &dashboardpb.TimeSeriesFilterRatio_RatioPart{
+										Filter: s.createPromQL(),
+										Aggregation: &dashboardpb.Aggregation{
+											AlignmentPeriod:    durationpb.New(60 * time.Second),
+											PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
+											CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+										},
+									},
+								},
+							},
+						},
+						PlotType: dashboardpb.XyChart_DataSet_LINE,
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "error rate (%)",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+			},
+		},
+	}
+}
+
+// createMaxConcurrentRequestsWidget は最大同時リクエストウィジェットを作成する
+func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Max Concurrent Requests (P50/P95/P99)",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P50",
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P95",
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P99",
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "concurrent requests",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+			},
+		},
+	}
+}
+
+// createResponseTimeWidget はレスポンス時間 (P50/P95/P99) ウィジェットを作成する
+func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
+	return &dashboardpb.Widget{
+		Title: "Response Time (P50/P95/P99)",
+		Content: &dashboardpb.Widget_XyChart{
+			XyChart: &dashboardpb.XyChart{
+				DataSets: []*dashboardpb.XyChart_DataSet{
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P50",
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P95",
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: "P99",
+					},
+				},
+				YAxis: &dashboardpb.XyChart_Axis{
+					Label: "response time (ms)",
+					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
 			},
 		},
 	}
