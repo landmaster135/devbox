@@ -390,6 +390,26 @@ param := request.GetString("required_param")
 param := request.GetString("required_param", "")
 ```
 
+### 5. フラグパーサーのモック実装の間違い
+```go
+// ❌ 間違い: フラグ定義後に値を設定しても反映されない
+func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
+    *p = value // デフォルト値のみ
+}
+
+// ✅ 正しい: 事前設定値をチェックして適用
+func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
+    if presetValue, exists := m.stringValues[name]; exists {
+        *p = presetValue // 事前設定値を優先
+    } else {
+        *p = value // デフォルト値
+    }
+    m.stringVars[name] = p
+}
+```
+
+**参考実装**: `devbox/internal/zip_compressor/config/config_test.go`のMockFlagParserを参照
+
 ## MCPツールのテスト
 1. `.config/cline/cline_mcp_settings.json`に設定追加
 2. Clineから実行してテスト
