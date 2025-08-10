@@ -171,7 +171,7 @@ func TestNewConfig_Normal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := NewConfig(tt.operation, tt.token, tt.owner, tt.repo, tt.state, tt.sort, tt.direction, tt.perPage, tt.page)
+			result, err := NewConfig(tt.operation, tt.token, tt.owner, tt.repo, tt.state, tt.sort, tt.direction, tt.perPage, tt.page, 0)
 			if err != nil {
 				t.Errorf("NewConfig() error = %v, wantErr false", err)
 				return
@@ -262,7 +262,7 @@ func TestNewConfig_Error(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewConfig(tt.operation, tt.token, tt.owner, tt.repo, "", "", "", 30, 1)
+			_, err := NewConfig(tt.operation, tt.token, tt.owner, tt.repo, "", "", "", 30, 1, 0)
 			if err == nil {
 				t.Errorf("NewConfig() error = nil, wantErr %v", tt.wantErr)
 				return

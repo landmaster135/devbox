@@ -279,7 +279,7 @@ func TestUpdateIssue_ErrorCases(t *testing.T) {
 		owner          string
 		repo           string
 		issueNumber    int
-		options        map[string]interface{}
+		options        UpdateIssueOptions
 		mockResponse   map[string]interface{}
 		mockStatusCode int
 		mockError      error
@@ -290,8 +290,8 @@ func TestUpdateIssue_ErrorCases(t *testing.T) {
 			owner:       "test_user",
 			repo:        "test_repo",
 			issueNumber: 1,
-			options: map[string]interface{}{
-				"title": "更新されたイシュー",
+			options: UpdateIssueOptions{
+				Title: "更新されたイシュー",
 			},
 			mockResponse:   nil,
 			mockStatusCode: http.StatusOK,
@@ -303,8 +303,8 @@ func TestUpdateIssue_ErrorCases(t *testing.T) {
 			owner:       "test_user",
 			repo:        "test_repo",
 			issueNumber: 1,
-			options: map[string]interface{}{
-				"title": "更新されたイシュー",
+			options: UpdateIssueOptions{
+				Title: "更新されたイシュー",
 			},
 			mockResponse:   nil,
 			mockStatusCode: 0,

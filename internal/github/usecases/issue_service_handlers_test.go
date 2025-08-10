@@ -300,7 +300,7 @@ func TestHandleToListIssues(t *testing.T) {
 			service := NewGitHubIssueServiceWithDependencies(clientService)
 
 			// テスト対象の関数を実行
-			result, err := service.HandleToListIssues(tc.owner, tc.repo, tc.state, tc.sort, tc.direction, tc.perPage, tc.page)
+			result, err := service.HandleToListIssues(tc.owner, tc.repo, tc.state, tc.sort, tc.direction, tc.perPage, tc.page, 0)
 
 			// エラーの検証
 			if tc.expectError && err == nil {

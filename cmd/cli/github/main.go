@@ -39,8 +39,8 @@ func handleListIssues(cfg *config.Config) {
 	// GitHubIssueServiceを初期化
 	service := usecases.NewGitHubIssueService(cfg.Token)
 
-	// イシュー一覧を取得
-	result, err := service.HandleToListIssues(cfg.Owner, cfg.Repo, cfg.State, cfg.Sort, cfg.Direction, cfg.PerPage, cfg.Page)
+	// イシュー一覧を取得（issueNumberが指定された場合は特定のイシューを取得）
+	result, err := service.HandleToListIssues(cfg.Owner, cfg.Repo, cfg.State, cfg.Sort, cfg.Direction, cfg.PerPage, cfg.Page, cfg.IssueNumber)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)

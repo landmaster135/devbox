@@ -16,7 +16,7 @@ func TestListIssues(t *testing.T) {
 		name           string
 		owner          string
 		repo           string
-		options        map[string]interface{}
+		options        ListIssuesOptions
 		mockResponse   []map[string]interface{}
 		mockStatusCode int
 		mockError      error
@@ -26,7 +26,7 @@ func TestListIssues(t *testing.T) {
 			name:    "正常系 - イシュー一覧取得成功",
 			owner:   "test_user",
 			repo:    "test_repo",
-			options: map[string]interface{}{},
+			options: ListIssuesOptions{},
 			mockResponse: []map[string]interface{}{
 				{
 					"id":     float64(123456),
@@ -49,12 +49,12 @@ func TestListIssues(t *testing.T) {
 			name:  "正常系 - クエリパラメータあり",
 			owner: "test_user",
 			repo:  "test_repo",
-			options: map[string]interface{}{
-				"state":     "open",
-				"sort":      "created",
-				"direction": "desc",
-				"per_page":  30,
-				"page":      1,
+			options: ListIssuesOptions{
+				State:     "open",
+				Sort:      "created",
+				Direction: "desc",
+				PerPage:   30,
+				Page:      1,
 			},
 			mockResponse: []map[string]interface{}{
 				{
@@ -72,7 +72,7 @@ func TestListIssues(t *testing.T) {
 			name:    "異常系 - 認証エラー",
 			owner:   "test_user",
 			repo:    "test_repo",
-			options: map[string]interface{}{},
+			options: ListIssuesOptions{},
 			mockResponse: []map[string]interface{}{
 				{
 					"message":           "Bad credentials",
@@ -87,7 +87,7 @@ func TestListIssues(t *testing.T) {
 			name:           "異常系 - 不正なJSONレスポンス",
 			owner:          "test_user",
 			repo:           "test_repo",
-			options:        map[string]interface{}{},
+			options:        ListIssuesOptions{},
 			mockResponse:   nil,
 			mockStatusCode: http.StatusOK,
 			mockError:      nil,
@@ -97,7 +97,7 @@ func TestListIssues(t *testing.T) {
 			name:           "異常系 - ネットワークエラー",
 			owner:          "test_user",
 			repo:           "test_repo",
-			options:        map[string]interface{}{},
+			options:        ListIssuesOptions{},
 			mockResponse:   nil,
 			mockStatusCode: 0,
 			mockError:      errors.New("ネットワーク接続エラー"),
@@ -129,8 +129,9 @@ func TestListIssues(t *testing.T) {
 						t.Errorf("期待されたベースURL: %s, 実際: %s", expectedBaseURL, actualBaseURL)
 					}
 
-					// クエリパラメータの検証（順序に依存しない）
-					if len(tc.options) > 0 {
+					// クエリパラメータの検証（構造体フィールドをチェック）
+					hasQueryParams := tc.options.State != "" || tc.options.Sort != "" || tc.options.Direction != "" || tc.options.PerPage > 0 || tc.options.Page > 0
+					if hasQueryParams {
 						// 実際のクエリパラメータを解析
 						actualQueryParams := make(map[string]string)
 						if strings.Contains(actualURL, "?") {
@@ -145,8 +146,24 @@ func TestListIssues(t *testing.T) {
 						}
 
 						// 期待されるクエリパラメータと比較
-						for k, v := range tc.options {
-							expectedValue := fmt.Sprintf("%v", v)
+						expectedParams := make(map[string]string)
+						if tc.options.State != "" {
+							expectedParams["state"] = tc.options.State
+						}
+						if tc.options.Sort != "" {
+							expectedParams["sort"] = tc.options.Sort
+						}
+						if tc.options.Direction != "" {
+							expectedParams["direction"] = tc.options.Direction
+						}
+						if tc.options.PerPage > 0 {
+							expectedParams["per_page"] = fmt.Sprintf("%d", tc.options.PerPage)
+						}
+						if tc.options.Page > 0 {
+							expectedParams["page"] = fmt.Sprintf("%d", tc.options.Page)
+						}
+
+						for k, expectedValue := range expectedParams {
 							actualValue, exists := actualQueryParams[k]
 							if !exists {
 								t.Errorf("クエリパラメータ %s が見つかりません", k)
@@ -156,8 +173,8 @@ func TestListIssues(t *testing.T) {
 						}
 
 						// 余分なクエリパラメータがないことを確認
-						if len(actualQueryParams) != len(tc.options) {
-							t.Errorf("クエリパラメータの数が異なります。期待: %d, 実際: %d", len(tc.options), len(actualQueryParams))
+						if len(actualQueryParams) != len(expectedParams) {
+							t.Errorf("クエリパラメータの数が異なります。期待: %d, 実際: %d", len(expectedParams), len(actualQueryParams))
 						}
 					}
 
@@ -229,7 +246,7 @@ func TestUpdateIssue(t *testing.T) {
 		owner          string
 		repo           string
 		issueNumber    int
-		options        map[string]interface{}
+		options        UpdateIssueOptions
 		mockResponse   map[string]interface{}
 		mockStatusCode int
 		mockError      error
@@ -240,10 +257,10 @@ func TestUpdateIssue(t *testing.T) {
 			owner:       "test_user",
 			repo:        "test_repo",
 			issueNumber: 1,
-			options: map[string]interface{}{
-				"title": "更新されたイシュー",
-				"body":  "これは更新されたイシューです",
-				"state": "closed",
+			options: UpdateIssueOptions{
+				Title: "更新されたイシュー",
+				Body:  "これは更新されたイシューです",
+				State: "closed",
 			},
 			mockResponse: map[string]interface{}{
 				"id":     float64(123456),
@@ -261,28 +278,14 @@ func TestUpdateIssue(t *testing.T) {
 			owner:       "test_user",
 			repo:        "test_repo",
 			issueNumber: 1,
-			options: map[string]interface{}{
-				"title": "更新されたイシュー",
+			options: UpdateIssueOptions{
+				Title: "更新されたイシュー",
 			},
 			mockResponse: map[string]interface{}{
 				"message":           "Bad credentials",
 				"documentation_url": "https://docs.github.com/rest",
 			},
 			mockStatusCode: http.StatusUnauthorized,
-			mockError:      nil,
-			expectError:    true,
-		},
-		{
-			name:        "異常系 - JSONマーシャリングエラー",
-			owner:       "test_user",
-			repo:        "test_repo",
-			issueNumber: 1,
-			options: map[string]interface{}{
-				"title":    "更新されたイシュー",
-				"callback": func() {}, // JSONにシリアライズできない値
-			},
-			mockResponse:   nil,
-			mockStatusCode: 0,
 			mockError:      nil,
 			expectError:    true,
 		},

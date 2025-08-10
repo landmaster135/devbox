@@ -5,6 +5,7 @@ GitHubのイシューを取得するCLIツールです。
 ## 機能
 
 - GitHubリポジトリのイシュー一覧取得
+- 特定のイシューを番号で取得
 
 ## 使用方法
 
@@ -49,8 +50,9 @@ GitHubのイシューを取得するCLIツールです。
 | `-state` | `-s` | イシューの状態 (open, closed, all) | "" |
 | `-sort` | `-so` | ソート項目 (created, updated, comments) | "" |
 | `-direction` | `-d` | ソート方向 (asc, desc) | "" |
-| `-per_page` | `-pp` | ページあたりの件数 | 30 |
+| `-per-page` | `-pp` | ページあたりの件数 | 30 |
 | `-page` | `-p` | ページ番号 | 1 |
+| `-issue-number` | `-in` | イシュー番号（特定イシュー取得用） | 0 |
 | `-help` | `-h` | ヘルプを表示 | false |
 
 ## 使用例
@@ -79,7 +81,15 @@ GitHubのイシューを取得するCLIツールです。
 ./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -pp 10 -p 2
 ```
 
-### 5. ヘルプの表示
+### 5. 特定のイシューを番号で取得
+
+```bash
+./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -issue-number 123
+# または短縮形
+./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -in 123
+```
+
+### 6. ヘルプの表示
 
 ```bash
 ./github -h

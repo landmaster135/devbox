@@ -10,46 +10,6 @@ import (
 	"testing"
 )
 
-func TestAddToOptions(t *testing.T) {
-	tests := []struct {
-		name          string
-		options       map[string]interface{}
-		args          map[string]interface{}
-		key           string
-		expectedValue interface{}
-		expectedExist bool
-	}{
-		{
-			name:          "キーが存在する場合",
-			options:       map[string]interface{}{},
-			args:          map[string]interface{}{"key": "value"},
-			key:           "key",
-			expectedValue: "value",
-			expectedExist: true,
-		},
-		{
-			name:          "キーが存在しない場合",
-			options:       map[string]interface{}{},
-			args:          map[string]interface{}{"other": "value"},
-			key:           "key",
-			expectedValue: nil,
-			expectedExist: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			AddToOptions(tt.options, tt.args, tt.key)
-			value, exists := tt.options[tt.key]
-			if exists != tt.expectedExist {
-				t.Errorf("AddToOptions() key exists = %v, want %v", exists, tt.expectedExist)
-			}
-			if exists && value != tt.expectedValue {
-				t.Errorf("AddToOptions() value = %v, want %v", value, tt.expectedValue)
-			}
-		})
-	}
-}
 
 func TestNewGitHubIssueService(t *testing.T) {
 	tests := []struct {
@@ -86,7 +46,7 @@ func TestCreateIssue(t *testing.T) {
 		name           string
 		owner          string
 		repo           string
-		options        map[string]interface{}
+		options        CreateIssueOptions
 		mockResponse   map[string]interface{}
 		mockStatusCode int
 		mockError      error
@@ -96,9 +56,9 @@ func TestCreateIssue(t *testing.T) {
 			name:  "正常系 - イシュー作成成功",
 			owner: "test_user",
 			repo:  "test_repo",
-			options: map[string]interface{}{
-				"title": "テストイシュー",
-				"body":  "これはテストイシューです",
+			options: CreateIssueOptions{
+				Title: "テストイシュー",
+				Body:  "これはテストイシューです",
 			},
 			mockResponse: map[string]interface{}{
 				"id":     float64(123456),
@@ -115,8 +75,8 @@ func TestCreateIssue(t *testing.T) {
 			name:  "異常系 - 認証エラー",
 			owner: "test_user",
 			repo:  "test_repo",
-			options: map[string]interface{}{
-				"title": "テストイシュー",
+			options: CreateIssueOptions{
+				Title: "テストイシュー",
 			},
 			mockResponse: map[string]interface{}{
 				"message":           "Bad credentials",
@@ -130,8 +90,8 @@ func TestCreateIssue(t *testing.T) {
 			name:  "異常系 - リポジトリが存在しない",
 			owner: "nonexistent",
 			repo:  "nonexistent",
-			options: map[string]interface{}{
-				"title": "テストイシュー",
+			options: CreateIssueOptions{
+				Title: "テストイシュー",
 			},
 			mockResponse: map[string]interface{}{
 				"message":           "Not Found",
@@ -145,8 +105,8 @@ func TestCreateIssue(t *testing.T) {
 			name:  "異常系 - 不正なJSONレスポンス",
 			owner: "test_user",
 			repo:  "test_repo",
-			options: map[string]interface{}{
-				"title": "テストイシュー",
+			options: CreateIssueOptions{
+				Title: "テストイシュー",
 			},
 			mockResponse:   nil,
 			mockStatusCode: http.StatusOK,
@@ -157,25 +117,12 @@ func TestCreateIssue(t *testing.T) {
 			name:  "異常系 - ネットワークエラー",
 			owner: "test_user",
 			repo:  "test_repo",
-			options: map[string]interface{}{
-				"title": "テストイシュー",
+			options: CreateIssueOptions{
+				Title: "テストイシュー",
 			},
 			mockResponse:   nil,
 			mockStatusCode: 0,
 			mockError:      errors.New("ネットワーク接続エラー"),
-			expectError:    true,
-		},
-		{
-			name:  "異常系 - JSONマーシャリングエラー",
-			owner: "test_user",
-			repo:  "test_repo",
-			options: map[string]interface{}{
-				"title":    "テストイシュー",
-				"callback": func() {}, // JSONにシリアライズできない値
-			},
-			mockResponse:   nil,
-			mockStatusCode: 0,
-			mockError:      nil,
 			expectError:    true,
 		},
 	}
