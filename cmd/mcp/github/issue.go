@@ -81,8 +81,9 @@ func (h *IssueHandler) handleToListIssues(ctx context.Context, request mcp.CallT
 	direction := request.GetString("direction", "")
 	perPage := request.GetInt("per_page", 30)
 	page := request.GetInt("page", 1)
+	issueNumber := request.GetInt("issue_number", 0)
 
-	result, err := h.issueService.HandleToListIssues(owner, repo, state, sort, direction, perPage, page)
+	result, err := h.issueService.HandleToListIssues(owner, repo, state, sort, direction, perPage, page, issueNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +194,7 @@ func setGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 
 	// ツール2: イシュー一覧の取得
 	listIssuesTool := mcp.NewTool("list_issues",
-		mcp.WithDescription("List issues in a GitHub repository"),
+		mcp.WithDescription("List issues in a GitHub repository or get a specific issue by number"),
 		mcp.WithString("owner",
 			mcp.Required(),
 			mcp.Description("Repository owner"),
@@ -219,6 +220,9 @@ func setGitHubIssueServer(token string, s *server.MCPServer) *server.MCPServer {
 		),
 		mcp.WithNumber("page",
 			mcp.Description("Page number (default: 1)"),
+		),
+		mcp.WithNumber("issue_number",
+			mcp.Description("Issue number for getting a specific issue (optional)"),
 		),
 	)
 	s.AddTool(listIssuesTool, handler.handleToListIssues)

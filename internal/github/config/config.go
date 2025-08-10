@@ -7,20 +7,21 @@ import (
 
 // Config はGitHub CLIの設定を保持する構造体
 type Config struct {
-	Operation string // 操作タイプ (list-issues)
-	Token     string // GitHubトークン
-	Owner     string // リポジトリオーナー
-	Repo      string // リポジトリ名
-	State     string // イシューの状態 (open, closed, all)
-	Sort      string // ソート項目 (created, updated, comments)
-	Direction string // ソート方向 (asc, desc)
-	PerPage   int    // ページあたりの件数
-	Page      int    // ページ番号
-	Help      bool   // ヘルプ表示フラグ
+	Operation   string // 操作タイプ (list-issues)
+	Token       string // GitHubトークン
+	Owner       string // リポジトリオーナー
+	Repo        string // リポジトリ名
+	State       string // イシューの状態 (open, closed, all)
+	Sort        string // ソート項目 (created, updated, comments)
+	Direction   string // ソート方向 (asc, desc)
+	PerPage     int    // ページあたりの件数
+	Page        int    // ページ番号
+	IssueNumber int    // イシュー番号（特定イシュー取得用）
+	Help        bool   // ヘルプ表示フラグ
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(operation, token, owner, repo, state, sort, direction string, perPage, page int) (*Config, error) {
+func NewConfig(operation, token, owner, repo, state, sort, direction string, perPage, page, issueNumber int) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
@@ -58,15 +59,16 @@ func NewConfig(operation, token, owner, repo, state, sort, direction string, per
 	}
 
 	return &Config{
-		Operation: operation,
-		Token:     token,
-		Owner:     owner,
-		Repo:      repo,
-		State:     state,
-		Sort:      sort,
-		Direction: direction,
-		PerPage:   perPage,
-		Page:      page,
+		Operation:   operation,
+		Token:       token,
+		Owner:       owner,
+		Repo:        repo,
+		State:       state,
+		Sort:        sort,
+		Direction:   direction,
+		PerPage:     perPage,
+		Page:        page,
+		IssueNumber: issueNumber,
 	}, nil
 }
 
@@ -78,16 +80,17 @@ func ParseFlags() (*Config, error) {
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析する
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
-		operation = ""
-		token     = ""
-		owner     = ""
-		repo      = ""
-		state     = ""
-		sort      = ""
-		direction = ""
-		perPage   = 30
-		page      = 1
-		help      = false
+		operation   = ""
+		token       = ""
+		owner       = ""
+		repo        = ""
+		state       = ""
+		sort        = ""
+		direction   = ""
+		perPage     = 30
+		page        = 1
+		issueNumber = 0
+		help        = false
 	)
 
 	parser.StringVar(&operation, "operation", operation, "操作タイプ (list-issues)")
@@ -111,11 +114,14 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&direction, "direction", direction, "ソート方向 (asc, desc)")
 	parser.StringVar(&direction, "d", direction, "ソート方向の短縮形")
 
-	parser.IntVar(&perPage, "per_page", perPage, "ページあたりの件数")
+	parser.IntVar(&perPage, "per-page", perPage, "ページあたりの件数")
 	parser.IntVar(&perPage, "pp", perPage, "ページあたりの件数の短縮形")
 
 	parser.IntVar(&page, "page", page, "ページ番号")
 	parser.IntVar(&page, "p", page, "ページ番号の短縮形")
+
+	parser.IntVar(&issueNumber, "issue-number", issueNumber, "イシュー番号（特定イシュー取得用）")
+	parser.IntVar(&issueNumber, "in", issueNumber, "イシュー番号の短縮形")
 
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -129,7 +135,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, token, owner, repo, state, sort, direction, perPage, page)
+	return NewConfig(operation, token, owner, repo, state, sort, direction, perPage, page, issueNumber)
 }
 
 // PrintUsage は使用方法を表示する
@@ -140,6 +146,10 @@ func PrintUsage() {
   イシュー一覧取得:
     %s -operation list-issues -token YOUR_TOKEN -owner OWNER -repo REPO
     %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO
+
+  特定イシュー取得:
+    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -issue-number 123
+    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -in 123
 
   オプションパラメータ付き:
     %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -state open -sort created -direction desc
@@ -153,13 +163,17 @@ func PrintUsage() {
   -state, -s         イシューの状態 (open, closed, all) [任意]
   -sort, -so         ソート項目 (created, updated, comments) [任意]
   -direction, -d     ソート方向 (asc, desc) [任意]
-  -per_page, -pp     ページあたりの件数 (デフォルト: 30) [任意]
+  -per-page, -pp     ページあたりの件数 (デフォルト: 30) [任意]
   -page, -p          ページ番号 (デフォルト: 1) [任意]
+  -issue-number, -in イシュー番号（特定イシュー取得用） [任意]
   -help, -h          このヘルプを表示
 
 例:
-  # 基本的な使用方法
+  # 基本的な使用方法（イシュー一覧取得）
   %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World
+
+  # 特定のイシューを取得
+  %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -in 123
 
   # 状態とソートを指定
   %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -s open -so created -d desc
@@ -167,5 +181,5 @@ func PrintUsage() {
   # ページネーション
   %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -pp 10 -p 2
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
