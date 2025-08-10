@@ -104,7 +104,7 @@ gcloud auth application-default login
 
 ### サービスアカウントを指定する場合の追加権限
 
-- `iam.serviceAccounts.actAs` (指定されたサービスアカウントに対して)
+- `iam.serviceAccountTokenCreator` (指定されたサービスアカウントのImpersonationに必要)
 
 ## ビルド
 
