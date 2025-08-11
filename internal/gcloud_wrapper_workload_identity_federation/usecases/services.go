@@ -33,120 +33,12 @@ func (s *Service) GenerateWorkloadIdentitySetupScript(config *WorkloadIdentityCo
 
 	var script strings.Builder
 
-	script.WriteString("#!/bin/bash\n\n")
-	script.WriteString("# Google Cloud Workload Identity Federation セットアップ関数\n")
-	script.WriteString("# 自動生成されたスクリプトです\n\n")
-
-	// 関数定義開始
-	script.WriteString("setup_workload_identity_federation() {\n")
-	script.WriteString("    # 引数の取得とローカル変数への代入\n")
-	script.WriteString("    local project_id=\"$1\"\n")
-	script.WriteString("    local pool_id=\"$2\"\n")
-	script.WriteString("    local provider_id=\"$3\"\n")
-	script.WriteString("    local service_account_id=\"$4\"\n")
-	script.WriteString("    local repo_owner=\"$5\"\n")
-	script.WriteString("    local repo_name=\"$6\"\n")
-	script.WriteString("    local location=\"${7:-global}\"\n")
-	script.WriteString("    local pool_description=\"$8\"\n")
-	script.WriteString("\n")
-
-	// 引数チェック
-	script.WriteString("    # 引数の妥当性チェック\n")
-	script.WriteString("    if [[ -z \"$project_id\" || -z \"$pool_id\" || -z \"$provider_id\" || -z \"$service_account_id\" || -z \"$repo_owner\" || -z \"$repo_name\" ]]; then\n")
-	script.WriteString("        echo \"エラー: 必須引数が不足しています\" >&2\n")
-	script.WriteString("        echo \"使用方法: setup_workload_identity_federation PROJECT_ID POOL_ID PROVIDER_ID SERVICE_ACCOUNT_ID REPO_OWNER REPO_NAME [LOCATION] [POOL_DESCRIPTION]\" >&2\n")
-	script.WriteString("        return 1\n")
-	script.WriteString("    fi\n")
-	script.WriteString("\n")
-
-	script.WriteString("    # エラー時に関数を終了\n")
-	script.WriteString("    set -e\n")
-	script.WriteString("\n")
-
-	script.WriteString("    echo \"=== Google Cloud Workload Identity Federation セットアップ開始 ===\"\n")
-	script.WriteString("    echo \"プロジェクト: $project_id\"\n")
-	script.WriteString("    echo \"リポジトリ: $repo_owner/$repo_name\"\n")
-	script.WriteString("    echo \"ロケーション: $location\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 1. Workload Identity Pool作成
-	script.WriteString("    # 1. Workload Identity Pool作成\n")
-	script.WriteString("    echo \"1. Workload Identity Poolを作成中...\"\n")
-	script.WriteString("    if [[ -n \"$pool_description\" ]]; then\n")
-	script.WriteString("        create_workload_identity_pool \"$pool_id\" \"$project_id\" --location=\"$location\" --description=\"$pool_description\"\n")
-	script.WriteString("    else\n")
-	script.WriteString("        create_workload_identity_pool \"$pool_id\" \"$project_id\" --location=\"$location\"\n")
-	script.WriteString("    fi\n")
-	script.WriteString("    echo \"✓ Workload Identity Pool作成完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 2. OIDC Provider作成
-	script.WriteString("    # 2. GitHub Actions用OIDCプロバイダー作成\n")
-	script.WriteString("    echo \"2. GitHub Actions用OIDCプロバイダーを作成中...\"\n")
-	script.WriteString("    create_oidc_workload_identity_pool_provider_for_github_actions \"$provider_id\" \"$project_id\" \"$pool_id\" \"$repo_owner\" --location=\"$location\"\n")
-	script.WriteString("    echo \"✓ OIDCプロバイダー作成完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 3. サービスアカウント作成
-	script.WriteString("    # 3. サービスアカウント作成\n")
-	script.WriteString("    echo \"3. サービスアカウントを作成中...\"\n")
-	script.WriteString("    create_gcloud_service_account \"$service_account_id\" \"$project_id\" \"roles/monitoring.editor\"\n")
-	script.WriteString("    echo \"✓ サービスアカウント作成完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 4-6. IAMポリシーバインディング追加
-	script.WriteString("    # 4-6. IAMポリシーバインディング追加\n")
-	script.WriteString("    echo \"4. IAMポリシーバインディングを追加中 (monitoring.editor)...\"\n")
-	script.WriteString("    add_iam_policy_binding_to_project_on_gcloud \"$project_id\" \"$service_account_id\" \"roles/monitoring.editor\"\n")
-	script.WriteString("    echo \"✓ monitoring.editor権限追加完了\"\n")
-	script.WriteString("\n")
-
-	script.WriteString("    echo \"5. IAMポリシーバインディングを追加中 (run.viewer)...\"\n")
-	script.WriteString("    add_iam_policy_binding_to_project_on_gcloud \"$project_id\" \"$service_account_id\" \"roles/run.viewer\"\n")
-	script.WriteString("    echo \"✓ run.viewer権限追加完了\"\n")
-	script.WriteString("\n")
-
-	// script.WriteString("    echo \"6. IAMポリシーバインディングを追加中 (iam.serviceAccounts.getAccessToken)...\"\n")
-	// script.WriteString("    add_iam_policy_binding_to_project_on_gcloud \"$project_id\" \"$service_account_id\" \"roles/iam.serviceAccounts.getAccessToken\"\n")
-	// script.WriteString("    echo \"✓ iam.serviceAccounts.getAccessToken権限追加完了\"\n")
-	// script.WriteString("    echo\n")
-	// script.WriteString("\n")
-
-	// 7. プロジェクト番号取得
-	script.WriteString("    # 7. プロジェクト番号取得\n")
-	script.WriteString("    echo \"7. プロジェクト番号を取得中...\"\n")
-	script.WriteString("    local project_number\n")
-	script.WriteString("    project_number=$(gcloud projects describe \"$project_id\" --format=\"value(projectNumber)\")\n")
-	script.WriteString("    echo \"✓ プロジェクト番号: $project_number\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 8. Workload Identityバインディング追加
-	script.WriteString("    # 8. Workload Identityバインディング追加\n")
-	script.WriteString("    echo \"8. Workload Identityバインディングを追加中...\"\n")
-	script.WriteString("    local service_account_email=\"${service_account_id}@${project_id}.iam.gserviceaccount.com\"\n")
-	script.WriteString("    add_workload_identity_binding_to_service_account_on_gcloud \"$service_account_email\" \"$project_number\" \"$pool_id\" \"$repo_owner\" \"$repo_name\" --provider-id=\"$provider_id\"\n")
-	script.WriteString("    echo \"✓ Workload Identityバインディング追加完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 完了メッセージと結果出力
-	script.WriteString("    # セットアップ完了\n")
-	script.WriteString("    echo \"=== Workload Identity Federationのセットアップが完了しました！ ===\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	script.WriteString("    # エラーハンドリングを元に戻す\n")
-	script.WriteString("    set +e\n")
-	script.WriteString("}\n")
-	script.WriteString("\n")
+	script.WriteString("# Google Cloud Workload Identity Federation セットアップスクリプト\n")
+	script.WriteString("# 注意: このスクリプトを実行する前に、iam.shファイルをsourceしてください\n\n")
 
 	// 使用例
 	script.WriteString("# 使用例:\n")
+	script.WriteString("# source /path/to/iam.sh\n")
 	script.WriteString("# setup_workload_identity_federation \\\n")
 	script.WriteString(fmt.Sprintf("#     \"%s\" \\\n", config.ProjectID))
 	script.WriteString(fmt.Sprintf("#     \"%s\" \\\n", config.PoolID))
@@ -161,7 +53,7 @@ func (s *Service) GenerateWorkloadIdentitySetupScript(config *WorkloadIdentityCo
 	script.WriteString("\n\n")
 
 	// 実際の関数呼び出し
-	script.WriteString("# 関数の実行\n")
+	script.WriteString("# iam.shで定義された関数を呼び出し\n")
 	script.WriteString("setup_workload_identity_federation")
 	script.WriteString(fmt.Sprintf(" \"%s\"", config.ProjectID))
 	script.WriteString(fmt.Sprintf(" \"%s\"", config.PoolID))
@@ -186,93 +78,12 @@ func (s *Service) GenerateCleanupScript(config *WorkloadIdentityConfig) (string,
 
 	var script strings.Builder
 
-	script.WriteString("#!/bin/bash\n\n")
-	script.WriteString("# Google Cloud Workload Identity Federation リソース削除関数\n")
-	script.WriteString("# 自動生成されたスクリプトです\n\n")
-
-	// 関数定義開始
-	script.WriteString("cleanup_workload_identity_federation() {\n")
-	script.WriteString("    # 引数の取得とローカル変数への代入\n")
-	script.WriteString("    local project_id=\"$1\"\n")
-	script.WriteString("    local pool_id=\"$2\"\n")
-	script.WriteString("    local provider_id=\"$3\"\n")
-	script.WriteString("    local service_account_id=\"$4\"\n")
-	script.WriteString("    local location=\"${5:-global}\"\n")
-	script.WriteString("    local service_account_email=\"${service_account_id}@${project_id}.iam.gserviceaccount.com\"\n")
-	script.WriteString("\n")
-
-	// 引数チェック
-	script.WriteString("    # 引数の妥当性チェック\n")
-	script.WriteString("    if [[ -z \"$project_id\" || -z \"$pool_id\" || -z \"$provider_id\" || -z \"$service_account_id\" ]]; then\n")
-	script.WriteString("        echo \"エラー: 必須引数が不足しています\" >&2\n")
-	script.WriteString("        echo \"使用方法: cleanup_workload_identity_federation PROJECT_ID POOL_ID PROVIDER_ID SERVICE_ACCOUNT_ID [LOCATION]\" >&2\n")
-	script.WriteString("        return 1\n")
-	script.WriteString("    fi\n")
-	script.WriteString("\n")
-
-	script.WriteString("    echo \"=== Google Cloud Workload Identity Federation リソース削除開始 ===\"\n")
-	script.WriteString("    echo \"プロジェクト: $project_id\"\n")
-	script.WriteString("    echo \"ロケーション: $location\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("    echo \"警告: 以下のリソースが削除されます:\"\n")
-	script.WriteString("    echo \"- Workload Identity Pool: $pool_id\"\n")
-	script.WriteString("    echo \"- OIDC Provider: $provider_id\"\n")
-	script.WriteString("    echo \"- Service Account: $service_account_email\"\n")
-	script.WriteString("    echo \"- IAM Policy Bindings (自動削除)\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("    read -p \"続行しますか？ (y/N): \" -n 1 -r\n")
-	script.WriteString("    echo\n")
-	script.WriteString("    if [[ ! $REPLY =~ ^[Yy]$ ]]; then\n")
-	script.WriteString("        echo \"削除をキャンセルしました。\"\n")
-	script.WriteString("        return 0\n")
-	script.WriteString("    fi\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// エラーハンドリング（削除処理では継続実行）
-	script.WriteString("    # エラーが発生しても処理を継続\n")
-	script.WriteString("    set +e\n")
-	script.WriteString("\n")
-
-	// 1. OIDCプロバイダー削除
-	script.WriteString("    # 1. OIDCプロバイダー削除\n")
-	script.WriteString("    echo \"1. OIDCプロバイダーを削除中...\"\n")
-	script.WriteString("    delete_workload_identity_pool_provider \"$provider_id\" \"$project_id\" \"$pool_id\" --location=\"$location\"\n")
-	script.WriteString("    echo \"✓ OIDCプロバイダー削除処理完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 2. Workload Identity Pool削除
-	script.WriteString("    # 2. Workload Identity Pool削除\n")
-	script.WriteString("    echo \"2. Workload Identity Poolを削除中...\"\n")
-	script.WriteString("    delete_workload_identity_pool \"$pool_id\" \"$project_id\" --location=\"$location\"\n")
-	script.WriteString("    echo \"✓ Workload Identity Pool削除処理完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 3. サービスアカウント削除
-	script.WriteString("    # 3. サービスアカウント削除\n")
-	script.WriteString("    echo \"3. サービスアカウントを削除中...\"\n")
-	script.WriteString("    delete_gcloud_service_account \"$service_account_email\"\n")
-	script.WriteString("    echo \"✓ サービスアカウント削除処理完了\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	// 完了メッセージ
-	script.WriteString("    # 削除完了\n")
-	script.WriteString("    echo \"=== Workload Identity Federationリソースの削除が完了しました！ ===\"\n")
-	script.WriteString("    echo \"注意: 一部のリソースが削除できなかった場合は、手動で確認してください。\"\n")
-	script.WriteString("    echo \"IAMポリシーバインディングは自動的に削除されます。\"\n")
-	script.WriteString("    echo\n")
-	script.WriteString("\n")
-
-	script.WriteString("    # エラーハンドリングを元に戻す\n")
-	script.WriteString("    set -e\n")
-	script.WriteString("}\n")
-	script.WriteString("\n")
+	script.WriteString("# Google Cloud Workload Identity Federation リソース削除スクリプト\n")
+	script.WriteString("# 注意: このスクリプトを実行する前に、iam.shファイルをsourceしてください\n\n")
 
 	// 使用例
 	script.WriteString("# 使用例:\n")
+	script.WriteString("# source /path/to/iam.sh\n")
 	script.WriteString("# cleanup_workload_identity_federation \\\n")
 	script.WriteString(fmt.Sprintf("#     \"%s\" \\\n", config.ProjectID))
 	script.WriteString(fmt.Sprintf("#     \"%s\" \\\n", config.PoolID))
@@ -282,7 +93,7 @@ func (s *Service) GenerateCleanupScript(config *WorkloadIdentityConfig) (string,
 	script.WriteString("\n")
 
 	// 実際の関数呼び出し
-	script.WriteString("# 関数の実行\n")
+	script.WriteString("# iam.shで定義された関数を呼び出し\n")
 	script.WriteString("cleanup_workload_identity_federation")
 	script.WriteString(fmt.Sprintf(" \"%s\"", config.ProjectID))
 	script.WriteString(fmt.Sprintf(" \"%s\"", config.PoolID))
@@ -725,7 +536,7 @@ func (s *Service) generateWorkflowMessage(config *WorkloadIdentityConfig) *Notif
 	content.WriteString("  contents: write # リポジトリへの書き込み権限 (バッジ更新のため)\n")
 	content.WriteString("  id-token: write # OIDCトークンをリクエストする権限 (Google Cloud認証のため)\n\n")
 	content.WriteString("env:\n")
-	content.WriteString(fmt.Sprintf("  GOOGLE_CLOUD_PROJECT_ID_01: '%s'\n", config.ProjectID))
+	content.WriteString("  GOOGLE_CLOUD_PROJECT_ID_01: 'any-project'\n")
 	content.WriteString("  GCLOUD_PROJECT_NUMBER: ${{ secrets.GCLOUD_PROJECT_NUMBER }}\n")
 	content.WriteString("  GCLOUD_POOL_ID: ${{ secrets.GCLOUD_POOL_ID }}\n")
 	content.WriteString("  GCLOUD_PROVIDER_ID: ${{ secrets.GCLOUD_PROVIDER_ID }}\n")

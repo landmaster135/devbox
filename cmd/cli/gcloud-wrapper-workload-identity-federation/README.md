@@ -145,7 +145,7 @@ permissions:
   id-token: write # OIDCトークンをリクエストする権限 (Google Cloud認証のため)
 
 env:
-  GOOGLE_CLOUD_PROJECT_ID_01: 'test-pj'
+  GOOGLE_CLOUD_PROJECT_ID_01: 'any-project'
   GCLOUD_PROJECT_NUMBER: ${{ secrets.GCLOUD_PROJECT_NUMBER }}
   GCLOUD_POOL_ID: ${{ secrets.GCLOUD_POOL_ID }}
   GCLOUD_PROVIDER_ID: ${{ secrets.GCLOUD_PROVIDER_ID }}
