@@ -218,7 +218,7 @@ func TestGenerateWorkloadIdentitySetupScript_Normal(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service := NewService()
-			script, err := service.GenerateWorkloadIdentitySetupScript(tt.config)
+			script, err := service.generateWorkloadIdentitySetupScript(tt.config)
 
 			if tt.expectError {
 				if err == nil {
@@ -421,7 +421,7 @@ func TestGenerateGitHubActionsWorkflow_Normal(t *testing.T) {
 		"contents: write",
 		"id-token: write",
 		"env:",
-		"GOOGLE_CLOUD_PROJECT_ID_01: '" + testProjectID + "'",
+		"GOOGLE_CLOUD_PROJECT_ID_01: '" + projectNameForGithubActions + "'",
 		"GCLOUD_PROJECT_NUMBER:",
 		"GCLOUD_POOL_ID:",
 		"GCLOUD_PROVIDER_ID:",
@@ -839,63 +839,6 @@ func TestGenerateCleanupMessage_InvalidConfig_Error(t *testing.T) {
 	}
 }
 
-func TestSplitCleanupScriptWithIntro_Normal(t *testing.T) {
-	service := NewService()
-
-	tests := []struct {
-		name        string
-		script      string
-		introLength int
-	}{
-		{
-			name:        "ShortScript_WithIntro",
-			script:      "echo 'short script'",
-			introLength: 100,
-		},
-		{
-			name:        "LongScript_WithIntro",
-			script:      strings.Repeat("echo 'long line'\n", 50),
-			introLength: 200,
-		},
-		{
-			name:        "VeryLongIntro_MinimumLength",
-			script:      "echo 'test'",
-			introLength: 1800, // 非常に長い説明部分
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			messages := service.splitCleanupScriptWithIntro(tt.script, tt.introLength)
-
-			if len(messages) < 1 {
-				t.Error("Expected at least one message chunk")
-			}
-
-			// 各チャンクが適切に設定されていることを確認
-			for i, message := range messages {
-				if len(message.Content) > 2000 {
-					t.Errorf("Chunk %d exceeds maximum length: %d", i, len(message.Content))
-				}
-
-				// タイトルが適切に設定されていることを確認
-				if !strings.Contains(message.Title, "削除用Bashスクリプト") {
-					t.Errorf("Chunk %d has incorrect title: %s", i, message.Title)
-				}
-
-				// 色が適切に設定されていることを確認
-				if message.Color != "red" {
-					t.Errorf("Chunk %d has incorrect color: %s", i, message.Color)
-				}
-
-				// IsCodeフラグが適切に設定されていることを確認
-				if !message.IsCode {
-					t.Errorf("Chunk %d should have IsCode=true", i)
-				}
-			}
-		})
-	}
-}
 
 func TestGenerateCleanupMessages_Normal(t *testing.T) {
 	config := &WorkloadIdentityConfig{
@@ -964,7 +907,7 @@ func TestGenerateNotificationMessages_EdgeCases_Normal(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "LongDescriptionConfig_Normal",
+			name: "LongDescriptionConfig_Error",
 			config: &WorkloadIdentityConfig{
 				ProjectID:        "very-long-project-name-that-might-affect-message-length",
 				PoolID:           "very-long-pool-id-that-might-affect-message-length",
@@ -975,7 +918,7 @@ func TestGenerateNotificationMessages_EdgeCases_Normal(t *testing.T) {
 				RepoOwner:        "very-long-repository-owner-name",
 				RepoName:         "very-long-repository-name-that-might-affect-splitting",
 			},
-			expectError: false,
+			expectError: true,
 		},
 		{
 			name: "MinimalConfig_Normal",

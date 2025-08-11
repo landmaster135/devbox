@@ -8,6 +8,7 @@ import (
 const (
 	maxLengthOfContentOfWebhookPayload = 2000
 	maxLengthOfMerginForWebhookPayload = 100
+	projectNameForGithubActions        = "any-project"
 )
 
 var (
@@ -34,8 +35,8 @@ func NewService() *Service {
 	return &Service{}
 }
 
-// GenerateWorkloadIdentitySetupScript はWorkload Identity Federationセットアップ用のBash関数を生成する
-func (s *Service) GenerateWorkloadIdentitySetupScript(config *WorkloadIdentityConfig) (string, error) {
+// generateWorkloadIdentitySetupScript はWorkload Identity Federationセットアップ用のBash関数を生成する
+func (s *Service) generateWorkloadIdentitySetupScript(config *WorkloadIdentityConfig) (string, error) {
 	if err := s.validateConfig(config); err != nil {
 		return "", fmt.Errorf("設定の検証に失敗しました: %v", err)
 	}
@@ -167,7 +168,7 @@ func (s *Service) GenerateGitHubActionsWorkflow(config *WorkloadIdentityConfig) 
 	workflow.WriteString("  contents: write # リポジトリへの書き込み権限 (バッジ更新のため)\n")
 	workflow.WriteString("  id-token: write # OIDCトークンをリクエストする権限 (Google Cloud認証のため)\n\n")
 	workflow.WriteString("env:\n")
-	workflow.WriteString(fmt.Sprintf("  GOOGLE_CLOUD_PROJECT_ID_01: '%s'\n", config.ProjectID))
+	workflow.WriteString("  GOOGLE_CLOUD_PROJECT_ID_01: '" + projectNameForGithubActions + "'\n")
 	workflow.WriteString("  GCLOUD_PROJECT_NUMBER: ${{ secrets.GCLOUD_PROJECT_NUMBER }}\n")
 	workflow.WriteString("  GCLOUD_POOL_ID: ${{ secrets.GCLOUD_POOL_ID }}\n")
 	workflow.WriteString("  GCLOUD_PROVIDER_ID: ${{ secrets.GCLOUD_PROVIDER_ID }}\n")
@@ -243,43 +244,6 @@ type NotificationMessage struct {
 	IsCode  bool
 }
 
-// GenerateNotificationMessages は全ての通知メッセージを生成し、2000文字制限に基づいて自動分割する
-func (s *Service) GenerateNotificationMessages(config *WorkloadIdentityConfig) ([]*NotificationMessage, error) {
-	if err := s.validateConfig(config); err != nil {
-		return nil, fmt.Errorf("設定の検証に失敗しました: %v", err)
-	}
-
-	var messages []*NotificationMessage
-
-	// 1. 概要とリソース一覧（分割対応）
-	overviewMessage := s.generateOverviewMessage(config)
-	overviewMessages := s.splitMessageIfNeeded(overviewMessage)
-	messages = append(messages, overviewMessages...)
-
-	// 2. Bashスクリプト（分割）
-	bashScript, err := s.GenerateWorkloadIdentitySetupScript(config)
-	if err != nil {
-		return nil, fmt.Errorf("bashスクリプトの生成に失敗しました: %v", err)
-	}
-
-	bashMessages := s.splitBashScript(bashScript)
-	messages = append(messages, bashMessages...)
-
-	// 3. 削除スクリプト（分割）
-	cleanupMessages, err := s.generateCleanupMessages(config)
-	if err != nil {
-		return nil, fmt.Errorf("削除スクリプトの生成に失敗しました: %v", err)
-	}
-	messages = append(messages, cleanupMessages...)
-
-	// 4. GitHub Actions設定（分割対応）
-	workflowMessage := s.generateWorkflowMessage(config)
-	workflowMessages := s.splitMessage(workflowMessage)
-	messages = append(messages, workflowMessages...)
-
-	return messages, nil
-}
-
 // generateOverviewMessage は概要とリソース一覧のメッセージを生成する
 func (s *Service) generateOverviewMessage(config *WorkloadIdentityConfig) *NotificationMessage {
 	var content strings.Builder
@@ -306,6 +270,83 @@ func (s *Service) generateOverviewMessage(config *WorkloadIdentityConfig) *Notif
 		Color:   "blue",
 		IsCode:  false,
 	}
+}
+func (s *Service) splitMessage(message *NotificationMessage) []*NotificationMessage {
+	content := message.Content
+	if len(content) <= maxLengthOfContentOfWebhookPayloadOnMargin {
+		return []*NotificationMessage{message}
+	}
+
+	var messages []*NotificationMessage
+	chunkSize := maxLengthOfContentOfWebhookPayloadOnMargin
+	chunkNumber := 1
+
+	for len(content) > 0 {
+		var chunk string
+		if len(content) <= chunkSize {
+			chunk = content
+			content = ""
+		} else {
+			// 改行で分割できる場所を探す（可能な場合）
+			cutPoint := chunkSize
+			for i := chunkSize - 1; i > chunkSize/2 && i < len(content); i-- {
+				if content[i] == '\n' {
+					cutPoint = i + 1
+					break
+				}
+			}
+			chunk = content[:cutPoint]
+			content = content[cutPoint:]
+		}
+
+		title := fmt.Sprintf("%s (Part %d)", message.Title, chunkNumber)
+		messages = append(messages, &NotificationMessage{
+			Title:   title,
+			Content: strings.TrimSpace(chunk),
+			Color:   message.Color,
+			IsCode:  message.IsCode,
+		})
+		chunkNumber++
+	}
+
+	return messages
+}
+
+// GenerateNotificationMessages は全ての通知メッセージを生成し、2000文字制限に基づいて自動分割する
+func (s *Service) GenerateNotificationMessages(config *WorkloadIdentityConfig) ([]*NotificationMessage, error) {
+	if err := s.validateConfig(config); err != nil {
+		return nil, fmt.Errorf("設定の検証に失敗しました: %v", err)
+	}
+
+	var messages []*NotificationMessage
+
+	// 1. 概要とリソース一覧（分割対応）
+	overviewMessage := s.generateOverviewMessage(config)
+	overviewMessages := s.splitMessage(overviewMessage)
+	messages = append(messages, overviewMessages...)
+
+	// 2. Bashスクリプト（分割）
+	bashScript, err := s.generateWorkloadIdentitySetupScript(config)
+	if err != nil {
+		return nil, fmt.Errorf("bashスクリプトの生成に失敗しました: %v", err)
+	}
+
+	bashMessages := s.splitBashScript(bashScript)
+	messages = append(messages, bashMessages...)
+
+	// 3. 削除スクリプト（分割）
+	cleanupMessages, err := s.generateCleanupMessages(config)
+	if err != nil {
+		return nil, fmt.Errorf("削除スクリプトの生成に失敗しました: %v", err)
+	}
+	messages = append(messages, cleanupMessages...)
+
+	// 4. GitHub Actions設定（分割対応）
+	workflowMessage := s.generateWorkflowMessage(config)
+	workflowMessages := s.splitMessage(workflowMessage)
+	messages = append(messages, workflowMessages...)
+
+	return messages, nil
 }
 
 // splitBashScript はBashスクリプトを2000文字制限に基づいて分割する
@@ -426,6 +467,18 @@ func (s *Service) splitCleanupScriptWithIntro(cleanupScript string, introLength 
 	}
 
 	var messages []*NotificationMessage
+
+	// 空のスクリプトの場合でも最低限のメッセージを生成
+	if strings.TrimSpace(cleanupScript) == "" {
+		messages = append(messages, &NotificationMessage{
+			Title:   "削除用Bashスクリプト",
+			Content: "```bash\n# スクリプトが空です\n```",
+			Color:   "red",
+			IsCode:  true,
+		})
+		return messages
+	}
+
 	lines := strings.Split(cleanupScript, "\n")
 	var currentChunk strings.Builder
 	chunkNumber := 1
@@ -547,7 +600,7 @@ func (s *Service) generateWorkflowMessage(config *WorkloadIdentityConfig) *Notif
 	content.WriteString("  contents: write # リポジトリへの書き込み権限 (バッジ更新のため)\n")
 	content.WriteString("  id-token: write # OIDCトークンをリクエストする権限 (Google Cloud認証のため)\n\n")
 	content.WriteString("env:\n")
-	content.WriteString("  GOOGLE_CLOUD_PROJECT_ID_01: 'any-project'\n")
+	content.WriteString("  GOOGLE_CLOUD_PROJECT_ID_01: '" + projectNameForGithubActions + "'\n")
 	content.WriteString("  GCLOUD_PROJECT_NUMBER: ${{ secrets.GCLOUD_PROJECT_NUMBER }}\n")
 	content.WriteString("  GCLOUD_POOL_ID: ${{ secrets.GCLOUD_POOL_ID }}\n")
 	content.WriteString("  GCLOUD_PROVIDER_ID: ${{ secrets.GCLOUD_PROVIDER_ID }}\n")
@@ -584,63 +637,45 @@ func (s *Service) generateWorkflowMessage(config *WorkloadIdentityConfig) *Notif
 	}
 }
 
-// splitMessageIfNeeded はメッセージが2000文字を超える場合に分割する
-func (s *Service) splitMessageIfNeeded(message *NotificationMessage) []*NotificationMessage {
-	if len(message.Content) <= maxLengthOfContentOfWebhookPayloadOnMargin {
-		return []*NotificationMessage{message}
-	}
-
-	// 2000文字を超える場合は分割
-	return s.splitMessage(message)
-}
-
-// splitMessage はメッセージを2000文字制限に基づいて分割する
-func (s *Service) splitMessage(message *NotificationMessage) []*NotificationMessage {
+// splitLongContent は非常に長いコンテンツを強制的に分割する
+func (s *Service) splitLongContent(content, baseTitle, color string, isCode bool, startChunkNumber int) []*NotificationMessage {
 	var messages []*NotificationMessage
 
-	content := message.Content
-	lines := strings.Split(content, "\n")
-	var currentChunk strings.Builder
-	chunkNumber := 1
+	// 文字単位で分割（最後の手段）
+	maxChunkSize := maxLengthOfContentOfWebhookPayload - 50 // 安全マージン
+	chunkNumber := startChunkNumber
 
-	for _, line := range lines {
-		// 次の行を追加した場合の長さをチェック
-		testContent := currentChunk.String() + line + "\n"
-		if len(testContent) > maxLengthOfContentOfWebhookPayloadOnMargin && currentChunk.Len() > 0 {
-			// 現在のチャンクを完了
-			title := message.Title
-			if chunkNumber > 1 {
-				title = fmt.Sprintf("%s (Part %d)", message.Title, chunkNumber)
+	for len(content) > 0 {
+		var chunkSize int
+		if len(content) <= maxChunkSize {
+			chunkSize = len(content)
+		} else {
+			chunkSize = maxChunkSize
+			// 改行で区切れる場所を探す
+			for i := maxChunkSize - 1; i > maxChunkSize/2 && i < len(content); i-- {
+				if content[i] == '\n' {
+					chunkSize = i + 1
+					break
+				}
 			}
-
-			messages = append(messages, &NotificationMessage{
-				Title:   title,
-				Content: strings.TrimSpace(currentChunk.String()),
-				Color:   message.Color,
-				IsCode:  message.IsCode,
-			})
-
-			// 新しいチャンクを開始
-			currentChunk.Reset()
-			chunkNumber++
 		}
 
-		currentChunk.WriteString(line + "\n")
-	}
+		chunk := content[:chunkSize]
+		content = content[chunkSize:]
 
-	// 最後のチャンクを追加
-	if currentChunk.Len() > 0 {
-		title := message.Title
-		if chunkNumber > 1 {
-			title = fmt.Sprintf("%s (Part %d)", message.Title, chunkNumber)
+		title := fmt.Sprintf("%s (Part %d)", baseTitle, chunkNumber)
+		if startChunkNumber == 1 && chunkNumber == 1 && len(content) == 0 {
+			title = baseTitle // 分割が1つだけの場合は元のタイトルを使用
 		}
 
 		messages = append(messages, &NotificationMessage{
 			Title:   title,
-			Content: strings.TrimSpace(currentChunk.String()),
-			Color:   message.Color,
-			IsCode:  message.IsCode,
+			Content: strings.TrimSpace(chunk),
+			Color:   color,
+			IsCode:  isCode,
 		})
+
+		chunkNumber++
 	}
 
 	return messages
@@ -648,24 +683,59 @@ func (s *Service) splitMessage(message *NotificationMessage) []*NotificationMess
 
 // validateConfig は設定の妥当性を検証する
 func (s *Service) validateConfig(config *WorkloadIdentityConfig) error {
+	const maxFieldLength = 200       // 1つのフィールドの最大長
+	const maxDescriptionLength = 500 // 説明フィールドの最大長
+
 	if config.ProjectID == "" {
 		return fmt.Errorf("project-idは必須です")
 	}
+	if len(config.ProjectID) > maxFieldLength {
+		return fmt.Errorf("project-idが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.ProjectID))
+	}
+
 	if config.PoolID == "" {
 		return fmt.Errorf("pool-idは必須です")
 	}
+	if len(config.PoolID) > maxFieldLength {
+		return fmt.Errorf("pool-idが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.PoolID))
+	}
+
 	if config.ProviderID == "" {
 		return fmt.Errorf("provider-idは必須です")
 	}
+	if len(config.ProviderID) > maxFieldLength {
+		return fmt.Errorf("provider-idが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.ProviderID))
+	}
+
 	if config.ServiceAccountID == "" {
 		return fmt.Errorf("service-account-idは必須です")
 	}
+	if len(config.ServiceAccountID) > maxFieldLength {
+		return fmt.Errorf("service-account-idが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.ServiceAccountID))
+	}
+
 	if config.RepoOwner == "" {
 		return fmt.Errorf("repo-ownerは必須です")
 	}
+	if len(config.RepoOwner) > maxFieldLength {
+		return fmt.Errorf("repo-ownerが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.RepoOwner))
+	}
+
 	if config.RepoName == "" {
 		return fmt.Errorf("repo-nameは必須です")
 	}
+	if len(config.RepoName) > maxFieldLength {
+		return fmt.Errorf("repo-nameが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.RepoName))
+	}
+
+	if len(config.Location) > maxFieldLength {
+		return fmt.Errorf("locationが長すぎます（最大%d文字）: %d文字", maxFieldLength, len(config.Location))
+	}
+
+	if len(config.PoolDescription) > maxDescriptionLength {
+		return fmt.Errorf("pool-descriptionが長すぎます（最大%d文字）: %d文字", maxDescriptionLength, len(config.PoolDescription))
+	}
+
 	if config.Location == "" {
 		config.Location = "global"
 	}
