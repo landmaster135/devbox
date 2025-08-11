@@ -187,7 +187,7 @@ func (s *Service) buildDashboardTiles() []*dashboardpb.MosaicLayout_Tile {
 	tiles = append(tiles, s.createTile(s.createRequestCountWidget(), 0, 0, 3, 4))
 	tiles = append(tiles, s.createTile(s.createRequestsByStatusWidget(), 3, 0, 3, 4))
 	tiles = append(tiles, s.createTile(s.createTotalRequestsWidget(), 6, 0, 3, 4))
-	tiles = append(tiles, s.createTile(s.createRequestHeatmapWidget(), 9, 0, 3, 4))
+	tiles = append(tiles, s.createTile(s.createLogByteByHourWidget(), 9, 0, 3, 4))
 
 	// 行2: パフォーマンス指標 (4つのウィジェット、各3列幅)
 	tiles = append(tiles, s.createTile(s.createRequestLatencyWidget(), 0, 4, 3, 4))
@@ -236,8 +236,36 @@ func (s *Service) createTextWidget(title, content string) *dashboardpb.Widget {
 	}
 }
 
-func (s *Service) createPromQL() string {
+const (
+	DatasetLegendTemplateOfP50       = "P50"
+	DatasetLegendTemplateOfP95       = "P95"
+	DatasetLegendTemplateOfP99       = "P99"
+	YAxisLabelOfRequestsPerSecond    = "requests/second"
+	YAxisLabelOfBytesPerSecond       = "bytes/second"
+	YAxisLabelOfLatencyMilliSec      = "latency (ms)"
+	YAxisLabelOfErrorRatePercentage  = "error rate (%)"
+	YAxisLabelOfConcurrentRequests   = "concurrent requests"
+	YAxisLabelOfResponseTimeMilliSec = "response time (ms)"
+)
+
+func (s *Service) createPromQLForRequestCount() string {
 	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count"`, s.serviceName)
+}
+
+func (s *Service) createPromQLForRequestLatencies() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName)
+}
+
+func (s *Service) createPromQLForLogging() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="logging.googleapis.com/byte_count"`, s.serviceName)
+}
+
+func (s *Service) createPromQLForRequestCountByResponseCode() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count" metric.label.response_code_class!="2xx"`, s.serviceName)
+}
+
+func (s *Service) createPromQLMaxRequestConcurrencies() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName)
 }
 
 // createRequestCountWidget はリクエスト数（req/sec）ウィジェットを作成する
@@ -251,7 +279,7 @@ func (s *Service) createRequestCountWidget() *dashboardpb.Widget {
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: s.createPromQL(),
+									Filter: s.createPromQLForRequestCount(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
@@ -264,7 +292,7 @@ func (s *Service) createRequestCountWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "requests/second",
+					Label: YAxisLabelOfRequestsPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -283,7 +311,7 @@ func (s *Service) createRequestsByStatusWidget() *dashboardpb.Widget {
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: s.createPromQL(),
+									Filter: s.createPromQLForRequestCount(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
@@ -297,7 +325,7 @@ func (s *Service) createRequestsByStatusWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "requests/second",
+					Label: YAxisLabelOfRequestsPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -314,7 +342,7 @@ func (s *Service) createTotalRequestsWidget() *dashboardpb.Widget {
 				TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 					Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 						TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-							Filter: s.createPromQL(),
+							Filter: s.createPromQLForRequestCount(),
 							Aggregation: &dashboardpb.Aggregation{
 								AlignmentPeriod:    durationpb.New(86400 * time.Second), // 24時間
 								PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_SUM,
@@ -333,10 +361,10 @@ func (s *Service) createTotalRequestsWidget() *dashboardpb.Widget {
 	}
 }
 
-// createRequestHeatmapWidget はリクエスト時間分布ウィジェットを作成する
-func (s *Service) createRequestHeatmapWidget() *dashboardpb.Widget {
+// createLogByteByHourWidget はログバイト数の時間ごとの集計ウィジェットを作成する
+func (s *Service) createLogByteByHourWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Request Pattern by Hour",
+		Title: "Log Bytes by Hour",
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -344,21 +372,25 @@ func (s *Service) createRequestHeatmapWidget() *dashboardpb.Widget {
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: s.createPromQL(),
+									Filter: s.createPromQLForLogging(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(3600 * time.Second), // 1時間
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
 										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_SUM,
+										GroupByFields:      []string{"metric.label.severity"},
 									},
 								},
 							},
 						},
-						PlotType: dashboardpb.XyChart_DataSet_HEATMAP,
+						PlotType: dashboardpb.XyChart_DataSet_STACKED_AREA,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "requests/second",
+					Label: YAxisLabelOfBytesPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
+				},
+				ChartOptions: &dashboardpb.ChartOptions{
+					Mode: dashboardpb.ChartOptions_COLOR,
 				},
 			},
 		},
@@ -376,7 +408,7 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Filter: s.createPromQLForRequestLatencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
@@ -386,13 +418,13 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P50",
+						LegendTemplate: DatasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Filter: s.createPromQLForRequestLatencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
@@ -402,13 +434,13 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P95",
+						LegendTemplate: DatasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Filter: s.createPromQLForRequestLatencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
@@ -418,11 +450,11 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P99",
+						LegendTemplate: DatasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "latency (ms)",
+					Label: YAxisLabelOfLatencyMilliSec,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -442,7 +474,7 @@ func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilterRatio{
 								TimeSeriesFilterRatio: &dashboardpb.TimeSeriesFilterRatio{
 									Numerator: &dashboardpb.TimeSeriesFilterRatio_RatioPart{
-										Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count" metric.label.response_code_class!="2xx"`, s.serviceName),
+										Filter: s.createPromQLForRequestCountByResponseCode(),
 										Aggregation: &dashboardpb.Aggregation{
 											AlignmentPeriod:    durationpb.New(60 * time.Second),
 											PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
@@ -450,7 +482,7 @@ func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
 										},
 									},
 									Denominator: &dashboardpb.TimeSeriesFilterRatio_RatioPart{
-										Filter: s.createPromQL(),
+										Filter: s.createPromQLForRequestCount(),
 										Aggregation: &dashboardpb.Aggregation{
 											AlignmentPeriod:    durationpb.New(60 * time.Second),
 											PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_RATE,
@@ -464,7 +496,7 @@ func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "error rate (%)",
+					Label: YAxisLabelOfErrorRatePercentage,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -483,7 +515,7 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName),
+									Filter: s.createPromQLMaxRequestConcurrencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
@@ -493,13 +525,13 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P50",
+						LegendTemplate: DatasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName),
+									Filter: s.createPromQLMaxRequestConcurrencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
@@ -509,13 +541,13 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P95",
+						LegendTemplate: DatasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName),
+									Filter: s.createPromQLMaxRequestConcurrencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
@@ -525,11 +557,11 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P99",
+						LegendTemplate: DatasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "concurrent requests",
+					Label: YAxisLabelOfConcurrentRequests,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -548,7 +580,7 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Filter: s.createPromQLForRequestLatencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
@@ -558,13 +590,13 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P50",
+						LegendTemplate: DatasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Filter: s.createPromQLForRequestLatencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
@@ -574,13 +606,13 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P95",
+						LegendTemplate: DatasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
 							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
 								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
-									Filter: fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName),
+									Filter: s.createPromQLForRequestLatencies(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
 										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
@@ -590,11 +622,11 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: "P99",
+						LegendTemplate: DatasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: "response time (ms)",
+					Label: YAxisLabelOfResponseTimeMilliSec,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
