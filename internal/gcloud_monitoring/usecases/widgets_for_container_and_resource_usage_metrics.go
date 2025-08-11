@@ -139,7 +139,7 @@ func (s *Service) createContainerBillableInstanceTimeWidget() *dashboardpb.Widge
 // createContainerCPUUtilizationsWidget はCPU使用率ウィジェットを作成する
 func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "CPU Utilization",
+		Title: "CPU Utilization (P50/P95/P99)",
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -150,13 +150,46 @@ func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 									Filter: s.createPromQLForContainerCPUUtilizations(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
-										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_MEAN,
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
 										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
 									},
 								},
 							},
 						},
-						PlotType: dashboardpb.XyChart_DataSet_LINE,
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP50,
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQLForContainerCPUUtilizations(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP95,
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQLForContainerCPUUtilizations(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
@@ -171,7 +204,7 @@ func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 // createContainerMemoryUtilizationsWidget はメモリ使用率ウィジェットを作成する
 func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Memory Utilization",
+		Title: "Memory Utilization (P50/P95/P99)",
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -182,13 +215,46 @@ func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget 
 									Filter: s.createPromQLForContainerMemoryUtilizations(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
-										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_MEAN,
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
 										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
 									},
 								},
 							},
 						},
-						PlotType: dashboardpb.XyChart_DataSet_LINE,
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP50,
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQLForContainerMemoryUtilizations(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP95,
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQLForContainerMemoryUtilizations(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
@@ -203,7 +269,7 @@ func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget 
 // createContainerMemoryUsageTimeWidget はメモリ使用量ウィジェットを作成する
 func (s *Service) createContainerMemoryUsageTimeWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Memory Usage",
+		Title: "Memory Usage (P50/P95/P99)",
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -214,13 +280,46 @@ func (s *Service) createContainerMemoryUsageTimeWidget() *dashboardpb.Widget {
 									Filter: s.createPromQLForContainerMemoryUsageTime(),
 									Aggregation: &dashboardpb.Aggregation{
 										AlignmentPeriod:    durationpb.New(60 * time.Second),
-										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_MEAN,
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_50,
 										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
 									},
 								},
 							},
 						},
-						PlotType: dashboardpb.XyChart_DataSet_LINE,
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP50,
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQLForContainerMemoryUsageTime(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_95,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP95,
+					},
+					{
+						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
+							Source: &dashboardpb.TimeSeriesQuery_TimeSeriesFilter{
+								TimeSeriesFilter: &dashboardpb.TimeSeriesFilter{
+									Filter: s.createPromQLForContainerMemoryUsageTime(),
+									Aggregation: &dashboardpb.Aggregation{
+										AlignmentPeriod:    durationpb.New(60 * time.Second),
+										PerSeriesAligner:   dashboardpb.Aggregation_ALIGN_PERCENTILE_99,
+										CrossSeriesReducer: dashboardpb.Aggregation_REDUCE_MEAN,
+									},
+								},
+							},
+						},
+						PlotType:       dashboardpb.XyChart_DataSet_LINE,
+						LegendTemplate: DatasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
