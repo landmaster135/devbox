@@ -9,11 +9,24 @@ import (
 	dashboardpb "cloud.google.com/go/monitoring/dashboard/apiv1/dashboardpb"
 	run "cloud.google.com/go/run/apiv2"
 	runpb "cloud.google.com/go/run/apiv2/runpb"
+	"github.com/googleapis/gax-go/v2"
 	"google.golang.org/api/impersonate"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// CloudRunClient はCloud Run APIクライアントのインターフェース
+type CloudRunClient interface {
+	GetService(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error)
+	Close() error
+}
+
+// DashboardClient はDashboard APIクライアントのインターフェース
+type DashboardClient interface {
+	CreateDashboard(ctx context.Context, req *dashboardpb.CreateDashboardRequest, opts ...gax.CallOption) (*dashboardpb.Dashboard, error)
+	Close() error
+}
 
 // Service はGoogle Cloud Monitoringサービスの操作を提供する
 type Service struct {
@@ -21,6 +34,8 @@ type Service struct {
 	location         string
 	serviceName      string
 	serviceAccountID string
+	cloudRunClient   CloudRunClient
+	dashboardClient  DashboardClient
 }
 
 // NewService は新しいServiceインスタンスを作成する
@@ -30,6 +45,18 @@ func NewService(project, location, serviceName, serviceAccountID string) *Servic
 		location:         location,
 		serviceName:      serviceName,
 		serviceAccountID: serviceAccountID,
+	}
+}
+
+// NewServiceWithClients はクライアントを注入してServiceインスタンスを作成する（テスト用）
+func NewServiceWithClients(project, location, serviceName, serviceAccountID string, cloudRunClient CloudRunClient, dashboardClient DashboardClient) *Service {
+	return &Service{
+		project:          project,
+		location:         location,
+		serviceName:      serviceName,
+		serviceAccountID: serviceAccountID,
+		cloudRunClient:   cloudRunClient,
+		dashboardClient:  dashboardClient,
 	}
 }
 
@@ -61,18 +88,27 @@ func (s *Service) CreateDashboardForCloudRun() (string, error) {
 
 // verifyCloudRunService はCloud Runサービスの存在を確認する
 func (s *Service) verifyCloudRunService(ctx context.Context) (bool, error) {
-	// クライアントオプションの設定
-	opts, err := s.getClientOptions(ctx)
-	if err != nil {
-		return false, fmt.Errorf("クライアントオプションの設定に失敗しました: %v", err)
-	}
+	var client CloudRunClient
+	var err error
 
-	// Cloud Run クライアントの作成
-	client, err := run.NewServicesClient(ctx, opts...)
-	if err != nil {
-		return false, fmt.Errorf("cloud Runクライアントの作成に失敗しました: %v", err)
+	// 注入されたクライアントがある場合はそれを使用、なければ新規作成
+	if s.cloudRunClient != nil {
+		client = s.cloudRunClient
+	} else {
+		// クライアントオプションの設定
+		opts, err := s.getClientOptions(ctx)
+		if err != nil {
+			return false, fmt.Errorf("クライアントオプションの設定に失敗しました: %v", err)
+		}
+
+		// Cloud Run クライアントの作成
+		realClient, err := run.NewServicesClient(ctx, opts...)
+		if err != nil {
+			return false, fmt.Errorf("cloud Runクライアントの作成に失敗しました: %v", err)
+		}
+		defer realClient.Close()
+		client = realClient
 	}
-	defer client.Close()
 
 	// サービス名の構築
 	servicePath := fmt.Sprintf("projects/%s/locations/%s/services/%s", s.project, s.location, s.serviceName)
@@ -109,18 +145,27 @@ func (s *Service) verifyCloudRunService(ctx context.Context) (bool, error) {
 
 // createMonitoringDashboard はモニタリングダッシュボードを作成する
 func (s *Service) createMonitoringDashboard(ctx context.Context) (string, error) {
-	// クライアントオプションの設定
-	opts, err := s.getClientOptions(ctx)
-	if err != nil {
-		return "", fmt.Errorf("クライアントオプションの設定に失敗しました: %v", err)
-	}
+	var client DashboardClient
+	var err error
 
-	// Dashboard クライアントの作成
-	client, err := dashboard.NewDashboardsClient(ctx, opts...)
-	if err != nil {
-		return "", fmt.Errorf("dashboardクライアントの作成に失敗しました: %v", err)
+	// 注入されたクライアントがある場合はそれを使用、なければ新規作成
+	if s.dashboardClient != nil {
+		client = s.dashboardClient
+	} else {
+		// クライアントオプションの設定
+		opts, err := s.getClientOptions(ctx)
+		if err != nil {
+			return "", fmt.Errorf("クライアントオプションの設定に失敗しました: %v", err)
+		}
+
+		// Dashboard クライアントの作成
+		realClient, err := dashboard.NewDashboardsClient(ctx, opts...)
+		if err != nil {
+			return "", fmt.Errorf("dashboardクライアントの作成に失敗しました: %v", err)
+		}
+		defer realClient.Close()
+		client = realClient
 	}
-	defer client.Close()
 
 	// ダッシュボードの設定
 	dashboardConfig := s.buildDashboardConfig()
