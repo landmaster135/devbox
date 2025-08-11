@@ -100,12 +100,12 @@ func TestCreateRequestHeatmapWidget_Normal(t *testing.T) {
 	widget := service.createLogByteByHourWidget()
 
 	assert.NotNil(t, widget)
-	assert.Equal(t, "Request Pattern by Hour", widget.Title)
+	assert.Equal(t, "Log Bytes by Hour", widget.Title)
 	assert.NotNil(t, widget.GetXyChart())
 
 	xyChart := widget.GetXyChart()
 	assert.Len(t, xyChart.DataSets, 1)
-	assert.Equal(t, dashboardpb.XyChart_DataSet_HEATMAP, xyChart.DataSets[0].PlotType)
+	assert.Equal(t, dashboardpb.XyChart_DataSet_STACKED_AREA, xyChart.DataSets[0].PlotType)
 
 	// 1時間のアライメント期間の確認
 	tsFilter := xyChart.DataSets[0].TimeSeriesQuery.GetTimeSeriesFilter()
@@ -126,19 +126,20 @@ func TestBuildDashboardConfig(t *testing.T) {
 		t.Error("Expected layout to be set")
 	}
 
-	gridLayout := config.GetGridLayout()
-	if gridLayout == nil {
-		t.Error("Expected grid layout to be set")
+	mosaicLayout := config.GetMosaicLayout()
+	if mosaicLayout == nil {
+		t.Error("Expected mosaic layout to be set")
+		return
 	}
 
-	if gridLayout.Columns != 12 {
-		t.Errorf("Expected 12 columns, got %d", gridLayout.Columns)
+	if mosaicLayout.Columns != 12 {
+		t.Errorf("Expected 12 columns, got %d", mosaicLayout.Columns)
 	}
 
 	// ウィジェット数の確認（16個のウィジェット）
 	expectedWidgetCount := 16
-	if len(gridLayout.Widgets) != expectedWidgetCount {
-		t.Errorf("Expected %d widgets, got %d", expectedWidgetCount, len(gridLayout.Widgets))
+	if len(mosaicLayout.Tiles) != expectedWidgetCount {
+		t.Errorf("Expected %d widgets, got %d", expectedWidgetCount, len(mosaicLayout.Tiles))
 	}
 }
 
