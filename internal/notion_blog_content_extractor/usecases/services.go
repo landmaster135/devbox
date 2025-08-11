@@ -128,6 +128,9 @@ func (s *Service) createDestinationDirectory(destDir string) error {
 // findContentFiles は指定されたディレクトリ内でコンテンツマーカーを含むファイルを検索する
 func (s *Service) findContentFiles(srcDir string) ([]string, error) {
 	var contentFiles []string
+	var totalMdFiles int
+	var readableFiles int
+	var filesWithMarker int
 
 	// コンテンツマーカーのパターン（改行を含む）
 	// # Content\n\n## はじまり\n
@@ -143,16 +146,22 @@ func (s *Service) findContentFiles(srcDir string) ([]string, error) {
 			return nil
 		}
 
+		totalMdFiles++
+
 		// ファイル内容を読み込み
 		content, err := s.fileOperator.ReadFile(path)
 		if err != nil {
-			// 個別ファイルの読み込みエラーは警告として扱い、処理を継続
-			return nil
+			// 個別ファイルの読み込みエラーは、処理を中止
+			return fmt.Errorf("ファイルの読み込みに失敗しました: %s (%v)", path, err)
 		}
+
+		readableFiles++
 
 		// パターンマッチング
 		if pattern.Match(content) {
+			// パターンマッチングの場合は、処理を継続
 			contentFiles = append(contentFiles, path)
+			filesWithMarker++
 		}
 
 		return nil
@@ -161,6 +170,10 @@ func (s *Service) findContentFiles(srcDir string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリの走査に失敗しました: %v", err)
 	}
+
+	// デバッグ情報を出力
+	fmt.Printf("デバッグ情報: 総Markdownファイル数=%d, 読み込み可能ファイル数=%d, マーカー付きファイル数=%d\n",
+		totalMdFiles, readableFiles, filesWithMarker)
 
 	return contentFiles, nil
 }
