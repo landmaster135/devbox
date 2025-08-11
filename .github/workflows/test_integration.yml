@@ -6,8 +6,13 @@ on:
 permissions: write-all
 
 env:
-  GO_VERSION: '1.23'
-  COV_FILE: 'coverage.out'
+  GO_VERSION: "1.23"
+  COV_FILE: "coverage.out"
+  GOOGLE_CLOUD_PROJECT_ID_01: "test-pj"
+  GCLOUD_PROJECT_NUMBER: ${{ secrets.GCLOUD_PROJECT_NUMBER }}
+  GCLOUD_POOL_ID: ${{ secrets.GCLOUD_POOL_ID }}
+  GCLOUD_PROVIDER_ID: ${{ secrets.GCLOUD_PROVIDER_ID }}
+  GCLOUD_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_EMAIL }}
 
 jobs:
   test:
@@ -49,11 +54,22 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Check Go version
         run: go version
+      - id: "gcloud_auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: true
+          workload_identity_provider: "projects/${{ env.GCLOUD_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ env.GCLOUD_POOL_ID }}/providers/${{ env.GCLOUD_PROVIDER_ID }}"
+          service_account: "${{ env.GCLOUD_SERVICE_ACCOUNT_EMAIL }}"
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+      - name: "Use gcloud CLI"
+        run: "gcloud info"
       - name: Run Test
         run: |
           go test -v ./... -coverpkg=./... -covermode=count -coverprofile=${{ env.COV_FILE }}
           go tool cover -func=${{ env.COV_FILE }} -o=${{ env.COV_FILE }}
-      - name: Go Coverage Badge  # Pass the `coverage.out` output to this action
+      - name: Go Coverage Badge # Pass the `coverage.out` output to this action
         if: ${{ matrix.coverage-badge }}
         uses: tj-actions/coverage-badge-go@v2
         with:
