@@ -5,6 +5,15 @@ import (
 	"strings"
 )
 
+const (
+	maxLengthOfContentOfWebhookPayload = 2000
+	maxLengthOfMerginForWebhookPayload = 100
+)
+
+var (
+	maxLengthOfContentOfWebhookPayloadOnMargin int = maxLengthOfContentOfWebhookPayload - maxLengthOfMerginForWebhookPayload
+)
+
 // WorkloadIdentityConfig はWorkload Identity Federationの設定を保持する構造体
 type WorkloadIdentityConfig struct {
 	ProjectID        string
@@ -242,9 +251,10 @@ func (s *Service) GenerateNotificationMessages(config *WorkloadIdentityConfig) (
 
 	var messages []*NotificationMessage
 
-	// 1. 概要とリソース一覧
+	// 1. 概要とリソース一覧（分割対応）
 	overviewMessage := s.generateOverviewMessage(config)
-	messages = append(messages, overviewMessage)
+	overviewMessages := s.splitMessageIfNeeded(overviewMessage)
+	messages = append(messages, overviewMessages...)
 
 	// 2. Bashスクリプト（分割）
 	bashScript, err := s.GenerateWorkloadIdentitySetupScript(config)
@@ -262,9 +272,10 @@ func (s *Service) GenerateNotificationMessages(config *WorkloadIdentityConfig) (
 	}
 	messages = append(messages, cleanupMessages...)
 
-	// 4. GitHub Actions設定
+	// 4. GitHub Actions設定（分割対応）
 	workflowMessage := s.generateWorkflowMessage(config)
-	messages = append(messages, workflowMessage)
+	workflowMessages := s.splitMessage(workflowMessage)
+	messages = append(messages, workflowMessages...)
 
 	return messages, nil
 }
@@ -409,7 +420,7 @@ func (s *Service) splitCleanupScript(cleanupScript string) []*NotificationMessag
 
 // splitCleanupScriptWithIntro は削除スクリプトを説明部分の長さを考慮して分割する
 func (s *Service) splitCleanupScriptWithIntro(cleanupScript string, introLength int) []*NotificationMessage {
-	maxLength := 2000 - introLength - 100 // 説明部分の長さを差し引いて安全マージン100文字
+	maxLength := maxLengthOfContentOfWebhookPayloadOnMargin - introLength // 説明部分の長さを差し引いて安全マージン100文字
 	if maxLength < 500 {
 		maxLength = 500 // 最低限の長さを確保
 	}
@@ -571,6 +582,68 @@ func (s *Service) generateWorkflowMessage(config *WorkloadIdentityConfig) *Notif
 		Color:   "purple",
 		IsCode:  true,
 	}
+}
+
+// splitMessageIfNeeded はメッセージが2000文字を超える場合に分割する
+func (s *Service) splitMessageIfNeeded(message *NotificationMessage) []*NotificationMessage {
+	if len(message.Content) <= maxLengthOfContentOfWebhookPayloadOnMargin {
+		return []*NotificationMessage{message}
+	}
+
+	// 2000文字を超える場合は分割
+	return s.splitMessage(message)
+}
+
+// splitMessage はメッセージを2000文字制限に基づいて分割する
+func (s *Service) splitMessage(message *NotificationMessage) []*NotificationMessage {
+	var messages []*NotificationMessage
+
+	content := message.Content
+	lines := strings.Split(content, "\n")
+	var currentChunk strings.Builder
+	chunkNumber := 1
+
+	for _, line := range lines {
+		// 次の行を追加した場合の長さをチェック
+		testContent := currentChunk.String() + line + "\n"
+		if len(testContent) > maxLengthOfContentOfWebhookPayloadOnMargin && currentChunk.Len() > 0 {
+			// 現在のチャンクを完了
+			title := message.Title
+			if chunkNumber > 1 {
+				title = fmt.Sprintf("%s (Part %d)", message.Title, chunkNumber)
+			}
+
+			messages = append(messages, &NotificationMessage{
+				Title:   title,
+				Content: strings.TrimSpace(currentChunk.String()),
+				Color:   message.Color,
+				IsCode:  message.IsCode,
+			})
+
+			// 新しいチャンクを開始
+			currentChunk.Reset()
+			chunkNumber++
+		}
+
+		currentChunk.WriteString(line + "\n")
+	}
+
+	// 最後のチャンクを追加
+	if currentChunk.Len() > 0 {
+		title := message.Title
+		if chunkNumber > 1 {
+			title = fmt.Sprintf("%s (Part %d)", message.Title, chunkNumber)
+		}
+
+		messages = append(messages, &NotificationMessage{
+			Title:   title,
+			Content: strings.TrimSpace(currentChunk.String()),
+			Color:   message.Color,
+			IsCode:  message.IsCode,
+		})
+	}
+
+	return messages
 }
 
 // validateConfig は設定の妥当性を検証する
