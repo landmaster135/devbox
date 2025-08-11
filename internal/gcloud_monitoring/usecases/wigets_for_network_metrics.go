@@ -4,13 +4,13 @@ import (
 	"time"
 
 	dashboardpb "cloud.google.com/go/monitoring/dashboard/apiv1/dashboardpb"
-	"google.golang.org/protobuf/types/known/durationpb"
+	durationpb "google.golang.org/protobuf/types/known/durationpb"
 )
 
 // createNetworkSentBytesWidget はネットワーク送信バイト数ウィジェットを作成する
 func (s *Service) createNetworkSentBytesWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Network Sent Bytes",
+		Title: containerWidgetTitle51,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -31,7 +31,7 @@ func (s *Service) createNetworkSentBytesWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfNetworkBytesPerSecond,
+					Label: yAxisLabelOfNetworkBytesPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -42,7 +42,7 @@ func (s *Service) createNetworkSentBytesWidget() *dashboardpb.Widget {
 // createNetworkReceivedBytesWidget はネットワーク受信バイト数ウィジェットを作成する
 func (s *Service) createNetworkReceivedBytesWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Network Received Bytes",
+		Title: containerWidgetTitle52,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -63,7 +63,7 @@ func (s *Service) createNetworkReceivedBytesWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfNetworkBytesPerSecond,
+					Label: yAxisLabelOfNetworkBytesPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},

@@ -239,72 +239,100 @@ func (s *Service) createTextWidget(title, content string) *dashboardpb.Widget {
 }
 
 const (
-	DatasetLegendTemplateOfP50              = "P50"
-	DatasetLegendTemplateOfP95              = "P95"
-	DatasetLegendTemplateOfP99              = "P99"
-	YAxisLabelOfRequestsPerSecond           = "requests/second"
-	YAxisLabelOfBytesPerSecond              = "bytes/second"
-	YAxisLabelOfLatencyMilliSec             = "latency (ms)"
-	YAxisLabelOfErrorRatePercentage         = "error rate (%)"
-	YAxisLabelOfConcurrentRequests          = "concurrent requests"
-	YAxisLabelOfResponseTimeMilliSec        = "response time (ms)"
-	YAxisLabelOfInstanceCount               = "instances"
-	YAxisLabelOfStartupLatencyMilliSec      = "startup latency (ms)"
-	YAxisLabelOfBillableInstanceTimeSeconds = "billable time (seconds)"
-	YAxisLabelOfCPUUtilizationPercentage    = "CPU utilization (%)"
-	YAxisLabelOfMemoryUtilizationPercentage = "memory utilization (%)"
-	YAxisLabelOfMemoryUsageBytes            = "memory usage (bytes)"
-	YAxisLabelOfNetworkBytesPerSecond       = "bytes/second"
+	containerWidgetTitle01                  = "Requests per Second"
+	containerWidgetTitle02                  = "Requests by Status Code"
+	containerWidgetTitle03                  = "Total Requests (24h)"
+	containerWidgetTitle04                  = "Log Bytes by Hour"
+	containerWidgetTitle05                  = "Request Latency (P50, P95, P99)"
+	containerWidgetTitle06                  = "Error Rate (%)"
+	containerWidgetTitle07                  = "Max Concurrent Requests (P50/P95/P99)"
+	containerWidgetTitle08                  = "Response Time (P50/P95/P99)"
+	containerWidgetTitle11                  = "Container Instance Count"
+	containerWidgetTitle12                  = "Container Startup Latency (P50/P95/P99)"
+	containerWidgetTitle13                  = "Billable Instance Time"
+	containerWidgetTitle14                  = "CPU Utilization (P50/P95/P99)"
+	containerWidgetTitle15                  = "Memory Utilization (P50/P95/P99)"
+	containerWidgetTitle16                  = "Memory Usage (P50/P95/P99)"
+	containerWidgetTitle51                  = "Network Sent Bytes"
+	containerWidgetTitle52                  = "Network Received Bytes"
+	datasetLegendTemplateOfP50              = "P50"
+	datasetLegendTemplateOfP95              = "P95"
+	datasetLegendTemplateOfP99              = "P99"
+	yAxisLabelOfRequestsPerSecond           = "requests/second"
+	yAxisLabelOfBytesPerSecond              = "bytes/second"
+	yAxisLabelOfLatencyMilliSec             = "latency (ms)"
+	yAxisLabelOfErrorRatePercentage         = "error rate (%)"
+	yAxisLabelOfConcurrentRequests          = "concurrent requests"
+	yAxisLabelOfResponseTimeMilliSec        = "response time (ms)"
+	yAxisLabelOfInstanceCount               = "instances"
+	yAxisLabelOfStartupLatencyMilliSec      = "startup latency (ms)"
+	yAxisLabelOfBillableInstanceTimeSeconds = "billable time (seconds)"
+	yAxisLabelOfCPUUtilizationPercentage    = "CPU utilization (%)"
+	yAxisLabelOfMemoryUtilizationPercentage = "memory utilization (%)"
+	yAxisLabelOfMemoryUsageBytes            = "memory usage (bytes)"
+	yAxisLabelOfNetworkBytesPerSecond       = "bytes/second"
+	metricOfRequestCount                    = "run.googleapis.com/request_count"
+	metricOfRequestLatencies                = "run.googleapis.com/request_latencies"
+	metricOfLoggingByteCount                = "logging.googleapis.com/byte_count"
+	metricOfMaxRequestConcurrencies         = "run.googleapis.com/container/max_request_concurrencies"
+	metricOfContainerInstanceCount          = "run.googleapis.com/container/instance_count"
+	metricOfContainerStartupLatencies       = "run.googleapis.com/container/startup_latencies"
+	metricOfContainerBillableInstance       = "run.googleapis.com/container/billable_instance_time"
+	metricOfContainerCPUUtilizations        = "run.googleapis.com/container/cpu/utilizations"
+	metricOfContainerMemoryUtilizations     = "run.googleapis.com/container/memory/utilizations"
+	metricOfContainerMemoryUsage            = "run.googleapis.com/container/memory/usage"
+	metricOfNetworkSentBytesCount           = "run.googleapis.com/container/network/sent_bytes_count"
+	metricOfNetworkReceivedBytesCount       = "run.googleapis.com/container/network/received_bytes_count"
 )
 
 func (s *Service) createPromQLForRequestCount() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfRequestCount)
 }
 
 func (s *Service) createPromQLForRequestLatencies() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_latencies"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfRequestLatencies)
 }
 
 func (s *Service) createPromQLForLogging() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="logging.googleapis.com/byte_count"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfLoggingByteCount)
 }
 
 func (s *Service) createPromQLForRequestCountByResponseCode() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/request_count" metric.label.response_code_class!="2xx"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s" metric.label.response_code_class!="2xx"`, s.serviceName, metricOfRequestCount)
 }
 
 func (s *Service) createPromQLMaxRequestConcurrencies() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/max_request_concurrencies"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfMaxRequestConcurrencies)
 }
 
 func (s *Service) createPromQLForContainerInstanceCount() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/instance_count"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfContainerInstanceCount)
 }
 
 func (s *Service) createPromQLForContainerStartupLatencies() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/startup_latencies"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfContainerStartupLatencies)
 }
 
 func (s *Service) createPromQLForContainerBillableInstanceTime() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/billable_instance_time"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfContainerBillableInstance)
 }
 
 func (s *Service) createPromQLForContainerCPUUtilizations() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/cpu/utilizations"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfContainerCPUUtilizations)
 }
 
 func (s *Service) createPromQLForContainerMemoryUtilizations() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/memory/utilizations"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfContainerMemoryUtilizations)
 }
 
 func (s *Service) createPromQLForContainerMemoryUsageTime() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/memory/usage"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfContainerMemoryUsage)
 }
 
 func (s *Service) createPromQLForNetworkSentBytes() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/network/sent_bytes_count"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfNetworkSentBytesCount)
 }
 
 func (s *Service) createPromQLForNetworkReceivedBytes() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/network/received_bytes_count"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`, s.serviceName, metricOfNetworkReceivedBytesCount)
 }

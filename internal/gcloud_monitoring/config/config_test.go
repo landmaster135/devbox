@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"os"
 	"testing"
 )
 
@@ -266,4 +268,81 @@ func TestParseFlagsWithParser_HelpFlag(t *testing.T) {
 	if !cfg.Help {
 		t.Error("Expected Help to be true")
 	}
+}
+
+func TestParseFlags_Normal(t *testing.T) {
+	// 元のos.Argsを保存
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	// テスト用の引数を設定
+	os.Args = []string{
+		"test-program",
+		"-operation=create-dashboard-for-cloud-run",
+		"-project=test-project",
+		"-location=us-central1",
+		"-service=test-service",
+		"-service-account-id=test-sa",
+	}
+
+	cfg, err := ParseFlags()
+
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+
+	if cfg == nil {
+		t.Fatal("Expected config to be non-nil")
+		return
+	}
+
+	if cfg.Operation != "create-dashboard-for-cloud-run" {
+		t.Errorf("Expected operation 'create-dashboard-for-cloud-run', got '%s'", cfg.Operation)
+	}
+
+	if cfg.Project != "test-project" {
+		t.Errorf("Expected project 'test-project', got '%s'", cfg.Project)
+	}
+
+	if cfg.Location != "us-central1" {
+		t.Errorf("Expected location 'us-central1', got '%s'", cfg.Location)
+	}
+
+	if cfg.Service != "test-service" {
+		t.Errorf("Expected service 'test-service', got '%s'", cfg.Service)
+	}
+
+	if cfg.ServiceAccountID != "test-sa" {
+		t.Errorf("Expected service account ID 'test-sa', got '%s'", cfg.ServiceAccountID)
+	}
+}
+
+func TestParseFlagsWithParser_ParseError(t *testing.T) {
+	parser := NewMockFlagParser()
+	parser.SetParseError(fmt.Errorf("parse error"))
+
+	_, err := ParseFlagsWithParser(parser)
+
+	if err == nil {
+		t.Error("Expected error but got none")
+	}
+
+	expectedMsg := "フラグの解析に失敗しました: parse error"
+	if err.Error() != expectedMsg {
+		t.Errorf("Expected error message '%s', got '%s'", expectedMsg, err.Error())
+	}
+}
+
+func TestPrintUsage_Normal(t *testing.T) {
+	// PrintUsage関数が正常に実行されることを確認
+	// パニックが発生しないことをテスト
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("PrintUsage panicked: %v", r)
+		}
+	}()
+
+	PrintUsage()
+	// 関数が正常に完了すればテスト成功
 }
