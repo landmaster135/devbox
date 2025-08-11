@@ -41,7 +41,7 @@ func (s *Service) CreateDashboardForCloudRun() (string, error) {
 	log.Printf("Cloud Runサービスの存在確認中: %s (プロジェクト: %s, ロケーション: %s)", s.serviceName, s.project, s.location)
 	exists, err := s.verifyCloudRunService(ctx)
 	if err != nil {
-		return "", fmt.Errorf("Cloud Runサービスの確認に失敗しました: %v", err)
+		return "", fmt.Errorf("cloud Runサービスの確認に失敗しました: %v", err)
 	}
 	if !exists {
 		return "", fmt.Errorf("指定されたCloud Runサービスが見つかりません: %s (プロジェクト: %s, ロケーション: %s)", s.serviceName, s.project, s.location)
@@ -118,7 +118,7 @@ func (s *Service) createMonitoringDashboard(ctx context.Context) (string, error)
 	// Dashboard クライアントの作成
 	client, err := dashboard.NewDashboardsClient(ctx, opts...)
 	if err != nil {
-		return "", fmt.Errorf("Dashboardクライアントの作成に失敗しました: %v", err)
+		return "", fmt.Errorf("dashboardクライアントの作成に失敗しました: %v", err)
 	}
 	defer client.Close()
 
@@ -164,10 +164,14 @@ func (s *Service) getClientOptions(ctx context.Context) ([]option.ClientOption, 
 	return opts, nil
 }
 
+func (s *Service) createDisplayTitleOfDashboard() string {
+	return fmt.Sprintf("CloudRun ダッシュボード: %s", s.serviceName)
+}
+
 // buildDashboardConfig はダッシュボードの設定を構築する
 func (s *Service) buildDashboardConfig() *dashboardpb.Dashboard {
 	return &dashboardpb.Dashboard{
-		DisplayName: fmt.Sprintf("Cloud Run Monitoring - %s", s.serviceName),
+		DisplayName: s.createDisplayTitleOfDashboard(),
 		Layout: &dashboardpb.Dashboard_MosaicLayout{
 			MosaicLayout: &dashboardpb.MosaicLayout{
 				Columns: 12,
@@ -204,8 +208,8 @@ func (s *Service) buildDashboardTiles() []*dashboardpb.MosaicLayout_Tile {
 	tiles = append(tiles, s.createTile(s.createContainerMemoryUsageTimeWidget(), 8, 12, 4, 4))
 
 	// 行5: ネットワーク (2つのウィジェット、各6列幅)
-	tiles = append(tiles, s.createTile(s.createTextWidget("送信バイト数", "ネットワーク送信量"), 0, 16, 6, 4))
-	tiles = append(tiles, s.createTile(s.createTextWidget("受信バイト数", "ネットワーク受信量"), 6, 16, 6, 4))
+	tiles = append(tiles, s.createTile(s.createNetworkSentBytesWidget(), 0, 16, 6, 4))
+	tiles = append(tiles, s.createTile(s.createNetworkReceivedBytesWidget(), 6, 16, 6, 4))
 
 	return tiles
 }
@@ -250,6 +254,7 @@ const (
 	YAxisLabelOfCPUUtilizationPercentage    = "CPU utilization (%)"
 	YAxisLabelOfMemoryUtilizationPercentage = "memory utilization (%)"
 	YAxisLabelOfMemoryUsageBytes            = "memory usage (bytes)"
+	YAxisLabelOfNetworkBytesPerSecond       = "bytes/second"
 )
 
 func (s *Service) createPromQLForRequestCount() string {
@@ -293,5 +298,13 @@ func (s *Service) createPromQLForContainerMemoryUtilizations() string {
 }
 
 func (s *Service) createPromQLForContainerMemoryUsageTime() string {
-	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/memory/usage_time"`, s.serviceName)
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/memory/usage"`, s.serviceName)
+}
+
+func (s *Service) createPromQLForNetworkSentBytes() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/network/sent_bytes_count"`, s.serviceName)
+}
+
+func (s *Service) createPromQLForNetworkReceivedBytes() string {
+	return fmt.Sprintf(`resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="run.googleapis.com/container/network/received_bytes_count"`, s.serviceName)
 }

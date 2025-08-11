@@ -4,57 +4,81 @@ import (
 	"testing"
 )
 
-// MockFlagParser はテスト用のFlagParser実装
+// MockFlagParser はテスト用のFlagParserモック
 type MockFlagParser struct {
-	stringVars map[string]*string
-	boolVars   map[string]*bool
-	args       []string
-	parseError error
+	stringVars   map[string]*string
+	boolVars     map[string]*bool
+	stringValues map[string]string // 事前設定された文字列値
+	boolValues   map[string]bool   // 事前設定されたブール値
+	args         []string
+	parseError   error
 }
 
 // NewMockFlagParser は新しいMockFlagParserを作成する
 func NewMockFlagParser() *MockFlagParser {
 	return &MockFlagParser{
-		stringVars: make(map[string]*string),
-		boolVars:   make(map[string]*bool),
-		args:       []string{},
+		stringVars:   make(map[string]*string),
+		boolVars:     make(map[string]*bool),
+		stringValues: make(map[string]string),
+		boolValues:   make(map[string]bool),
+		args:         []string{},
 	}
 }
 
-// StringVar は文字列フラグを定義する
+// StringVar は文字列フラグを定義する（モック）
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-	*p = value
+	// 事前設定された値があるかチェック
+	if presetValue, exists := m.stringValues[name]; exists {
+		*p = presetValue
+	} else {
+		*p = value // デフォルト値を設定
+	}
 	m.stringVars[name] = p
 }
 
-// BoolVar はブールフラグを定義する
+// BoolVar はブールフラグを定義する（モック）
 func (m *MockFlagParser) BoolVar(p *bool, name string, value bool, usage string) {
-	*p = value
+	// 事前設定された値があるかチェック
+	if presetValue, exists := m.boolValues[name]; exists {
+		*p = presetValue
+	} else {
+		*p = value // デフォルト値を設定
+	}
 	m.boolVars[name] = p
 }
 
-// Parse はフラグを解析する
 func (m *MockFlagParser) Parse() error {
 	return m.parseError
 }
 
-// Args は解析後の残りの引数を返す
 func (m *MockFlagParser) Args() []string {
 	return m.args
 }
 
-// SetStringValue はテスト用に文字列値を設定する
-func (m *MockFlagParser) SetStringValue(name, value string) {
+// SetStringFlag はテスト用に文字列フラグの値を設定する
+func (m *MockFlagParser) SetStringFlag(name, value string) {
+	m.stringValues[name] = value
 	if p, exists := m.stringVars[name]; exists {
 		*p = value
 	}
 }
 
-// SetBoolValue はテスト用にブール値を設定する
-func (m *MockFlagParser) SetBoolValue(name string, value bool) {
+// SetBoolFlag はテスト用にブールフラグの値を設定する
+func (m *MockFlagParser) SetBoolFlag(name string, value bool) {
+	m.boolValues[name] = value
 	if p, exists := m.boolVars[name]; exists {
 		*p = value
 	}
+}
+
+// SetArgs はテスト用に残りの引数を設定する
+func (m *MockFlagParser) SetArgs(args []string) {
+	m.args = args
+}
+
+// SetParseError はテスト用に解析エラーを設定する
+func (m *MockFlagParser) SetParseError(err error) {
+	m.parseError = err
 }
 
 func TestGetServiceAccountEmail(t *testing.T) {
@@ -92,27 +116,27 @@ func TestGetServiceAccountEmail(t *testing.T) {
 	}
 }
 
-func TestParseFlagsWithParser_ValidConfig(t *testing.T) {
+func TestParseFlagsWithParser_Normal(t *testing.T) {
 	parser := NewMockFlagParser()
 
+	// 事前に値を設定
+	parser.SetStringFlag("operation", "create-dashboard-for-cloud-run")
+	parser.SetStringFlag("project", "test-project")
+	parser.SetStringFlag("location", "us-central1")
+	parser.SetStringFlag("service", "test-service")
+	parser.SetStringFlag("service-account-id", "test-sa")
+	parser.SetBoolFlag("help", false)
+
 	cfg, err := ParseFlagsWithParser(parser)
-	if err != nil {
-		t.Errorf("Unexpected error during initial parse: %v", err)
-		return
-	}
-
-	// 有効なパラメータを設定
-	parser.SetStringValue("operation", "create-dashboard-for-cloud-run")
-	parser.SetStringValue("project", "test-project")
-	parser.SetStringValue("location", "us-central1")
-	parser.SetStringValue("service", "test-service")
-	parser.SetStringValue("service-account-id", "test-sa")
-	parser.SetBoolValue("help", false)
-
-	cfg, err = ParseFlagsWithParser(parser)
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+
+	if cfg == nil {
+		t.Fatal("Expected config to be non-nil")
+		return
 	}
 
 	if cfg.Operation != "create-dashboard-for-cloud-run" {
@@ -200,11 +224,11 @@ func TestParseFlagsWithParser_MissingRequiredParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parser := NewMockFlagParser()
-			parser.SetStringValue("operation", tt.operation)
-			parser.SetStringValue("project", tt.project)
-			parser.SetStringValue("location", tt.location)
-			parser.SetStringValue("service", tt.service)
-			parser.SetBoolValue("help", false)
+			parser.SetStringFlag("operation", tt.operation)
+			parser.SetStringFlag("project", tt.project)
+			parser.SetStringFlag("location", tt.location)
+			parser.SetStringFlag("service", tt.service)
+			parser.SetBoolFlag("help", false)
 
 			_, err := ParseFlagsWithParser(parser)
 
@@ -225,12 +249,18 @@ func TestParseFlagsWithParser_MissingRequiredParams(t *testing.T) {
 
 func TestParseFlagsWithParser_HelpFlag(t *testing.T) {
 	parser := NewMockFlagParser()
-	parser.SetBoolValue("help", true)
+	parser.SetBoolFlag("help", true)
 
 	cfg, err := ParseFlagsWithParser(parser)
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
+		return
+	}
+
+	if cfg == nil {
+		t.Fatal("Expected config to be non-nil")
+		return
 	}
 
 	if !cfg.Help {
