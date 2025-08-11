@@ -10,7 +10,7 @@ import (
 // createContainerInstanceCountWidget はコンテナインスタンス数ウィジェットを作成する
 func (s *Service) createContainerInstanceCountWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Container Instance Count",
+		Title: containerWidgetTitle11,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -31,7 +31,7 @@ func (s *Service) createContainerInstanceCountWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfInstanceCount,
+					Label: yAxisLabelOfInstanceCount,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -42,7 +42,7 @@ func (s *Service) createContainerInstanceCountWidget() *dashboardpb.Widget {
 // createContainerStartupLatenciesWidget はコンテナ起動レイテンシウィジェットを作成する
 func (s *Service) createContainerStartupLatenciesWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Container Startup Latency (P50/P95/P99)",
+		Title: containerWidgetTitle12,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -60,7 +60,7 @@ func (s *Service) createContainerStartupLatenciesWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -76,7 +76,7 @@ func (s *Service) createContainerStartupLatenciesWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -92,11 +92,11 @@ func (s *Service) createContainerStartupLatenciesWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfStartupLatencyMilliSec,
+					Label: yAxisLabelOfStartupLatencyMilliSec,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -107,7 +107,7 @@ func (s *Service) createContainerStartupLatenciesWidget() *dashboardpb.Widget {
 // createContainerBillableInstanceTimeWidget は課金対象インスタンス時間ウィジェットを作成する
 func (s *Service) createContainerBillableInstanceTimeWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Billable Instance Time",
+		Title: containerWidgetTitle13,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -128,7 +128,7 @@ func (s *Service) createContainerBillableInstanceTimeWidget() *dashboardpb.Widge
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfBillableInstanceTimeSeconds,
+					Label: yAxisLabelOfBillableInstanceTimeSeconds,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -139,7 +139,7 @@ func (s *Service) createContainerBillableInstanceTimeWidget() *dashboardpb.Widge
 // createContainerCPUUtilizationsWidget はCPU使用率ウィジェットを作成する
 func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "CPU Utilization (P50/P95/P99)",
+		Title: containerWidgetTitle14,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -157,7 +157,7 @@ func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -173,7 +173,7 @@ func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -189,11 +189,11 @@ func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfCPUUtilizationPercentage,
+					Label: yAxisLabelOfCPUUtilizationPercentage,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -204,7 +204,7 @@ func (s *Service) createContainerCPUUtilizationsWidget() *dashboardpb.Widget {
 // createContainerMemoryUtilizationsWidget はメモリ使用率ウィジェットを作成する
 func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Memory Utilization (P50/P95/P99)",
+		Title: containerWidgetTitle15,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -222,7 +222,7 @@ func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget 
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -238,7 +238,7 @@ func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget 
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -254,11 +254,11 @@ func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget 
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfMemoryUtilizationPercentage,
+					Label: yAxisLabelOfMemoryUtilizationPercentage,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -269,7 +269,7 @@ func (s *Service) createContainerMemoryUtilizationsWidget() *dashboardpb.Widget 
 // createContainerMemoryUsageTimeWidget はメモリ使用量ウィジェットを作成する
 func (s *Service) createContainerMemoryUsageTimeWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Memory Usage (P50/P95/P99)",
+		Title: containerWidgetTitle16,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -287,7 +287,7 @@ func (s *Service) createContainerMemoryUsageTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -303,7 +303,7 @@ func (s *Service) createContainerMemoryUsageTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -319,11 +319,11 @@ func (s *Service) createContainerMemoryUsageTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfMemoryUsageBytes,
+					Label: yAxisLabelOfMemoryUsageBytes,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},

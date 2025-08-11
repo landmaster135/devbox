@@ -10,7 +10,7 @@ import (
 // createRequestCountWidget はリクエスト数（req/sec）ウィジェットを作成する
 func (s *Service) createRequestCountWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Requests per Second",
+		Title: containerWidgetTitle01,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -31,7 +31,7 @@ func (s *Service) createRequestCountWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfRequestsPerSecond,
+					Label: yAxisLabelOfRequestsPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -42,7 +42,7 @@ func (s *Service) createRequestCountWidget() *dashboardpb.Widget {
 // createRequestsByStatusWidget はステータス別リクエスト数ウィジェットを作成する
 func (s *Service) createRequestsByStatusWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Requests by Status Code",
+		Title: containerWidgetTitle02,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -64,7 +64,7 @@ func (s *Service) createRequestsByStatusWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfRequestsPerSecond,
+					Label: yAxisLabelOfRequestsPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -75,7 +75,7 @@ func (s *Service) createRequestsByStatusWidget() *dashboardpb.Widget {
 // createTotalRequestsWidget は累積リクエスト数ウィジェットを作成する
 func (s *Service) createTotalRequestsWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Total Requests (24h)",
+		Title: containerWidgetTitle03,
 		Content: &dashboardpb.Widget_Scorecard{
 			Scorecard: &dashboardpb.Scorecard{
 				TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -103,7 +103,7 @@ func (s *Service) createTotalRequestsWidget() *dashboardpb.Widget {
 // createLogByteByHourWidget はログバイト数の時間ごとの集計ウィジェットを作成する
 func (s *Service) createLogByteByHourWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Log Bytes by Hour",
+		Title: containerWidgetTitle04,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -125,7 +125,7 @@ func (s *Service) createLogByteByHourWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfBytesPerSecond,
+					Label: yAxisLabelOfBytesPerSecond,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 				ChartOptions: &dashboardpb.ChartOptions{
@@ -139,7 +139,7 @@ func (s *Service) createLogByteByHourWidget() *dashboardpb.Widget {
 // createRequestLatencyWidget はリクエストレイテンシ (P50,P95,P99) ウィジェットを作成する
 func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Request Latency (P50, P95, P99)",
+		Title: containerWidgetTitle05,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -157,7 +157,7 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -173,7 +173,7 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -189,11 +189,11 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfLatencyMilliSec,
+					Label: yAxisLabelOfLatencyMilliSec,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -204,7 +204,7 @@ func (s *Service) createRequestLatencyWidget() *dashboardpb.Widget {
 // createErrorRateWidget はエラー率ウィジェットを作成する
 func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Error Rate (%)",
+		Title: containerWidgetTitle06,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -235,7 +235,7 @@ func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfErrorRatePercentage,
+					Label: yAxisLabelOfErrorRatePercentage,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -246,7 +246,7 @@ func (s *Service) createErrorRateWidget() *dashboardpb.Widget {
 // createMaxConcurrentRequestsWidget は最大同時リクエストウィジェットを作成する
 func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Max Concurrent Requests (P50/P95/P99)",
+		Title: containerWidgetTitle07,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -264,7 +264,7 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -280,7 +280,7 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -296,11 +296,11 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfConcurrentRequests,
+					Label: yAxisLabelOfConcurrentRequests,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},
@@ -311,7 +311,7 @@ func (s *Service) createMaxConcurrentRequestsWidget() *dashboardpb.Widget {
 // createResponseTimeWidget はレスポンス時間 (P50/P95/P99) ウィジェットを作成する
 func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 	return &dashboardpb.Widget{
-		Title: "Response Time (P50/P95/P99)",
+		Title: containerWidgetTitle08,
 		Content: &dashboardpb.Widget_XyChart{
 			XyChart: &dashboardpb.XyChart{
 				DataSets: []*dashboardpb.XyChart_DataSet{
@@ -329,7 +329,7 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP50,
+						LegendTemplate: datasetLegendTemplateOfP50,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -345,7 +345,7 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP95,
+						LegendTemplate: datasetLegendTemplateOfP95,
 					},
 					{
 						TimeSeriesQuery: &dashboardpb.TimeSeriesQuery{
@@ -361,11 +361,11 @@ func (s *Service) createResponseTimeWidget() *dashboardpb.Widget {
 							},
 						},
 						PlotType:       dashboardpb.XyChart_DataSet_LINE,
-						LegendTemplate: DatasetLegendTemplateOfP99,
+						LegendTemplate: datasetLegendTemplateOfP99,
 					},
 				},
 				YAxis: &dashboardpb.XyChart_Axis{
-					Label: YAxisLabelOfResponseTimeMilliSec,
+					Label: yAxisLabelOfResponseTimeMilliSec,
 					Scale: dashboardpb.XyChart_Axis_LINEAR,
 				},
 			},

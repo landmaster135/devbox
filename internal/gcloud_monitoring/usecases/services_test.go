@@ -2,10 +2,16 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+)
+
+// テスト用のPromQLクエリテンプレート
+const (
+	promQLTemplate = `resource.type="cloud_run_revision" resource.label.service_name="%s" metric.type="%s"`
 )
 
 func TestNewService(t *testing.T) {
@@ -36,7 +42,7 @@ func TestBuildDashboardConfig(t *testing.T) {
 
 	config := service.buildDashboardConfig()
 
-	if config.DisplayName != "CloudRun ダッシュボード: " + serviceName {
+	if config.DisplayName != "CloudRun ダッシュボード: "+serviceName {
 		t.Errorf("Expected display name 'CloudRun ダッシュボード: %s', got %s", serviceName, config.DisplayName)
 	}
 
@@ -142,6 +148,171 @@ func TestVerifyCloudRunService_ErrorHandling(t *testing.T) {
 			ctx := context.Background()
 			if ctx == nil {
 				t.Error("Expected context to be created")
+			}
+		})
+	}
+}
+
+func TestCreateDisplayTitleOfDashboard_Normal(t *testing.T) {
+	const serviceName = "test-service"
+	service := NewService("test-project", "us-central1", serviceName, "")
+
+	title := service.createDisplayTitleOfDashboard()
+	expected := "CloudRun ダッシュボード: " + serviceName
+
+	if title != expected {
+		t.Errorf("Expected title '%s', got '%s'", expected, title)
+	}
+}
+
+func TestCreateTile_Normal(t *testing.T) {
+	service := NewService("test-project", "us-central1", "test-service", "")
+
+	// テスト用のウィジェットを作成
+	widget := service.createTextWidget("Test Title", "Test Content")
+
+	tile := service.createTile(widget, 1, 2, 3, 4)
+
+	if tile.XPos != 1 {
+		t.Errorf("Expected XPos 1, got %d", tile.XPos)
+	}
+
+	if tile.YPos != 2 {
+		t.Errorf("Expected YPos 2, got %d", tile.YPos)
+	}
+
+	if tile.Width != 3 {
+		t.Errorf("Expected Width 3, got %d", tile.Width)
+	}
+
+	if tile.Height != 4 {
+		t.Errorf("Expected Height 4, got %d", tile.Height)
+	}
+
+	if tile.Widget != widget {
+		t.Error("Expected widget to match the provided widget")
+	}
+}
+
+func TestBuildDashboardTiles_Normal(t *testing.T) {
+	service := NewService("test-project", "us-central1", "test-service", "")
+
+	tiles := service.buildDashboardTiles()
+
+	// 期待されるタイル数（16個）
+	expectedTileCount := 16
+	if len(tiles) != expectedTileCount {
+		t.Errorf("Expected %d tiles, got %d", expectedTileCount, len(tiles))
+	}
+
+	// 各タイルが適切に設定されているか確認
+	for i, tile := range tiles {
+		if tile.Widget == nil {
+			t.Errorf("Tile %d has nil widget", i)
+		}
+
+		if tile.Width <= 0 {
+			t.Errorf("Tile %d has invalid width: %d", i, tile.Width)
+		}
+
+		if tile.Height <= 0 {
+			t.Errorf("Tile %d has invalid height: %d", i, tile.Height)
+		}
+	}
+}
+
+// PromQLクエリ生成メソッドのテーブル駆動テスト
+func TestPromQLQueryGeneration_Normal(t *testing.T) {
+	const (
+		testProject          = "test-project"
+		testLocation         = "us-central1"
+		testServiceName      = "test-service"
+		testServiceAccountID = "test-sa"
+	)
+
+	service := NewService(testProject, testLocation, testServiceName, testServiceAccountID)
+
+	tests := []struct {
+		name           string
+		queryFunc      func() string
+		metricType     string
+		additionalPart string
+	}{
+		{
+			name:       "RequestCount",
+			queryFunc:  service.createPromQLForRequestCount,
+			metricType: metricOfRequestCount,
+		},
+		{
+			name:       "RequestLatencies",
+			queryFunc:  service.createPromQLForRequestLatencies,
+			metricType: metricOfRequestLatencies,
+		},
+		{
+			name:       "Logging",
+			queryFunc:  service.createPromQLForLogging,
+			metricType: metricOfLoggingByteCount,
+		},
+		{
+			name:           "RequestCountByResponseCode",
+			queryFunc:      service.createPromQLForRequestCountByResponseCode,
+			metricType:     metricOfRequestCount,
+			additionalPart: ` metric.label.response_code_class!="2xx"`,
+		},
+		{
+			name:       "MaxRequestConcurrencies",
+			queryFunc:  service.createPromQLMaxRequestConcurrencies,
+			metricType: metricOfMaxRequestConcurrencies,
+		},
+		{
+			name:       "ContainerInstanceCount",
+			queryFunc:  service.createPromQLForContainerInstanceCount,
+			metricType: metricOfContainerInstanceCount,
+		},
+		{
+			name:       "ContainerStartupLatencies",
+			queryFunc:  service.createPromQLForContainerStartupLatencies,
+			metricType: metricOfContainerStartupLatencies,
+		},
+		{
+			name:       "ContainerBillableInstanceTime",
+			queryFunc:  service.createPromQLForContainerBillableInstanceTime,
+			metricType: metricOfContainerBillableInstance,
+		},
+		{
+			name:       "ContainerCPUUtilizations",
+			queryFunc:  service.createPromQLForContainerCPUUtilizations,
+			metricType: metricOfContainerCPUUtilizations,
+		},
+		{
+			name:       "ContainerMemoryUtilizations",
+			queryFunc:  service.createPromQLForContainerMemoryUtilizations,
+			metricType: metricOfContainerMemoryUtilizations,
+		},
+		{
+			name:       "ContainerMemoryUsageTime",
+			queryFunc:  service.createPromQLForContainerMemoryUsageTime,
+			metricType: metricOfContainerMemoryUsage,
+		},
+		{
+			name:       "NetworkSentBytes",
+			queryFunc:  service.createPromQLForNetworkSentBytes,
+			metricType: metricOfNetworkSentBytesCount,
+		},
+		{
+			name:       "NetworkReceivedBytes",
+			queryFunc:  service.createPromQLForNetworkReceivedBytes,
+			metricType: metricOfNetworkReceivedBytesCount,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			query := tt.queryFunc()
+			expected := fmt.Sprintf(promQLTemplate, testServiceName, tt.metricType) + tt.additionalPart
+
+			if query != expected {
+				t.Errorf("Expected query '%s', got '%s'", expected, query)
 			}
 		})
 	}
