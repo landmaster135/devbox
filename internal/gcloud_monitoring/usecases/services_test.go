@@ -97,7 +97,7 @@ func TestCreateTotalRequestsWidget_Normal(t *testing.T) {
 func TestCreateRequestHeatmapWidget_Normal(t *testing.T) {
 	service := NewService("test-project", "us-central1", "test-service", "test-sa")
 
-	widget := service.createRequestHeatmapWidget()
+	widget := service.createLogByteByHourWidget()
 
 	assert.NotNil(t, widget)
 	assert.Equal(t, "Request Pattern by Hour", widget.Title)
