@@ -7,10 +7,10 @@ import (
 
 // Config はCLIツールの設定を保持する構造体
 type Config struct {
-	Service  string // 必須: サービスタイプ（現在は"github"のみサポート）
-	Token    string // 必須: GitHubアクセストークン
-	SaveFile string // オプション: 結果を保存するファイルパス
-	Help     bool   // ヘルプ表示フラグ
+	Service      string // 必須: サービスタイプ（現在は"github"のみサポート）
+	Token        string // 必須: GitHubアクセストークン
+	SaveFilePath string // オプション: 結果を保存するファイルパス
+	Help         bool   // ヘルプ表示フラグ
 }
 
 // ParseFlags はコマンドライン引数を解析してConfigを返す
@@ -19,7 +19,7 @@ func ParseFlags() (*Config, error) {
 
 	flag.StringVar(&cfg.Service, "service", "", "サービスタイプ（必須）: github")
 	flag.StringVar(&cfg.Token, "token", "", "GitHubアクセストークン（必須）")
-	flag.StringVar(&cfg.SaveFile, "save-file", "", "結果を保存するファイルパス（オプション）")
+	flag.StringVar(&cfg.SaveFilePath, "save-file-path", "", "結果を保存するファイルパス（オプション）")
 	flag.BoolVar(&cfg.Help, "help", false, "ヘルプを表示")
 
 	flag.Parse()
