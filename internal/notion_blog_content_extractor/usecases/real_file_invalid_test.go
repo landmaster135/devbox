@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,7 +74,8 @@ func TestService_ExtractBlogContent_WithRealFiles(t *testing.T) {
 	}
 
 	// 抽出されたファイル数の確認
-	if !strings.Contains(result, "3件のファイルからコンテンツを抽出しました") {
+	expectedCounts := 6
+	if !strings.Contains(result, fmt.Sprintf("%d件のファイルからコンテンツを抽出しました", expectedCounts)) {
 		t.Errorf("期待される抽出ファイル数が含まれていません。結果: %s", result)
 	}
 
@@ -89,8 +91,8 @@ func TestService_ExtractBlogContent_WithRealFiles(t *testing.T) {
 		t.Fatalf("出力ファイルの検索に失敗しました: %v", err)
 	}
 
-	if len(outputFiles) != 3 {
-		t.Errorf("期待される出力ファイル数は3ですが、実際は%d個でした", len(outputFiles))
+	if len(outputFiles) != expectedCounts {
+		t.Errorf("期待される出力ファイル数は%dですが、実際は%d個でした", expectedCounts, len(outputFiles))
 	}
 
 	// 各出力ファイルの内容を検証
