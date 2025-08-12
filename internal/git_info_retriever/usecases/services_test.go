@@ -166,8 +166,7 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			filePath: testFilePath,
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
 				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubClient.On("GetUser", mock.Anything, "").Return(createTestGitHubUser(), &github.Response{}, nil)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, testUsername).Return(createTestRepoInfo(), nil)
+				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return(createTestRepoInfo(), nil)
 			},
 			setupFileWriterMock: func(mockFileWriter *MockFileWriter) {
 				mockFileWriter.On("WriteToFile", testFilePath, mock.AnythingOfType("string")).Return(nil)
@@ -182,8 +181,7 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			filePath: "",
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
 				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubClient.On("GetUser", mock.Anything, "").Return(createTestGitHubUser(), &github.Response{}, nil)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, testUsername).Return(createTestRepoInfo(), nil)
+				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return(createTestRepoInfo(), nil)
 			},
 			setupFileWriterMock:    func(mockFileWriter *MockFileWriter) {},
 			expectError:            false,
@@ -200,27 +198,13 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			expectedErrorMessage:   "サポートされていないサービスです: gitlab",
 		},
 		{
-			name:     "GitHubUserError_Error",
-			service:  testService,
-			token:    testToken,
-			filePath: "",
-			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
-				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubClient.On("GetUser", mock.Anything, "").Return((*github.User)(nil), &github.Response{}, errors.New("user not found"))
-			},
-			setupFileWriterMock:  func(mockFileWriter *MockFileWriter) {},
-			expectError:          true,
-			expectedErrorMessage: "ユーザー情報の取得に失敗しました",
-		},
-		{
 			name:     "GitHubRepoInfoError_Error",
 			service:  testService,
 			token:    testToken,
 			filePath: "",
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
 				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubClient.On("GetUser", mock.Anything, "").Return(createTestGitHubUser(), &github.Response{}, nil)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, testUsername).Return([]RepoInfo{}, errors.New("repo info error"))
+				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return([]RepoInfo{}, errors.New("repo info error"))
 			},
 			setupFileWriterMock:  func(mockFileWriter *MockFileWriter) {},
 			expectError:          true,
@@ -233,8 +217,7 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			filePath: testFilePath,
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
 				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubClient.On("GetUser", mock.Anything, "").Return(createTestGitHubUser(), &github.Response{}, nil)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, testUsername).Return(createTestRepoInfo(), nil)
+				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return(createTestRepoInfo(), nil)
 			},
 			setupFileWriterMock: func(mockFileWriter *MockFileWriter) {
 				mockFileWriter.On("WriteToFile", testFilePath, mock.AnythingOfType("string")).Return(errors.New("write error"))

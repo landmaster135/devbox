@@ -31,7 +31,7 @@ func TestParseFlags_Normal(t *testing.T) {
 	}{
 		{
 			name:                 "ValidArgsWithFilePath_Normal",
-			args:                 []string{"-service", testService, "-token", testToken, "-save-file-path", testSaveFilePath},
+			args:                 []string{"-operation", "retrieve", "-service", testService, "-token", testToken, "-save-file-path", testSaveFilePath},
 			expectError:          false,
 			expectedService:      testService,
 			expectedToken:        testToken,
@@ -40,7 +40,7 @@ func TestParseFlags_Normal(t *testing.T) {
 		},
 		{
 			name:                 "ValidArgsWithoutFilePath_Normal",
-			args:                 []string{"-service", testService, "-token", testToken},
+			args:                 []string{"-operation", "retrieve", "-service", testService, "-token", testToken},
 			expectError:          false,
 			expectedService:      testService,
 			expectedToken:        testToken,
@@ -57,34 +57,40 @@ func TestParseFlags_Normal(t *testing.T) {
 			expectedHelp:         true,
 		},
 		{
+			name:             "MissingOperation_Error",
+			args:             []string{"-service", testService, "-token", testToken},
+			expectError:      true,
+			expectedErrorMsg: "operationパラメータは必須です",
+		},
+		{
 			name:             "MissingService_Error",
-			args:             []string{"-token", testToken},
+			args:             []string{"-operation", "retrieve", "-token", testToken},
 			expectError:      true,
 			expectedErrorMsg: "serviceパラメータは必須です",
 		},
 		{
 			name:             "MissingToken_Error",
-			args:             []string{"-service", testService},
+			args:             []string{"-operation", "retrieve", "-service", testService},
 			expectError:      true,
-			expectedErrorMsg: "tokenパラメータは必須です",
+			expectedErrorMsg: "retrieveオペレーションの場合、tokenパラメータは必須です",
 		},
 		{
 			name:             "UnsupportedService_Error",
-			args:             []string{"-service", "gitlab", "-token", testToken},
+			args:             []string{"-operation", "retrieve", "-service", "gitlab", "-token", testToken},
 			expectError:      true,
 			expectedErrorMsg: "サポートされていないサービスタイプです: gitlab",
 		},
 		{
 			name:             "EmptyService_Error",
-			args:             []string{"-service", "", "-token", testToken},
+			args:             []string{"-operation", "retrieve", "-service", "", "-token", testToken},
 			expectError:      true,
 			expectedErrorMsg: "serviceパラメータは必須です",
 		},
 		{
 			name:             "EmptyToken_Error",
-			args:             []string{"-service", testService, "-token", ""},
+			args:             []string{"-operation", "retrieve", "-service", testService, "-token", ""},
 			expectError:      true,
-			expectedErrorMsg: "tokenパラメータは必須です",
+			expectedErrorMsg: "retrieveオペレーションの場合、tokenパラメータは必須です",
 		},
 	}
 
@@ -210,23 +216,23 @@ func TestParseFlags_EdgeCases_Normal(t *testing.T) {
 	}{
 		{
 			name:        "LongTokenValue_Normal",
-			args:        []string{"-service", testService, "-token", "ghp_1234567890abcdefghijklmnopqrstuvwxyz1234567890"},
+			args:        []string{"-operation", "retrieve", "-service", testService, "-token", "ghp_1234567890abcdefghijklmnopqrstuvwxyz1234567890"},
 			expectError: false,
 		},
 		{
 			name:        "LongFilePathValue_Normal",
-			args:        []string{"-service", testService, "-token", testToken, "-save-file-path", "/very/long/path/to/some/directory/structure/output.json"},
+			args:        []string{"-operation", "retrieve", "-service", testService, "-token", testToken, "-save-file-path", "/very/long/path/to/some/directory/structure/output.json"},
 			expectError: false,
 		},
 		{
 			name:             "ServiceCaseSensitive_Normal",
-			args:             []string{"-service", "GitHub", "-token", testToken},
+			args:             []string{"-operation", "retrieve", "-service", "GitHub", "-token", testToken},
 			expectError:      true,
 			expectedErrorMsg: "サポートされていないサービスタイプです: GitHub",
 		},
 		{
 			name:        "ServiceLowerCase_Normal",
-			args:        []string{"-service", "github", "-token", testToken},
+			args:        []string{"-operation", "retrieve", "-service", "github", "-token", testToken},
 			expectError: false,
 		},
 	}
@@ -275,7 +281,7 @@ func TestParseFlags_Integration_Normal(t *testing.T) {
 	}{
 		{
 			name:        "TypicalUsageWithFile_Normal",
-			args:        []string{"-service", testService, "-token", testToken, "-save-file-path", testSaveFilePath},
+			args:        []string{"-operation", "retrieve", "-service", testService, "-token", testToken, "-save-file-path", testSaveFilePath},
 			expectError: false,
 			validateConfig: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, testService, cfg.Service)
@@ -286,7 +292,7 @@ func TestParseFlags_Integration_Normal(t *testing.T) {
 		},
 		{
 			name:        "TypicalUsageWithoutFile_Normal",
-			args:        []string{"-service", testService, "-token", testToken},
+			args:        []string{"-operation", "retrieve", "-service", testService, "-token", testToken},
 			expectError: false,
 			validateConfig: func(t *testing.T, cfg *Config) {
 				assert.Equal(t, testService, cfg.Service)
