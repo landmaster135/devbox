@@ -10,6 +10,7 @@ type Config struct {
 	Operation     string // 操作タイプ (test-coverage, test-coverage-project, run, coverage-func)
 	Directory     string // ディレクトリパス (test-coverage, test-coverage-project用)
 	ExecutionFile string // 実行ファイル (run用)
+	RootDirectory string // ルートディレクトリ (run用)
 	Parameters    string // 実行パラメータ (run用)
 	CoverageFile  string // カバレッジファイル (coverage-func用)
 	GrepPattern   string // 出力フィルタリング用のgrepパターン (全操作共通)
@@ -17,7 +18,7 @@ type Config struct {
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(operation, directory, executionFile, parameters, coverageFile, grepPattern string) (*Config, error) {
+func NewConfig(operation, directory, executionFile, rootDirectory, parameters, coverageFile, grepPattern string) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
@@ -45,6 +46,9 @@ func NewConfig(operation, directory, executionFile, parameters, coverageFile, gr
 		if executionFile == "" {
 			return nil, fmt.Errorf("run操作には実行ファイルが必要です")
 		}
+		if rootDirectory == "" {
+			return nil, fmt.Errorf("run操作にはルートディレクトリが必要です")
+		}
 	case "coverage-func":
 		if coverageFile == "" {
 			return nil, fmt.Errorf("coverage-func操作にはカバレッジファイルが必要です")
@@ -55,6 +59,7 @@ func NewConfig(operation, directory, executionFile, parameters, coverageFile, gr
 		Operation:     operation,
 		Directory:     directory,
 		ExecutionFile: executionFile,
+		RootDirectory: rootDirectory,
 		Parameters:    parameters,
 		CoverageFile:  coverageFile,
 		GrepPattern:   grepPattern,
@@ -72,6 +77,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		operation     = ""
 		directory     = ""
 		executionFile = ""
+		rootDirectory = ""
 		parameters    = ""
 		coverageFile  = ""
 		grepPattern   = ""
@@ -88,6 +94,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	// run用のパラメータ
 	parser.StringVar(&executionFile, "execution_file", executionFile, "実行ファイルパス (run操作用)")
 	parser.StringVar(&executionFile, "e", executionFile, "実行ファイルパスの短縮形")
+	parser.StringVar(&rootDirectory, "root_directory", rootDirectory, "ルートディレクトリパス (run操作用)")
+	parser.StringVar(&rootDirectory, "r", rootDirectory, "ルートディレクトリパスの短縮形")
 	parser.StringVar(&parameters, "parameters", parameters, "実行パラメータ (run操作用)")
 	parser.StringVar(&parameters, "p", parameters, "実行パラメータの短縮形")
 
@@ -111,7 +119,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, directory, executionFile, parameters, coverageFile, grepPattern)
+	return NewConfig(operation, directory, executionFile, rootDirectory, parameters, coverageFile, grepPattern)
 }
 
 // PrintUsage は使用方法を表示する

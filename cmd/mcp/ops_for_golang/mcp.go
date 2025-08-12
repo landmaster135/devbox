@@ -71,11 +71,16 @@ func handleGoRun(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToo
 		return nil, err
 	}
 
+	rootDirectory, err := request.RequireString("root_directory")
+	if err != nil {
+		return nil, err
+	}
+
 	parameters := request.GetString("parameters", "")
 
 	// GolangOpsServiceを初期化
 	service := usecases.NewGolangOpsService()
-	result, err := service.HandleGoRun(executionFile, parameters)
+	result, err := service.HandleGoRun(executionFile, rootDirectory, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("go runの実行に失敗しました: %v", err)
 	}
@@ -139,6 +144,11 @@ func setGolangOpsServer(s *server.MCPServer) *server.MCPServer {
 			"execution_file",
 			mcp.Required(),
 			mcp.Description("Absolute path to the Go file to execute (e.g., /path/to/main.go)"),
+		),
+		mcp.WithString(
+			"root_directory",
+			mcp.Required(),
+			mcp.Description("Absolute path to the root directory where go run command should be executed"),
 		),
 		mcp.WithString(
 			"parameters",

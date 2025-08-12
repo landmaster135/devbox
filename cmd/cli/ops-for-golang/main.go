@@ -94,7 +94,7 @@ func handleGoRun(cfg *config.Config) {
 	service := usecases.NewGolangOpsService()
 
 	// go runを実行
-	result, err := service.HandleGoRun(cfg.ExecutionFile, cfg.Parameters)
+	result, err := service.HandleGoRun(cfg.ExecutionFile, cfg.RootDirectory, cfg.Parameters)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
