@@ -286,6 +286,32 @@ func (h *PullRequestHandler) handleToCreatePullRequestWithCurrentBranch(ctx cont
 	return mcp.NewToolResultText(result), nil
 }
 
+// handleToUpdatePullRequest は既存のプルリクエストのタイトルと本文を更新して、結果をJSON形式で返します
+func (h *PullRequestHandler) handleToUpdatePullRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	owner, err := request.RequireString("owner")
+	if err != nil {
+		return nil, err
+	}
+	repo, err := request.RequireString("repo")
+	if err != nil {
+		return nil, err
+	}
+	pullNumber, err := request.RequireInt("pull_number")
+	if err != nil {
+		return nil, err
+	}
+
+	title := request.GetString("title", "")
+	body := request.GetString("body", "")
+
+	result, err := h.pullRequestService.HandleToUpdatePullRequest(owner, repo, pullNumber, title, body)
+	if err != nil {
+		return nil, err
+	}
+
+	return mcp.NewToolResultText(result), nil
+}
+
 // setGitHubPullRequestServer は受け取ったMCPサーバにGitHubプルリクエスト用のツールを付与して、そのMCPサーバを返します。
 func setGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPServer {
 	// PullRequestHandlerを初期化
@@ -538,6 +564,30 @@ func setGitHubPullRequestServer(token string, s *server.MCPServer) *server.MCPSe
 		),
 	)
 	s.AddTool(createPullRequestWithCurrentBranchTool, handler.handleToCreatePullRequestWithCurrentBranch)
+
+	// ツール11: プルリクエストの更新
+	updatePullRequestTool := mcp.NewTool("update_pull_request",
+		mcp.WithDescription("Update an existing pull request in a GitHub repository"),
+		mcp.WithString("owner",
+			mcp.Required(),
+			mcp.Description("Repository owner"),
+		),
+		mcp.WithString("repo",
+			mcp.Required(),
+			mcp.Description("Repository name"),
+		),
+		mcp.WithNumber("pull_number",
+			mcp.Required(),
+			mcp.Description("Pull request number"),
+		),
+		mcp.WithString("title",
+			mcp.Description("New pull request title"),
+		),
+		mcp.WithString("body",
+			mcp.Description("New pull request body"),
+		),
+	)
+	s.AddTool(updatePullRequestTool, handler.handleToUpdatePullRequest)
 
 	return s
 }
