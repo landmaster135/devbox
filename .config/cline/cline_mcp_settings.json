@@ -1,0 +1,211 @@
+{
+  "mcpServers": {
+    "arithmetic_calculator": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "arith_calc"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "datetime_calculator": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "datetime_calc"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "http_request": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "http_request"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "brave_web_search": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "brave_web_search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "brave_web_search"
+      ]
+    },
+    "get-current-timezone": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "timezone"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "filesystem": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "filesystem"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "get_youtube_transcript": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "youtube_transcript"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "github": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_PAT"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "postgresql": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "postgresql"
+      ],
+      "env": {
+        "POSTGRESQL_DATABASE_URL": "YOUR_URL"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "everart": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "everart"
+      ],
+      "env": {
+        "EVERART_API_KEY": "YOUR_KEY"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "sequentialthinking": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "sequentialthinking"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "figma": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "figma"
+      ],
+      "env": {
+        "FIGMA_API_KEY": "YOUR_KEY"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "google_drive": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "gdrive"
+      ],
+      "env": {
+        "GDRIVE_CREDENTIALS_PATH": "YOUR_PATH"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "duckduckgo_instant_search": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "duckduckgo_search"
+      ],
+      "disabled": true,
+      "autoApprove": []
+    },
+    "git_commit_message_generator": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "git_diff_recorder"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "git_commit_history_retriever": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "git_commit_history_retriever"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "context7": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "context7"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "service_implementing_viewer": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "service_implementing_viewer"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    },
+    "notion_sync": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "notion_sync"
+      ],
+      "env": {
+        "NOTION_INTEGRATION_TOKEN": "YOUR_VALUE",
+        "NOTION_ENDPOINT_URL": "YOUR_VALUE"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "weather_notificator": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "weather_notificator"
+      ],
+      "env": {
+        "OPENWEATHER_API_KEY": "YOUR_VALUE",
+        "DISCORD_WEBHOOK_URL": "YOUR_VALUE"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "open_weather_map": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "open_weather_map"
+      ],
+      "env": {
+        "OPENWEATHER_API_KEY": "YOUR_VALUE"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "ops_for_golang": {
+      "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
+      "args": [
+        "ops_for_golang"
+      ],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

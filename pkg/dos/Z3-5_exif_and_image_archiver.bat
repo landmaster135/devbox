@@ -66,51 +66,51 @@ echo "===============  EXIF modification: Part 1  ==============================
 @REM îCà”ÇÃì˙éûÇï∂éöóÒÇ≈ì¸óÕÇµÇƒé©ìÆçÃî‘Ç∑ÇÈèàóù
 echo "===================================================================================="
 echo "===============  JPG renaming  ====================================================="
-.\pkg\bin\win_amd64\image-renamer-with-exif.exe --dir %path_01_01% --ext jpg --verbose
+.\pkg\bin\cli\win_amd64\image-renamer-with-exif.exe --dir %path_01_01% --ext jpg --verbose
 echo "===================================================================================="
 echo "===============  MP4 renaming  ====================================================="
-.\pkg\bin\win_amd64\image-renamer-with-exif.exe --dir %path_01_01% --ext mp4 --verbose
+.\pkg\bin\cli\win_amd64\image-renamer-with-exif.exe --dir %path_01_01% --ext mp4 --verbose
 echo "===================================================================================="
 echo "===============  Screenshot (PNG, MP4) renaming  ======================================"
-.\pkg\bin\win_amd64\image-renamer-for-screenshot.exe -src %path_01_02% -to-datetime
+.\pkg\bin\cli\win_amd64\image-renamer-for-screenshot.exe -src %path_01_02% -to-datetime
 echo "===================================================================================="
 echo "===============  EXIF modification: Part 2  ============================================"
-.\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_02% --from-filename --ext png --verbose
-.\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_02% --from-filename --ext mp4 --verbose
+.\pkg\bin\cli\win_amd64\exif-modifier.exe --dir %path_01_02% --from-filename --ext png --verbose
+.\pkg\bin\cli\win_amd64\exif-modifier.exe --dir %path_01_02% --from-filename --ext mp4 --verbose
 echo "===================================================================================="
 echo "===============  JPG renaming for LINE  ============================================"
-.\pkg\bin\win_amd64\image-renamer.exe -src .\1-3_image_renamer_with_prefix_input -digits 4 -delimiter "" -prefix %prefix% -start 1 %sort%
+.\pkg\bin\cli\win_amd64\image-renamer.exe -src .\1-3_image_renamer_with_prefix_input -digits 4 -delimiter "" -prefix %prefix% -start 1 %sort%
 echo "===================================================================================="
 echo "===============  EXIF modification: Part 3  ============================================"
-.\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_03% --from-filename --ext jpg --verbose
+.\pkg\bin\cli\win_amd64\exif-modifier.exe --dir %path_01_03% --from-filename --ext jpg --verbose
 echo "===================================================================================="
 echo "===============  WEBP conversion  ====================================================="
-.\pkg\bin\win_amd64\image-converter.exe -src %path_01_01% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
-.\pkg\bin\win_amd64\image-converter.exe -src %path_01_02% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
-.\pkg\bin\win_amd64\image-converter.exe -src %path_01_03% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
+.\pkg\bin\cli\win_amd64\image-converter.exe -src %path_01_01% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
+.\pkg\bin\cli\win_amd64\image-converter.exe -src %path_01_02% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
+.\pkg\bin\cli\win_amd64\image-converter.exe -src %path_01_03% -out .\%path_01_05% -ext webp -q 70 -archive .\%path_01_06% -move
 echo "===================================================================================="
 echo "===============  EXIF mirroring  ====================================================="
-.\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext jpg --target-ext webp
-.\pkg\bin\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext png --target-ext webp
+.\pkg\bin\cli\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext jpg --target-ext webp
+.\pkg\bin\cli\win_amd64\exif-mirror.exe --source-dir %path_01_06% --target-dir %path_01_05% --source-ext png --target-ext webp
 echo "===================================================================================="
 echo "===============  EXIF modification: Part 4  ============================================"
-.\pkg\bin\win_amd64\exif-modifier.exe --dir %path_01_05% --from-filename --ext webp --verbose
+.\pkg\bin\cli\win_amd64\exif-modifier.exe --dir %path_01_05% --from-filename --ext webp --verbose
 echo "===================================================================================="
 echo "===============  EXIF viewer (WEBP)  ================================================="
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -props "File Modification Date/Time"
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -list-props
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -props "File Modification Date/Time"
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path_01_05% -ext webp -list-props
 echo "===================================================================================="
 echo "===============  EXIF viewer (MP4)  ================================================="
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -props "File Modification Date/Time"
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -list-props
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -props "File Modification Date/Time"
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path_01_01% -ext mp4 -list-props
 echo "===================================================================================="
 echo "===============  EXIF viewer (MP4 SS)  ================================================"
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -props "File Modification Date/Time"
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -list-props
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -props "File Modification Date/Time"
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path_01_02% -ext mp4 -list-props
 echo "===================================================================================="
 echo "===============  File moving  ======================================================"
-.\pkg\bin\win_amd64\file-maneuver.exe --src-dirs %path_01_05% --extensions webp --dest-dir %path_01_07%
-.\pkg\bin\win_amd64\file-maneuver.exe --src-dirs %path_01_01%,%path_01_02% --extensions mp4 --dest-dir %path_01_07%
+.\pkg\bin\cli\win_amd64\file-maneuver.exe --src-dirs %path_01_05% --extensions webp --dest-dir %path_01_07%
+.\pkg\bin\cli\win_amd64\file-maneuver.exe --src-dirs %path_01_01%,%path_01_02% --extensions mp4 --dest-dir %path_01_07%
 echo "===================================================================================="
 
 echo.

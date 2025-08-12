@@ -12,7 +12,7 @@ if %errorlevel% == 1 (
 echo %sort%
 
 echo --- ƒvƒƒOƒ‰ƒ€‚ğÀs‚µ‚Ü‚· ---
-.\pkg\bin\win_amd64\image-renamer.exe -src . -digits 2 -delimiter "_" -prefix %prefix% -start %start% %sort%
+.\pkg\bin\cli\win_amd64\image-renamer.exe -src . -digits 2 -delimiter "_" -prefix %prefix% -start %start% %sort%
 endlocal
 
 echo.

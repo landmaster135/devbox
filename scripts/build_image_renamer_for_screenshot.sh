@@ -7,7 +7,7 @@ set -e
 CMD_DIR="cmd/cli/image-renamer-for-screenshot"
 
 # 出力先ディレクトリ
-OUTPUT_DIR="./pkg/bin"
+OUTPUT_DIR="./pkg/bin/cli"
 
 # プラットフォーム別の出力先
 LINUX_AMD64_DIR="${OUTPUT_DIR}/linux_amd64"

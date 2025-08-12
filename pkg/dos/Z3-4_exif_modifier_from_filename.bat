@@ -40,9 +40,9 @@ if /i "%method%"=="f" (
 echo "Selected option: %method%"
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\exif-modifier.exe --dir %path% --ext %ext% %method% --verbose
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -props "File Modification Date/Time" -v
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -list-props
+.\pkg\bin\cli\win_amd64\exif-modifier.exe --dir %path% --ext %ext% %method% --verbose
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -props "File Modification Date/Time" -v
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -list-props
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

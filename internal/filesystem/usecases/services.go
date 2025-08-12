@@ -1,0 +1,494 @@
+package usecases
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// #==============================================================#
+// ##          Interfaces for Dependency Injection              ##
+// #==============================================================#
+
+// FileOpener はファイルオープン操作のインターフェースです
+type FileOpener interface {
+	Open(name string) (*os.File, error)
+}
+
+// DefaultFileOpener は標準のos.Openを使用する実装です
+type DefaultFileOpener struct{}
+
+func (o *DefaultFileOpener) Open(name string) (*os.File, error) {
+	return os.Open(name)
+}
+
+// FileWriter はファイル書き込み操作のインターフェースです
+type FileWriter interface {
+	WriteFile(filename string, data []byte, perm os.FileMode) error
+}
+
+// DefaultFileWriter は標準のos.WriteFileを使用する実装です
+type DefaultFileWriter struct{}
+
+func (w *DefaultFileWriter) WriteFile(filename string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(filename, data, perm)
+}
+
+// DirectoryReader はディレクトリ読み取り操作のインターフェースです
+type DirectoryReader interface {
+	ReadDir(name string) ([]os.DirEntry, error)
+}
+
+// DefaultDirectoryReader は標準のos.ReadDirを使用する実装です
+type DefaultDirectoryReader struct{}
+
+func (r *DefaultDirectoryReader) ReadDir(name string) ([]os.DirEntry, error) {
+	return os.ReadDir(name)
+}
+
+// FileStat はファイル情報取得操作のインターフェースです
+type FileStat interface {
+	Stat(name string) (os.FileInfo, error)
+}
+
+// DefaultFileStat は標準のos.Statを使用する実装です
+type DefaultFileStat struct{}
+
+func (s *DefaultFileStat) Stat(name string) (os.FileInfo, error) {
+	return os.Stat(name)
+}
+
+// JSONMarshaler はJSON変換操作のインターフェースです
+type JSONMarshaler interface {
+	MarshalIndent(v interface{}, prefix, indent string) ([]byte, error)
+}
+
+// DefaultJSONMarshaler は標準のjson.MarshalIndentを使用する実装です
+type DefaultJSONMarshaler struct{}
+
+func (m *DefaultJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+	return json.MarshalIndent(v, prefix, indent)
+}
+
+// #==============================================================#
+// ##          Data Structures                                   ##
+// #==============================================================#
+
+// FileTreeEntry はディレクトリツリーのエントリを表す構造体です
+type FileTreeEntry struct {
+	Name     string          `json:"name"`
+	Type     string          `json:"type"`
+	Children []FileTreeEntry `json:"children,omitempty"`
+}
+
+// FileInfo はファイル情報を表す構造体です
+type FileInfo struct {
+	Size        int64     `json:"size"`
+	Created     time.Time `json:"created"`
+	Modified    time.Time `json:"modified"`
+	Accessed    time.Time `json:"accessed"`
+	IsDirectory bool      `json:"isDirectory"`
+	IsFile      bool      `json:"isFile"`
+	Permissions string    `json:"permissions"`
+}
+
+// #==============================================================#
+// ##          FileSystemService                                 ##
+// #==============================================================#
+
+// FileSystemService はファイルシステム関連の機能を提供する構造体です
+type FileSystemService struct {
+	allowedDirectories []string
+	fileOpener         FileOpener
+	fileWriter         FileWriter
+	directoryReader    DirectoryReader
+	fileStat           FileStat
+	jsonMarshaler      JSONMarshaler
+}
+
+// NewFileSystemService は新しいFileSystemServiceを作成します
+func NewFileSystemService(allowedDirs []string) *FileSystemService {
+	// パスを正規化し、シンボリックリンクを解決
+	normalizedDirs := make([]string, len(allowedDirs))
+	for i, dir := range allowedDirs {
+		expandedPath := expandHome(dir)
+		absolutePath, err := filepath.Abs(expandedPath)
+		if err != nil {
+			normalizedDirs[i] = filepath.Clean(expandedPath)
+			continue
+		}
+
+		// シンボリックリンクを解決
+		realPath, err := filepath.EvalSymlinks(absolutePath)
+		if err != nil {
+			normalizedDirs[i] = filepath.Clean(absolutePath)
+		} else {
+			normalizedDirs[i] = filepath.Clean(realPath)
+		}
+	}
+	return &FileSystemService{
+		allowedDirectories: normalizedDirs,
+		fileOpener:         &DefaultFileOpener{},
+		fileWriter:         &DefaultFileWriter{},
+		directoryReader:    &DefaultDirectoryReader{},
+		fileStat:           &DefaultFileStat{},
+		jsonMarshaler:      &DefaultJSONMarshaler{},
+	}
+}
+
+// NewFileSystemServiceWithDependencies はテスト用に依存性を注入できるFileSystemServiceを作成します
+func NewFileSystemServiceWithDependencies(
+	allowedDirs []string,
+	fileOpener FileOpener,
+	fileWriter FileWriter,
+	directoryReader DirectoryReader,
+	fileStat FileStat,
+	jsonMarshaler JSONMarshaler,
+) *FileSystemService {
+	normalizedDirs := make([]string, len(allowedDirs))
+	for i, dir := range allowedDirs {
+		expandedPath := expandHome(dir)
+		absolutePath, err := filepath.Abs(expandedPath)
+		if err != nil {
+			normalizedDirs[i] = filepath.Clean(expandedPath)
+			continue
+		}
+
+		realPath, err := filepath.EvalSymlinks(absolutePath)
+		if err != nil {
+			normalizedDirs[i] = filepath.Clean(absolutePath)
+		} else {
+			normalizedDirs[i] = filepath.Clean(realPath)
+		}
+	}
+	return &FileSystemService{
+		allowedDirectories: normalizedDirs,
+		fileOpener:         fileOpener,
+		fileWriter:         fileWriter,
+		directoryReader:    directoryReader,
+		fileStat:           fileStat,
+		jsonMarshaler:      jsonMarshaler,
+	}
+}
+
+// expandHome はパス内の ~ をホームディレクトリに展開します
+func expandHome(path string) string {
+	if !strings.HasPrefix(path, "~") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if path == "~" {
+		return home
+	}
+	return filepath.Join(home, path[2:])
+}
+
+// isPathAllowed はパスが許可されたディレクトリ内にあるかチェックします
+func (fs *FileSystemService) isPathAllowed(targetPath string) bool {
+	// 両方のパスでシンボリックリンクを解決して比較
+	targetReal, err := filepath.EvalSymlinks(targetPath)
+	if err != nil {
+		targetReal = targetPath
+	}
+	targetNormalized := filepath.Clean(targetReal)
+
+	for _, dir := range fs.allowedDirectories {
+		dirReal, err := filepath.EvalSymlinks(dir)
+		if err != nil {
+			dirReal = dir
+		}
+		dirNormalized := filepath.Clean(dirReal)
+
+		// パスの比較（末尾のスラッシュを統一）
+		if targetNormalized == dirNormalized || strings.HasPrefix(targetNormalized+string(filepath.Separator), dirNormalized+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
+// ValidatePath はパスが許可されたディレクトリ内にあるか確認します
+func (fs *FileSystemService) ValidatePath(requestedPath string) (string, error) {
+	expandedPath := expandHome(requestedPath)
+	absolutePath, err := filepath.Abs(expandedPath)
+	if err != nil {
+		return "", fmt.Errorf("パスの解決に失敗しました: %w", err)
+	}
+
+	// パスが許可されているかチェック
+	if fs.isPathAllowed(absolutePath) {
+		// シンボリックリンクを解決して返す
+		realPath, err := filepath.EvalSymlinks(absolutePath)
+		if err != nil {
+			return absolutePath, nil
+		}
+		return realPath, nil
+	}
+
+	// 新しいファイルの場合、親ディレクトリを確認
+	parentDir := filepath.Dir(absolutePath)
+	if fs.isPathAllowed(parentDir) {
+		// シンボリックリンクを解決して返す
+		realPath, err := filepath.EvalSymlinks(absolutePath)
+		if err != nil {
+			return absolutePath, nil
+		}
+		return realPath, nil
+	}
+
+	return "", fmt.Errorf("アクセス拒否 - パスが許可されたディレクトリの外にあります: %s", absolutePath)
+}
+
+// ReadFile はファイルの内容を読み取ります
+func (fs *FileSystemService) ReadFile(path string) (string, error) {
+	validPath, err := fs.ValidatePath(path)
+	if err != nil {
+		return "", err
+	}
+
+	file, err := fs.fileOpener.Open(validPath)
+	if err != nil {
+		return "", fmt.Errorf("ファイルの読み取りに失敗しました: %w", err)
+	}
+	defer file.Close()
+
+	content, err := os.ReadFile(validPath)
+	if err != nil {
+		return "", fmt.Errorf("ファイルの読み取りに失敗しました: %w", err)
+	}
+
+	return string(content), nil
+}
+
+// WriteFile はファイルに内容を書き込みます
+func (fs *FileSystemService) WriteFile(path string, content string) error {
+	validPath, err := fs.ValidatePath(path)
+	if err != nil {
+		return err
+	}
+
+	// 親ディレクトリが存在することを確認
+	parentDir := filepath.Dir(validPath)
+	if _, err := fs.fileStat.Stat(parentDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(parentDir, 0755); err != nil {
+			return fmt.Errorf("ディレクトリの作成に失敗しました: %w", err)
+		}
+	}
+
+	err = fs.fileWriter.WriteFile(validPath, []byte(content), 0644)
+	if err != nil {
+		return fmt.Errorf("ファイルの書き込みに失敗しました: %w", err)
+	}
+
+	return nil
+}
+
+// CreateDirectory はディレクトリを作成します
+func (fs *FileSystemService) CreateDirectory(path string) error {
+	validPath, err := fs.ValidatePath(path)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(validPath, 0755)
+	if err != nil {
+		return fmt.Errorf("ディレクトリの作成に失敗しました: %w", err)
+	}
+
+	return nil
+}
+
+// ListDirectory はディレクトリの内容を一覧表示します
+func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
+	validPath, err := fs.ValidatePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := fs.directoryReader.ReadDir(validPath)
+	if err != nil {
+		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %w", err)
+	}
+
+	var result []string
+	for _, entry := range entries {
+		prefix := "[FILE]"
+		if entry.IsDir() {
+			prefix = "[DIR]"
+		}
+		result = append(result, fmt.Sprintf("%s %s", prefix, entry.Name()))
+	}
+
+	return result, nil
+}
+
+// GetDirectoryTree はディレクトリの階層構造を取得します
+func (fs *FileSystemService) GetDirectoryTree(path string) ([]FileTreeEntry, error) {
+	validPath, err := fs.ValidatePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	entries, err := fs.directoryReader.ReadDir(validPath)
+	if err != nil {
+		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %w", err)
+	}
+
+	var result []FileTreeEntry
+	for _, entry := range entries {
+		fileEntry := FileTreeEntry{
+			Name: entry.Name(),
+			Type: "file",
+		}
+
+		if entry.IsDir() {
+			fileEntry.Type = "directory"
+			subPath := filepath.Join(validPath, entry.Name())
+			children, err := fs.GetDirectoryTree(subPath)
+			if err == nil {
+				fileEntry.Children = children
+			}
+		}
+
+		result = append(result, fileEntry)
+	}
+
+	return result, nil
+}
+
+// GetDirectoryTreeAsJSON はディレクトリの階層構造をJSON文字列として取得します
+func (fs *FileSystemService) GetDirectoryTreeAsJSON(path string) (string, error) {
+	tree, err := fs.GetDirectoryTree(path)
+	if err != nil {
+		return "", err
+	}
+
+	jsonBytes, err := fs.jsonMarshaler.MarshalIndent(tree, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("JSONの生成に失敗しました: %w", err)
+	}
+
+	return string(jsonBytes), nil
+}
+
+// MoveFile はファイルを移動します
+func (fs *FileSystemService) MoveFile(source, destination string) error {
+	validSource, err := fs.ValidatePath(source)
+	if err != nil {
+		return err
+	}
+
+	validDest, err := fs.ValidatePath(destination)
+	if err != nil {
+		return err
+	}
+
+	err = os.Rename(validSource, validDest)
+	if err != nil {
+		return fmt.Errorf("ファイルの移動に失敗しました: %w", err)
+	}
+
+	return nil
+}
+
+// SearchFiles はファイルを検索します
+func (fs *FileSystemService) SearchFiles(rootPath, pattern string, excludePatterns []string) ([]string, error) {
+	validPath, err := fs.ValidatePath(rootPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []string
+	err = filepath.Walk(validPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // エラーがあっても続行
+		}
+
+		// 除外パターンに一致するかチェック
+		for _, excludePattern := range excludePatterns {
+			matched, err := filepath.Match(excludePattern, filepath.Base(path))
+			if err == nil && matched {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+		}
+
+		// パターンに一致するかチェック
+		if strings.Contains(strings.ToLower(filepath.Base(path)), strings.ToLower(pattern)) {
+			results = append(results, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("ファイルの検索に失敗しました: %w", err)
+	}
+
+	return results, nil
+}
+
+// GetFileInfo はファイル情報を取得します
+func (fs *FileSystemService) GetFileInfo(path string) (*FileInfo, error) {
+	validPath, err := fs.ValidatePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := fs.fileStat.Stat(validPath)
+	if err != nil {
+		return nil, fmt.Errorf("ファイル情報の取得に失敗しました: %w", err)
+	}
+
+	// 一部のプラットフォームでは、これらの時間が利用できない場合があります
+	var created, accessed time.Time
+	// 時間取得
+	created = info.ModTime()  // フォールバックとして変更時間を使用
+	accessed = info.ModTime() // フォールバックとして変更時間を使用
+
+	return &FileInfo{
+		Size:        info.Size(),
+		Created:     created,
+		Modified:    info.ModTime(),
+		Accessed:    accessed,
+		IsDirectory: info.IsDir(),
+		IsFile:      !info.IsDir(),
+		Permissions: fmt.Sprintf("%o", info.Mode().Perm()),
+	}, nil
+}
+
+// GetFileInfoAsText はファイル情報をテキスト形式で取得します
+func (fs *FileSystemService) GetFileInfoAsText(path string) (string, error) {
+	info, err := fs.GetFileInfo(path)
+	if err != nil {
+		return "", err
+	}
+
+	result := fmt.Sprintf("サイズ: %d バイト\n", info.Size)
+	result += fmt.Sprintf("作成日時: %s\n", info.Created.Format(time.RFC3339))
+	result += fmt.Sprintf("最終変更: %s\n", info.Modified.Format(time.RFC3339))
+	result += fmt.Sprintf("最終アクセス: %s\n", info.Accessed.Format(time.RFC3339))
+	result += fmt.Sprintf("ディレクトリ: %t\n", info.IsDirectory)
+	result += fmt.Sprintf("ファイル: %t\n", info.IsFile)
+	result += fmt.Sprintf("権限: %s", info.Permissions)
+
+	return result, nil
+}
+
+// GetAllowedDirectories は許可されたディレクトリのリストを取得します
+func (fs *FileSystemService) GetAllowedDirectories() []string {
+	return fs.allowedDirectories
+}
+
+// GetAllowedDirectoriesAsText は許可されたディレクトリのリストをテキスト形式で取得します
+func (fs *FileSystemService) GetAllowedDirectoriesAsText() string {
+	return "許可されたディレクトリ:\n" + strings.Join(fs.allowedDirectories, "\n")
+}

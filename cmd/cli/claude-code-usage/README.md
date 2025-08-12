@@ -13,26 +13,26 @@ Claude Code使用状況分析ツールのCLIインターフェース
 
 ```bash
 # 日別レポートを表示（デフォルト）
-go run /home/nov/devbox/cmd/cli/claude-code-usage/main.go daily
+go run $HOME/devbox/cmd/cli/claude-code-usage/main.go daily
 
 # セッション別レポートを表示
-go run /home/nov/devbox/cmd/cli/claude-code-usage/main.go session
+go run $HOME/devbox/cmd/cli/claude-code-usage/main.go session
 
 # 日付でフィルター
-go run /home/nov/devbox/cmd/cli/claude-code-usage/main.go daily --since 20250525 --until 20250530
+go run $HOME/devbox/cmd/cli/claude-code-usage/main.go daily --since 20250525 --until 20250530
 
 # JSON形式で出力
-go run /home/nov/devbox/cmd/cli/claude-code-usage/main.go daily --json
+go run $HOME/devbox/cmd/cli/claude-code-usage/main.go daily --json
 
 # カスタムパスを指定
-go run /home/nov/devbox/cmd/cli/claude-code-usage/main.go daily --path /custom/path/to/.claude
+go run $HOME/devbox/cmd/cli/claude-code-usage/main.go daily --path /custom/path/to/.claude
 ```
 
 ### ビルドして実行
 
 ```bash
 # ビルド
-cd /home/nov/devbox
+cd $HOME/devbox
 go build -o claude-code-usage ./cmd/cli/claude-code-usage/main.go
 
 # 実行
@@ -111,7 +111,7 @@ go build -o claude-code-usage ./cmd/cli/claude-code-usage/main.go
 実装は以下のディレクトリ構造に従っています：
 
 ```
-/home/nov/devbox/internal/claude_code_usage/
+/devbox/internal/claude_code_usage/
 ├── cmd/app.go                 # CLIアプリケーションロジック
 ├── internal/
 │   ├── types.go              # データ構造定義

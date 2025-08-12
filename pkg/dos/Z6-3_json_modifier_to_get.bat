@@ -10,7 +10,7 @@ if %errorlevel% == 1 (
 )
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\json-modifier.exe -file %filepath% -key %key% %gets_all%
+.\pkg\bin\cli\win_amd64\json-modifier.exe -file %filepath% -key %key% %gets_all%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

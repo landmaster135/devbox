@@ -10,6 +10,9 @@ import (
 	"testing"
 )
 
+// #==============================================================#
+// ##          Helpers for tests                                 ##
+// #==============================================================#
 // JPEGファイルを作成するヘルパー関数
 func createValidJPEG(path string, width, height int) error {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -33,6 +36,9 @@ func createValidJPEG(path string, width, height int) error {
 	return jpeg.Encode(file, img, &jpeg.Options{Quality: 80})
 }
 
+// #==============================================================#
+// ##         Tests                                              ##
+// #==============================================================#
 func TestPDFCreationService_GetSourceImages(t *testing.T) {
 	t.Run("既存のディレクトリからJPG画像を収集", func(t *testing.T) {
 		// テスト用ディレクトリの準備
