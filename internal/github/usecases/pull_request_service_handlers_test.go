@@ -488,3 +488,235 @@ func TestGitHubPullRequestService_HandleToGetPullRequestReviews_Normal(t *testin
 		t.Errorf("Expected state 'APPROVED', got %v", jsonResult[0]["state"])
 	}
 }
+
+func TestGitHubPullRequestService_HandleToUpdatePullRequest_Normal(t *testing.T) {
+	// Arrange
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			// リクエストの検証
+			expectedURL := "https://api.github.com/repos/owner/repo/pulls/1"
+			if req.URL.String() != expectedURL {
+				t.Errorf("Expected URL %s, got %s", expectedURL, req.URL.String())
+			}
+
+			if req.Method != "PATCH" {
+				t.Errorf("Expected method PATCH, got %s", req.Method)
+			}
+
+			if req.Header.Get("Accept") != "application/vnd.github.v3+json" {
+				t.Errorf("Expected Accept header application/vnd.github.v3+json, got %s", req.Header.Get("Accept"))
+			}
+
+			if req.Header.Get("Content-Type") != "application/json" {
+				t.Errorf("Expected Content-Type header application/json, got %s", req.Header.Get("Content-Type"))
+			}
+
+			// リクエストボディの検証
+			body, _ := io.ReadAll(req.Body)
+			var requestData map[string]interface{}
+			json.Unmarshal(body, &requestData)
+
+			if requestData["title"].(string) != "Updated Title" {
+				t.Errorf("Expected title 'Updated Title', got %v", requestData["title"])
+			}
+
+			if requestData["body"].(string) != "Updated Body" {
+				t.Errorf("Expected body 'Updated Body', got %v", requestData["body"])
+			}
+
+			responseBody := `{"id": 1, "title": "Updated Title", "body": "Updated Body", "state": "open"}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(responseBody)),
+			}, nil
+		},
+	}
+
+	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
+
+	// Act
+	result, err := service.HandleToUpdatePullRequest("owner", "repo", 1, "Updated Title", "Updated Body")
+
+	// Assert
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	var jsonResult map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &jsonResult); err != nil {
+		t.Fatalf("Failed to parse JSON result: %v", err)
+	}
+
+	if jsonResult["id"].(float64) != 1 {
+		t.Errorf("Expected id 1, got %v", jsonResult["id"])
+	}
+
+	if jsonResult["title"].(string) != "Updated Title" {
+		t.Errorf("Expected title 'Updated Title', got %v", jsonResult["title"])
+	}
+
+	if jsonResult["body"].(string) != "Updated Body" {
+		t.Errorf("Expected body 'Updated Body', got %v", jsonResult["body"])
+	}
+}
+
+func TestGitHubPullRequestService_HandleToUpdatePullRequest_TitleOnly(t *testing.T) {
+	// Arrange
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			// リクエストボディの検証
+			body, _ := io.ReadAll(req.Body)
+			var requestData map[string]interface{}
+			json.Unmarshal(body, &requestData)
+
+			if requestData["title"].(string) != "New Title Only" {
+				t.Errorf("Expected title 'New Title Only', got %v", requestData["title"])
+			}
+
+			// bodyフィールドが含まれていないことを確認
+			if _, exists := requestData["body"]; exists {
+				t.Errorf("Expected body field to be absent, but it was present")
+			}
+
+			responseBody := `{"id": 1, "title": "New Title Only", "state": "open"}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(responseBody)),
+			}, nil
+		},
+	}
+
+	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
+
+	// Act
+	result, err := service.HandleToUpdatePullRequest("owner", "repo", 1, "New Title Only", "")
+
+	// Assert
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	var jsonResult map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &jsonResult); err != nil {
+		t.Fatalf("Failed to parse JSON result: %v", err)
+	}
+
+	if jsonResult["title"].(string) != "New Title Only" {
+		t.Errorf("Expected title 'New Title Only', got %v", jsonResult["title"])
+	}
+}
+
+func TestGitHubPullRequestService_HandleToUpdatePullRequest_BodyOnly(t *testing.T) {
+	// Arrange
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			// リクエストボディの検証
+			body, _ := io.ReadAll(req.Body)
+			var requestData map[string]interface{}
+			json.Unmarshal(body, &requestData)
+
+			if requestData["body"].(string) != "New Body Only" {
+				t.Errorf("Expected body 'New Body Only', got %v", requestData["body"])
+			}
+
+			// titleフィールドが含まれていないことを確認
+			if _, exists := requestData["title"]; exists {
+				t.Errorf("Expected title field to be absent, but it was present")
+			}
+
+			responseBody := `{"id": 1, "body": "New Body Only", "state": "open"}`
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(responseBody)),
+			}, nil
+		},
+	}
+
+	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
+
+	// Act
+	result, err := service.HandleToUpdatePullRequest("owner", "repo", 1, "", "New Body Only")
+
+	// Assert
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	var jsonResult map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &jsonResult); err != nil {
+		t.Fatalf("Failed to parse JSON result: %v", err)
+	}
+
+	if jsonResult["body"].(string) != "New Body Only" {
+		t.Errorf("Expected body 'New Body Only', got %v", jsonResult["body"])
+	}
+}
+
+func TestGitHubPullRequestService_HandleToUpdatePullRequest_BothEmpty(t *testing.T) {
+	// Arrange
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			// このテストではHTTPリクエストは送信されないはず
+			t.Error("HTTP request should not be made when both title and body are empty")
+			return nil, nil
+		},
+	}
+
+	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
+
+	// Act
+	result, err := service.HandleToUpdatePullRequest("owner", "repo", 1, "", "")
+
+	// Assert
+	if err == nil {
+		t.Fatal("Expected error for empty title and body, got nil")
+	}
+
+	expectedError := "at least one of title or body must be provided"
+	if err.Error() != expectedError {
+		t.Errorf("Expected error message '%s', got '%s'", expectedError, err.Error())
+	}
+
+	if result != "" {
+		t.Errorf("Expected empty result on error, got '%s'", result)
+	}
+}
+
+func TestGitHubPullRequestService_HandleToUpdatePullRequest_HTTPError(t *testing.T) {
+	// Arrange
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			responseBody := `{"message": "Not Found", "documentation_url": "https://docs.github.com"}`
+			return &http.Response{
+				StatusCode: 404,
+				Body:       io.NopCloser(strings.NewReader(responseBody)),
+			}, nil
+		},
+	}
+
+	service := createMockPullRequestService(mockClient, &DefaultJSONMarshaler{})
+
+	// Act
+	result, err := service.HandleToUpdatePullRequest("owner", "repo", 999, "New Title", "New Body")
+
+	// Assert
+	if err == nil {
+		t.Fatal("Expected error for HTTP 404, got nil")
+	}
+
+	// GitHubErrorの検証
+	if githubErr, ok := err.(*GitHubError); ok {
+		if githubErr.StatusCode != 404 {
+			t.Errorf("Expected status code 404, got %d", githubErr.StatusCode)
+		}
+		if githubErr.Message != "Not Found" {
+			t.Errorf("Expected message 'Not Found', got '%s'", githubErr.Message)
+		}
+	} else {
+		t.Errorf("Expected GitHubError, got %T", err)
+	}
+
+	if result != "" {
+		t.Errorf("Expected empty result on error, got '%s'", result)
+	}
+}

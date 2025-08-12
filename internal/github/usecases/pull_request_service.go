@@ -287,6 +287,28 @@ func (s *GitHubPullRequestService) listPullRequests(owner, repo string, options 
 	return result, nil
 }
 
+// updatePullRequest は既存のプルリクエストのタイトルと本文を更新します
+func (s *GitHubPullRequestService) updatePullRequest(owner, repo string, pullNumber int, options map[string]interface{}) (map[string]interface{}, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d", apiBaseURL, owner, repo, pullNumber)
+
+	jsonBody, err := json.Marshal(options)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := s.clientService.DoRequest("PATCH", url, strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return nil, err
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
 // #==============================================================#
 // ##          Handler Methods                                  ##
 // #==============================================================#
@@ -447,4 +469,28 @@ func (s *GitHubPullRequestService) HandleToCreatePullRequestWithCurrentBranch(ow
 
 	// 既存のHandleToCreatePullRequestを呼び出し
 	return s.HandleToCreatePullRequest(owner, repo, title, currentBranch, base, body, draft)
+}
+
+// HandleToUpdatePullRequest は既存のプルリクエストのタイトルと本文を更新して、結果をJSON形式で返します
+func (s *GitHubPullRequestService) HandleToUpdatePullRequest(owner, repo string, pullNumber int, title, body string) (string, error) {
+	// titleとbodyの両方が空文字の場合はエラー
+	if title == "" && body == "" {
+		return "", fmt.Errorf("at least one of title or body must be provided")
+	}
+
+	options := make(map[string]interface{})
+
+	if title != "" {
+		options["title"] = title
+	}
+	if body != "" {
+		options["body"] = body
+	}
+
+	result, err := s.updatePullRequest(owner, repo, pullNumber, options)
+	if err != nil {
+		return "", err
+	}
+
+	return s.clientService.ReturnJSONResult(result)
 }
