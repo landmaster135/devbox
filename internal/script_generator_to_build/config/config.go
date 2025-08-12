@@ -1,6 +1,9 @@
 package config
 
-import "path/filepath"
+import (
+	"os"
+	"path/filepath"
+)
 
 // AppConfig はアプリケーションの設定を表します
 type AppConfig struct {
@@ -8,16 +11,22 @@ type AppConfig struct {
 	ShowHelp    bool
 
 	// 新しいフィールド（デフォルト値で後方互換性を保つ）
-	BaseDir    string // デフォルト: "/home/nov/devbox"
+	BaseDir    string // デフォルト: ワーキングディレクトリ
 	CLIDir     string // デフォルト: "cmd/cli"
 	ScriptsDir string // デフォルト: "scripts"
-	OutputDir  string // デフォルト: "./pkg/bin"
+	OutputDir  string // デフォルト: "./pkg/bin/cli"
 }
 
 // SetDefaults はデフォルト値を設定します
 func (c *AppConfig) SetDefaults() {
 	if c.BaseDir == "" {
-		c.BaseDir = "/home/nov/devbox"
+		wd, err := os.Getwd()
+		if err != nil {
+			// エラーハンドリング: デフォルトで現在のディレクトリを使用
+			c.BaseDir = "."
+		} else {
+			c.BaseDir = wd
+		}
 	}
 	if c.CLIDir == "" {
 		c.CLIDir = "cmd/cli"
@@ -26,7 +35,7 @@ func (c *AppConfig) SetDefaults() {
 		c.ScriptsDir = "scripts"
 	}
 	if c.OutputDir == "" {
-		c.OutputDir = "./pkg/bin"
+		c.OutputDir = "./pkg/bin/cli"
 	}
 }
 

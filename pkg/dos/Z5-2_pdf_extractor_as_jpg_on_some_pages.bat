@@ -11,7 +11,7 @@ if not "%start%"=="" set options=%options% -start %start%
 if not "%end%"=="" set options=%options% -end %end%
 
 REM プログラムを実行
-.\pkg\bin\win_amd64\pdf-merger.exe -extract %path% -output-dir .\888_images_from_pdf %options%
+.\pkg\bin\cli\win_amd64\pdf-merger.exe -extract %path% -output-dir .\888_images_from_pdf %options%
 
 echo.
 echo --- プログラムの実行が完了しました ---

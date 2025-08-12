@@ -18,8 +18,8 @@ if /i "%ext%"=="p" (
 echo "Selected extension: %ext%"
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -max 4 -v
-.\pkg\bin\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -list-props
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -max 4 -v
+.\pkg\bin\cli\win_amd64\exif-viewer.exe -dir %path% -ext %ext% -list-props
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

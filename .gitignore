@@ -60,8 +60,7 @@ mypkg/go.sum
 # testdata/*
 
 ### binary ###
-pkg/bin/win_amd64
-pkg/bin/linux_amd64
+pkg/bin/*
 bin
 
 ### test data ###

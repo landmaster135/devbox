@@ -11,7 +11,7 @@ if %errorlevel% == 1 (
 )
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\kana-converter.exe -input %input_chr% -mode %conv_mode%
+.\pkg\bin\cli\win_amd64\kana-converter.exe -input %input_chr% -mode %conv_mode%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

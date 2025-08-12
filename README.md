@@ -1,6 +1,6 @@
 # devbox
 ![Go](https://img.shields.io/badge/Go-1.23-%2300ADD8?logo=go)
-![Coverage](https://img.shields.io/badge/Coverage-47.3%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-54.2%25-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 Provides utilities for development.
@@ -18,10 +18,12 @@ Provides utilities for development.
 ## Generate shell scripts to build
 ```bash
 cd devbox
-./pkg/bin/linux_amd64/script-generator-to-build <TOOL_NAME>
+./pkg/bin/cli/linux_amd64/script-generator-to-build <TOOL_NAME>
 ```
 
-## Build
+# Build
+
+## Common tools
 ```bash
 ./scripts/build.sh
 ```
@@ -31,7 +33,12 @@ Confirm compilable distributions.
 go tool dist list
 ```
 
-## Project Structure
+## MCP tools
+```bash
+./scripts/build_mcp_tools.sh
+```
+
+# Project Structure
 
 `devbox`は複数のCLIツールを提供する開発ユーティリティ集合体です。Clean Architectureに基づいて設計されており、以下のパッケージ依存関係を持ちます。
 
@@ -74,7 +81,7 @@ graph TD
   class J stdlib;
 ```
 
-### Package Overview
+## Package Overview
 
 - **cmd/**: 各CLIツールのエントリーポイント群。30以上のコマンドラインツールが含まれており、それぞれが独立したアプリケーションとして動作します。主要ツール例：
   - `file-processor`: ファイル処理ユーティリティ

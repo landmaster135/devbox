@@ -19,7 +19,7 @@ if %errorlevel% == 1 (
 )
 
 echo --- プログラムを実行します ---
-.\pkg\bin\win_amd64\iso8601-converter.exe %to% %is_jst% --input "%input%"
+.\pkg\bin\cli\win_amd64\iso8601-converter.exe %to% %is_jst% --input "%input%"
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
