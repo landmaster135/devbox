@@ -71,13 +71,9 @@ func (s *Service) getRepositoryInfo(service, token string) (string, error) {
 	ctx := context.Background()
 	client := s.githubService.CreateGitHubClient(ctx, token)
 
-	// 認証されたユーザー情報を取得
-	user, _, err := client.GetUser(ctx, "")
-	if err != nil {
-		return "", fmt.Errorf("ユーザー情報の取得に失敗しました: %v", err)
-	}
 
-	username := user.GetLogin()
+	// プライベートリポジトリも含めて取得するため、空文字列を渡す
+	username := ""
 	repos, err := s.githubService.GetRepoInfo(ctx, client, true, username)
 	if err != nil {
 		return "", fmt.Errorf("リポジトリ情報の取得に失敗しました: %v", err)
@@ -153,6 +149,7 @@ func (s *Service) generateBashFunctions(repos []RepoInfo, archiveDir string) str
 
 	// archive_repos関数
 	result.WriteString("function archive_repos() {\n")
+	result.WriteString(fmt.Sprintf("\tmkdir -p %s\n", archiveDir))
 	for _, repo := range repos {
 		repoName := extractRepoName(repo.HttpUrl)
 		if repoName == "" {
@@ -209,13 +206,8 @@ func (s *Service) ArchiveRepositories(service, token, outputFilePath, archiveDir
 		ctx := context.Background()
 		client := s.githubService.CreateGitHubClient(ctx, token)
 
-		// 認証されたユーザー情報を取得
-		user, _, err := client.GetUser(ctx, "")
-		if err != nil {
-			return "", fmt.Errorf("ユーザー情報の取得に失敗しました: %v", err)
-		}
-
-		username := user.GetLogin()
+	// プライベートリポジトリも含めて取得するため、空文字列を渡す
+		username := ""
 		repos, err = s.githubService.GetRepoInfo(ctx, client, true, username)
 		if err != nil {
 			return "", fmt.Errorf("リポジトリ情報の取得に失敗しました: %v", err)

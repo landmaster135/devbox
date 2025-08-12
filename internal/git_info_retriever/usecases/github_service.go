@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/google/go-github/github"
@@ -121,7 +122,8 @@ func (gs *GitHubServiceImpl) getRepoInfoInFormat(ctx context.Context, client Git
 
 // GetRepoInfo はリポジトリ情報を取得する
 func (gs *GitHubServiceImpl) GetRepoInfo(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error) {
-	repos, err := gs.fetchRepositories(ctx, client, "owner", username)
+	repoType := "all"
+	repos, err := gs.fetchRepositories(ctx, client, repoType, username)
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +157,10 @@ func (gs *GitHubServiceImpl) GetRepoInfo(ctx context.Context, client GitHubClien
 			results = append(results, *repoInfo)
 		}
 	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Name < results[j].Name
+	})
 
 	return results, nil
 }
