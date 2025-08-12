@@ -23,12 +23,12 @@ go run ./cmd/cli/git-info-retriever/main.go -service github -token <GitHubアク
 
 ### パラメータ
 
-| パラメータ | 必須 | 説明 |
-|-----------|------|------|
-| `-service` | ✓ | サービスタイプ（現在は`github`のみサポート） |
-| `-token` | ✓ | GitHubアクセストークン |
-| `-save-file` | - | 結果を保存するファイルパス（指定しない場合は標準出力） |
-| `-help` | - | ヘルプを表示 |
+| パラメータ         | 必須 | 説明 |
+|-------------------|------|------|
+| `-service`        | ✓ | サービスタイプ（現在は`github`のみサポート） |
+| `-token`          | ✓ | GitHubアクセストークン |
+| `-save-file-path` | - | 結果を保存するファイルパス（指定しない場合は標準出力） |
+| `-help`           | - | ヘルプを表示 |
 
 ## 使用例
 
@@ -37,10 +37,10 @@ go run ./cmd/cli/git-info-retriever/main.go -service github -token <GitHubアク
 go run ./cmd/cli/git-info-retriever/main.go -service github -token ghp_xxxxxxxxxxxxxxxxxxxx
 
 # GitHubリポジトリ情報をファイルに保存
-go run ./cmd/cli/git-info-retriever/main.go -service github -token ghp_xxxxxxxxxxxxxxxxxxxx -save-file ./output.json
+go run ./cmd/cli/git-info-retriever/main.go -service github -token ghp_xxxxxxxxxxxxxxxxxxxx -save-file-path ./output.json
 
 # 深いディレクトリに保存（ディレクトリは自動作成）
-go run ./cmd/cli/git-info-retriever/main.go -service github -token ghp_xxxxxxxxxxxxxxxxxxxx -save-file ./results/github-repos.json
+go run ./cmd/cli/git-info-retriever/main.go -service github -token ghp_xxxxxxxxxxxxxxxxxxxx -save-file-path ./results/github-repos.json
 
 # ヘルプを表示
 go run ./cmd/cli/git-info-retriever/main.go -help

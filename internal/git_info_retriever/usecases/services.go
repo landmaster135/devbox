@@ -14,11 +14,11 @@ type RepoInfo struct {
 	Name             string         `json:"name"`
 	Description      string         `json:"description"`
 	IsPrivate        bool           `json:"is_private"`
-	HtmlUrl          string         `json:"html_url"`
+	HttpUrl          string         `json:"http_url"`
 	Language         string         `json:"language"`
 	Languages        map[string]int `json:"languages"`
-	CreatedAt        string         `json:"created_at"`
-	UpdatedAt        string         `json:"updated_at"`
+	RepoCreatedAt    string         `json:"repo_created_at"`
+	RepoUpdatedAt    string         `json:"repo_updated_at"`
 	StargazersCount  int32          `json:"stargazers_count"`
 	ForksCount       int32          `json:"forks_count"`
 	IssuesCount      int32          `json:"issues_count"`
@@ -33,8 +33,7 @@ type RepoInfo struct {
 // #==============================================================#
 // GitInfoService はGit情報取得サービスのインターフェース
 type GitInfoService interface {
-	GetRepositoryInfo(service, token string) (string, error)
-	GetAndSaveRepositoryInfo(service, token, filePath string) (string, error)
+	RetrieveRepositoryInfo(service, token, filePath string) (string, error)
 }
 
 // Service はGitInfoServiceの実装
@@ -59,8 +58,8 @@ func NewService() GitInfoService {
 	)
 }
 
-// GetRepositoryInfo は指定されたサービスからリポジトリ情報を取得する
-func (s *Service) GetRepositoryInfo(service, token string) (string, error) {
+// getRepositoryInfo は指定されたサービスからリポジトリ情報を取得する
+func (s *Service) getRepositoryInfo(service, token string) (string, error) {
 	if service != "github" {
 		return "", fmt.Errorf("サポートされていないサービスです: %s", service)
 	}
@@ -89,10 +88,10 @@ func (s *Service) GetRepositoryInfo(service, token string) (string, error) {
 	return string(result), nil
 }
 
-// GetAndSaveRepositoryInfo はリポジトリ情報を取得し、ファイルに保存する
-func (s *Service) GetAndSaveRepositoryInfo(service, token, filePath string) (string, error) {
+// getAndSaveRepositoryInfo はリポジトリ情報を取得し、ファイルに保存する
+func (s *Service) getAndSaveRepositoryInfo(service, token, filePath string) (string, error) {
 	// リポジトリ情報を取得
-	result, err := s.GetRepositoryInfo(service, token)
+	result, err := s.getRepositoryInfo(service, token)
 	if err != nil {
 		return "", err
 	}
@@ -101,6 +100,29 @@ func (s *Service) GetAndSaveRepositoryInfo(service, token, filePath string) (str
 	err = s.fileWriter.WriteToFile(filePath, result)
 	if err != nil {
 		return "", fmt.Errorf("ファイル保存に失敗しました: %v", err)
+	}
+
+	return result, nil
+}
+
+func (s *Service) RetrieveRepositoryInfo(service, token, filePath string) (string, error) {
+	var result string
+	var err error
+
+	// ファイル出力が指定されている場合
+	if filePath != "" {
+		result, err = s.getAndSaveRepositoryInfo(service, token, filePath)
+		if err != nil {
+			return "", err
+		}
+		fmt.Printf("結果をファイルに保存しました: %s\n", filePath)
+		return result, nil
+	}
+
+	// 標準出力に表示
+	result, err = s.getRepositoryInfo(service, token)
+	if err != nil {
+		return "", err
 	}
 
 	return result, nil
