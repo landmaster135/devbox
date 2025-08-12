@@ -12,6 +12,7 @@ require (
 	github.com/dsoprea/go-jpeg-image-structure/v2 v2.0.0-20221012074422-4f3f7e934102
 	github.com/gen2brain/avif v0.4.3
 	github.com/gen2brain/webp v0.5.4
+	github.com/google/go-github v17.0.0+incompatible
 	github.com/googleapis/gax-go/v2 v2.14.2
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.33.0
@@ -53,6 +54,7 @@ require (
 	github.com/go-xmlfmt/xmlfmt v0.0.0-20191208150333-d5b6f63a941b // indirect
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
