@@ -424,18 +424,22 @@ func TestGolangOpsService_ExecuteGoRun_Normal(t *testing.T) {
 	service := NewGolangOpsServiceWithDependencies(mockCommandExecutor, mockDirectoryChecker)
 
 	executionFile := "/test/main.go"
+	rootDirectory := "/test"
 	parameters := ""
 	expectedOutput := []byte("Hello, World!")
 
 	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockCommandExecutor.On("Execute", "go", []string{"run", executionFile}).Return(expectedOutput, nil)
+	mockDirectoryChecker.On("Exists", rootDirectory).Return(true)
+	mockDirectoryChecker.On("IsDirectory", rootDirectory).Return(true)
+	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"run", executionFile}).Return(expectedOutput, nil)
 
 	// Act
-	result, err := service.ExecuteGoRun(executionFile, parameters)
+	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.Contains(t, result, "go runを実行中")
+	assert.Contains(t, result, "実行ディレクトリ:")
 	assert.Contains(t, result, string(expectedOutput))
 	assert.Contains(t, result, "go runの実行が完了しました")
 	mockCommandExecutor.AssertExpectations(t)
@@ -450,14 +454,17 @@ func TestGolangOpsService_ExecuteGoRun_WithParameters(t *testing.T) {
 	service := NewGolangOpsServiceWithDependencies(mockCommandExecutor, mockDirectoryChecker)
 
 	executionFile := "/test/main.go"
+	rootDirectory := "/test"
 	parameters := "-flag value arg1 arg2"
 	expectedOutput := []byte("Hello with parameters!")
 
 	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockCommandExecutor.On("Execute", "go", []string{"run", executionFile, "-flag", "value", "arg1", "arg2"}).Return(expectedOutput, nil)
+	mockDirectoryChecker.On("Exists", rootDirectory).Return(true)
+	mockDirectoryChecker.On("IsDirectory", rootDirectory).Return(true)
+	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"run", executionFile, "-flag", "value", "arg1", "arg2"}).Return(expectedOutput, nil)
 
 	// Act
-	result, err := service.ExecuteGoRun(executionFile, parameters)
+	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
 
 	// Assert
 	assert.NoError(t, err)
@@ -475,12 +482,13 @@ func TestGolangOpsService_ExecuteGoRun_FileNotExists(t *testing.T) {
 	service := NewGolangOpsServiceWithDependencies(mockCommandExecutor, mockDirectoryChecker)
 
 	executionFile := "/nonexistent/main.go"
+	rootDirectory := "/test"
 	parameters := ""
 
 	mockDirectoryChecker.On("Exists", executionFile).Return(false)
 
 	// Act
-	result, err := service.ExecuteGoRun(executionFile, parameters)
+	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
 
 	// Assert
 	assert.Error(t, err)
@@ -497,14 +505,17 @@ func TestGolangOpsService_ExecuteGoRun_CommandError(t *testing.T) {
 	service := NewGolangOpsServiceWithDependencies(mockCommandExecutor, mockDirectoryChecker)
 
 	executionFile := "/test/main.go"
+	rootDirectory := "/test"
 	parameters := ""
 	commandError := fmt.Errorf("compilation error")
 
 	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockCommandExecutor.On("Execute", "go", []string{"run", executionFile}).Return([]byte(""), commandError)
+	mockDirectoryChecker.On("Exists", rootDirectory).Return(true)
+	mockDirectoryChecker.On("IsDirectory", rootDirectory).Return(true)
+	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"run", executionFile}).Return([]byte(""), commandError)
 
 	// Act
-	result, err := service.ExecuteGoRun(executionFile, parameters)
+	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
 
 	// Assert
 	assert.Error(t, err)
@@ -682,14 +693,17 @@ func TestGolangOpsService_HandleGoRun_Normal(t *testing.T) {
 	service := NewGolangOpsServiceWithDependencies(mockCommandExecutor, mockDirectoryChecker)
 
 	executionFile := "/test/main.go"
+	rootDirectory := "/test"
 	parameters := ""
 	expectedOutput := []byte("Hello, World!")
 
 	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockCommandExecutor.On("Execute", "go", []string{"run", executionFile}).Return(expectedOutput, nil)
+	mockDirectoryChecker.On("Exists", rootDirectory).Return(true)
+	mockDirectoryChecker.On("IsDirectory", rootDirectory).Return(true)
+	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"run", executionFile}).Return(expectedOutput, nil)
 
 	// Act
-	result, err := service.HandleGoRun(executionFile, parameters)
+	result, err := service.HandleGoRun(executionFile, rootDirectory, parameters)
 
 	// Assert
 	assert.NoError(t, err)

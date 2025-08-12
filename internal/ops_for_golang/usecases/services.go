@@ -231,10 +231,24 @@ func (s *GolangOpsService) ExecuteTestCoverageProject(directory string) (string,
 }
 
 // ExecuteGoRun はgo runを実行します
-func (s *GolangOpsService) ExecuteGoRun(executionFile, parameters string) (string, error) {
+func (s *GolangOpsService) ExecuteGoRun(executionFile, rootDirectory, parameters string) (string, error) {
 	// 実行ファイルの存在確認
 	if !s.directoryChecker.Exists(executionFile) {
 		return "", fmt.Errorf("指定された実行ファイルが存在しません: %s", executionFile)
+	}
+
+	// ルートディレクトリの存在確認
+	if !s.directoryChecker.Exists(rootDirectory) {
+		return "", fmt.Errorf("指定されたルートディレクトリが存在しません: %s", rootDirectory)
+	}
+	if !s.directoryChecker.IsDirectory(rootDirectory) {
+		return "", fmt.Errorf("指定されたルートパスはディレクトリではありません: %s", rootDirectory)
+	}
+
+	// 絶対パスに変換
+	absRootDir, err := filepath.Abs(rootDirectory)
+	if err != nil {
+		return "", fmt.Errorf("ルートディレクトリパスの変換に失敗しました: %v", err)
 	}
 
 	// コマンド引数を構築
@@ -249,13 +263,14 @@ func (s *GolangOpsService) ExecuteGoRun(executionFile, parameters string) (strin
 
 	var result strings.Builder
 	result.WriteString(fmt.Sprintf("go runを実行中: %s\n", executionFile))
+	result.WriteString(fmt.Sprintf("実行ディレクトリ: %s\n", absRootDir))
 	if parameters != "" {
 		result.WriteString(fmt.Sprintf("パラメータ: %s\n", parameters))
 	}
 	result.WriteString(fmt.Sprintf("実行コマンド: go %s\n\n", strings.Join(args, " ")))
 
-	// go run を実行
-	output, err := s.commandExecutor.Execute("go", args...)
+	// 指定されたディレクトリでgo run を実行
+	output, err := s.commandExecutor.ExecuteInDir(absRootDir, "go", args...)
 	if err != nil {
 		return "", fmt.Errorf("go runの実行に失敗しました: %v\n出力: %s", err, string(output))
 	}
@@ -310,8 +325,8 @@ func (s *GolangOpsService) ExecuteCoverageFunc(coverageFile, grepPattern string)
 }
 
 // HandleGoRun はgo runのハンドラーです
-func (s *GolangOpsService) HandleGoRun(executionFile, parameters string) (string, error) {
-	return s.ExecuteGoRun(executionFile, parameters)
+func (s *GolangOpsService) HandleGoRun(executionFile, rootDirectory, parameters string) (string, error) {
+	return s.ExecuteGoRun(executionFile, rootDirectory, parameters)
 }
 
 // HandleCoverageFunc はカバレッジ関数情報のハンドラーです
