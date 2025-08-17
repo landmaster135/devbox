@@ -34,7 +34,7 @@ func (p *StandardEnvironmentProvider) GetEnv(key string) string {
 // #==============================================================#
 
 // createConfigFromEnv は環境変数とパラメータから設定を作成する
-func createConfigFromEnv(envProvider EnvironmentProvider, conID, pageID, markdownContent string, toggleH1, toggleH2, toggleH3 bool) (*config.Config, error) {
+func createConfigFromEnv(envProvider EnvironmentProvider, operation, conID, pageID, markdownContent string, toggleH1, toggleH2, toggleH3 bool) (*config.Config, error) {
 	token := envProvider.GetEnv("NOTION_INTEGRATION_TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("環境変数NOTION_INTEGRATION_TOKENが設定されていません")
@@ -45,7 +45,7 @@ func createConfigFromEnv(envProvider EnvironmentProvider, conID, pageID, markdow
 		return nil, fmt.Errorf("環境変数NOTION_ENDPOINT_URLが設定されていません")
 	}
 
-	return config.NewConfig(token, conID, pageID, markdownContent, endpointURL, toggleH1, toggleH2, toggleH3)
+	return config.NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, toggleH1, toggleH2, toggleH3)
 }
 
 // #==============================================================#
@@ -70,8 +70,11 @@ func handlePatchPage(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	// 環境変数プロバイダーを作成
 	envProvider := &StandardEnvironmentProvider{}
 
+	// patch_pageツールでは常にpatch操作を使用
+	operation := "patch"
+
 	// 設定を作成
-	cfg, err := createConfigFromEnv(envProvider, conID, pageID, markdownContent, toggleH1, toggleH2, toggleH3)
+	cfg, err := createConfigFromEnv(envProvider, operation, conID, pageID, markdownContent, toggleH1, toggleH2, toggleH3)
 	if err != nil {
 		return nil, fmt.Errorf("設定の作成に失敗しました: %v", err)
 	}

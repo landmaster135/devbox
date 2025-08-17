@@ -79,7 +79,7 @@ func TestCreateConfigFromEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockProvider := &MockEnvironmentProvider{envVars: tt.envVars}
 
-			cfg, err := createConfigFromEnv(mockProvider, tt.conID, tt.pageID, tt.markdownContent, tt.toggleH1, tt.toggleH2, tt.toggleH3)
+			cfg, err := createConfigFromEnv(mockProvider, "patch", tt.conID, tt.pageID, tt.markdownContent, tt.toggleH1, tt.toggleH2, tt.toggleH3)
 
 			if tt.expectError {
 				if err == nil {

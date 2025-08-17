@@ -7,6 +7,7 @@ import (
 
 // Config はNotion同期CLIの設定を保持する構造体
 type Config struct {
+	Operation       string // 操作タイプ（必須）
 	Token           string // Notionトークン
 	ConID           string // コンテンツID（PageIDと排他）
 	PageID          string // ページID（ConIDと排他）
@@ -19,7 +20,11 @@ type Config struct {
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(token, conID, pageID, markdownContent, endpointURL string, toggleH1, toggleH2, toggleH3 bool) (*Config, error) {
+func NewConfig(operation, token, conID, pageID, markdownContent, endpointURL string, toggleH1, toggleH2, toggleH3 bool) (*Config, error) {
+	if operation == "" {
+		return nil, fmt.Errorf("操作タイプが指定されていません")
+	}
+
 	if token == "" {
 		return nil, fmt.Errorf("トークンが指定されていません")
 	}
@@ -42,6 +47,7 @@ func NewConfig(token, conID, pageID, markdownContent, endpointURL string, toggle
 	}
 
 	return &Config{
+		Operation:       operation,
 		Token:           token,
 		ConID:           conID,
 		PageID:          pageID,
@@ -61,6 +67,7 @@ func ParseFlags() (*Config, error) {
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析する
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
+		operation       = ""
 		token           = ""
 		conID           = ""
 		pageID          = ""
@@ -71,6 +78,9 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		endpointURL     = ""
 		help            = false
 	)
+
+	parser.StringVar(&operation, "operation", operation, "操作タイプ（必須）")
+	parser.StringVar(&operation, "o", operation, "操作タイプの短縮形")
 
 	parser.StringVar(&token, "token", token, "Notionトークン")
 	parser.StringVar(&token, "t", token, "Notionトークンの短縮形")
@@ -115,7 +125,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		endpointURL = args[2]
 	}
 
-	return NewConfig(token, conID, pageID, markdownContent, endpointURL, toggleH1, toggleH2, toggleH3)
+	return NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, toggleH1, toggleH2, toggleH3)
 }
 
 // PrintUsage は使用方法を表示する
@@ -124,20 +134,21 @@ func PrintUsage() {
 
 使用方法:
   基本的な使用方法（ページID指定）:
-    %s -token "your_token" -page-id "page_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
-    %s -t "your_token" -p "page_id" -m "# Hello World" -u "http://localhost:8080/task/patch"
+    %s -operation "patch" -token "your_token" -page-id "page_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
+    %s -o "patch" -t "your_token" -p "page_id" -m "# Hello World" -u "http://localhost:8080/task/patch"
 
   コンテンツID指定:
-    %s -token "your_token" -con-id "con_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
-    %s -t "your_token" -c "con_id" -m "# Hello World" -u "http://localhost:8080/task/patch"
+    %s -operation "patch" -token "your_token" -con-id "con_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
+    %s -o "patch" -t "your_token" -c "con_id" -m "# Hello World" -u "http://localhost:8080/task/patch"
 
   ヘッダートグルオプション付き:
-    %s -token "your_token" -page-id "page_id" -markdown "# Hello World" -toggle-h1 -toggle-h2 -endpoint-url "http://localhost:8080/task/patch"
+    %s -operation "patch" -token "your_token" -page-id "page_id" -markdown "# Hello World" -toggle-h1 -toggle-h2 -endpoint-url "http://localhost:8080/task/patch"
 
   位置引数での指定:
-    %s "your_token" "# Hello World" "http://localhost:8080/task/patch" -page-id "page_id"
+    %s "your_token" "# Hello World" "http://localhost:8080/task/patch" -operation "patch" -page-id "page_id"
 
 オプション:
+  -operation, -o    操作タイプ（必須）- 現在サポート: patch
   -token, -t        Notionトークン（必須）
   -con-id, -c       コンテンツID（page-idと排他）
   -page-id, -p      ページID（con-idと排他）
