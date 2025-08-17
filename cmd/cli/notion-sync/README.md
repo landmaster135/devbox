@@ -24,21 +24,22 @@ go build -o bin/notion-sync ./cmd/cli/notion-sync
 ### 基本的な使用方法
 
 ```bash
-./bin/notion-sync -token "your_token" -page-id "page_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
+./bin/notion-sync -operation "patch" -token "your_token" -page-id "page_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
 ```
 
 ### オプション
 
 | オプション | 短縮形 | 説明 | 必須 | 例 |
 |-----------|--------|------|------|-----|
-| `-token` | `-t` | Notionトークン | ✓ | `-t "your_token"` |
+| `-operation` | `-o` | 操作タイプ（現在サポート: patch） | * | `-o "patch"` |
+| `-token` | `-t` | Notionトークン | * | `-t "your_token"` |
 | `-con-id` | `-c` | コンテンツID（page-idと排他） | | `-c "TK000002873"` |
 | `-page-id` | `-p` | ページID（con-idと排他） | | `-p "page_id"` |
-| `-markdown` | `-m` | マークダウンコンテンツ | ✓ | `-m "# Hello World"` |
+| `-markdown` | `-m` | マークダウンコンテンツ | * | `-m "# Hello World"` |
 | `-toggle-h1` | | H1ヘッダートグル | | `-toggle-h1` |
 | `-toggle-h2` | | H2ヘッダートグル | | `-toggle-h2` |
 | `-toggle-h3` | | H3ヘッダートグル | | `-toggle-h3` |
-| `-endpoint-url` | `-u` | APIエンドポイントURL | ✓ | `-u "http://localhost:8080/task/patch"` |
+| `-endpoint-url` | `-u` | APIエンドポイントURL | * | `-u "http://localhost:8080/task/patch"` |
 | `-help` | `-h` | ヘルプを表示 | | `-h` |
 
 ## 使用例
@@ -47,40 +48,40 @@ go build -o bin/notion-sync ./cmd/cli/notion-sync
 
 ```bash
 # 基本的な使用方法
-./bin/notion-sync -token "your_token" -page-id "page_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
+./bin/notion-sync -operation "patch" -token "your_token" -page-id "page_id" -markdown "# Hello World" -endpoint-url "http://localhost:8080/task/patch"
 
 # 短縮オプションを使用
-./bin/notion-sync -t "your_token" -p "page_id" -m "# Hello World" -u "http://localhost:8080/task/patch"
+./bin/notion-sync -o "patch" -t "your_token" -p "page_id" -m "# Hello World" -u "http://localhost:8080/task/patch"
 
 # 位置引数での指定
-./bin/notion-sync "your_token" "# Hello World" "http://localhost:8080/task/patch" -page-id "page_id"
+./bin/notion-sync "your_token" "# Hello World" "http://localhost:8080/task/patch" -operation "patch" -page-id "page_id"
 ```
 
 ### コンテンツID指定での使用
 
 ```bash
 # コンテンツIDを使用
-./bin/notion-sync -token "your_token" -con-id "TK000002873" -markdown "# Test Content" -endpoint-url "http://localhost:8080/task/patch"
+./bin/notion-sync -operation "patch" -token "your_token" -con-id "TK000002873" -markdown "# Test Content" -endpoint-url "http://localhost:8080/task/patch"
 
 # 短縮オプションを使用
-./bin/notion-sync -t "your_token" -c "TK000002873" -m "# Test Content" -u "http://localhost:8080/task/patch"
+./bin/notion-sync -o "patch" -t "your_token" -c "TK000002873" -m "# Test Content" -u "http://localhost:8080/task/patch"
 ```
 
 ### ヘッダートグルオプション付き
 
 ```bash
 # H1とH2ヘッダーをトグル
-./bin/notion-sync -token "your_token" -page-id "page_id" -markdown "# Hello World" -toggle-h1 -toggle-h2 -endpoint-url "http://localhost:8080/task/patch"
+./bin/notion-sync -operation "patch" -token "your_token" -page-id "page_id" -markdown "# Hello World" -toggle-h1 -toggle-h2 -endpoint-url "http://localhost:8080/task/patch"
 
 # 全てのヘッダーレベルをトグル
-./bin/notion-sync -t "your_token" -p "page_id" -m "# Hello World" -toggle-h1 -toggle-h2 -toggle-h3 -u "http://localhost:8080/task/patch"
+./bin/notion-sync -o "patch" -t "your_token" -p "page_id" -m "# Hello World" -toggle-h1 -toggle-h2 -toggle-h3 -u "http://localhost:8080/task/patch"
 ```
 
 ### 複雑なマークダウンコンテンツ
 
 ```bash
 # 複数行のマークダウン
-./bin/notion-sync -t "your_token" -p "page_id" -m "# タイトル
+./bin/notion-sync -o "patch" -t "your_token" -p "page_id" -m "# タイトル
 
 ## サブタイトル
 
@@ -235,10 +236,10 @@ go tool cover -html=coverage.out -o coverage.html
 
 ```bash
 # go runでの実行
-go run ./cmd/cli/notion-sync/main.go -token "test" -page-id "test" -markdown "# Test" -endpoint-url "http://localhost:8080/task/patch"
+go run ./cmd/cli/notion-sync/main.go -operation "patch" -token "test" -page-id "test" -markdown "# Test" -endpoint-url "http://localhost:8080/task/patch"
 
 # バイナリでの実行
-./bin/notion-sync -token "test" -page-id "test" -markdown "# Test" -endpoint-url "http://localhost:8080/task/patch"
+./bin/notion-sync -operation "patch" -token "test" -page-id "test" -markdown "# Test" -endpoint-url "http://localhost:8080/task/patch"
 ```
 
 ## 関連プロジェクト
