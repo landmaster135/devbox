@@ -45,7 +45,31 @@ func createConfigFromEnv(envProvider EnvironmentProvider, operation, conID, page
 		return nil, fmt.Errorf("環境変数NOTION_ENDPOINT_URLが設定されていません")
 	}
 
-	return config.NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, toggleH1, toggleH2, toggleH3)
+	// WebClip用のパラメータは空文字列で初期化（MCPでは現在patch操作のみサポート）
+	date := ""
+	title := ""
+	url := ""
+
+	return config.NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, date, title, url, toggleH1, toggleH2, toggleH3)
+}
+
+// createConfigFromEnvForWebClip はWebClip用の環境変数とパラメータから設定を作成する
+func createConfigFromEnvForWebClip(envProvider EnvironmentProvider, operation, markdownContent, date, title, url string, toggleH1, toggleH2, toggleH3 bool) (*config.Config, error) {
+	token := envProvider.GetEnv("NOTION_INTEGRATION_TOKEN")
+	if token == "" {
+		return nil, fmt.Errorf("環境変数NOTION_INTEGRATION_TOKENが設定されていません")
+	}
+
+	endpointURL := envProvider.GetEnv("NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIP")
+	if endpointURL == "" {
+		return nil, fmt.Errorf("環境変数NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIPが設定されていません")
+	}
+
+	// WebClip操作ではconIDとpageIDは使用しない
+	conID := ""
+	pageID := ""
+
+	return config.NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, date, title, url, toggleH1, toggleH2, toggleH3)
 }
 
 // #==============================================================#
@@ -91,13 +115,62 @@ func handlePatchPage(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	return mcp.NewToolResultText(result), nil
 }
 
+// handlePatchPageWithWebClip はWebクリップ記事を日次ページに追加するハンドラー
+func handlePatchPageWithWebClip(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	// 必須パラメータを取得
+	markdownContent, err := request.RequireString("markdown_content")
+	if err != nil {
+		return nil, err
+	}
+
+	title, err := request.RequireString("title")
+	if err != nil {
+		return nil, err
+	}
+
+	url, err := request.RequireString("url")
+	if err != nil {
+		return nil, err
+	}
+
+	// オプションパラメータを取得
+	date := request.GetString("date", "")
+	toggleH1 := request.GetBool("toggle_h1", false)
+	toggleH2 := request.GetBool("toggle_h2", false)
+	toggleH3 := request.GetBool("toggle_h3", false)
+
+	// 環境変数プロバイダーを作成
+	envProvider := &StandardEnvironmentProvider{}
+
+	// patch_page_with_web_clipツールでは常にpatch-web-clip操作を使用
+	operation := "patch-web-clip"
+
+	// 設定を作成
+	cfg, err := createConfigFromEnvForWebClip(envProvider, operation, markdownContent, date, title, url, toggleH1, toggleH2, toggleH3)
+	if err != nil {
+		return nil, fmt.Errorf("設定の作成に失敗しました: %v", err)
+	}
+
+	// NotionSyncServiceを初期化
+	service := usecases.NewNotionSyncService()
+
+	// Notion同期を実行
+	result, err := service.HandleNotionSync(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("notion同期に失敗しました: %v", err)
+	}
+
+	return mcp.NewToolResultText(result), nil
+}
+
 // #==============================================================#
 // ##          Servers                                           ##
 // #==============================================================#
 
 // setNotionSyncServer はNotion同期ツールを提供するMCPサーバを設定します
 func setNotionSyncServer(s *server.MCPServer) *server.MCPServer {
-	tool := mcp.NewTool(
+	// 既存のpatch_pageツール
+	patchPageTool := mcp.NewTool(
 		"patch_page",
 		mcp.WithDescription("Patch Markdown content into Notion page"),
 		mcp.WithString(
@@ -126,7 +199,45 @@ func setNotionSyncServer(s *server.MCPServer) *server.MCPServer {
 			mcp.Description("Toggles heading3 or not"),
 		),
 	)
-	s.AddTool(tool, handlePatchPage)
+	s.AddTool(patchPageTool, handlePatchPage)
+
+	// 新しいpatch_page_with_web_clipツール
+	patchPageWithWebClipTool := mcp.NewTool(
+		"patch_page_with_web_clip",
+		mcp.WithDescription("Patch web clip article into Notion daily page"),
+		mcp.WithString(
+			"markdown_content",
+			mcp.Required(),
+			mcp.Description("Markdown content"),
+		),
+		mcp.WithString(
+			"title",
+			mcp.Required(),
+			mcp.Description("Article title"),
+		),
+		mcp.WithString(
+			"url",
+			mcp.Required(),
+			mcp.Description("Article URL"),
+		),
+		mcp.WithString(
+			"date",
+			mcp.Description("Target date (YYYYMMDD format, optional)"),
+		),
+		mcp.WithBoolean(
+			"toggle_h1",
+			mcp.Description("Toggles heading1 or not"),
+		),
+		mcp.WithBoolean(
+			"toggle_h2",
+			mcp.Description("Toggles heading2 or not"),
+		),
+		mcp.WithBoolean(
+			"toggle_h3",
+			mcp.Description("Toggles heading3 or not"),
+		),
+	)
+	s.AddTool(patchPageWithWebClipTool, handlePatchPageWithWebClip)
 
 	return s
 }

@@ -16,11 +16,14 @@ type Config struct {
 	ToggleH2        bool   // H2ヘッダートグル
 	ToggleH3        bool   // H3ヘッダートグル
 	EndpointURL     string // APIエンドポイントURL
+	Date            string // 対象日付（YYYYMMDD形式、WebClip用）
+	Title           string // 記事のタイトル（WebClip用）
+	URL             string // 記事のURL（WebClip用）
 	Help            bool   // ヘルプ表示フラグ
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(operation, token, conID, pageID, markdownContent, endpointURL string, toggleH1, toggleH2, toggleH3 bool) (*Config, error) {
+func NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, date, title, url string, toggleH1, toggleH2, toggleH3 bool) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
@@ -37,13 +40,23 @@ func NewConfig(operation, token, conID, pageID, markdownContent, endpointURL str
 		return nil, fmt.Errorf("エンドポイントURLが指定されていません")
 	}
 
-	// ConIDとPageIDの排他制御
-	if conID == "" && pageID == "" {
-		return nil, fmt.Errorf("con_id または page_id のいずれかを指定してください")
-	}
+	// patch-web-clip操作の場合の追加バリデーション
+	if operation == "patch-web-clip" {
+		if title == "" {
+			return nil, fmt.Errorf("patch-web-clip操作にはtitleが必要です")
+		}
+		if url == "" {
+			return nil, fmt.Errorf("patch-web-clip操作にはurlが必要です")
+		}
+	} else {
+		// patch操作の場合のConIDとPageIDの排他制御
+		if conID == "" && pageID == "" {
+			return nil, fmt.Errorf("con_id または page_id のいずれかを指定してください")
+		}
 
-	if conID != "" && pageID != "" {
-		return nil, fmt.Errorf("con_id と page_id の両方を指定することはできません")
+		if conID != "" && pageID != "" {
+			return nil, fmt.Errorf("con_id と page_id の両方を指定することはできません")
+		}
 	}
 
 	return &Config{
@@ -56,6 +69,9 @@ func NewConfig(operation, token, conID, pageID, markdownContent, endpointURL str
 		ToggleH2:        toggleH2,
 		ToggleH3:        toggleH3,
 		EndpointURL:     endpointURL,
+		Date:            date,
+		Title:           title,
+		URL:             url,
 	}, nil
 }
 
@@ -76,6 +92,9 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		toggleH2        = false
 		toggleH3        = false
 		endpointURL     = ""
+		date            = ""
+		title           = ""
+		url             = ""
 		help            = false
 	)
 
@@ -101,6 +120,13 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&endpointURL, "endpoint-url", endpointURL, "APIエンドポイントURL")
 	parser.StringVar(&endpointURL, "u", endpointURL, "APIエンドポイントURLの短縮形")
 
+	parser.StringVar(&date, "date", date, "対象日付（YYYYMMDD形式、WebClip用）")
+	parser.StringVar(&date, "d", date, "対象日付の短縮形")
+
+	parser.StringVar(&title, "title", title, "記事のタイトル（WebClip用）")
+
+	parser.StringVar(&url, "url", url, "記事のURL（WebClip用）")
+
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
 
@@ -125,7 +151,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		endpointURL = args[2]
 	}
 
-	return NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, toggleH1, toggleH2, toggleH3)
+	return NewConfig(operation, token, conID, pageID, markdownContent, endpointURL, date, title, url, toggleH1, toggleH2, toggleH3)
 }
 
 // PrintUsage は使用方法を表示する
@@ -144,20 +170,27 @@ func PrintUsage() {
   ヘッダートグルオプション付き:
     %s -operation "patch" -token "your_token" -page-id "page_id" -markdown "# Hello World" -toggle-h1 -toggle-h2 -endpoint-url "http://localhost:8080/task/patch"
 
+  WebClip操作:
+    %s -operation "patch-web-clip" -token "your_token" -markdown "# Article Content" -title "Article Title" -url "https://example.com" -endpoint-url "http://localhost:8080/task/patch/web-clip"
+    %s -o "patch-web-clip" -t "your_token" -m "# Article Content" -title "Article Title" -url "https://example.com" -date "20250817" -u "http://localhost:8080/task/patch/web-clip"
+
   位置引数での指定:
     %s "your_token" "# Hello World" "http://localhost:8080/task/patch" -operation "patch" -page-id "page_id"
 
 オプション:
-  -operation, -o    操作タイプ（必須）- 現在サポート: patch
+  -operation, -o    操作タイプ（必須）- 現在サポート: patch, patch-web-clip
   -token, -t        Notionトークン（必須）
-  -con-id, -c       コンテンツID（page-idと排他）
-  -page-id, -p      ページID（con-idと排他）
+  -con-id, -c       コンテンツID（page-idと排他、patch操作用）
+  -page-id, -p      ページID（con-idと排他、patch操作用）
   -markdown, -m     マークダウンコンテンツ（必須）
   -toggle-h1        H1ヘッダートグル
   -toggle-h2        H2ヘッダートグル
   -toggle-h3        H3ヘッダートグル
   -endpoint-url, -u APIエンドポイントURL（必須）
+  -date, -d         対象日付（YYYYMMDD形式、patch-web-clip操作用、省略可能）
+  -title            記事のタイトル（patch-web-clip操作用、必須）
+  -url              記事のURL（patch-web-clip操作用、必須）
   -help, -h         このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
