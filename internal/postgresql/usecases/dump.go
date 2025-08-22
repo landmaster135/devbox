@@ -33,6 +33,21 @@ type DumpResult struct {
 	ExecutedAt   string `json:"executed_at"`
 }
 
+// DumpAllTablesResult は全テーブルダンプの結果を表します
+type DumpAllTablesResult struct {
+	DatabaseName string       `json:"database_name"`
+	TotalTables  int          `json:"total_tables"`
+	Results      []DumpResult `json:"results"`
+	FailedTables []FailedDump `json:"failed_tables"`
+	ExecutedAt   string       `json:"executed_at"`
+}
+
+// FailedDump は失敗したダンプ情報を表します
+type FailedDump struct {
+	TableName string `json:"table_name"`
+	Error     string `json:"error"`
+}
+
 // #==============================================================#
 // ##          Interfaces                                        ##
 // #==============================================================#
@@ -371,4 +386,109 @@ func (d *TableDumper) writeSQLFile(filePath string, data []map[string]interface{
 	}
 
 	return d.fileWriter.WriteFile(filePath, []byte(sqlBuilder.String()), 0644)
+}
+
+// DumpAllTables はデータベース内の全テーブルをダンプします
+func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format string, limit *int) (*DumpAllTablesResult, error) {
+	// デフォルト値を設定
+	if outputPath == "" {
+		outputPath = "."
+	}
+	if format == "" {
+		format = "json"
+	}
+
+	// 出力ディレクトリを作成
+	if err := d.ensureOutputDirectory(outputPath); err != nil {
+		return nil, fmt.Errorf("出力ディレクトリ作成エラー: %w", err)
+	}
+
+	// 全テーブル一覧を取得
+	tables, err := d.getAllTables(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("テーブル一覧取得エラー: %w", err)
+	}
+
+	// データベース名を取得
+	databaseName, err := d.getDatabaseName(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("データベース名取得エラー: %w", err)
+	}
+
+	// 結果を格納する構造体を初期化
+	result := &DumpAllTablesResult{
+		DatabaseName: databaseName,
+		TotalTables:  len(tables),
+		Results:      []DumpResult{},
+		FailedTables: []FailedDump{},
+		ExecutedAt:   time.Now().Format("2006-01-02 15:04:05"),
+	}
+
+	// 各テーブルをダンプ
+	for _, table := range tables {
+		options := DumpOptions{
+			TableName:  table.Name,
+			OutputPath: outputPath,
+			Format:     format,
+			Limit:      limit,
+		}
+
+		dumpResult, err := d.DumpTable(ctx, options)
+		if err != nil {
+			// エラーが発生した場合は失敗リストに追加
+			result.FailedTables = append(result.FailedTables, FailedDump{
+				TableName: table.Name,
+				Error:     err.Error(),
+			})
+		} else {
+			// 成功した場合は結果リストに追加
+			result.Results = append(result.Results, *dumpResult)
+		}
+	}
+
+	return result, nil
+}
+
+// getAllTables はデータベース内の全テーブル一覧を取得します
+func (d *TableDumper) getAllTables(ctx context.Context) ([]Table, error) {
+	query := `
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
+		ORDER BY table_name
+	`
+
+	rows, err := d.executor.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tables []Table
+	for rows.Next() {
+		var table Table
+		if err := rows.Scan(&table.Name); err != nil {
+			return nil, err
+		}
+		tables = append(tables, table)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return tables, nil
+}
+
+// getDatabaseName は現在のデータベース名を取得します
+func (d *TableDumper) getDatabaseName(ctx context.Context) (string, error) {
+	query := "SELECT current_database()"
+
+	var dbName string
+	row := d.executor.QueryRowContext(ctx, query)
+	if err := row.Scan(&dbName); err != nil {
+		return "", err
+	}
+
+	return dbName, nil
 }

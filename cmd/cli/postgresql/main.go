@@ -36,6 +36,32 @@ func handleDump(cfg *config.Config) {
 	fmt.Print(string(jsonResult))
 }
 
+func handleDumpAllTables(cfg *config.Config) {
+	// PostgreSQLサービスを初期化
+	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
+		os.Exit(1)
+	}
+	defer service.Close()
+
+	// 全テーブルダンプを実行
+	result, err := service.HandleToDumpAllTables(context.Background(), cfg.OutputPath, cfg.Format, cfg.Limit)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: 全テーブルダンプの実行に失敗しました: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果をJSON形式で標準出力に表示
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: 結果のJSON変換に失敗しました: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Print(string(jsonResult))
+}
+
 func handleListTablesMinimum(cfg *config.Config) {
 	// PostgreSQLサービスを初期化
 	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
@@ -115,6 +141,8 @@ func main() {
 	switch cfg.Operation {
 	case "dump":
 		handleDump(cfg)
+	case "dump-all-tables":
+		handleDumpAllTables(cfg)
 	case "list-tables-minimum":
 		handleListTablesMinimum(cfg)
 	case "list-tables":
