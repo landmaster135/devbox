@@ -21,11 +21,17 @@ type MockDatabaseExecutor struct {
 
 func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
 	arguments := m.Called(ctx, query, args)
+	if arguments.Get(0) == nil {
+		return nil, arguments.Error(1)
+	}
 	return arguments.Get(0).(*sql.Rows), arguments.Error(1)
 }
 
 func (m *MockDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	arguments := m.Called(ctx, query, args)
+	if arguments.Get(0) == nil {
+		return nil
+	}
 	return arguments.Get(0).(*sql.Row)
 }
 
@@ -42,6 +48,24 @@ func (m *MockDatabaseExecutor) Ping() error {
 func (m *MockDatabaseExecutor) Close() error {
 	arguments := m.Called()
 	return arguments.Error(0)
+}
+
+// QueryContextRows は新しいインターフェース用のメソッド
+func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error) {
+	arguments := m.Called(ctx, query, args)
+	if arguments.Get(0) == nil {
+		return nil, arguments.Error(1)
+	}
+	return arguments.Get(0).(RowsInterface), arguments.Error(1)
+}
+
+// QueryRowContextRow は新しいインターフェース用のメソッド
+func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface {
+	arguments := m.Called(ctx, query, args)
+	if arguments.Get(0) == nil {
+		return nil
+	}
+	return arguments.Get(0).(RowInterface)
 }
 
 // MockTemplateRenderer はテスト用のTemplateRendererモック

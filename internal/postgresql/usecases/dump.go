@@ -73,6 +73,26 @@ type FileWriter interface {
 	Create(name string) (*os.File, error)
 }
 
+// RowsInterface は sql.Rows の操作を抽象化するインターフェースです
+type RowsInterface interface {
+	Columns() ([]string, error)
+	Next() bool
+	Scan(dest ...interface{}) error
+	Close() error
+	Err() error
+}
+
+// RowInterface は sql.Row の操作を抽象化するインターフェースです
+type RowInterface interface {
+	Scan(dest ...interface{}) error
+}
+
+// DatabaseQueryExecutor はクエリ実行を抽象化するインターフェースです
+type DatabaseQueryExecutor interface {
+	QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error)
+	QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface
+}
+
 // #==============================================================#
 // ##          Default Implementations                           ##
 // #==============================================================#
@@ -98,12 +118,12 @@ func (w *DefaultFileWriter) Create(name string) (*os.File, error) {
 
 // TableDumper はテーブルダンプ機能を提供します
 type TableDumper struct {
-	executor   DatabaseExecutor
+	executor   DatabaseQueryExecutor
 	fileWriter FileWriter
 }
 
 // NewTableDumper は新しいTableDumperを作成します
-func NewTableDumper(executor DatabaseExecutor) *TableDumper {
+func NewTableDumper(executor DatabaseQueryExecutor) *TableDumper {
 	return &TableDumper{
 		executor:   executor,
 		fileWriter: &DefaultFileWriter{},
@@ -111,7 +131,7 @@ func NewTableDumper(executor DatabaseExecutor) *TableDumper {
 }
 
 // NewTableDumperWithDependencies はテスト用に依存性を注入できるTableDumperを作成します
-func NewTableDumperWithDependencies(executor DatabaseExecutor, fileWriter FileWriter) *TableDumper {
+func NewTableDumperWithDependencies(executor DatabaseQueryExecutor, fileWriter FileWriter) *TableDumper {
 	return &TableDumper{
 		executor:   executor,
 		fileWriter: fileWriter,
@@ -207,7 +227,7 @@ func (d *TableDumper) buildQuery(options DumpOptions) string {
 
 // fetchTableData はテーブルデータを取得します
 func (d *TableDumper) fetchTableData(ctx context.Context, query string) ([]map[string]interface{}, error) {
-	rows, err := d.executor.QueryContext(ctx, query)
+	rows, err := d.executor.QueryContextRows(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +434,7 @@ func (d *TableDumper) getAllTables(ctx context.Context) ([]Table, error) {
 		ORDER BY table_name
 	`
 
-	rows, err := d.executor.QueryContext(ctx, query)
+	rows, err := d.executor.QueryContextRows(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +461,7 @@ func (d *TableDumper) getDatabaseName(ctx context.Context) (string, error) {
 	query := "SELECT current_database()"
 
 	var dbName string
-	row := d.executor.QueryRowContext(ctx, query)
+	row := d.executor.QueryRowContextRow(ctx, query)
 	if err := row.Scan(&dbName); err != nil {
 		return "", err
 	}
