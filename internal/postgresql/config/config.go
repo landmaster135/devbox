@@ -8,7 +8,7 @@ import (
 
 // Config はCLIツールの設定を表します
 type Config struct {
-	Operation   string // 必須: "dump", "list-tables-minimum", "list-tables"
+	Operation   string // 必須: "dump", "dump-all-tables", "list-tables-minimum", "list-tables"
 	DatabaseURL string // 必須: PostgreSQL接続URL
 	TableName   string // dump操作時のみ必須: ダンプするテーブル名
 	OutputPath  string // オプション: 出力ディレクトリパス
@@ -21,7 +21,7 @@ type Config struct {
 func ParseFlags() (*Config, error) {
 	cfg := &Config{}
 
-	flag.StringVar(&cfg.Operation, "operation", "", "実行する操作 (必須: dump, list-tables-minimum, list-tables)")
+	flag.StringVar(&cfg.Operation, "operation", "", "実行する操作 (必須: dump, dump-all-tables, list-tables-minimum, list-tables)")
 	flag.StringVar(&cfg.DatabaseURL, "database-url", "", "PostgreSQLデータベース接続URL (必須)")
 	flag.StringVar(&cfg.TableName, "table-name", "", "ダンプするテーブル名 (dump操作時のみ必須)")
 	flag.StringVar(&cfg.OutputPath, "output-path", "", "出力ディレクトリパス (オプション、デフォルト: カレントディレクトリ)")
@@ -61,11 +61,12 @@ func (c *Config) validate() error {
 	// 対応操作の検証
 	validOperations := map[string]bool{
 		"dump":                true,
+		"dump-all-tables":     true,
 		"list-tables-minimum": true,
 		"list-tables":         true,
 	}
 	if !validOperations[c.Operation] {
-		return fmt.Errorf("未対応の操作です: %s (対応操作: dump, list-tables-minimum, list-tables)", c.Operation)
+		return fmt.Errorf("未対応の操作です: %s (対応操作: dump, dump-all-tables, list-tables-minimum, list-tables)", c.Operation)
 	}
 
 	if c.DatabaseURL == "" {
@@ -107,7 +108,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "使用方法:\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli [オプション]\n\n")
 	fmt.Fprintf(os.Stderr, "必須オプション:\n")
-	fmt.Fprintf(os.Stderr, "  --operation string      実行する操作 (dump, list-tables-minimum, list-tables)\n")
+	fmt.Fprintf(os.Stderr, "  --operation string      実行する操作 (dump, dump-all-tables, list-tables-minimum, list-tables)\n")
 	fmt.Fprintf(os.Stderr, "  --database-url string   PostgreSQLデータベース接続URL\n")
 	fmt.Fprintf(os.Stderr, "  --table-name string     ダンプするテーブル名 (dump操作時のみ必須)\n\n")
 	fmt.Fprintf(os.Stderr, "オプション:\n")
@@ -116,8 +117,14 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --limit int             最大レコード数\n")
 	fmt.Fprintf(os.Stderr, "  --help                  このヘルプを表示\n\n")
 	fmt.Fprintf(os.Stderr, "使用例:\n")
-	fmt.Fprintf(os.Stderr, "  # テーブルダンプ\n")
+	fmt.Fprintf(os.Stderr, "  # 単一テーブルダンプ\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump --database-url=\"postgres://user:pass@localhost/db\" --table-name=users\n\n")
+	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ\n")
+	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\"\n\n")
+	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ（CSV形式、出力先指定）\n")
+	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --format=csv --output-path=/tmp/dumps\n\n")
+	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ（各テーブル最大1000件）\n")
+	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --limit=1000\n\n")
 	fmt.Fprintf(os.Stderr, "  # テーブル一覧（最小限）\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=list-tables-minimum --database-url=\"postgres://user:pass@localhost/db\"\n\n")
 	fmt.Fprintf(os.Stderr, "  # テーブル一覧（詳細）\n")

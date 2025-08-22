@@ -4,7 +4,8 @@ PostgreSQLデータベースのテーブルダンプ機能を提供するCLIツ�
 
 ## 機能
 
-- テーブルの全レコードをダンプ
+- 単一テーブルの全レコードをダンプ
+- **データベース内の全テーブルを一括ダンプ**
 - テーブル一覧の取得（最小限・詳細）
 - 複数の出力フォーマット対応（JSON、CSV、SQL、テキスト）
 - レコード数制限機能
@@ -19,7 +20,7 @@ go build -o postgresql-cli .
 
 ## 使用例
 
-### テーブルダンプ
+### 単一テーブルダンプ
 
 ```bash
 # 基本的なダンプ（JSON形式、カレントディレクトリに出力）
@@ -39,6 +40,28 @@ go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pas
 
 # 全オプション指定
 go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pass@localhost/db" --table-name=users --format=json --output-path=/tmp --limit=100
+```
+
+### 全テーブル一括ダンプ
+
+```bash
+# 基本的な全テーブルダンプ（JSON形式、カレントディレクトリに出力）
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db"
+
+# CSV形式で全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=csv
+
+# SQL形式で全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=sql
+
+# 出力ディレクトリを指定して全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --output-path=/tmp/dumps
+
+# 各テーブルのレコード数を制限して全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --limit=1000
+
+# 全オプション指定で全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=csv --output-path=/tmp/dumps --limit=500
 ```
 
 ### テーブル一覧取得
@@ -66,7 +89,7 @@ go run ./cmd/cli/postgresql -help
 
 | パラメータ | 説明 | 例 |
 |-----------|------|-----|
-| `--operation` | 実行する操作 | `dump`, `list-tables-minimum`, `list-tables` |
+| `--operation` | 実行する操作 | `dump`, `dump-all-tables`, `list-tables-minimum`, `list-tables` |
 | `--database-url` | PostgreSQLデータベース接続URL | `postgres://user:pass@localhost/db` |
 | `--table-name` | ダンプするテーブル名（dump操作時のみ必須） | `users` |
 
@@ -83,6 +106,10 @@ go run ./cmd/cli/postgresql -help
 
 dump操作
 - **必須**: `--operation`, `--database-url`, `--table-name`
+- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`
+
+dump-all-tables操作
+- **必須**: `--operation`, `--database-url`
 - **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`
 
 list-tables-minimum操作
@@ -106,6 +133,75 @@ list-tables操作
   "output_path": "/tmp",
   "file_name": "users_20250822_180530.json",
   "format": "json",
+  "executed_at": "2025-08-22 18:05:30"
+}
+```
+
+### dump-all-tables操作の出力
+
+**JSON形式（デフォルト）**
+
+```json
+{
+  "database_name": "mydb",
+  "total_tables": 3,
+  "results": [
+    {
+      "table_name": "users",
+      "record_count": 150,
+      "output_path": "/tmp/dumps",
+      "file_name": "users_20250822_180530.json",
+      "format": "json",
+      "executed_at": "2025-08-22 18:05:30"
+    },
+    {
+      "table_name": "products",
+      "record_count": 75,
+      "output_path": "/tmp/dumps",
+      "file_name": "products_20250822_180531.json",
+      "format": "json",
+      "executed_at": "2025-08-22 18:05:31"
+    },
+    {
+      "table_name": "orders",
+      "record_count": 200,
+      "output_path": "/tmp/dumps",
+      "file_name": "orders_20250822_180532.json",
+      "format": "json",
+      "executed_at": "2025-08-22 18:05:32"
+    }
+  ],
+  "failed_tables": [],
+  "executed_at": "2025-08-22 18:05:30"
+}
+```
+
+**エラーが発生した場合の出力例**
+
+```json
+{
+  "database_name": "mydb",
+  "total_tables": 3,
+  "results": [
+    {
+      "table_name": "users",
+      "record_count": 150,
+      "output_path": "/tmp/dumps",
+      "file_name": "users_20250822_180530.json",
+      "format": "json",
+      "executed_at": "2025-08-22 18:05:30"
+    }
+  ],
+  "failed_tables": [
+    {
+      "table_name": "products",
+      "error": "permission denied for table products"
+    },
+    {
+      "table_name": "orders",
+      "error": "disk full"
+    }
+  ],
   "executed_at": "2025-08-22 18:05:30"
 }
 ```
