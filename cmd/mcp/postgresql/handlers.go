@@ -97,6 +97,29 @@ func (h *PostgreSQLMCPHandler) HandleToListTablesMinimum(ctx context.Context, re
 	return returnJSONResult(result)
 }
 
+// HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
+func (h *PostgreSQLMCPHandler) HandleToDumpTable(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	tableName, err := request.RequireString("table_name")
+	if err != nil {
+		return nil, err
+	}
+
+	outputPath := request.GetString("output_path", "")
+	format := request.GetString("format", "json")
+
+	var limit *int
+	if limitValue := request.GetInt("limit", 0); limitValue > 0 {
+		limit = &limitValue
+	}
+
+	result, err := h.service.HandleToDumpTable(ctx, tableName, outputPath, format, limit)
+	if err != nil {
+		return nil, fmt.Errorf("テーブルダンプの実行に失敗しました: %v", err)
+	}
+
+	return returnJSONResult(result)
+}
+
 // #==============================================================#
 // ##          Helper Functions                                  ##
 // #==============================================================#

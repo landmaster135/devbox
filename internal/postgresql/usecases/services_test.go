@@ -77,11 +77,13 @@ func createTestPostgreSQLService() *PostgreSQLService {
 	mockExecutor := &MockDatabaseExecutor{}
 	mockRenderer := &MockTemplateRenderer{}
 	mockMarshaler := &MockJSONMarshaler{}
+	tableDumper := NewTableDumper(mockExecutor)
 
 	return NewPostgreSQLServiceWithDependencies(
 		mockExecutor,
 		mockRenderer,
 		mockMarshaler,
+		tableDumper,
 		"postgres://test:test@localhost/testdb",
 		"postgres://test@localhost/testdb",
 	)
@@ -101,6 +103,7 @@ func TestNewPostgreSQLServiceWithDependencies_Normal(t *testing.T) {
 	mockExecutor := &MockDatabaseExecutor{}
 	mockRenderer := &MockTemplateRenderer{}
 	mockMarshaler := &MockJSONMarshaler{}
+	tableDumper := NewTableDumper(mockExecutor)
 	databaseURL := "postgres://test:test@localhost/testdb"
 	resourceBase := "postgres://test@localhost/testdb"
 
@@ -109,6 +112,7 @@ func TestNewPostgreSQLServiceWithDependencies_Normal(t *testing.T) {
 		mockExecutor,
 		mockRenderer,
 		mockMarshaler,
+		tableDumper,
 		databaseURL,
 		resourceBase,
 	)
