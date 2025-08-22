@@ -800,7 +800,7 @@ func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, ou
 }
 
 // HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToDumpAllTables(ctx context.Context, outputPath, format string, limit *int) (*DumpAllTablesResult, error) {
+func (s *PostgreSQLService) HandleToDumpAllTables(ctx context.Context, outputPath, format string, limit *int, concurrency *int) (*DumpAllTablesResult, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -810,5 +810,5 @@ func (s *PostgreSQLService) HandleToDumpAllTables(ctx context.Context, outputPat
 	}
 
 	// 全テーブルダンプを実行
-	return s.tableDumper.DumpAllTables(ctx, outputPath, format, limit)
+	return s.tableDumper.DumpAllTables(ctx, outputPath, format, limit, concurrency)
 }

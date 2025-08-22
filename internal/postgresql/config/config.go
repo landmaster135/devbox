@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 )
 
 // Config はCLIツールの設定を表します
@@ -14,6 +15,7 @@ type Config struct {
 	OutputPath  string // オプション: 出力ディレクトリパス
 	Format      string // オプション: 出力フォーマット (json, csv, sql, text)
 	Limit       *int   // オプション: 最大レコード数
+	Concurrency *int   // オプション: 並行処理数 (1-10)
 	Help        bool   // ヘルプフラグ
 }
 
@@ -29,6 +31,21 @@ func ParseFlags() (*Config, error) {
 
 	var limitValue int
 	flag.IntVar(&limitValue, "limit", 0, "最大レコード数 (オプション)")
+
+	var concurrencyValue int
+	// concurrencyの設定とバリデーション
+	maxConcurrency := 10
+	// デフォルト値を設定
+	concurrency := min(runtime.NumCPU(), maxConcurrency)
+	flag.IntVar(&concurrencyValue, "concurrency", 1, fmt.Sprintf("並行処理数 (オプション: 1-%d、デフォルト: CPUコア数)", concurrency))
+	if concurrencyValue != 1 {
+		// 指定された値のバリデーション
+		if concurrencyValue < 1 || concurrencyValue > concurrency {
+			return nil, fmt.Errorf("--concurrency は1以上かつ%d以下である必要があります: %d", maxConcurrency, concurrencyValue)
+		}
+		concurrency = concurrencyValue
+	}
+	cfg.Concurrency = &concurrency
 
 	flag.BoolVar(&cfg.Help, "help", false, "ヘルプを表示")
 
@@ -115,6 +132,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --output-path string    出力ディレクトリパス (デフォルト: カレントディレクトリ)\n")
 	fmt.Fprintf(os.Stderr, "  --format string         出力フォーマット: json, csv, sql, text (デフォルト: json)\n")
 	fmt.Fprintf(os.Stderr, "  --limit int             最大レコード数\n")
+	fmt.Fprintf(os.Stderr, "  --concurrency int       並行処理数: 1-10 (デフォルト: CPUコア数、最大10)\n")
 	fmt.Fprintf(os.Stderr, "  --help                  このヘルプを表示\n\n")
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  # 単一テーブルダンプ\n")
@@ -125,6 +143,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --format=csv --output-path=/tmp/dumps\n\n")
 	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ（各テーブル最大1000件）\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --limit=1000\n\n")
+	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ（並行処理数3で実行）\n")
+	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --concurrency=3\n\n")
 	fmt.Fprintf(os.Stderr, "  # テーブル一覧（最小限）\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=list-tables-minimum --database-url=\"postgres://user:pass@localhost/db\"\n\n")
 	fmt.Fprintf(os.Stderr, "  # テーブル一覧（詳細）\n")

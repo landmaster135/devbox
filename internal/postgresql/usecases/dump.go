@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,12 +26,12 @@ type DumpOptions struct {
 
 // DumpResult はダンプ処理の結果を表します
 type DumpResult struct {
-	TableName    string `json:"table_name"`
-	RecordCount  int    `json:"record_count"`
-	OutputPath   string `json:"output_path"`
-	FileName     string `json:"file_name"`
-	Format       string `json:"format"`
-	ExecutedAt   string `json:"executed_at"`
+	TableName   string `json:"table_name"`
+	RecordCount int    `json:"record_count"`
+	OutputPath  string `json:"output_path"`
+	FileName    string `json:"file_name"`
+	Format      string `json:"format"`
+	ExecutedAt  string `json:"executed_at"`
 }
 
 // DumpAllTablesResult は全テーブルダンプの結果を表します
@@ -46,6 +47,19 @@ type DumpAllTablesResult struct {
 type FailedDump struct {
 	TableName string `json:"table_name"`
 	Error     string `json:"error"`
+}
+
+// DumpTask は並行処理用のダンプタスクを表します
+type DumpTask struct {
+	Table   Table
+	Options DumpOptions
+}
+
+// DumpTaskResult は並行処理用のダンプタスク結果を表します
+type DumpTaskResult struct {
+	Success bool
+	Result  *DumpResult
+	Failed  *FailedDump
 }
 
 // #==============================================================#
@@ -388,8 +402,27 @@ func (d *TableDumper) writeSQLFile(filePath string, data []map[string]interface{
 	return d.fileWriter.WriteFile(filePath, []byte(sqlBuilder.String()), 0644)
 }
 
-// DumpAllTables はデータベース内の全テーブルをダンプします
-func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format string, limit *int) (*DumpAllTablesResult, error) {
+// dumpSingleTable は単一テーブルのダンプを実行するサブルーチンです
+func (d *TableDumper) dumpSingleTable(ctx context.Context, task DumpTask) DumpTaskResult {
+	dumpResult, err := d.DumpTable(ctx, task.Options)
+	if err != nil {
+		return DumpTaskResult{
+			Success: false,
+			Failed: &FailedDump{
+				TableName: task.Table.Name,
+				Error:     err.Error(),
+			},
+		}
+	}
+
+	return DumpTaskResult{
+		Success: true,
+		Result:  dumpResult,
+	}
+}
+
+// DumpAllTables はデータベース内の全テーブルを並行処理でダンプします
+func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format string, limit *int, concurrency *int) (*DumpAllTablesResult, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -415,6 +448,12 @@ func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format stri
 		return nil, fmt.Errorf("データベース名取得エラー: %w", err)
 	}
 
+	// 並行処理数を決定
+	maxConcurrency := *concurrency
+	if len(tables) < maxConcurrency {
+		maxConcurrency = len(tables)
+	}
+
 	// 結果を格納する構造体を初期化
 	result := &DumpAllTablesResult{
 		DatabaseName: databaseName,
@@ -424,7 +463,43 @@ func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format stri
 		ExecutedAt:   time.Now().Format("2006-01-02 15:04:05"),
 	}
 
-	// 各テーブルをダンプ
+	// テーブルが0個の場合は早期リターン
+	if len(tables) == 0 {
+		return result, nil
+	}
+
+	// 並行処理用のチャネルを作成
+	taskChan := make(chan DumpTask, len(tables))
+	resultChan := make(chan DumpTaskResult, len(tables))
+
+	// ワーカーgoroutineを起動
+	var wg sync.WaitGroup
+	for i := 0; i < maxConcurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for task := range taskChan {
+				select {
+				case <-ctx.Done():
+					// コンテキストがキャンセルされた場合
+					resultChan <- DumpTaskResult{
+						Success: false,
+						Failed: &FailedDump{
+							TableName: task.Table.Name,
+							Error:     "コンテキストがキャンセルされました",
+						},
+					}
+					return
+				default:
+					// 単一テーブルダンプを実行
+					taskResult := d.dumpSingleTable(ctx, task)
+					resultChan <- taskResult
+				}
+			}
+		}()
+	}
+
+	// タスクをチャネルに送信
 	for _, table := range tables {
 		options := DumpOptions{
 			TableName:  table.Name,
@@ -432,18 +507,29 @@ func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format stri
 			Format:     format,
 			Limit:      limit,
 		}
-
-		dumpResult, err := d.DumpTable(ctx, options)
-		if err != nil {
-			// エラーが発生した場合は失敗リストに追加
-			result.FailedTables = append(result.FailedTables, FailedDump{
-				TableName: table.Name,
-				Error:     err.Error(),
-			})
-		} else {
-			// 成功した場合は結果リストに追加
-			result.Results = append(result.Results, *dumpResult)
+		taskChan <- DumpTask{
+			Table:   table,
+			Options: options,
 		}
+	}
+	close(taskChan)
+
+	// 結果を収集するgoroutineを起動
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// 結果を収集
+	var mu sync.Mutex
+	for taskResult := range resultChan {
+		mu.Lock()
+		if taskResult.Success {
+			result.Results = append(result.Results, *taskResult.Result)
+		} else {
+			result.FailedTables = append(result.FailedTables, *taskResult.Failed)
+		}
+		mu.Unlock()
 	}
 
 	return result, nil

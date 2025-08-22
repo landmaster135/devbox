@@ -46,7 +46,7 @@ func handleDumpAllTables(cfg *config.Config) {
 	defer service.Close()
 
 	// 全テーブルダンプを実行
-	result, err := service.HandleToDumpAllTables(context.Background(), cfg.OutputPath, cfg.Format, cfg.Limit)
+	result, err := service.HandleToDumpAllTables(context.Background(), cfg.OutputPath, cfg.Format, cfg.Limit, cfg.Concurrency)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: 全テーブルダンプの実行に失敗しました: %v\n", err)
 		os.Exit(1)

@@ -60,8 +60,11 @@ go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres
 # 各テーブルのレコード数を制限して全テーブルダンプ
 go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --limit=1000
 
+# 並行処理数を指定して全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --concurrency=3
+
 # 全オプション指定で全テーブルダンプ
-go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=csv --output-path=/tmp/dumps --limit=500
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=csv --output-path=/tmp/dumps --limit=500 --concurrency=5
 ```
 
 ### テーブル一覧取得
@@ -100,6 +103,7 @@ go run ./cmd/cli/postgresql -help
 | `--output-path` | 出力ディレクトリパス（dump操作時のみ） | カレントディレクトリ | `/tmp` |
 | `--format` | 出力フォーマット | `json` | `csv`, `sql`, `text` |
 | `--limit` | 最大レコード数（dump操作時のみ） | 制限なし | `100` |
+| `--concurrency` | 並行処理数（dump-all-tables操作時のみ） | CPUコア数（最大10） | `3` |
 | `--help` | ヘルプを表示 | - | - |
 
 ### 操作別パラメータ
@@ -110,7 +114,7 @@ dump操作
 
 dump-all-tables操作
 - **必須**: `--operation`, `--database-url`
-- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`
+- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`, `--concurrency`
 
 list-tables-minimum操作
 - **必須**: `--operation`, `--database-url`
