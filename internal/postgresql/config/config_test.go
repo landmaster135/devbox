@@ -213,7 +213,7 @@ func TestParseFlags_InvalidOperation_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "未対応の操作です: invalid (対応操作: dump, list-tables-minimum, list-tables)"
+	expectedError := "未対応の操作です: invalid (対応操作: dump, dump-all-tables, list-tables-minimum, list-tables)"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -390,6 +390,131 @@ func TestParseFlags_ListTablesMinimumInvalidFormat_Error(t *testing.T) {
 	}
 
 	expectedError := "list-tables-minimum操作ではjsonフォーマットのみ対応しています"
+	if err.Error() != expectedError {
+		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
+	}
+}
+
+func TestParseFlags_DumpAllTables_Normal(t *testing.T) {
+	// テスト用のコマンドライン引数を設定
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=csv",
+		"--output-path=/tmp/dumps",
+		"--limit=500",
+		"--concurrency=3",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	// 期待値の検証
+	if cfg.Operation != "dump-all-tables" {
+		t.Errorf("Operation = %s, want dump-all-tables", cfg.Operation)
+	}
+	if cfg.DatabaseURL != "postgres://user:pass@localhost/testdb" {
+		t.Errorf("DatabaseURL = %s, want postgres://user:pass@localhost/testdb", cfg.DatabaseURL)
+	}
+	if cfg.TableName != "" {
+		t.Errorf("TableName = %s, want empty (dump-all-tables操作では不要)", cfg.TableName)
+	}
+	if cfg.Format != "csv" {
+		t.Errorf("Format = %s, want csv", cfg.Format)
+	}
+	if cfg.OutputPath != "/tmp/dumps" {
+		t.Errorf("OutputPath = %s, want /tmp/dumps", cfg.OutputPath)
+	}
+	if cfg.Limit == nil || *cfg.Limit != 500 {
+		t.Errorf("Limit = %v, want 500", cfg.Limit)
+	}
+	if cfg.Concurrency == nil || *cfg.Concurrency != 3 {
+		t.Errorf("Concurrency = %v, want 3", cfg.Concurrency)
+	}
+}
+
+func TestParseFlags_Concurrency_Normal(t *testing.T) {
+	// テスト用のコマンドライン引数を設定
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--concurrency=5",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	// concurrencyの検証
+	if cfg.Concurrency == nil || *cfg.Concurrency != 5 {
+		t.Errorf("Concurrency = %v, want 5", cfg.Concurrency)
+	}
+}
+
+func TestParseFlags_ConcurrencyInvalid_Error(t *testing.T) {
+	// テスト用のコマンドライン引数を設定（範囲外の値）
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--concurrency=15",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
+	}
+
+	expectedError := "--concurrency は1以上かつ10以下である必要があります: 15"
+	if err.Error() != expectedError {
+		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
+	}
+}
+
+func TestParseFlags_ConcurrencyZero_Error(t *testing.T) {
+	// テスト用のコマンドライン引数を設定（0の場合）
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--concurrency=0",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
+	}
+
+	expectedError := "--concurrency は1以上かつ10以下である必要があります: 0"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
