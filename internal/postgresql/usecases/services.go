@@ -149,6 +149,7 @@ type PostgreSQLService struct {
 	executor         DatabaseExecutor
 	templateRenderer TemplateRenderer
 	jsonMarshaler    JSONMarshaler
+	tableDumper      *TableDumper
 	databaseURL      string
 	resourceBase     string
 }
@@ -171,21 +172,25 @@ func NewPostgreSQLService(databaseURL string) (*PostgreSQLService, error) {
 		return nil, err
 	}
 
+	executor := &DefaultDatabaseExecutor{db: db}
+
 	return &PostgreSQLService{
-		executor:         &DefaultDatabaseExecutor{db: db},
+		executor:         executor,
 		templateRenderer: &DefaultTemplateRenderer{},
 		jsonMarshaler:    &DefaultJSONMarshaler{},
+		tableDumper:      NewTableDumper(executor),
 		databaseURL:      databaseURL,
 		resourceBase:     resourceBase,
 	}, nil
 }
 
 // NewPostgreSQLServiceWithDependencies はテスト用に依存性を注入できるPostgreSQLServiceを作成します
-func NewPostgreSQLServiceWithDependencies(executor DatabaseExecutor, templateRenderer TemplateRenderer, jsonMarshaler JSONMarshaler, databaseURL, resourceBase string) *PostgreSQLService {
+func NewPostgreSQLServiceWithDependencies(executor DatabaseExecutor, templateRenderer TemplateRenderer, jsonMarshaler JSONMarshaler, tableDumper *TableDumper, databaseURL, resourceBase string) *PostgreSQLService {
 	return &PostgreSQLService{
 		executor:         executor,
 		templateRenderer: templateRenderer,
 		jsonMarshaler:    jsonMarshaler,
+		tableDumper:      tableDumper,
 		databaseURL:      databaseURL,
 		resourceBase:     resourceBase,
 	}
@@ -770,4 +775,26 @@ func (s *PostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, t
 // HandleToListTablesMinimum はデータベース内のテーブル一覧を取得して、結果をJSON形式で返します
 func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) ([]Table, error) {
 	return s.GetTablesMinimum(ctx)
+}
+
+// HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
+func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, outputPath, format string, limit *int) (*DumpResult, error) {
+	// デフォルト値を設定
+	if outputPath == "" {
+		outputPath = "."
+	}
+	if format == "" {
+		format = "json"
+	}
+
+	// ダンプオプションを作成
+	options := DumpOptions{
+		TableName:  tableName,
+		OutputPath: outputPath,
+		Format:     format,
+		Limit:      limit,
+	}
+
+	// ダンプを実行
+	return s.tableDumper.DumpTable(ctx, options)
 }

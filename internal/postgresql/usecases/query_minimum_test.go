@@ -24,11 +24,13 @@ func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *PostgreSQLService) {
 	executor := &DefaultDatabaseExecutor{db: db}
 	renderer := &DefaultTemplateRenderer{}
 	marshaler := &DefaultJSONMarshaler{}
+	tableDumper := NewTableDumper(executor)
 
 	service := NewPostgreSQLServiceWithDependencies(
 		executor,
 		renderer,
 		marshaler,
+		tableDumper,
 		"postgres://test:test@localhost/testdb",
 		"postgres://test@localhost/testdb",
 	)
