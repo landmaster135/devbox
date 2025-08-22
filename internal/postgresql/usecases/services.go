@@ -133,6 +133,55 @@ func (d *DefaultDatabaseExecutor) Close() error {
 	return d.db.Close()
 }
 
+// QueryContextRows は新しいインターフェース用のメソッド
+func (d *DefaultDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error) {
+	rows, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &SQLRowsWrapper{rows: rows}, nil
+}
+
+// QueryRowContextRow は新しいインターフェース用のメソッド
+func (d *DefaultDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface {
+	row := d.db.QueryRowContext(ctx, query, args...)
+	return &SQLRowWrapper{row: row}
+}
+
+// SQLRowsWrapper は *sql.Rows を RowsInterface として扱うためのラッパー
+type SQLRowsWrapper struct {
+	rows *sql.Rows
+}
+
+func (w *SQLRowsWrapper) Columns() ([]string, error) {
+	return w.rows.Columns()
+}
+
+func (w *SQLRowsWrapper) Next() bool {
+	return w.rows.Next()
+}
+
+func (w *SQLRowsWrapper) Scan(dest ...interface{}) error {
+	return w.rows.Scan(dest...)
+}
+
+func (w *SQLRowsWrapper) Close() error {
+	return w.rows.Close()
+}
+
+func (w *SQLRowsWrapper) Err() error {
+	return w.rows.Err()
+}
+
+// SQLRowWrapper は *sql.Row を RowInterface として扱うためのラッパー
+type SQLRowWrapper struct {
+	row *sql.Row
+}
+
+func (w *SQLRowWrapper) Scan(dest ...interface{}) error {
+	return w.row.Scan(dest...)
+}
+
 // DefaultJSONMarshaler は標準のjson.MarshalIndentを使用する実装
 type DefaultJSONMarshaler struct{}
 

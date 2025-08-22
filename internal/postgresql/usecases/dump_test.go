@@ -32,6 +32,9 @@ func (m *MockFileWriter) MkdirAll(path string, perm os.FileMode) error {
 
 func (m *MockFileWriter) Create(name string) (*os.File, error) {
 	args := m.Called(name)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*os.File), args.Error(1)
 }
 
@@ -39,8 +42,8 @@ func (m *MockFileWriter) Create(name string) (*os.File, error) {
 // ##          Test Helper Functions                             ##
 // #==============================================================#
 
-func createTestTableDumper() (*TableDumper, *MockDatabaseExecutor, *MockFileWriter) {
-	mockExecutor := &MockDatabaseExecutor{}
+func createTestTableDumper() (*TableDumper, *MockDatabaseQueryExecutor, *MockFileWriter) {
+	mockExecutor := &MockDatabaseQueryExecutor{}
 	mockFileWriter := &MockFileWriter{}
 
 	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
@@ -54,7 +57,7 @@ func createTestTableDumper() (*TableDumper, *MockDatabaseExecutor, *MockFileWrit
 
 func TestNewTableDumper_Normal(t *testing.T) {
 	// Arrange
-	mockExecutor := &MockDatabaseExecutor{}
+	mockExecutor := &MockDatabaseQueryExecutor{}
 
 	// Act
 	dumper := NewTableDumper(mockExecutor)
@@ -67,7 +70,7 @@ func TestNewTableDumper_Normal(t *testing.T) {
 
 func TestNewTableDumperWithDependencies_Normal(t *testing.T) {
 	// Arrange
-	mockExecutor := &MockDatabaseExecutor{}
+	mockExecutor := &MockDatabaseQueryExecutor{}
 	mockFileWriter := &MockFileWriter{}
 
 	// Act
