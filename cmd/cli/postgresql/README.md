@@ -5,7 +5,8 @@ PostgreSQLデータベースのテーブルダンプ機能を提供するCLIツ�
 ## 機能
 
 - テーブルの全レコードをダンプ
-- 複数の出力フォーマット対応（JSON、CSV、SQL）
+- テーブル一覧の取得（最小限・詳細）
+- 複数の出力フォーマット対応（JSON、CSV、SQL、テキスト）
 - レコード数制限機能
 - 出力ディレクトリ指定
 
@@ -18,7 +19,7 @@ go build -o postgresql-cli .
 
 ## 使用例
 
-### 基本的な使用例
+### テーブルダンプ
 
 ```bash
 # 基本的なダンプ（JSON形式、カレントディレクトリに出力）
@@ -40,6 +41,19 @@ go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pas
 go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pass@localhost/db" --table-name=users --format=json --output-path=/tmp --limit=100
 ```
 
+### テーブル一覧取得
+
+```bash
+# テーブル一覧（最小限）- テーブル名のみ
+go run ./cmd/cli/postgresql --operation=list-tables-minimum --database-url="postgres://user:pass@localhost/db"
+
+# テーブル一覧（詳細）- JSON形式
+go run ./cmd/cli/postgresql --operation=list-tables --database-url="postgres://user:pass@localhost/db"
+
+# テーブル一覧（詳細）- テキスト形式
+go run ./cmd/cli/postgresql --operation=list-tables --database-url="postgres://user:pass@localhost/db" --format=text
+```
+
 ### ヘルプ表示
 
 ```bash
@@ -52,22 +66,38 @@ go run ./cmd/cli/postgresql -help
 
 | パラメータ | 説明 | 例 |
 |-----------|------|-----|
-| `--operation` | 実行する操作（現在は"dump"のみ対応） | `dump` |
+| `--operation` | 実行する操作 | `dump`, `list-tables-minimum`, `list-tables` |
 | `--database-url` | PostgreSQLデータベース接続URL | `postgres://user:pass@localhost/db` |
-| `--table-name` | ダンプするテーブル名 | `users` |
+| `--table-name` | ダンプするテーブル名（dump操作時のみ必須） | `users` |
 
 ### オプションパラメータ
 
 | パラメータ | 説明 | デフォルト値 | 例 |
 |-----------|------|-------------|-----|
-| `--output-path` | 出力ディレクトリパス | カレントディレクトリ | `/tmp` |
-| `--format` | 出力フォーマット（json, csv, sql） | `json` | `csv` |
-| `--limit` | 最大レコード数 | 制限なし | `100` |
+| `--output-path` | 出力ディレクトリパス（dump操作時のみ） | カレントディレクトリ | `/tmp` |
+| `--format` | 出力フォーマット | `json` | `csv`, `sql`, `text` |
+| `--limit` | 最大レコード数（dump操作時のみ） | 制限なし | `100` |
 | `--help` | ヘルプを表示 | - | - |
+
+### 操作別パラメータ
+
+dump操作
+- **必須**: `--operation`, `--database-url`, `--table-name`
+- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`
+
+list-tables-minimum操作
+- **必須**: `--operation`, `--database-url`
+- **オプション**: なし（formatは常にjson）
+
+list-tables操作
+- **必須**: `--operation`, `--database-url`
+- **オプション**: `--format` (json, text)
 
 ## 出力形式
 
-### JSON形式（デフォルト）
+### dump操作の出力
+
+**JSON形式（デフォルト）**
 
 ```json
 {
@@ -80,7 +110,7 @@ go run ./cmd/cli/postgresql -help
 }
 ```
 
-### 出力ファイル
+**出力ファイル**
 
 ダンプされたデータは指定されたディレクトリに以下の命名規則でファイルが作成されます：
 
@@ -92,6 +122,57 @@ go run ./cmd/cli/postgresql -help
 - `users_20250822_180530.json`
 - `products_20250822_180530.csv`
 - `orders_20250822_180530.sql`
+
+### list-tables-minimum操作の出力
+
+```json
+[
+  {"table_name": "users"},
+  {"table_name": "products"},
+  {"table_name": "orders"}
+]
+```
+
+### list-tables操作の出力
+
+**JSON形式**
+
+```json
+[
+  {
+    "table_name": "users",
+    "table_comment": "ユーザー情報テーブル",
+    "primary_keys": ["id"],
+    "unique_keys": ["email"],
+    "foreign_keys": []
+  },
+  {
+    "table_name": "products",
+    "table_comment": "商品情報テーブル",
+    "primary_keys": ["product_id"],
+    "unique_keys": ["product_code"],
+    "foreign_keys": []
+  }
+]
+```
+
+**テキスト形式**
+
+```
+テーブル一覧:
+
+テーブル名: users
+コメント: ユーザー情報テーブル
+主キー: id
+一意キー: email
+外部キー: なし
+
+テーブル名: products
+コメント: 商品情報テーブル
+主キー: product_id
+一意キー: product_code
+外部キー: なし
+```
 
 ## エラーハンドリング
 

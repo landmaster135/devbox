@@ -187,7 +187,7 @@ func TestParseFlags_MissingTableName_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "--table-name は必須です"
+	expectedError := "--table-name は必須です (dump操作時)"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -213,7 +213,7 @@ func TestParseFlags_InvalidOperation_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "未対応の操作です: invalid (対応操作: dump)"
+	expectedError := "未対応の操作です: invalid (対応操作: dump, list-tables-minimum, list-tables)"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -240,7 +240,7 @@ func TestParseFlags_InvalidFormat_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "未対応のフォーマットです: invalid (対応フォーマット: json, csv, sql)"
+	expectedError := "未対応のフォーマットです: invalid (対応フォーマット: json, csv, sql, text)"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -267,7 +267,7 @@ func TestParseFlags_InvalidLimit_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "--limit は正の数である必要があります: -1"
+	expectedError := "--limit は正の数もしくは0である必要があります: -1"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -297,5 +297,100 @@ func TestParseFlags_ZeroLimit_Normal(t *testing.T) {
 	// limit=0の場合はnilになることを確認（制限なしとして扱われる）
 	if cfg.Limit != nil {
 		t.Errorf("Limit = %v, want nil (limit=0は制限なしとして扱われる)", cfg.Limit)
+	}
+}
+
+func TestParseFlags_ListTablesMinimum_Normal(t *testing.T) {
+	// テスト用のコマンドライン引数を設定
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=list-tables-minimum",
+		"--database-url=postgres://user:pass@localhost/testdb",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	// 期待値の検証
+	if cfg.Operation != "list-tables-minimum" {
+		t.Errorf("Operation = %s, want list-tables-minimum", cfg.Operation)
+	}
+	if cfg.DatabaseURL != "postgres://user:pass@localhost/testdb" {
+		t.Errorf("DatabaseURL = %s, want postgres://user:pass@localhost/testdb", cfg.DatabaseURL)
+	}
+	if cfg.TableName != "" {
+		t.Errorf("TableName = %s, want empty (list-tables-minimum操作では不要)", cfg.TableName)
+	}
+	if cfg.Format != "json" {
+		t.Errorf("Format = %s, want json (default)", cfg.Format)
+	}
+}
+
+func TestParseFlags_ListTables_Normal(t *testing.T) {
+	// テスト用のコマンドライン引数を設定
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=list-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=text",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	// 期待値の検証
+	if cfg.Operation != "list-tables" {
+		t.Errorf("Operation = %s, want list-tables", cfg.Operation)
+	}
+	if cfg.DatabaseURL != "postgres://user:pass@localhost/testdb" {
+		t.Errorf("DatabaseURL = %s, want postgres://user:pass@localhost/testdb", cfg.DatabaseURL)
+	}
+	if cfg.TableName != "" {
+		t.Errorf("TableName = %s, want empty (list-tables操作では不要)", cfg.TableName)
+	}
+	if cfg.Format != "text" {
+		t.Errorf("Format = %s, want text", cfg.Format)
+	}
+}
+
+func TestParseFlags_ListTablesMinimumInvalidFormat_Error(t *testing.T) {
+	// テスト用のコマンドライン引数を設定
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=list-tables-minimum",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=text",
+	}
+
+	// flagパッケージをリセット
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
+	}
+
+	expectedError := "list-tables-minimum操作ではjsonフォーマットのみ対応しています"
+	if err.Error() != expectedError {
+		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
 }
