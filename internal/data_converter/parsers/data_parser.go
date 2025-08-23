@@ -39,6 +39,8 @@ func (p *DataParser) ParseInput(inputFormat, input, inputFilePath string) ([][]s
 		return p.parseCSV(data)
 	case "tsv":
 		return p.parseTSV(data)
+	case "html":
+		return p.parseHTML(data)
 	default:
 		return nil, fmt.Errorf("未対応の入力形式です: %s", inputFormat)
 	}
@@ -139,4 +141,165 @@ func (p *DataParser) parseDelimitedLine(line, delimiter string) ([]string, error
 	fields = append(fields, current.String())
 
 	return fields, nil
+}
+
+// parseHTML はHTML形式のデータを解析する
+func (p *DataParser) parseHTML(data string) ([][]string, error) {
+	// 簡単なHTMLテーブル解析の実装
+	// <table>タグ内の<tr>と<td>/<th>を抽出
+
+	// テーブルタグを探す
+	tableStart := strings.Index(strings.ToLower(data), "<table")
+	if tableStart == -1 {
+		return nil, fmt.Errorf("HTMLテーブルが見つかりません")
+	}
+
+	tableEnd := strings.Index(strings.ToLower(data[tableStart:]), "</table>")
+	if tableEnd == -1 {
+		return nil, fmt.Errorf("HTMLテーブルの終了タグが見つかりません")
+	}
+
+	tableContent := data[tableStart : tableStart+tableEnd+8] // "</table>"を含む
+
+	// 行を抽出
+	rows := p.extractTableRows(tableContent)
+
+	var result [][]string
+	for _, row := range rows {
+		cells := p.extractTableCells(row)
+		if len(cells) > 0 {
+			result = append(result, cells)
+		}
+	}
+
+	return result, nil
+}
+
+// extractTableRows はHTMLテーブルから行を抽出する
+func (p *DataParser) extractTableRows(tableHTML string) []string {
+	var rows []string
+	content := strings.ToLower(tableHTML)
+
+	start := 0
+	for {
+		trStart := strings.Index(content[start:], "<tr")
+		if trStart == -1 {
+			break
+		}
+		trStart += start
+
+		// <tr>タグの終了を探す
+		tagEnd := strings.Index(content[trStart:], ">")
+		if tagEnd == -1 {
+			break
+		}
+		trContentStart := trStart + tagEnd + 1
+
+		// </tr>タグを探す
+		trEnd := strings.Index(content[trContentStart:], "</tr>")
+		if trEnd == -1 {
+			break
+		}
+		trEnd += trContentStart
+
+		// 元のHTMLから行内容を抽出（大文字小文字を保持）
+		rowContent := tableHTML[trContentStart:trEnd]
+		rows = append(rows, rowContent)
+
+		start = trEnd + 5 // "</tr>"の長さ
+	}
+
+	return rows
+}
+
+// extractTableCells は行からセルを抽出する
+func (p *DataParser) extractTableCells(rowHTML string) []string {
+	var cells []string
+	content := strings.ToLower(rowHTML)
+	original := rowHTML
+
+	start := 0
+	for {
+		// <td>または<th>タグを探す
+		tdStart := strings.Index(content[start:], "<td")
+		thStart := strings.Index(content[start:], "<th")
+
+		var cellStart int
+		var isHeader bool
+
+		if tdStart == -1 && thStart == -1 {
+			break
+		} else if tdStart == -1 {
+			cellStart = thStart + start
+			isHeader = true
+		} else if thStart == -1 {
+			cellStart = tdStart + start
+			isHeader = false
+		} else if tdStart < thStart {
+			cellStart = tdStart + start
+			isHeader = false
+		} else {
+			cellStart = thStart + start
+			isHeader = true
+		}
+
+		// タグの終了を探す
+		tagEnd := strings.Index(content[cellStart:], ">")
+		if tagEnd == -1 {
+			break
+		}
+		cellContentStart := cellStart + tagEnd + 1
+
+		// 終了タグを探す
+		var endTag string
+		if isHeader {
+			endTag = "</th>"
+		} else {
+			endTag = "</td>"
+		}
+
+		cellEnd := strings.Index(content[cellContentStart:], endTag)
+		if cellEnd == -1 {
+			break
+		}
+		cellEnd += cellContentStart
+
+		// セル内容を抽出（HTMLタグを除去）
+		cellContent := original[cellContentStart:cellEnd]
+		cleanContent := p.stripHTMLTags(cellContent)
+		cells = append(cells, strings.TrimSpace(cleanContent))
+
+		start = cellEnd + len(endTag)
+	}
+
+	return cells
+}
+
+// stripHTMLTags はHTMLタグを除去する
+func (p *DataParser) stripHTMLTags(html string) string {
+	result := html
+
+	// 簡単なHTMLタグ除去
+	for {
+		start := strings.Index(result, "<")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(result[start:], ">")
+		if end == -1 {
+			break
+		}
+		end += start + 1
+		result = result[:start] + result[end:]
+	}
+
+	// HTMLエンティティのデコード（基本的なもののみ）
+	result = strings.ReplaceAll(result, "&lt;", "<")
+	result = strings.ReplaceAll(result, "&gt;", ">")
+	result = strings.ReplaceAll(result, "&amp;", "&")
+	result = strings.ReplaceAll(result, "&quot;", "\"")
+	result = strings.ReplaceAll(result, "&#39;", "'")
+	result = strings.ReplaceAll(result, "&nbsp;", " ")
+
+	return result
 }
