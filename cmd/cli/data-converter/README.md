@@ -184,19 +184,3 @@ internal/data_converter/
 ```bash
 ./data-converter -help
 ```
-
-## 実装の背景
-
-このツールは、`sample1111111.js`にあったJavaScript関数群をGoに移植して作成されました：
-
-- `getTableByValues()` → `HTMLConverter.ConvertToHTML()`
-- `getCsvByValues()` → `CSVConverter.ConvertToCSV()`
-- TSV対応は区切り文字をタブに変更して実装
-
-## 今後の拡張予定
-
-- XML形式のサポート
-- YAML形式のサポート
-- より高度なHTMLテーブルオプション（CSSクラス指定など）
-- バッチ処理機能
-- 設定ファイルによるデフォルト値設定
