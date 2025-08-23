@@ -14,7 +14,7 @@ import (
 // #==============================================================#
 // AniListService はAniListサービス
 type AniListService struct {
-	client        *infrastructure.AniListClient
+	repository    domain.AniListRepository
 	fileSystem    infrastructure.FileSystem
 	jsonProcessor infrastructure.JSONProcessor
 }
@@ -22,7 +22,7 @@ type AniListService struct {
 // NewAniListService は新しいAniListServiceを作成する
 func NewAniListService() *AniListService {
 	return &AniListService{
-		client:        infrastructure.NewAniListClient(),
+		repository:    infrastructure.NewAniListClient(),
 		fileSystem:    infrastructure.NewOSFileSystem(),
 		jsonProcessor: infrastructure.NewJSONProcessor(),
 	}
@@ -31,7 +31,7 @@ func NewAniListService() *AniListService {
 // NewAniListServiceWithClient はクライアントを指定してAniListServiceを作成する
 func NewAniListServiceWithClient(client *infrastructure.AniListClient) *AniListService {
 	return &AniListService{
-		client:        client,
+		repository:    client,
 		fileSystem:    infrastructure.NewOSFileSystem(),
 		jsonProcessor: infrastructure.NewJSONProcessor(),
 	}
@@ -39,12 +39,12 @@ func NewAniListServiceWithClient(client *infrastructure.AniListClient) *AniListS
 
 // NewAniListServiceWithDependencies は依存性を注入してAniListServiceを作成する
 func NewAniListServiceWithDependencies(
-	client *infrastructure.AniListClient,
+	repository domain.AniListRepository,
 	fileSystem infrastructure.FileSystem,
 	jsonProcessor infrastructure.JSONProcessor,
 ) *AniListService {
 	return &AniListService{
-		client:        client,
+		repository:    repository,
 		fileSystem:    fileSystem,
 		jsonProcessor: jsonProcessor,
 	}
@@ -105,7 +105,7 @@ func (s *AniListService) QueryAnime(username string, userID *int, format string,
 	}
 
 	// APIを呼び出し
-	resp, err := s.client.QueryAnimeList(req)
+	resp, err := s.repository.QueryAnimeList(req)
 	if err != nil {
 		return "", fmt.Errorf("AniList APIの呼び出しに失敗しました: %v", err)
 	}
