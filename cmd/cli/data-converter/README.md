@@ -4,7 +4,7 @@
 
 ## 概要
 
-このツールは、JSON、CSV、TSV形式のデータを相互に変換し、HTMLテーブル形式での出力もサポートします。sample1111111.jsにあったJavaScript処理をGoに移植して実装されています。
+このツールは、JSON、CSV、TSV、HTML形式のデータを相互に変換できます。sample1111111.jsにあったJavaScript処理をGoに移植して実装されています。
 
 ## 対応形式
 
@@ -12,6 +12,7 @@
 - `json`: JSON形式の2次元配列
 - `csv`: CSV（カンマ区切り）形式
 - `tsv`: TSV（タブ区切り）形式
+- `html`: HTMLテーブル形式
 
 ### 出力形式
 - `html`: HTMLテーブル形式
@@ -86,6 +87,34 @@ go run ./cmd/cli/data-converter -input-format=tsv -output-format=json -input='�
 go run ./cmd/cli/data-converter -input-format=json -output-format=csv -input-file-path=data.json
 ```
 
+### 5. HTMLテーブルをJSONに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=html -output-format=json -input='<table>
+<tr><th>名前</th><th>年齢</th></tr>
+<tr><td>田中</td><td>25</td></tr>
+<tr><td>佐藤</td><td>30</td></tr>
+</table>'
+```
+
+出力:
+```json
+[["名前","年齢"],["田中","25"],["佐藤","30"]]
+```
+
+### 6. CSVをJSONに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=csv -output-format=json -input='"名前","年齢"
+"田中","25"
+"佐藤","30"'
+```
+
+出力:
+```json
+[["名前","年齢"],["田中","25"],["佐藤","30"]]
+```
+
 ## 機能詳細
 
 ### HTML変換の特徴
@@ -93,6 +122,13 @@ go run ./cmd/cli/data-converter -input-format=json -output-format=csv -input-fil
 - 最初の行を自動的にヘッダー（`<th>`）として扱います
 - 空のセルには「💩」が表示されます（ヘッダー行は除く）
 - 適切な`<thead>`と`<tbody>`タグが生成されます
+
+### HTML解析の特徴
+
+- `<table>`タグ内の`<tr>`、`<td>`、`<th>`要素を自動解析
+- HTMLタグの除去とHTMLエンティティのデコードに対応
+- `<thead>`と`<tbody>`の区別なく、すべての行を順次処理
+- ネストしたHTMLタグも適切に処理
 
 ### CSV/TSV変換の特徴
 
@@ -139,6 +175,9 @@ internal/data_converter/
 | tsv → html        | ✅      |
 | tsv → json        | ✅      |
 | tsv → csv         | ✅      |
+| html → json       | ✅      |
+| html → csv        | ✅      |
+| html → tsv        | ✅      |
 
 ## ヘルプ
 
