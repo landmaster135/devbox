@@ -137,11 +137,11 @@ func TestAniListService_saveToFile_WriteFileError(t *testing.T) {
 func TestAniListService_formatAsJSON_Normal(t *testing.T) {
 	// Arrange
 	var marshalIndentCalled bool
-	var marshalIndentInput interface{}
+	var marshalIndentInput any
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			marshalIndentCalled = true
 			marshalIndentInput = v
 			return []byte(`[{"id":1,"title":"test"}]`), nil
@@ -176,7 +176,7 @@ func TestAniListService_formatAsJSON_Error(t *testing.T) {
 	// Arrange
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return nil, errors.New("JSONエンコードエラー")
 		},
 	}

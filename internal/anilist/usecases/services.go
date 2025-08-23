@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/anilist/domain"
-	"github.com/landmaster135/devbox/internal/anilist/infrastructure"
+	domain "github.com/landmaster135/devbox/internal/anilist/domain"
+	infrastructure "github.com/landmaster135/devbox/internal/anilist/infrastructure"
 )
 
 // #==============================================================#
@@ -22,14 +22,14 @@ type AniListService struct {
 // NewAniListService は新しいAniListServiceを作成する
 func NewAniListService() *AniListService {
 	return &AniListService{
-		repository:    infrastructure.NewAniListClient(),
+		repository:    domain.NewAniListClient(),
 		fileSystem:    infrastructure.NewOSFileSystem(),
 		jsonProcessor: infrastructure.NewJSONProcessor(),
 	}
 }
 
 // NewAniListServiceWithClient はクライアントを指定してAniListServiceを作成する
-func NewAniListServiceWithClient(client *infrastructure.AniListClient) *AniListService {
+func NewAniListServiceWithClient(client *domain.AniListClient) *AniListService {
 	return &AniListService{
 		repository:    client,
 		fileSystem:    infrastructure.NewOSFileSystem(),
