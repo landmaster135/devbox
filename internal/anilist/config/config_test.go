@@ -519,3 +519,81 @@ func TestParseFlagsWithParser_ShortFlags(t *testing.T) {
 		t.Errorf("期待される出力ディレクトリ: /tmp, 実際: %s", result.OutputDir)
 	}
 }
+
+// #==============================================================#
+// ##          StandardFlagParser Tests                         ##
+// #==============================================================#
+
+// TestNewStandardFlagParser_Normal はNewStandardFlagParserメソッドの正常系テスト
+func TestNewStandardFlagParser_Normal(t *testing.T) {
+	// Act
+	result := NewStandardFlagParser()
+
+	// Assert
+	if result == nil {
+		t.Error("結果がnilです")
+		return
+	}
+	if result.flagSet == nil {
+		t.Error("flagSetがnilです")
+	}
+}
+
+// TestStandardFlagParser_StringVar はStandardFlagParserのStringVarメソッドテスト
+func TestStandardFlagParser_StringVar(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+	var testValue string
+
+	// Act
+	parser.StringVar(&testValue, "test-string-var", "default", "test usage")
+
+	// Assert
+	if testValue != "default" {
+		t.Errorf("期待されるデフォルト値: default, 実際: %s", testValue)
+	}
+}
+
+// TestStandardFlagParser_IntVar はStandardFlagParserのIntVarメソッドテスト
+func TestStandardFlagParser_IntVar(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+	var testValue int
+
+	// Act
+	parser.IntVar(&testValue, "test-int-var", 42, "test usage")
+
+	// Assert
+	if testValue != 42 {
+		t.Errorf("期待されるデフォルト値: 42, 実際: %d", testValue)
+	}
+}
+
+// TestStandardFlagParser_BoolVar はStandardFlagParserのBoolVarメソッドテスト
+func TestStandardFlagParser_BoolVar(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+	var testValue bool
+
+	// Act
+	parser.BoolVar(&testValue, "test-bool-var", true, "test usage")
+
+	// Assert
+	if testValue != true {
+		t.Errorf("期待されるデフォルト値: true, 実際: %t", testValue)
+	}
+}
+
+// TestStandardFlagParser_Args はStandardFlagParserのArgsメソッドテスト
+func TestStandardFlagParser_Args(t *testing.T) {
+	// Arrange
+	parser := NewStandardFlagParser()
+
+	// Act
+	result := parser.Args()
+
+	// Assert
+	if result == nil {
+		t.Error("結果がnilです")
+	}
+}
