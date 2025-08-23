@@ -68,7 +68,7 @@ func TestAniListService_QueryAnime_Normal(t *testing.T) {
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return []byte(`[{"id":1,"title":"テストアニメ"}]`), nil
 		},
 	}
@@ -136,7 +136,7 @@ func TestAniListService_QueryAnime_WithUserID(t *testing.T) {
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return []byte(`[{"id":1,"title":"テストアニメ"}]`), nil
 		},
 	}
@@ -303,7 +303,7 @@ func TestAniListService_QueryAnime_WithStatusFilter(t *testing.T) {
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			animeList := v.([]domain.AnimeInfo)
 			if len(animeList) != 1 {
 				t.Errorf("フィルタ後の期待される件数: 1, 実際: %d", len(animeList))
@@ -387,7 +387,7 @@ func TestAniListService_QueryAnime_WithLimit(t *testing.T) {
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			animeList := v.([]domain.AnimeInfo)
 			if len(animeList) != 2 {
 				t.Errorf("制限後の期待される件数: 2, 実際: %d", len(animeList))
@@ -521,7 +521,7 @@ func TestAniListService_QueryAnime_WithOutputDir(t *testing.T) {
 	}
 
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return []byte(`[{"id":1,"title":"テストアニメ"}]`), nil
 		},
 	}
@@ -587,7 +587,7 @@ func TestAniListService_QueryAnime_FileSaveError(t *testing.T) {
 	}
 
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return []byte(`[{"id":1,"title":"テストアニメ"}]`), nil
 		},
 	}
@@ -643,7 +643,7 @@ func TestAniListService_QueryAnime_JSONFormatError(t *testing.T) {
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return nil, errors.New("JSONエンコードエラー")
 		},
 	}
@@ -699,7 +699,7 @@ func TestAniListService_QueryAnime_DefaultFormat(t *testing.T) {
 
 	mockFS := &infrastructure.MockFileSystem{}
 	mockJSON := &infrastructure.MockJSONProcessor{
-		MarshalIndentFunc: func(v interface{}, prefix, indent string) ([]byte, error) {
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
 			return []byte(`[{"id":1,"title":"テストアニメ"}]`), nil
 		},
 	}

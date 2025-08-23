@@ -2,11 +2,6 @@ package domain
 
 import "time"
 
-// AniListRepository はAniListデータ取得のインターフェース
-type AniListRepository interface {
-	QueryAnimeList(req QueryAnimeRequest) (*AniListResponse, error)
-}
-
 // AniListResponse はAniList GraphQL APIのレスポンス構造体
 type AniListResponse struct {
 	Data   *MediaListCollectionData `json:"data"`
@@ -17,7 +12,7 @@ type AniListResponse struct {
 type GraphQLError struct {
 	Message   string                 `json:"message"`
 	Locations []GraphQLErrorLocation `json:"locations,omitempty"`
-	Path      []interface{}          `json:"path,omitempty"`
+	Path      []any                  `json:"path,omitempty"`
 }
 
 // GraphQLErrorLocation はGraphQLエラーの位置情報
@@ -105,8 +100,8 @@ type AnimeInfo struct {
 
 // GraphQLRequest はGraphQLリクエストの構造体
 type GraphQLRequest struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables"`
+	Query     string         `json:"query"`
+	Variables map[string]any `json:"variables"`
 }
 
 // QueryAnimeRequest はquery-anime操作のリクエスト

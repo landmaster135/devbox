@@ -1,4 +1,4 @@
-package infrastructure
+package domain
 
 import (
 	"bytes"
@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"time"
-
-	"github.com/landmaster135/devbox/internal/anilist/domain"
 )
 
 const (
@@ -53,11 +51,38 @@ const (
 	`
 )
 
+// #==============================================================#
+// ##          Repositories                                      ##
+// #==============================================================#
+// AniListRepository はAniListデータ取得のインターフェース
+type AniListRepository interface {
+	QueryAnimeList(req QueryAnimeRequest) (*AniListResponse, error)
+}
+
 // HTTPClient はHTTPクライアントのインターフェース
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// #==============================================================#
+// ##          Mocks                                             ##
+// #==============================================================#
+// MockAniListRepository はテスト用のAniListRepositoryモック
+type MockAniListRepository struct {
+	QueryAnimeListFunc func(req QueryAnimeRequest) (*AniListResponse, error)
+}
+
+// QueryAnimeList はアニメリストを取得する（モック）
+func (m *MockAniListRepository) QueryAnimeList(req QueryAnimeRequest) (*AniListResponse, error) {
+	if m.QueryAnimeListFunc != nil {
+		return m.QueryAnimeListFunc(req)
+	}
+	return &AniListResponse{}, nil
+}
+
+// #==============================================================#
+// ##          Implements                                        ##
+// #==============================================================#
 // AniListClient はAniList APIクライアント
 type AniListClient struct {
 	httpClient HTTPClient
@@ -83,9 +108,9 @@ func NewAniListClientWithHTTPClient(httpClient HTTPClient) *AniListClient {
 }
 
 // QueryAnimeList はアニメリストを取得する
-func (c *AniListClient) QueryAnimeList(req domain.QueryAnimeRequest) (*domain.AniListResponse, error) {
+func (c *AniListClient) QueryAnimeList(req QueryAnimeRequest) (*AniListResponse, error) {
 	// GraphQLリクエストを構築
-	variables := make(map[string]interface{})
+	variables := make(map[string]any)
 	if req.Username != "" {
 		variables["username"] = req.Username
 	}
@@ -93,7 +118,7 @@ func (c *AniListClient) QueryAnimeList(req domain.QueryAnimeRequest) (*domain.An
 		variables["id"] = *req.UserID
 	}
 
-	graphQLReq := domain.GraphQLRequest{
+	graphQLReq := GraphQLRequest{
 		Query:     MediaListCollectionQuery,
 		Variables: variables,
 	}
@@ -133,7 +158,7 @@ func (c *AniListClient) QueryAnimeList(req domain.QueryAnimeRequest) (*domain.An
 	}
 
 	// JSONをデコード
-	var aniListResp domain.AniListResponse
+	var aniListResp AniListResponse
 	if err := json.Unmarshal(body, &aniListResp); err != nil {
 		return nil, fmt.Errorf("レスポンスのJSONデコードに失敗しました: %v", err)
 	}
