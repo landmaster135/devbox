@@ -132,9 +132,8 @@ go test ./internal/gcloud_monitoring/... -v
 ## 使用例
 
 ### 基本的な使用例
-
 ```bash
-./gcloud-monitoring \
+go run ./cmd/cli/gcloud-monitoring \
   -operation=create-dashboard-for-cloud-run \
   -project=my-gcp-project \
   -location=us-central1 \
@@ -144,7 +143,7 @@ go test ./internal/gcloud_monitoring/... -v
 ### サービスアカウントを使用する例
 
 ```bash
-./gcloud-monitoring \
+go run ./cmd/cli/gcloud-monitoring \
   -operation=create-dashboard-for-cloud-run \
   -project=my-gcp-project \
   -location=asia-northeast1 \
@@ -155,7 +154,7 @@ go test ./internal/gcloud_monitoring/... -v
 ### ヘルプの表示
 
 ```bash
-./gcloud-monitoring -help
+go run ./cmd/cli/gcloud-monitoring -help
 ```
 
 ## エラーハンドリング
