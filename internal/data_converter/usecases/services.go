@@ -3,6 +3,8 @@ package usecases
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/landmaster135/devbox/internal/data_converter/converters"
 	"github.com/landmaster135/devbox/internal/data_converter/parsers"
@@ -40,6 +42,8 @@ func (s *DataConverterService) ConvertData(inputFormat, outputFormat, input, inp
 		return s.convertToCSV(data)
 	case "tsv":
 		return s.convertToTSV(data)
+	case "array":
+		return s.convertToArray(data)
 	case "json":
 		return s.convertToJSON(data)
 	default:
@@ -69,9 +73,55 @@ func (s *DataConverterService) convertToTSV(data [][]string) (string, error) {
 	return result, nil
 }
 
-// convertToJSON はデータをJSON形式に変換する
-func (s *DataConverterService) convertToJSON(data [][]string) (string, error) {
+// convertToArray はデータを配列形式（2次元配列）に変換する
+func (s *DataConverterService) convertToArray(data [][]string) (string, error) {
 	jsonBytes, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("array変換エラー: %v", err)
+	}
+	return string(jsonBytes), nil
+}
+
+// convertToJSON はデータをJSON形式（オブジェクトの配列）に変換する
+func (s *DataConverterService) convertToJSON(data [][]string) (string, error) {
+	if len(data) == 0 {
+		return "[]", nil
+	}
+
+	// 1行目をヘッダーとして使用
+	headers := data[0]
+	var result []map[string]interface{}
+
+	// 2行目以降をオブジェクトに変換
+	for i := 1; i < len(data); i++ {
+		row := data[i]
+		obj := make(map[string]interface{})
+
+		for j, header := range headers {
+			var value interface{}
+			if j < len(row) {
+				cellValue := strings.TrimSpace(row[j])
+				if cellValue == "" {
+					value = nil // 空の値はnullに
+				} else {
+					// 数値判定を行い、可能なら数値に変換
+					if num, err := strconv.Atoi(cellValue); err == nil {
+						value = num
+					} else if num, err := strconv.ParseFloat(cellValue, 64); err == nil {
+						value = num
+					} else {
+						value = cellValue
+					}
+				}
+			} else {
+				value = nil // フィールドが存在しない場合もnull
+			}
+			obj[header] = value
+		}
+		result = append(result, obj)
+	}
+
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return "", fmt.Errorf("JSON変換エラー: %v", err)
 	}
