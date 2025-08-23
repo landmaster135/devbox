@@ -1,10 +1,7 @@
 package usecases
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -17,20 +14,39 @@ import (
 // #==============================================================#
 // AniListService はAniListサービス
 type AniListService struct {
-	client *infrastructure.AniListClient
+	client        *infrastructure.AniListClient
+	fileSystem    infrastructure.FileSystem
+	jsonProcessor infrastructure.JSONProcessor
 }
 
 // NewAniListService は新しいAniListServiceを作成する
 func NewAniListService() *AniListService {
 	return &AniListService{
-		client: infrastructure.NewAniListClient(),
+		client:        infrastructure.NewAniListClient(),
+		fileSystem:    infrastructure.NewOSFileSystem(),
+		jsonProcessor: infrastructure.NewJSONProcessor(),
 	}
 }
 
 // NewAniListServiceWithClient はクライアントを指定してAniListServiceを作成する
 func NewAniListServiceWithClient(client *infrastructure.AniListClient) *AniListService {
 	return &AniListService{
-		client: client,
+		client:        client,
+		fileSystem:    infrastructure.NewOSFileSystem(),
+		jsonProcessor: infrastructure.NewJSONProcessor(),
+	}
+}
+
+// NewAniListServiceWithDependencies は依存性を注入してAniListServiceを作成する
+func NewAniListServiceWithDependencies(
+	client *infrastructure.AniListClient,
+	fileSystem infrastructure.FileSystem,
+	jsonProcessor infrastructure.JSONProcessor,
+) *AniListService {
+	return &AniListService{
+		client:        client,
+		fileSystem:    fileSystem,
+		jsonProcessor: jsonProcessor,
 	}
 }
 
@@ -59,13 +75,13 @@ func (s *AniListService) generateFileName(outputDir, username string, userID *in
 	}
 
 	fileName := fmt.Sprintf("anilist_%s_%s.%s", userIdentifier, timestamp, extension)
-	return filepath.Join(outputDir, fileName)
+	return s.fileSystem.Join(outputDir, fileName)
 }
 
 // saveToFile は結果をファイルに保存する
 func (s *AniListService) saveToFile(content, outputDir, username string, userID *int, format string) error {
 	// 出力ディレクトリが存在しない場合は作成
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := s.fileSystem.MkdirAll(outputDir, 0755); err != nil {
 		return fmt.Errorf("出力ディレクトリの作成に失敗しました: %v", err)
 	}
 
@@ -73,7 +89,7 @@ func (s *AniListService) saveToFile(content, outputDir, username string, userID 
 	fileName := s.generateFileName(outputDir, username, userID, format)
 
 	// ファイルに書き込み
-	if err := os.WriteFile(fileName, []byte(content), 0644); err != nil {
+	if err := s.fileSystem.WriteFile(fileName, []byte(content), 0644); err != nil {
 		return fmt.Errorf("ファイルの書き込みに失敗しました: %v", err)
 	}
 
@@ -195,23 +211,17 @@ func (s *AniListService) getJST() *time.Location {
 }
 
 // formatCompletedAt は完了日をフォーマットする
-func (s *AniListService) formatCompletedAt(date *domain.FuzzyDate) time.Time {
-	if date == nil || date.Year == nil {
-		return time.Time{}
+func (s *AniListService) formatCompletedAt(date *domain.FuzzyDate) *time.Time {
+	if date == nil || date.Year == nil || date.Month == nil || date.Day == nil {
+		return nil
 	}
 
 	year := *date.Year
-	month := 1
-	day := 1
+	month := *date.Month
+	day := *date.Day
+	completedAt := time.Date(year, time.Month(month), day, 0, 0, 0, 0, s.getJST())
 
-	if date.Month != nil {
-		month = *date.Month
-	}
-	if date.Day != nil {
-		day = *date.Day
-	}
-
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, s.getJST())
+	return &completedAt
 }
 
 // formatUpdatedAt は更新日をJSTでフォーマットする
@@ -232,7 +242,7 @@ func (s *AniListService) filterByStatus(animeList []domain.AnimeInfo, status str
 
 // formatAsJSON はJSON形式で出力する
 func (s *AniListService) formatAsJSON(animeList []domain.AnimeInfo) (string, error) {
-	jsonBytes, err := json.MarshalIndent(animeList, "", "  ")
+	jsonBytes, err := s.jsonProcessor.MarshalIndent(animeList, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("JSONエンコードに失敗しました: %v", err)
 	}
@@ -254,7 +264,7 @@ func (s *AniListService) formatAsTable(animeList []domain.AnimeInfo) (string, er
 	// データ行
 	for _, anime := range animeList {
 		completedAtStr := ""
-		if !anime.CompletedAt.IsZero() {
+		if anime.CompletedAt != nil && !anime.CompletedAt.IsZero() {
 			completedAtStr = anime.CompletedAt.Format("2006-01-02")
 		}
 
