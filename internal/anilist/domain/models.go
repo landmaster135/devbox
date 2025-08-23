@@ -85,17 +85,17 @@ type FuzzyDate struct {
 
 // AnimeInfo は整形されたアニメ情報
 type AnimeInfo struct {
-	ID            int       `json:"id"`
-	Title         string    `json:"title"`
-	Score         int       `json:"score"`
-	Status        string    `json:"status"`
-	Progress      int       `json:"progress"`
-	CompletedAt   time.Time `json:"completed_at"`
-	Notes         string    `json:"notes"`
-	CoverImageURL string    `json:"cover_image_url"`
-	SiteURL       string    `json:"site_url"`
-	Studio        string    `json:"studio"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            int        `json:"id"`
+	Title         string     `json:"title"`
+	Score         int        `json:"score"`
+	Status        string     `json:"status"`
+	Progress      int        `json:"progress"`
+	CompletedAt   *time.Time `json:"completed_at"`
+	Notes         string     `json:"notes"`
+	CoverImageURL string     `json:"cover_image_url"`
+	SiteURL       string     `json:"site_url"`
+	Studio        string     `json:"studio"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 // GraphQLRequest はGraphQLリクエストの構造体
