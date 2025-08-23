@@ -2,6 +2,11 @@ package domain
 
 import "time"
 
+// AniListRepository はAniListデータ取得のインターフェース
+type AniListRepository interface {
+	QueryAnimeList(req QueryAnimeRequest) (*AniListResponse, error)
+}
+
 // AniListResponse はAniList GraphQL APIのレスポンス構造体
 type AniListResponse struct {
 	Data   *MediaListCollectionData `json:"data"`
