@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +12,9 @@ import (
 	"github.com/landmaster135/devbox/internal/anilist/infrastructure"
 )
 
+// #==============================================================#
+// ##          AniListService　                                  ##
+// #==============================================================#
 // AniListService はAniListサービス
 type AniListService struct {
 	client *infrastructure.AniListClient
@@ -178,7 +180,7 @@ func (s *AniListService) transformToAnimeInfoList(collection *domain.MediaListCo
 			animeInfo.CompletedAt = s.formatCompletedAt(entry.CompletedAt)
 
 			// 更新日を設定
-			animeInfo.UpdatedAt = time.Unix(entry.UpdatedAt, 0)
+			animeInfo.UpdatedAt = s.formatUpdatedAt(entry.UpdatedAt)
 
 			animeList = append(animeList, animeInfo)
 		}
@@ -187,24 +189,34 @@ func (s *AniListService) transformToAnimeInfoList(collection *domain.MediaListCo
 	return animeList
 }
 
+// getJST はJSTタイムゾーンを取得する
+func (s *AniListService) getJST() *time.Location {
+	return time.FixedZone("JST", 9*60*60)
+}
+
 // formatCompletedAt は完了日をフォーマットする
-func (s *AniListService) formatCompletedAt(date *domain.FuzzyDate) string {
+func (s *AniListService) formatCompletedAt(date *domain.FuzzyDate) time.Time {
 	if date == nil || date.Year == nil {
-		return ""
+		return time.Time{}
 	}
 
-	year := strconv.Itoa(*date.Year)
-	month := "01"
-	day := "01"
+	year := *date.Year
+	month := 1
+	day := 1
 
 	if date.Month != nil {
-		month = fmt.Sprintf("%02d", *date.Month)
+		month = *date.Month
 	}
 	if date.Day != nil {
-		day = fmt.Sprintf("%02d", *date.Day)
+		day = *date.Day
 	}
 
-	return fmt.Sprintf("%s-%s-%s", year, month, day)
+	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, s.getJST())
+}
+
+// formatUpdatedAt は更新日をJSTでフォーマットする
+func (s *AniListService) formatUpdatedAt(timestamp int64) time.Time {
+	return time.Unix(timestamp, 0).In(s.getJST())
 }
 
 // filterByStatus はステータスでフィルタリングする
@@ -241,13 +253,18 @@ func (s *AniListService) formatAsTable(animeList []domain.AnimeInfo) (string, er
 
 	// データ行
 	for _, anime := range animeList {
+		completedAtStr := ""
+		if !anime.CompletedAt.IsZero() {
+			completedAtStr = anime.CompletedAt.Format("2006-01-02")
+		}
+
 		result.WriteString(fmt.Sprintf("%d\t%s\t%s\t%d\t%d\t%s\t%s\n",
 			anime.ID,
 			anime.Title,
 			anime.Status,
 			anime.Score,
 			anime.Progress,
-			anime.CompletedAt,
+			completedAtStr,
 			anime.Studio,
 		))
 	}

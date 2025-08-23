@@ -38,13 +38,13 @@ type MediaList struct {
 
 // MediaListEntry はメディアリストエントリ
 type MediaListEntry struct {
-	Media       *Media      `json:"media"`
-	Score       int         `json:"score"`
-	Status      string      `json:"status"`
-	Progress    int         `json:"progress"`
-	CompletedAt *FuzzyDate  `json:"completedAt"`
-	Notes       string      `json:"notes"`
-	UpdatedAt   int64       `json:"updatedAt"`
+	Media       *Media     `json:"media"`
+	Score       int        `json:"score"`
+	Status      string     `json:"status"`
+	Progress    int        `json:"progress"`
+	CompletedAt *FuzzyDate `json:"completedAt"`
+	Notes       string     `json:"notes"`
+	UpdatedAt   int64      `json:"updatedAt"`
 }
 
 // Media はメディア情報
@@ -90,7 +90,7 @@ type AnimeInfo struct {
 	Score         int       `json:"score"`
 	Status        string    `json:"status"`
 	Progress      int       `json:"progress"`
-	CompletedAt   string    `json:"completed_at"`
+	CompletedAt   time.Time `json:"completed_at"`
 	Notes         string    `json:"notes"`
 	CoverImageURL string    `json:"cover_image_url"`
 	SiteURL       string    `json:"site_url"`
