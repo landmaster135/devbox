@@ -59,7 +59,7 @@ go run ./cmd/cli/db-server-sync -operation=append-anime -input-file-path=anilist
   {
     "anilist_id": 5114,
     "con_id": "AN0001",
-    "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0001_01.webp",
+    "cover_image_url_modified": "https://storage.googleapis.com/test/test_contents/AN0001_01.webp",
     "fleeting_tier": 0,
     "funny_tier": 2,
     "heartwarming_tier": 2,
@@ -81,7 +81,7 @@ go run ./cmd/cli/db-server-sync -operation=append-anime -input-file-path=anilist
         "completed_at": "2022-01-13T00:00:00+09:00",
         "con_id": "AN0001",
         "cover_image_url": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx5114-nSWCgQlmOMtj.jpg",
-        "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0001_01.webp",
+        "cover_image_url_modified": "https://storage.googleapis.com/test/test_contents/AN0001_01.webp",
         "fleeting_tier": 0,
         "funny_tier": 2,
         "heartwarming_tier": 2,
@@ -127,7 +127,7 @@ go run ./cmd/cli/db-server-sync -operation=append-anime -input-file-path=anilist
 追加ファイルが指定された場合、`anilist_id`をキーとして以下のフィールドが追加されます：
 
 - `con_id`
-- `cover_image_url_edited`
+- `cover_image_url_modified`
 - `fleeting_tier`（nullの場合は0）
 - `funny_tier`（nullの場合は0）
 - `heartwarming_tier`（nullの場合は0）
@@ -165,20 +165,13 @@ go tool cover -html=coverage.out -o coverage.html
 ### 例1: 基本的な変換
 
 ```bash
-go run ./cmd/cli/db-server-sync \
-  -operation=append-anime \
-  -input-file-path=/path/to/anilist_data.json \
-  -output-file-path=/path/to/output.json
+go run ./cmd/cli/db-server-sync -operation=append-anime -input-file-path=/path/to/anilist_data.json -output-file-path=/path/to/output.json
 ```
 
 ### 例2: 追加データとの結合
 
 ```bash
-go run ./cmd/cli/db-server-sync \
-  -operation=append-anime \
-  -input-file-path=/path/to/anilist_data.json \
-  -additional-input-file-path=/path/to/tier_data.json \
-  -output-file-path=/path/to/output.json
+go run ./cmd/cli/db-server-sync -operation=append-anime -input-file-path=/path/to/anilist_data.json -additional-input-file-path=/path/to/tier_data.json -output-file-path=/path/to/output.json
 ```
 
 ### 例3: ヘルプの表示

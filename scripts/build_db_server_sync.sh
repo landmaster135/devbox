@@ -38,7 +38,7 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run ./cmd/cli/db-server-sync \"
-echo "  -operation=append-anime \"
-echo "  -input-file-path=/path/to/anilist_data.json \"
+echo "  go run ./cmd/cli/db-server-sync"
+echo "  -operation=append-anime"
+echo "  -input-file-path=/path/to/anilist_data.json"
 echo "  -output-file-path=/path/to/output.json"
