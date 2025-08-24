@@ -27,15 +27,15 @@ func TestAniListAnime_ConvertToOutputAnime_Normal(t *testing.T) {
 
 	// テスト用の追加データを作成
 	additionalData := &AdditionalAnimeData{
-		AniListID:           5114,
-		ConID:               "AN0001",
-		CoverImageURLEdited: "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0001_01.webp",
-		FleetingTier:        intPtr(0),
-		FunnyTier:           intPtr(2),
-		HeartwarmingTier:    intPtr(2),
-		MotivatingTier:      intPtr(1),
-		NihilisticTier:      intPtr(1),
-		TearjerkingTier:     intPtr(2),
+		AniListID:             5114,
+		ConID:                 "AN0001",
+		CoverImageURLModified: "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0001_01.webp",
+		FleetingTier:          intPtr(0),
+		FunnyTier:             intPtr(2),
+		HeartwarmingTier:      intPtr(2),
+		MotivatingTier:        intPtr(1),
+		NihilisticTier:        intPtr(1),
+		TearjerkingTier:       intPtr(2),
 	}
 
 	// 変換を実行
@@ -62,7 +62,7 @@ func TestAniListAnime_ConvertToOutputAnime_Normal(t *testing.T) {
 
 	// 追加データの検証
 	assert.Equal(t, "AN0001", result.ConID)
-	assert.Equal(t, "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0001_01.webp", result.CoverImageURLEdited)
+	assert.Equal(t, "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0001_01.webp", result.CoverImageURLModified)
 	assert.Equal(t, intPtr(0), result.FleetingTier)
 	assert.Equal(t, intPtr(2), result.FunnyTier)
 	assert.Equal(t, intPtr(2), result.HeartwarmingTier)
@@ -100,7 +100,7 @@ func TestAniListAnime_ConvertToOutputAnime_WithoutAdditionalData_Normal(t *testi
 
 	// 追加データがない場合のデフォルト値を検証
 	assert.Equal(t, "", result.ConID)
-	assert.Equal(t, "", result.CoverImageURLEdited)
+	assert.Equal(t, "", result.CoverImageURLModified)
 	assert.Nil(t, result.FleetingTier)
 	assert.Nil(t, result.FunnyTier)
 	assert.Nil(t, result.HeartwarmingTier)
@@ -127,15 +127,15 @@ func TestAniListAnime_ConvertToOutputAnime_WithNullTiers_Normal(t *testing.T) {
 
 	// テスト用の追加データを作成（一部のtierがnull）
 	additionalData := &AdditionalAnimeData{
-		AniListID:           138425,
-		ConID:               "AN0610",
-		CoverImageURLEdited: "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0610_01.webp",
-		FleetingTier:        nil,
-		FunnyTier:           nil,
-		HeartwarmingTier:    nil,
-		MotivatingTier:      nil,
-		NihilisticTier:      nil,
-		TearjerkingTier:     nil,
+		AniListID:             138425,
+		ConID:                 "AN0610",
+		CoverImageURLModified: "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0610_01.webp",
+		FleetingTier:          nil,
+		FunnyTier:             nil,
+		HeartwarmingTier:      nil,
+		MotivatingTier:        nil,
+		NihilisticTier:        nil,
+		TearjerkingTier:       nil,
 	}
 
 	// 変換を実行

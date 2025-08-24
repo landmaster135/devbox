@@ -19,38 +19,38 @@ type AniListAnime struct {
 
 // AdditionalAnimeData は追加のアニメデータを表す構造体
 type AdditionalAnimeData struct {
-	AniListID           int    `json:"anilist_id"`
-	ConID               string `json:"con_id"`
-	CoverImageURLEdited string `json:"cover_image_url_edited"`
-	FleetingTier        *int   `json:"fleeting_tier"`
-	FunnyTier           *int   `json:"funny_tier"`
-	HeartwarmingTier    *int   `json:"heartwarming_tier"`
-	MotivatingTier      *int   `json:"motivating_tier"`
-	NihilisticTier      *int   `json:"nihilistic_tier"`
-	TearjerkingTier     *int   `json:"tearjerking_tier"`
+	AniListID             int    `json:"anilist_id"`
+	ConID                 string `json:"con_id"`
+	CoverImageURLModified string `json:"cover_image_url_modified"`
+	FleetingTier          *int   `json:"fleeting_tier"`
+	FunnyTier             *int   `json:"funny_tier"`
+	HeartwarmingTier      *int   `json:"heartwarming_tier"`
+	MotivatingTier        *int   `json:"motivating_tier"`
+	NihilisticTier        *int   `json:"nihilistic_tier"`
+	TearjerkingTier       *int   `json:"tearjerking_tier"`
 }
 
 // OutputAnime は出力用のアニメデータを表す構造体
 type OutputAnime struct {
-	AniListID           int     `json:"anilist_id"`
-	CompletedAt         *string `json:"completed_at"`
-	ConID               string  `json:"con_id"`
-	CoverImageURL       string  `json:"cover_image_url"`
-	CoverImageURLEdited string  `json:"cover_image_url_edited"`
-	FleetingTier        *int    `json:"fleeting_tier"`
-	FunnyTier           *int    `json:"funny_tier"`
-	HeartwarmingTier    *int    `json:"heartwarming_tier"`
-	MotivatingTier      *int    `json:"motivating_tier"`
-	NihilisticTier      *int    `json:"nihilistic_tier"`
-	Notes               string  `json:"notes"`
-	Progress            int     `json:"progress"`
-	Score               int     `json:"score"`
-	SiteURL             string  `json:"site_url"`
-	Status              string  `json:"status"`
-	Studio              string  `json:"studio"`
-	TearjerkingTier     *int    `json:"tearjerking_tier"`
-	Title               string  `json:"title"`
-	UpdatedAt           int64   `json:"updated_at"`
+	AniListID             int     `json:"anilist_id"`
+	CompletedAt           *string `json:"completed_at"`
+	ConID                 string  `json:"con_id"`
+	CoverImageURL         string  `json:"cover_image_url"`
+	CoverImageURLModified string  `json:"cover_image_url_modified"`
+	FleetingTier          *int    `json:"fleeting_tier"`
+	FunnyTier             *int    `json:"funny_tier"`
+	HeartwarmingTier      *int    `json:"heartwarming_tier"`
+	MotivatingTier        *int    `json:"motivating_tier"`
+	NihilisticTier        *int    `json:"nihilistic_tier"`
+	Notes                 string  `json:"notes"`
+	Progress              int     `json:"progress"`
+	Score                 int     `json:"score"`
+	SiteURL               string  `json:"site_url"`
+	Status                string  `json:"status"`
+	Studio                string  `json:"studio"`
+	TearjerkingTier       *int    `json:"tearjerking_tier"`
+	Title                 string  `json:"title"`
+	UpdatedAt             int64   `json:"updated_at"`
 }
 
 // OutputData は最終的な出力データを表す構造体
@@ -96,7 +96,7 @@ func (a *AniListAnime) ConvertToOutputAnime(additional *AdditionalAnimeData) (*O
 	// 追加データがある場合はマージ
 	if additional != nil {
 		output.ConID = additional.ConID
-		output.CoverImageURLEdited = additional.CoverImageURLEdited
+		output.CoverImageURLModified = additional.CoverImageURLModified
 
 		// tierの値を設定（nullの場合はnullのまま）
 		output.FleetingTier = additional.FleetingTier

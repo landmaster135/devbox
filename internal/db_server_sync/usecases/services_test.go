@@ -43,15 +43,15 @@ func TestDbServerSyncService_ProcessAppendAnime_Normal(t *testing.T) {
 	// テスト用の追加データを作成
 	additionalData := []models.AdditionalAnimeData{
 		{
-			AniListID:           5114,
-			ConID:               "AN0001",
-			CoverImageURLEdited: "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0001_01.webp",
-			FleetingTier:        intPtr(0),
-			FunnyTier:           intPtr(2),
-			HeartwarmingTier:    intPtr(2),
-			MotivatingTier:      intPtr(1),
-			NihilisticTier:      intPtr(1),
-			TearjerkingTier:     intPtr(2),
+			AniListID:             5114,
+			ConID:                 "AN0001",
+			CoverImageURLModified: "https://storage.googleapis.com/webclip/20230216_notion_mycontents/AN0001_01.webp",
+			FleetingTier:          intPtr(0),
+			FunnyTier:             intPtr(2),
+			HeartwarmingTier:      intPtr(2),
+			MotivatingTier:        intPtr(1),
+			NihilisticTier:        intPtr(1),
+			TearjerkingTier:       intPtr(2),
 		},
 	}
 
