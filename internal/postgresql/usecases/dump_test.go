@@ -348,7 +348,7 @@ func TestTableDumper_writeJSONFile_Normal(t *testing.T) {
 	// Arrange
 	dumper, _, mockFileWriter := createTestTableDumper()
 	filePath := "/tmp/test.json"
-	data := []map[string]interface{}{
+	data := []map[string]any{
 		{"id": 1, "name": "John"},
 		{"id": 2, "name": "Jane"},
 	}
@@ -377,7 +377,7 @@ func TestTableDumper_writeJSONFile_WriteError(t *testing.T) {
 	// Arrange
 	dumper, _, mockFileWriter := createTestTableDumper()
 	filePath := "/tmp/test.json"
-	data := []map[string]interface{}{
+	data := []map[string]any{
 		{"id": 1, "name": "John"},
 	}
 	expectedError := fmt.Errorf("write error")
@@ -402,7 +402,7 @@ func TestTableDumper_writeSQLFile_Normal(t *testing.T) {
 	dumper, _, mockFileWriter := createTestTableDumper()
 	filePath := "/tmp/users_20250822_170305.sql"
 	tableName := "users"
-	data := []map[string]interface{}{
+	data := []map[string]any{
 		{"id": 1, "name": "John"},
 		{"id": 2, "name": "Jane"},
 	}
@@ -422,7 +422,7 @@ func TestTableDumper_writeSQLFile_EmptyData(t *testing.T) {
 	dumper, _, mockFileWriter := createTestTableDumper()
 	filePath := "/tmp/empty.sql"
 	tableName := "empty_table"
-	data := []map[string]interface{}{}
+	data := []map[string]any{}
 	expectedContent := "-- No data to export\n"
 
 	mockFileWriter.On("WriteFile", filePath, []byte(expectedContent), os.FileMode(0644)).Return(nil)

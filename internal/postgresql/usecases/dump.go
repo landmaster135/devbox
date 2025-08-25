@@ -77,20 +77,20 @@ type FileWriter interface {
 type RowsInterface interface {
 	Columns() ([]string, error)
 	Next() bool
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 	Close() error
 	Err() error
 }
 
 // RowInterface は sql.Row の操作を抽象化するインターフェースです
 type RowInterface interface {
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 }
 
 // DatabaseQueryExecutor はクエリ実行を抽象化するインターフェースです
 type DatabaseQueryExecutor interface {
-	QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error)
-	QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface
+	QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error)
+	QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface
 }
 
 // #==============================================================#
@@ -226,7 +226,7 @@ func (d *TableDumper) buildQuery(options DumpOptions) string {
 }
 
 // fetchTableData はテーブルデータを取得します
-func (d *TableDumper) fetchTableData(ctx context.Context, query string) ([]map[string]interface{}, error) {
+func (d *TableDumper) fetchTableData(ctx context.Context, query string) ([]map[string]any, error) {
 	rows, err := d.executor.QueryContextRows(ctx, query)
 	if err != nil {
 		return nil, err
@@ -240,13 +240,13 @@ func (d *TableDumper) fetchTableData(ctx context.Context, query string) ([]map[s
 	}
 
 	// 結果を格納するスライス
-	var result []map[string]interface{}
+	var result []map[string]any
 
 	// 各行を処理
 	for rows.Next() {
 		// スキャン用のインターフェースのスライスを作成
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
 		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
@@ -257,7 +257,7 @@ func (d *TableDumper) fetchTableData(ctx context.Context, query string) ([]map[s
 		}
 
 		// 行データをマップに変換
-		row := make(map[string]interface{})
+		row := make(map[string]any)
 		for i, col := range columns {
 			val := values[i]
 			// バイト配列の場合は文字列に変換
@@ -309,7 +309,7 @@ func (d *TableDumper) getFileExtension(format string) string {
 }
 
 // writeDataToFile はデータをファイルに書き込みます
-func (d *TableDumper) writeDataToFile(filePath string, data []map[string]interface{}, format string, tableName string) error {
+func (d *TableDumper) writeDataToFile(filePath string, data []map[string]any, format string, tableName string) error {
 	switch format {
 	case "json":
 		return d.writeJSONFile(filePath, data)
@@ -323,7 +323,7 @@ func (d *TableDumper) writeDataToFile(filePath string, data []map[string]interfa
 }
 
 // writeJSONFile はJSONファイルを書き込みます
-func (d *TableDumper) writeJSONFile(filePath string, data []map[string]interface{}) error {
+func (d *TableDumper) writeJSONFile(filePath string, data []map[string]any) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
@@ -333,7 +333,7 @@ func (d *TableDumper) writeJSONFile(filePath string, data []map[string]interface
 }
 
 // writeCSVFile はCSVファイルを書き込みます
-func (d *TableDumper) writeCSVFile(filePath string, data []map[string]interface{}) error {
+func (d *TableDumper) writeCSVFile(filePath string, data []map[string]any) error {
 	if len(data) == 0 {
 		return d.fileWriter.WriteFile(filePath, []byte(""), 0644)
 	}
@@ -376,7 +376,7 @@ func (d *TableDumper) writeCSVFile(filePath string, data []map[string]interface{
 }
 
 // writeSQLFile はSQL INSERT文ファイルを書き込みます
-func (d *TableDumper) writeSQLFile(filePath string, data []map[string]interface{}, tableName string) error {
+func (d *TableDumper) writeSQLFile(filePath string, data []map[string]any, tableName string) error {
 	if len(data) == 0 {
 		return d.fileWriter.WriteFile(filePath, []byte("-- No data to export\n"), 0644)
 	}

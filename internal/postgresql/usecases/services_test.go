@@ -19,7 +19,7 @@ type MockDatabaseExecutor struct {
 	mock.Mock
 }
 
-func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	arguments := m.Called(ctx, query, args)
 	if arguments.Get(0) == nil {
 		return nil, arguments.Error(1)
@@ -27,7 +27,7 @@ func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, a
 	return arguments.Get(0).(*sql.Rows), arguments.Error(1)
 }
 
-func (m *MockDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (m *MockDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	arguments := m.Called(ctx, query, args)
 	if arguments.Get(0) == nil {
 		return nil
@@ -51,7 +51,7 @@ func (m *MockDatabaseExecutor) Close() error {
 }
 
 // QueryContextRows は新しいインターフェース用のメソッド
-func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error) {
+func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
 	arguments := m.Called(ctx, query, args)
 	if arguments.Get(0) == nil {
 		return nil, arguments.Error(1)
@@ -60,7 +60,7 @@ func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query strin
 }
 
 // QueryRowContextRow は新しいインターフェース用のメソッド
-func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface {
+func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
 	arguments := m.Called(ctx, query, args)
 	if arguments.Get(0) == nil {
 		return nil
@@ -88,7 +88,7 @@ type MockJSONMarshaler struct {
 	mock.Mock
 }
 
-func (m *MockJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+func (m *MockJSONMarshaler) MarshalIndent(v any, prefix, indent string) ([]byte, error) {
 	arguments := m.Called(v, prefix, indent)
 	return arguments.Get(0).([]byte), arguments.Error(1)
 }
@@ -242,7 +242,7 @@ func TestCreateResourceBaseURL_InvalidURL(t *testing.T) {
 func TestDefaultJSONMarshaler_MarshalIndent_Normal(t *testing.T) {
 	// Arrange
 	marshaler := &DefaultJSONMarshaler{}
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name": "test",
 		"id":   1,
 	}
@@ -263,7 +263,7 @@ func TestDefaultJSONMarshaler_MarshalIndent_InvalidData(t *testing.T) {
 	// Arrange
 	marshaler := &DefaultJSONMarshaler{}
 	// 循環参照を作成してJSONエラーを発生させる
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["self"] = data
 	prefix := ""
 	indent := "  "
