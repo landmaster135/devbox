@@ -86,8 +86,8 @@ type ListTablesData struct {
 
 // DatabaseExecutor はデータベース操作のインターフェースです
 type DatabaseExecutor interface {
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 	Ping() error
 	Close() error
@@ -101,7 +101,7 @@ type TemplateRenderer interface {
 
 // JSONMarshaler はJSON変換のインターフェースです
 type JSONMarshaler interface {
-	MarshalIndent(v interface{}, prefix, indent string) ([]byte, error)
+	MarshalIndent(v any, prefix, indent string) ([]byte, error)
 }
 
 // #==============================================================#
@@ -113,11 +113,11 @@ type DefaultDatabaseExecutor struct {
 	db *sql.DB
 }
 
-func (d *DefaultDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (d *DefaultDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return d.db.QueryContext(ctx, query, args...)
 }
 
-func (d *DefaultDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (d *DefaultDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	return d.db.QueryRowContext(ctx, query, args...)
 }
 
@@ -134,7 +134,7 @@ func (d *DefaultDatabaseExecutor) Close() error {
 }
 
 // QueryContextRows は新しいインターフェース用のメソッド
-func (d *DefaultDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error) {
+func (d *DefaultDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
 	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (d *DefaultDatabaseExecutor) QueryContextRows(ctx context.Context, query st
 }
 
 // QueryRowContextRow は新しいインターフェース用のメソッド
-func (d *DefaultDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface {
+func (d *DefaultDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
 	row := d.db.QueryRowContext(ctx, query, args...)
 	return &SQLRowWrapper{row: row}
 }
@@ -161,7 +161,7 @@ func (w *SQLRowsWrapper) Next() bool {
 	return w.rows.Next()
 }
 
-func (w *SQLRowsWrapper) Scan(dest ...interface{}) error {
+func (w *SQLRowsWrapper) Scan(dest ...any) error {
 	return w.rows.Scan(dest...)
 }
 
@@ -178,14 +178,14 @@ type SQLRowWrapper struct {
 	row *sql.Row
 }
 
-func (w *SQLRowWrapper) Scan(dest ...interface{}) error {
+func (w *SQLRowWrapper) Scan(dest ...any) error {
 	return w.row.Scan(dest...)
 }
 
 // DefaultJSONMarshaler は標準のjson.MarshalIndentを使用する実装
 type DefaultJSONMarshaler struct{}
 
-func (m *DefaultJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+func (m *DefaultJSONMarshaler) MarshalIndent(v any, prefix, indent string) ([]byte, error) {
 	return json.MarshalIndent(v, prefix, indent)
 }
 
@@ -276,7 +276,7 @@ func createResourceBaseURL(databaseURL string) (string, error) {
 // #==============================================================#
 
 // ExecuteQuery はSQL読み取り専用クエリを実行します
-func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
+func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) ([]map[string]any, error) {
 	// トランザクションを開始（読み取り専用）
 	tx, err := s.executor.BeginTx(ctx, &sql.TxOptions{
 		ReadOnly: true,
@@ -300,13 +300,13 @@ func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) (
 	}
 
 	// 結果を格納するスライス
-	var result []map[string]interface{}
+	var result []map[string]any
 
 	// 各行を処理
 	for rows.Next() {
 		// スキャン用のインターフェースのスライスを作成
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
 		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
@@ -317,7 +317,7 @@ func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) (
 		}
 
 		// 行データをマップに変換
-		row := make(map[string]interface{})
+		row := make(map[string]any)
 		for i, col := range columns {
 			val := values[i]
 			// バイト配列の場合は文字列に変換
@@ -781,7 +781,7 @@ func (s *PostgreSQLService) GetAllTableSummaries(ctx context.Context) ([]TableSu
 // #==============================================================#
 
 // HandleToQuery はSQL読み取り専用クエリを実行して、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToQuery(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
+func (s *PostgreSQLService) HandleToQuery(ctx context.Context, sqlQuery string) ([]map[string]any, error) {
 	return s.ExecuteQuery(ctx, sqlQuery)
 }
 

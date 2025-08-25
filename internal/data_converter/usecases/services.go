@@ -90,15 +90,15 @@ func (s *DataConverterService) convertToJSON(data [][]string) (string, error) {
 
 	// 1行目をヘッダーとして使用
 	headers := data[0]
-	var result []map[string]interface{}
+	var result []map[string]any
 
 	// 2行目以降をオブジェクトに変換
 	for i := 1; i < len(data); i++ {
 		row := data[i]
-		obj := make(map[string]interface{})
+		obj := make(map[string]any)
 
 		for j, header := range headers {
-			var value interface{}
+			var value any
 			if j < len(row) {
 				cellValue := strings.TrimSpace(row[j])
 				if cellValue == "" {

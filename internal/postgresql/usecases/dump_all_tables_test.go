@@ -16,12 +16,12 @@ import (
 // MockRows は sql.Rows のモック
 type MockRows struct {
 	columns []string
-	data    [][]interface{}
+	data    [][]any
 	index   int
 	closed  bool
 }
 
-func NewMockRows(columns []string, data [][]interface{}) *MockRows {
+func NewMockRows(columns []string, data [][]any) *MockRows {
 	return &MockRows{
 		columns: columns,
 		data:    data,
@@ -42,7 +42,7 @@ func (m *MockRows) Next() bool {
 	return true
 }
 
-func (m *MockRows) Scan(dest ...interface{}) error {
+func (m *MockRows) Scan(dest ...any) error {
 	if m.closed || m.index < 0 || m.index >= len(m.data) {
 		return errors.New("no rows")
 	}
@@ -55,7 +55,7 @@ func (m *MockRows) Scan(dest ...interface{}) error {
 				if val != nil {
 					*d = val.(string)
 				}
-			case *interface{}:
+			case *any:
 				*d = val
 			}
 		}
@@ -74,15 +74,15 @@ func (m *MockRows) Err() error {
 
 // MockRow は sql.Row のモック
 type MockRow struct {
-	data []interface{}
+	data []any
 	err  error
 }
 
-func NewMockRow(data []interface{}, err error) *MockRow {
+func NewMockRow(data []any, err error) *MockRow {
 	return &MockRow{data: data, err: err}
 }
 
-func (m *MockRow) Scan(dest ...interface{}) error {
+func (m *MockRow) Scan(dest ...any) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -94,7 +94,7 @@ func (m *MockRow) Scan(dest ...interface{}) error {
 				if val != nil {
 					*d = val.(string)
 				}
-			case *interface{}:
+			case *any:
 				*d = val
 			}
 		}
@@ -111,7 +111,7 @@ type MockDatabaseQueryExecutor struct {
 	mock.Mock
 }
 
-func (m *MockDatabaseQueryExecutor) QueryContextRows(ctx context.Context, query string, args ...interface{}) (RowsInterface, error) {
+func (m *MockDatabaseQueryExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
 	arguments := m.Called(ctx, query, args)
 	if arguments.Get(0) == nil {
 		return nil, arguments.Error(1)
@@ -119,7 +119,7 @@ func (m *MockDatabaseQueryExecutor) QueryContextRows(ctx context.Context, query 
 	return arguments.Get(0).(RowsInterface), arguments.Error(1)
 }
 
-func (m *MockDatabaseQueryExecutor) QueryRowContextRow(ctx context.Context, query string, args ...interface{}) RowInterface {
+func (m *MockDatabaseQueryExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
 	arguments := m.Called(ctx, query, args)
 	if arguments.Get(0) == nil {
 		return nil
@@ -172,7 +172,7 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// テーブル一覧取得の成功レスポンス
-	tableRows := NewMockRows([]string{"table_name"}, [][]interface{}{
+	tableRows := NewMockRows([]string{"table_name"}, [][]any{
 		{"users"},
 		{"products"},
 	})
@@ -186,17 +186,17 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	}), mock.Anything).Return(tableRows, nil)
 
 	// データベース名取得の成功レスポンス
-	dbRow := NewMockRow([]interface{}{"testdb"}, nil)
+	dbRow := NewMockRow([]any{"testdb"}, nil)
 	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// 各テーブルのダンプクエリの成功レスポンス
-	usersRows := NewMockRows([]string{"id", "name"}, [][]interface{}{
+	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
 		{1, "John"},
 		{2, "Jane"},
 	})
 	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users", mock.Anything).Return(usersRows, nil)
 
-	productsRows := NewMockRows([]string{"id", "title"}, [][]interface{}{
+	productsRows := NewMockRows([]string{"id", "title"}, [][]any{
 		{1, "Product A"},
 	})
 	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM products", mock.Anything).Return(productsRows, nil)
@@ -244,7 +244,7 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// 空のテーブル一覧
-	emptyRows := NewMockRows([]string{"table_name"}, [][]interface{}{})
+	emptyRows := NewMockRows([]string{"table_name"}, [][]any{})
 	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
 		return query == `
 		SELECT table_name
@@ -255,7 +255,7 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 	}), mock.Anything).Return(emptyRows, nil)
 
 	// データベース名取得
-	dbRow := NewMockRow([]interface{}{"testdb"}, nil)
+	dbRow := NewMockRow([]any{"testdb"}, nil)
 	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// Act
@@ -324,7 +324,7 @@ func TestTableDumper_DumpAllTables_PartialFailure(t *testing.T) {
 	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// テーブル一覧取得
-	tableRows := NewMockRows([]string{"table_name"}, [][]interface{}{
+	tableRows := NewMockRows([]string{"table_name"}, [][]any{
 		{"users"},
 		{"products"},
 	})
@@ -338,11 +338,11 @@ func TestTableDumper_DumpAllTables_PartialFailure(t *testing.T) {
 	}), mock.Anything).Return(tableRows, nil)
 
 	// データベース名取得
-	dbRow := NewMockRow([]interface{}{"testdb"}, nil)
+	dbRow := NewMockRow([]any{"testdb"}, nil)
 	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// usersテーブルは成功
-	usersRows := NewMockRows([]string{"id", "name"}, [][]interface{}{
+	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
 		{1, "John"},
 	})
 	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users", mock.Anything).Return(usersRows, nil)
@@ -391,7 +391,7 @@ func TestTableDumper_DumpAllTables_WithLimit(t *testing.T) {
 	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// テーブル一覧取得
-	tableRows := NewMockRows([]string{"table_name"}, [][]interface{}{
+	tableRows := NewMockRows([]string{"table_name"}, [][]any{
 		{"users"},
 	})
 	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
@@ -404,11 +404,11 @@ func TestTableDumper_DumpAllTables_WithLimit(t *testing.T) {
 	}), mock.Anything).Return(tableRows, nil)
 
 	// データベース名取得
-	dbRow := NewMockRow([]interface{}{"testdb"}, nil)
+	dbRow := NewMockRow([]any{"testdb"}, nil)
 	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// usersテーブルのダンプ（LIMIT付き）
-	usersRows := NewMockRows([]string{"id", "name"}, [][]interface{}{
+	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
 		{1, "John"},
 		{2, "Jane"},
 	})
@@ -480,7 +480,7 @@ func TestTableDumper_DumpAllTables_Success_Normal(t *testing.T) {
 	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// テーブル一覧取得の成功レスポンス
-	tableRows := NewMockRows([]string{"table_name"}, [][]interface{}{
+	tableRows := NewMockRows([]string{"table_name"}, [][]any{
 		{"users"},
 		{"products"},
 	})
@@ -494,17 +494,17 @@ func TestTableDumper_DumpAllTables_Success_Normal(t *testing.T) {
 	}), mock.Anything).Return(tableRows, nil)
 
 	// データベース名取得の成功レスポンス
-	dbRow := NewMockRow([]interface{}{"testdb"}, nil)
+	dbRow := NewMockRow([]any{"testdb"}, nil)
 	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// 各テーブルのダンプクエリの成功レスポンス
-	usersRows := NewMockRows([]string{"id", "name"}, [][]interface{}{
+	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
 		{1, "John"},
 		{2, "Jane"},
 	})
 	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users", mock.Anything).Return(usersRows, nil)
 
-	productsRows := NewMockRows([]string{"id", "title"}, [][]interface{}{
+	productsRows := NewMockRows([]string{"id", "title"}, [][]any{
 		{1, "Product A"},
 	})
 	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM products", mock.Anything).Return(productsRows, nil)
@@ -548,7 +548,7 @@ func TestTableDumper_DumpAllTables_Success_EmptyTables(t *testing.T) {
 	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// 空のテーブル一覧
-	emptyRows := NewMockRows([]string{"table_name"}, [][]interface{}{})
+	emptyRows := NewMockRows([]string{"table_name"}, [][]any{})
 	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
 		return query == `
 		SELECT table_name
@@ -559,7 +559,7 @@ func TestTableDumper_DumpAllTables_Success_EmptyTables(t *testing.T) {
 	}), mock.Anything).Return(emptyRows, nil)
 
 	// データベース名取得
-	dbRow := NewMockRow([]interface{}{"testdb"}, nil)
+	dbRow := NewMockRow([]any{"testdb"}, nil)
 	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// Act

@@ -1,8 +1,10 @@
 package config
 
 import (
+	"bytes"
 	"flag"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -517,5 +519,245 @@ func TestParseFlags_ConcurrencyZero_Error(t *testing.T) {
 	expectedError := "--concurrency は1以上かつ10以下である必要があります: 0"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
+	}
+}
+
+// 境界値テスト: concurrencyの最大値
+func TestParseFlags_ConcurrencyMax_Normal(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--concurrency=10",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	if cfg.Concurrency == nil || *cfg.Concurrency != 10 {
+		t.Errorf("Concurrency = %v, want 10", cfg.Concurrency)
+	}
+}
+
+// 全フォーマットでの動作確認テスト
+func TestParseFlags_AllFormats_Normal(t *testing.T) {
+	formats := []string{"json", "csv", "sql", "text"}
+
+	for _, format := range formats {
+		t.Run("format_"+format, func(t *testing.T) {
+			oldArgs := os.Args
+			defer func() { os.Args = oldArgs }()
+
+			os.Args = []string{
+				"postgresql-cli",
+				"--operation=dump",
+				"--database-url=postgres://user:pass@localhost/testdb",
+				"--table-name=users",
+				"--format=" + format,
+			}
+
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+			cfg, err := ParseFlags()
+			if err != nil {
+				t.Fatalf("ParseFlags() でエラーが発生しました (format=%s): %v", format, err)
+			}
+
+			if cfg.Format != format {
+				t.Errorf("Format = %s, want %s", cfg.Format, format)
+			}
+		})
+	}
+}
+
+// デフォルト値確認テスト
+func TestParseFlags_DefaultConcurrency_Normal(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	// concurrencyのデフォルト値が設定されていることを確認
+	if cfg.Concurrency == nil {
+		t.Error("Concurrency = nil, want non-nil (デフォルト値)")
+	} else if *cfg.Concurrency < 1 || *cfg.Concurrency > 10 {
+		t.Errorf("Concurrency = %d, want 1-10 range (デフォルト値)", *cfg.Concurrency)
+	}
+}
+
+// 各操作でのテーブル名要否テスト
+func TestParseFlags_TableNameRequirements_Normal(t *testing.T) {
+	testCases := []struct {
+		operation        string
+		requireTableName bool
+		description      string
+	}{
+		{"dump", true, "dump操作ではtable-nameが必須"},
+		{"dump-all-tables", false, "dump-all-tables操作ではtable-nameは不要"},
+		{"list-tables-minimum", false, "list-tables-minimum操作ではtable-nameは不要"},
+		{"list-tables", false, "list-tables操作ではtable-nameは不要"},
+	}
+
+	for _, tc := range testCases {
+		t.Run("operation_"+tc.operation, func(t *testing.T) {
+			oldArgs := os.Args
+			defer func() { os.Args = oldArgs }()
+
+			args := []string{
+				"postgresql-cli",
+				"--operation=" + tc.operation,
+				"--database-url=postgres://user:pass@localhost/testdb",
+			}
+
+			// dump操作の場合のみtable-nameを追加
+			if tc.requireTableName {
+				args = append(args, "--table-name=users")
+			}
+
+			os.Args = args
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+			cfg, err := ParseFlags()
+			if err != nil {
+				t.Fatalf("ParseFlags() でエラーが発生しました (%s): %v", tc.description, err)
+			}
+
+			if cfg.Operation != tc.operation {
+				t.Errorf("Operation = %s, want %s", cfg.Operation, tc.operation)
+			}
+		})
+	}
+}
+
+// CSVフォーマットでの各操作テスト
+func TestParseFlags_CSVFormat_Normal(t *testing.T) {
+	operations := []string{"dump", "dump-all-tables", "list-tables"}
+
+	for _, operation := range operations {
+		t.Run("csv_"+operation, func(t *testing.T) {
+			oldArgs := os.Args
+			defer func() { os.Args = oldArgs }()
+
+			args := []string{
+				"postgresql-cli",
+				"--operation=" + operation,
+				"--database-url=postgres://user:pass@localhost/testdb",
+				"--format=csv",
+			}
+
+			// dump操作の場合のみtable-nameを追加
+			if operation == "dump" {
+				args = append(args, "--table-name=users")
+			}
+
+			os.Args = args
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+			cfg, err := ParseFlags()
+			if err != nil {
+				t.Fatalf("ParseFlags() でエラーが発生しました (operation=%s, format=csv): %v", operation, err)
+			}
+
+			if cfg.Format != "csv" {
+				t.Errorf("Format = %s, want csv", cfg.Format)
+			}
+			if cfg.Operation != operation {
+				t.Errorf("Operation = %s, want %s", cfg.Operation, operation)
+			}
+		})
+	}
+}
+
+// 大きなlimit値でのテスト
+func TestParseFlags_LargeLimit_Normal(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--table-name=users",
+		"--limit=1000000",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	if cfg.Limit == nil || *cfg.Limit != 1000000 {
+		t.Errorf("Limit = %v, want 1000000", cfg.Limit)
+	}
+}
+
+// PrintUsage関数のテスト
+func TestPrintUsage_Normal(t *testing.T) {
+	// 標準エラー出力をキャプチャ
+	oldStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	// PrintUsage関数を実行
+	PrintUsage()
+
+	// パイプを閉じて出力を読み取り
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	output := buf.String()
+
+	// 期待される内容が含まれているかを確認
+	expectedContents := []string{
+		"PostgreSQL CLIツール",
+		"使用方法:",
+		"postgresql-cli [オプション]",
+		"必須オプション:",
+		"--operation string",
+		"--database-url string",
+		"--table-name string",
+		"オプション:",
+		"--output-path string",
+		"--format string",
+		"--limit int",
+		"--concurrency int",
+		"--help",
+		"使用例:",
+		"単一テーブルダンプ",
+		"全テーブルダンプ",
+		"テーブル一覧",
+	}
+
+	for _, expected := range expectedContents {
+		if !strings.Contains(output, expected) {
+			t.Errorf("PrintUsage()の出力に期待される内容が含まれていません: %s", expected)
+		}
+	}
+
+	// 出力が空でないことを確認
+	if len(output) == 0 {
+		t.Error("PrintUsage()の出力が空です")
 	}
 }
