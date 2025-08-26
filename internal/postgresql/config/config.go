@@ -33,9 +33,8 @@ func ParseFlags() (*Config, error) {
 	flag.IntVar(&limitValue, "limit", 0, "最大レコード数 (オプション)")
 
 	maxConcurrency := runtime.NumCPU()
-	concurrency := maxConcurrency
 	var concurrencyValue int
-	flag.IntVar(&concurrencyValue, "concurrency", 1, fmt.Sprintf("並行処理数 (オプション: 1-%d、デフォルト: CPUコア数)", maxConcurrency))
+	flag.IntVar(&concurrencyValue, "concurrency", maxConcurrency, fmt.Sprintf("並行処理数 (オプション: 1-%d、デフォルト: CPUコア数)", maxConcurrency))
 
 	flag.BoolVar(&cfg.Help, "help", false, "ヘルプを表示")
 
@@ -47,14 +46,10 @@ func ParseFlags() (*Config, error) {
 	}
 
 	// concurrencyの設定とバリデーション
-	if concurrencyValue != 1 {
-		// 指定された値のバリデーション
-		if concurrencyValue < 1 || concurrencyValue > maxConcurrency {
-			return nil, fmt.Errorf("--concurrency は1以上かつ%d以下である必要があります: %d", maxConcurrency, concurrencyValue)
-		}
-		concurrency = concurrencyValue
+	if concurrencyValue < 1 || concurrencyValue > maxConcurrency {
+		return nil, fmt.Errorf("--concurrency は1以上かつ%d以下である必要があります: %d", maxConcurrency, concurrencyValue)
 	}
-	cfg.Concurrency = &concurrency
+	cfg.Concurrency = &concurrencyValue
 
 	// ヘルプが要求された場合は検証をスキップ
 	if cfg.Help {

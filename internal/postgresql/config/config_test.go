@@ -622,12 +622,12 @@ func TestParseFlags_DefaultConcurrency_Normal(t *testing.T) {
 		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
 	}
 
-	// concurrencyのデフォルト値が設定されていることを確認
+	// concurrencyのデフォルト値がCPUコア数であることを確認
 	maxConcurrency := runtime.NumCPU()
 	if cfg.Concurrency == nil {
 		t.Error("Concurrency = nil, want non-nil (デフォルト値)")
-	} else if *cfg.Concurrency < 1 || *cfg.Concurrency > maxConcurrency {
-		t.Errorf("Concurrency = %d, want 1-%d range (デフォルト値)", *cfg.Concurrency, maxConcurrency)
+	} else if *cfg.Concurrency != maxConcurrency {
+		t.Errorf("Concurrency = %d, want %d (デフォルト値はCPUコア数)", *cfg.Concurrency, maxConcurrency)
 	}
 }
 
