@@ -3,7 +3,9 @@ package config
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -402,6 +404,13 @@ func TestParseFlags_DumpAllTables_Normal(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
+	// CPUコア数を取得して、テストで使用する並行処理数を決定
+	maxConcurrency := runtime.NumCPU()
+	testConcurrency := 1
+	if maxConcurrency >= 3 {
+		testConcurrency = 3
+	}
+
 	os.Args = []string{
 		"postgresql-cli",
 		"--operation=dump-all-tables",
@@ -409,7 +418,7 @@ func TestParseFlags_DumpAllTables_Normal(t *testing.T) {
 		"--format=csv",
 		"--output-path=/tmp/dumps",
 		"--limit=500",
-		"--concurrency=3",
+		fmt.Sprintf("--concurrency=%d", testConcurrency),
 	}
 
 	// flagパッケージをリセット
@@ -439,8 +448,8 @@ func TestParseFlags_DumpAllTables_Normal(t *testing.T) {
 	if cfg.Limit == nil || *cfg.Limit != 500 {
 		t.Errorf("Limit = %v, want 500", cfg.Limit)
 	}
-	if cfg.Concurrency == nil || *cfg.Concurrency != 3 {
-		t.Errorf("Concurrency = %v, want 3", cfg.Concurrency)
+	if cfg.Concurrency == nil || *cfg.Concurrency != testConcurrency {
+		t.Errorf("Concurrency = %v, want %d", cfg.Concurrency, testConcurrency)
 	}
 }
 
@@ -449,11 +458,20 @@ func TestParseFlags_Concurrency_Normal(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
+	// CPUコア数を取得して、テストで使用する並行処理数を決定
+	maxConcurrency := runtime.NumCPU()
+	testConcurrency := 1
+	if maxConcurrency >= 5 {
+		testConcurrency = 5
+	} else if maxConcurrency >= 2 {
+		testConcurrency = 2
+	}
+
 	os.Args = []string{
 		"postgresql-cli",
 		"--operation=dump-all-tables",
 		"--database-url=postgres://user:pass@localhost/testdb",
-		"--concurrency=5",
+		fmt.Sprintf("--concurrency=%d", testConcurrency),
 	}
 
 	// flagパッケージをリセット
@@ -465,8 +483,8 @@ func TestParseFlags_Concurrency_Normal(t *testing.T) {
 	}
 
 	// concurrencyの検証
-	if cfg.Concurrency == nil || *cfg.Concurrency != 5 {
-		t.Errorf("Concurrency = %v, want 5", cfg.Concurrency)
+	if cfg.Concurrency == nil || *cfg.Concurrency != testConcurrency {
+		t.Errorf("Concurrency = %v, want %d", cfg.Concurrency, testConcurrency)
 	}
 }
 
@@ -475,11 +493,15 @@ func TestParseFlags_ConcurrencyInvalid_Error(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
+	// CPUコア数を取得して、範囲外の値を設定
+	maxConcurrency := runtime.NumCPU()
+	invalidConcurrency := maxConcurrency + 5 // 確実に範囲外になる値
+
 	os.Args = []string{
 		"postgresql-cli",
 		"--operation=dump-all-tables",
 		"--database-url=postgres://user:pass@localhost/testdb",
-		"--concurrency=15",
+		fmt.Sprintf("--concurrency=%d", invalidConcurrency),
 	}
 
 	// flagパッケージをリセット
@@ -490,7 +512,7 @@ func TestParseFlags_ConcurrencyInvalid_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "--concurrency は1以上かつ10以下である必要があります: 15"
+	expectedError := fmt.Sprintf("--concurrency は1以上かつ%d以下である必要があります: %d", maxConcurrency, invalidConcurrency)
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -516,7 +538,9 @@ func TestParseFlags_ConcurrencyZero_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "--concurrency は1以上かつ10以下である必要があります: 0"
+	// CPUコア数を取得して期待されるエラーメッセージを作成
+	maxConcurrency := runtime.NumCPU()
+	expectedError := fmt.Sprintf("--concurrency は1以上かつ%d以下である必要があります: 0", maxConcurrency)
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}
@@ -527,11 +551,14 @@ func TestParseFlags_ConcurrencyMax_Normal(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
+	// CPUコア数を取得して、テストで使用する最大並行処理数を決定
+	maxConcurrency := runtime.NumCPU()
+
 	os.Args = []string{
 		"postgresql-cli",
 		"--operation=dump-all-tables",
 		"--database-url=postgres://user:pass@localhost/testdb",
-		"--concurrency=10",
+		fmt.Sprintf("--concurrency=%d", maxConcurrency),
 	}
 
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -541,8 +568,8 @@ func TestParseFlags_ConcurrencyMax_Normal(t *testing.T) {
 		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
 	}
 
-	if cfg.Concurrency == nil || *cfg.Concurrency != 10 {
-		t.Errorf("Concurrency = %v, want 10", cfg.Concurrency)
+	if cfg.Concurrency == nil || *cfg.Concurrency != maxConcurrency {
+		t.Errorf("Concurrency = %v, want %d", cfg.Concurrency, maxConcurrency)
 	}
 }
 
@@ -596,10 +623,11 @@ func TestParseFlags_DefaultConcurrency_Normal(t *testing.T) {
 	}
 
 	// concurrencyのデフォルト値が設定されていることを確認
+	maxConcurrency := runtime.NumCPU()
 	if cfg.Concurrency == nil {
 		t.Error("Concurrency = nil, want non-nil (デフォルト値)")
-	} else if *cfg.Concurrency < 1 || *cfg.Concurrency > 10 {
-		t.Errorf("Concurrency = %d, want 1-10 range (デフォルト値)", *cfg.Concurrency)
+	} else if *cfg.Concurrency < 1 || *cfg.Concurrency > maxConcurrency {
+		t.Errorf("Concurrency = %d, want 1-%d range (デフォルト値)", *cfg.Concurrency, maxConcurrency)
 	}
 }
 

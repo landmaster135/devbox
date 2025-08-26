@@ -15,7 +15,7 @@ type Config struct {
 	OutputPath  string // オプション: 出力ディレクトリパス
 	Format      string // オプション: 出力フォーマット (json, csv, sql, text)
 	Limit       *int   // オプション: 最大レコード数
-	Concurrency *int   // オプション: 並行処理数 (1-10)
+	Concurrency *int   // オプション: 並行処理数 (1-CPUコア数)
 	Help        bool   // ヘルプフラグ
 }
 
@@ -32,10 +32,10 @@ func ParseFlags() (*Config, error) {
 	var limitValue int
 	flag.IntVar(&limitValue, "limit", 0, "最大レコード数 (オプション)")
 
+	maxConcurrency := runtime.NumCPU()
+	concurrency := maxConcurrency
 	var concurrencyValue int
-	maxConcurrency := 10
-	concurrency := min(runtime.NumCPU(), maxConcurrency)
-	flag.IntVar(&concurrencyValue, "concurrency", 1, fmt.Sprintf("並行処理数 (オプション: 1-%d、デフォルト: CPUコア数)", concurrency))
+	flag.IntVar(&concurrencyValue, "concurrency", 1, fmt.Sprintf("並行処理数 (オプション: 1-%d、デフォルト: CPUコア数)", maxConcurrency))
 
 	flag.BoolVar(&cfg.Help, "help", false, "ヘルプを表示")
 
@@ -49,7 +49,7 @@ func ParseFlags() (*Config, error) {
 	// concurrencyの設定とバリデーション
 	if concurrencyValue != 1 {
 		// 指定された値のバリデーション
-		if concurrencyValue < 1 || concurrencyValue > concurrency {
+		if concurrencyValue < 1 || concurrencyValue > maxConcurrency {
 			return nil, fmt.Errorf("--concurrency は1以上かつ%d以下である必要があります: %d", maxConcurrency, concurrencyValue)
 		}
 		concurrency = concurrencyValue
@@ -132,7 +132,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --output-path string    出力ディレクトリパス (デフォルト: カレントディレクトリ)\n")
 	fmt.Fprintf(os.Stderr, "  --format string         出力フォーマット: json, csv, sql, text (デフォルト: json)\n")
 	fmt.Fprintf(os.Stderr, "  --limit int             最大レコード数\n")
-	fmt.Fprintf(os.Stderr, "  --concurrency int       並行処理数: 1-10 (デフォルト: CPUコア数、最大10)\n")
+	fmt.Fprintf(os.Stderr, "  --concurrency int       並行処理数: 1-CPUコア数 (デフォルト: CPUコア数)\n")
 	fmt.Fprintf(os.Stderr, "  --help                  このヘルプを表示\n\n")
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  # 単一テーブルダンプ\n")
