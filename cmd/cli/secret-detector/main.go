@@ -35,8 +35,11 @@ func main() {
 	// コマンド実行器を初期化
 	commandExecutor := usecases.NewCommandExecutor()
 
+	// 出力ライターを初期化
+	outputWriter := usecases.NewOutputWriter()
+
 	// シークレット検知サービスを初期化
-	service := usecases.NewSecretDetectorService(cfg.Verbose, cfg.DryRun, commandExecutor)
+	service := usecases.NewSecretDetectorService(cfg.Verbose, cfg.DryRun, commandExecutor, outputWriter)
 
 	var allResults []domain.SecretResult
 	var totalFiles int

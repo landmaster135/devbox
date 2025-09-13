@@ -30,7 +30,7 @@
         "brave_web_search"
       ],
       "env": {
-        "BRAVE_API_KEY": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        "BRAVE_API_KEY": "YOUR_KEY"
       },
       "disabled": false,
       "autoApprove": [
@@ -67,7 +67,7 @@
         "github"
       ],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_PAT"
       },
       "disabled": false,
       "autoApprove": []
