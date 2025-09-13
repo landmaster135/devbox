@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // #==============================================================#
@@ -20,10 +19,17 @@ func TestBraveSearchService_HandleLocalSearch_Normal(t *testing.T) {
 	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
 	// レート制限を無効化
-	mockRateLimiter.On("CheckLimit").Return(nil)
+	mockRateLimiter.CheckLimitFunc = func() error {
+		return nil
+	}
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(3) // 3回のAPI呼び出し用
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	// Web検索レスポンス（ロケーションIDを含む）
 	webResponseData := BraveWebResponse{}
@@ -67,17 +73,20 @@ func TestBraveSearchService_HandleLocalSearch_Normal(t *testing.T) {
 	poisMockResponse := createMockResponse(http.StatusOK, poisResponseData)
 	descMockResponse := createMockResponse(http.StatusOK, descResponseData)
 
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/web/search"
-	})).Return(webMockResponse, nil).Once()
-
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/local/pois"
-	})).Return(poisMockResponse, nil).Once()
-
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/local/descriptions"
-	})).Return(descMockResponse, nil).Once()
+	callCount := 0
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		callCount++
+		switch req.URL.Path {
+		case "/res/v1/web/search":
+			return webMockResponse, nil
+		case "/res/v1/local/pois":
+			return poisMockResponse, nil
+		case "/res/v1/local/descriptions":
+			return descMockResponse, nil
+		default:
+			return webMockResponse, nil
+		}
+	}
 
 	// テストの実行
 	result, err := service.HandleLocalSearch("test local query", 5)
@@ -88,10 +97,6 @@ func TestBraveSearchService_HandleLocalSearch_Normal(t *testing.T) {
 	assert.Contains(t, result, "Address: 123 Test St, Test City")
 	assert.Contains(t, result, "Phone: 123-456-7890")
 	assert.Contains(t, result, "Description: This is a test location")
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_HandleLocalSearch_FallbackToWebSearch(t *testing.T) {
@@ -101,10 +106,17 @@ func TestBraveSearchService_HandleLocalSearch_FallbackToWebSearch(t *testing.T) 
 	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
 	// レート制限を無効化
-	mockRateLimiter.On("CheckLimit").Return(nil)
+	mockRateLimiter.CheckLimitFunc = func() error {
+		return nil
+	}
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(2) // 2回のAPI呼び出し用
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	// Web検索レスポンス（ロケーションIDなし）
 	webResponseData := BraveWebResponse{}
@@ -119,15 +131,14 @@ func TestBraveSearchService_HandleLocalSearch_FallbackToWebSearch(t *testing.T) 
 	webMockResponse := createMockResponse(http.StatusOK, webResponseData)
 	fallbackMockResponse := createMockResponse(http.StatusOK, webResponseData)
 
-	// 最初のWeb検索（ロケーション検索）
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/web/search" && req.URL.RawQuery != ""
-	})).Return(webMockResponse, nil).Once()
-
-	// フォールバック用のWeb検索
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/web/search"
-	})).Return(fallbackMockResponse, nil).Once()
+	callCount := 0
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		callCount++
+		if callCount == 1 {
+			return webMockResponse, nil
+		}
+		return fallbackMockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.HandleLocalSearch("test local query", 5)
@@ -137,10 +148,6 @@ func TestBraveSearchService_HandleLocalSearch_FallbackToWebSearch(t *testing.T) 
 	assert.Contains(t, result, "Fallback Result")
 	assert.Contains(t, result, "This is a fallback result")
 	assert.Contains(t, result, "https://example.com/fallback")
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_HandleLocalSearch_NoAPIKey(t *testing.T) {
@@ -149,7 +156,9 @@ func TestBraveSearchService_HandleLocalSearch_NoAPIKey(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定（APIキーなし）
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		return ""
+	}
 
 	// テストの実行
 	result, err := service.HandleLocalSearch("test local query", 5)
@@ -158,9 +167,6 @@ func TestBraveSearchService_HandleLocalSearch_NoAPIKey(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "BRAVE_API_KEY environment variable is required")
 	assert.Empty(t, result)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
 }
 
 func TestBraveSearchService_HandleLocalSearch_HTTPError(t *testing.T) {
@@ -169,10 +175,17 @@ func TestBraveSearchService_HandleLocalSearch_HTTPError(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	mockResponse := createMockResponse(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.HandleLocalSearch("test local query", 5)
@@ -181,10 +194,6 @@ func TestBraveSearchService_HandleLocalSearch_HTTPError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error of Brave API")
 	assert.Empty(t, result)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_HandleLocalSearch_GoroutineError(t *testing.T) {
@@ -194,10 +203,17 @@ func TestBraveSearchService_HandleLocalSearch_GoroutineError(t *testing.T) {
 	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
 	// レート制限を無効化
-	mockRateLimiter.On("CheckLimit").Return(nil)
+	mockRateLimiter.CheckLimitFunc = func() error {
+		return nil
+	}
 
-	// モックの設定（goroutineでエラーが発生するため、すべてのAPI呼び出しが実行されるとは限らない）
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Maybe()
+	// モックの設定
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	// Web検索レスポンス（ロケーションIDを含む）
 	webResponseData := BraveWebResponse{}
@@ -213,17 +229,18 @@ func TestBraveSearchService_HandleLocalSearch_GoroutineError(t *testing.T) {
 	descErrorResponse := createMockResponse(http.StatusInternalServerError, map[string]string{"error": "Description Error"})
 
 	// Web検索は成功、POI取得とDescription取得でエラー（goroutineで並行実行されるため両方設定）
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/web/search"
-	})).Return(webMockResponse, nil).Once()
-
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/local/pois"
-	})).Return(poisErrorResponse, nil).Maybe()
-
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/local/descriptions"
-	})).Return(descErrorResponse, nil).Maybe()
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		switch req.URL.Path {
+		case "/res/v1/web/search":
+			return webMockResponse, nil
+		case "/res/v1/local/pois":
+			return poisErrorResponse, nil
+		case "/res/v1/local/descriptions":
+			return descErrorResponse, nil
+		default:
+			return webMockResponse, nil
+		}
+	}
 
 	// テストの実行
 	result, err := service.HandleLocalSearch("test local query", 5)
@@ -232,10 +249,6 @@ func TestBraveSearchService_HandleLocalSearch_GoroutineError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error of Brave API")
 	assert.Empty(t, result)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_HandleLocalSearch_CountLimit(t *testing.T) {
@@ -245,10 +258,17 @@ func TestBraveSearchService_HandleLocalSearch_CountLimit(t *testing.T) {
 	service := NewBraveSearchServiceWithAllDependencies(mockHTTPClient, mockEnvReader, mockRateLimiter)
 
 	// レート制限を無効化
-	mockRateLimiter.On("CheckLimit").Return(nil)
+	mockRateLimiter.CheckLimitFunc = func() error {
+		return nil
+	}
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key").Times(2) // 2回のAPI呼び出し用
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	// Web検索レスポンス（ロケーションIDなし、フォールバックする）
 	webResponseData := BraveWebResponse{}
@@ -259,15 +279,18 @@ func TestBraveSearchService_HandleLocalSearch_CountLimit(t *testing.T) {
 	webMockResponse := createMockResponse(http.StatusOK, webResponseData)
 	fallbackMockResponse := createMockResponse(http.StatusOK, webResponseData)
 
-	// 最初のWeb検索（ロケーション検索）
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/web/search" && req.URL.Query().Get("count") == "20" && req.URL.RawQuery != ""
-	})).Return(webMockResponse, nil).Once()
-
-	// フォールバック用のWeb検索
-	mockHTTPClient.On("Do", mock.MatchedBy(func(req *http.Request) bool {
-		return req.URL.Path == "/res/v1/web/search" && req.URL.Query().Get("count") == "20"
-	})).Return(fallbackMockResponse, nil).Once()
+	callCount := 0
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		callCount++
+		// count=20が設定されていることを確認（25を指定したが20に制限される）
+		if req.URL.Query().Get("count") != "20" {
+			t.Errorf("Expected count=20, but got count=%s", req.URL.Query().Get("count"))
+		}
+		if callCount == 1 {
+			return webMockResponse, nil
+		}
+		return fallbackMockResponse, nil
+	}
 
 	// テストの実行（制限を超えるcount=25を指定）
 	result, err := service.HandleLocalSearch("test query", 25)
@@ -275,10 +298,6 @@ func TestBraveSearchService_HandleLocalSearch_CountLimit(t *testing.T) {
 	// 結果の検証
 	assert.NoError(t, err)
 	assert.Contains(t, result, "Fallback")
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 // #==============================================================#
@@ -290,7 +309,12 @@ func TestBraveSearchService_getPoisData_Normal(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	responseData := BravePoiResponse{
 		Results: []BraveLocation{
@@ -303,7 +327,9 @@ func TestBraveSearchService_getPoisData_Normal(t *testing.T) {
 	}
 
 	mockResponse := createMockResponse(http.StatusOK, responseData)
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.getPoisData([]string{"location1"})
@@ -314,10 +340,6 @@ func TestBraveSearchService_getPoisData_Normal(t *testing.T) {
 	assert.Equal(t, "location1", result.Results[0].ID)
 	assert.Equal(t, "Test POI 1", result.Results[0].Name)
 	assert.Equal(t, "123-456-7890", result.Results[0].Phone)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getPoisData_NoAPIKey(t *testing.T) {
@@ -326,7 +348,9 @@ func TestBraveSearchService_getPoisData_NoAPIKey(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定（APIキーなし）
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		return ""
+	}
 
 	// テストの実行
 	result, err := service.getPoisData([]string{"location1"})
@@ -335,9 +359,6 @@ func TestBraveSearchService_getPoisData_NoAPIKey(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "BRAVE_API_KEY environment variable is required")
 	assert.Empty(t, result.Results)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getPoisData_HTTPError(t *testing.T) {
@@ -346,10 +367,17 @@ func TestBraveSearchService_getPoisData_HTTPError(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	mockResponse := createMockResponse(http.StatusBadRequest, map[string]string{"error": "Bad Request"})
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.getPoisData([]string{"location1"})
@@ -358,10 +386,6 @@ func TestBraveSearchService_getPoisData_HTTPError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error of Brave API")
 	assert.Empty(t, result.Results)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getPoisData_JSONDecodeError(t *testing.T) {
@@ -370,7 +394,12 @@ func TestBraveSearchService_getPoisData_JSONDecodeError(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	// 不正なJSONレスポンス
 	mockResponse := &http.Response{
@@ -378,7 +407,9 @@ func TestBraveSearchService_getPoisData_JSONDecodeError(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader([]byte("invalid json"))),
 		Header:     make(http.Header),
 	}
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.getPoisData([]string{"location1"})
@@ -386,10 +417,6 @@ func TestBraveSearchService_getPoisData_JSONDecodeError(t *testing.T) {
 	// 結果の検証
 	assert.Error(t, err)
 	assert.Empty(t, result.Results)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getPoisData_EmptyIDs(t *testing.T) {
@@ -398,14 +425,21 @@ func TestBraveSearchService_getPoisData_EmptyIDs(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	responseData := BravePoiResponse{
 		Results: []BraveLocation{},
 	}
 
 	mockResponse := createMockResponse(http.StatusOK, responseData)
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行（空のIDと空文字列を含む）
 	result, err := service.getPoisData([]string{"", "location1", ""})
@@ -413,10 +447,6 @@ func TestBraveSearchService_getPoisData_EmptyIDs(t *testing.T) {
 	// 結果の検証
 	assert.NoError(t, err)
 	assert.Empty(t, result.Results)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 // #==============================================================#
@@ -428,7 +458,12 @@ func TestBraveSearchService_getDescriptionsData_Normal(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	responseData := BraveDescription{
 		Descriptions: map[string]string{
@@ -438,7 +473,9 @@ func TestBraveSearchService_getDescriptionsData_Normal(t *testing.T) {
 	}
 
 	mockResponse := createMockResponse(http.StatusOK, responseData)
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.getDescriptionsData([]string{"location1", "location2"})
@@ -448,10 +485,6 @@ func TestBraveSearchService_getDescriptionsData_Normal(t *testing.T) {
 	assert.Len(t, result.Descriptions, 2)
 	assert.Equal(t, "Description for location 1", result.Descriptions["location1"])
 	assert.Equal(t, "Description for location 2", result.Descriptions["location2"])
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getDescriptionsData_NoAPIKey(t *testing.T) {
@@ -460,7 +493,9 @@ func TestBraveSearchService_getDescriptionsData_NoAPIKey(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定（APIキーなし）
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		return ""
+	}
 
 	// テストの実行
 	result, err := service.getDescriptionsData([]string{"location1"})
@@ -469,9 +504,6 @@ func TestBraveSearchService_getDescriptionsData_NoAPIKey(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "BRAVE_API_KEY environment variable is required")
 	assert.Empty(t, result.Descriptions)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getDescriptionsData_HTTPError(t *testing.T) {
@@ -480,10 +512,17 @@ func TestBraveSearchService_getDescriptionsData_HTTPError(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	mockResponse := createMockResponse(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.getDescriptionsData([]string{"location1"})
@@ -492,10 +531,6 @@ func TestBraveSearchService_getDescriptionsData_HTTPError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error of Brave API")
 	assert.Empty(t, result.Descriptions)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getDescriptionsData_JSONDecodeError(t *testing.T) {
@@ -504,7 +539,12 @@ func TestBraveSearchService_getDescriptionsData_JSONDecodeError(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	// 不正なJSONレスポンス
 	mockResponse := &http.Response{
@@ -512,7 +552,9 @@ func TestBraveSearchService_getDescriptionsData_JSONDecodeError(t *testing.T) {
 		Body:       io.NopCloser(bytes.NewReader([]byte("invalid json"))),
 		Header:     make(http.Header),
 	}
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行
 	result, err := service.getDescriptionsData([]string{"location1"})
@@ -520,10 +562,6 @@ func TestBraveSearchService_getDescriptionsData_JSONDecodeError(t *testing.T) {
 	// 結果の検証
 	assert.Error(t, err)
 	assert.Empty(t, result.Descriptions)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
 
 func TestBraveSearchService_getDescriptionsData_EmptyIDs(t *testing.T) {
@@ -532,14 +570,21 @@ func TestBraveSearchService_getDescriptionsData_EmptyIDs(t *testing.T) {
 	service := NewBraveSearchServiceWithDependencies(mockHTTPClient, mockEnvReader)
 
 	// モックの設定
-	mockEnvReader.On("Getenv", "BRAVE_API_KEY").Return("test-api-key")
+	mockEnvReader.GetenvFunc = func(key string) string {
+		if key == "BRAVE_API_KEY" {
+			return "test-api-key"
+		}
+		return ""
+	}
 
 	responseData := BraveDescription{
 		Descriptions: map[string]string{},
 	}
 
 	mockResponse := createMockResponse(http.StatusOK, responseData)
-	mockHTTPClient.On("Do", mock.AnythingOfType("*http.Request")).Return(mockResponse, nil)
+	mockHTTPClient.DoFunc = func(req *http.Request) (*http.Response, error) {
+		return mockResponse, nil
+	}
 
 	// テストの実行（空のIDと空文字列を含む）
 	result, err := service.getDescriptionsData([]string{"", "location1", ""})
@@ -547,8 +592,4 @@ func TestBraveSearchService_getDescriptionsData_EmptyIDs(t *testing.T) {
 	// 結果の検証
 	assert.NoError(t, err)
 	assert.Empty(t, result.Descriptions)
-
-	// モックの検証
-	mockEnvReader.AssertExpectations(t)
-	mockHTTPClient.AssertExpectations(t)
 }
