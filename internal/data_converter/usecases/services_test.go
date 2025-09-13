@@ -24,9 +24,9 @@ func TestDataConverterService_ConvertToHTML_Normal(t *testing.T) {
 				{"Bob", "30", "London"},
 				{"Charlie", "", "Tokyo"},
 			},
-			isTheadContained: true,
+			isTheadContained:     true,
 			textReplacingIfBlank: "💩",
-			expected: "<table>\n<thead>\n<tr><th>Name</th><th>Age</th><th>City</th></tr>\n</thead>\n<tbody>\n<tr><td>Alice</td><td>25</td><td>New York</td></tr>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n<tr><td>Charlie</td><td>💩</td><td>Tokyo</td></tr>\n</tbody>\n</table>",
+			expected:             "<table>\n<thead>\n<tr><th>Name</th><th>Age</th><th>City</th></tr>\n</thead>\n<tbody>\n<tr><td>Alice</td><td>25</td><td>New York</td></tr>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n<tr><td>Charlie</td><td>💩</td><td>Tokyo</td></tr>\n</tbody>\n</table>",
 		},
 		{
 			name: "NormalCase_WithoutHeader",
@@ -34,9 +34,9 @@ func TestDataConverterService_ConvertToHTML_Normal(t *testing.T) {
 				{"Alice", "25", "New York"},
 				{"Bob", "30", "London"},
 			},
-			isTheadContained: false,
+			isTheadContained:     false,
 			textReplacingIfBlank: "💩",
-			expected: "<table>\n<thead>\n<tr><th>Alice</th><th>25</th><th>New York</th></tr>\n</thead>\n<tbody>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n</tbody>\n</table>",
+			expected:             "<table>\n<thead>\n<tr><th>Alice</th><th>25</th><th>New York</th></tr>\n</thead>\n<tbody>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n</tbody>\n</table>",
 		},
 		{
 			name:                 "EmptyCase",
@@ -289,6 +289,191 @@ func TestDataConverterService_ConvertToTSV_Normal(t *testing.T) {
 			result, err := service.convertToTSV(tt.input)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataConverterService_ConvertToTable_Normal(t *testing.T) {
+	service := NewDataConverterService()
+
+	tests := []struct {
+		name     string
+		input    [][]string
+		expected string
+	}{
+		{
+			name: "MultiColumnTable",
+			input: [][]string{
+				{"名前", "年齢", "職業"},
+				{"田中", "25", "エンジニア"},
+				{"佐藤", "30", "デザイナー"},
+			},
+			expected: "| 名前 | 年齢 | 職業          |\n|--------|--------|-----------------|\n| 田中 | 25     | エンジニア |\n| 佐藤 | 30     | デザイナー |\n",
+		},
+		{
+			name: "SingleColumnTable",
+			input: [][]string{
+				{"項目"},
+				{"項目1"},
+				{"項目2"},
+			},
+			expected: "|     | 項目  |\n|-----|---------|\n|     | 項目1 |\n|     | 項目2 |\n",
+		},
+		{
+			name:     "EmptyCase",
+			input:    [][]string{},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.convertToTable(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataConverterService_ConvertToList_Normal(t *testing.T) {
+	service := NewDataConverterService()
+
+	tests := []struct {
+		name     string
+		input    [][]string
+		expected string
+	}{
+		{
+			name: "SingleColumnList",
+			input: [][]string{
+				{"項目"},
+				{"項目1"},
+				{"項目2"},
+				{"項目3"},
+			},
+			expected: "- 項目1\n- 項目2\n- 項目3\n",
+		},
+		{
+			name: "MultiColumnList",
+			input: [][]string{
+				{"名前", "年齢"},
+				{"田中", "25"},
+				{"佐藤", "30"},
+			},
+			expected: "- 名前: 田中, 年齢: 25\n- 名前: 佐藤, 年齢: 30\n",
+		},
+		{
+			name:     "EmptyCase",
+			input:    [][]string{},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.convertToList(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataConverterService_ConvertToOrderedList_Normal(t *testing.T) {
+	service := NewDataConverterService()
+
+	tests := []struct {
+		name     string
+		input    [][]string
+		expected string
+	}{
+		{
+			name: "SingleColumnOrderedList",
+			input: [][]string{
+				{"項目"},
+				{"項目1"},
+				{"項目2"},
+				{"項目3"},
+			},
+			expected: "1. 項目1\n2. 項目2\n3. 項目3\n",
+		},
+		{
+			name: "MultiColumnOrderedList",
+			input: [][]string{
+				{"名前", "年齢"},
+				{"田中", "25"},
+				{"佐藤", "30"},
+			},
+			expected: "1. 名前: 田中, 年齢: 25\n2. 名前: 佐藤, 年齢: 30\n",
+		},
+		{
+			name:     "EmptyCase",
+			input:    [][]string{},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.convertToOrderedList(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataConverterService_ConvertData_TableFormat_Normal(t *testing.T) {
+	service := NewDataConverterService()
+
+	tests := []struct {
+		name             string
+		inputFormat      string
+		outputFormat     string
+		input            string
+		inputFilePath    string
+		expectedContains []string
+	}{
+		{
+			name:             "JSONToTable_Normal",
+			inputFormat:      "json",
+			outputFormat:     "table",
+			input:            "[[\"名前\",\"年齢\",\"職業\"],[\"田中\",\"25\",\"エンジニア\"],[\"佐藤\",\"30\",\"デザイナー\"]]",
+			inputFilePath:    "",
+			expectedContains: []string{"名前", "年齢", "職業", "田中", "25", "エンジニア", "佐藤", "30", "デザイナー", "|", "---"},
+		},
+		{
+			name:             "TableToJSON_Normal",
+			inputFormat:      "table",
+			outputFormat:     "json",
+			input:            "| 名前 | 年齢 | 職業 |\n|------|------|------|\n| 田中 | 25   | エンジニア |\n| 佐藤 | 30   | デザイナー |",
+			inputFilePath:    "",
+			expectedContains: []string{"名前", "年齢", "職業", "田中", "25", "エンジニア", "佐藤", "30", "デザイナー"},
+		},
+		{
+			name:             "ListToTable_Normal",
+			inputFormat:      "list",
+			outputFormat:     "table",
+			input:            "- 項目1\n- 項目2\n- 項目3",
+			inputFilePath:    "",
+			expectedContains: []string{"項目1", "項目2", "項目3", "|", "---"},
+		},
+		{
+			name:             "TableToList_Normal",
+			inputFormat:      "table",
+			outputFormat:     "list",
+			input:            "| 項目 |\n|------|\n| 項目1 |\n| 項目2 |",
+			inputFilePath:    "",
+			expectedContains: []string{"- 項目1", "- 項目2"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := service.ConvertData(tt.inputFormat, tt.outputFormat, tt.input, tt.inputFilePath)
+			assert.NoError(t, err)
+
+			for _, expected := range tt.expectedContains {
+				assert.Contains(t, result, expected, "Result should contain: %s", expected)
+			}
 		})
 	}
 }

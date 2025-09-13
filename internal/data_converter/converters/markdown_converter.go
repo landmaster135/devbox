@@ -67,21 +67,59 @@ func (c *MarkdownConverter) ConvertToList(data [][]string) string {
 	return result.String()
 }
 
+// addEmptyColumnIfSingleColumn は1列のデータの場合、空の列を先頭に追加する
+func (c *MarkdownConverter) addEmptyColumnIfSingleColumn(data [][]string) [][]string {
+	if len(data) == 0 {
+		return data
+	}
+
+	// 1列のデータかどうかをチェック
+	isSingleColumn := true
+	for _, row := range data {
+		if len(row) != 1 {
+			isSingleColumn = false
+			break
+		}
+	}
+
+	// 1列でない場合はそのまま返す
+	if !isSingleColumn {
+		return data
+	}
+
+	// 1列の場合、空の列を先頭に追加して2列にする
+	result := make([][]string, len(data))
+	for i, row := range data {
+		if i == 0 {
+			// ヘッダー行の場合
+			result[i] = []string{"", row[0]}
+		} else {
+			// データ行の場合
+			result[i] = []string{"", row[0]}
+		}
+	}
+
+	return result
+}
+
 // ConvertToTable はデータをMarkdownテーブルに変換する
 func (c *MarkdownConverter) ConvertToTable(data [][]string) string {
 	if len(data) == 0 {
 		return ""
 	}
 
+	// 1列のデータ（箇条書きリストから変換されたデータ）の場合、空の列を先頭に追加
+	processedData := c.addEmptyColumnIfSingleColumn(data)
+
 	var result strings.Builder
 
 	// 各列の最大幅を計算
-	colWidths := c.calculateColumnWidths(data)
+	colWidths := c.calculateColumnWidths(processedData)
 
 	// ヘッダー行を出力
-	if len(data) > 0 {
+	if len(processedData) > 0 {
 		result.WriteString("|")
-		for i, cell := range data[0] {
+		for i, cell := range processedData[0] {
 			paddedCell := c.padCell(cell, colWidths[i])
 			result.WriteString(" ")
 			result.WriteString(paddedCell)
@@ -91,7 +129,7 @@ func (c *MarkdownConverter) ConvertToTable(data [][]string) string {
 
 		// セパレーター行を出力
 		result.WriteString("|")
-		for i := 0; i < len(data[0]); i++ {
+		for i := 0; i < len(processedData[0]); i++ {
 			result.WriteString(strings.Repeat("-", colWidths[i]+2))
 			result.WriteString("|")
 		}
@@ -99,10 +137,10 @@ func (c *MarkdownConverter) ConvertToTable(data [][]string) string {
 	}
 
 	// データ行を出力
-	for i := 1; i < len(data); i++ {
-		row := data[i]
+	for i := 1; i < len(processedData); i++ {
+		row := processedData[i]
 		result.WriteString("|")
-		for j := 0; j < len(data[0]); j++ {
+		for j := 0; j < len(processedData[0]); j++ {
 			var cell string
 			if j < len(row) {
 				cell = strings.TrimSpace(row[j])

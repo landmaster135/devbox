@@ -341,3 +341,299 @@ func TestDataParser_StripHTMLTags_Normal(t *testing.T) {
 		})
 	}
 }
+
+func TestDataParser_ParseMarkdownTable_Normal(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected [][]string
+	}{
+		{
+			name: "SimpleTable",
+			input: `| 名前 | 年齢 | 職業 |
+|------|------|------|
+| 田中 | 25   | エンジニア |
+| 佐藤 | 30   | デザイナー |`,
+			expected: [][]string{
+				{"名前", "年齢", "職業"},
+				{"田中", "25", "エンジニア"},
+				{"佐藤", "30", "デザイナー"},
+			},
+		},
+		{
+			name: "TableWithSpaces",
+			input: `|  名前  |  年齢  |  職業  |
+|--------|--------|--------|
+|  田中  |   25   | エンジニア |
+|  佐藤  |   30   | デザイナー |`,
+			expected: [][]string{
+				{"名前", "年齢", "職業"},
+				{"田中", "25", "エンジニア"},
+				{"佐藤", "30", "デザイナー"},
+			},
+		},
+		{
+			name: "SingleColumnTable",
+			input: `| 項目 |
+|------|
+| 項目1 |
+| 項目2 |`,
+			expected: [][]string{
+				{"項目"},
+				{"項目1"},
+				{"項目2"},
+			},
+		},
+		{
+			name:     "EmptyInput",
+			input:    "",
+			expected: [][]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseMarkdownTable(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataParser_ParseMarkdownTable_Error(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name         string
+		input        string
+		expectedError string
+	}{
+		{
+			name: "MissingPipes",
+			input: `名前 | 年齢 | 職業
+|------|------|------|
+田中 | 25   | エンジニア`,
+			expectedError: "Markdownテーブルの形式が正しくありません",
+		},
+		{
+			name: "MissingSeparator",
+			input: `| 名前 | 年齢 | 職業 |
+| 田中 | 25   | エンジニア |
+| 佐藤 | 30   | デザイナー |`,
+			expectedError: "Markdownテーブルのセパレーター行が見つかりません",
+		},
+		{
+			name: "InvalidFormat",
+			input: `| 名前 | 年齢 | 職業
+|------|------|------|
+| 田中 | 25   | エンジニア |`,
+			expectedError: "Markdownテーブルの形式が正しくありません",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseMarkdownTable(tt.input)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedError)
+			assert.Nil(t, result)
+		})
+	}
+}
+
+func TestDataParser_ParseMarkdownTableRow_Normal(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name:     "SimpleRow",
+			input:    "| 田中 | 25 | エンジニア |",
+			expected: []string{"田中", "25", "エンジニア"},
+		},
+		{
+			name:     "RowWithSpaces",
+			input:    "|  田中  |  25  |  エンジニア  |",
+			expected: []string{"田中", "25", "エンジニア"},
+		},
+		{
+			name:     "SingleCell",
+			input:    "| 項目1 |",
+			expected: []string{"項目1"},
+		},
+		{
+			name:     "EmptyCell",
+			input:    "| 田中 |  | エンジニア |",
+			expected: []string{"田中", "", "エンジニア"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parser.parseMarkdownTableRow(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataParser_ParseMarkdownList_Normal(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected [][]string
+	}{
+		{
+			name: "SimpleList",
+			input: `- 項目1
+- 項目2
+- 項目3`,
+			expected: [][]string{
+				{"項目"},
+				{"項目1"},
+				{"項目2"},
+				{"項目3"},
+			},
+		},
+		{
+			name: "ListWithAsterisk",
+			input: `* 項目1
+* 項目2
+* 項目3`,
+			expected: [][]string{
+				{"項目"},
+				{"項目1"},
+				{"項目2"},
+				{"項目3"},
+			},
+		},
+		{
+			name:     "EmptyInput",
+			input:    "",
+			expected: [][]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseMarkdownList(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataParser_ParseMarkdownList_Error(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name         string
+		input        string
+		expectedError string
+	}{
+		{
+			name: "InvalidFormat",
+			input: `項目1
+項目2
+項目3`,
+			expectedError: "箇条書きリストの形式が正しくありません",
+		},
+		{
+			name: "MixedFormat",
+			input: `- 項目1
+項目2
+- 項目3`,
+			expectedError: "箇条書きリストの形式が正しくありません",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseMarkdownList(tt.input)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedError)
+			assert.Nil(t, result)
+		})
+	}
+}
+
+func TestDataParser_ParseMarkdownOrderedList_Normal(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected [][]string
+	}{
+		{
+			name: "SimpleOrderedList",
+			input: `1. 項目1
+2. 項目2
+3. 項目3`,
+			expected: [][]string{
+				{"番号", "項目"},
+				{"1", "項目1"},
+				{"2", "項目2"},
+				{"3", "項目3"},
+			},
+		},
+		{
+			name:     "EmptyInput",
+			input:    "",
+			expected: [][]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseMarkdownOrderedList(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestDataParser_ParseMarkdownOrderedList_Error(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name         string
+		input        string
+		expectedError string
+	}{
+		{
+			name: "InvalidFormat",
+			input: `項目1
+項目2
+項目3`,
+			expectedError: "順序付きリストの形式が正しくありません",
+		},
+		{
+			name: "InvalidNumber",
+			input: `a. 項目1
+b. 項目2`,
+			expectedError: "番号が正しくありません",
+		},
+		{
+			name: "MissingDot",
+			input: `1 項目1
+2 項目2`,
+			expectedError: "順序付きリストの形式が正しくありません",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseMarkdownOrderedList(tt.input)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.expectedError)
+			assert.Nil(t, result)
+		})
+	}
+}
