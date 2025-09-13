@@ -43,8 +43,8 @@ go run ./cmd/cli/git-info-retriever/main.go -operation archive -service github -
 
 | パラメータ | 必須 | 説明 |
 |-----------|------|------|
-| `-operation` | ✓ | 操作タイプ（`retrieve`: リポジトリ情報取得、`archive`: Bash関数生成） |
-| `-service` | ✓ | サービスタイプ（現在は`github`のみサポート） |
+| `-operation` | * | 操作タイプ（`retrieve`: リポジトリ情報取得、`archive`: Bash関数生成） |
+| `-service` | * | サービスタイプ（現在は`github`のみサポート） |
 | `-token` | 条件付き | GitHubアクセストークン（`retrieve`操作では必須、`archive`操作で`src-file`未指定の場合は必須） |
 | `-save-file-path` | - | 結果を保存するファイルパス（指定しない場合は標準出力） |
 | `-output-command-file-path` | - | Bash関数出力ファイルパス（`archive`操作で使用、指定しない場合は標準出力） |

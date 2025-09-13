@@ -44,6 +44,11 @@ Set Git hooks with built binary files
 ./scripts/setup-git-pre-commit-hooks.sh
 ```
 
+## RESTful API
+```bash
+go run ./cmd/http/main.go
+```
+
 # Project Structure
 
 `devbox`は複数のCLIツールを提供する開発ユーティリティ集合体です。Clean Architectureに基づいて設計されており、以下のパッケージ依存関係を持ちます。
