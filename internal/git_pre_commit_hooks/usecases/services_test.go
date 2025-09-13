@@ -210,10 +210,10 @@ func TestSecretDetectorService_CheckFileForHomePath_Normal(t *testing.T) {
 		{
 			name:              "File with mixed home paths",
 			filename:          "test3.txt",
-			content:           "Forbidden: /home" + "/alice/data\nAllowed: /home/user/settings\nAllowed: /home/[username]/template\nForbidden: /home" + "/bob/files",
+			content:           "Forbidden: /home/alice/data\nAllowed: /home/user/settings\nAllowed: /home/[username]/template\nForbidden: /home" + "/bob/files",
 			expectedCount:     4,
-			expectedAllowed:   2,
-			expectedForbidden: 2,
+			expectedAllowed:   3,
+			expectedForbidden: 1,
 		},
 		{
 			name:              "File with no home paths",

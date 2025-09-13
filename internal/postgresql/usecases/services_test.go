@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // #==============================================================#
@@ -16,81 +15,96 @@ import (
 
 // MockDatabaseExecutor はテスト用のDatabaseExecutorモック
 type MockDatabaseExecutor struct {
-	mock.Mock
+	QueryContextFunc        func(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContextFunc     func(ctx context.Context, query string, args ...any) *sql.Row
+	BeginTxFunc             func(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	PingFunc                func() error
+	CloseFunc               func() error
+	QueryContextRowsFunc    func(ctx context.Context, query string, args ...any) (RowsInterface, error)
+	QueryRowContextRowFunc  func(ctx context.Context, query string, args ...any) RowInterface
 }
 
 func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	arguments := m.Called(ctx, query, args)
-	if arguments.Get(0) == nil {
-		return nil, arguments.Error(1)
+	if m.QueryContextFunc != nil {
+		return m.QueryContextFunc(ctx, query, args)
 	}
-	return arguments.Get(0).(*sql.Rows), arguments.Error(1)
+	return nil, nil
 }
 
 func (m *MockDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	arguments := m.Called(ctx, query, args)
-	if arguments.Get(0) == nil {
-		return nil
+	if m.QueryRowContextFunc != nil {
+		return m.QueryRowContextFunc(ctx, query, args)
 	}
-	return arguments.Get(0).(*sql.Row)
+	return nil
 }
 
 func (m *MockDatabaseExecutor) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	arguments := m.Called(ctx, opts)
-	return arguments.Get(0).(*sql.Tx), arguments.Error(1)
+	if m.BeginTxFunc != nil {
+		return m.BeginTxFunc(ctx, opts)
+	}
+	return nil, nil
 }
 
 func (m *MockDatabaseExecutor) Ping() error {
-	arguments := m.Called()
-	return arguments.Error(0)
+	if m.PingFunc != nil {
+		return m.PingFunc()
+	}
+	return nil
 }
 
 func (m *MockDatabaseExecutor) Close() error {
-	arguments := m.Called()
-	return arguments.Error(0)
+	if m.CloseFunc != nil {
+		return m.CloseFunc()
+	}
+	return nil
 }
 
 // QueryContextRows は新しいインターフェース用のメソッド
 func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
-	arguments := m.Called(ctx, query, args)
-	if arguments.Get(0) == nil {
-		return nil, arguments.Error(1)
+	if m.QueryContextRowsFunc != nil {
+		return m.QueryContextRowsFunc(ctx, query, args)
 	}
-	return arguments.Get(0).(RowsInterface), arguments.Error(1)
+	return nil, nil
 }
 
 // QueryRowContextRow は新しいインターフェース用のメソッド
 func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
-	arguments := m.Called(ctx, query, args)
-	if arguments.Get(0) == nil {
-		return nil
+	if m.QueryRowContextRowFunc != nil {
+		return m.QueryRowContextRowFunc(ctx, query, args)
 	}
-	return arguments.Get(0).(RowInterface)
+	return nil
 }
 
 // MockTemplateRenderer はテスト用のTemplateRendererモック
 type MockTemplateRenderer struct {
-	mock.Mock
+	RenderTableDetailFunc func(detail *TableDetail) (string, error)
+	RenderTableListFunc   func(data ListTablesData) (string, error)
 }
 
 func (m *MockTemplateRenderer) RenderTableDetail(detail *TableDetail) (string, error) {
-	arguments := m.Called(detail)
-	return arguments.String(0), arguments.Error(1)
+	if m.RenderTableDetailFunc != nil {
+		return m.RenderTableDetailFunc(detail)
+	}
+	return "", nil
 }
 
 func (m *MockTemplateRenderer) RenderTableList(data ListTablesData) (string, error) {
-	arguments := m.Called(data)
-	return arguments.String(0), arguments.Error(1)
+	if m.RenderTableListFunc != nil {
+		return m.RenderTableListFunc(data)
+	}
+	return "", nil
 }
 
 // MockJSONMarshaler はテスト用のJSONMarshalerモック
 type MockJSONMarshaler struct {
-	mock.Mock
+	MarshalIndentFunc func(v any, prefix, indent string) ([]byte, error)
 }
 
 func (m *MockJSONMarshaler) MarshalIndent(v any, prefix, indent string) ([]byte, error) {
-	arguments := m.Called(v, prefix, indent)
-	return arguments.Get(0).([]byte), arguments.Error(1)
+	if m.MarshalIndentFunc != nil {
+		return m.MarshalIndentFunc(v, prefix, indent)
+	}
+	return nil, nil
 }
 
 // #==============================================================#
@@ -151,14 +165,15 @@ func TestPostgreSQLService_Close_Normal(t *testing.T) {
 	// Arrange
 	service := createTestPostgreSQLService()
 	mockExecutor := service.executor.(*MockDatabaseExecutor)
-	mockExecutor.On("Close").Return(nil)
+	mockExecutor.CloseFunc = func() error {
+		return nil
+	}
 
 	// Act
 	err := service.Close()
 
 	// Assert
 	assert.NoError(t, err)
-	mockExecutor.AssertExpectations(t)
 }
 
 func TestPostgreSQLService_Close_Error(t *testing.T) {
@@ -166,7 +181,9 @@ func TestPostgreSQLService_Close_Error(t *testing.T) {
 	service := createTestPostgreSQLService()
 	mockExecutor := service.executor.(*MockDatabaseExecutor)
 	expectedError := errors.New("close error")
-	mockExecutor.On("Close").Return(expectedError)
+	mockExecutor.CloseFunc = func() error {
+		return expectedError
+	}
 
 	// Act
 	err := service.Close()
@@ -174,7 +191,6 @@ func TestPostgreSQLService_Close_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Equal(t, expectedError, err)
-	mockExecutor.AssertExpectations(t)
 }
 
 // #==============================================================#

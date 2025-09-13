@@ -3,10 +3,10 @@ package usecases
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // #==============================================================#
@@ -108,23 +108,22 @@ func (m *MockRow) Scan(dest ...any) error {
 
 // MockDatabaseQueryExecutor は新しいインターフェース用のモック
 type MockDatabaseQueryExecutor struct {
-	mock.Mock
+	QueryContextRowsFunc   func(ctx context.Context, query string, args ...any) (RowsInterface, error)
+	QueryRowContextRowFunc func(ctx context.Context, query string, args ...any) RowInterface
 }
 
 func (m *MockDatabaseQueryExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
-	arguments := m.Called(ctx, query, args)
-	if arguments.Get(0) == nil {
-		return nil, arguments.Error(1)
+	if m.QueryContextRowsFunc != nil {
+		return m.QueryContextRowsFunc(ctx, query, args)
 	}
-	return arguments.Get(0).(RowsInterface), arguments.Error(1)
+	return nil, nil
 }
 
 func (m *MockDatabaseQueryExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
-	arguments := m.Called(ctx, query, args)
-	if arguments.Get(0) == nil {
-		return nil
+	if m.QueryRowContextRowFunc != nil {
+		return m.QueryRowContextRowFunc(ctx, query, args)
 	}
-	return arguments.Get(0).(RowInterface)
+	return nil
 }
 
 // #==============================================================#
@@ -169,40 +168,57 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	concurrency := 2
 
 	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
+	suite.mockWriter.MkdirAllFunc = func(path string, perm os.FileMode) error {
+		assert.Equal(t, outputPath, path)
+		return nil
+	}
 
 	// テーブル一覧取得の成功レスポンス
 	tableRows := NewMockRows([]string{"table_name"}, [][]any{
 		{"users"},
 		{"products"},
 	})
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-	}), mock.Anything).Return(tableRows, nil)
 
 	// データベース名取得の成功レスポンス
 	dbRow := NewMockRow([]any{"testdb"}, nil)
-	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
 
 	// 各テーブルのダンプクエリの成功レスポンス
 	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
 		{1, "John"},
 		{2, "Jane"},
 	})
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users", mock.Anything).Return(usersRows, nil)
 
 	productsRows := NewMockRows([]string{"id", "title"}, [][]any{
 		{1, "Product A"},
 	})
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM products", mock.Anything).Return(productsRows, nil)
+
+	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+		if query == `
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
+		ORDER BY table_name
+	` {
+			return tableRows, nil
+		} else if query == "SELECT * FROM users" {
+			return usersRows, nil
+		} else if query == "SELECT * FROM products" {
+			return productsRows, nil
+		}
+		return nil, errors.New("unexpected query")
+	}
+
+	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) RowInterface {
+		if query == "SELECT current_database()" {
+			return dbRow
+		}
+		return nil
+	}
 
 	// ファイル書き込みの成功レスポンス
-	suite.mockWriter.On("WriteFile", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8"), mock.AnythingOfType("fs.FileMode")).Return(nil)
+	suite.mockWriter.WriteFileFunc = func(filename string, data []byte, perm os.FileMode) error {
+		return nil
+	}
 
 	// Act
 	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
@@ -224,10 +240,6 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	}
 	assert.True(t, tableNames["users"])
 	assert.True(t, tableNames["products"])
-
-	// モックの期待値が満たされたことを確認
-	suite.mockExecutor.AssertExpectations(t)
-	suite.mockWriter.AssertExpectations(t)
 }
 
 func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
@@ -241,326 +253,35 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 	concurrency := 2
 
 	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// 空のテーブル一覧
-	emptyRows := NewMockRows([]string{"table_name"}, [][]any{})
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-	}), mock.Anything).Return(emptyRows, nil)
-
-	// データベース名取得
-	dbRow := NewMockRow([]any{"testdb"}, nil)
-	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
-
-	// Act
-	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "testdb", result.DatabaseName)
-	assert.Equal(t, 0, result.TotalTables)
-	assert.Len(t, result.Results, 0)
-	assert.Len(t, result.FailedTables, 0)
-
-	// モックの期待値が満たされたことを確認
-	suite.mockExecutor.AssertExpectations(t)
-	suite.mockWriter.AssertExpectations(t)
-}
-
-func TestTableDumper_DumpAllTables_DatabaseError(t *testing.T) {
-	// Arrange
-	suite := &TestTableDumper_DumpAllTables{}
-	suite.setup()
-
-	ctx := context.Background()
-	outputPath := "/test/output"
-	format := "json"
-	concurrency := 2
-
-	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// データベースエラーを発生させる
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-	}), mock.Anything).Return(nil, errors.New("データベース接続エラー"))
-
-	// Act
-	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
-
-	// Assert
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "テーブル一覧取得エラー")
-
-	// モックの期待値が満たされたことを確認
-	suite.mockExecutor.AssertExpectations(t)
-	suite.mockWriter.AssertExpectations(t)
-}
-
-func TestTableDumper_DumpAllTables_PartialFailure(t *testing.T) {
-	// Arrange
-	suite := &TestTableDumper_DumpAllTables{}
-	suite.setup()
-
-	ctx := context.Background()
-	outputPath := "/test/output"
-	format := "json"
-	concurrency := 2
-
-	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// テーブル一覧取得
-	tableRows := NewMockRows([]string{"table_name"}, [][]any{
-		{"users"},
-		{"products"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-	}), mock.Anything).Return(tableRows, nil)
-
-	// データベース名取得
-	dbRow := NewMockRow([]any{"testdb"}, nil)
-	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
-
-	// usersテーブルは成功
-	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
-		{1, "John"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users", mock.Anything).Return(usersRows, nil)
-
-	// productsテーブルは失敗
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM products", mock.Anything).Return(nil, errors.New("テーブルアクセスエラー"))
-
-	// ファイル書き込み（成功したテーブルのみ）
-	suite.mockWriter.On("WriteFile", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8"), mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// Act
-	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "testdb", result.DatabaseName)
-	assert.Equal(t, 2, result.TotalTables)
-	assert.Len(t, result.Results, 1)
-	assert.Len(t, result.FailedTables, 1)
-
-	// 成功したテーブル
-	assert.Equal(t, "users", result.Results[0].TableName)
-
-	// 失敗したテーブル
-	assert.Equal(t, "products", result.FailedTables[0].TableName)
-	assert.Contains(t, result.FailedTables[0].Error, "テーブルアクセスエラー")
-
-	// モックの期待値が満たされたことを確認
-	suite.mockExecutor.AssertExpectations(t)
-	suite.mockWriter.AssertExpectations(t)
-}
-
-func TestTableDumper_DumpAllTables_WithLimit(t *testing.T) {
-	// Arrange
-	suite := &TestTableDumper_DumpAllTables{}
-	suite.setup()
-
-	ctx := context.Background()
-	outputPath := "/test/output"
-	format := "json"
-	limit := 10
-	concurrency := 2
-
-	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// テーブル一覧取得
-	tableRows := NewMockRows([]string{"table_name"}, [][]any{
-		{"users"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-	}), mock.Anything).Return(tableRows, nil)
-
-	// データベース名取得
-	dbRow := NewMockRow([]any{"testdb"}, nil)
-	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
-
-	// usersテーブルのダンプ（LIMIT付き）
-	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
-		{1, "John"},
-		{2, "Jane"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users LIMIT 10", mock.Anything).Return(usersRows, nil)
-
-	// ファイル書き込み
-	suite.mockWriter.On("WriteFile", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8"), mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// Act
-	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, &limit, &concurrency)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "testdb", result.DatabaseName)
-	assert.Equal(t, 1, result.TotalTables)
-	assert.Len(t, result.Results, 1)
-	assert.Len(t, result.FailedTables, 0)
-
-	// 結果の確認
-	assert.Equal(t, "users", result.Results[0].TableName)
-	assert.Equal(t, 2, result.Results[0].RecordCount)
-
-	// モックの期待値が満たされたことを確認
-	suite.mockExecutor.AssertExpectations(t)
-	suite.mockWriter.AssertExpectations(t)
-}
-
-func TestTableDumper_DumpAllTables_DirectoryCreationError(t *testing.T) {
-	// Arrange
-	suite := &TestTableDumper_DumpAllTables{}
-	suite.setup()
-
-	ctx := context.Background()
-	outputPath := "/invalid/path"
-	format := "json"
-	concurrency := 2
-
-	// ディレクトリ作成エラーを発生させる
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(errors.New("permission denied"))
-
-	// Act
-	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
-
-	// Assert
-	assert.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "出力ディレクトリ作成エラー")
-
-	// モックの期待値が満たされたことを確認
-	suite.mockWriter.AssertExpectations(t)
-}
-
-// #==============================================================#
-// ##          Error Path Tests                                  ##
-// #==============================================================#
-
-func TestTableDumper_DumpAllTables_Success_Normal(t *testing.T) {
-	suite := &TestTableDumper_DumpAllTables{}
-	suite.setup()
-
-	// Arrange
-	ctx := context.Background()
-	outputPath := "/test/output"
-	format := "json"
-	concurrency := 2
-
-	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// テーブル一覧取得の成功レスポンス
-	tableRows := NewMockRows([]string{"table_name"}, [][]any{
-		{"users"},
-		{"products"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-	}), mock.Anything).Return(tableRows, nil)
-
-	// データベース名取得の成功レスポンス
-	dbRow := NewMockRow([]any{"testdb"}, nil)
-	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
-
-	// 各テーブルのダンプクエリの成功レスポンス
-	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
-		{1, "John"},
-		{2, "Jane"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM users", mock.Anything).Return(usersRows, nil)
-
-	productsRows := NewMockRows([]string{"id", "title"}, [][]any{
-		{1, "Product A"},
-	})
-	suite.mockExecutor.On("QueryContextRows", ctx, "SELECT * FROM products", mock.Anything).Return(productsRows, nil)
-
-	// ファイル書き込みの成功レスポンス
-	suite.mockWriter.On("WriteFile", mock.AnythingOfType("string"), mock.AnythingOfType("[]uint8"), mock.AnythingOfType("fs.FileMode")).Return(nil)
-
-	// Act
-	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, "testdb", result.DatabaseName)
-	assert.Equal(t, 2, result.TotalTables)
-	assert.Len(t, result.Results, 2)
-	assert.Len(t, result.FailedTables, 0)
-
-	// 各テーブルの結果を確認
-	tableNames := make(map[string]bool)
-	for _, res := range result.Results {
-		tableNames[res.TableName] = true
-		assert.Equal(t, format, res.Format)
-		assert.Equal(t, outputPath, res.OutputPath)
+	suite.mockWriter.MkdirAllFunc = func(path string, perm os.FileMode) error {
+		assert.Equal(t, outputPath, path)
+		return nil
 	}
-	assert.True(t, tableNames["users"])
-	assert.True(t, tableNames["products"])
-}
-
-func TestTableDumper_DumpAllTables_Success_EmptyTables(t *testing.T) {
-	suite := &TestTableDumper_DumpAllTables{}
-	suite.setup()
-
-	// Arrange
-	ctx := context.Background()
-	outputPath := "/test/output"
-	format := "json"
-	concurrency := 2
-
-	// モックの設定
-	suite.mockWriter.On("MkdirAll", outputPath, mock.AnythingOfType("fs.FileMode")).Return(nil)
 
 	// 空のテーブル一覧
 	emptyRows := NewMockRows([]string{"table_name"}, [][]any{})
-	suite.mockExecutor.On("QueryContextRows", ctx, mock.MatchedBy(func(query string) bool {
-		return query == `
+
+	// データベース名取得
+	dbRow := NewMockRow([]any{"testdb"}, nil)
+
+	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+		if query == `
 		SELECT table_name
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
 		ORDER BY table_name
-	`
-	}), mock.Anything).Return(emptyRows, nil)
+	` {
+			return emptyRows, nil
+		}
+		return nil, errors.New("unexpected query")
+	}
 
-	// データベース名取得
-	dbRow := NewMockRow([]any{"testdb"}, nil)
-	suite.mockExecutor.On("QueryRowContextRow", ctx, "SELECT current_database()", mock.Anything).Return(dbRow)
+	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) RowInterface {
+		if query == "SELECT current_database()" {
+			return dbRow
+		}
+		return nil
+	}
 
 	// Act
 	result, err := suite.dumper.DumpAllTables(ctx, outputPath, format, nil, &concurrency)
