@@ -21,7 +21,7 @@ if [ ! -d ".git" ]; then
 fi
 
 # ビルド済みバイナリのパス
-BINARY_PATH="./pkg/bin/cli/linux_amd64/secret-detector"
+BINARY_PATH="./pkg/bin/cli/linux_amd64/git-pre-commit-hooks"
 
 # バイナリが存在するかチェック
 if [ ! -f "$BINARY_PATH" ]; then
@@ -39,13 +39,13 @@ if [ ! -x "$BINARY_PATH" ]; then
 fi
 
 # ツールディレクトリを作成
-TOOL_DIR=".git/hooks/secret-detector"
+TOOL_DIR=".git/hooks/git-pre-commit-hooks"
 mkdir -p "$TOOL_DIR"
 
 # バイナリをコピー
 echo -e "${YELLOW}📦 Copying binary to Git hooks directory...${NC}"
-cp "$BINARY_PATH" "$TOOL_DIR/secret-detector"
-chmod +x "$TOOL_DIR/secret-detector"
+cp "$BINARY_PATH" "$TOOL_DIR/git-pre-commit-hooks"
+chmod +x "$TOOL_DIR/git-pre-commit-hooks"
 
 # Pre-commitフックを作成
 echo -e "${YELLOW}🔗 Creating pre-commit hook...${NC}"
@@ -54,7 +54,7 @@ cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
 
 # Execute the secret detector tool implemented with Go
-TOOL_PATH="$(dirname "$0")/secret-detector/secret-detector"
+TOOL_PATH="$(dirname "$0")/git-pre-commit-hooks/git-pre-commit-hooks"
 
 if [ -x "$TOOL_PATH" ]; then
   "$TOOL_PATH"
@@ -73,12 +73,12 @@ echo ""
 echo -e "${BLUE}📝 Usage:${NC}"
 echo "  • The pre-commit hook will automatically run on 'git commit'"
 echo "  • To bypass the check: git commit --no-verify"
-echo "  • To test manually: .git/hooks/secret-detector/secret-detector"
+echo "  • To test manually: .git/hooks/git-pre-commit-hooks/git-pre-commit-hooks"
 echo ""
 
 # テスト実行
 echo -e "${YELLOW}🧪 Testing the tool...${NC}"
-if .git/hooks/secret-detector/secret-detector --version; then
+if .git/hooks/git-pre-commit-hooks/git-pre-commit-hooks --version; then
   echo -e "${GREEN}✅ Tool is working correctly${NC}"
 else
   echo -e "${YELLOW}⚠️  Tool test completed (may show 'no staged files' message)${NC}"
@@ -88,13 +88,13 @@ echo ""
 echo -e "${GREEN}🎉 Secret detector is now active for this repository!${NC}"
 echo ""
 echo -e "${BLUE}📋 What was installed:${NC}"
-echo "  • Binary: .git/hooks/secret-detector/secret-detector"
+echo "  • Binary: .git/hooks/git-pre-commit-hooks/git-pre-commit-hooks"
 echo "  • Hook: .git/hooks/pre-commit"
 echo ""
 echo -e "${BLUE}🔧 To update the tool:${NC}"
 echo "  1. Run: ./scripts/build_secret_detector.sh"
-echo "  2. Run: ./scripts/setup-secret-detector-hook.sh"
+echo "  2. Run: ./scripts/setup-git-pre-commit-hooks-hook.sh"
 echo ""
 echo -e "${BLUE}🗑️  To remove the hook:${NC}"
 echo "  • Delete: .git/hooks/pre-commit"
-echo "  • Delete: .git/hooks/secret-detector/"
+echo "  • Delete: .git/hooks/git-pre-commit-hooks/"

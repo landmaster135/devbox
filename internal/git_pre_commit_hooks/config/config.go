@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/secret_detector/domain"
+	"github.com/landmaster135/devbox/internal/git_pre_commit_hooks/domain"
 )
 
 const (
