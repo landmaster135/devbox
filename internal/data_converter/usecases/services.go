@@ -52,6 +52,8 @@ func (s *DataConverterService) ConvertData(inputFormat, outputFormat, input, inp
 		return s.convertToList(data)
 	case "ordered-list":
 		return s.convertToOrderedList(data)
+	case "table":
+		return s.convertToTable(data)
 	default:
 		return "", fmt.Errorf("未対応の出力形式です: %s", outputFormat)
 	}
@@ -86,6 +88,12 @@ func (s *DataConverterService) convertToArray(data [][]string) (string, error) {
 		return "", fmt.Errorf("array変換エラー: %v", err)
 	}
 	return string(jsonBytes), nil
+}
+
+// convertToTable はデータをMarkdownテーブル形式に変換する
+func (s *DataConverterService) convertToTable(data [][]string) (string, error) {
+	result := s.markdownConverter.ConvertToTable(data)
+	return result, nil
 }
 
 // convertToList はデータを箇条書きリストに変換する

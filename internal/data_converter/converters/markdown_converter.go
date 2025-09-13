@@ -67,6 +67,100 @@ func (c *MarkdownConverter) ConvertToList(data [][]string) string {
 	return result.String()
 }
 
+// ConvertToTable はデータをMarkdownテーブルに変換する
+func (c *MarkdownConverter) ConvertToTable(data [][]string) string {
+	if len(data) == 0 {
+		return ""
+	}
+
+	var result strings.Builder
+
+	// 各列の最大幅を計算
+	colWidths := c.calculateColumnWidths(data)
+
+	// ヘッダー行を出力
+	if len(data) > 0 {
+		result.WriteString("|")
+		for i, cell := range data[0] {
+			paddedCell := c.padCell(cell, colWidths[i])
+			result.WriteString(" ")
+			result.WriteString(paddedCell)
+			result.WriteString(" |")
+		}
+		result.WriteString("\n")
+
+		// セパレーター行を出力
+		result.WriteString("|")
+		for i := 0; i < len(data[0]); i++ {
+			result.WriteString(strings.Repeat("-", colWidths[i]+2))
+			result.WriteString("|")
+		}
+		result.WriteString("\n")
+	}
+
+	// データ行を出力
+	for i := 1; i < len(data); i++ {
+		row := data[i]
+		result.WriteString("|")
+		for j := 0; j < len(data[0]); j++ {
+			var cell string
+			if j < len(row) {
+				cell = strings.TrimSpace(row[j])
+			}
+			paddedCell := c.padCell(cell, colWidths[j])
+			result.WriteString(" ")
+			result.WriteString(paddedCell)
+			result.WriteString(" |")
+		}
+		result.WriteString("\n")
+	}
+
+	return result.String()
+}
+
+// calculateColumnWidths は各列の最大幅を計算する
+func (c *MarkdownConverter) calculateColumnWidths(data [][]string) []int {
+	if len(data) == 0 {
+		return []int{}
+	}
+
+	maxCols := 0
+	for _, row := range data {
+		if len(row) > maxCols {
+			maxCols = len(row)
+		}
+	}
+
+	widths := make([]int, maxCols)
+
+	for _, row := range data {
+		for i, cell := range row {
+			cellLen := len(strings.TrimSpace(cell))
+			if cellLen > widths[i] {
+				widths[i] = cellLen
+			}
+		}
+	}
+
+	// 最小幅を3に設定（セパレーター行の"---"のため）
+	for i := range widths {
+		if widths[i] < 3 {
+			widths[i] = 3
+		}
+	}
+
+	return widths
+}
+
+// padCell はセルを指定された幅にパディングする
+func (c *MarkdownConverter) padCell(cell string, width int) string {
+	cell = strings.TrimSpace(cell)
+	if len(cell) >= width {
+		return cell
+	}
+	return cell + strings.Repeat(" ", width-len(cell))
+}
+
 // ConvertToOrderedList はデータを順序付きリストに変換する
 func (c *MarkdownConverter) ConvertToOrderedList(data [][]string) string {
 	if len(data) == 0 {
