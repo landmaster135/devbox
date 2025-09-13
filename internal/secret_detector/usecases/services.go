@@ -16,14 +16,16 @@ type SecretDetectorService struct {
 	verbose         bool
 	dryRun          bool
 	commandExecutor CommandExecutorRepository
+	outputWriter    OutputWriterRepository
 }
 
 // NewSecretDetectorService は新しいSecretDetectorServiceを作成
-func NewSecretDetectorService(verbose, dryRun bool, commandExecutor CommandExecutorRepository) *SecretDetectorService {
+func NewSecretDetectorService(verbose, dryRun bool, commandExecutor CommandExecutorRepository, outputWriter OutputWriterRepository) *SecretDetectorService {
 	return &SecretDetectorService{
 		verbose:         verbose,
 		dryRun:          dryRun,
 		commandExecutor: commandExecutor,
+		outputWriter:    outputWriter,
 	}
 }
 

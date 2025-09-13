@@ -11,7 +11,8 @@ type TestSecretDetectorService struct{}
 // TestSecretDetectorService_StripProtocolPrefix_Normal はプロトコル識別子除去の正常系テスト
 func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
 	mockExecutor := &MockCommandExecutor{}
-	service := NewSecretDetectorService(false, false, mockExecutor)
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -79,7 +80,8 @@ func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
 func TestSecretDetectorService_IsPlaceholder_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
-	service := NewSecretDetectorService(false, false, mockExecutor)
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -205,7 +207,8 @@ func TestSecretDetectorService_IsPlaceholder_Normal(t *testing.T) {
 func TestSecretDetectorService_IsSuspiciousKey_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
-	service := NewSecretDetectorService(false, false, mockExecutor)
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -295,7 +298,8 @@ func TestSecretDetectorService_IsSuspiciousKey_Normal(t *testing.T) {
 func TestSecretDetectorService_MatchesSecretPattern_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
-	service := NewSecretDetectorService(false, false, mockExecutor)
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -365,7 +369,8 @@ func TestSecretDetectorService_MatchesSecretPattern_Normal(t *testing.T) {
 func TestSecretDetectorService_FilterConfigFiles_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
-	service := NewSecretDetectorService(false, false, mockExecutor)
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -436,7 +441,8 @@ func TestSecretDetectorService_FilterConfigFiles_Normal(t *testing.T) {
 func TestSecretDetectorService_CalculateEntropy_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
-	service := NewSecretDetectorService(false, false, mockExecutor)
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -563,7 +569,8 @@ func TestSecretDetectorService_GetStagedFiles_Normal(t *testing.T) {
 					return []byte(tc.mockOutput), nil
 				},
 			}
-			service := NewSecretDetectorService(tc.verbose, tc.dryRun, mockExecutor)
+			mockOutputWriter := &MockOutputWriter{}
+			service := NewSecretDetectorService(tc.verbose, tc.dryRun, mockExecutor, mockOutputWriter)
 
 			result, err := service.GetStagedFiles()
 

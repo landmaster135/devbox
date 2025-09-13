@@ -99,12 +99,18 @@ func PrintUsage() {
 
 // LoadConfig はJSONファイルから設定を読み込む
 func LoadConfig(filename string) (*domain.Config, error) {
+	fs := NewFileSystem()
+	return LoadConfigWithFileSystem(filename, fs)
+}
+
+// LoadConfigWithFileSystem はファイルシステム依存性注入対応版
+func LoadConfigWithFileSystem(filename string, fs FileSystemRepository) (*domain.Config, error) {
 	// ファイルが存在するかチェック
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
+	if _, err := fs.Stat(filename); os.IsNotExist(err) {
 		return nil, fmt.Errorf("file does not exist: %s", filename)
 	}
 
-	data, err := os.ReadFile(filename)
+	data, err := fs.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", filename, err)
 	}
