@@ -136,6 +136,21 @@ func (s *SecretDetectorService) CheckFile(filename string) ([]domain.SecretResul
 	return results, nil
 }
 
+// stripProtocolPrefix はプロトコル識別子を除去する
+func (s *SecretDetectorService) stripProtocolPrefix(value string) string {
+	protocols := domain.GetProtocolPrefixes()
+	for _, protocol := range protocols {
+		if strings.HasPrefix(value, protocol) {
+			if s.verbose {
+				fmt.Printf("%s[VERBOSE] Stripped protocol prefix '%s' from value%s\n",
+					domain.Blue, protocol, domain.Reset)
+			}
+			return value[len(protocol):]
+		}
+	}
+	return value
+}
+
 // IsPlaceholder はプレースホルダー値かどうかを判定
 func (s *SecretDetectorService) IsPlaceholder(value string) bool {
 	// 空文字は許可
@@ -143,28 +158,36 @@ func (s *SecretDetectorService) IsPlaceholder(value string) bool {
 		return true
 	}
 
-	// 許可されたプレースホルダー値
+	// プロトコル識別子を除去してからチェック
+	strippedValue := s.stripProtocolPrefix(value)
+
+	// 除去後の値が空の場合は許可
+	if strippedValue == "" {
+		return true
+	}
+
+	// 許可されたプレースホルダー値（元の値とstripped値の両方をチェック）
 	allowedPlaceholders := domain.GetAllowedPlaceholders()
 	for _, placeholder := range allowedPlaceholders {
-		if value == placeholder {
+		if value == placeholder || strippedValue == placeholder {
 			return true
 		}
 	}
 
-	// YOUR_で始まる値も許可
-	if strings.HasPrefix(value, "YOUR_") {
+	// YOUR_で始まる値も許可（stripped値でチェック）
+	if strings.HasPrefix(strippedValue, "YOUR_") {
 		return true
 	}
 
-	// 短すぎる値
-	if len(value) < 8 {
+	// 短すぎる値（stripped値でチェック）
+	if len(strippedValue) < 8 {
 		return true
 	}
 
-	// テスト用の値
+	// テスト用の値（stripped値でチェック）
 	testPatterns := domain.GetTestPatterns()
 	for _, pattern := range testPatterns {
-		if matched, _ := regexp.MatchString(pattern, value); matched {
+		if matched, _ := regexp.MatchString(pattern, strippedValue); matched {
 			return true
 		}
 	}

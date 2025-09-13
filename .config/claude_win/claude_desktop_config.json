@@ -24,7 +24,7 @@
         "brave_web_search"
       ],
       "env": {
-        "BRAVE_API_KEY": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "BRAVE_API_KEY": "YOUR_KEY"
       }
     },
     "get-current-timezone": {
@@ -51,7 +51,7 @@
         "github"
       ],
       "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_PAT"
       }
     },
     "postgresql": {
@@ -60,7 +60,7 @@
         "postgresql"
       ],
       "env": {
-        "POSTGRESQL_DATABASE_URL": "postgresql://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        "POSTGRESQL_DATABASE_URL": "postgresql://YOUR_URL"
       }
     },
     "everart": {

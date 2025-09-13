@@ -55,13 +55,13 @@ func GetAllowedPlaceholders() []string {
 // GetRealSecretPatterns は実際のAPIキーパターンを返す
 func GetRealSecretPatterns() []string {
 	return []string{
-		`sk-[a-zA-Z0-9]{48}`,                                              // OpenAI API key
-		`xoxp-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-zA-Z0-9]{32}`,            // Slack token
-		`ghp_[a-zA-Z0-9]{36}`,                                             // GitHub personal access token
-		`AIza[0-9A-Za-z_-]{35}`,                                           // Google API key
-		`AKIA[0-9A-Z]{16}`,                                                // AWS access key
-		`ya29\.[a-zA-Z0-9_-]+`,                                            // Google OAuth access token
-		`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`,  // UUID format
+		`sk-[a-zA-Z0-9]{48}`, // OpenAI API key
+		`xoxp-[0-9]{12}-[0-9]{12}-[0-9]{12}-[a-zA-Z0-9]{32}`,           // Slack token
+		`ghp_[a-zA-Z0-9]{36}`,                                          // GitHub personal access token
+		`AIza[0-9A-Za-z_-]{35}`,                                        // Google API key
+		`AKIA[0-9A-Z]{16}`,                                             // AWS access key
+		`ya29\.[a-zA-Z0-9_-]+`,                                         // Google OAuth access token
+		`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`, // UUID format
 	}
 }
 
@@ -81,5 +81,42 @@ func GetConfigFilePatterns() []string {
 func GetTestPatterns() []string {
 	return []string{
 		`(?i)(test|demo|example|dummy|fake|mock|sample)`,
+	}
+}
+
+// GetProtocolPrefixes はプロトコル識別子のリストを返す
+func GetProtocolPrefixes() []string {
+	return []string{
+		"http://",
+		"https://",
+		"postgresql://",
+		"postgres://",
+		"mysql://",
+		"mongodb://",
+		"sqlite://",
+		"redis://",
+		"ftp://",
+		"sftp://",
+		"file://",
+		"ldap://",
+		"ldaps://",
+		"smtp://",
+		"smtps://",
+		"pop3://",
+		"imap://",
+		"ssh://",
+		"tcp://",
+		"udp://",
+		"ws://",
+		"wss://",
+		"amqp://",
+		"amqps://",
+		"kafka://",
+		"elasticsearch://",
+		"memcached://",
+		"cassandra://",
+		"couchdb://",
+		"neo4j://",
+		"influxdb://",
 	}
 }
