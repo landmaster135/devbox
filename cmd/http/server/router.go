@@ -7,8 +7,8 @@ import (
 	weatherHandler "github.com/landmaster135/devbox/cmd/http/handlers/weather_notificator"
 )
 
-// router はHTTPルーターを設定して返す
-func router() *http.ServeMux {
+// setupRouter はHTTPルーターを設定して返す
+func setupRouter() *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// 天気通知ハンドラを初期化
