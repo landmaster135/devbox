@@ -45,6 +45,8 @@ func (p *DataParser) ParseInput(inputFormat, input, inputFilePath string) ([][]s
 		return p.parseMarkdownList(data)
 	case "ordered-list":
 		return p.parseMarkdownOrderedList(data)
+	case "table":
+		return p.parseMarkdownTable(data)
 	default:
 		return nil, fmt.Errorf("未対応の入力形式です: %s", inputFormat)
 	}
@@ -74,6 +76,65 @@ func (p *DataParser) parseJSON(data string) ([][]string, error) {
 		return nil, fmt.Errorf("JSON解析エラー: %v", err)
 	}
 	return result, nil
+}
+
+// parseMarkdownTable はMarkdownテーブル形式のデータを解析する
+func (p *DataParser) parseMarkdownTable(data string) ([][]string, error) {
+	if data == "" {
+		return [][]string{}, nil
+	}
+
+	lines := strings.Split(strings.TrimSpace(data), "\n")
+	var result [][]string
+	separatorFound := false
+
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// パイプで始まり、パイプで終わる行をチェック
+		if !strings.HasPrefix(line, "|") || !strings.HasSuffix(line, "|") {
+			return nil, fmt.Errorf("行 %d: Markdownテーブルの形式が正しくありません: %s", i+1, line)
+		}
+
+		// セパレーター行をチェック（|---|---|のような形式）
+		if strings.Contains(line, "---") {
+			separatorFound = true
+			continue // セパレーター行はスキップ
+		}
+
+		// セルを抽出
+		cells := p.parseMarkdownTableRow(line)
+		if len(cells) > 0 {
+			result = append(result, cells)
+		}
+	}
+
+	// セパレーター行が見つからない場合はエラー
+	if !separatorFound && len(result) > 1 {
+		return nil, fmt.Errorf("Markdownテーブルのセパレーター行が見つかりません")
+	}
+
+	return result, nil
+}
+
+// parseMarkdownTableRow はMarkdownテーブルの1行を解析する
+func (p *DataParser) parseMarkdownTableRow(line string) []string {
+	// 先頭と末尾のパイプを除去
+	line = strings.TrimPrefix(line, "|")
+	line = strings.TrimSuffix(line, "|")
+
+	// パイプで分割
+	cells := strings.Split(line, "|")
+
+	// 各セルをトリム
+	for i, cell := range cells {
+		cells[i] = strings.TrimSpace(cell)
+	}
+
+	return cells
 }
 
 // parseCSV はCSV形式のデータを解析する

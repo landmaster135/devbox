@@ -15,6 +15,7 @@
 - `html`: HTMLテーブル形式
 - `list`: Markdownの箇条書きリスト形式（`- 項目`）
 - `ordered-list`: Markdownの順序付きリスト形式（`1. 項目`）
+- `table`: Markdownテーブル形式（`| 列1 | 列2 |`）
 
 ### 出力形式
 - `json`: JSON形式の2次元配列
@@ -23,6 +24,7 @@
 - `html`: HTMLテーブル形式
 - `list`: Markdownの箇条書きリスト形式（`- 項目`）
 - `ordered-list`: Markdownの順序付きリスト形式（`1. 項目`）
+- `table`: Markdownテーブル形式（`| 列1 | 列2 |`）
 
 ## インストール
 
@@ -189,6 +191,65 @@ go run ./cmd/cli/data-converter -input-format=csv -output-format=ordered-list -i
 3. 項目3
 ```
 
+### 11. JSONをMarkdownテーブルに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=json -output-format=table -input='[["名前","年齢","職業"],["田中","25","エンジニア"],["佐藤","30","デザイナー"]]'
+```
+
+出力:
+```markdown
+| 名前 | 年齢 | 職業          |
+|--------|--------|-----------------|
+| 田中 | 25     | エンジニア |
+| 佐藤 | 30     | デザイナー |
+```
+
+### 12. MarkdownテーブルをJSONに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=table -output-format=json -input='| 名前 | 年齢 | 職業 |
+|------|------|------|
+| 田中 | 25   | エンジニア |
+| 佐藤 | 30   | デザイナー |'
+```
+
+出力:
+```json
+[{"名前":"田中","年齢":25,"職業":"エンジニア"},{"名前":"佐藤","年齢":30,"職業":"デザイナー"}]
+```
+
+### 13. Markdownテーブルを箇条書きリストに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=table -output-format=list -input='| 名前 | 年齢 | 職業 |
+|------|------|------|
+| 田中 | 25   | エンジニア |
+| 佐藤 | 30   | デザイナー |'
+```
+
+出力:
+```
+- 名前: 田中, 年齢: 25, 職業: エンジニア
+- 名前: 佐藤, 年齢: 30, 職業: デザイナー
+```
+
+### 14. CSVをMarkdownテーブルに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=csv -output-format=table -input='"名前","年齢","職業"
+"田中","25","エンジニア"
+"佐藤","30","デザイナー"'
+```
+
+出力:
+```markdown
+| 名前 | 年齢 | 職業          |
+|--------|--------|-----------------|
+| 田中 | 25     | エンジニア |
+| 佐藤 | 30     | デザイナー |
+```
+
 ## 機能詳細
 
 ### HTML変換の特徴
@@ -225,6 +286,15 @@ go run ./cmd/cli/data-converter -input-format=csv -output-format=ordered-list -i
 - `1. 項目` 形式をサポート
 - 番号は連続している必要があります
 - テーブルから変換する場合、1列なら単純なリスト、複数列なら「項目名: 値」形式
+
+### Markdownテーブル変換の特徴
+
+#### Markdownテーブル（table）
+- `| 列1 | 列2 |` 形式をサポート
+- セパレーター行（`|---|---|`）が必要です
+- 各列の幅は自動調整されます
+- 空のセルも適切に処理されます
+- パイプ文字（|）で区切られた形式を解析・生成します
 
 ## エラーハンドリング
 
@@ -282,6 +352,18 @@ internal/data_converter/
 | ordered-list → tsv | ✅     |
 | ordered-list → json | ✅    |
 | ordered-list → list | ✅    |
+| table → html       | ✅      |
+| table → csv        | ✅      |
+| table → tsv        | ✅      |
+| table → json       | ✅      |
+| table → list       | ✅      |
+| table → ordered-list | ✅    |
+| json → table       | ✅      |
+| csv → table        | ✅      |
+| tsv → table        | ✅      |
+| html → table       | ✅      |
+| list → table       | ✅      |
+| ordered-list → table | ✅    |
 
 ## ヘルプ
 

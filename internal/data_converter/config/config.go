@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	helpMsgOfInputFormat  = "入力データの形式 (json, csv, tsv, html, list, ordered-list)"
-	helpMsgOfOutputFormat = "出力データの形式 (html, csv, tsv, json, list, ordered-list)"
+	helpMsgOfInputFormat  = "入力データの形式 (json, csv, tsv, html, list, ordered-list, table)"
+	helpMsgOfOutputFormat = "出力データの形式 (html, csv, tsv, json, list, ordered-list, table)"
 )
 
 // Config はCLIツールの設定を保持する構造体
@@ -80,7 +80,7 @@ func (c *Config) validate() error {
 
 // isValidInputFormat は入力形式が有効かどうかを判定する
 func isValidInputFormat(format string) bool {
-	validFormats := []string{"json", "csv", "tsv", "html", "list", "ordered-list"}
+	validFormats := []string{"json", "csv", "tsv", "html", "list", "ordered-list", "table"}
 	for _, valid := range validFormats {
 		if format == valid {
 			return true
@@ -91,7 +91,7 @@ func isValidInputFormat(format string) bool {
 
 // isValidOutputFormat は出力形式が有効かどうかを判定する
 func isValidOutputFormat(format string) bool {
-	validFormats := []string{"html", "csv", "tsv", "json", "list", "ordered-list"}
+	validFormats := []string{"html", "csv", "tsv", "json", "list", "ordered-list", "table"}
 	for _, valid := range validFormats {
 		if format == valid {
 			return true
