@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"errors"
 	"testing"
 )
 
@@ -9,7 +10,8 @@ type TestSecretDetectorService struct{}
 
 // TestSecretDetectorService_StripProtocolPrefix_Normal はプロトコル識別子除去の正常系テスト
 func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
-	service := NewSecretDetectorService(false, false)
+	mockExecutor := &MockCommandExecutor{}
+	service := NewSecretDetectorService(false, false, mockExecutor)
 
 	testCases := []struct {
 		name     string
@@ -75,7 +77,9 @@ func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
 
 // TestSecretDetectorService_IsPlaceholder_Normal はプレースホルダー判定の正常系テスト
 func TestSecretDetectorService_IsPlaceholder_Normal(t *testing.T) {
-	service := NewSecretDetectorService(false, false)
+
+	mockExecutor := &MockCommandExecutor{}
+	service := NewSecretDetectorService(false, false, mockExecutor)
 
 	testCases := []struct {
 		name     string
@@ -199,7 +203,9 @@ func TestSecretDetectorService_IsPlaceholder_Normal(t *testing.T) {
 
 // TestSecretDetectorService_IsSuspiciousKey_Normal は疑わしいキー名判定の正常系テスト
 func TestSecretDetectorService_IsSuspiciousKey_Normal(t *testing.T) {
-	service := NewSecretDetectorService(false, false)
+
+	mockExecutor := &MockCommandExecutor{}
+	service := NewSecretDetectorService(false, false, mockExecutor)
 
 	testCases := []struct {
 		name     string
@@ -287,7 +293,9 @@ func TestSecretDetectorService_IsSuspiciousKey_Normal(t *testing.T) {
 
 // TestSecretDetectorService_MatchesSecretPattern_Normal はシークレットパターン判定の正常系テスト
 func TestSecretDetectorService_MatchesSecretPattern_Normal(t *testing.T) {
-	service := NewSecretDetectorService(false, false)
+
+	mockExecutor := &MockCommandExecutor{}
+	service := NewSecretDetectorService(false, false, mockExecutor)
 
 	testCases := []struct {
 		name     string
@@ -355,7 +363,9 @@ func TestSecretDetectorService_MatchesSecretPattern_Normal(t *testing.T) {
 
 // TestSecretDetectorService_FilterConfigFiles_Normal は設定ファイルフィルタリングの正常系テスト
 func TestSecretDetectorService_FilterConfigFiles_Normal(t *testing.T) {
-	service := NewSecretDetectorService(false, false)
+
+	mockExecutor := &MockCommandExecutor{}
+	service := NewSecretDetectorService(false, false, mockExecutor)
 
 	testCases := []struct {
 		name     string
@@ -424,7 +434,9 @@ func TestSecretDetectorService_FilterConfigFiles_Normal(t *testing.T) {
 
 // TestSecretDetectorService_CalculateEntropy_Normal はエントロピー計算の正常系テスト
 func TestSecretDetectorService_CalculateEntropy_Normal(t *testing.T) {
-	service := NewSecretDetectorService(false, false)
+
+	mockExecutor := &MockCommandExecutor{}
+	service := NewSecretDetectorService(false, false, mockExecutor)
 
 	testCases := []struct {
 		name     string
@@ -469,6 +481,113 @@ func TestSecretDetectorService_CalculateEntropy_Normal(t *testing.T) {
 			result := service.CalculateEntropy(tc.input)
 			if result < tc.minValue || result > tc.maxValue {
 				t.Errorf("CalculateEntropy(%q) = %f, expected between %f and %f", tc.input, result, tc.minValue, tc.maxValue)
+			}
+		})
+	}
+}
+
+// TestSecretDetectorService_GetStagedFiles_Normal はGitステージファイル取得の正常系テスト
+func TestSecretDetectorService_GetStagedFiles_Normal(t *testing.T) {
+	testCases := []struct {
+		name          string
+		dryRun        bool
+		verbose       bool
+		mockOutput    string
+		mockError     error
+		expectedFiles []string
+		expectedError bool
+	}{
+		{
+			name:          "Normal case with multiple files",
+			dryRun:        false,
+			verbose:       false,
+			mockOutput:    "config.json\nsettings.json\napp.config.js\n",
+			mockError:     nil,
+			expectedFiles: []string{"config.json", "settings.json", "app.config.js"},
+			expectedError: false,
+		},
+		{
+			name:          "Single file",
+			dryRun:        false,
+			verbose:       false,
+			mockOutput:    "config.json\n",
+			mockError:     nil,
+			expectedFiles: []string{"config.json"},
+			expectedError: false,
+		},
+		{
+			name:          "No files",
+			dryRun:        false,
+			verbose:       false,
+			mockOutput:    "",
+			mockError:     nil,
+			expectedFiles: []string{},
+			expectedError: false,
+		},
+		{
+			name:          "Empty lines filtered out",
+			dryRun:        false,
+			verbose:       false,
+			mockOutput:    "config.json\n\nsettings.json\n\n",
+			mockError:     nil,
+			expectedFiles: []string{"config.json", "settings.json"},
+			expectedError: false,
+		},
+		{
+			name:          "Dry run mode",
+			dryRun:        true,
+			verbose:       false,
+			mockOutput:    "",
+			mockError:     nil,
+			expectedFiles: []string{},
+			expectedError: false,
+		},
+		{
+			name:          "Command execution error",
+			dryRun:        false,
+			verbose:       false,
+			mockOutput:    "",
+			mockError:     errors.New("git command failed"),
+			expectedFiles: nil,
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockExecutor := &MockCommandExecutor{
+				ExecuteFunc: func(name string, args ...string) ([]byte, error) {
+					if tc.mockError != nil {
+						return nil, tc.mockError
+					}
+					return []byte(tc.mockOutput), nil
+				},
+			}
+			service := NewSecretDetectorService(tc.verbose, tc.dryRun, mockExecutor)
+
+			result, err := service.GetStagedFiles()
+
+			if tc.expectedError {
+				if err == nil {
+					t.Errorf("GetStagedFiles() expected error, but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("GetStagedFiles() unexpected error: %v", err)
+				return
+			}
+
+			if len(result) != len(tc.expectedFiles) {
+				t.Errorf("GetStagedFiles() returned %d files, expected %d", len(result), len(tc.expectedFiles))
+				return
+			}
+
+			for i, expected := range tc.expectedFiles {
+				if result[i] != expected {
+					t.Errorf("GetStagedFiles()[%d] = %q, expected %q", i, result[i], expected)
+				}
 			}
 		})
 	}
