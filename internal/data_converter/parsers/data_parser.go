@@ -41,6 +41,10 @@ func (p *DataParser) ParseInput(inputFormat, input, inputFilePath string) ([][]s
 		return p.parseTSV(data)
 	case "html":
 		return p.parseHTML(data)
+	case "list":
+		return p.parseMarkdownList(data)
+	case "ordered-list":
+		return p.parseMarkdownOrderedList(data)
 	default:
 		return nil, fmt.Errorf("未対応の入力形式です: %s", inputFormat)
 	}
@@ -302,4 +306,81 @@ func (p *DataParser) stripHTMLTags(html string) string {
 	result = strings.ReplaceAll(result, "&nbsp;", " ")
 
 	return result
+}
+
+// parseMarkdownList は箇条書きリスト形式のデータを解析する
+func (p *DataParser) parseMarkdownList(data string) ([][]string, error) {
+	if data == "" {
+		return [][]string{}, nil
+	}
+
+	lines := strings.Split(strings.TrimSpace(data), "\n")
+	var result [][]string
+
+	// ヘッダー行を追加
+	result = append(result, []string{"項目"})
+
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// 箇条書きリストの形式をチェック（- または * で始まる）
+		if strings.HasPrefix(line, "- ") {
+			item := strings.TrimSpace(line[2:])
+			if item != "" {
+				result = append(result, []string{item})
+			}
+		} else if strings.HasPrefix(line, "* ") {
+			item := strings.TrimSpace(line[2:])
+			if item != "" {
+				result = append(result, []string{item})
+			}
+		} else {
+			return nil, fmt.Errorf("行 %d: 箇条書きリストの形式が正しくありません: %s", i+1, line)
+		}
+	}
+
+	return result, nil
+}
+
+// parseMarkdownOrderedList は順序付きリスト形式のデータを解析する
+func (p *DataParser) parseMarkdownOrderedList(data string) ([][]string, error) {
+	if data == "" {
+		return [][]string{}, nil
+	}
+
+	lines := strings.Split(strings.TrimSpace(data), "\n")
+	var result [][]string
+
+	// ヘッダー行を追加
+	result = append(result, []string{"番号", "項目"})
+
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// 順序付きリストの形式をチェック（数字. で始まる）
+		dotIndex := strings.Index(line, ". ")
+		if dotIndex == -1 {
+			return nil, fmt.Errorf("行 %d: 順序付きリストの形式が正しくありません: %s", i+1, line)
+		}
+
+		numberStr := line[:dotIndex]
+		item := strings.TrimSpace(line[dotIndex+2:])
+
+		// 数字の妥当性をチェック
+		if _, err := fmt.Sscanf(numberStr, "%d", new(int)); err != nil {
+			return nil, fmt.Errorf("行 %d: 番号が正しくありません: %s", i+1, numberStr)
+		}
+
+		if item != "" {
+			result = append(result, []string{numberStr, item})
+		}
+	}
+
+	return result, nil
 }

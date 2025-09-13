@@ -7,14 +7,14 @@ import (
 )
 
 const (
-	helpMsgOfInputFormat  = "入力データの形式 (json, csv, tsv, html)"
-	helpMsgOfOutputFormat = "出力データの形式 (html, csv, tsv, json)"
+	helpMsgOfInputFormat  = "入力データの形式 (json, csv, tsv, html, list, ordered-list)"
+	helpMsgOfOutputFormat = "出力データの形式 (html, csv, tsv, json, list, ordered-list)"
 )
 
 // Config はCLIツールの設定を保持する構造体
 type Config struct {
-	InputFormat   string // json, csv, tsv, html (入力データの形式)
-	OutputFormat  string // html, csv, tsv, json (出力データの形式)
+	InputFormat   string // json, csv, tsv, html, list, ordered-list (入力データの形式)
+	OutputFormat  string // html, csv, tsv, json, list, ordered-list (出力データの形式)
 	Input         string // 直接入力（JSON文字列、CSV文字列など）
 	InputFilePath string // 入力ファイルパス
 	Help          bool   // ヘルプ表示
@@ -80,7 +80,7 @@ func (c *Config) validate() error {
 
 // isValidInputFormat は入力形式が有効かどうかを判定する
 func isValidInputFormat(format string) bool {
-	validFormats := []string{"json", "csv", "tsv", "html"}
+	validFormats := []string{"json", "csv", "tsv", "html", "list", "ordered-list"}
 	for _, valid := range validFormats {
 		if format == valid {
 			return true
@@ -91,7 +91,7 @@ func isValidInputFormat(format string) bool {
 
 // isValidOutputFormat は出力形式が有効かどうかを判定する
 func isValidOutputFormat(format string) bool {
-	validFormats := []string{"html", "csv", "tsv", "json"}
+	validFormats := []string{"html", "csv", "tsv", "json", "list", "ordered-list"}
 	for _, valid := range validFormats {
 		if format == valid {
 			return true
@@ -119,10 +119,16 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  data-converter -input-format=json -output-format=html -input='[[\"A\",\"B\"],[\"1\",\"2\"]]'\n\n")
 	fmt.Fprintf(os.Stderr, "  # CSVファイルをTSVに変換\n")
 	fmt.Fprintf(os.Stderr, "  data-converter -input-format=csv -output-format=tsv -input-file-path=data.csv\n\n")
+	fmt.Fprintf(os.Stderr, "  # 箇条書きリストをHTMLテーブルに変換\n")
+	fmt.Fprintf(os.Stderr, "  data-converter -input-format=list -output-format=html -input='- 項目1\\n- 項目2\\n- 項目3'\n\n")
+	fmt.Fprintf(os.Stderr, "  # HTMLテーブルを順序付きリストに変換\n")
+	fmt.Fprintf(os.Stderr, "  data-converter -input-format=html -output-format=ordered-list -input='<table><tr><th>項目</th></tr><tr><td>項目1</td></tr></table>'\n\n")
 	fmt.Fprintf(os.Stderr, "対応する変換パターン:\n")
 	fmt.Fprintf(os.Stderr, "  入力形式 → 出力形式:\n")
-	fmt.Fprintf(os.Stderr, "  - json → html, csv, tsv\n")
-	fmt.Fprintf(os.Stderr, "  - csv → html, json, tsv\n")
-	fmt.Fprintf(os.Stderr, "  - tsv → html, json, csv\n")
-	fmt.Fprintf(os.Stderr, "  - html → json, csv, tsv\n")
+	fmt.Fprintf(os.Stderr, "  - json → html, csv, tsv, list, ordered-list\n")
+	fmt.Fprintf(os.Stderr, "  - csv → html, json, tsv, list, ordered-list\n")
+	fmt.Fprintf(os.Stderr, "  - tsv → html, json, csv, list, ordered-list\n")
+	fmt.Fprintf(os.Stderr, "  - html → json, csv, tsv, list, ordered-list\n")
+	fmt.Fprintf(os.Stderr, "  - list → html, csv, tsv, json, ordered-list\n")
+	fmt.Fprintf(os.Stderr, "  - ordered-list → html, csv, tsv, json, list\n")
 }
