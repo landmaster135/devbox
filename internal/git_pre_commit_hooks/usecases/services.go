@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/secret_detector/config"
-	"github.com/landmaster135/devbox/internal/secret_detector/domain"
+	"github.com/landmaster135/devbox/internal/git_pre_commit_hooks/config"
+	"github.com/landmaster135/devbox/internal/git_pre_commit_hooks/domain"
 )
 
 // SecretDetectorService はシークレット検知サービス

@@ -41,7 +41,7 @@ go tool dist list
 ## Git Hooks
 Set Git hooks with built binary files
 ```bash
-./scripts/setup-secret-detector-hook.sh
+./scripts/setup-git-pre-commit-hooks.sh
 ```
 
 # Project Structure

@@ -141,4 +141,4 @@ function run_all_sh_scripts() {
   return 0
 }
 
-run_all_sh_scripts . build.sh create_project_files.sh build_mcp_tools.sh setup-secret-detector-hook.sh
+run_all_sh_scripts . build.sh create_project_files.sh build_mcp_tools.sh setup-git-pre-commit-hooks.sh

@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/secret-detector"
+CMD_DIR="cmd/cli/git-pre-commit-hooks"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin/cli"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="secret-detector"
+OUTPUT_NAME="git-pre-commit-hooks"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,4 +38,4 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run ./cmd/cli/secret-detector"
+echo "  go run ./cmd/cli/git-pre-commit-hooks"
