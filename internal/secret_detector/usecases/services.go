@@ -1,8 +1,10 @@
 package usecases
 
 import (
+	"bufio"
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -295,6 +297,169 @@ func (s *SecretDetectorService) CalculateEntropy(str string) float64 {
 	return entropy
 }
 
+// IsBinaryFile はファイルがバイナリファイルかどうかを判定
+func (s *SecretDetectorService) IsBinaryFile(filename string) bool {
+	ext := strings.ToLower(filepath.Ext(filename))
+	binaryExts := domain.GetBinaryFileExtensions()
+
+	for _, binaryExt := range binaryExts {
+		if ext == binaryExt {
+			return true
+		}
+	}
+	return false
+}
+
+// CheckFileForHomePath はファイル内のホームパスを検知
+func (s *SecretDetectorService) CheckFileForHomePath(filename string) ([]domain.HomePathResult, error) {
+	if s.verbose {
+		fmt.Printf("%s[VERBOSE] Checking file for home paths: %s%s\n", domain.Blue, filename, domain.Reset)
+	}
+
+	// バイナリファイルはスキップ
+	if s.IsBinaryFile(filename) {
+		if s.verbose {
+			fmt.Printf("%s[VERBOSE] Skipping binary file: %s%s\n", domain.Blue, filename, domain.Reset)
+		}
+		return []domain.HomePathResult{}, nil
+	}
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %s: %w", filename, err)
+	}
+	defer file.Close()
+
+	var results []domain.HomePathResult
+	scanner := bufio.NewScanner(file)
+	lineNumber := 0
+	homePattern := domain.GetHomePathPattern()
+	allowedPatterns := domain.GetAllowedHomePathPatterns()
+
+	for scanner.Scan() {
+		lineNumber++
+		line := scanner.Text()
+
+		if strings.Contains(line, homePattern) {
+			isAllowed := false
+			for _, allowedPattern := range allowedPatterns {
+				if strings.Contains(line, allowedPattern) {
+					isAllowed = true
+					break
+				}
+			}
+
+			result := domain.HomePathResult{
+				File:        filename,
+				LineNumber:  lineNumber,
+				Content:     line,
+				IsAllowed:   isAllowed,
+				MatchedPath: homePattern,
+			}
+
+			results = append(results, result)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading file %s: %w", filename, err)
+	}
+
+	return results, nil
+}
+
+// AnalyzeHomePathResults はホームパス検知結果を分析して表示
+func (s *SecretDetectorService) AnalyzeHomePathResults(results []domain.HomePathResult) domain.ScanSummary {
+	summary := domain.ScanSummary{}
+
+	for _, result := range results {
+		summary.HomePathCount++
+
+		if result.IsAllowed {
+			fmt.Printf("    %s✅ %s:%d: allowed home path%s\n",
+				domain.Green, result.File, result.LineNumber, domain.Reset)
+			fmt.Printf("      %sContent:%s %s\n", domain.Blue, domain.Reset, strings.TrimSpace(result.Content))
+		} else {
+			fmt.Printf("    %s❌ %s:%d: forbidden home path detected%s\n",
+				domain.Red, result.File, result.LineNumber, domain.Reset)
+			fmt.Printf("      %sContent:%s %s\n", domain.Yellow, domain.Reset, strings.TrimSpace(result.Content))
+			summary.HasForbiddenPaths = true
+		}
+	}
+
+	return summary
+}
+
+// ExecuteHomePathDetection はホームパス検知の主要処理を実行
+func (s *SecretDetectorService) ExecuteHomePathDetection() (int, error) {
+	fmt.Printf("%s🔍 Checking for forbidden /home paths in files...%s\n", domain.Green, domain.Reset)
+
+	var allHomePathResults []domain.HomePathResult
+	var totalFiles int
+
+	// 特定ファイルが指定された場合
+	if s.configFile != "" {
+		fmt.Printf("%s📁 Checking specific file: %s%s\n", domain.Green, s.configFile, domain.Reset)
+		totalFiles = 1
+
+		homePathResults, err := s.CheckFileForHomePath(s.configFile)
+		if err != nil {
+			fmt.Printf("%s❌ Error checking /home paths in file %s: %v%s\n", domain.Red, s.configFile, err, domain.Reset)
+			return 1, err
+		}
+		allHomePathResults = append(allHomePathResults, homePathResults...)
+	} else {
+		// Gitのステージされたファイルを取得
+		stagedFiles, err := s.GetStagedFiles()
+		if err != nil {
+			fmt.Printf("%s❌ Error getting staged files: %v%s\n", domain.Red, err, domain.Reset)
+			return 1, err
+		}
+
+		if len(stagedFiles) == 0 {
+			fmt.Printf("%sℹ️  No files found in this commit.%s\n", domain.Green, domain.Reset)
+			return 0, nil
+		}
+
+		totalFiles = len(stagedFiles)
+
+		// 全ファイルの/homeパス検知
+		for _, file := range stagedFiles {
+			homePathResults, err := s.CheckFileForHomePath(file)
+			if err != nil {
+				fmt.Printf("%s❌ Error checking /home paths in file %s: %v%s\n", domain.Red, file, err, domain.Reset)
+				continue
+			}
+
+			allHomePathResults = append(allHomePathResults, homePathResults...)
+		}
+	}
+
+	// 結果の分析と表示
+	summary := s.AnalyzeHomePathResults(allHomePathResults)
+
+	fmt.Printf("\n  %sSummary:%s Found %d /home path(s) in %d file(s)\n",
+		domain.Blue, domain.Reset, summary.HomePathCount, totalFiles)
+
+	fmt.Println()
+	if summary.HasForbiddenPaths {
+		fmt.Printf("%s❌ COMMIT BLOCKED: Forbidden /home paths detected!%s\n", domain.Red, domain.Reset)
+		fmt.Println()
+		fmt.Printf("%s💡 Suggestions:%s\n", domain.Yellow, domain.Reset)
+		fmt.Println("  1. Replace absolute paths with relative paths or environment variables")
+		fmt.Println("  2. Use '/home/user' if you need to reference a generic user home")
+		fmt.Println("  3. Consider using placeholders like '$HOME' or '~'")
+		fmt.Println("  4. If this is intentional, use: git commit --no-verify")
+		fmt.Println()
+		return 1, nil
+	}
+	fmt.Printf(
+		"%s✅ /home path scan completed. No forbidden paths detected in %d file(s).%s\n",
+		domain.Green, totalFiles, domain.Reset,
+	)
+	return 0, nil
+}
+
 // ExecuteSecretDetection はmain.goの主要処理を実行
 func (s *SecretDetectorService) ExecuteSecretDetection() (int, error) {
 	fmt.Printf("%s🔍 Checking for secrets in JSON configuration files...%s\n", domain.Green, domain.Reset)
@@ -333,7 +498,7 @@ func (s *SecretDetectorService) ExecuteSecretDetection() (int, error) {
 		totalFiles = len(configFiles)
 
 		for _, file := range configFiles {
-			fmt.Printf("%s📁 Checking configuration file: %s%s\n", domain.Green, file, domain.Reset)
+			fmt.Printf("%s� Checking configuration file: %s%s\n", domain.Green, file, domain.Reset)
 
 			results, err := s.CheckFile(file)
 			if err != nil {
@@ -359,9 +524,10 @@ func (s *SecretDetectorService) ExecuteSecretDetection() (int, error) {
 		fmt.Println("  4. If this is intentional, use: git commit --no-verify")
 		fmt.Println()
 		return 1, nil
-	} else {
-		fmt.Printf("%s✅ Secret scan completed. No actual secrets detected in %d file(s).%s\n",
-			domain.Green, totalFiles, domain.Reset)
-		return 0, nil
 	}
+	fmt.Printf(
+		"%s✅ Secret scan completed. No actual secrets detected in %d file(s).%s\n",
+		domain.Green, totalFiles, domain.Reset,
+	)
+	return 0, nil
 }

@@ -16,8 +16,8 @@ echo -e "${BLUE}🔧 Setting up Go-based secret detector for Git hooks...${NC}"
 
 # 現在のディレクトリを確認
 if [ ! -d ".git" ]; then
-    echo -e "${RED}❌ This directory is not a Git repository${NC}"
-    exit 1
+  echo -e "${RED}❌ This directory is not a Git repository${NC}"
+  exit 1
 fi
 
 # ビルド済みバイナリのパス
@@ -25,17 +25,17 @@ BINARY_PATH="./pkg/bin/cli/linux_amd64/secret-detector"
 
 # バイナリが存在するかチェック
 if [ ! -f "$BINARY_PATH" ]; then
-    echo -e "${RED}❌ Binary not found at $BINARY_PATH${NC}"
-    echo -e "${YELLOW}Please run './scripts/build_secret_detector.sh' first${NC}"
-    exit 1
+  echo -e "${RED}❌ Binary not found at $BINARY_PATH${NC}"
+  echo -e "${YELLOW}Please run './scripts/build_secret_detector.sh' first${NC}"
+  exit 1
 fi
 
 echo -e "${GREEN}✅ Binary found: $BINARY_PATH${NC}"
 
 # バイナリが実行可能かチェック
 if [ ! -x "$BINARY_PATH" ]; then
-    echo -e "${YELLOW}⚠️  Making binary executable...${NC}"
-    chmod +x "$BINARY_PATH"
+  echo -e "${YELLOW}⚠️  Making binary executable...${NC}"
+  chmod +x "$BINARY_PATH"
 fi
 
 # ツールディレクトリを作成
@@ -53,15 +53,15 @@ echo -e "${YELLOW}🔗 Creating pre-commit hook...${NC}"
 cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
 
-# Go製シークレット検知ツールを実行
+# Execute the secret detector tool implemented with Go
 TOOL_PATH="$(dirname "$0")/secret-detector/secret-detector"
 
 if [ -x "$TOOL_PATH" ]; then
-    "$TOOL_PATH"
+  "$TOOL_PATH"
 else
-    echo "❌ Secret detector tool not found at $TOOL_PATH"
-    echo "Please run the setup script again."
-    exit 1
+  echo "❌ Secret detector tool not found at $TOOL_PATH"
+  echo "Please run the setup script again."
+  exit 1
 fi
 EOF
 
@@ -79,9 +79,9 @@ echo ""
 # テスト実行
 echo -e "${YELLOW}🧪 Testing the tool...${NC}"
 if .git/hooks/secret-detector/secret-detector --version; then
-    echo -e "${GREEN}✅ Tool is working correctly${NC}"
+  echo -e "${GREEN}✅ Tool is working correctly${NC}"
 else
-    echo -e "${YELLOW}⚠️  Tool test completed (may show 'no staged files' message)${NC}"
+  echo -e "${YELLOW}⚠️  Tool test completed (may show 'no staged files' message)${NC}"
 fi
 
 echo ""

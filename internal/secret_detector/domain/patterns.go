@@ -121,3 +121,29 @@ func GetProtocolPrefixes() []string {
 		"influxdb://",
 	}
 }
+
+// GetHomePathPattern はホームパス検知用のパターンを返す
+func GetHomePathPattern() string {
+	return `/home` + `/`
+}
+
+// GetAllowedHomePathPatterns は許可されるホームパスのパターンリストを返す
+func GetAllowedHomePathPatterns() []string {
+	return []string{
+		`/home/user`,
+		`/home/[username]`,
+		`/home/alice`,
+	}
+}
+
+// GetBinaryFileExtensions はバイナリファイルの拡張子リストを返す
+func GetBinaryFileExtensions() []string {
+	return []string{
+		".exe", ".dll", ".so", ".dylib", ".a", ".o", ".obj",
+		".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp",
+		".mp3", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".mkv",
+		".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+		".zip", ".tar", ".gz", ".bz2", ".7z", ".rar",
+		".bin", ".dat", ".db", ".sqlite", ".sqlite3",
+	}
+}

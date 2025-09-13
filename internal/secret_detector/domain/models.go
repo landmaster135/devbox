@@ -24,11 +24,22 @@ type SecretResult struct {
 	MatchedPattern string
 }
 
+// HomePathResult はホームパス検知結果の構造体
+type HomePathResult struct {
+	File         string
+	LineNumber   int
+	Content      string
+	IsAllowed    bool
+	MatchedPath  string
+}
+
 // ScanSummary はスキャン結果のサマリー構造体
 type ScanSummary struct {
-	TotalFiles       int
-	TotalEnvVars     int
-	SecretCount      int
-	PlaceholderCount int
-	HasRealSecrets   bool
+	TotalFiles         int
+	TotalEnvVars       int
+	SecretCount        int
+	PlaceholderCount   int
+	HomePathCount      int
+	HasRealSecrets     bool
+	HasForbiddenPaths  bool
 }

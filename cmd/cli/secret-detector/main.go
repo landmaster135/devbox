@@ -36,12 +36,30 @@ func main() {
 	// シークレット検知サービスを初期化
 	service := usecases.NewSecretDetectorService(cfg.Verbose, cfg.DryRun, cfg.ConfigFile, commandExecutor, outputWriter)
 
-	// メイン処理を実行
-	exitCode, err := service.ExecuteSecretDetection()
+	// シークレット検知を実行
+	secretExitCode, err := service.ExecuteSecretDetection()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
 
-	os.Exit(exitCode)
+	// ホームパス検知を実行
+	homePathExitCode, err := service.ExecuteHomePathDetection()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// どちらかで問題が検出された場合はコミットを拒否
+	if secretExitCode != 0 || homePathExitCode != 0 {
+		fmt.Println()
+		fmt.Printf("%s🚫 FINAL RESULT: COMMIT BLOCKED%s\n", "\033[31m", "\033[0m")
+		fmt.Println("One or more issues were detected. Please resolve them before committing.")
+		os.Exit(1)
+	}
+
+	fmt.Println()
+	fmt.Printf("%s✅ FINAL RESULT: COMMIT ALLOWED%s\n", "\033[32m", "\033[0m")
+	fmt.Println("All checks passed successfully.")
+	os.Exit(0)
 }
