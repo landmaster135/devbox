@@ -13,15 +13,32 @@ import (
 )
 
 // SecretDetectorService はシークレット検知サービス
-type SecretDetectorService struct{}
+type SecretDetectorService struct {
+	verbose bool
+	dryRun  bool
+}
 
 // NewSecretDetectorService は新しいSecretDetectorServiceを作成
-func NewSecretDetectorService() *SecretDetectorService {
-	return &SecretDetectorService{}
+func NewSecretDetectorService(verbose, dryRun bool) *SecretDetectorService {
+	return &SecretDetectorService{
+		verbose: verbose,
+		dryRun:  dryRun,
+	}
 }
 
 // GetStagedFiles はGitのステージされたファイルを取得
 func (s *SecretDetectorService) GetStagedFiles() ([]string, error) {
+	if s.dryRun {
+		if s.verbose {
+			fmt.Printf("%s[DRY-RUN] Skipping Git operations%s\n", domain.Yellow, domain.Reset)
+		}
+		return []string{}, nil
+	}
+
+	if s.verbose {
+		fmt.Printf("%s[VERBOSE] Executing: git diff --cached --name-only --diff-filter=ACM%s\n", domain.Blue, domain.Reset)
+	}
+
 	cmd := exec.Command("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	output, err := cmd.Output()
 	if err != nil {
@@ -35,6 +52,11 @@ func (s *SecretDetectorService) GetStagedFiles() ([]string, error) {
 			result = append(result, file)
 		}
 	}
+
+	if s.verbose {
+		fmt.Printf("%s[VERBOSE] Found %d staged file(s)%s\n", domain.Blue, len(result), domain.Reset)
+	}
+
 	return result, nil
 }
 
@@ -52,7 +74,22 @@ func (s *SecretDetectorService) FilterConfigFiles(files []string) []string {
 			}
 		}
 	}
+
+	if s.verbose {
+		fmt.Printf("%s[VERBOSE] Filtered %d config file(s) from %d total file(s)%s\n",
+			domain.Blue, len(configFiles), len(files), domain.Reset)
+	}
+
 	return configFiles
+}
+
+// CheckSpecificFile は特定のファイルをチェック
+func (s *SecretDetectorService) CheckSpecificFile(filename string) ([]domain.SecretResult, error) {
+	if s.verbose {
+		fmt.Printf("%s[VERBOSE] Checking specific file: %s%s\n", domain.Blue, filename, domain.Reset)
+	}
+
+	return s.CheckFile(filename)
 }
 
 // CheckFile はファイルをチェックしてシークレットを検知
