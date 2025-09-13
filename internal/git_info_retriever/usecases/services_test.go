@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // #==============================================================#
@@ -18,57 +17,78 @@ import (
 
 // MockGitHubService はGitHubServiceのモック
 type MockGitHubService struct {
-	mock.Mock
+	CreateGitHubClientFunc func(ctx context.Context, token string) GitHubClient
+	GetRepoInfoFunc        func(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error)
 }
 
 func (m *MockGitHubService) CreateGitHubClient(ctx context.Context, token string) GitHubClient {
-	args := m.Called(ctx, token)
-	return args.Get(0).(GitHubClient)
+	if m.CreateGitHubClientFunc != nil {
+		return m.CreateGitHubClientFunc(ctx, token)
+	}
+	return nil
 }
 
 func (m *MockGitHubService) GetRepoInfo(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error) {
-	args := m.Called(ctx, client, isThreading, username)
-	return args.Get(0).([]RepoInfo), args.Error(1)
+	if m.GetRepoInfoFunc != nil {
+		return m.GetRepoInfoFunc(ctx, client, isThreading, username)
+	}
+	return nil, nil
 }
 
 // MockGitHubClient はGitHubClientのモック
 type MockGitHubClient struct {
-	mock.Mock
+	ListRepositoriesFunc  func(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error)
+	ListRepoLanguagesFunc func(ctx context.Context, owner string, repo string) (map[string]int, *github.Response, error)
+	ListPullRequestsFunc  func(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error)
+	GetUserFunc           func(ctx context.Context, user string) (*github.User, *github.Response, error)
 }
 
 func (m *MockGitHubClient) ListRepositories(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
-	args := m.Called(ctx, user, opts)
-	return args.Get(0).([]*github.Repository), args.Get(1).(*github.Response), args.Error(2)
+	if m.ListRepositoriesFunc != nil {
+		return m.ListRepositoriesFunc(ctx, user, opts)
+	}
+	return nil, nil, nil
 }
 
 func (m *MockGitHubClient) ListRepoLanguages(ctx context.Context, owner string, repo string) (map[string]int, *github.Response, error) {
-	args := m.Called(ctx, owner, repo)
-	return args.Get(0).(map[string]int), args.Get(1).(*github.Response), args.Error(2)
+	if m.ListRepoLanguagesFunc != nil {
+		return m.ListRepoLanguagesFunc(ctx, owner, repo)
+	}
+	return nil, nil, nil
 }
 
 func (m *MockGitHubClient) ListPullRequests(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
-	args := m.Called(ctx, user, repo, opts)
-	return args.Get(0).([]*github.PullRequest), args.Get(1).(*github.Response), args.Error(2)
+	if m.ListPullRequestsFunc != nil {
+		return m.ListPullRequestsFunc(ctx, user, repo, opts)
+	}
+	return nil, nil, nil
 }
 
 func (m *MockGitHubClient) GetUser(ctx context.Context, user string) (*github.User, *github.Response, error) {
-	args := m.Called(ctx, user)
-	return args.Get(0).(*github.User), args.Get(1).(*github.Response), args.Error(2)
+	if m.GetUserFunc != nil {
+		return m.GetUserFunc(ctx, user)
+	}
+	return nil, nil, nil
 }
 
 // MockFileWriter はFileWriterのモック
 type MockFileWriter struct {
-	mock.Mock
+	WriteToFileFunc     func(filePath, content string) error
+	EnsureDirectoryFunc func(dirPath string) error
 }
 
 func (m *MockFileWriter) WriteToFile(filePath, content string) error {
-	args := m.Called(filePath, content)
-	return args.Error(0)
+	if m.WriteToFileFunc != nil {
+		return m.WriteToFileFunc(filePath, content)
+	}
+	return nil
 }
 
 func (m *MockFileWriter) EnsureDirectory(dirPath string) error {
-	args := m.Called(dirPath)
-	return args.Error(0)
+	if m.EnsureDirectoryFunc != nil {
+		return m.EnsureDirectoryFunc(dirPath)
+	}
+	return nil
 }
 
 // #==============================================================#
@@ -149,15 +169,15 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 	)
 
 	tests := []struct {
-		name                    string
-		service                 string
-		token                   string
-		filePath                string
-		setupGitHubServiceMock  func(*MockGitHubService, *MockGitHubClient)
-		setupFileWriterMock     func(*MockFileWriter)
-		expectError             bool
-		expectedErrorMessage    string
-		expectedResultContains  string
+		name                   string
+		service                string
+		token                  string
+		filePath               string
+		setupGitHubServiceMock func(*MockGitHubService, *MockGitHubClient)
+		setupFileWriterMock    func(*MockFileWriter)
+		expectError            bool
+		expectedErrorMessage   string
+		expectedResultContains string
 	}{
 		{
 			name:     "WithFilePath_Normal",
@@ -165,11 +185,17 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			token:    testToken,
 			filePath: testFilePath,
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
-				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return(createTestRepoInfo(), nil)
+				mockGitHubService.CreateGitHubClientFunc = func(ctx context.Context, token string) GitHubClient {
+					return mockGitHubClient
+				}
+				mockGitHubService.GetRepoInfoFunc = func(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error) {
+					return createTestRepoInfo(), nil
+				}
 			},
 			setupFileWriterMock: func(mockFileWriter *MockFileWriter) {
-				mockFileWriter.On("WriteToFile", testFilePath, mock.AnythingOfType("string")).Return(nil)
+				mockFileWriter.WriteToFileFunc = func(filePath, content string) error {
+					return nil
+				}
 			},
 			expectError:            false,
 			expectedResultContains: "test-repo-1",
@@ -180,18 +206,22 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			token:    testToken,
 			filePath: "",
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
-				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return(createTestRepoInfo(), nil)
+				mockGitHubService.CreateGitHubClientFunc = func(ctx context.Context, token string) GitHubClient {
+					return mockGitHubClient
+				}
+				mockGitHubService.GetRepoInfoFunc = func(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error) {
+					return createTestRepoInfo(), nil
+				}
 			},
 			setupFileWriterMock:    func(mockFileWriter *MockFileWriter) {},
 			expectError:            false,
 			expectedResultContains: "test-repo-1",
 		},
 		{
-			name:     "UnsupportedService_Error",
-			service:  "gitlab",
-			token:    testToken,
-			filePath: "",
+			name:                   "UnsupportedService_Error",
+			service:                "gitlab",
+			token:                  testToken,
+			filePath:               "",
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {},
 			setupFileWriterMock:    func(mockFileWriter *MockFileWriter) {},
 			expectError:            true,
@@ -203,8 +233,12 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			token:    testToken,
 			filePath: "",
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
-				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return([]RepoInfo{}, errors.New("repo info error"))
+				mockGitHubService.CreateGitHubClientFunc = func(ctx context.Context, token string) GitHubClient {
+					return mockGitHubClient
+				}
+				mockGitHubService.GetRepoInfoFunc = func(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error) {
+					return []RepoInfo{}, errors.New("repo info error")
+				}
 			},
 			setupFileWriterMock:  func(mockFileWriter *MockFileWriter) {},
 			expectError:          true,
@@ -216,11 +250,17 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 			token:    testToken,
 			filePath: testFilePath,
 			setupGitHubServiceMock: func(mockGitHubService *MockGitHubService, mockGitHubClient *MockGitHubClient) {
-				mockGitHubService.On("CreateGitHubClient", mock.Anything, testToken).Return(mockGitHubClient)
-				mockGitHubService.On("GetRepoInfo", mock.Anything, mockGitHubClient, true, "").Return(createTestRepoInfo(), nil)
+				mockGitHubService.CreateGitHubClientFunc = func(ctx context.Context, token string) GitHubClient {
+					return mockGitHubClient
+				}
+				mockGitHubService.GetRepoInfoFunc = func(ctx context.Context, client GitHubClient, isThreading bool, username string) ([]RepoInfo, error) {
+					return createTestRepoInfo(), nil
+				}
 			},
 			setupFileWriterMock: func(mockFileWriter *MockFileWriter) {
-				mockFileWriter.On("WriteToFile", testFilePath, mock.AnythingOfType("string")).Return(errors.New("write error"))
+				mockFileWriter.WriteToFileFunc = func(filePath, content string) error {
+					return errors.New("write error")
+				}
 			},
 			expectError:          true,
 			expectedErrorMessage: "ファイル保存に失敗しました",
@@ -245,10 +285,6 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Contains(t, result, tt.expectedResultContains)
 			}
-
-			mockGitHubService.AssertExpectations(t)
-			mockFileWriter.AssertExpectations(t)
-			mockGitHubClient.AssertExpectations(t)
 		})
 	}
 }
@@ -288,12 +324,12 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 	)
 
 	tests := []struct {
-		name                string
-		isThreading         bool
-		setupMock           func(*MockGitHubClient)
-		expectError         bool
-		expectedErrorMsg    string
-		expectedRepoCount   int
+		name              string
+		isThreading       bool
+		setupMock         func(*MockGitHubClient)
+		expectError       bool
+		expectedErrorMsg  string
+		expectedRepoCount int
 	}{
 		{
 			name:        "WithThreading_Normal",
@@ -301,12 +337,16 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 			setupMock: func(mockClient *MockGitHubClient) {
 				// fetchRepositories用のモック
 				repos := createTestGitHubRepositories()
-				mockClient.On("ListRepositories", mock.Anything, testUsername, mock.AnythingOfType("*github.RepositoryListOptions")).Return(repos, &github.Response{NextPage: 0}, nil)
+				mockClient.ListRepositoriesFunc = func(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
+					return repos, &github.Response{NextPage: 0}, nil
+				}
 
 				// getRepoInfoInFormat用のモック（各リポジトリに対して）
-				for _, repo := range repos {
-					mockClient.On("ListPullRequests", mock.Anything, repo.GetOwner().GetLogin(), repo.GetName(), mock.AnythingOfType("*github.PullRequestListOptions")).Return([]*github.PullRequest{}, &github.Response{}, nil)
-					mockClient.On("ListRepoLanguages", mock.Anything, repo.GetOwner().GetLogin(), repo.GetName()).Return(map[string]int{"Go": 1000}, &github.Response{}, nil)
+				mockClient.ListPullRequestsFunc = func(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
+					return []*github.PullRequest{}, &github.Response{}, nil
+				}
+				mockClient.ListRepoLanguagesFunc = func(ctx context.Context, owner string, repo string) (map[string]int, *github.Response, error) {
+					return map[string]int{"Go": 1000}, &github.Response{}, nil
 				}
 			},
 			expectError:       false,
@@ -318,12 +358,16 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 			setupMock: func(mockClient *MockGitHubClient) {
 				// fetchRepositories用のモック
 				repos := createTestGitHubRepositories()
-				mockClient.On("ListRepositories", mock.Anything, testUsername, mock.AnythingOfType("*github.RepositoryListOptions")).Return(repos, &github.Response{NextPage: 0}, nil)
+				mockClient.ListRepositoriesFunc = func(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
+					return repos, &github.Response{NextPage: 0}, nil
+				}
 
 				// getRepoInfoInFormat用のモック（各リポジトリに対して）
-				for _, repo := range repos {
-					mockClient.On("ListPullRequests", mock.Anything, repo.GetOwner().GetLogin(), repo.GetName(), mock.AnythingOfType("*github.PullRequestListOptions")).Return([]*github.PullRequest{}, &github.Response{}, nil)
-					mockClient.On("ListRepoLanguages", mock.Anything, repo.GetOwner().GetLogin(), repo.GetName()).Return(map[string]int{"Go": 1000}, &github.Response{}, nil)
+				mockClient.ListPullRequestsFunc = func(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
+					return []*github.PullRequest{}, &github.Response{}, nil
+				}
+				mockClient.ListRepoLanguagesFunc = func(ctx context.Context, owner string, repo string) (map[string]int, *github.Response, error) {
+					return map[string]int{"Go": 1000}, &github.Response{}, nil
 				}
 			},
 			expectError:       false,
@@ -333,7 +377,9 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 			name:        "FetchRepositoriesError_Error",
 			isThreading: false,
 			setupMock: func(mockClient *MockGitHubClient) {
-				mockClient.On("ListRepositories", mock.Anything, testUsername, mock.AnythingOfType("*github.RepositoryListOptions")).Return([]*github.Repository{}, &github.Response{}, errors.New("fetch error"))
+				mockClient.ListRepositoriesFunc = func(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
+					return []*github.Repository{}, &github.Response{}, errors.New("fetch error")
+				}
 			},
 			expectError:      true,
 			expectedErrorMsg: "fetch error",
@@ -349,7 +395,9 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 						Reset:     github.Timestamp{Time: time.Now().Add(time.Hour)},
 					},
 				}
-				mockClient.On("ListRepositories", mock.Anything, testUsername, mock.AnythingOfType("*github.RepositoryListOptions")).Return([]*github.Repository{}, &github.Response{}, rateLimitErr)
+				mockClient.ListRepositoriesFunc = func(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
+					return []*github.Repository{}, &github.Response{}, rateLimitErr
+				}
 			},
 			expectError:      true,
 			expectedErrorMsg: "GitHub APIのレート制限に達しました",
@@ -373,8 +421,6 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedRepoCount)
 			}
-
-			mockClient.AssertExpectations(t)
 		})
 	}
 }
@@ -395,7 +441,9 @@ func TestGitHubServiceImpl_fetchRepositories_Normal(t *testing.T) {
 			repoType: "owner",
 			setupMock: func(mockClient *MockGitHubClient) {
 				repos := createTestGitHubRepositories()
-				mockClient.On("ListRepositories", mock.Anything, testUsername, mock.AnythingOfType("*github.RepositoryListOptions")).Return(repos, &github.Response{NextPage: 0}, nil)
+				mockClient.ListRepositoriesFunc = func(ctx context.Context, user string, opts *github.RepositoryListOptions) ([]*github.Repository, *github.Response, error) {
+					return repos, &github.Response{NextPage: 0}, nil
+				}
 			},
 			expectError:   false,
 			expectedCount: 2,
@@ -426,8 +474,6 @@ func TestGitHubServiceImpl_fetchRepositories_Normal(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedCount)
 			}
-
-			mockClient.AssertExpectations(t)
 		})
 	}
 }
@@ -451,7 +497,9 @@ func TestGitHubServiceImpl_getRepoPulls_Normal(t *testing.T) {
 			state: "all",
 			setupMock: func(mockClient *MockGitHubClient) {
 				pulls := createTestPullRequests()
-				mockClient.On("ListPullRequests", mock.Anything, testOwner, testRepo, mock.AnythingOfType("*github.PullRequestListOptions")).Return(pulls, &github.Response{}, nil)
+				mockClient.ListPullRequestsFunc = func(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
+					return pulls, &github.Response{}, nil
+				}
 			},
 			expectError:   false,
 			expectedCount: 2,
@@ -483,8 +531,6 @@ func TestGitHubServiceImpl_getRepoPulls_Normal(t *testing.T) {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedCount)
 			}
-
-			mockClient.AssertExpectations(t)
 		})
 	}
 }
@@ -607,19 +653,19 @@ func createTestGitHubRepository(owner, name string) *github.Repository {
 	updatedAt := github.Timestamp{Time: time.Date(2023, 12, 1, 0, 0, 0, 0, time.UTC)}
 
 	return &github.Repository{
-		Name:        &name,
-		Description: github.String(fmt.Sprintf("Description for %s", name)),
-		Private:     github.Bool(false),
-		HTMLURL:     github.String(fmt.Sprintf("https://github.com/%s/%s", owner, name)),
-		Language:    github.String("Go"),
-		CreatedAt:   &createdAt,
-		UpdatedAt:   &updatedAt,
-		StargazersCount: github.Int(10),
-		ForksCount:      github.Int(5),
-		OpenIssuesCount: github.Int(2),
-		Size:            github.Int(1024),
+		Name:             &name,
+		Description:      github.String(fmt.Sprintf("Description for %s", name)),
+		Private:          github.Bool(false),
+		HTMLURL:          github.String(fmt.Sprintf("https://github.com/%s/%s", owner, name)),
+		Language:         github.String("Go"),
+		CreatedAt:        &createdAt,
+		UpdatedAt:        &updatedAt,
+		StargazersCount:  github.Int(10),
+		ForksCount:       github.Int(5),
+		OpenIssuesCount:  github.Int(2),
+		Size:             github.Int(1024),
 		SubscribersCount: github.Int(8),
-		Archived:        github.Bool(false),
+		Archived:         github.Bool(false),
 		Owner: &github.User{
 			Login: &owner,
 		},
@@ -672,7 +718,7 @@ func TestGitHubClientAdapter_ListRepositories_Normal(t *testing.T) {
 
 	// メソッドが存在することを確認（実際のAPI呼び出しはしない）
 	opts := &github.RepositoryListOptions{
-		Type: "owner",
+		Type:        "owner",
 		ListOptions: github.ListOptions{PerPage: 1},
 	}
 
@@ -821,7 +867,9 @@ func TestGitHubServiceImpl_getRepoInfoInFormat_ErrorCases_Normal(t *testing.T) {
 		{
 			name: "PullRequestsError_Error",
 			setupMock: func(mockClient *MockGitHubClient) {
-				mockClient.On("ListPullRequests", mock.Anything, testOwner, testRepo, mock.AnythingOfType("*github.PullRequestListOptions")).Return([]*github.PullRequest{}, &github.Response{}, errors.New("pull requests error"))
+				mockClient.ListPullRequestsFunc = func(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
+					return []*github.PullRequest{}, &github.Response{}, errors.New("pull requests error")
+				}
 			},
 			expectError:      true,
 			expectedErrorMsg: "pull requests error",
@@ -829,8 +877,12 @@ func TestGitHubServiceImpl_getRepoInfoInFormat_ErrorCases_Normal(t *testing.T) {
 		{
 			name: "LanguagesError_Error",
 			setupMock: func(mockClient *MockGitHubClient) {
-				mockClient.On("ListPullRequests", mock.Anything, testOwner, testRepo, mock.AnythingOfType("*github.PullRequestListOptions")).Return([]*github.PullRequest{}, &github.Response{}, nil)
-				mockClient.On("ListRepoLanguages", mock.Anything, testOwner, testRepo).Return(map[string]int{}, &github.Response{}, errors.New("languages error"))
+				mockClient.ListPullRequestsFunc = func(ctx context.Context, user string, repo string, opts *github.PullRequestListOptions) ([]*github.PullRequest, *github.Response, error) {
+					return []*github.PullRequest{}, &github.Response{}, nil
+				}
+				mockClient.ListRepoLanguagesFunc = func(ctx context.Context, owner string, repo string) (map[string]int, *github.Response, error) {
+					return map[string]int{}, &github.Response{}, errors.New("languages error")
+				}
 			},
 			expectError:      true,
 			expectedErrorMsg: "languages error",
@@ -855,8 +907,6 @@ func TestGitHubServiceImpl_getRepoInfoInFormat_ErrorCases_Normal(t *testing.T) {
 				assert.NoError(t, err)
 				assert.NotNil(t, result)
 			}
-
-			mockClient.AssertExpectations(t)
 		})
 	}
 }

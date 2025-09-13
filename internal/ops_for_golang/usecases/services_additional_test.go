@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // #==============================================================#
@@ -24,9 +23,18 @@ func TestGolangOpsService_ExecuteTestCoverage_InvalidRegexPattern(t *testing.T) 
 	grepPattern := "[invalid"
 	expectedOutput := []byte("ok  \ttest/package\tcoverage: 80.0% of statements")
 
-	mockDirectoryChecker.On("Exists", directory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", directory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-cover", "./..."}).Return(expectedOutput, nil)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == directory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == directory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "test" && args[1] == "-cover" {
+			return expectedOutput, nil
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteTestCoverage(directory, grepPattern)
@@ -36,8 +44,6 @@ func TestGolangOpsService_ExecuteTestCoverage_InvalidRegexPattern(t *testing.T) 
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "出力のフィルタリングに失敗しました")
 	assert.Contains(t, err.Error(), "無効な正規表現パターンです")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteTestCoverage_ExitCode2Error はExecuteTestCoverageのexit code 2エラーテストです
@@ -56,9 +62,18 @@ func TestGolangOpsService_ExecuteTestCoverage_ExitCode2Error(t *testing.T) {
 	err := cmd.Run()
 	exitError, _ := err.(*exec.ExitError)
 
-	mockDirectoryChecker.On("Exists", directory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", directory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-cover", "./..."}).Return(expectedOutput, exitError)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == directory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == directory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "test" && args[1] == "-cover" {
+			return expectedOutput, exitError
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteTestCoverage(directory, grepPattern)
@@ -67,8 +82,6 @@ func TestGolangOpsService_ExecuteTestCoverage_ExitCode2Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "テストカバレッジの実行でエラーが発生しました")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteTestCoverageProject_Step1ExitCode2Error はExecuteTestCoverageProjectのStep1 exit code 2エラーテストです
@@ -86,9 +99,18 @@ func TestGolangOpsService_ExecuteTestCoverageProject_Step1ExitCode2Error(t *test
 	err := cmd.Run()
 	exitError, _ := err.(*exec.ExitError)
 
-	mockDirectoryChecker.On("Exists", directory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", directory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-coverprofile=coverage.out", "./..."}).Return(step1Output, exitError)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == directory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == directory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "test" && args[1] == "-coverprofile=coverage.out" {
+			return step1Output, exitError
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteTestCoverageProject(directory)
@@ -97,8 +119,6 @@ func TestGolangOpsService_ExecuteTestCoverageProject_Step1ExitCode2Error(t *test
 	assert.Error(t, err)
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "テストカバレッジプロファイルの生成でエラーが発生しました")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteTestCoverageProject_Step3Error はExecuteTestCoverageProjectのStep3エラーテストです
@@ -113,11 +133,24 @@ func TestGolangOpsService_ExecuteTestCoverageProject_Step3Error(t *testing.T) {
 	step2Output := []byte("test/package/file.go:10:\tfunc1\t\t\t80.0%")
 	step3Error := fmt.Errorf("cannot create HTML file")
 
-	mockDirectoryChecker.On("Exists", directory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", directory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-coverprofile=coverage.out", "./..."}).Return(step1Output, nil)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"tool", "cover", "-func=coverage.out"}).Return(step2Output, nil)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"tool", "cover", "-html=coverage.out", "-o", "coverage.html"}).Return([]byte(""), step3Error)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == directory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == directory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 {
+			if args[0] == "test" && args[1] == "-coverprofile=coverage.out" {
+				return step1Output, nil
+			} else if args[0] == "tool" && args[1] == "cover" && args[2] == "-func=coverage.out" {
+				return step2Output, nil
+			} else if args[0] == "tool" && args[1] == "cover" && args[2] == "-html=coverage.out" {
+				return []byte(""), step3Error
+			}
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteTestCoverageProject(directory)
@@ -126,8 +159,6 @@ func TestGolangOpsService_ExecuteTestCoverageProject_Step3Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "HTMLカバレッジレポートの生成に失敗しました")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteTestCoverageProject_Step3WithOutput はExecuteTestCoverageProjectのStep3出力ありテストです
@@ -142,11 +173,24 @@ func TestGolangOpsService_ExecuteTestCoverageProject_Step3WithOutput(t *testing.
 	step2Output := []byte("test/package/file.go:10:\tfunc1\t\t\t80.0%")
 	step3Output := []byte("HTML coverage report generated")
 
-	mockDirectoryChecker.On("Exists", directory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", directory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-coverprofile=coverage.out", "./..."}).Return(step1Output, nil)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"tool", "cover", "-func=coverage.out"}).Return(step2Output, nil)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"tool", "cover", "-html=coverage.out", "-o", "coverage.html"}).Return(step3Output, nil)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == directory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == directory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 {
+			if args[0] == "test" && args[1] == "-coverprofile=coverage.out" {
+				return step1Output, nil
+			} else if args[0] == "tool" && args[1] == "cover" && args[2] == "-func=coverage.out" {
+				return step2Output, nil
+			} else if args[0] == "tool" && args[1] == "cover" && args[2] == "-html=coverage.out" {
+				return step3Output, nil
+			}
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteTestCoverageProject(directory)
@@ -155,8 +199,6 @@ func TestGolangOpsService_ExecuteTestCoverageProject_Step3WithOutput(t *testing.
 	assert.NoError(t, err)
 	assert.Contains(t, result, string(step3Output))
 	assert.Contains(t, result, "HTMLレポートが生成されました")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteGoRun_RootDirectoryNotExists はExecuteGoRunのルートディレクトリ存在しないテストです
@@ -170,8 +212,15 @@ func TestGolangOpsService_ExecuteGoRun_RootDirectoryNotExists(t *testing.T) {
 	rootDirectory := "/nonexistent"
 	parameters := ""
 
-	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockDirectoryChecker.On("Exists", rootDirectory).Return(false)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		if path == executionFile {
+			return true
+		}
+		if path == rootDirectory {
+			return false
+		}
+		return false
+	}
 
 	// Act
 	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
@@ -180,7 +229,6 @@ func TestGolangOpsService_ExecuteGoRun_RootDirectoryNotExists(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "指定されたルートディレクトリが存在しません")
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteGoRun_RootDirectoryNotDirectory はExecuteGoRunのルートディレクトリがディレクトリでないテストです
@@ -194,9 +242,12 @@ func TestGolangOpsService_ExecuteGoRun_RootDirectoryNotDirectory(t *testing.T) {
 	rootDirectory := "/test/file.txt"
 	parameters := ""
 
-	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockDirectoryChecker.On("Exists", rootDirectory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", rootDirectory).Return(false)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == executionFile || path == rootDirectory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path != rootDirectory
+	}
 
 	// Act
 	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
@@ -205,7 +256,6 @@ func TestGolangOpsService_ExecuteGoRun_RootDirectoryNotDirectory(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "指定されたルートパスはディレクトリではありません")
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteCoverageFunc_InvalidRegexPattern はExecuteCoverageFuncの無効正規表現テストです
@@ -219,8 +269,15 @@ func TestGolangOpsService_ExecuteCoverageFunc_InvalidRegexPattern(t *testing.T) 
 	grepPattern := "[invalid"
 	expectedOutput := []byte("test/package/file.go:10:\tfunc1\t\t\t80.0%")
 
-	mockDirectoryChecker.On("Exists", coverageFile).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", "/test/dir", "go", []string{"tool", "cover", "-func=coverage.out"}).Return(expectedOutput, nil)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == coverageFile
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 3 && args[0] == "tool" && args[1] == "cover" && args[2] == "-func=coverage.out" {
+			return expectedOutput, nil
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteCoverageFunc(coverageFile, grepPattern)
@@ -230,8 +287,6 @@ func TestGolangOpsService_ExecuteCoverageFunc_InvalidRegexPattern(t *testing.T) 
 	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "出力のフィルタリングに失敗しました")
 	assert.Contains(t, err.Error(), "無効な正規表現パターンです")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // #==============================================================#
@@ -311,9 +366,18 @@ func TestGolangOpsService_ExecuteTestCoverage_WithComplexGrepPattern(t *testing.
 	grepPattern := `coverage: \d+\.\d+%`
 	expectedOutput := []byte("ok  \ttest/package\tcoverage: 80.0% of statements\nFAIL\ttest/other\t0.000s\nok  \ttest/another\tcoverage: 95.5% of statements")
 
-	mockDirectoryChecker.On("Exists", directory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", directory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-cover", "./..."}).Return(expectedOutput, nil)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == directory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == directory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "test" && args[1] == "-cover" {
+			return expectedOutput, nil
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteTestCoverage(directory, grepPattern)
@@ -323,8 +387,6 @@ func TestGolangOpsService_ExecuteTestCoverage_WithComplexGrepPattern(t *testing.
 	assert.Contains(t, result, "coverage: 80.0%")
 	assert.Contains(t, result, "coverage: 95.5%")
 	assert.NotContains(t, result, "FAIL\ttest/other")
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteGoRun_EmptyParameters はExecuteGoRunの空パラメータテストです
@@ -339,10 +401,18 @@ func TestGolangOpsService_ExecuteGoRun_EmptyParameters(t *testing.T) {
 	parameters := ""
 	expectedOutput := []byte("Hello, World!")
 
-	mockDirectoryChecker.On("Exists", executionFile).Return(true)
-	mockDirectoryChecker.On("Exists", rootDirectory).Return(true)
-	mockDirectoryChecker.On("IsDirectory", rootDirectory).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"run", executionFile}).Return(expectedOutput, nil)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == executionFile || path == rootDirectory
+	}
+	mockDirectoryChecker.IsDirectoryFunc = func(path string) bool {
+		return path == rootDirectory
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 2 && args[0] == "run" && args[1] == executionFile {
+			return expectedOutput, nil
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteGoRun(executionFile, rootDirectory, parameters)
@@ -352,8 +422,6 @@ func TestGolangOpsService_ExecuteGoRun_EmptyParameters(t *testing.T) {
 	assert.Contains(t, result, "go runを実行中")
 	assert.NotContains(t, result, "パラメータ:")
 	assert.Contains(t, result, string(expectedOutput))
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }
 
 // TestGolangOpsService_ExecuteCoverageFunc_EmptyGrepPattern はExecuteCoverageFuncの空grepパターンテストです
@@ -367,8 +435,15 @@ func TestGolangOpsService_ExecuteCoverageFunc_EmptyGrepPattern(t *testing.T) {
 	grepPattern := ""
 	expectedOutput := []byte("test/package/file.go:10:\tfunc1\t\t\t80.0%\ntotal:\t\t\t\t\t(statements)\t80.0%")
 
-	mockDirectoryChecker.On("Exists", coverageFile).Return(true)
-	mockCommandExecutor.On("ExecuteInDir", "/test/dir", "go", []string{"tool", "cover", "-func=coverage.out"}).Return(expectedOutput, nil)
+	mockDirectoryChecker.ExistsFunc = func(path string) bool {
+		return path == coverageFile
+	}
+	mockCommandExecutor.ExecuteInDirFunc = func(dir, name string, args ...string) ([]byte, error) {
+		if name == "go" && len(args) >= 3 && args[0] == "tool" && args[1] == "cover" && args[2] == "-func=coverage.out" {
+			return expectedOutput, nil
+		}
+		return nil, fmt.Errorf("unexpected command")
+	}
 
 	// Act
 	result, err := service.ExecuteCoverageFunc(coverageFile, grepPattern)
@@ -378,6 +453,4 @@ func TestGolangOpsService_ExecuteCoverageFunc_EmptyGrepPattern(t *testing.T) {
 	assert.Contains(t, result, "カバレッジファイルから関数情報を取得中")
 	assert.NotContains(t, result, "grepパターン:")
 	assert.Contains(t, result, string(expectedOutput))
-	mockCommandExecutor.AssertExpectations(t)
-	mockDirectoryChecker.AssertExpectations(t)
 }

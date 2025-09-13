@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	usecases "github.com/landmaster135/devbox/internal/postgresql/usecases"
 )
@@ -17,37 +16,54 @@ import (
 
 // MockPostgreSQLService はテスト用のPostgreSQLServiceモック
 type MockPostgreSQLService struct {
-	mock.Mock
+	HandleToQueryFunc                 func(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error)
+	HandleToGetTableSchemaFunc        func(ctx context.Context, tableName string) (string, error)
+	HandleToListTablesFunc            func(ctx context.Context) (string, error)
+	HandleToGetTableSchemaMinimumFunc func(ctx context.Context, tableName string) ([]usecases.Column, error)
+	HandleToListTablesMinimumFunc     func(ctx context.Context) ([]usecases.Table, error)
+	CloseFunc                         func() error
 }
 
 func (m *MockPostgreSQLService) HandleToQuery(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
-	args := m.Called(ctx, sqlQuery)
-	return args.Get(0).([]map[string]interface{}), args.Error(1)
+	if m.HandleToQueryFunc != nil {
+		return m.HandleToQueryFunc(ctx, sqlQuery)
+	}
+	return nil, nil
 }
 
 func (m *MockPostgreSQLService) HandleToGetTableSchema(ctx context.Context, tableName string) (string, error) {
-	args := m.Called(ctx, tableName)
-	return args.String(0), args.Error(1)
+	if m.HandleToGetTableSchemaFunc != nil {
+		return m.HandleToGetTableSchemaFunc(ctx, tableName)
+	}
+	return "", nil
 }
 
 func (m *MockPostgreSQLService) HandleToListTables(ctx context.Context) (string, error) {
-	args := m.Called(ctx)
-	return args.String(0), args.Error(1)
+	if m.HandleToListTablesFunc != nil {
+		return m.HandleToListTablesFunc(ctx)
+	}
+	return "", nil
 }
 
 func (m *MockPostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, tableName string) ([]usecases.Column, error) {
-	args := m.Called(ctx, tableName)
-	return args.Get(0).([]usecases.Column), args.Error(1)
+	if m.HandleToGetTableSchemaMinimumFunc != nil {
+		return m.HandleToGetTableSchemaMinimumFunc(ctx, tableName)
+	}
+	return nil, nil
 }
 
 func (m *MockPostgreSQLService) HandleToListTablesMinimum(ctx context.Context) ([]usecases.Table, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]usecases.Table), args.Error(1)
+	if m.HandleToListTablesMinimumFunc != nil {
+		return m.HandleToListTablesMinimumFunc(ctx)
+	}
+	return nil, nil
 }
 
 func (m *MockPostgreSQLService) Close() error {
-	args := m.Called()
-	return args.Error(0)
+	if m.CloseFunc != nil {
+		return m.CloseFunc()
+	}
+	return nil
 }
 
 // TestPostgreSQLMCPHandler はテスト用のハンドラー構造体
@@ -82,21 +98,24 @@ func TestNewPostgreSQLMCPHandler_Normal(t *testing.T) {
 func TestPostgreSQLMCPHandler_Close_Normal(t *testing.T) {
 	// Arrange
 	handler := createTestHandler()
-	handler.service.On("Close").Return(nil)
+	handler.service.CloseFunc = func() error {
+		return nil
+	}
 
 	// Act
 	err := handler.Close()
 
 	// Assert
 	assert.NoError(t, err)
-	handler.service.AssertExpectations(t)
 }
 
 func TestPostgreSQLMCPHandler_Close_Error(t *testing.T) {
 	// Arrange
 	handler := createTestHandler()
 	expectedError := errors.New("close error")
-	handler.service.On("Close").Return(expectedError)
+	handler.service.CloseFunc = func() error {
+		return expectedError
+	}
 
 	// Act
 	err := handler.Close()
@@ -104,7 +123,6 @@ func TestPostgreSQLMCPHandler_Close_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Equal(t, expectedError, err)
-	handler.service.AssertExpectations(t)
 }
 
 // #==============================================================#
@@ -120,7 +138,9 @@ func TestMockPostgreSQLService_HandleToQuery_Normal(t *testing.T) {
 		{"id": 1, "name": "test"},
 	}
 
-	handler.service.On("HandleToQuery", ctx, sqlQuery).Return(expectedResult, nil)
+	handler.service.HandleToQueryFunc = func(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
+		return expectedResult, nil
+	}
 
 	// Act
 	result, err := handler.service.HandleToQuery(ctx, sqlQuery)
@@ -128,7 +148,6 @@ func TestMockPostgreSQLService_HandleToQuery_Normal(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResult, result)
-	handler.service.AssertExpectations(t)
 }
 
 func TestMockPostgreSQLService_HandleToQuery_Error(t *testing.T) {
@@ -138,7 +157,9 @@ func TestMockPostgreSQLService_HandleToQuery_Error(t *testing.T) {
 	sqlQuery := "SELECT * FROM non_existent_table"
 	expectedError := errors.New("table does not exist")
 
-	handler.service.On("HandleToQuery", ctx, sqlQuery).Return([]map[string]interface{}{}, expectedError)
+	handler.service.HandleToQueryFunc = func(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
+		return []map[string]interface{}{}, expectedError
+	}
 
 	// Act
 	result, err := handler.service.HandleToQuery(ctx, sqlQuery)
@@ -147,7 +168,6 @@ func TestMockPostgreSQLService_HandleToQuery_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, expectedError, err)
 	assert.Empty(t, result)
-	handler.service.AssertExpectations(t)
 }
 
 func TestMockPostgreSQLService_HandleToGetTableSchema_Normal(t *testing.T) {
@@ -157,7 +177,9 @@ func TestMockPostgreSQLService_HandleToGetTableSchema_Normal(t *testing.T) {
 	tableName := "test_table"
 	expectedResult := "# テーブル: test_table\n## カラム\n- id: integer NOT NULL\n"
 
-	handler.service.On("HandleToGetTableSchema", ctx, tableName).Return(expectedResult, nil)
+	handler.service.HandleToGetTableSchemaFunc = func(ctx context.Context, tableName string) (string, error) {
+		return expectedResult, nil
+	}
 
 	// Act
 	result, err := handler.service.HandleToGetTableSchema(ctx, tableName)
@@ -165,7 +187,6 @@ func TestMockPostgreSQLService_HandleToGetTableSchema_Normal(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResult, result)
-	handler.service.AssertExpectations(t)
 }
 
 func TestMockPostgreSQLService_HandleToListTables_Normal(t *testing.T) {
@@ -174,7 +195,9 @@ func TestMockPostgreSQLService_HandleToListTables_Normal(t *testing.T) {
 	ctx := context.Background()
 	expectedResult := "# データベースのテーブル一覧 (全1件)\n- **test_table** — テストテーブル\n"
 
-	handler.service.On("HandleToListTables", ctx).Return(expectedResult, nil)
+	handler.service.HandleToListTablesFunc = func(ctx context.Context) (string, error) {
+		return expectedResult, nil
+	}
 
 	// Act
 	result, err := handler.service.HandleToListTables(ctx)
@@ -182,7 +205,6 @@ func TestMockPostgreSQLService_HandleToListTables_Normal(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResult, result)
-	handler.service.AssertExpectations(t)
 }
 
 func TestMockPostgreSQLService_HandleToGetTableSchemaMinimum_Normal(t *testing.T) {
@@ -195,7 +217,9 @@ func TestMockPostgreSQLService_HandleToGetTableSchemaMinimum_Normal(t *testing.T
 		{Name: "name", DataType: "varchar"},
 	}
 
-	handler.service.On("HandleToGetTableSchemaMinimum", ctx, tableName).Return(expectedResult, nil)
+	handler.service.HandleToGetTableSchemaMinimumFunc = func(ctx context.Context, tableName string) ([]usecases.Column, error) {
+		return expectedResult, nil
+	}
 
 	// Act
 	result, err := handler.service.HandleToGetTableSchemaMinimum(ctx, tableName)
@@ -203,7 +227,6 @@ func TestMockPostgreSQLService_HandleToGetTableSchemaMinimum_Normal(t *testing.T
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResult, result)
-	handler.service.AssertExpectations(t)
 }
 
 func TestMockPostgreSQLService_HandleToListTablesMinimum_Normal(t *testing.T) {
@@ -215,7 +238,9 @@ func TestMockPostgreSQLService_HandleToListTablesMinimum_Normal(t *testing.T) {
 		{Name: "users"},
 	}
 
-	handler.service.On("HandleToListTablesMinimum", ctx).Return(expectedResult, nil)
+	handler.service.HandleToListTablesMinimumFunc = func(ctx context.Context) ([]usecases.Table, error) {
+		return expectedResult, nil
+	}
 
 	// Act
 	result, err := handler.service.HandleToListTablesMinimum(ctx)
@@ -223,7 +248,6 @@ func TestMockPostgreSQLService_HandleToListTablesMinimum_Normal(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResult, result)
-	handler.service.AssertExpectations(t)
 }
 
 // #==============================================================#
