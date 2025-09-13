@@ -1,20 +1,28 @@
 # Secret Detector
 
-Git pre-commit hook用のGo製シークレット検知ツールです。JSON設定ファイル内の機密情報を自動検知し、コミット前にブロックします。
+Git pre-commit hook用のGo製シークレット検知ツールです。JSON設定ファイル内の機密情報と、全ファイル内の禁止されたホームパスを自動検知し、コミット前にブロックします。
 
 ## 概要
 
-このツールは、MCP（Model Context Protocol）設定ファイルなどのJSON設定ファイル内に含まれる可能性のある機密情報（APIキー、トークン、パスワードなど）を検知します。元々`/home/nov/devbox/scripts/setup-secret-detector.sh`内にあったGoコードを適切なGoプロジェクト構造に移植して実装されています。
+このツールは、以下の2つの主要機能を提供します：
+
+1. **シークレット検知**: MCP（Model Context Protocol）設定ファイルなどのJSON設定ファイル内に含まれる可能性のある機密情報（APIキー、トークン、パスワードなど）を検知
+2. **禁止パス検知**: 全ファイル内のホームパスを検知し、`/home/user`以外の場合はコミットをブロック
 
 ## 機能
 
-### 検知対象
+### シークレット検知対象
 
 - **疑わしいキー名**: `api_key`, `secret_key`, `access_token`, `password`など
 - **実際のシークレットパターン**: OpenAI APIキー、GitHub PAT、AWS Access Keyなど
 - **高エントロピー値**: ランダムな文字列の検出
 
-### 許可される値
+### ホームパス検知対象
+
+- **禁止パス**: `/home/[username]`形式のパス（実際のユーザー名を含むパス）
+- **許可パス**: `/home/user`（汎用的なユーザーホームパス）
+
+### 許可される値（シークレット検知）
 
 - プレースホルダー値: `YOUR_API_KEY`, `PLACEHOLDER`など
 - `YOUR_`で始まる値
@@ -39,6 +47,10 @@ go build -o bin/secret-detector cmd/cli/secret-detector/main.go
 ### オプション
 
 - `--version`: バージョン情報を表示
+- `--verbose`: 詳細な出力を表示
+- `--config-file <path>`: 特定の設定ファイルのみをチェック
+- `--dry-run`: 実際のGit操作なしでテスト実行
+- `--help`: ヘルプを表示
 
 ## 使用例
 
@@ -59,7 +71,25 @@ go run ./cmd/cli/secret-detector --version
 Secret Detector v1.0.0
 ```
 
-### 3. Git pre-commitフックとして使用
+### 3. 詳細出力で実行
+
+```bash
+go run ./cmd/cli/secret-detector --verbose
+```
+
+### 4. 特定ファイルのみチェック
+
+```bash
+go run ./cmd/cli/secret-detector --config-file=config.json
+```
+
+### 5. ドライランモード
+
+```bash
+go run ./cmd/cli/secret-detector --dry-run
+```
+
+### 6. Git pre-commitフックとして使用
 
 ```bash
 # .git/hooks/pre-commit に設定
@@ -69,7 +99,7 @@ Secret Detector v1.0.0
 
 ## 検知例
 
-### 安全な設定例
+### 安全な設定例（シークレット検知）
 
 ```json
 {
@@ -87,7 +117,8 @@ Secret Detector v1.0.0
 
 出力:
 ```
-🔍 Checking for secrets in JSON configuration files...
+🔍 Checking for secrets and forbidden paths in files...
+📋 Checking JSON configuration files for secrets...
 📁 Checking configuration file: config.json
   Found 1 server(s) in configuration
   Found 2 environment variable(s) total
@@ -96,10 +127,16 @@ Secret Detector v1.0.0
 
   Summary: Found 2 placeholder(s), 0 potential secret(s)
 
-✅ Secret scan completed. No actual secrets detected in 1 file(s).
+📋 Checking all files for /home paths...
+  Summary: Found 0 /home path(s) in 1 file(s)
+
+📊 Analysis Results:
+  Overall Summary: Found 0 /home path(s), 2 placeholder(s), 0 potential secret(s)
+
+✅ Scan completed. No issues detected in 1 file(s).
 ```
 
-### 危険な設定例
+### 危険な設定例（シークレット検知）
 
 ```json
 {
@@ -114,28 +151,45 @@ Secret Detector v1.0.0
 }
 ```
 
+### 禁止パス検知例
+
+ファイル内容:
+```
+# 設定ファイル
+LOG_PATH=/home/alice/logs/app.log
+CONFIG_PATH=/home/user/config/app.conf
+```
+
 出力:
 ```
-🔍 Checking for secrets in JSON configuration files...
-📁 Checking configuration file: config.json
-  Found 1 server(s) in configuration
-  Found 1 environment variable(s) total
-    ❌ openai-server.OPENAI_API_KEY: suspicious pattern detected
-      Pattern: sk-[a-zA-Z0-9]{48}
-      Value: sk-1234567890abcdef1234567890abcdef1234567890abcdef
+🔍 Checking for secrets and forbidden paths in files...
+📋 Checking JSON configuration files for secrets...
+ℹ️  No configuration files found in this commit.
 
-  Summary: Found 0 placeholder(s), 1 potential secret(s)
+📋 Checking all files for /home paths...
+    ❌ config.txt:1: forbidden /home path detected
+      Content: LOG_PATH=/home/alice/logs/app.log
+    ✅ config.txt:2: allowed /home path
+      Content: CONFIG_PATH=/home/user/config/app.conf
 
-❌ COMMIT BLOCKED: Potential secrets detected!
+  Summary: Found 2 /home path(s) in 1 file(s)
+
+📊 Analysis Results:
+  Overall Summary: Found 2 /home path(s), 0 placeholder(s), 0 potential secret(s)
+
+❌ COMMIT BLOCKED: Issues detected!
 
 💡 Suggestions:
-  1. Replace actual values with placeholders like 'YOUR_API_KEY'
-  2. Move secrets to environment variables or secure storage
-  3. Use a separate config file that's git-ignored
+📋 For /home paths:
+  1. Replace absolute paths with relative paths or environment variables
+  2. Use '/home/user' if you need to reference a generic user home
+  3. Consider using placeholders like '$HOME' or '~'
   4. If this is intentional, use: git commit --no-verify
 ```
 
 ## 対応ファイル形式
+
+### シークレット検知対象
 
 - `*.json`
 - `*.config.js`
@@ -143,6 +197,17 @@ Secret Detector v1.0.0
 - `mcp_settings.json`
 - `claude_desktop_config.json`
 - `cline_mcp_settings.json`
+
+### ホームパス検知対象
+
+- 全てのテキストファイル（バイナリファイルは除外）
+- 除外されるバイナリファイル拡張子:
+  - 画像: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.tiff`, `.webp`
+  - 動画: `.mp3`, `.mp4`, `.avi`, `.mov`, `.wmv`, `.flv`, `.mkv`
+  - ドキュメント: `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`
+  - アーカイブ: `.zip`, `.tar`, `.gz`, `.bz2`, `.7z`, `.rar`
+  - 実行ファイル: `.exe`, `.dll`, `.so`, `.dylib`, `.a`, `.o`, `.obj`
+  - データベース: `.bin`, `.dat`, `.db`, `.sqlite`, `.sqlite3`
 
 ## 検知パターン
 
@@ -172,23 +237,35 @@ Secret Detector v1.0.0
 - Google OAuth token: `ya29\.[a-zA-Z0-9_-]+`
 - UUID format: `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`
 
+### ホームパス検知パターン
+
+- **検知対象**: `/home`を含む文字列
+- **許可パターン**: `/home/user`を含む文字列
+- **禁止パターン**: `/home/[username]`というような実際のユーザー名を含む文字列
+
 ## エラーハンドリング
 
 - Gitリポジトリでない場合のエラー
 - ステージされたファイルの取得エラー
 - JSON解析エラー
 - ファイル読み込みエラー
+- バイナリファイルの自動スキップ
 
 ## アーキテクチャ
 
 ```
 cmd/cli/secret-detector/main.go         # CLIエントリーポイント
 internal/secret_detector/
-├── config/config.go                    # JSON設定ファイル読み込み
+├── config/
+│   ├── config.go                      # JSON設定ファイル読み込み
+│   └── file_system.go                 # ファイルシステム操作
 ├── domain/                            # ドメインモデル
 │   ├── models.go                      # 構造体定義
 │   └── patterns.go                    # 検知パターン定義
-└── usecases/services.go               # ビジネスロジック
+└── usecases/
+    ├── services.go                    # ビジネスロジック
+    ├── services_test.go               # テストコード
+    └── repositories.go                # リポジトリインターフェース
 ```
 
 ## Git Hookとの統合
@@ -225,8 +302,8 @@ git commit --no-verify
 
 ## 終了コード
 
-- `0`: 成功（シークレット未検出）
-- `1`: 失敗（シークレット検出またはエラー）
+- `0`: 成功（問題未検出）
+- `1`: 失敗（シークレットまたは禁止パス検出、またはエラー）
 
 ## 設定のカスタマイズ
 
@@ -235,22 +312,79 @@ git commit --no-verify
 - `internal/secret_detector/domain/patterns.go`: 検知パターンの定義
 - `internal/secret_detector/usecases/services.go`: 検知ロジックの調整
 
+### カスタマイズ例
+
+**新しいバイナリファイル拡張子の追加**
+
+`domain/patterns.go`の`GetBinaryFileExtensions()`に追加:
+
+```go
+func GetBinaryFileExtensions() []string {
+  return []string{
+    // 既存の拡張子...
+    ".custom", ".binary",  // 新しい拡張子を追加
+  }
+}
+```
+
+## テスト
+
+### 単体テストの実行
+
+```bash
+cd devbox
+go test ./internal/secret_detector/usecases -v
+```
+
+### テストカバレッジの確認
+
+```bash
+cd devbox
+go test -coverprofile=coverage.out ./internal/secret_detector/usecases
+go tool cover -html=coverage.out -o coverage.html
+```
+
 ## トラブルシューティング
 
 ### よくある問題
 
 1. **"This directory is not a Git repository"**
-   - Gitリポジトリ内で実行してください
+  - Gitリポジトリ内で実行してください
 
 2. **"No configuration files found"**
-   - ステージされた設定ファイルがない場合の正常な動作です
+  - ステージされた設定ファイルがない場合の正常な動作です
 
 3. **"Error checking file"**
-   - JSONファイルの形式を確認してください
+  - JSONファイルの形式を確認してください
+
+4. **"Skipping binary file"**
+  - バイナリファイルは自動的にスキップされます（正常な動作）
+
+5. **"/home path detected but allowed"**
+  - `/home/user`パスは許可されています（正常な動作）
 
 ### デバッグ
 
-詳細な情報が必要な場合は、ソースコードの`fmt.Printf`文を参考にしてください。
+詳細な情報が必要な場合は、`--verbose`オプションを使用してください:
+
+```bash
+go run ./cmd/cli/secret-detector --verbose
+```
+
+## 更新履歴
+
+### v1.1.0 (最新)
+- 新機能: 全ファイル内の`/home`パス検知機能を追加
+- `/home/user`パスは許可、その他の`/home/[username]`パスは禁止
+- バイナリファイルの自動除外機能
+- 統合された結果表示とエラーメッセージ
+- 包括的なテストスイートの追加
+
+### v1.0.0
+- 初期リリース
+- JSON設定ファイル内のシークレット検知機能
+- Git pre-commit hook対応
+- 基本的なCLIオプション
 
 ## ライセンス
 

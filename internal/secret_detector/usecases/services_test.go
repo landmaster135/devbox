@@ -2,11 +2,10 @@ package usecases
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 )
-
-// TestSecretDetectorService はSecretDetectorServiceのテストクラス
-type TestSecretDetectorService struct{}
 
 // TestSecretDetectorService_StripProtocolPrefix_Normal はプロトコル識別子除去の正常系テスト
 func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
@@ -76,15 +75,280 @@ func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
 	}
 }
 
+// TestSecretDetectorService_IsBinaryFile_Normal はバイナリファイル判定の正常系テスト
+func TestSecretDetectorService_IsBinaryFile_Normal(t *testing.T) {
+	mockExecutor := &MockCommandExecutor{}
+	mockOutputWriter := &MockOutputWriter{}
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
+
+	testCases := []struct {
+		name     string
+		filename string
+		expected bool
+	}{
+		// バイナリファイル（true期待）
+		{
+			name:     "JPEG image",
+			filename: "image.jpg",
+			expected: true,
+		},
+		{
+			name:     "PNG image",
+			filename: "logo.png",
+			expected: true,
+		},
+		{
+			name:     "PDF document",
+			filename: "document.pdf",
+			expected: true,
+		},
+		{
+			name:     "Executable file",
+			filename: "program.exe",
+			expected: true,
+		},
+		{
+			name:     "Shared library",
+			filename: "library.so",
+			expected: true,
+		},
+		{
+			name:     "ZIP archive",
+			filename: "archive.zip",
+			expected: true,
+		},
+		{
+			name:     "SQLite database",
+			filename: "data.sqlite",
+			expected: true,
+		},
+		// テキストファイル（false期待）
+		{
+			name:     "JSON config",
+			filename: "config.json",
+			expected: false,
+		},
+		{
+			name:     "Go source",
+			filename: "main.go",
+			expected: false,
+		},
+		{
+			name:     "Text file",
+			filename: "README.txt",
+			expected: false,
+		},
+		{
+			name:     "Markdown file",
+			filename: "README.md",
+			expected: false,
+		},
+		{
+			name:     "JavaScript file",
+			filename: "app.js",
+			expected: false,
+		},
+		{
+			name:     "No extension",
+			filename: "Dockerfile",
+			expected: false,
+		},
+		{
+			name:     "Empty filename",
+			filename: "",
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := service.IsBinaryFile(tc.filename)
+			if result != tc.expected {
+				t.Errorf("IsBinaryFile(%q) = %v, expected %v", tc.filename, result, tc.expected)
+			}
+		})
+	}
+}
+
+// TestSecretDetectorService_CheckFileForHomePath_Normal はホームパス検知の正常系テスト
+func TestSecretDetectorService_CheckFileForHomePath_Normal(t *testing.T) {
+	// テスト用の一時ファイルを作成
+	tempDir := t.TempDir()
+
+	testCases := []struct {
+		name              string
+		filename          string
+		content           string
+		expectedCount     int
+		expectedAllowed   int
+		expectedForbidden int
+	}{
+		{
+			name:              "File with forbidden home path",
+			filename:          "test1.txt",
+			content:           "This is a path: /home" + "/john/documents/file.txt\nAnother line",
+			expectedCount:     1,
+			expectedAllowed:   0,
+			expectedForbidden: 1,
+		},
+		{
+			name:              "File with allowed home/user path",
+			filename:          "test2.txt",
+			content:           "Default path: /home/user/config\nAnother line",
+			expectedCount:     1,
+			expectedAllowed:   1,
+			expectedForbidden: 0,
+		},
+		{
+			name:              "File with allowed [username] path",
+			filename:          "test2b.txt",
+			content:           "Template path: /home/[username]/config\nAnother line",
+			expectedCount:     1,
+			expectedAllowed:   1,
+			expectedForbidden: 0,
+		},
+		{
+			name:              "File with mixed home paths",
+			filename:          "test3.txt",
+			content:           "Forbidden: /home" + "/alice/data\nAllowed: /home/user/settings\nAllowed: /home/[username]/template\nForbidden: /home" + "/bob/files",
+			expectedCount:     4,
+			expectedAllowed:   2,
+			expectedForbidden: 2,
+		},
+		{
+			name:              "File with no home paths",
+			filename:          "test4.txt",
+			content:           "Just regular content\nNo home paths here\n/var/log/app.log",
+			expectedCount:     0,
+			expectedAllowed:   0,
+			expectedForbidden: 0,
+		},
+		{
+			name:              "Empty file",
+			filename:          "test5.txt",
+			content:           "",
+			expectedCount:     0,
+			expectedAllowed:   0,
+			expectedForbidden: 0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// テストファイルを作成
+			testFile := filepath.Join(tempDir, tc.filename)
+			err := os.WriteFile(testFile, []byte(tc.content), 0644)
+			if err != nil {
+				t.Fatalf("Failed to create test file: %v", err)
+			}
+
+			mockExecutor := &MockCommandExecutor{}
+			mockOutputWriter := &MockOutputWriter{}
+			service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
+
+			results, err := service.CheckFileForHomePath(testFile)
+			if err != nil {
+				t.Errorf("CheckFileForHomePath() unexpected error: %v", err)
+				return
+			}
+
+			if len(results) != tc.expectedCount {
+				t.Errorf("CheckFileForHomePath() returned %d results, expected %d", len(results), tc.expectedCount)
+				return
+			}
+
+			allowedCount := 0
+			forbiddenCount := 0
+			for _, result := range results {
+				if result.IsAllowed {
+					allowedCount++
+				} else {
+					forbiddenCount++
+				}
+			}
+
+			if allowedCount != tc.expectedAllowed {
+				t.Errorf("CheckFileForHomePath() found %d allowed paths, expected %d", allowedCount, tc.expectedAllowed)
+			}
+
+			if forbiddenCount != tc.expectedForbidden {
+				t.Errorf("CheckFileForHomePath() found %d forbidden paths, expected %d", forbiddenCount, tc.expectedForbidden)
+			}
+		})
+	}
+}
+
+// TestSecretDetectorService_ExecuteHomePathDetection_Normal はホームパス検知実行の正常系テスト
+func TestSecretDetectorService_ExecuteHomePathDetection_Normal(t *testing.T) {
+	testCases := []struct {
+		name          string
+		configFile    string
+		mockOutput    string
+		mockError     error
+		expectedExit  int
+		expectedError bool
+	}{
+		{
+			name:          "No files found",
+			configFile:    "",
+			mockOutput:    "",
+			mockError:     nil,
+			expectedExit:  0,
+			expectedError: false,
+		},
+		{
+			name:          "Git command error",
+			configFile:    "",
+			mockOutput:    "",
+			mockError:     errors.New("git command failed"),
+			expectedExit:  1,
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockExecutor := &MockCommandExecutor{
+				ExecuteFunc: func(name string, args ...string) ([]byte, error) {
+					if tc.mockError != nil {
+						return nil, tc.mockError
+					}
+					return []byte(tc.mockOutput), nil
+				},
+			}
+			mockOutputWriter := &MockOutputWriter{}
+			service := NewSecretDetectorService(false, false, tc.configFile, mockExecutor, mockOutputWriter)
+
+			exitCode, err := service.ExecuteHomePathDetection()
+
+			if tc.expectedError {
+				if err == nil {
+					t.Errorf("ExecuteHomePathDetection() expected error, but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("ExecuteHomePathDetection() unexpected error: %v", err)
+				return
+			}
+
+			if exitCode != tc.expectedExit {
+				t.Errorf("ExecuteHomePathDetection() returned exit code %d, expected %d", exitCode, tc.expectedExit)
+			}
+		})
+	}
+}
+
 // TestSecretDetectorService_ExecuteSecretDetection_Normal はExecuteSecretDetectionの正常系テスト
 func TestSecretDetectorService_ExecuteSecretDetection_Normal(t *testing.T) {
 	testCases := []struct {
-		name           string
-		configFile     string
-		mockOutput     string
-		mockError      error
-		expectedExit   int
-		expectedError  bool
+		name          string
+		configFile    string
+		mockOutput    string
+		mockError     error
+		expectedExit  int
+		expectedError bool
 	}{
 		{
 			name:          "No config files found",
