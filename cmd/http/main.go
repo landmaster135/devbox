@@ -9,12 +9,12 @@ import (
 func main() {
 	log.Println("Weather Notification API サーバーを初期化しています...")
 
-	// サーバーを設定
-	server := httpServer.SetupServer()
+	// サーバーを作成
+	server := httpServer.NewHTTPServer()
 
 	// グレースフルシャットダウンのゴルーチンを開始
-	go httpServer.GracefulShutdown(server)
+	go server.GracefulShutdown()
 
 	// サーバーを開始
-	httpServer.StartServer(server)
+	server.Start()
 }
