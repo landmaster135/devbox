@@ -173,7 +173,6 @@
         "NOTION_INTEGRATION_TOKEN": "YOUR_VALUE",
         "NOTION_ENDPOINT_URL": "YOUR_VALUE",
         "NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIP": "YOUR_VALUE"
-
       },
       "disabled": false,
       "autoApprove": []

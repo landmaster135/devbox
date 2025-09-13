@@ -23,7 +23,7 @@ cd devbox
 
 # Build
 
-## Common tools
+## Common Tools
 ```bash
 ./scripts/build.sh
 ```
@@ -33,9 +33,15 @@ Confirm compilable distributions.
 go tool dist list
 ```
 
-## MCP tools
+## MCP Tools
 ```bash
 ./scripts/build_mcp_tools.sh
+```
+
+## Git Hooks
+Set Git hooks with built binary files
+```bash
+./scripts/setup-secret-detector-hook.sh
 ```
 
 # Project Structure
