@@ -3,7 +3,6 @@ package usecases
 import (
 	"fmt"
 	"math"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,15 +13,17 @@ import (
 
 // SecretDetectorService はシークレット検知サービス
 type SecretDetectorService struct {
-	verbose bool
-	dryRun  bool
+	verbose         bool
+	dryRun          bool
+	commandExecutor CommandExecutorRepository
 }
 
 // NewSecretDetectorService は新しいSecretDetectorServiceを作成
-func NewSecretDetectorService(verbose, dryRun bool) *SecretDetectorService {
+func NewSecretDetectorService(verbose, dryRun bool, commandExecutor CommandExecutorRepository) *SecretDetectorService {
 	return &SecretDetectorService{
-		verbose: verbose,
-		dryRun:  dryRun,
+		verbose:         verbose,
+		dryRun:          dryRun,
+		commandExecutor: commandExecutor,
 	}
 }
 
@@ -39,8 +40,7 @@ func (s *SecretDetectorService) GetStagedFiles() ([]string, error) {
 		fmt.Printf("%s[VERBOSE] Executing: git diff --cached --name-only --diff-filter=ACM%s\n", domain.Blue, domain.Reset)
 	}
 
-	cmd := exec.Command("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
-	output, err := cmd.Output()
+	output, err := s.commandExecutor.Execute("git", "diff", "--cached", "--name-only", "--diff-filter=ACM")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get staged files: %w", err)
 	}

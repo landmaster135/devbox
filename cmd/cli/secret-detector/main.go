@@ -32,8 +32,11 @@ func main() {
 
 	fmt.Printf("%s🔍 Checking for secrets in JSON configuration files...%s\n", domain.Green, domain.Reset)
 
+	// コマンド実行器を初期化
+	commandExecutor := usecases.NewCommandExecutor()
+
 	// シークレット検知サービスを初期化
-	service := usecases.NewSecretDetectorService(cfg.Verbose, cfg.DryRun)
+	service := usecases.NewSecretDetectorService(cfg.Verbose, cfg.DryRun, commandExecutor)
 
 	var allResults []domain.SecretResult
 	var totalFiles int
