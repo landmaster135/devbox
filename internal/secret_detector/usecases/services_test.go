@@ -12,7 +12,7 @@ type TestSecretDetectorService struct{}
 func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
 	mockExecutor := &MockCommandExecutor{}
 	mockOutputWriter := &MockOutputWriter{}
-	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -76,12 +76,82 @@ func TestSecretDetectorService_StripProtocolPrefix_Normal(t *testing.T) {
 	}
 }
 
+// TestSecretDetectorService_ExecuteSecretDetection_Normal はExecuteSecretDetectionの正常系テスト
+func TestSecretDetectorService_ExecuteSecretDetection_Normal(t *testing.T) {
+	testCases := []struct {
+		name           string
+		configFile     string
+		mockOutput     string
+		mockError      error
+		expectedExit   int
+		expectedError  bool
+	}{
+		{
+			name:          "No config files found",
+			configFile:    "",
+			mockOutput:    "",
+			mockError:     nil,
+			expectedExit:  0,
+			expectedError: false,
+		},
+		{
+			name:          "Specific config file specified - file not found",
+			configFile:    "test_config.json",
+			mockOutput:    "",
+			mockError:     nil,
+			expectedExit:  1,
+			expectedError: true,
+		},
+		{
+			name:          "Git command error",
+			configFile:    "",
+			mockOutput:    "",
+			mockError:     errors.New("git command failed"),
+			expectedExit:  1,
+			expectedError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockExecutor := &MockCommandExecutor{
+				ExecuteFunc: func(name string, args ...string) ([]byte, error) {
+					if tc.mockError != nil {
+						return nil, tc.mockError
+					}
+					return []byte(tc.mockOutput), nil
+				},
+			}
+			mockOutputWriter := &MockOutputWriter{}
+			service := NewSecretDetectorService(false, false, tc.configFile, mockExecutor, mockOutputWriter)
+
+			exitCode, err := service.ExecuteSecretDetection()
+
+			if tc.expectedError {
+				if err == nil {
+					t.Errorf("ExecuteSecretDetection() expected error, but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("ExecuteSecretDetection() unexpected error: %v", err)
+				return
+			}
+
+			if exitCode != tc.expectedExit {
+				t.Errorf("ExecuteSecretDetection() returned exit code %d, expected %d", exitCode, tc.expectedExit)
+			}
+		})
+	}
+}
+
 // TestSecretDetectorService_IsPlaceholder_Normal はプレースホルダー判定の正常系テスト
 func TestSecretDetectorService_IsPlaceholder_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
 	mockOutputWriter := &MockOutputWriter{}
-	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -208,7 +278,7 @@ func TestSecretDetectorService_IsSuspiciousKey_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
 	mockOutputWriter := &MockOutputWriter{}
-	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -299,7 +369,7 @@ func TestSecretDetectorService_MatchesSecretPattern_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
 	mockOutputWriter := &MockOutputWriter{}
-	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -370,7 +440,7 @@ func TestSecretDetectorService_FilterConfigFiles_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
 	mockOutputWriter := &MockOutputWriter{}
-	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -419,6 +489,33 @@ func TestSecretDetectorService_FilterConfigFiles_Normal(t *testing.T) {
 				"app.config.ts",
 			},
 		},
+		{
+			name: "Discord bot MCP settings file with full path",
+			input: []string{
+				"/home/user/devbox/.config/discord/mcp_settings_discord_bot_ayuayu.json",
+				"other_file.txt",
+				"README.md",
+			},
+			expected: []string{
+				"/home/user/devbox/.config/discord/mcp_settings_discord_bot_ayuayu.json",
+			},
+		},
+		{
+			name: "MCP settings pattern matching variations",
+			input: []string{
+				"mcp_settings_discord_bot_ayuayu.json",
+				"mcp_settings_another_bot.json",
+				"mcp_settings.json",
+				"not_mcp_settings.json",
+				"regular_file.txt",
+			},
+			expected: []string{
+				"mcp_settings_discord_bot_ayuayu.json",
+				"mcp_settings_another_bot.json",
+				"mcp_settings.json",
+				"not_mcp_settings.json",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -442,7 +539,7 @@ func TestSecretDetectorService_CalculateEntropy_Normal(t *testing.T) {
 
 	mockExecutor := &MockCommandExecutor{}
 	mockOutputWriter := &MockOutputWriter{}
-	service := NewSecretDetectorService(false, false, mockExecutor, mockOutputWriter)
+	service := NewSecretDetectorService(false, false, "", mockExecutor, mockOutputWriter)
 
 	testCases := []struct {
 		name     string
@@ -570,7 +667,7 @@ func TestSecretDetectorService_GetStagedFiles_Normal(t *testing.T) {
 				},
 			}
 			mockOutputWriter := &MockOutputWriter{}
-			service := NewSecretDetectorService(tc.verbose, tc.dryRun, mockExecutor, mockOutputWriter)
+			service := NewSecretDetectorService(tc.verbose, tc.dryRun, "", mockExecutor, mockOutputWriter)
 
 			result, err := service.GetStagedFiles()
 

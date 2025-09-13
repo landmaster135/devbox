@@ -72,6 +72,7 @@ func GetConfigFilePatterns() []string {
 		"*.config.js",
 		"*.config.ts",
 		"mcp_settings.json",
+		"mcp_settings*.json",
 		"claude_desktop_config.json",
 		"cline_mcp_settings.json",
 	}

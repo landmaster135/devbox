@@ -15,15 +15,17 @@ import (
 type SecretDetectorService struct {
 	verbose         bool
 	dryRun          bool
+	configFile      string
 	commandExecutor CommandExecutorRepository
 	outputWriter    OutputWriterRepository
 }
 
 // NewSecretDetectorService は新しいSecretDetectorServiceを作成
-func NewSecretDetectorService(verbose, dryRun bool, commandExecutor CommandExecutorRepository, outputWriter OutputWriterRepository) *SecretDetectorService {
+func NewSecretDetectorService(verbose, dryRun bool, configFile string, commandExecutor CommandExecutorRepository, outputWriter OutputWriterRepository) *SecretDetectorService {
 	return &SecretDetectorService{
 		verbose:         verbose,
 		dryRun:          dryRun,
+		configFile:      configFile,
 		commandExecutor: commandExecutor,
 		outputWriter:    outputWriter,
 	}
@@ -291,4 +293,75 @@ func (s *SecretDetectorService) CalculateEntropy(str string) float64 {
 	}
 
 	return entropy
+}
+
+// ExecuteSecretDetection はmain.goの主要処理を実行
+func (s *SecretDetectorService) ExecuteSecretDetection() (int, error) {
+	fmt.Printf("%s🔍 Checking for secrets in JSON configuration files...%s\n", domain.Green, domain.Reset)
+
+	var allResults []domain.SecretResult
+	var totalFiles int
+
+	// 特定ファイルが指定された場合
+	if s.configFile != "" {
+		fmt.Printf("%s📁 Checking specific configuration file: %s%s\n", domain.Green, s.configFile, domain.Reset)
+		totalFiles = 1
+
+		results, err := s.CheckSpecificFile(s.configFile)
+		if err != nil {
+			fmt.Printf("%s❌ Error checking file %s: %v%s\n", domain.Red, s.configFile, err, domain.Reset)
+			return 1, err
+		}
+
+		allResults = append(allResults, results...)
+	} else {
+		// Gitのステージされたファイルを取得
+		stagedFiles, err := s.GetStagedFiles()
+		if err != nil {
+			fmt.Printf("%s❌ Error getting staged files: %v%s\n", domain.Red, err, domain.Reset)
+			return 1, err
+		}
+
+		// 設定ファイルをフィルタリング
+		configFiles := s.FilterConfigFiles(stagedFiles)
+
+		if len(configFiles) == 0 {
+			fmt.Printf("%sℹ️  No configuration files found in this commit.%s\n", domain.Green, domain.Reset)
+			return 0, nil
+		}
+
+		totalFiles = len(configFiles)
+
+		for _, file := range configFiles {
+			fmt.Printf("%s📁 Checking configuration file: %s%s\n", domain.Green, file, domain.Reset)
+
+			results, err := s.CheckFile(file)
+			if err != nil {
+				fmt.Printf("%s❌ Error checking file %s: %v%s\n", domain.Red, file, err, domain.Reset)
+				continue
+			}
+
+			allResults = append(allResults, results...)
+		}
+	}
+
+	// 結果の分析と表示
+	summary := s.AnalyzeResults(allResults)
+
+	fmt.Println()
+	if summary.HasRealSecrets {
+		fmt.Printf("%s❌ COMMIT BLOCKED: Potential secrets detected!%s\n", domain.Red, domain.Reset)
+		fmt.Println()
+		fmt.Printf("%s💡 Suggestions:%s\n", domain.Yellow, domain.Reset)
+		fmt.Println("  1. Replace actual values with placeholders like 'YOUR_API_KEY'")
+		fmt.Println("  2. Move secrets to environment variables or secure storage")
+		fmt.Println("  3. Use a separate config file that's git-ignored")
+		fmt.Println("  4. If this is intentional, use: git commit --no-verify")
+		fmt.Println()
+		return 1, nil
+	} else {
+		fmt.Printf("%s✅ Secret scan completed. No actual secrets detected in %d file(s).%s\n",
+			domain.Green, totalFiles, domain.Reset)
+		return 0, nil
+	}
 }
