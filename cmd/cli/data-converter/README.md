@@ -4,7 +4,7 @@
 
 ## 概要
 
-このツールは、JSON、CSV、TSV、HTML形式のデータを相互に変換できます。sample1111111.jsにあったJavaScript処理をGoに移植して実装されています。
+このツールは、JSON、CSV、TSV、HTML、Markdownリスト形式のデータを相互に変換できます。sample1111111.jsにあったJavaScript処理をGoに移植して実装されています。
 
 ## 対応形式
 
@@ -13,12 +13,16 @@
 - `csv`: CSV（カンマ区切り）形式
 - `tsv`: TSV（タブ区切り）形式
 - `html`: HTMLテーブル形式
+- `list`: Markdownの箇条書きリスト形式（`- 項目`）
+- `ordered-list`: Markdownの順序付きリスト形式（`1. 項目`）
 
 ### 出力形式
-- `html`: HTMLテーブル形式
+- `json`: JSON形式の2次元配列
 - `csv`: CSV（カンマ区切り）形式
 - `tsv`: TSV（タブ区切り）形式
-- `json`: JSON形式の2次元配列
+- `html`: HTMLテーブル形式
+- `list`: Markdownの箇条書きリスト形式（`- 項目`）
+- `ordered-list`: Markdownの順序付きリスト形式（`1. 項目`）
 
 ## インストール
 
@@ -115,6 +119,76 @@ go run ./cmd/cli/data-converter -input-format=csv -output-format=json -input='"�
 [["名前","年齢"],["田中","25"],["佐藤","30"]]
 ```
 
+### 7. 箇条書きリストをHTMLテーブルに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=list -output-format=html -input='- 項目1
+- 項目2
+- 項目3'
+```
+
+出力:
+```html
+<table>
+<thead>
+<tr><th>項目</th></tr>
+</thead>
+<tbody>
+<tr><td>項目1</td></tr>
+<tr><td>項目2</td></tr>
+<tr><td>項目3</td></tr>
+</tbody>
+</table>
+```
+
+### 8. 順序付きリストをCSVに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=ordered-list -output-format=csv -input='1. 項目1
+2. 項目2
+3. 項目3'
+```
+
+出力:
+```csv
+"番号","項目"
+"1","項目1"
+"2","項目2"
+"3","項目3"
+```
+
+### 9. HTMLテーブルを箇条書きリストに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=html -output-format=list -input='<table>
+<tr><th>項目</th></tr>
+<tr><td>項目1</td></tr>
+<tr><td>項目2</td></tr>
+</table>'
+```
+
+出力:
+```
+- 項目1
+- 項目2
+```
+
+### 10. CSVを順序付きリストに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=csv -output-format=ordered-list -input='"項目"
+"項目1"
+"項目2"
+"項目3"'
+```
+
+出力:
+```
+1. 項目1
+2. 項目2
+3. 項目3
+```
+
 ## 機能詳細
 
 ### HTML変換の特徴
@@ -141,6 +215,17 @@ go run ./cmd/cli/data-converter -input-format=csv -output-format=json -input='"�
 - 2次元配列形式での入出力をサポートします
 - 文字列以外の値も適切に処理されます
 
+### Markdownリスト変換の特徴
+
+#### 箇条書きリスト（list）
+- `- 項目` または `* 項目` 形式をサポート
+- テーブルから変換する場合、1列なら単純なリスト、複数列なら「項目名: 値」形式
+
+#### 順序付きリスト（ordered-list）
+- `1. 項目` 形式をサポート
+- 番号は連続している必要があります
+- テーブルから変換する場合、1列なら単純なリスト、複数列なら「項目名: 値」形式
+
 ## エラーハンドリング
 
 - 必須パラメータの不足
@@ -158,7 +243,8 @@ internal/data_converter/
 ├── parsers/data_parser.go             # 入力データ解析
 ├── converters/                        # 変換処理
 │   ├── html_converter.go              # HTML変換
-│   └── csv_converter.go               # CSV/TSV変換
+│   ├── csv_converter.go               # CSV/TSV変換
+│   └── markdown_converter.go          # Markdownリスト変換
 └── usecases/services.go               # ビジネスロジック
 ```
 
@@ -169,15 +255,33 @@ internal/data_converter/
 | json → html       | ✅      |
 | json → csv        | ✅      |
 | json → tsv        | ✅      |
+| json → list       | ✅      |
+| json → ordered-list | ✅    |
 | csv → html        | ✅      |
 | csv → json        | ✅      |
 | csv → tsv         | ✅      |
+| csv → list        | ✅      |
+| csv → ordered-list | ✅     |
 | tsv → html        | ✅      |
 | tsv → json        | ✅      |
 | tsv → csv         | ✅      |
+| tsv → list        | ✅      |
+| tsv → ordered-list | ✅     |
 | html → json       | ✅      |
 | html → csv        | ✅      |
 | html → tsv        | ✅      |
+| html → list       | ✅      |
+| html → ordered-list | ✅    |
+| list → html       | ✅      |
+| list → csv        | ✅      |
+| list → tsv        | ✅      |
+| list → json       | ✅      |
+| list → ordered-list | ✅    |
+| ordered-list → html | ✅    |
+| ordered-list → csv | ✅     |
+| ordered-list → tsv | ✅     |
+| ordered-list → json | ✅    |
+| ordered-list → list | ✅    |
 
 ## ヘルプ
 

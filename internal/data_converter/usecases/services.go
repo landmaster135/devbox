@@ -12,17 +12,19 @@ import (
 
 // DataConverterService はデータ変換サービス
 type DataConverterService struct {
-	parser        *parsers.DataParser
-	htmlConverter *converters.HTMLConverter
-	csvConverter  *converters.CSVConverter
+	parser            *parsers.DataParser
+	htmlConverter     *converters.HTMLConverter
+	csvConverter      *converters.CSVConverter
+	markdownConverter *converters.MarkdownConverter
 }
 
 // NewDataConverterService は新しいDataConverterServiceを作成する
 func NewDataConverterService() *DataConverterService {
 	return &DataConverterService{
-		parser:        parsers.NewDataParser(),
-		htmlConverter: converters.NewHTMLConverter(),
-		csvConverter:  converters.NewCSVConverter(),
+		parser:            parsers.NewDataParser(),
+		htmlConverter:     converters.NewHTMLConverter(),
+		csvConverter:      converters.NewCSVConverter(),
+		markdownConverter: converters.NewMarkdownConverter(),
 	}
 }
 
@@ -46,6 +48,10 @@ func (s *DataConverterService) ConvertData(inputFormat, outputFormat, input, inp
 		return s.convertToArray(data)
 	case "json":
 		return s.convertToJSON(data)
+	case "list":
+		return s.convertToList(data)
+	case "ordered-list":
+		return s.convertToOrderedList(data)
 	default:
 		return "", fmt.Errorf("未対応の出力形式です: %s", outputFormat)
 	}
@@ -80,6 +86,18 @@ func (s *DataConverterService) convertToArray(data [][]string) (string, error) {
 		return "", fmt.Errorf("array変換エラー: %v", err)
 	}
 	return string(jsonBytes), nil
+}
+
+// convertToList はデータを箇条書きリストに変換する
+func (s *DataConverterService) convertToList(data [][]string) (string, error) {
+	result := s.markdownConverter.ConvertToList(data)
+	return result, nil
+}
+
+// convertToOrderedList はデータを順序付きリストに変換する
+func (s *DataConverterService) convertToOrderedList(data [][]string) (string, error) {
+	result := s.markdownConverter.ConvertToOrderedList(data)
+	return result, nil
 }
 
 // convertToJSON はデータをJSON形式（オブジェクトの配列）に変換する
