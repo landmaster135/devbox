@@ -6,36 +6,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/grpc_request/config"
-	"github.com/landmaster135/devbox/internal/grpc_request/domain/models"
 	"github.com/stretchr/testify/assert"
+
+	config "github.com/landmaster135/devbox/internal/grpc_request/config"
+	grpcDomain "github.com/landmaster135/devbox/internal/grpc_request/domain"
+	grpcInfra "github.com/landmaster135/devbox/internal/grpc_request/infrastructure"
 )
 
 // #==============================================================#
 // ##          Mock Implementations                              ##
 // #==============================================================#
-// MockGRPCRepository はGRPCRepositoryのモック実装
-type MockGRPCRepository struct {
-	SendRequestFunc    func(ctx context.Context, request *models.GRPCRequest) (*models.GRPCResponse, error)
-	TestConnectionFunc func(ctx context.Context, serverAddress string, useTLS bool) error
-	ListServicesFunc   func(ctx context.Context, serverAddress string, useTLS bool) ([]string, error)
-}
-
-func (m *MockGRPCRepository) SendRequest(ctx context.Context, request *models.GRPCRequest) (*models.GRPCResponse, error) {
-	return m.SendRequestFunc(ctx, request)
-}
-
-func (m *MockGRPCRepository) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
-	return m.TestConnectionFunc(ctx, serverAddress, useTLS)
-}
-
-func (m *MockGRPCRepository) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
-	return m.ListServicesFunc(ctx, serverAddress, useTLS)
-}
 
 func TestNewGRPCService_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
 
 	// Act
@@ -47,7 +31,7 @@ func TestNewGRPCService_Normal(t *testing.T) {
 
 func TestGRPCService_SendRequestWithData_Normal(t *testing.T) {
 	// Arrange
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
 		Method:        "package.Service/Method",
 		Data:          map[string]interface{}{"key": "value"},
@@ -56,15 +40,15 @@ func TestGRPCService_SendRequestWithData_Normal(t *testing.T) {
 		Timeout:       30 * time.Second,
 	}
 
-	expectedResponse := &models.GRPCResponse{
+	expectedResponse := &grpcDomain.GRPCResponse{
 		Data:       map[string]interface{}{"result": "success"},
 		StatusCode: 0,
 		StatusMsg:  "OK",
 		Duration:   100 * time.Millisecond,
 	}
 
-	mockRepo := &MockGRPCRepository{
-		SendRequestFunc: func(ctx context.Context, req *models.GRPCRequest) (*models.GRPCResponse, error) {
+	mockRepo := &grpcInfra.MockGRPCRepository{
+		SendRequestFunc: func(ctx context.Context, req *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 			assert.Equal(t, request, req)
 			return expectedResponse, nil
 		},
@@ -85,7 +69,7 @@ func TestGRPCService_SendRequestWithData_WithDefaultTimeout_Normal(t *testing.T)
 	// Arrange
 	cfg := config.NewConfig()
 
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
 		Method:        "package.Service/Method",
 		Data:          map[string]interface{}{"key": "value"},
@@ -93,15 +77,15 @@ func TestGRPCService_SendRequestWithData_WithDefaultTimeout_Normal(t *testing.T)
 		Timeout:       0, // デフォルトタイムアウトを使用
 	}
 
-	expectedResponse := &models.GRPCResponse{
+	expectedResponse := &grpcDomain.GRPCResponse{
 		Data:       map[string]interface{}{"result": "success"},
 		StatusCode: 0,
 		StatusMsg:  "OK",
 		Duration:   100 * time.Millisecond,
 	}
 
-	mockRepo := &MockGRPCRepository{
-		SendRequestFunc: func(ctx context.Context, req *models.GRPCRequest) (*models.GRPCResponse, error) {
+	mockRepo := &grpcInfra.MockGRPCRepository{
+		SendRequestFunc: func(ctx context.Context, req *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 			assert.Equal(t, cfg.DefaultTimeout, req.Timeout)
 			return expectedResponse, nil
 		},
@@ -123,7 +107,7 @@ func TestGRPCService_TestConnection_Normal(t *testing.T) {
 	serverAddress := "localhost:50051"
 	useTLS := false
 
-	mockRepo := &MockGRPCRepository{
+	mockRepo := &grpcInfra.MockGRPCRepository{
 		TestConnectionFunc: func(ctx context.Context, addr string, tls bool) error {
 			assert.Equal(t, serverAddress, addr)
 			assert.Equal(t, useTLS, tls)
@@ -135,7 +119,7 @@ func TestGRPCService_TestConnection_Normal(t *testing.T) {
 	service := NewGRPCService(mockRepo, cfg)
 
 	// Act
-	err := service.TestConnection(context.Background(), serverAddress, useTLS)
+	err := service.GetRepository().TestConnection(context.Background(), serverAddress, useTLS)
 
 	// Assert
 	assert.NoError(t, err)
@@ -147,7 +131,7 @@ func TestGRPCService_ListServices_Normal(t *testing.T) {
 	useTLS := false
 	expectedServices := []string{"package.Service1", "package.Service2"}
 
-	mockRepo := &MockGRPCRepository{
+	mockRepo := &grpcInfra.MockGRPCRepository{
 		ListServicesFunc: func(ctx context.Context, addr string, tls bool) ([]string, error) {
 			assert.Equal(t, serverAddress, addr)
 			assert.Equal(t, useTLS, tls)
@@ -159,7 +143,7 @@ func TestGRPCService_ListServices_Normal(t *testing.T) {
 	service := NewGRPCService(mockRepo, cfg)
 
 	// Act
-	services, err := service.ListServices(context.Background(), serverAddress, useTLS)
+	services, err := service.GetRepository().ListServices(context.Background(), serverAddress, useTLS)
 
 	// Assert
 	assert.NoError(t, err)
@@ -168,11 +152,11 @@ func TestGRPCService_ListServices_Normal(t *testing.T) {
 
 func TestGRPCService_FormatResponse_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
 	service := NewGRPCService(mockRepo, cfg)
 
-	response := &models.GRPCResponse{
+	response := &grpcDomain.GRPCResponse{
 		Data:       map[string]interface{}{"result": "success", "count": 42},
 		Metadata:   map[string][]string{"content-type": {"application/grpc"}},
 		StatusCode: 0,
@@ -195,7 +179,7 @@ func TestGRPCService_FormatResponse_Normal(t *testing.T) {
 
 func TestGRPCService_LoadJSONFile_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
 	service := NewGRPCService(mockRepo, cfg)
 
@@ -222,11 +206,11 @@ func TestGRPCService_LoadJSONFile_Normal(t *testing.T) {
 
 func TestGRPCService_validateRequest_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
-	service := NewGRPCService(mockRepo, cfg).(*grpcService)
+	service := NewGRPCService(mockRepo, cfg).(*GRPCService)
 
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
 		Method:        "package.Service/Method",
 		Data:          map[string]interface{}{"key": "value"},
@@ -241,11 +225,11 @@ func TestGRPCService_validateRequest_Normal(t *testing.T) {
 
 func TestGRPCService_validateRequest_EmptyServerAddress(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
-	service := NewGRPCService(mockRepo, cfg).(*grpcService)
+	service := NewGRPCService(mockRepo, cfg).(*GRPCService)
 
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "",
 		Method:        "package.Service/Method",
 		Data:          map[string]interface{}{"key": "value"},
@@ -261,11 +245,11 @@ func TestGRPCService_validateRequest_EmptyServerAddress(t *testing.T) {
 
 func TestGRPCService_validateRequest_EmptyMethod(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
-	service := NewGRPCService(mockRepo, cfg).(*grpcService)
+	service := NewGRPCService(mockRepo, cfg).(*GRPCService)
 
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
 		Method:        "",
 		Data:          map[string]interface{}{"key": "value"},
@@ -281,11 +265,11 @@ func TestGRPCService_validateRequest_EmptyMethod(t *testing.T) {
 
 func TestGRPCService_validateRequest_InvalidMethodFormat(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
-	service := NewGRPCService(mockRepo, cfg).(*grpcService)
+	service := NewGRPCService(mockRepo, cfg).(*GRPCService)
 
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
 		Method:        "InvalidMethod",
 		Data:          map[string]interface{}{"key": "value"},
@@ -301,11 +285,11 @@ func TestGRPCService_validateRequest_InvalidMethodFormat(t *testing.T) {
 
 func TestGRPCService_validateRequest_InvalidServiceFormat(t *testing.T) {
 	// Arrange
-	mockRepo := &MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCRepository{}
 	cfg := config.NewConfig()
-	service := NewGRPCService(mockRepo, cfg).(*grpcService)
+	service := NewGRPCService(mockRepo, cfg).(*GRPCService)
 
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
 		Method:        "Service/Method",
 		Data:          map[string]interface{}{"key": "value"},

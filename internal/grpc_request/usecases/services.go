@@ -9,37 +9,51 @@ import (
 	"strings"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/grpc_request/config"
-	"github.com/landmaster135/devbox/internal/grpc_request/domain/models"
-	"github.com/landmaster135/devbox/internal/grpc_request/interfaces/repositories"
+	config "github.com/landmaster135/devbox/internal/grpc_request/config"
+	grpcDomain "github.com/landmaster135/devbox/internal/grpc_request/domain"
+	repositories "github.com/landmaster135/devbox/internal/grpc_request/infrastructure"
 )
 
-// GRPCService はgRPCリクエストのサービス層インターフェースです
-type GRPCService interface {
-	SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*models.GRPCResponse, error)
-	SendRequestWithData(ctx context.Context, request *models.GRPCRequest) (*models.GRPCResponse, error)
-	TestConnection(ctx context.Context, serverAddress string, useTLS bool) error
-	ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error)
-	FormatResponse(response *models.GRPCResponse) (string, error)
+// #==============================================================#
+// ##       Interfaces for DiscordClient                         ##
+// #==============================================================#
+// GRPCServiceRepository はgRPCリクエストのサービス層インターフェースです
+type GRPCServiceRepository interface {
+	GetRepository() repositories.GRPCRepository
+	GetConfig() *config.Config
+	SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error)
+	SendRequestWithData(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
+	FormatResponse(response *grpcDomain.GRPCResponse) (string, error)
 	LoadJSONFile(filePath string) (map[string]interface{}, error)
 }
 
-// grpcService はGRPCServiceの実装です
-type grpcService struct {
+// #==============================================================#
+// ##       Implementations for DiscordClient                    ##
+// #==============================================================#
+// GRPCService はGRPCServiceRepositoryの実装です
+type GRPCService struct {
 	repository repositories.GRPCRepository
 	config     *config.Config
 }
 
 // NewGRPCService は新しいgRPCサービスインスタンスを作成します
-func NewGRPCService(repo repositories.GRPCRepository, cfg *config.Config) GRPCService {
-	return &grpcService{
+func NewGRPCService(repo repositories.GRPCRepository, cfg *config.Config) GRPCServiceRepository {
+	return &GRPCService{
 		repository: repo,
 		config:     cfg,
 	}
 }
 
+func (g *GRPCService) GetRepository() repositories.GRPCRepository {
+	return g.repository
+}
+
+func (g *GRPCService) GetConfig() *config.Config {
+	return g.config
+}
+
 // SendRequest はJSONファイルを使用してgRPCリクエストを送信します
-func (s *grpcService) SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*models.GRPCResponse, error) {
+func (s *GRPCService) SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error) {
 	// JSONファイルからデータを読み込み
 	data, err := s.LoadJSONFile(jsonFile)
 	if err != nil {
@@ -47,7 +61,7 @@ func (s *grpcService) SendRequest(ctx context.Context, serverAddress, method, js
 	}
 
 	// リクエストオブジェクトを作成
-	request := &models.GRPCRequest{
+	request := &grpcDomain.GRPCRequest{
 		ServerAddress: serverAddress,
 		Method:        method,
 		Data:          data,
@@ -59,8 +73,9 @@ func (s *grpcService) SendRequest(ctx context.Context, serverAddress, method, js
 	return s.SendRequestWithData(ctx, request)
 }
 
+// TODO: これって必要なの？
 // SendRequestWithData はリクエストオブジェクトを使用してgRPCリクエストを送信します
-func (s *grpcService) SendRequestWithData(ctx context.Context, request *models.GRPCRequest) (*models.GRPCResponse, error) {
+func (s *GRPCService) SendRequestWithData(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 	// タイムアウトのデフォルト値を設定
 	if request.Timeout == 0 {
 		request.Timeout = s.config.DefaultTimeout
@@ -80,18 +95,9 @@ func (s *grpcService) SendRequestWithData(ctx context.Context, request *models.G
 	return response, nil
 }
 
-// TestConnection はgRPCサーバーへの接続をテストします
-func (s *grpcService) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
-	return s.repository.TestConnection(ctx, serverAddress, useTLS)
-}
-
-// ListServices は利用可能なサービス一覧を取得します
-func (s *grpcService) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
-	return s.repository.ListServices(ctx, serverAddress, useTLS)
-}
 
 // FormatResponse はレスポンスを整形して文字列として返します
-func (s *grpcService) FormatResponse(response *models.GRPCResponse) (string, error) {
+func (s *GRPCService) FormatResponse(response *grpcDomain.GRPCResponse) (string, error) {
 	var result strings.Builder
 
 	// ステータス情報
@@ -125,7 +131,7 @@ func (s *grpcService) FormatResponse(response *models.GRPCResponse) (string, err
 }
 
 // LoadJSONFile はJSONファイルを読み込んでmapとして返します
-func (s *grpcService) LoadJSONFile(filePath string) (map[string]interface{}, error) {
+func (s *GRPCService) LoadJSONFile(filePath string) (map[string]interface{}, error) {
 	// ファイルを開く
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -149,7 +155,7 @@ func (s *grpcService) LoadJSONFile(filePath string) (map[string]interface{}, err
 }
 
 // validateRequest はリクエストの妥当性を検証します
-func (s *grpcService) validateRequest(request *models.GRPCRequest) error {
+func (s *GRPCService) validateRequest(request *grpcDomain.GRPCRequest) error {
 	if request.ServerAddress == "" {
 		return fmt.Errorf("サーバーアドレスが指定されていません")
 	}

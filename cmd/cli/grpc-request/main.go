@@ -8,9 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/grpc_request/config"
-	"github.com/landmaster135/devbox/internal/grpc_request/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/grpc_request/usecases"
+	config "github.com/landmaster135/devbox/internal/grpc_request/config"
+	grpcInfra "github.com/landmaster135/devbox/internal/grpc_request/infrastructure"
+	usecases "github.com/landmaster135/devbox/internal/grpc_request/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します
@@ -52,14 +52,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// 依存関係の注入
 	cfg := config.NewConfig()
-	grpcRepo := repositories.NewGRPCRepository(cfg)
+	grpcRepo := grpcInfra.NewGRPCClient(cfg)
 	grpcService := usecases.NewGRPCService(grpcRepo, cfg)
 
 	ctx := context.Background()
 
 	// 接続テストモード
 	if *testConn {
-		if err := grpcService.TestConnection(ctx, *server, *useTLS); err != nil {
+		if err := grpcService.GetRepository().TestConnection(ctx, *server, *useTLS); err != nil {
 			fmt.Fprintf(stderr, "エラー: 接続テストに失敗しました: %v\n", err)
 			return exitCodeError
 		}
@@ -69,7 +69,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// サービス一覧表示モード
 	if *listServices {
-		services, err := grpcService.ListServices(ctx, *server, *useTLS)
+		services, err := grpcService.GetRepository().ListServices(ctx, *server, *useTLS)
 		if err != nil {
 			fmt.Fprintf(stderr, "エラー: サービス一覧の取得に失敗しました: %v\n", err)
 			return exitCodeError
