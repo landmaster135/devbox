@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"google.golang.org/grpc"
@@ -15,7 +16,10 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	config "github.com/landmaster135/devbox/internal/grpc_request/config"
@@ -239,9 +243,98 @@ func (r *GRPCClient) createConnection(serverAddress string, useTLS bool) (*grpc.
 
 // getMethodDescriptor はメソッドの記述子を取得します
 func (r *GRPCClient) getMethodDescriptor(ctx context.Context, client grpc_reflection_v1alpha.ServerReflectionClient, fullMethodName string) (protoreflect.ServiceDescriptor, protoreflect.MethodDescriptor, error) {
-	// この実装は簡略化されています
-	// 実際の実装では、リフレクションAPIを使用してサービスとメソッドの情報を動的に取得する必要があります
-	return nil, nil, fmt.Errorf("メソッド記述子の取得は未実装です")
+	// メソッド名を解析 (例: "weather_notificator.WeatherNotificatorService/SendWeatherNotification")
+	parts := strings.Split(fullMethodName, "/")
+	if len(parts) != 2 {
+		return nil, nil, fmt.Errorf("無効なメソッド名の形式です: %s", fullMethodName)
+	}
+
+	serviceName := parts[0]
+	methodName := parts[1]
+
+	// リフレクションストリームを作成
+	stream, err := client.ServerReflectionInfo(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("リフレクションストリームの作成に失敗しました: %w", err)
+	}
+	defer stream.CloseSend()
+
+	// サービス記述子を要求
+	req := &grpc_reflection_v1alpha.ServerReflectionRequest{
+		MessageRequest: &grpc_reflection_v1alpha.ServerReflectionRequest_FileContainingSymbol{
+			FileContainingSymbol: serviceName,
+		},
+	}
+
+	if err := stream.Send(req); err != nil {
+		return nil, nil, fmt.Errorf("サービス記述子の要求に失敗しました: %w", err)
+	}
+
+	resp, err := stream.Recv()
+	if err != nil {
+		return nil, nil, fmt.Errorf("サービス記述子の受信に失敗しました: %w", err)
+	}
+
+	// エラーレスポンスをチェック
+	if errorResp := resp.GetErrorResponse(); errorResp != nil {
+		return nil, nil, fmt.Errorf("サービス記述子の取得でエラーが発生しました: %s", errorResp.ErrorMessage)
+	}
+
+	// ファイル記述子レスポンスを取得
+	fileDescResp := resp.GetFileDescriptorResponse()
+	if fileDescResp == nil {
+		return nil, nil, fmt.Errorf("ファイル記述子レスポンスが取得できませんでした")
+	}
+
+	// ファイル記述子を解析
+	registry := &protoregistry.Files{}
+	var fileDescriptors []*descriptorpb.FileDescriptorProto
+
+	// まず全てのファイル記述子をアンマーシャル
+	for _, fdBytes := range fileDescResp.FileDescriptorProto {
+		fd := &descriptorpb.FileDescriptorProto{}
+		if err := proto.Unmarshal(fdBytes, fd); err != nil {
+			return nil, nil, fmt.Errorf("ファイル記述子のアンマーシャルに失敗しました: %w", err)
+		}
+		fileDescriptors = append(fileDescriptors, fd)
+	}
+
+	// 依存関係を考慮してファイル記述子を作成・登録
+	opts := protodesc.FileOptions{AllowUnresolvable: true}
+	for _, fd := range fileDescriptors {
+		// ファイル記述子を作成
+		fileDesc, err := opts.New(fd, registry)
+		if err != nil {
+			return nil, nil, fmt.Errorf("ファイル記述子の作成に失敗しました: %w", err)
+		}
+
+		// レジストリに登録
+		if err := registry.RegisterFile(fileDesc); err != nil {
+			return nil, nil, fmt.Errorf("ファイル記述子の登録に失敗しました: %w", err)
+		}
+	}
+
+	// サービス記述子を検索
+	serviceDesc, err := registry.FindDescriptorByName(protoreflect.FullName(serviceName))
+	if err != nil {
+		return nil, nil, fmt.Errorf("サービス記述子が見つかりません: %s", serviceName)
+	}
+
+	service, ok := serviceDesc.(protoreflect.ServiceDescriptor)
+	if !ok {
+		return nil, nil, fmt.Errorf("記述子がサービス記述子ではありません: %s", serviceName)
+	}
+
+	// メソッド記述子を検索
+	methods := service.Methods()
+	for i := 0; i < methods.Len(); i++ {
+		method := methods.Get(i)
+		if string(method.Name()) == methodName {
+			return service, method, nil
+		}
+	}
+
+	return nil, nil, fmt.Errorf("メソッドが見つかりません: %s", methodName)
 }
 
 // createRequestMessage はリクエストメッセージを作成します
