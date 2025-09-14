@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -21,10 +19,10 @@ import (
 type GRPCServiceRepository interface {
 	GetRepository() grpcInfra.GRPCClientRepository
 	GetConfig() *config.Config
+	GetFileReader() grpcInfra.FileReaderRepository
 	SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error)
 	SendRequestWithData(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
 	FormatResponse(response *grpcDomain.GRPCResponse) (string, error)
-	LoadJSONFile(filePath string) (map[string]interface{}, error)
 }
 
 // #==============================================================#
@@ -32,15 +30,17 @@ type GRPCServiceRepository interface {
 // #==============================================================#
 // GRPCService はGRPCServiceRepositoryの実装です
 type GRPCService struct {
-	client grpcInfra.GRPCClientRepository
-	config *config.Config
+	client     grpcInfra.GRPCClientRepository
+	config     *config.Config
+	fileReader grpcInfra.FileReaderRepository
 }
 
 // NewGRPCService は新しいgRPCサービスインスタンスを作成します
-func NewGRPCService(client grpcInfra.GRPCClientRepository, cfg *config.Config) GRPCServiceRepository {
+func NewGRPCService(client grpcInfra.GRPCClientRepository, cfg *config.Config, fileReader grpcInfra.FileReaderRepository) GRPCServiceRepository {
 	return &GRPCService{
-		client: client,
-		config: cfg,
+		client:     client,
+		config:     cfg,
+		fileReader: fileReader,
 	}
 }
 
@@ -52,23 +52,20 @@ func (g *GRPCService) GetConfig() *config.Config {
 	return g.config
 }
 
+func (g *GRPCService) GetFileReader() grpcInfra.FileReaderRepository {
+	return g.fileReader
+}
+
 // SendRequest はJSONファイルを使用してgRPCリクエストを送信します
 func (s *GRPCService) SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error) {
 	// JSONファイルからデータを読み込み
-	data, err := s.LoadJSONFile(jsonFile)
+	data, err := s.fileReader.LoadJSONFile(jsonFile)
 	if err != nil {
 		return nil, fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
 	}
 
 	// リクエストオブジェクトを作成
-	request := &grpcDomain.GRPCRequest{
-		ServerAddress: serverAddress,
-		Method:        method,
-		Data:          data,
-		Metadata:      metadata,
-		UseTLS:        useTLS,
-		Timeout:       timeout,
-	}
+	request := grpcDomain.NewGRPCRequest(serverAddress, method, data, metadata, useTLS, timeout)
 
 	return s.SendRequestWithData(ctx, request)
 }
@@ -127,30 +124,6 @@ func (s *GRPCService) FormatResponse(response *grpcDomain.GRPCResponse) (string,
 	}
 
 	return result.String(), nil
-}
-
-// LoadJSONFile はJSONファイルを読み込んでmapとして返します
-func (s *GRPCService) LoadJSONFile(filePath string) (map[string]interface{}, error) {
-	// ファイルを開く
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("ファイルのオープンに失敗しました: %w", err)
-	}
-	defer file.Close()
-
-	// ファイル内容を読み込み
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return nil, fmt.Errorf("ファイルの読み込みに失敗しました: %w", err)
-	}
-
-	// JSONをパース
-	var result map[string]interface{}
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil, fmt.Errorf("JSONのパースに失敗しました: %w", err)
-	}
-
-	return result, nil
 }
 
 // validateRequest はリクエストの妥当性を検証します

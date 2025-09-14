@@ -53,7 +53,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// 依存関係の注入
 	cfg := config.NewConfig()
 	grpcRepo := grpcInfra.NewGRPCClient(cfg)
-	grpcService := usecases.NewGRPCService(grpcRepo, cfg)
+	fileReader := grpcInfra.NewOSFileReader()
+	grpcService := usecases.NewGRPCService(grpcRepo, cfg, fileReader)
 
 	ctx := context.Background()
 
