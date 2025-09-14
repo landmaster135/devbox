@@ -43,11 +43,16 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	// サーバーアドレスが指定されていない場合はエラー
-	if *server == "" {
-		fmt.Fprintln(stderr, "エラー: サーバーアドレスを指定してください（-server オプション）")
-		fs.Usage()
-		return exitCodeError
+	// CLIOptionsを作成
+	options := &usecases.CLIOptions{
+		Server:       *server,
+		Method:       *method,
+		JSONFile:     *jsonFile,
+		UseTLS:       *useTLS,
+		Token:        *token,
+		Timeout:      *timeout,
+		TestConn:     *testConn,
+		ListServices: *listServices,
 	}
 
 	// 依存関係の注入
@@ -58,65 +63,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	ctx := context.Background()
 
-	// 接続テストモード
-	if *testConn {
-		if err := grpcService.GetRepository().TestConnection(ctx, *server, *useTLS); err != nil {
-			fmt.Fprintf(stderr, "エラー: 接続テストに失敗しました: %v\n", err)
-			return exitCodeError
-		}
-		fmt.Fprintln(stdout, "接続テスト成功")
-		return exitCodeOK
-	}
-
-	// サービス一覧表示モード
-	if *listServices {
-		services, err := grpcService.GetRepository().ListServices(ctx, *server, *useTLS)
-		if err != nil {
-			fmt.Fprintf(stderr, "エラー: サービス一覧の取得に失敗しました: %v\n", err)
-			return exitCodeError
-		}
-
-		fmt.Fprintln(stdout, "利用可能なサービス:")
-		for _, service := range services {
-			fmt.Fprintf(stdout, "  %s\n", service)
-		}
-		return exitCodeOK
-	}
-
-	// 通常のリクエストモード
-	if *method == "" {
-		fmt.Fprintln(stderr, "エラー: メソッドを指定してください（-method オプション）")
-		fs.Usage()
-		return exitCodeError
-	}
-
-	if *jsonFile == "" {
-		fmt.Fprintln(stderr, "エラー: リクエストデータのJSONファイルを指定してください（-data オプション）")
-		fs.Usage()
-		return exitCodeError
-	}
-
-	// メタデータの準備
-	metadata := make(map[string]string)
-	if *token != "" {
-		metadata["authorization"] = "Bearer " + *token
-	}
-
-	// gRPCリクエストを送信
-	response, err := grpcService.SendRequest(ctx, *server, *method, *jsonFile, metadata, *useTLS, *timeout)
+	// ExecuteCLICommandを呼び出し
+	result, err := grpcService.ExecuteCLICommand(ctx, options)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		return exitCodeError
 	}
 
-	// レスポンスを整形して表示
-	formattedResponse, err := grpcService.FormatResponse(response)
-	if err != nil {
-		fmt.Fprintf(stderr, "エラー: レスポンスの整形に失敗しました: %v\n", err)
-		return exitCodeError
-	}
-
-	fmt.Fprintln(stdout, formattedResponse)
+	fmt.Fprintln(stdout, result)
 	return exitCodeOK
 }
 
