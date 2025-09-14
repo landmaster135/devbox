@@ -6,12 +6,26 @@ import (
 
 // GRPCRequest はgRPCリクエストの情報を表します
 type GRPCRequest struct {
-	ServerAddress string            `json:"server_address"`
-	Method        string            `json:"method"`
+	ServerAddress string                 `json:"server_address"`
+	Method        string                 `json:"method"`
 	Data          map[string]interface{} `json:"data"`
-	Metadata      map[string]string `json:"metadata"`
-	UseTLS        bool              `json:"use_tls"`
-	Timeout       time.Duration     `json:"timeout"`
+	Metadata      map[string]string      `json:"metadata"`
+	UseTLS        bool                   `json:"use_tls"`
+	Timeout       time.Duration          `json:"timeout"`
+}
+
+func NewGRPCRequest(serverAddress, method string, data map[string]any, metadata map[string]string, useTLS bool, timeout time.Duration) *GRPCRequest {
+	// リクエストオブジェクトを作成
+	request := &GRPCRequest{
+		ServerAddress: serverAddress,
+		Method:        method,
+		Data:          data,
+		Metadata:      metadata,
+		UseTLS:        useTLS,
+		Timeout:       timeout,
+	}
+
+	return request
 }
 
 // GRPCResponse はgRPCレスポンスの情報を表します
