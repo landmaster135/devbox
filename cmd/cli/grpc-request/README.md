@@ -27,7 +27,7 @@ go build -o grpc-request ./cmd/cli/grpc-request
 ### 基本的な使用方法
 
 ```bash
-grpc-request [オプション]
+go run ./cmd/cli/grpc-request [オプション]
 ```
 
 ### オプション
@@ -50,37 +50,37 @@ grpc-request [オプション]
 ### 1. 接続テスト
 
 ```bash
-grpc-request -server localhost:50051 -test
+go run ./cmd/cli/grpc-request -server localhost:50051 -test
 ```
 
 ### 2. サービス一覧表示
 
 ```bash
-grpc-request -server localhost:50051 -list
+go run ./cmd/cli/grpc-request -server localhost:50051 -list
 ```
 
 ### 3. 基本的なgRPCリクエスト送信
 
 ```bash
-grpc-request -server localhost:50051 -method package.Service/Method -data request.json
+go run ./cmd/cli/grpc-request -server localhost:50051 -method package.Service/Method -data request.json
 ```
 
 ### 4. TLS接続でリクエスト送信
 
 ```bash
-grpc-request -server example.com:443 -method package.Service/Method -data request.json -tls
+go run ./cmd/cli/grpc-request -server example.com:443 -method package.Service/Method -data request.json -tls
 ```
 
 ### 5. 認証トークン付きでリクエスト送信
 
 ```bash
-grpc-request -server localhost:50051 -method package.Service/Method -data request.json -token your_token
+go run ./cmd/cli/grpc-request -server localhost:50051 -method package.Service/Method -data request.json -token your_token
 ```
 
 ### 6. タイムアウト設定付きでリクエスト送信
 
 ```bash
-grpc-request -server localhost:50051 -method package.Service/Method -data request.json -timeout 60s
+go run ./cmd/cli/grpc-request -server localhost:50051 -method package.Service/Method -data request.json -timeout 60s
 ```
 
 ## リクエストデータファイル

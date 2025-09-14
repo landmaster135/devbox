@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package weather_notificator;
+
+option go_package = "github.com/landmaster135/devbox/cmd/grpc/proto/weather_notificator";
+
+// WeatherNotificatorService は天気通知サービスを定義します
+service WeatherNotificatorService {
+  // SendWeatherNotification は天気予報をDiscordに通知します
+  rpc SendWeatherNotification(WeatherNotificationRequest) returns (WeatherNotificationResponse);
+}
+
+// WeatherNotificationRequest は天気通知リクエストを定義します
+message WeatherNotificationRequest {
+  string api_key = 1;     // OpenWeatherMap API キー
+  string city = 2;        // 都市名
+  int32 max_days = 3;     // 最大日数
+  string webhook_url = 4; // Discord Webhook URL
+}
+
+// WeatherNotificationResponse は天気通知レスポンスを定義します
+message WeatherNotificationResponse {
+  bool success = 1;       // 成功フラグ
+  string message = 2;     // メッセージ
+  string error = 3;       // エラーメッセージ（エラー時のみ）
+}
