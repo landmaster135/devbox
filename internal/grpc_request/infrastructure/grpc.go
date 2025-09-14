@@ -29,22 +29,22 @@ import (
 // #==============================================================#
 // ##       Mocks for HTTPClient                                 ##
 // #==============================================================#
-// MockGRPCRepository はGRPCRepositoryのモック実装
-type MockGRPCRepository struct {
+// MockGRPCClient はGRPCClientのモック実装
+type MockGRPCClient struct {
 	SendRequestFunc    func(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
 	TestConnectionFunc func(ctx context.Context, serverAddress string, useTLS bool) error
 	ListServicesFunc   func(ctx context.Context, serverAddress string, useTLS bool) ([]string, error)
 }
 
-func (m *MockGRPCRepository) SendRequest(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
+func (m *MockGRPCClient) SendRequest(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 	return m.SendRequestFunc(ctx, request)
 }
 
-func (m *MockGRPCRepository) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
+func (m *MockGRPCClient) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
 	return m.TestConnectionFunc(ctx, serverAddress, useTLS)
 }
 
-func (m *MockGRPCRepository) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
+func (m *MockGRPCClient) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
 	return m.ListServicesFunc(ctx, serverAddress, useTLS)
 }
 

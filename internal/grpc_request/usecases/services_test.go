@@ -18,7 +18,7 @@ import (
 
 func TestNewGRPCService_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 
@@ -47,7 +47,7 @@ func TestGRPCService_SendRequestWithData_Normal(t *testing.T) {
 		Duration:   100 * time.Millisecond,
 	}
 
-	mockRepo := &grpcInfra.MockGRPCRepository{
+	mockRepo := &grpcInfra.MockGRPCClient{
 		SendRequestFunc: func(ctx context.Context, req *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 			assert.Equal(t, request, req)
 			return expectedResponse, nil
@@ -85,7 +85,7 @@ func TestGRPCService_SendRequestWithData_WithDefaultTimeout_Normal(t *testing.T)
 		Duration:   100 * time.Millisecond,
 	}
 
-	mockRepo := &grpcInfra.MockGRPCRepository{
+	mockRepo := &grpcInfra.MockGRPCClient{
 		SendRequestFunc: func(ctx context.Context, req *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 			assert.Equal(t, cfg.DefaultTimeout, req.Timeout)
 			return expectedResponse, nil
@@ -109,7 +109,7 @@ func TestGRPCService_TestConnection_Normal(t *testing.T) {
 	serverAddress := "localhost:50051"
 	useTLS := false
 
-	mockRepo := &grpcInfra.MockGRPCRepository{
+	mockRepo := &grpcInfra.MockGRPCClient{
 		TestConnectionFunc: func(ctx context.Context, addr string, tls bool) error {
 			assert.Equal(t, serverAddress, addr)
 			assert.Equal(t, useTLS, tls)
@@ -134,7 +134,7 @@ func TestGRPCService_ListServices_Normal(t *testing.T) {
 	useTLS := false
 	expectedServices := []string{"package.Service1", "package.Service2"}
 
-	mockRepo := &grpcInfra.MockGRPCRepository{
+	mockRepo := &grpcInfra.MockGRPCClient{
 		ListServicesFunc: func(ctx context.Context, addr string, tls bool) ([]string, error) {
 			assert.Equal(t, serverAddress, addr)
 			assert.Equal(t, useTLS, tls)
@@ -156,7 +156,7 @@ func TestGRPCService_ListServices_Normal(t *testing.T) {
 
 func TestGRPCService_FormatResponse_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 	service := NewGRPCService(mockRepo, cfg, mockFileReader)
@@ -190,7 +190,7 @@ func TestGRPCService_LoadJSONFile_Normal(t *testing.T) {
 		"nested": map[string]interface{}{"inner": "data"},
 	}
 
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{
 		LoadJSONFileFunc: func(filePath string) (map[string]interface{}, error) {
@@ -210,7 +210,7 @@ func TestGRPCService_LoadJSONFile_Normal(t *testing.T) {
 
 func TestGRPCService_validateRequest_Normal(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
@@ -230,7 +230,7 @@ func TestGRPCService_validateRequest_Normal(t *testing.T) {
 
 func TestGRPCService_validateRequest_EmptyServerAddress(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
@@ -251,7 +251,7 @@ func TestGRPCService_validateRequest_EmptyServerAddress(t *testing.T) {
 
 func TestGRPCService_validateRequest_EmptyMethod(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
@@ -272,7 +272,7 @@ func TestGRPCService_validateRequest_EmptyMethod(t *testing.T) {
 
 func TestGRPCService_validateRequest_InvalidMethodFormat(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
@@ -293,7 +293,7 @@ func TestGRPCService_validateRequest_InvalidMethodFormat(t *testing.T) {
 
 func TestGRPCService_validateRequest_InvalidServiceFormat(t *testing.T) {
 	// Arrange
-	mockRepo := &grpcInfra.MockGRPCRepository{}
+	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
 	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)

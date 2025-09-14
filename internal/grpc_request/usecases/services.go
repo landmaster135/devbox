@@ -23,6 +23,7 @@ type GRPCServiceRepository interface {
 	SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error)
 	SendRequestWithData(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
 	FormatResponse(response *grpcDomain.GRPCResponse) (string, error)
+	ExecuteCLICommand(ctx context.Context, options *CLIOptions) (string, error)
 }
 
 // #==============================================================#
@@ -152,4 +153,51 @@ func (s *GRPCService) validateRequest(request *grpcDomain.GRPCRequest) error {
 	}
 
 	return nil
+}
+
+// ExecuteCLICommand はCLIオプションに基づいてコマンドを実行します
+func (s *GRPCService) ExecuteCLICommand(ctx context.Context, options *CLIOptions) (string, error) {
+	// オプションの検証
+	if err := options.Validate(); err != nil {
+		return "", err
+	}
+
+	// 接続テストモード
+	if options.TestConn {
+		if err := s.client.TestConnection(ctx, options.Server, options.UseTLS); err != nil {
+			return "", fmt.Errorf("接続テストに失敗しました: %w", err)
+		}
+		return "接続テスト成功", nil
+	}
+
+	// サービス一覧表示モード
+	if options.ListServices {
+		services, err := s.client.ListServices(ctx, options.Server, options.UseTLS)
+		if err != nil {
+			return "", fmt.Errorf("サービス一覧の取得に失敗しました: %w", err)
+		}
+
+		var result strings.Builder
+		result.WriteString("利用可能なサービス:\n")
+		for _, service := range services {
+			result.WriteString(fmt.Sprintf("  %s\n", service))
+		}
+		return result.String(), nil
+	}
+
+	// 通常のリクエストモード
+	// メタデータの準備
+	metadata := make(map[string]string)
+	if options.Token != "" {
+		metadata["authorization"] = "Bearer " + options.Token
+	}
+
+	// gRPCリクエストを送信
+	response, err := s.SendRequest(ctx, options.Server, options.Method, options.JSONFile, metadata, options.UseTLS, options.Timeout)
+	if err != nil {
+		return "", err
+	}
+
+	// レスポンスを整形して返す
+	return s.FormatResponse(response)
 }
