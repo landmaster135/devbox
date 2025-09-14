@@ -41,7 +41,7 @@ go tool dist list
 ## Git Hooks
 Set Git hooks with built binary files
 ```bash
-./scripts/setup-git-pre-commit-hooks.sh
+./pkg/bash/setup-git-pre-commit-hooks.sh
 ```
 
 ## RESTful API
@@ -118,6 +118,10 @@ graph TD
 - **scripts/**: ビルドとデプロイメント自動化スクリプト群。各ツールの個別ビルドスクリプトと統合ビルドスクリプトを提供します。
 
 - **util/**: 全ツール共通のユーティリティ機能。ロギング、共通処理、ヘルパー関数を提供します。
+
+# Service Implementing Status
+
+[Here](./docs/service_implementation_status.md)
 
 # License
 MIT License

@@ -20,15 +20,14 @@ func TestGRPCService_ExecuteCLICommand_TestConnection_Normal(t *testing.T) {
 	}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
-
 	options := &CLIOptions{
 		Server:   "localhost:50051",
 		TestConn: true,
 	}
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
-	result, err := service.ExecuteCLICommand(context.Background(), options)
+	result, err := service.ExecuteCLICommand(context.Background())
 
 	// Assert
 	if err != nil {
@@ -51,15 +50,14 @@ func TestGRPCService_ExecuteCLICommand_ListServices_Normal(t *testing.T) {
 	}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
-
 	options := &CLIOptions{
 		Server:       "localhost:50051",
 		ListServices: true,
 	}
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
-	result, err := service.ExecuteCLICommand(context.Background(), options)
+	result, err := service.ExecuteCLICommand(context.Background())
 
 	// Assert
 	if err != nil {
@@ -101,8 +99,6 @@ func TestGRPCService_ExecuteCLICommand_SendRequest_Normal(t *testing.T) {
 			return mockData, nil
 		},
 	}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
-
 	options := &CLIOptions{
 		Server:   "localhost:50051",
 		Method:   "test.Service/TestMethod",
@@ -110,9 +106,10 @@ func TestGRPCService_ExecuteCLICommand_SendRequest_Normal(t *testing.T) {
 		Token:    "test-token",
 		Timeout:  30 * time.Second,
 	}
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
-	result, err := service.ExecuteCLICommand(context.Background(), options)
+	result, err := service.ExecuteCLICommand(context.Background())
 
 	// Assert
 	if err != nil {
@@ -137,14 +134,13 @@ func TestGRPCService_ExecuteCLICommand_ValidationError(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
-
 	options := &CLIOptions{
 		// Server is empty, should cause validation error
 	}
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
-	result, err := service.ExecuteCLICommand(context.Background(), options)
+	result, err := service.ExecuteCLICommand(context.Background())
 
 	// Assert
 	if err == nil {
@@ -173,15 +169,14 @@ func TestGRPCService_ExecuteCLICommand_TestConnectionError(t *testing.T) {
 	}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
-
 	options := &CLIOptions{
 		Server:   "localhost:50051",
 		TestConn: true,
 	}
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
-	result, err := service.ExecuteCLICommand(context.Background(), options)
+	result, err := service.ExecuteCLICommand(context.Background())
 
 	// Assert
 	if err == nil {

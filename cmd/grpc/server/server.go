@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	weatherHandler "github.com/landmaster135/devbox/cmd/grpc/handlers/weather_notificator"
-	pb "github.com/landmaster135/devbox/cmd/grpc/proto/weather_notificator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -36,13 +34,15 @@ func NewGRPCServer() *GRPCServer {
 	}
 
 	// gRPCサーバーを作成
-	grpcServer.server = grpc.NewServer()
+	s := grpc.NewServer()
 
-	// サービスを登録
-	grpcServer.registerServices()
+	// ルーターを作成
+	setupRouter(s)
 
 	// リフレクションを有効化（開発用）
-	reflection.Register(grpcServer.server)
+	reflection.Register(s)
+
+	grpcServer.server = s
 
 	return grpcServer
 }
@@ -66,16 +66,6 @@ func getPort() int {
 	}
 
 	return port
-}
-
-// registerServices はgRPCサービスを登録する
-func (s *GRPCServer) registerServices() {
-	// WeatherNotificatorServiceを登録
-	weatherNotificatorHandler := weatherHandler.NewWeatherNotificatorHandler()
-	pb.RegisterWeatherNotificatorServiceServer(s.server, weatherNotificatorHandler)
-
-	log.Println("gRPCサービスが登録されました:")
-	log.Println("  - WeatherNotificatorService")
 }
 
 // GracefulShutdown はグレースフルシャットダウンを実行する

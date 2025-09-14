@@ -17,6 +17,8 @@ func setupRouter() *http.ServeMux {
 	// ルートの設定
 	mux.HandleFunc("/weather-notification", weatherNotificationHandler.HandleWeatherNotification)
 
+	// 以降、ここにルートを登録
+
 	// ヘルスチェックエンドポイント
 	mux.HandleFunc("/health", handleHealth)
 
