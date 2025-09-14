@@ -11,7 +11,7 @@ import (
 
 	config "github.com/landmaster135/devbox/internal/grpc_request/config"
 	grpcDomain "github.com/landmaster135/devbox/internal/grpc_request/domain"
-	repositories "github.com/landmaster135/devbox/internal/grpc_request/infrastructure"
+	grpcInfra "github.com/landmaster135/devbox/internal/grpc_request/infrastructure"
 )
 
 // #==============================================================#
@@ -19,7 +19,7 @@ import (
 // #==============================================================#
 // GRPCServiceRepository はgRPCリクエストのサービス層インターフェースです
 type GRPCServiceRepository interface {
-	GetRepository() repositories.GRPCRepository
+	GetRepository() grpcInfra.GRPCClientRepository
 	GetConfig() *config.Config
 	SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error)
 	SendRequestWithData(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
@@ -32,20 +32,20 @@ type GRPCServiceRepository interface {
 // #==============================================================#
 // GRPCService はGRPCServiceRepositoryの実装です
 type GRPCService struct {
-	repository repositories.GRPCRepository
-	config     *config.Config
+	client grpcInfra.GRPCClientRepository
+	config *config.Config
 }
 
 // NewGRPCService は新しいgRPCサービスインスタンスを作成します
-func NewGRPCService(repo repositories.GRPCRepository, cfg *config.Config) GRPCServiceRepository {
+func NewGRPCService(client grpcInfra.GRPCClientRepository, cfg *config.Config) GRPCServiceRepository {
 	return &GRPCService{
-		repository: repo,
-		config:     cfg,
+		client: client,
+		config: cfg,
 	}
 }
 
-func (g *GRPCService) GetRepository() repositories.GRPCRepository {
-	return g.repository
+func (g *GRPCService) GetRepository() grpcInfra.GRPCClientRepository {
+	return g.client
 }
 
 func (g *GRPCService) GetConfig() *config.Config {
@@ -87,14 +87,13 @@ func (s *GRPCService) SendRequestWithData(ctx context.Context, request *grpcDoma
 	}
 
 	// リポジトリを通じてリクエストを送信
-	response, err := s.repository.SendRequest(ctx, request)
+	response, err := s.client.SendRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("gRPCリクエストの送信に失敗しました: %w", err)
 	}
 
 	return response, nil
 }
-
 
 // FormatResponse はレスポンスを整形して文字列として返します
 func (s *GRPCService) FormatResponse(response *grpcDomain.GRPCResponse) (string, error) {
