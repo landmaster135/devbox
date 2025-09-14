@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
+	"google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -51,8 +51,8 @@ func (m *MockGRPCRepository) ListServices(ctx context.Context, serverAddress str
 // #==============================================================#
 // ##       Interfaces for DiscordClient                         ##
 // #==============================================================#
-// GRPCRepository はgRPCリクエストを実行するリポジトリのインターフェースです
-type GRPCRepository interface {
+// GRPCClientRepository はgRPCリクエストを実行するリポジトリのインターフェースです
+type GRPCClientRepository interface {
 	SendRequest(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
 	TestConnection(ctx context.Context, serverAddress string, useTLS bool) error
 	ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error)
@@ -67,7 +67,7 @@ type GRPCClient struct {
 }
 
 // NewGRPCClient は新しいgRPCクライアントインスタンスを作成します
-func NewGRPCClient(cfg *config.Config) GRPCRepository {
+func NewGRPCClient(cfg *config.Config) GRPCClientRepository {
 	return &GRPCClient{
 		config: cfg,
 	}
@@ -98,7 +98,7 @@ func (r *GRPCClient) SendRequest(ctx context.Context, request *grpcDomain.GRPCRe
 	}
 
 	// リフレクションクライアントを作成
-	reflectionClient := grpc_reflection_v1alpha.NewServerReflectionClient(conn)
+	reflectionClient := grpc_reflection_v1.NewServerReflectionClient(conn)
 
 	// サービスとメソッドの情報を取得
 	serviceDesc, methodDesc, err := r.getMethodDescriptor(ctx, reflectionClient, request.Method)
@@ -163,7 +163,7 @@ func (r *GRPCClient) TestConnection(ctx context.Context, serverAddress string, u
 	defer conn.Close()
 
 	// 簡単な接続テスト（リフレクションサービスの呼び出し）
-	reflectionClient := grpc_reflection_v1alpha.NewServerReflectionClient(conn)
+	reflectionClient := grpc_reflection_v1.NewServerReflectionClient(conn)
 	stream, err := reflectionClient.ServerReflectionInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("リフレクションサービスへの接続に失敗しました: %w", err)
@@ -181,7 +181,7 @@ func (r *GRPCClient) ListServices(ctx context.Context, serverAddress string, use
 	}
 	defer conn.Close()
 
-	reflectionClient := grpc_reflection_v1alpha.NewServerReflectionClient(conn)
+	reflectionClient := grpc_reflection_v1.NewServerReflectionClient(conn)
 	stream, err := reflectionClient.ServerReflectionInfo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("リフレクションサービスへの接続に失敗しました: %w", err)
@@ -189,8 +189,8 @@ func (r *GRPCClient) ListServices(ctx context.Context, serverAddress string, use
 	defer stream.CloseSend()
 
 	// サービス一覧を要求
-	req := &grpc_reflection_v1alpha.ServerReflectionRequest{
-		MessageRequest: &grpc_reflection_v1alpha.ServerReflectionRequest_ListServices{
+	req := &grpc_reflection_v1.ServerReflectionRequest{
+		MessageRequest: &grpc_reflection_v1.ServerReflectionRequest_ListServices{
 			ListServices: "",
 		},
 	}
@@ -242,7 +242,7 @@ func (r *GRPCClient) createConnection(serverAddress string, useTLS bool) (*grpc.
 }
 
 // getMethodDescriptor はメソッドの記述子を取得します
-func (r *GRPCClient) getMethodDescriptor(ctx context.Context, client grpc_reflection_v1alpha.ServerReflectionClient, fullMethodName string) (protoreflect.ServiceDescriptor, protoreflect.MethodDescriptor, error) {
+func (r *GRPCClient) getMethodDescriptor(ctx context.Context, client grpc_reflection_v1.ServerReflectionClient, fullMethodName string) (protoreflect.ServiceDescriptor, protoreflect.MethodDescriptor, error) {
 	// メソッド名を解析 (例: "weather_notificator.WeatherNotificatorService/SendWeatherNotification")
 	parts := strings.Split(fullMethodName, "/")
 	if len(parts) != 2 {
@@ -260,8 +260,8 @@ func (r *GRPCClient) getMethodDescriptor(ctx context.Context, client grpc_reflec
 	defer stream.CloseSend()
 
 	// サービス記述子を要求
-	req := &grpc_reflection_v1alpha.ServerReflectionRequest{
-		MessageRequest: &grpc_reflection_v1alpha.ServerReflectionRequest_FileContainingSymbol{
+	req := &grpc_reflection_v1.ServerReflectionRequest{
+		MessageRequest: &grpc_reflection_v1.ServerReflectionRequest_FileContainingSymbol{
 			FileContainingSymbol: serviceName,
 		},
 	}
@@ -338,7 +338,7 @@ func (r *GRPCClient) getMethodDescriptor(ctx context.Context, client grpc_reflec
 }
 
 // createRequestMessage はリクエストメッセージを作成します
-func (r *GRPCClient) createRequestMessage(msgDesc protoreflect.MessageDescriptor, data map[string]interface{}) (proto.Message, error) {
+func (r *GRPCClient) createRequestMessage(msgDesc protoreflect.MessageDescriptor, data map[string]any) (proto.Message, error) {
 	msg := dynamicpb.NewMessage(msgDesc)
 
 	// JSONデータをprotobufメッセージに変換
@@ -356,13 +356,13 @@ func (r *GRPCClient) createRequestMessage(msgDesc protoreflect.MessageDescriptor
 }
 
 // messageToMap はprotobufメッセージをmapに変換します
-func (r *GRPCClient) messageToMap(msg proto.Message) (map[string]interface{}, error) {
+func (r *GRPCClient) messageToMap(msg proto.Message) (map[string]any, error) {
 	jsonData, err := protojson.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("protobufメッセージのマーシャルに失敗しました: %w", err)
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	err = json.Unmarshal(jsonData, &result)
 	if err != nil {
 		return nil, fmt.Errorf("JSONデータのアンマーシャルに失敗しました: %w", err)
