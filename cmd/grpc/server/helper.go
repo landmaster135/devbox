@@ -56,10 +56,8 @@ func LogServerInfo(serverType string, address string, additionalInfo map[string]
 	log.Printf("=== %s サーバー情報 ===", serverType)
 	log.Printf("アドレス: %s", address)
 
-	if additionalInfo != nil {
-		for key, value := range additionalInfo {
-			log.Printf("%s: %s", key, value)
-		}
+	for key, value := range additionalInfo {
+		log.Printf("%s: %s", key, value)
 	}
 
 	log.Printf("========================")

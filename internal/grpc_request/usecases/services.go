@@ -20,10 +20,11 @@ type GRPCServiceRepository interface {
 	GetRepository() grpcInfra.GRPCClientRepository
 	GetConfig() *config.Config
 	GetFileReader() grpcInfra.FileReaderRepository
+	GetOptions() *CLIOptions
 	SendRequest(ctx context.Context, serverAddress, method, jsonFile string, metadata map[string]string, useTLS bool, timeout time.Duration) (*grpcDomain.GRPCResponse, error)
 	SendRequestWithData(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
 	FormatResponse(response *grpcDomain.GRPCResponse) (string, error)
-	ExecuteCLICommand(ctx context.Context, options *CLIOptions) (string, error)
+	ExecuteCLICommand(ctx context.Context) (string, error)
 }
 
 // #==============================================================#
@@ -34,14 +35,16 @@ type GRPCService struct {
 	client     grpcInfra.GRPCClientRepository
 	config     *config.Config
 	fileReader grpcInfra.FileReaderRepository
+	options    *CLIOptions
 }
 
 // NewGRPCService は新しいgRPCサービスインスタンスを作成します
-func NewGRPCService(client grpcInfra.GRPCClientRepository, cfg *config.Config, fileReader grpcInfra.FileReaderRepository) GRPCServiceRepository {
+func NewGRPCService(client grpcInfra.GRPCClientRepository, cfg *config.Config, fileReader grpcInfra.FileReaderRepository, options *CLIOptions) GRPCServiceRepository {
 	return &GRPCService{
 		client:     client,
 		config:     cfg,
 		fileReader: fileReader,
+		options:    options,
 	}
 }
 
@@ -55,6 +58,10 @@ func (g *GRPCService) GetConfig() *config.Config {
 
 func (g *GRPCService) GetFileReader() grpcInfra.FileReaderRepository {
 	return g.fileReader
+}
+
+func (g *GRPCService) GetOptions() *CLIOptions {
+	return g.options
 }
 
 // SendRequest はJSONファイルを使用してgRPCリクエストを送信します
@@ -156,8 +163,9 @@ func (s *GRPCService) validateRequest(request *grpcDomain.GRPCRequest) error {
 }
 
 // ExecuteCLICommand はCLIオプションに基づいてコマンドを実行します
-func (s *GRPCService) ExecuteCLICommand(ctx context.Context, options *CLIOptions) (string, error) {
+func (s *GRPCService) ExecuteCLICommand(ctx context.Context) (string, error) {
 	// オプションの検証
+	options := s.options
 	if err := options.Validate(); err != nil {
 		return "", err
 	}

@@ -6,7 +6,7 @@ import (
 	grpcServer "github.com/landmaster135/devbox/cmd/grpc/server"
 )
 
-func main() {
+func RunServer() {
 	log.Println("Weather Notification gRPCサーバーを初期化しています...")
 
 	// サーバーを作成
@@ -17,4 +17,8 @@ func main() {
 
 	// サーバーを開始
 	server.Start()
+}
+
+func main() {
+	RunServer()
 }

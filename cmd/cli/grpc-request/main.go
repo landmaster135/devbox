@@ -59,12 +59,12 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	cfg := config.NewConfig()
 	grpcRepo := grpcInfra.NewGRPCClient(cfg)
 	fileReader := grpcInfra.NewOSFileReader()
-	grpcService := usecases.NewGRPCService(grpcRepo, cfg, fileReader)
+	grpcService := usecases.NewGRPCService(grpcRepo, cfg, fileReader, options)
 
 	ctx := context.Background()
 
 	// ExecuteCLICommandを呼び出し
-	result, err := grpcService.ExecuteCLICommand(ctx, options)
+	result, err := grpcService.ExecuteCLICommand(ctx)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		return exitCodeError

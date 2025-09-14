@@ -21,9 +21,10 @@ func TestNewGRPCService_Normal(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
+	options := NewCLIOptions()
 
 	// Act
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Assert
 	assert.NotNil(t, service)
@@ -56,7 +57,8 @@ func TestGRPCService_SendRequestWithData_Normal(t *testing.T) {
 
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
 	response, err := service.SendRequestWithData(context.Background(), request)
@@ -93,7 +95,8 @@ func TestGRPCService_SendRequestWithData_WithDefaultTimeout_Normal(t *testing.T)
 	}
 
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
 	response, err := service.SendRequestWithData(context.Background(), request)
@@ -119,7 +122,8 @@ func TestGRPCService_TestConnection_Normal(t *testing.T) {
 
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
 	err := service.GetRepository().TestConnection(context.Background(), serverAddress, useTLS)
@@ -144,7 +148,8 @@ func TestGRPCService_ListServices_Normal(t *testing.T) {
 
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
 	services, err := service.GetRepository().ListServices(context.Background(), serverAddress, useTLS)
@@ -159,7 +164,8 @@ func TestGRPCService_FormatResponse_Normal(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	response := &grpcDomain.GRPCResponse{
 		Data:       map[string]interface{}{"result": "success", "count": 42},
@@ -198,7 +204,8 @@ func TestGRPCService_LoadJSONFile_Normal(t *testing.T) {
 			return expectedData, nil
 		},
 	}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options)
 
 	// Act
 	result, err := service.GetFileReader().LoadJSONFile("test.json")
@@ -213,7 +220,8 @@ func TestGRPCService_validateRequest_Normal(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options).(*GRPCService)
 
 	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
@@ -233,7 +241,8 @@ func TestGRPCService_validateRequest_EmptyServerAddress(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options).(*GRPCService)
 
 	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "",
@@ -254,7 +263,8 @@ func TestGRPCService_validateRequest_EmptyMethod(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options).(*GRPCService)
 
 	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
@@ -275,7 +285,8 @@ func TestGRPCService_validateRequest_InvalidMethodFormat(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options).(*GRPCService)
 
 	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
@@ -296,7 +307,8 @@ func TestGRPCService_validateRequest_InvalidServiceFormat(t *testing.T) {
 	mockRepo := &grpcInfra.MockGRPCClient{}
 	cfg := config.NewConfig()
 	mockFileReader := &grpcInfra.MockFileReader{}
-	service := NewGRPCService(mockRepo, cfg, mockFileReader).(*GRPCService)
+	options := NewCLIOptions()
+	service := NewGRPCService(mockRepo, cfg, mockFileReader, options).(*GRPCService)
 
 	request := &grpcDomain.GRPCRequest{
 		ServerAddress: "localhost:50051",
