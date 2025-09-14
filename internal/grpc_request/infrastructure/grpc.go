@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/grpc_request/config"
-	"github.com/landmaster135/devbox/internal/grpc_request/domain/models"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -19,29 +17,60 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
+
+	config "github.com/landmaster135/devbox/internal/grpc_request/config"
+	grpcDomain "github.com/landmaster135/devbox/internal/grpc_request/domain"
 )
 
+// #==============================================================#
+// ##       Mocks for HTTPClient                                 ##
+// #==============================================================#
+// MockGRPCRepository はGRPCRepositoryのモック実装
+type MockGRPCRepository struct {
+	SendRequestFunc    func(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
+	TestConnectionFunc func(ctx context.Context, serverAddress string, useTLS bool) error
+	ListServicesFunc   func(ctx context.Context, serverAddress string, useTLS bool) ([]string, error)
+}
+
+func (m *MockGRPCRepository) SendRequest(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
+	return m.SendRequestFunc(ctx, request)
+}
+
+func (m *MockGRPCRepository) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
+	return m.TestConnectionFunc(ctx, serverAddress, useTLS)
+}
+
+func (m *MockGRPCRepository) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
+	return m.ListServicesFunc(ctx, serverAddress, useTLS)
+}
+
+// #==============================================================#
+// ##       Interfaces for DiscordClient                         ##
+// #==============================================================#
 // GRPCRepository はgRPCリクエストを実行するリポジトリのインターフェースです
 type GRPCRepository interface {
-	SendRequest(ctx context.Context, request *models.GRPCRequest) (*models.GRPCResponse, error)
+	SendRequest(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error)
 	TestConnection(ctx context.Context, serverAddress string, useTLS bool) error
 	ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error)
 }
 
-// grpcRepository はGRPCRepositoryの実装です
-type grpcRepository struct {
+// #==============================================================#
+// ##       Implementations for DiscordClient                    ##
+// #==============================================================#
+// GRPCClient はGRPCClientの実装です
+type GRPCClient struct {
 	config *config.Config
 }
 
-// NewGRPCRepository は新しいgRPCリポジトリインスタンスを作成します
-func NewGRPCRepository(cfg *config.Config) GRPCRepository {
-	return &grpcRepository{
+// NewGRPCClient は新しいgRPCクライアントインスタンスを作成します
+func NewGRPCClient(cfg *config.Config) GRPCRepository {
+	return &GRPCClient{
 		config: cfg,
 	}
 }
 
 // SendRequest はgRPCリクエストを送信します
-func (r *grpcRepository) SendRequest(ctx context.Context, request *models.GRPCRequest) (*models.GRPCResponse, error) {
+func (r *GRPCClient) SendRequest(ctx context.Context, request *grpcDomain.GRPCRequest) (*grpcDomain.GRPCResponse, error) {
 	start := time.Now()
 
 	// gRPC接続を確立
@@ -96,7 +125,7 @@ func (r *grpcRepository) SendRequest(ctx context.Context, request *models.GRPCRe
 	if err != nil {
 		// gRPCエラーの処理
 		if st, ok := status.FromError(err); ok {
-			return &models.GRPCResponse{
+			return &grpcDomain.GRPCResponse{
 				StatusCode: int(st.Code()),
 				StatusMsg:  st.Message(),
 				Metadata:   responseMetadata,
@@ -112,7 +141,7 @@ func (r *grpcRepository) SendRequest(ctx context.Context, request *models.GRPCRe
 		return nil, fmt.Errorf("レスポンスデータの変換に失敗しました: %w", err)
 	}
 
-	return &models.GRPCResponse{
+	return &grpcDomain.GRPCResponse{
 		Data:       respData,
 		Metadata:   responseMetadata,
 		StatusCode: 0, // OK
@@ -122,7 +151,7 @@ func (r *grpcRepository) SendRequest(ctx context.Context, request *models.GRPCRe
 }
 
 // TestConnection はgRPCサーバーへの接続をテストします
-func (r *grpcRepository) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
+func (r *GRPCClient) TestConnection(ctx context.Context, serverAddress string, useTLS bool) error {
 	conn, err := r.createConnection(serverAddress, useTLS)
 	if err != nil {
 		return fmt.Errorf("接続テストに失敗しました: %w", err)
@@ -141,7 +170,7 @@ func (r *grpcRepository) TestConnection(ctx context.Context, serverAddress strin
 }
 
 // ListServices は利用可能なサービス一覧を取得します
-func (r *grpcRepository) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
+func (r *GRPCClient) ListServices(ctx context.Context, serverAddress string, useTLS bool) ([]string, error) {
 	conn, err := r.createConnection(serverAddress, useTLS)
 	if err != nil {
 		return nil, fmt.Errorf("接続の確立に失敗しました: %w", err)
@@ -185,7 +214,7 @@ func (r *grpcRepository) ListServices(ctx context.Context, serverAddress string,
 }
 
 // createConnection はgRPC接続を作成します
-func (r *grpcRepository) createConnection(serverAddress string, useTLS bool) (*grpc.ClientConn, error) {
+func (r *GRPCClient) createConnection(serverAddress string, useTLS bool) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 
 	if useTLS {
@@ -209,14 +238,14 @@ func (r *grpcRepository) createConnection(serverAddress string, useTLS bool) (*g
 }
 
 // getMethodDescriptor はメソッドの記述子を取得します
-func (r *grpcRepository) getMethodDescriptor(ctx context.Context, client grpc_reflection_v1alpha.ServerReflectionClient, fullMethodName string) (protoreflect.ServiceDescriptor, protoreflect.MethodDescriptor, error) {
+func (r *GRPCClient) getMethodDescriptor(ctx context.Context, client grpc_reflection_v1alpha.ServerReflectionClient, fullMethodName string) (protoreflect.ServiceDescriptor, protoreflect.MethodDescriptor, error) {
 	// この実装は簡略化されています
 	// 実際の実装では、リフレクションAPIを使用してサービスとメソッドの情報を動的に取得する必要があります
 	return nil, nil, fmt.Errorf("メソッド記述子の取得は未実装です")
 }
 
 // createRequestMessage はリクエストメッセージを作成します
-func (r *grpcRepository) createRequestMessage(msgDesc protoreflect.MessageDescriptor, data map[string]interface{}) (proto.Message, error) {
+func (r *GRPCClient) createRequestMessage(msgDesc protoreflect.MessageDescriptor, data map[string]interface{}) (proto.Message, error) {
 	msg := dynamicpb.NewMessage(msgDesc)
 
 	// JSONデータをprotobufメッセージに変換
@@ -234,7 +263,7 @@ func (r *grpcRepository) createRequestMessage(msgDesc protoreflect.MessageDescri
 }
 
 // messageToMap はprotobufメッセージをmapに変換します
-func (r *grpcRepository) messageToMap(msg proto.Message) (map[string]interface{}, error) {
+func (r *GRPCClient) messageToMap(msg proto.Message) (map[string]interface{}, error) {
 	jsonData, err := protojson.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("protobufメッセージのマーシャルに失敗しました: %w", err)
