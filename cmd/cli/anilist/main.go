@@ -27,6 +27,8 @@ func main() {
 	switch cfg.Operation {
 	case "query-anime":
 		handleQueryAnime(cfg)
+	case "query-manga":
+		handleQueryManga(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -41,6 +43,22 @@ func handleQueryAnime(cfg *config.Config) {
 
 	// アニメ情報を取得
 	result, err := service.QueryAnime(cfg.Username, cfg.UserID, cfg.Format, cfg.Limit, cfg.Status, cfg.OutputDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Print(result)
+}
+
+// handleQueryManga はマンガ情報取得を処理する
+func handleQueryManga(cfg *config.Config) {
+	// AniListServiceを初期化
+	service := usecases.NewAniListService()
+
+	// マンガ情報を取得
+	result, err := service.QueryManga(cfg.Username, cfg.UserID, cfg.Format, cfg.Limit, cfg.Status, cfg.OutputDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)

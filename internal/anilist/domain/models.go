@@ -38,13 +38,15 @@ type MediaList struct {
 
 // MediaListEntry はメディアリストエントリ
 type MediaListEntry struct {
-	Media       *Media     `json:"media"`
-	Score       int        `json:"score"`
-	Status      string     `json:"status"`
-	Progress    int        `json:"progress"`
-	CompletedAt *FuzzyDate `json:"completedAt"`
-	Notes       string     `json:"notes"`
-	UpdatedAt   int64      `json:"updatedAt"`
+	Media           *Media     `json:"media"`
+	Score           int        `json:"score"`
+	Status          string     `json:"status"`
+	Progress        int        `json:"progress"`
+	ProgressVolumes int        `json:"progressVolumes"`
+	Repeat          int        `json:"repeat"`
+	CompletedAt     *FuzzyDate `json:"completedAt"`
+	Notes           string     `json:"notes"`
+	UpdatedAt       int64      `json:"updatedAt"`
 }
 
 // Media はメディア情報
@@ -100,16 +102,18 @@ type AnimeInfo struct {
 
 // MangaInfo は整形されたマンガ情報
 type MangaInfo struct {
-	ID            int        `json:"id"`
-	Title         string     `json:"title"`
-	Score         int        `json:"score"`
-	Status        string     `json:"status"`
-	Progress      int        `json:"progress"`
-	CompletedAt   *time.Time `json:"completed_at"`
-	Notes         string     `json:"notes"`
-	CoverImageURL string     `json:"cover_image_url"`
-	SiteURL       string     `json:"site_url"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID              int        `json:"id"`
+	Title           string     `json:"title"`
+	Score           int        `json:"score"`
+	Status          string     `json:"status"`
+	Progress        int        `json:"progress"`
+	ProgressVolumes int        `json:"progress_volumes"`
+	Repeat          int        `json:"repeat"`
+	CompletedAt     *time.Time `json:"completed_at"`
+	Notes           string     `json:"notes"`
+	CoverImageURL   string     `json:"cover_image_url"`
+	SiteURL         string     `json:"site_url"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // GraphQLRequest はGraphQLリクエストの構造体

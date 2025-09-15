@@ -26,7 +26,7 @@ func NewConfig(operation, username string, userID *int, format string, limit int
 	}
 
 	// 操作タイプの検証
-	validOperations := []string{"query-anime"}
+	validOperations := []string{"query-anime", "query-manga"}
 	isValid := false
 	for _, op := range validOperations {
 		if operation == op {
@@ -100,7 +100,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		help      = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "操作タイプ (query-anime)")
+	parser.StringVar(&operation, "operation", operation, "操作タイプ (query-anime, query-manga)")
 	parser.StringVar(&operation, "o", operation, "操作タイプの短縮形")
 
 	parser.StringVar(&username, "username", username, "AniListユーザー名")
@@ -187,8 +187,20 @@ func PrintUsage() {
     %s -o query-anime -u your_username -output-dir ./output
     %s -o query-anime -u your_username -d ./results
 
+  マンガ情報取得（ユーザー名指定）:
+    %s -operation query-manga -username your_username
+    %s -o query-manga -u your_username
+
+  マンガ情報取得（テーブル形式）:
+    %s -o query-manga -u your_username -format table
+    %s -o query-manga -u your_username -f table
+
+  マンガ情報取得（完了済みのみ）:
+    %s -o query-manga -u your_username -status COMPLETED
+    %s -o query-manga -u your_username -s COMPLETED
+
 オプション:
-  -operation, -o    操作タイプ (query-anime)
+  -operation, -o    操作タイプ (query-anime, query-manga)
   -username, -u     AniListユーザー名
   -user-id, -i      AniListユーザーID
   -format, -f       出力形式 (json, table) [デフォルト: json]
@@ -201,5 +213,5 @@ func PrintUsage() {
   - ユーザー名またはユーザーIDのいずれかを指定してください
   - 環境変数は使用しません
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
