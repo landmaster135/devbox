@@ -300,11 +300,13 @@ func (s *AniListService) transformToMangaInfoList(collection *domain.MediaListCo
 			}
 
 			mangaInfo := domain.MangaInfo{
-				ID:       entry.Media.ID,
-				Score:    entry.Score,
-				Status:   entry.Status,
-				Progress: entry.Progress,
-				Notes:    entry.Notes,
+				ID:              entry.Media.ID,
+				Score:           entry.Score,
+				Status:          entry.Status,
+				Progress:        entry.Progress,
+				ProgressVolumes: entry.ProgressVolumes,
+				Repeat:          entry.Repeat,
+				Notes:           entry.Notes,
 			}
 
 			// タイトルを設定
@@ -362,8 +364,8 @@ func (s *AniListService) formatMangaAsTable(mangaList []domain.MangaInfo) (strin
 	var result strings.Builder
 
 	// ヘッダー
-	result.WriteString("ID\tタイトル\tステータス\tスコア\t進行状況\t完了日\n")
-	result.WriteString("---\t---\t---\t---\t---\t---\n")
+	result.WriteString("ID\tタイトル\tステータス\tスコア\t進行状況\t巻数進行\t再読回数\t完了日\n")
+	result.WriteString("---\t---\t---\t---\t---\t---\t---\t---\n")
 
 	// データ行
 	for _, manga := range mangaList {
@@ -372,12 +374,14 @@ func (s *AniListService) formatMangaAsTable(mangaList []domain.MangaInfo) (strin
 			completedAtStr = manga.CompletedAt.Format("2006-01-02")
 		}
 
-		result.WriteString(fmt.Sprintf("%d\t%s\t%s\t%d\t%d\t%s\n",
+		result.WriteString(fmt.Sprintf("%d\t%s\t%s\t%d\t%d\t%d\t%d\t%s\n",
 			manga.ID,
 			manga.Title,
 			manga.Status,
 			manga.Score,
 			manga.Progress,
+			manga.ProgressVolumes,
+			manga.Repeat,
 			completedAtStr,
 		))
 	}

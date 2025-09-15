@@ -1,14 +1,15 @@
 # AniList CLI ツール
 
-AniListからアニメ情報を取得するためのコマンドラインツールです。
+AniListからアニメ・マンガ情報を取得するためのコマンドラインツールです。
 
 ## 概要
 
-このツールは、AniList GraphQL APIを使用してユーザーのアニメリスト情報を取得し、JSON形式またはテーブル形式で出力します。環境変数は使用せず、すべてのパラメータはコマンドライン引数で指定します。
+このツールは、AniList GraphQL APIを使用してユーザーのアニメリストやマンガリスト情報を取得し、JSON形式またはテーブル形式で出力します。環境変数は使用せず、すべてのパラメータはコマンドライン引数で指定します。
 
 ## 機能
 
 - **query-anime**: 指定したユーザーのアニメリスト情報を取得
+- **query-manga**: 指定したユーザーのマンガリスト情報を取得（巻数進行・再読回数を含む）
 - **出力形式**: JSON形式またはテーブル形式での出力
 - **フィルタリング**: ステータス別のフィルタリング
 - **制限**: 取得件数の制限
@@ -24,6 +25,8 @@ go build -o bin/anilist ./cmd/cli/anilist
 
 ### 基本的な使用方法
 
+#### アニメリスト取得
+
 ```bash
 # ユーザー名を指定してアニメリストを取得
 go run ./cmd/cli/anilist -operation query-anime -username your_username
@@ -35,14 +38,29 @@ go run ./cmd/cli/anilist -operation query-anime -user-id 123456
 go run ./cmd/cli/anilist -o query-anime -u your_username
 ```
 
+#### マンガリスト取得
+
+```bash
+# ユーザー名を指定してマンガリストを取得
+go run ./cmd/cli/anilist -operation query-manga -username your_username
+
+# ユーザーIDを指定してマンガリストを取得
+go run ./cmd/cli/anilist -operation query-manga -user-id 123456
+
+# 短縮形を使用
+go run ./cmd/cli/anilist -o query-manga -u your_username
+```
+
 ### 出力形式の指定
 
 ```bash
 # JSON形式で出力（デフォルト）
 go run ./cmd/cli/anilist -o query-anime -u your_username -format json
+go run ./cmd/cli/anilist -o query-manga -u your_username -format json
 
 # テーブル形式で出力
 go run ./cmd/cli/anilist -o query-anime -u your_username -format table
+go run ./cmd/cli/anilist -o query-manga -u your_username -format table
 ```
 
 ### フィルタリング
@@ -53,6 +71,12 @@ go run ./cmd/cli/anilist -o query-anime -u your_username -status COMPLETED
 
 # 現在視聴中のアニメのみを取得
 go run ./cmd/cli/anilist -o query-anime -u your_username -status CURRENT
+
+# 完了したマンガのみを取得
+go run ./cmd/cli/anilist -o query-manga -u your_username -status COMPLETED
+
+# 現在読書中のマンガのみを取得
+go run ./cmd/cli/anilist -o query-manga -u your_username -status CURRENT
 ```
 
 ### 取得件数の制限
@@ -60,9 +84,11 @@ go run ./cmd/cli/anilist -o query-anime -u your_username -status CURRENT
 ```bash
 # 最新の10件のみを取得
 go run ./cmd/cli/anilist -o query-anime -u your_username -limit 10
+go run ./cmd/cli/anilist -o query-manga -u your_username -limit 10
 
 # 最新の5件のみを取得
 go run ./cmd/cli/anilist -o query-anime -u your_username -limit 5
+go run ./cmd/cli/anilist -o query-manga -u your_username -limit 5
 ```
 
 ### ファイル出力
@@ -70,19 +96,22 @@ go run ./cmd/cli/anilist -o query-anime -u your_username -limit 5
 ```bash
 # 結果をファイルに保存
 go run ./cmd/cli/anilist -o query-anime -u your_username -output-dir ./output
+go run ./cmd/cli/anilist -o query-manga -u your_username -output-dir ./output
 
 # 出力ディレクトリを指定（短縮形）
 go run ./cmd/cli/anilist -o query-anime -u your_username -d ./results
+go run ./cmd/cli/anilist -o query-manga -u your_username -d ./results
 
 # 出力形式とディレクトリを組み合わせ
 go run ./cmd/cli/anilist -o query-anime -u your_username -format table -output-dir ./output
+go run ./cmd/cli/anilist -o query-manga -u your_username -format table -output-dir ./output
 ```
 
 ## オプション
 
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |-----------|--------|------|-------------|
-| `-operation` | `-o` | 操作タイプ (query-anime) | - |
+| `-operation` | `-o` | 操作タイプ (query-anime, query-manga) | - |
 | `-username` | `-u` | AniListユーザー名 | - |
 | `-user-id` | `-i` | AniListユーザーID | - |
 | `-format` | `-f` | 出力形式 (json, table) | json |
@@ -93,16 +122,16 @@ go run ./cmd/cli/anilist -o query-anime -u your_username -format table -output-d
 
 ### ステータスの種類
 
-- `CURRENT`: 現在視聴中
-- `PLANNING`: 視聴予定
+- `CURRENT`: 現在視聴中/読書中
+- `PLANNING`: 視聴予定/読書予定
 - `COMPLETED`: 完了
 - `DROPPED`: 中断
 - `PAUSED`: 一時停止
-- `REPEATING`: 再視聴中
+- `REPEATING`: 再視聴中/再読中
 
 ## 出力例
 
-### JSON形式
+### アニメ（JSON形式）
 
 ```json
 [
@@ -122,12 +151,41 @@ go run ./cmd/cli/anilist -o query-anime -u your_username -format table -output-d
 ]
 ```
 
-### テーブル形式
+### マンガ（JSON形式）
+
+```json
+[
+  {
+    "id": 30013,
+    "title": "ONE PIECE",
+    "score": 90,
+    "status": "CURRENT",
+    "progress": 1100,
+    "progress_volumes": 108,
+    "repeat": 0,
+    "completed_at": null,
+    "notes": "長編マンガの代表作",
+    "cover_image_url": "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/bx30013-ulXvn0lzWvsO.jpg",
+    "site_url": "https://anilist.co/manga/30013",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+### アニメ（テーブル形式）
 
 ```
 ID	タイトル	ステータス	スコア	進行状況	完了日	スタジオ
 ---	---	---	---	---	---	---
 21	ONE PIECE	CURRENT	85	1000		Toei Animation
+```
+
+### マンガ（テーブル形式）
+
+```
+ID	タイトル	ステータス	スコア	進行状況	巻数進行	再読回数	完了日
+---	---	---	---	---	---	---	---
+30013	ONE PIECE	CURRENT	90	1100	108	0	
 ```
 
 ## エラーハンドリング

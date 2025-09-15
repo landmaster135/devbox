@@ -13,8 +13,8 @@ const (
 	// AniListAPIEndpoint はAniList GraphQL APIのエンドポイント
 	AniListAPIEndpoint = "https://graphql.anilist.co"
 
-	// GraphQLクエリ
-	MediaListCollectionQuery = `
+	// アニメリスト取得用のGraphQLクエリ
+	AnimeListCollectionQuery = `
 		query ($username: String, $id: Int) {
 			MediaListCollection(userName: $username, userId: $id, type: ANIME) {
 				lists {
@@ -50,7 +50,7 @@ const (
 		}
 	`
 
-	// MangaListCollectionQuery はマンガリスト取得用のGraphQLクエリ
+	// マンガリスト取得用のGraphQLクエリ
 	MangaListCollectionQuery = `
 		query ($username: String, $id: Int) {
 			MediaListCollection(userName: $username, userId: $id, type: MANGA) {
@@ -69,6 +69,8 @@ const (
 						score (format: POINT_100)
 						status
 						progress
+						progressVolumes
+						repeat
 						completedAt {
 							year
 							month
@@ -161,7 +163,7 @@ func (c *AniListClient) QueryAnimeList(req QueryAnimeRequest) (*AniListResponse,
 	}
 
 	graphQLReq := GraphQLRequest{
-		Query:     MediaListCollectionQuery,
+		Query:     AnimeListCollectionQuery,
 		Variables: variables,
 	}
 
