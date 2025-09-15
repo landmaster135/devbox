@@ -96,6 +96,9 @@ func (s *AniListService) saveToFile(content, outputDir, username string, userID 
 	return nil
 }
 
+// #==============================================================#
+// ##       QueryAnime                                           ##
+// #==============================================================#
 // QueryAnime はアニメ情報を取得する
 func (s *AniListService) QueryAnime(username string, userID *int, format string, limit int, status, outputDir string) (string, error) {
 	// リクエストを構築
@@ -280,4 +283,164 @@ func (s *AniListService) formatAsTable(animeList []domain.AnimeInfo) (string, er
 	}
 
 	return result.String(), nil
+}
+
+// #==============================================================#
+// ##       QueryManga                                           ##
+// #==============================================================#
+
+// transformToMangaInfoList はAPIレスポンスをMangaInfoのリストに変換する
+func (s *AniListService) transformToMangaInfoList(collection *domain.MediaListCollection) []domain.MangaInfo {
+	var mangaList []domain.MangaInfo
+
+	for _, list := range collection.Lists {
+		for _, entry := range list.Entries {
+			if entry.Media == nil {
+				continue
+			}
+
+			mangaInfo := domain.MangaInfo{
+				ID:       entry.Media.ID,
+				Score:    entry.Score,
+				Status:   entry.Status,
+				Progress: entry.Progress,
+				Notes:    entry.Notes,
+			}
+
+			// タイトルを設定
+			if entry.Media.Title != nil {
+				mangaInfo.Title = entry.Media.Title.Native
+			}
+
+			// カバー画像URLを設定
+			if entry.Media.CoverImage != nil {
+				mangaInfo.CoverImageURL = entry.Media.CoverImage.ExtraLarge
+			}
+
+			// サイトURLを設定
+			mangaInfo.SiteURL = entry.Media.SiteURL
+
+			// 完了日を設定
+			mangaInfo.CompletedAt = s.formatCompletedAt(entry.CompletedAt)
+
+			// 更新日を設定
+			mangaInfo.UpdatedAt = s.formatUpdatedAt(entry.UpdatedAt)
+
+			mangaList = append(mangaList, mangaInfo)
+		}
+	}
+
+	return mangaList
+}
+
+// filterMangaByStatus はマンガをステータスでフィルタリングする
+func (s *AniListService) filterMangaByStatus(mangaList []domain.MangaInfo, status string) []domain.MangaInfo {
+	var filtered []domain.MangaInfo
+	for _, manga := range mangaList {
+		if manga.Status == status {
+			filtered = append(filtered, manga)
+		}
+	}
+	return filtered
+}
+
+// formatMangaAsJSON はマンガリストをJSON形式で出力する
+func (s *AniListService) formatMangaAsJSON(mangaList []domain.MangaInfo) (string, error) {
+	jsonBytes, err := s.jsonProcessor.MarshalIndent(mangaList, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("JSONエンコードに失敗しました: %v", err)
+	}
+	return string(jsonBytes), nil
+}
+
+// formatMangaAsTable はマンガリストをテーブル形式で出力する
+func (s *AniListService) formatMangaAsTable(mangaList []domain.MangaInfo) (string, error) {
+	if len(mangaList) == 0 {
+		return "マンガが見つかりませんでした。\n", nil
+	}
+
+	var result strings.Builder
+
+	// ヘッダー
+	result.WriteString("ID\tタイトル\tステータス\tスコア\t進行状況\t完了日\n")
+	result.WriteString("---\t---\t---\t---\t---\t---\n")
+
+	// データ行
+	for _, manga := range mangaList {
+		completedAtStr := ""
+		if manga.CompletedAt != nil && !manga.CompletedAt.IsZero() {
+			completedAtStr = manga.CompletedAt.Format("2006-01-02")
+		}
+
+		result.WriteString(fmt.Sprintf("%d\t%s\t%s\t%d\t%d\t%s\n",
+			manga.ID,
+			manga.Title,
+			manga.Status,
+			manga.Score,
+			manga.Progress,
+			completedAtStr,
+		))
+	}
+
+	return result.String(), nil
+}
+
+// QueryManga はマンガ情報を取得する
+func (s *AniListService) QueryManga(username string, userID *int, format string, limit int, status, outputDir string) (string, error) {
+	// リクエストを構築
+	req := domain.QueryMangaRequest{
+		Username: username,
+		UserID:   userID,
+	}
+
+	// APIを呼び出し
+	resp, err := s.repository.QueryMangaList(req)
+	if err != nil {
+		return "", fmt.Errorf("AniList APIの呼び出しに失敗しました: %v", err)
+	}
+
+	// データが存在しない場合
+	if resp.Data == nil || resp.Data.MediaListCollection == nil {
+		return "", fmt.Errorf("ユーザーのマンガリストが見つかりません")
+	}
+
+	// マンガ情報を整形
+	mangaList := s.transformToMangaInfoList(resp.Data.MediaListCollection)
+
+	// ステータスフィルタを適用
+	if status != "" {
+		mangaList = s.filterMangaByStatus(mangaList, status)
+	}
+
+	// 制限を適用
+	if limit > 0 && len(mangaList) > limit {
+		mangaList = mangaList[:limit]
+	}
+
+	// 出力形式に応じて結果を生成
+	var result string
+	var formatErr error
+	switch format {
+	case "json":
+		result, formatErr = s.formatMangaAsJSON(mangaList)
+	case "table":
+		result, formatErr = s.formatMangaAsTable(mangaList)
+	default:
+		result, formatErr = s.formatMangaAsJSON(mangaList)
+	}
+
+	if formatErr != nil {
+		return "", formatErr
+	}
+
+	// 出力ディレクトリが指定されている場合はファイルに保存
+	if outputDir != "" {
+		saveErr := s.saveToFile(result, outputDir, username, userID, format)
+		if saveErr != nil {
+			return "", fmt.Errorf("ファイル保存に失敗しました: %v", saveErr)
+		}
+		return fmt.Sprintf("結果をファイルに保存しました: %s\n", s.generateFileName(outputDir, username, userID, format)), nil
+	}
+
+	return result, nil
 }

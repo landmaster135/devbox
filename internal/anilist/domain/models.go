@@ -98,6 +98,20 @@ type AnimeInfo struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
+// MangaInfo は整形されたマンガ情報
+type MangaInfo struct {
+	ID            int        `json:"id"`
+	Title         string     `json:"title"`
+	Score         int        `json:"score"`
+	Status        string     `json:"status"`
+	Progress      int        `json:"progress"`
+	CompletedAt   *time.Time `json:"completed_at"`
+	Notes         string     `json:"notes"`
+	CoverImageURL string     `json:"cover_image_url"`
+	SiteURL       string     `json:"site_url"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
 // GraphQLRequest はGraphQLリクエストの構造体
 type GraphQLRequest struct {
 	Query     string         `json:"query"`
@@ -106,6 +120,12 @@ type GraphQLRequest struct {
 
 // QueryAnimeRequest はquery-anime操作のリクエスト
 type QueryAnimeRequest struct {
+	Username string
+	UserID   *int
+}
+
+// QueryMangaRequest はquery-manga操作のリクエスト
+type QueryMangaRequest struct {
 	Username string
 	UserID   *int
 }
