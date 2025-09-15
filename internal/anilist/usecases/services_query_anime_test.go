@@ -49,6 +49,7 @@ func TestAniListService_QueryAnime_Normal(t *testing.T) {
 										Score:    9,
 										Status:   "COMPLETED",
 										Progress: 12,
+										Repeat:   2,
 										CompletedAt: &domain.FuzzyDate{
 											Year:  &year,
 											Month: &month,
@@ -124,6 +125,7 @@ func TestAniListService_QueryAnime_WithUserID(t *testing.T) {
 										Score:    8,
 										Status:   "CURRENT",
 										Progress: 5,
+										Repeat:   1,
 									},
 								},
 							},
@@ -280,6 +282,7 @@ func TestAniListService_QueryAnime_WithStatusFilter(t *testing.T) {
 										Score:    9,
 										Status:   "COMPLETED",
 										Progress: 12,
+										Repeat:   3,
 									},
 									{
 										Media: &domain.Media{
@@ -291,6 +294,7 @@ func TestAniListService_QueryAnime_WithStatusFilter(t *testing.T) {
 										Score:    8,
 										Status:   "CURRENT",
 										Progress: 5,
+										Repeat:   0,
 									},
 								},
 							},
@@ -353,6 +357,7 @@ func TestAniListService_QueryAnime_WithLimit(t *testing.T) {
 										Score:    9,
 										Status:   "COMPLETED",
 										Progress: 12,
+										Repeat:   1,
 									},
 									{
 										Media: &domain.Media{
@@ -364,6 +369,7 @@ func TestAniListService_QueryAnime_WithLimit(t *testing.T) {
 										Score:    8,
 										Status:   "CURRENT",
 										Progress: 5,
+										Repeat:   0,
 									},
 									{
 										Media: &domain.Media{
@@ -375,6 +381,7 @@ func TestAniListService_QueryAnime_WithLimit(t *testing.T) {
 										Score:    7,
 										Status:   "PLANNING",
 										Progress: 0,
+										Repeat:   0,
 									},
 								},
 							},
@@ -436,6 +443,7 @@ func TestAniListService_QueryAnime_TableFormat(t *testing.T) {
 										Score:    9,
 										Status:   "COMPLETED",
 										Progress: 12,
+										Repeat:   2,
 									},
 								},
 							},
@@ -462,11 +470,14 @@ func TestAniListService_QueryAnime_TableFormat(t *testing.T) {
 		t.Error("結果が空文字列です")
 	}
 	// テーブル形式の確認
-	if !strings.Contains(result, "ID\tタイトル\tステータス") {
+	if !strings.Contains(result, "ID\tタイトル\tステータス\tスコア\t進行状況\t再視聴回数") {
 		t.Error("テーブルヘッダーが含まれていません")
 	}
 	if !strings.Contains(result, "テストアニメ") {
 		t.Error("アニメタイトルが含まれていません")
+	}
+	if !strings.Contains(result, "\t2\t") {
+		t.Error("再視聴回数が含まれていません")
 	}
 }
 
@@ -495,6 +506,7 @@ func TestAniListService_QueryAnime_WithOutputDir(t *testing.T) {
 										Score:    9,
 										Status:   "COMPLETED",
 										Progress: 12,
+										Repeat:   1,
 									},
 								},
 							},
@@ -719,5 +731,178 @@ func TestAniListService_QueryAnime_DefaultFormat(t *testing.T) {
 	// JSON形式で出力されることを確認
 	if !strings.Contains(result, `"id":1`) {
 		t.Error("JSON形式で出力されていません")
+	}
+}
+
+// TestAniListService_QueryAnime_WithRepeatField はQueryAnimeメソッドのRepeatフィールド特化テスト
+func TestAniListService_QueryAnime_WithRepeatField(t *testing.T) {
+	// Arrange
+	mockRepository := &domain.MockAniListRepository{
+		QueryAnimeListFunc: func(req domain.QueryAnimeRequest) (*domain.AniListResponse, error) {
+			return &domain.AniListResponse{
+				Data: &domain.MediaListCollectionData{
+					MediaListCollection: &domain.MediaListCollection{
+						Lists: []domain.MediaList{
+							{
+								Entries: []domain.MediaListEntry{
+									{
+										Media: &domain.Media{
+											ID: 1,
+											Title: &domain.Title{
+												Native: "再視聴なしアニメ",
+											},
+										},
+										Score:    8,
+										Status:   "COMPLETED",
+										Progress: 12,
+										Repeat:   0,
+									},
+									{
+										Media: &domain.Media{
+											ID: 2,
+											Title: &domain.Title{
+												Native: "1回再視聴アニメ",
+											},
+										},
+										Score:    9,
+										Status:   "COMPLETED",
+										Progress: 24,
+										Repeat:   1,
+									},
+									{
+										Media: &domain.Media{
+											ID: 3,
+											Title: &domain.Title{
+												Native: "複数回再視聴アニメ",
+											},
+										},
+										Score:    10,
+										Status:   "COMPLETED",
+										Progress: 12,
+										Repeat:   5,
+									},
+								},
+							},
+						},
+					},
+				},
+			}, nil
+		},
+	}
+
+	mockFS := &infrastructure.MockFileSystem{}
+	mockJSON := &infrastructure.MockJSONProcessor{
+		MarshalIndentFunc: func(v any, prefix, indent string) ([]byte, error) {
+			animeList := v.([]domain.AnimeInfo)
+			// Repeatフィールドが正しく設定されていることを確認
+			if len(animeList) != 3 {
+				t.Errorf("期待されるアニメ数: 3, 実際: %d", len(animeList))
+			}
+			if animeList[0].Repeat != 0 {
+				t.Errorf("1番目のアニメのRepeat値: 0, 実際: %d", animeList[0].Repeat)
+			}
+			if animeList[1].Repeat != 1 {
+				t.Errorf("2番目のアニメのRepeat値: 1, 実際: %d", animeList[1].Repeat)
+			}
+			if animeList[2].Repeat != 5 {
+				t.Errorf("3番目のアニメのRepeat値: 5, 実際: %d", animeList[2].Repeat)
+			}
+			return []byte(`[{"id":1,"repeat":0},{"id":2,"repeat":1},{"id":3,"repeat":5}]`), nil
+		},
+	}
+
+	service := NewAniListServiceWithDependencies(mockRepository, mockFS, mockJSON)
+
+	// Act
+	result, err := service.QueryAnime("testuser", nil, "json", 0, "", "")
+
+	// Assert
+	if err != nil {
+		t.Errorf("エラーが発生しました: %v", err)
+	}
+	if result == "" {
+		t.Error("結果が空文字列です")
+	}
+	if !strings.Contains(result, `"repeat":0`) {
+		t.Error("Repeat値0が含まれていません")
+	}
+	if !strings.Contains(result, `"repeat":1`) {
+		t.Error("Repeat値1が含まれていません")
+	}
+	if !strings.Contains(result, `"repeat":5`) {
+		t.Error("Repeat値5が含まれていません")
+	}
+}
+
+// TestAniListService_QueryAnime_RepeatFieldInTable はQueryAnimeメソッドのテーブル形式でのRepeatフィールドテスト
+func TestAniListService_QueryAnime_RepeatFieldInTable(t *testing.T) {
+	// Arrange
+	mockRepository := &domain.MockAniListRepository{
+		QueryAnimeListFunc: func(req domain.QueryAnimeRequest) (*domain.AniListResponse, error) {
+			return &domain.AniListResponse{
+				Data: &domain.MediaListCollectionData{
+					MediaListCollection: &domain.MediaListCollection{
+						Lists: []domain.MediaList{
+							{
+								Entries: []domain.MediaListEntry{
+									{
+										Media: &domain.Media{
+											ID: 1,
+											Title: &domain.Title{
+												Native: "高再視聴アニメ",
+											},
+											Studios: &domain.Studios{
+												Nodes: []domain.Studio{
+													{Name: "人気スタジオ"},
+												},
+											},
+										},
+										Score:    10,
+										Status:   "COMPLETED",
+										Progress: 12,
+										Repeat:   3,
+									},
+								},
+							},
+						},
+					},
+				},
+			}, nil
+		},
+	}
+
+	mockFS := &infrastructure.MockFileSystem{}
+	mockJSON := &infrastructure.MockJSONProcessor{}
+
+	service := NewAniListServiceWithDependencies(mockRepository, mockFS, mockJSON)
+
+	// Act
+	result, err := service.QueryAnime("testuser", nil, "table", 0, "", "")
+
+	// Assert
+	if err != nil {
+		t.Errorf("エラーが発生しました: %v", err)
+	}
+	if result == "" {
+		t.Error("結果が空文字列です")
+	}
+	// テーブル形式でRepeatフィールドが正しく表示されることを確認
+	if !strings.Contains(result, "再視聴回数") {
+		t.Error("テーブルヘッダーに「再視聴回数」が含まれていません")
+	}
+	if !strings.Contains(result, "高再視聴アニメ") {
+		t.Error("アニメタイトルが含まれていません")
+	}
+	// Repeat値3がテーブルに含まれることを確認
+	lines := strings.Split(result, "\n")
+	found := false
+	for _, line := range lines {
+		if strings.Contains(line, "高再視聴アニメ") && strings.Contains(line, "\t3\t") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("テーブルにRepeat値3が正しく表示されていません")
 	}
 }

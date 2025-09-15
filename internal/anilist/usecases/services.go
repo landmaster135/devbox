@@ -174,6 +174,7 @@ func (s *AniListService) transformToAnimeInfoList(collection *domain.MediaListCo
 				Score:    entry.Score,
 				Status:   entry.Status,
 				Progress: entry.Progress,
+				Repeat:   entry.Repeat,
 				Notes:    entry.Notes,
 			}
 
@@ -261,8 +262,8 @@ func (s *AniListService) formatAsTable(animeList []domain.AnimeInfo) (string, er
 	var result strings.Builder
 
 	// ヘッダー
-	result.WriteString("ID\tタイトル\tステータス\tスコア\t進行状況\t完了日\tスタジオ\n")
-	result.WriteString("---\t---\t---\t---\t---\t---\t---\n")
+	result.WriteString("ID\tタイトル\tステータス\tスコア\t進行状況\t再視聴回数\t完了日\tスタジオ\n")
+	result.WriteString("---\t---\t---\t---\t---\t---\t---\t---\n")
 
 	// データ行
 	for _, anime := range animeList {
@@ -271,12 +272,13 @@ func (s *AniListService) formatAsTable(animeList []domain.AnimeInfo) (string, er
 			completedAtStr = anime.CompletedAt.Format("2006-01-02")
 		}
 
-		result.WriteString(fmt.Sprintf("%d\t%s\t%s\t%d\t%d\t%s\t%s\n",
+		result.WriteString(fmt.Sprintf("%d\t%s\t%s\t%d\t%d\t%d\t%s\t%s\n",
 			anime.ID,
 			anime.Title,
 			anime.Status,
 			anime.Score,
 			anime.Progress,
+			anime.Repeat,
 			completedAtStr,
 			anime.Studio,
 		))
