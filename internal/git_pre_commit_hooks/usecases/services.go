@@ -13,6 +13,17 @@ import (
 	"github.com/landmaster135/devbox/internal/git_pre_commit_hooks/domain"
 )
 
+// #==============================================================#
+// ##       Mocks for SecretDetectorService                      ##
+// #==============================================================#
+
+// #==============================================================#
+// ##       Interfaces for SecretDetectorService                 ##
+// #==============================================================#
+
+// #==============================================================#
+// ##       Implementations for SecretDetectorService            ##
+// #==============================================================#
 // SecretDetectorService はシークレット検知サービス
 type SecretDetectorService struct {
 	verbose         bool
