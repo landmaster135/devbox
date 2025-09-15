@@ -320,6 +320,103 @@ func TestQueryAnimeRequest_Initialization(t *testing.T) {
 	}
 }
 
+// TestMangaInfo_JSONMarshal はMangaInfoのJSONマーシャルテスト
+func TestMangaInfo_JSONMarshal(t *testing.T) {
+	// Arrange
+	completedAt := time.Date(2023, 6, 15, 0, 0, 0, 0, time.UTC)
+	updatedAt := time.Date(2023, 6, 20, 12, 0, 0, 0, time.UTC)
+
+	mangaInfo := MangaInfo{
+		ID:              1,
+		Title:           "テストマンガ",
+		Score:           85,
+		Status:          "COMPLETED",
+		Progress:        120,
+		ProgressVolumes: 12,
+		Repeat:          1,
+		CompletedAt:     &completedAt,
+		Notes:           "面白かった",
+		CoverImageURL:   "https://example.com/manga.jpg",
+		SiteURL:         "https://anilist.co/manga/1",
+		UpdatedAt:       updatedAt,
+	}
+
+	// Act
+	jsonData, err := json.Marshal(mangaInfo)
+
+	// Assert
+	if err != nil {
+		t.Errorf("JSONマーシャルでエラーが発生しました: %v", err)
+		return
+	}
+
+	// JSONアンマーシャルで確認
+	var unmarshaled MangaInfo
+	if err := json.Unmarshal(jsonData, &unmarshaled); err != nil {
+		t.Errorf("JSONアンマーシャルでエラーが発生しました: %v", err)
+		return
+	}
+
+	// データの整合性を確認
+	if unmarshaled.ID != mangaInfo.ID {
+		t.Errorf("期待されるID: %d, 実際: %d", mangaInfo.ID, unmarshaled.ID)
+	}
+	if unmarshaled.Title != mangaInfo.Title {
+		t.Errorf("期待されるタイトル: %s, 実際: %s", mangaInfo.Title, unmarshaled.Title)
+	}
+	if unmarshaled.Score != mangaInfo.Score {
+		t.Errorf("期待されるスコア: %d, 実際: %d", mangaInfo.Score, unmarshaled.Score)
+	}
+	if unmarshaled.ProgressVolumes != mangaInfo.ProgressVolumes {
+		t.Errorf("期待される巻数進捗: %d, 実際: %d", mangaInfo.ProgressVolumes, unmarshaled.ProgressVolumes)
+	}
+}
+
+// TestQueryMangaRequest_Initialization はQueryMangaRequestの初期化テスト
+func TestQueryMangaRequest_Initialization(t *testing.T) {
+	tests := []struct {
+		name     string
+		username string
+		userID   *int
+	}{
+		{
+			name:     "WithUsername_Normal",
+			username: "testuser",
+			userID:   nil,
+		},
+		{
+			name:     "WithUserID_Normal",
+			username: "",
+			userID:   func() *int { id := 12345; return &id }(),
+		},
+		{
+			name:     "WithBoth_Normal",
+			username: "testuser",
+			userID:   func() *int { id := 12345; return &id }(),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Act
+			request := QueryMangaRequest{
+				Username: tt.username,
+				UserID:   tt.userID,
+			}
+
+			// Assert
+			if request.Username != tt.username {
+				t.Errorf("期待されるユーザー名: %s, 実際: %s", tt.username, request.Username)
+			}
+			if (request.UserID == nil) != (tt.userID == nil) {
+				t.Error("ユーザーIDのnil状態が異なります")
+			} else if request.UserID != nil && tt.userID != nil && *request.UserID != *tt.userID {
+				t.Errorf("期待されるユーザーID: %d, 実際: %d", *tt.userID, *request.UserID)
+			}
+		})
+	}
+}
+
 // TestComplexStructure_JSONMarshal は複雑な構造体のJSONマーシャルテスト
 func TestComplexStructure_JSONMarshal(t *testing.T) {
 	// Arrange

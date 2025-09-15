@@ -92,6 +92,7 @@ type AnimeInfo struct {
 	Score         int        `json:"score"`
 	Status        string     `json:"status"`
 	Progress      int        `json:"progress"`
+	Repeat        int        `json:"repeat"`
 	CompletedAt   *time.Time `json:"completed_at"`
 	Notes         string     `json:"notes"`
 	CoverImageURL string     `json:"cover_image_url"`

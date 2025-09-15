@@ -37,6 +37,7 @@ const (
 						score (format: POINT_100)
 						status
 						progress
+						repeat
 						completedAt {
 							year
 							month

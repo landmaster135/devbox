@@ -620,9 +620,14 @@ func TestAniListService_formatAsTable_NilCompletedAt(t *testing.T) {
 		return
 	}
 
-	// 完了日フィールド（インデックス5）が空であることを確認
-	if fields[5] != "" {
-		t.Errorf("完了日は空文字列が期待されます, 実際: %s", fields[5])
+	// 完了日フィールド（インデックス6）が空であることを確認
+	// テーブル形式: ID, タイトル, ステータス, スコア, 進行状況, 再視聴回数, 完了日, スタジオ
+	if len(fields) < 7 {
+		t.Error("期待されるフィールド数が不足しています")
+		return
+	}
+	if fields[6] != "" {
+		t.Errorf("完了日は空文字列が期待されます, 実際: %s", fields[6])
 	}
 }
 
@@ -659,6 +664,7 @@ func TestAniListService_transformToAnimeInfoList_Normal(t *testing.T) {
 						Score:    9,
 						Status:   "COMPLETED",
 						Progress: 12,
+						Repeat:   2,
 						CompletedAt: &domain.FuzzyDate{
 							Year:  &year,
 							Month: &month,
@@ -734,6 +740,7 @@ func TestAniListService_transformToAnimeInfoList_NilMedia(t *testing.T) {
 						Score:    9,
 						Status:   "COMPLETED",
 						Progress: 12,
+						Repeat:   0,
 					},
 					{
 						Media: &domain.Media{
@@ -745,6 +752,7 @@ func TestAniListService_transformToAnimeInfoList_NilMedia(t *testing.T) {
 						Score:    8,
 						Status:   "CURRENT",
 						Progress: 5,
+						Repeat:   1,
 					},
 				},
 			},
@@ -792,6 +800,7 @@ func TestAniListService_transformToAnimeInfoList_NilFields(t *testing.T) {
 						Score:       7,
 						Status:      "CURRENT",
 						Progress:    3,
+						Repeat:      0,
 						CompletedAt: nil, // CompletedAtがnil
 						Notes:       "",
 						UpdatedAt:   1703505600,
@@ -852,6 +861,7 @@ func TestAniListService_transformToAnimeInfoList_EmptyStudios(t *testing.T) {
 						Score:    8,
 						Status:   "CURRENT",
 						Progress: 5,
+						Repeat:   0,
 					},
 				},
 			},
@@ -894,6 +904,7 @@ func TestAniListService_transformToAnimeInfoList_MultipleEntries(t *testing.T) {
 						Score:    9,
 						Status:   "COMPLETED",
 						Progress: 12,
+						Repeat:   3,
 					},
 					{
 						Media: &domain.Media{
@@ -905,6 +916,7 @@ func TestAniListService_transformToAnimeInfoList_MultipleEntries(t *testing.T) {
 						Score:    8,
 						Status:   "CURRENT",
 						Progress: 5,
+						Repeat:   1,
 					},
 				},
 			},
@@ -920,6 +932,7 @@ func TestAniListService_transformToAnimeInfoList_MultipleEntries(t *testing.T) {
 						Score:    7,
 						Status:   "PLANNING",
 						Progress: 0,
+						Repeat:   0,
 					},
 				},
 			},
