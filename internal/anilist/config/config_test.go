@@ -117,6 +117,16 @@ func TestNewConfig_Normal(t *testing.T) {
 			outputDir: "",
 		},
 		{
+			name:      "UsernameOnly_Normal",
+			operation: "query-manga",
+			username:  "testuser",
+			userID:    nil,
+			format:    "json",
+			limit:     0,
+			status:    "",
+			outputDir: "",
+		},
+		{
 			name:      "UserIDOnly_Normal",
 			operation: "query-anime",
 			username:  "",
