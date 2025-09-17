@@ -19,7 +19,6 @@ AI（Gemini API）を使用して画像からテキストを抽出するCLIツ�
 
 ```bash
 # プロジェクトルートから
-cd /home/user/devbox
 go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 ```
 
