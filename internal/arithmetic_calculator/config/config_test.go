@@ -157,7 +157,7 @@ func TestNewConfig_Normal(t *testing.T) {
 	threshold := 100
 
 	// Act
-	config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+	config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 	// Assert
 	if err != nil {
@@ -194,7 +194,7 @@ func TestNewConfig_EmptyOperation(t *testing.T) {
 	threshold := 0
 
 	// Act
-	config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+	config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 	// Assert
 	if err == nil {
@@ -216,7 +216,7 @@ func TestNewConfig_InvalidOperation(t *testing.T) {
 	threshold := 0
 
 	// Act
-	config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+	config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 	// Assert
 	if err == nil {
@@ -238,7 +238,7 @@ func TestNewConfig_SumWithEmptyNumbers(t *testing.T) {
 	threshold := 0
 
 	// Act
-	config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+	config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 	// Assert
 	if err == nil {
@@ -260,7 +260,7 @@ func TestNewConfig_EvaluateLineCountWithEmptyFilePath(t *testing.T) {
 	threshold := 100
 
 	// Act
-	config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+	config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 	// Assert
 	if err == nil {
@@ -282,7 +282,7 @@ func TestNewConfig_EvaluateLineCountWithNegativeThreshold(t *testing.T) {
 	threshold := -1
 
 	// Act
-	config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+	config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 	// Assert
 	if err == nil {
@@ -306,7 +306,7 @@ func TestNewConfig_AllValidOperations(t *testing.T) {
 		threshold := 100
 
 		// Act
-		config, err := NewConfig(operation, x, y, numbers, filePath, threshold)
+		config, err := NewConfig(operation, x, y, numbers, filePath, threshold, 0.0, 0.0, 0.0, 0.0, 0, "", "", "", "")
 
 		// Assert
 		if err != nil {
@@ -544,7 +544,7 @@ func TestParseFlagsWithParser_SumOperationWithShortForm(t *testing.T) {
 	// Arrange
 	mockParser := NewMockFlagParser()
 	mockParser.SetStringFlag("o", "sum")
-	mockParser.SetStringFlag("n", "1,2,3,4,5")
+	mockParser.SetStringFlag("nums", "1,2,3,4,5")
 
 	// Act
 	config, err := ParseFlagsWithParser(mockParser)
