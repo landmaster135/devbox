@@ -19,7 +19,7 @@ AI（Gemini API）を使用して画像からテキストを抽出するCLIツ�
 
 ```bash
 # プロジェクトルートから
-cd /home/nov/devbox
+cd /home/user/devbox
 go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 ```
 
@@ -29,20 +29,20 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 
 ```bash
 # Gemini API使用（単一画像ファイル）
-./bin/ocr-executor-with-ai -path /path/to/image.webp -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/image.webp -ai-type gemini -api-key "your-api-key"
 
 # Vertex AI使用（単一画像ファイル）
-./bin/ocr-executor-with-ai -path /path/to/image.webp -ai-type vertex -project "your-project-id"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/image.webp -ai-type vertex -project "your-project-id"
 
 # ディレクトリ内の画像（再帰）
-./bin/ocr-executor-with-ai -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
 ```
 
 ### 詳細設定
 
 ```bash
 # Gemini APIでカスタムプロンプトとモデル指定
-./bin/ocr-executor-with-ai \
+go run ./cmd/cli/ocr-executor-with-ai \
   -path /path/to/screenshots \
   -recursive \
   -ai-type gemini \
@@ -54,7 +54,7 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
   -max-tokens 4096
 
 # Vertex AIで詳細設定
-./bin/ocr-executor-with-ai \
+go run ./cmd/cli/ocr-executor-with-ai \
   -path /path/to/screenshots \
   -recursive \
   -ai-type vertex \
@@ -69,23 +69,23 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 
 ```bash
 # Gemini API使用（短縮形）
-./bin/ocr-executor-with-ai -p /path/to/image.webp -at gemini -ak "your-api-key" -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/image.webp -at gemini -ak "your-api-key" -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
 
 # Vertex AI使用（短縮形）
-./bin/ocr-executor-with-ai -p /path/to/image.webp -at vertex -pj "your-project-id" -loc "us-central1"
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/image.webp -at vertex -pj "your-project-id" -loc "us-central1"
 ```
 
 ### Markdownテーブル生成
 
 ```bash
 # Markdownテーブル形式でOCRを実行
-./bin/ocr-executor-with-ai -path /path/to/table-image.webp -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/table-image.webp -generates-markdown-table -ai-type gemini -api-key "your-api-key"
 
 # 短縮形
-./bin/ocr-executor-with-ai -p /path/to/table-image.webp -gmt -at gemini -ak "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/table-image.webp -gmt -at gemini -ak "your-api-key"
 
 # ディレクトリ内の複数画像をMarkdownテーブル形式で処理
-./bin/ocr-executor-with-ai -path /path/to/table-images -recursive -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/table-images -recursive -generates-markdown-table -ai-type gemini -api-key "your-api-key"
 ```
 
 ## オプション

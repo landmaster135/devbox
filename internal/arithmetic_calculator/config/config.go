@@ -9,24 +9,32 @@ import (
 
 // Config は算術計算CLIの設定を保持する構造体
 type Config struct {
-	Operation string    // 操作タイプ (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost)
-	X         float64   // 第一オペランド
-	Y         float64   // 第二オペランド
-	Numbers   []float64 // 複数の数値（sum操作用）
-	FilePath  string    // ファイルパス（evaluate_line_count, parse-api-cost操作用）
-	Threshold int       // 閾値（evaluate_line_count操作用）
-	TextInput string    // テキスト入力（parse-api-cost操作用）
-	Help      bool      // ヘルプ表示フラグ
+	Operation  string    // 操作タイプ (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost, power, square_root, factorial, trigonometry, calculate, get_constants)
+	X          float64   // 第一オペランド
+	Y          float64   // 第二オペランド
+	Numbers    []float64 // 複数の数値（sum操作用）
+	FilePath   string    // ファイルパス（evaluate_line_count, parse-api-cost操作用）
+	Threshold  int       // 閾値（evaluate_line_count操作用）
+	TextInput  string    // テキスト入力（parse-api-cost操作用）
+	Base       float64   // べき乗の底（power操作用）
+	Exponent   float64   // べき乗の指数（power操作用）
+	Number     float64   // 単一の数値（square_root操作用）
+	N          int       // 階乗の数値（factorial操作用）
+	Function   string    // 三角関数の種類（trigonometry操作用）
+	Angle      float64   // 角度（trigonometry操作用）
+	Unit       string    // 角度の単位（trigonometry操作用）
+	Expression string    // 数式（calculate操作用）
+	Help       bool      // ヘルプ表示フラグ
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(operation string, x, y float64, numbers []float64, filePath string, threshold int) (*Config, error) {
+func NewConfig(operation string, x, y float64, numbers []float64, filePath string, threshold int, base, exponent, number, angle float64, n int, function, unit, expression, textInput string) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
 
 	// 操作タイプの検証
-	validOperations := []string{"add", "subtract", "multiply", "divide", "sum", "evaluate_line_count", "parse-api-cost"}
+	validOperations := []string{"add", "subtract", "multiply", "divide", "sum", "evaluate_line_count", "parse-api-cost", "power", "square_root", "factorial", "trigonometry", "calculate", "get_constants"}
 	isValid := false
 	for _, op := range validOperations {
 		if operation == op {
@@ -54,15 +62,46 @@ func NewConfig(operation string, x, y float64, numbers []float64, filePath strin
 		if threshold < 0 {
 			return nil, fmt.Errorf("閾値は0以上である必要があります")
 		}
+	case "power":
+		// べき乗計算では base と exponent が必要
+	case "square_root":
+		// 平方根計算では number が必要
+	case "factorial":
+		// 階乗計算では n が必要
+		if n < 0 {
+			return nil, fmt.Errorf("階乗は負数では定義されていません")
+		}
+	case "trigonometry":
+		// 三角関数計算では function, angle, unit が必要
+		if function == "" {
+			return nil, fmt.Errorf("三角関数の種類が指定されていません")
+		}
+		if unit == "" {
+			unit = "radians" // デフォルトはラジアン
+		}
+	case "calculate":
+		// 数式評価では expression が必要
+		if expression == "" {
+			return nil, fmt.Errorf("評価する数式が指定されていません")
+		}
 	}
 
 	return &Config{
-		Operation: operation,
-		X:         x,
-		Y:         y,
-		Numbers:   numbers,
-		FilePath:  filePath,
-		Threshold: threshold,
+		Operation:  operation,
+		X:          x,
+		Y:          y,
+		Numbers:    numbers,
+		FilePath:   filePath,
+		Threshold:  threshold,
+		TextInput:  textInput,
+		Base:       base,
+		Exponent:   exponent,
+		Number:     number,
+		N:          n,
+		Function:   function,
+		Angle:      angle,
+		Unit:       unit,
+		Expression: expression,
 	}, nil
 }
 
@@ -113,10 +152,18 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		filePath     = ""
 		thresholdStr = "0"
 		textInput    = ""
+		baseStr      = "0"
+		exponentStr  = "0"
+		numberStr    = "0"
+		nStr         = "0"
+		function     = ""
+		angleStr     = "0"
+		unit         = ""
+		expression   = ""
 		help         = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost)")
+	parser.StringVar(&operation, "operation", operation, "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost, power, square_root, factorial, trigonometry, calculate, get_constants)")
 	parser.StringVar(&operation, "o", operation, "算術操作の短縮形")
 
 	// 基本計算用のパラメータ
@@ -125,7 +172,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	// 配列計算用のパラメータ
 	parser.StringVar(&numbers, "numbers", numbers, "カンマ区切りの数値リスト (sum操作用)")
-	parser.StringVar(&numbers, "n", numbers, "数値リストの短縮形")
+	parser.StringVar(&numbers, "nums", numbers, "数値リストの短縮形")
 
 	// ファイル評価用のパラメータ
 	parser.StringVar(&filePath, "file", filePath, "評価するファイルのパス")
@@ -136,6 +183,26 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	// API料金抽出用のパラメータ (parse-api-cost操作用)
 	parser.StringVar(&textInput, "text-input", textInput, "テキスト入力 (parse-api-cost操作用)")
 	parser.StringVar(&textInput, "ti", textInput, "テキスト入力の短縮形")
+
+	// 高度な数学演算用のパラメータ
+	parser.StringVar(&baseStr, "base", baseStr, "べき乗の底 (power操作用)")
+	parser.StringVar(&baseStr, "b", baseStr, "べき乗の底の短縮形")
+	parser.StringVar(&exponentStr, "exponent", exponentStr, "べき乗の指数 (power操作用)")
+	parser.StringVar(&exponentStr, "exp", exponentStr, "べき乗の指数の短縮形")
+	parser.StringVar(&numberStr, "number", numberStr, "単一の数値 (square_root操作用)")
+	parser.StringVar(&nStr, "n", nStr, "階乗の数値 (factorial操作用)")
+
+	// 三角関数用のパラメータ
+	parser.StringVar(&function, "function", function, "三角関数の種類 (sin, cos, tan)")
+	parser.StringVar(&function, "func", function, "三角関数の種類の短縮形")
+	parser.StringVar(&angleStr, "angle", angleStr, "角度")
+	parser.StringVar(&angleStr, "a", angleStr, "角度の短縮形")
+	parser.StringVar(&unit, "unit", unit, "角度の単位 (radians, degrees)")
+	parser.StringVar(&unit, "u", unit, "角度の単位の短縮形")
+
+	// 数式評価用のパラメータ
+	parser.StringVar(&expression, "expression", expression, "評価する数式 (calculate操作用)")
+	parser.StringVar(&expression, "expr", expression, "数式の短縮形")
 
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -163,6 +230,32 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	threshold, err := strconv.Atoi(thresholdStr)
 	if err != nil {
 		return nil, fmt.Errorf("無効な閾値です: %s", thresholdStr)
+	}
+
+	// 新しいパラメータの変換
+	base, err := strconv.ParseFloat(baseStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("無効なbase値です: %s", baseStr)
+	}
+
+	exponent, err := strconv.ParseFloat(exponentStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("無効なexponent値です: %s", exponentStr)
+	}
+
+	number, err := strconv.ParseFloat(numberStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("無効なnumber値です: %s", numberStr)
+	}
+
+	n, err := strconv.Atoi(nStr)
+	if err != nil {
+		return nil, fmt.Errorf("無効なn値です: %s", nStr)
+	}
+
+	angle, err := strconv.ParseFloat(angleStr, 64)
+	if err != nil {
+		return nil, fmt.Errorf("無効なangle値です: %s", angleStr)
 	}
 
 	// 残りの引数から x, y, threshold を取得（位置引数として）
@@ -202,7 +295,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return NewConfigForParseApiCost(operation, filePath, textInput)
 	}
 
-	return NewConfig(operation, x, y, numbersSlice, filePath, threshold)
+	return NewConfig(operation, x, y, numbersSlice, filePath, threshold, base, exponent, number, angle, n, function, unit, expression, textInput)
 }
 
 // PrintUsage は使用方法を表示する

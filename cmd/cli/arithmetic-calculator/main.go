@@ -33,6 +33,18 @@ func main() {
 		handleFileEvaluation(cfg)
 	case "parse-api-cost":
 		handleApiCostExtraction(cfg)
+	case "power":
+		handlePowerCalculation(cfg)
+	case "square_root":
+		handleSquareRootCalculation(cfg)
+	case "factorial":
+		handleFactorialCalculation(cfg)
+	case "trigonometry":
+		handleTrigonometryCalculation(cfg)
+	case "calculate":
+		handleExpressionCalculation(cfg)
+	case "get_constants":
+		handleGetConstants(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -102,6 +114,107 @@ func handleApiCostExtraction(cfg *config.Config) {
 
 	// 結果を出力
 	fmt.Printf("抽出されたAPI料金の合計: %.0f円\n", result)
+}
+
+// handlePowerCalculation はべき乗計算を処理する
+func handlePowerCalculation(cfg *config.Config) {
+	// AdvancedMathServiceを初期化
+	service := usecases.NewAdvancedMathService()
+
+	// べき乗計算を実行
+	result, err := service.HandleToPower(cfg.Base, cfg.Exponent)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("%.2f^%.2f = %.2f\n", cfg.Base, cfg.Exponent, result)
+}
+
+// handleSquareRootCalculation は平方根計算を処理する
+func handleSquareRootCalculation(cfg *config.Config) {
+	// AdvancedMathServiceを初期化
+	service := usecases.NewAdvancedMathService()
+
+	// 平方根計算を実行
+	result, err := service.HandleToSquareRoot(cfg.Number)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("√%.2f = %.2f\n", cfg.Number, result)
+}
+
+// handleFactorialCalculation は階乗計算を処理する
+func handleFactorialCalculation(cfg *config.Config) {
+	// AdvancedMathServiceを初期化
+	service := usecases.NewAdvancedMathService()
+
+	// 階乗計算を実行
+	result, err := service.HandleToFactorial(cfg.N)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("%d! = %.0f\n", cfg.N, result)
+}
+
+// handleTrigonometryCalculation は三角関数計算を処理する
+func handleTrigonometryCalculation(cfg *config.Config) {
+	// TrigonometryServiceを初期化
+	service := usecases.NewTrigonometryService()
+
+	// 三角関数計算を実行
+	result, err := service.HandleToTrigonometry(cfg.Function, cfg.Angle, cfg.Unit)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Printf("%s(%.2f %s) = %.6f\n", cfg.Function, cfg.Angle, cfg.Unit, result)
+}
+
+// handleExpressionCalculation は数式評価を処理する
+func handleExpressionCalculation(cfg *config.Config) {
+	// ExpressionEvaluatorServiceを初期化
+	service := usecases.NewExpressionEvaluatorService()
+
+	// 数式評価を実行
+	result, err := service.HandleToCalculateExpression(cfg.Expression)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 非常に小さな値を0として扱う（浮動小数点演算の誤差対策）
+	if result > -1e-6 && result < 1e-6 {
+		result = 0.0
+	}
+
+	// 結果を出力
+	fmt.Printf("%s = %.2f\n", cfg.Expression, result)
+}
+
+// handleGetConstants は数学定数取得を処理する
+func handleGetConstants(cfg *config.Config) {
+	// MathConstantsServiceを初期化
+	service := usecases.NewMathConstantsService()
+
+	// 数学定数取得を実行
+	result, err := service.HandleToGetConstants()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	// 結果を出力
+	fmt.Print(result)
 }
 
 // getOperationSymbol は操作タイプに対応する記号を返す

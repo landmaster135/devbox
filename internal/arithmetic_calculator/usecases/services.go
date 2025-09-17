@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -298,4 +299,386 @@ func (s *ApiCostExtractorService) HandleApiCostExtraction(filePath, textInput st
 	}
 
 	return s.extractApiCostFromText(content)
+}
+
+// #==============================================================#
+// ##          AdvancedMathService                               ##
+// #==============================================================#
+// AdvancedMathService は高度な数学演算を行うサービスです
+type AdvancedMathService struct{}
+
+// NewAdvancedMathService は新しいAdvancedMathServiceを作成します
+func NewAdvancedMathService() *AdvancedMathService {
+	return &AdvancedMathService{}
+}
+
+// power はべき乗計算を行うメソッドです
+func (a *AdvancedMathService) power(base, exponent float64) float64 {
+	return math.Pow(base, exponent)
+}
+
+// squareRoot は平方根計算を行うメソッドです
+func (a *AdvancedMathService) squareRoot(number float64) (float64, error) {
+	if number < 0 {
+		return 0, fmt.Errorf("負数の平方根は計算できません")
+	}
+	return math.Sqrt(number), nil
+}
+
+// factorial は階乗計算を行うメソッドです
+func (a *AdvancedMathService) factorial(n int) (float64, error) {
+	if n < 0 {
+		return 0, fmt.Errorf("負数の階乗は定義されていません")
+	}
+	if n > 170 {
+		return 0, fmt.Errorf("数値が大きすぎて階乗計算でオーバーフローします")
+	}
+
+	result := 1.0
+	for i := 2; i <= n; i++ {
+		result *= float64(i)
+	}
+	return result, nil
+}
+
+// HandleToPower はべき乗計算のハンドラーです
+func (a *AdvancedMathService) HandleToPower(base, exponent float64) (float64, error) {
+	result := a.power(base, exponent)
+	return result, nil
+}
+
+// HandleToSquareRoot は平方根計算のハンドラーです
+func (a *AdvancedMathService) HandleToSquareRoot(number float64) (float64, error) {
+	return a.squareRoot(number)
+}
+
+// HandleToFactorial は階乗計算のハンドラーです
+func (a *AdvancedMathService) HandleToFactorial(n int) (float64, error) {
+	return a.factorial(n)
+}
+
+// #==============================================================#
+// ##          TrigonometryService                               ##
+// #==============================================================#
+// TrigonometryService は三角関数計算を行うサービスです
+type TrigonometryService struct{}
+
+// NewTrigonometryService は新しいTrigonometryServiceを作成します
+func NewTrigonometryService() *TrigonometryService {
+	return &TrigonometryService{}
+}
+
+// trigonometry は三角関数計算を行うメソッドです
+func (t *TrigonometryService) trigonometry(function string, angle float64, unit string) (float64, error) {
+	// 度数をラジアンに変換
+	angleRad := angle
+	if strings.ToLower(unit) == "degrees" {
+		angleRad = angle * math.Pi / 180
+	}
+
+	switch strings.ToLower(function) {
+	case "sin":
+		return math.Sin(angleRad), nil
+	case "cos":
+		return math.Cos(angleRad), nil
+	case "tan":
+		return math.Tan(angleRad), nil
+	default:
+		return 0, fmt.Errorf("未知の三角関数です: %s", function)
+	}
+}
+
+// HandleToTrigonometry は三角関数計算のハンドラーです
+func (t *TrigonometryService) HandleToTrigonometry(function string, angle float64, unit string) (float64, error) {
+	return t.trigonometry(function, angle, unit)
+}
+
+// #==============================================================#
+// ##          MathConstantsService                              ##
+// #==============================================================#
+// MathConstantsService は数学定数を提供するサービスです
+type MathConstantsService struct{}
+
+// NewMathConstantsService は新しいMathConstantsServiceを作成します
+func NewMathConstantsService() *MathConstantsService {
+	return &MathConstantsService{}
+}
+
+// getConstants は利用可能な数学定数を返すメソッドです
+func (m *MathConstantsService) getConstants() map[string]float64 {
+	return map[string]float64{
+		"pi":  math.Pi,
+		"e":   math.E,
+		"tau": 2 * math.Pi,
+	}
+}
+
+// HandleToGetConstants は数学定数取得のハンドラーです
+func (m *MathConstantsService) HandleToGetConstants() (string, error) {
+	constants := m.getConstants()
+
+	var result strings.Builder
+	result.WriteString("利用可能な数学定数:\n")
+	for name, value := range constants {
+		result.WriteString(fmt.Sprintf("%s = %f\n", name, value))
+	}
+
+	return result.String(), nil
+}
+
+// #==============================================================#
+// ##          ExpressionEvaluatorService                        ##
+// #==============================================================#
+// ExpressionEvaluatorService は安全な数式評価を行うサービスです
+type ExpressionEvaluatorService struct {
+	mathConstants *MathConstantsService
+}
+
+// NewExpressionEvaluatorService は新しいExpressionEvaluatorServiceを作成します
+func NewExpressionEvaluatorService() *ExpressionEvaluatorService {
+	return &ExpressionEvaluatorService{
+		mathConstants: NewMathConstantsService(),
+	}
+}
+
+// safeEvaluate は安全に数式を評価するメソッドです
+func (e *ExpressionEvaluatorService) safeEvaluate(expression string) (float64, error) {
+	// 空白を除去
+	expression = strings.ReplaceAll(expression, " ", "")
+
+	// 危険なパターンをチェック
+	dangerousPatterns := []string{
+		"__", "import", "exec", "eval", "open", "file", "input", "sys",
+	}
+
+	// 通常の危険パターンをチェック
+	for _, pattern := range dangerousPatterns {
+		if strings.Contains(strings.ToLower(expression), pattern) {
+			return 0, fmt.Errorf("危険なパターンが検出されました: %s", pattern)
+		}
+	}
+
+	// "os"パターンの特別処理（cos関数内のosは許可）
+	if err := e.checkOsPattern(expression); err != nil {
+		return 0, err
+	}
+
+	// 数学定数を置換
+	constants := e.mathConstants.getConstants()
+	for name, value := range constants {
+		expression = strings.ReplaceAll(expression, name, fmt.Sprintf("%f", value))
+	}
+
+	// ^ を ** に置換（べき乗演算子）
+	expression = strings.ReplaceAll(expression, "^", "**")
+
+	// 基本的な数式のみを許可する簡単な評価器
+	// 実際の実装では、より安全なパーサーを使用することを推奨
+	result, err := e.evaluateBasicExpression(expression)
+	if err != nil {
+		return 0, fmt.Errorf("数式の評価に失敗しました: %v", err)
+	}
+
+	return result, nil
+}
+
+// evaluateBasicExpression は基本的な数式を評価するメソッドです
+func (e *ExpressionEvaluatorService) evaluateBasicExpression(expression string) (float64, error) {
+	// 簡単な数式評価の実装
+	// 実際の実装では、より堅牢なパーサーを使用することを推奨
+
+	// 単純な数値の場合
+	if value, err := strconv.ParseFloat(expression, 64); err == nil {
+		return value, nil
+	}
+
+	// sqrt関数の処理
+	if strings.HasPrefix(expression, "sqrt(") && strings.HasSuffix(expression, ")") {
+		inner := expression[5 : len(expression)-1]
+		value, err := e.evaluateBasicExpression(inner)
+		if err != nil {
+			return 0, err
+		}
+		if value < 0 {
+			return 0, fmt.Errorf("負数の平方根は計算できません")
+		}
+		return math.Sqrt(value), nil
+	}
+
+	// sin関数の処理
+	if strings.HasPrefix(expression, "sin(") && strings.HasSuffix(expression, ")") {
+		inner := expression[4 : len(expression)-1]
+		value, err := e.evaluateBasicExpression(inner)
+		if err != nil {
+			return 0, err
+		}
+		return math.Sin(value), nil
+	}
+
+	// cos関数の処理
+	if strings.HasPrefix(expression, "cos(") && strings.HasSuffix(expression, ")") {
+		inner := expression[4 : len(expression)-1]
+		value, err := e.evaluateBasicExpression(inner)
+		if err != nil {
+			return 0, err
+		}
+		return math.Cos(value), nil
+	}
+
+	// tan関数の処理
+	if strings.HasPrefix(expression, "tan(") && strings.HasSuffix(expression, ")") {
+		inner := expression[4 : len(expression)-1]
+		value, err := e.evaluateBasicExpression(inner)
+		if err != nil {
+			return 0, err
+		}
+		return math.Tan(value), nil
+	}
+
+	// 基本的な四則演算の処理
+	return e.evaluateArithmeticExpression(expression)
+}
+
+// evaluateArithmeticExpression は四則演算を評価するメソッドです
+func (e *ExpressionEvaluatorService) evaluateArithmeticExpression(expression string) (float64, error) {
+	// 簡単な四則演算の実装
+	// 実際の実装では、より堅牢な演算子優先度を考慮したパーサーを使用することを推奨
+
+	// 加算の処理
+	if strings.Contains(expression, "+") {
+		parts := strings.Split(expression, "+")
+		if len(parts) == 2 {
+			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
+			if err != nil {
+				return 0, err
+			}
+			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return 0, err
+			}
+			return left + right, nil
+		}
+	}
+
+	// 減算の処理
+	if strings.Contains(expression, "-") && !strings.HasPrefix(expression, "-") {
+		parts := strings.Split(expression, "-")
+		if len(parts) == 2 {
+			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
+			if err != nil {
+				return 0, err
+			}
+			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return 0, err
+			}
+			return left - right, nil
+		}
+	}
+
+	// 乗算の処理
+	if strings.Contains(expression, "*") && !strings.Contains(expression, "**") {
+		parts := strings.Split(expression, "*")
+		if len(parts) == 2 {
+			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
+			if err != nil {
+				return 0, err
+			}
+			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return 0, err
+			}
+			return left * right, nil
+		}
+	}
+
+	// べき乗の処理
+	if strings.Contains(expression, "**") {
+		parts := strings.Split(expression, "**")
+		if len(parts) == 2 {
+			base, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
+			if err != nil {
+				return 0, err
+			}
+			exponent, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return 0, err
+			}
+			return math.Pow(base, exponent), nil
+		}
+	}
+
+	// 除算の処理
+	if strings.Contains(expression, "/") {
+		parts := strings.Split(expression, "/")
+		if len(parts) == 2 {
+			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
+			if err != nil {
+				return 0, err
+			}
+			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
+			if err != nil {
+				return 0, err
+			}
+			if right == 0 {
+				return 0, fmt.Errorf("ゼロ除算は許可されていません")
+			}
+			return left / right, nil
+		}
+	}
+
+	return 0, fmt.Errorf("無効な数式です: %s", expression)
+}
+
+// checkOsPattern は"os"パターンの特別処理を行う（cos関数内のosは許可）
+func (e *ExpressionEvaluatorService) checkOsPattern(expression string) error {
+	lowerExpr := strings.ToLower(expression)
+
+	// "os"の全ての出現位置を取得
+	osIndices := e.getAllIndices(lowerExpr, "os")
+	if len(osIndices) == 0 {
+		return nil // "os"が含まれていない場合は問題なし
+	}
+
+	// "cos"の全ての出現位置を取得
+	cosIndices := e.getAllIndices(lowerExpr, "cos")
+
+	// 各"os"が"cos"の一部かチェック
+	for _, osIndex := range osIndices {
+		isPartOfCos := false
+		for _, cosIndex := range cosIndices {
+			if osIndex == cosIndex+1 {
+				isPartOfCos = true
+				break
+			}
+		}
+		if !isPartOfCos {
+			return fmt.Errorf("危険なパターンが検出されました: os")
+		}
+	}
+
+	return nil
+}
+
+// getAllIndices は文字列内の指定されたパターンの全ての出現位置を返す
+func (e *ExpressionEvaluatorService) getAllIndices(text, pattern string) []int {
+	var indices []int
+	start := 0
+
+	for {
+		index := strings.Index(text[start:], pattern)
+		if index == -1 {
+			break
+		}
+		actualIndex := start + index
+		indices = append(indices, actualIndex)
+		start = actualIndex + 1
+	}
+
+	return indices
+}
+
+// HandleToCalculateExpression は数式評価のハンドラーです
+func (e *ExpressionEvaluatorService) HandleToCalculateExpression(expression string) (float64, error) {
+	return e.safeEvaluate(expression)
 }
