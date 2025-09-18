@@ -154,39 +154,39 @@ type PlayerBansResponse struct {
 
 // AppDetails はアプリケーション詳細情報
 type AppDetails struct {
-	Type                string                 `json:"type"`
-	Name                string                 `json:"name"`
-	SteamAppID          int                    `json:"steam_appid"`
-	RequiredAge         int                    `json:"required_age"`
-	IsFree              bool                   `json:"is_free"`
-	DLC                 []int                  `json:"dlc"`
-	DetailedDescription string                 `json:"detailed_description"`
-	AboutTheGame        string                 `json:"about_the_game"`
-	ShortDescription    string                 `json:"short_description"`
-	SupportedLanguages  string                 `json:"supported_languages"`
-	HeaderImage         string                 `json:"header_image"`
-	Website             string                 `json:"website"`
-	PCRequirements      map[string]interface{} `json:"pc_requirements"`
-	MacRequirements     map[string]interface{} `json:"mac_requirements"`
-	LinuxRequirements   map[string]interface{} `json:"linux_requirements"`
-	Developers          []string               `json:"developers"`
-	Publishers          []string               `json:"publishers"`
-	PriceOverview       *PriceOverview         `json:"price_overview"`
-	Packages            []int                  `json:"packages"`
-	PackageGroups       []PackageGroup         `json:"package_groups"`
-	Platforms           Platforms              `json:"platforms"`
-	Metacritic          *Metacritic            `json:"metacritic"`
-	Categories          []Category             `json:"categories"`
-	Genres              []Genre                `json:"genres"`
-	Screenshots         []Screenshot           `json:"screenshots"`
-	Movies              []Movie                `json:"movies"`
-	Recommendations     *Recommendations       `json:"recommendations"`
-	Achievements        *Achievements          `json:"achievements"`
-	ReleaseDate         ReleaseDate            `json:"release_date"`
-	SupportInfo         SupportInfo            `json:"support_info"`
-	Background          string                 `json:"background"`
-	BackgroundRaw       string                 `json:"background_raw"`
-	ContentDescriptors  ContentDescriptors     `json:"content_descriptors"`
+	Type                string             `json:"type"`
+	Name                string             `json:"name"`
+	SteamAppID          int                `json:"steam_appid"`
+	RequiredAge         int                `json:"required_age"`
+	IsFree              bool               `json:"is_free"`
+	DLC                 []int              `json:"dlc"`
+	DetailedDescription string             `json:"detailed_description"`
+	AboutTheGame        string             `json:"about_the_game"`
+	ShortDescription    string             `json:"short_description"`
+	SupportedLanguages  string             `json:"supported_languages"`
+	HeaderImage         string             `json:"header_image"`
+	Website             string             `json:"website"`
+	PCRequirements      map[string]any     `json:"pc_requirements"`
+	MacRequirements     map[string]any     `json:"mac_requirements"`
+	LinuxRequirements   map[string]any     `json:"linux_requirements"`
+	Developers          []string           `json:"developers"`
+	Publishers          []string           `json:"publishers"`
+	PriceOverview       *PriceOverview     `json:"price_overview"`
+	Packages            []int              `json:"packages"`
+	PackageGroups       []PackageGroup     `json:"package_groups"`
+	Platforms           Platforms          `json:"platforms"`
+	Metacritic          *Metacritic        `json:"metacritic"`
+	Categories          []Category         `json:"categories"`
+	Genres              []Genre            `json:"genres"`
+	Screenshots         []Screenshot       `json:"screenshots"`
+	Movies              []Movie            `json:"movies"`
+	Recommendations     *Recommendations   `json:"recommendations"`
+	Achievements        *Achievements      `json:"achievements"`
+	ReleaseDate         ReleaseDate        `json:"release_date"`
+	SupportInfo         SupportInfo        `json:"support_info"`
+	Background          string             `json:"background"`
+	BackgroundRaw       string             `json:"background_raw"`
+	ContentDescriptors  ContentDescriptors `json:"content_descriptors"`
 }
 
 // PriceOverview は価格情報
@@ -310,8 +310,8 @@ type UserStats struct {
 
 // Stat は統計情報
 type Stat struct {
-	Name  string      `json:"name"`
-	Value interface{} `json:"value"`
+	Name  string `json:"name"`
+	Value any    `json:"value"`
 }
 
 // Achievement は実績情報

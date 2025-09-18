@@ -41,7 +41,7 @@ func (u *UsersService) GetUserDetails(ctx context.Context, steamID string) (*Pla
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamids": steamID,
 	}
 
@@ -91,7 +91,7 @@ func (u *UsersService) GetMultipleUserDetails(ctx context.Context, steamIDs []st
 			continue
 		}
 
-		params := map[string]interface{}{
+		params := map[string]any{
 			"steamids": strings.Join(validIDs, ","),
 		}
 
@@ -123,7 +123,7 @@ func (u *UsersService) GetUserFriendsList(ctx context.Context, steamID string, e
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 	}
 
@@ -175,7 +175,7 @@ func (u *UsersService) GetUserRecentlyPlayedGames(ctx context.Context, steamID s
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 	}
 
@@ -204,7 +204,7 @@ func (u *UsersService) GetOwnedGames(ctx context.Context, steamID string, includ
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid":                   steamID,
 		"include_appinfo":           includeAppInfo,
 		"include_played_free_games": includeFreeGames,
@@ -235,7 +235,7 @@ func (u *UsersService) GetUserSteamLevel(ctx context.Context, steamID string) (i
 		return 0, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 	}
 
@@ -264,7 +264,7 @@ func (u *UsersService) GetUserBadges(ctx context.Context, steamID string) ([]Bad
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 	}
 
@@ -293,7 +293,7 @@ func (u *UsersService) GetPlayerBans(ctx context.Context, steamID string) (*Play
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamids": steamID,
 	}
 
@@ -326,7 +326,7 @@ func (u *UsersService) GetSteamID(ctx context.Context, vanityURL string) (string
 		return "", fmt.Errorf("vanity URL is required")
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"vanityurl": vanityURL,
 	}
 
@@ -364,7 +364,7 @@ func (u *UsersService) GetSteamID(ctx context.Context, vanityURL string) (string
 }
 
 // GetCommunityBadgeProgress はコミュニティバッジの進行状況を取得します
-func (u *UsersService) GetCommunityBadgeProgress(ctx context.Context, steamID string, badgeID int) (interface{}, error) {
+func (u *UsersService) GetCommunityBadgeProgress(ctx context.Context, steamID string, badgeID int) (any, error) {
 	if !validateSteamID(steamID) {
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
@@ -373,7 +373,7 @@ func (u *UsersService) GetCommunityBadgeProgress(ctx context.Context, steamID st
 		return nil, fmt.Errorf("invalid badge ID: %d", badgeID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 		"badgeid": badgeID,
 	}
@@ -387,12 +387,12 @@ func (u *UsersService) GetCommunityBadgeProgress(ctx context.Context, steamID st
 }
 
 // GetAccountPublicInfo はアカウントの公開情報を取得します
-func (u *UsersService) GetAccountPublicInfo(ctx context.Context, steamID string) (interface{}, error) {
+func (u *UsersService) GetAccountPublicInfo(ctx context.Context, steamID string) (any, error) {
 	if !validateSteamID(steamID) {
 		return nil, fmt.Errorf("invalid Steam ID: %s", steamID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 	}
 

@@ -37,8 +37,8 @@ func NewClient(apiKey string, headers map[string]string) *Client {
 
 	// ユーザー指定のヘッダーとマージ
 	mergedHeaders := mergeParams(
-		map[string]interface{}{"Content-Type": "application/json", "Accept": "application/json"},
-		map[string]interface{}{},
+		map[string]any{"Content-Type": "application/json", "Accept": "application/json"},
+		map[string]any{},
 	)
 	for k, v := range headers {
 		mergedHeaders[k] = v
@@ -62,7 +62,7 @@ func NewClient(apiKey string, headers map[string]string) *Client {
 }
 
 // Request はHTTPリクエストを実行し、レスポンスを返します
-func (c *Client) Request(ctx context.Context, method, endpoint string, params map[string]interface{}) (interface{}, error) {
+func (c *Client) Request(ctx context.Context, method, endpoint string, params map[string]any) (any, error) {
 	url := buildURLWithParams(APIBaseURL+endpoint, c.apiKey, params)
 
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
@@ -80,7 +80,7 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, params ma
 }
 
 // RequestWithoutKey はAPIキーなしでHTTPリクエストを実行します（Store APIなど用）
-func (c *Client) RequestWithoutKey(ctx context.Context, method, url string, params map[string]interface{}) (interface{}, error) {
+func (c *Client) RequestWithoutKey(ctx context.Context, method, url string, params map[string]any) (any, error) {
 	if len(params) > 0 {
 		cleanedParams := cleanParams(params)
 		if len(cleanedParams) > 0 {
@@ -106,7 +106,7 @@ func (c *Client) RequestWithoutKey(ctx context.Context, method, url string, para
 }
 
 // executeWithRetry はリトライ機能付きでHTTPリクエストを実行します
-func (c *Client) executeWithRetry(req *http.Request, maxRetries int) (interface{}, error) {
+func (c *Client) executeWithRetry(req *http.Request, maxRetries int) (any, error) {
 	var lastErr error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
@@ -125,9 +125,13 @@ func (c *Client) executeWithRetry(req *http.Request, maxRetries int) (interface{
 		result, err := c.validateResponse(resp)
 		if err != nil {
 			lastErr = err
-			// HTTPエラーの場合はリトライしない
+			// HTTPエラーまたはSteamAPIエラーの場合はリトライしない
 			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				break
+				return nil, err
+			}
+			// SteamErrorの場合もリトライしない（直接返す）
+			if _, isSteamError := err.(*SteamError); isSteamError {
+				return nil, err
 			}
 			continue
 		}
@@ -139,7 +143,7 @@ func (c *Client) executeWithRetry(req *http.Request, maxRetries int) (interface{
 }
 
 // validateResponse はHTTPレスポンスを検証し、適切な形式で返します
-func (c *Client) validateResponse(resp *http.Response) (interface{}, error) {
+func (c *Client) validateResponse(resp *http.Response) (any, error) {
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
@@ -158,19 +162,38 @@ func (c *Client) validateResponse(resp *http.Response) (interface{}, error) {
 	}
 
 	// JSONとしてパース
-	var result interface{}
+	var result any
 	if err := json.Unmarshal(body, &result); err != nil {
 		// JSONパースに失敗した場合は文字列として返す
 		return string(body), nil
 	}
 
 	// Steam APIのエラーレスポンスをチェック
-	if resultMap, ok := result.(map[string]interface{}); ok {
+	if resultMap, ok := result.(map[string]any); ok {
 		if code, exists := resultMap["code"]; exists {
 			if description, exists := resultMap["description"]; exists {
+				// 安全な型変換
+				var codeInt int
+				switch v := code.(type) {
+				case float64:
+					codeInt = int(v)
+				case int:
+					codeInt = v
+				default:
+					// 型変換に失敗した場合はデフォルト値を使用
+					codeInt = 0
+				}
+
+				var descStr string
+				if desc, ok := description.(string); ok {
+					descStr = desc
+				} else {
+					descStr = "Unknown error"
+				}
+
 				return nil, &SteamError{
-					Code:        int(code.(float64)),
-					Description: description.(string),
+					Code:        codeInt,
+					Description: descStr,
 					StatusCode:  resp.StatusCode,
 				}
 			}
