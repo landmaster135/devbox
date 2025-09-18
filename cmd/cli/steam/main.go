@@ -112,7 +112,7 @@ func handleGamesOperation(ctx context.Context, config Config) error {
 	fmt.Printf("Starting games operation for Steam ID: %s\n", config.SteamID)
 
 	// Steam サービスを作成
-	steamService := usecases.NewSteamService(config.SteamAPIKey)
+	steamService := usecases.NewSteamServiceWithAPIKey(config.SteamAPIKey)
 
 	// ゲーム情報を取得
 	fmt.Println("Fetching games information...")
@@ -209,7 +209,7 @@ func handleGameStatsOperation(ctx context.Context, config Config) error {
 	fmt.Printf("Starting game-stats operation for Steam ID: %s\n", config.SteamID)
 
 	// Steam サービスを作成
-	steamService := usecases.NewSteamService(config.SteamAPIKey)
+	steamService := usecases.NewSteamServiceWithAPIKey(config.SteamAPIKey)
 
 	// 全ゲームの統計情報を取得
 	fmt.Println("Fetching all games statistics and achievements...")
