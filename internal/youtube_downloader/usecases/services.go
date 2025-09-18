@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,33 +16,42 @@ import (
 
 // Service はYouTube動画ダウンロードサービスです
 type Service struct {
-	client *youtube.Client
+	youtubeClient  YouTubeClient
+	fileSystem     FileSystem
+	videoProcessor VideoProcessor
+	timeProvider   TimeProvider
 }
 
-// NewService は新しいサービスインスタンスを作成します
-func NewService() *Service {
-	client := &youtube.Client{
-		HTTPClient:  http.DefaultClient,
-		MaxRoutines: 10,
-		ChunkSize:   10 * 1024 * 1024, // 10MB
-	}
+// NewService は依存関係を注入してサービスを作成します
+func NewService(
+	youtubeClient YouTubeClient,
+	fileSystem FileSystem,
+	videoProcessor VideoProcessor,
+	timeProvider TimeProvider,
+) *Service {
 	return &Service{
-		client: client,
+		youtubeClient:  youtubeClient,
+		fileSystem:     fileSystem,
+		videoProcessor: videoProcessor,
+		timeProvider:   timeProvider,
 	}
 }
 
-// NewServiceWithClient は指定されたクライアントでサービスを作成します
-func NewServiceWithClient(client *youtube.Client) *Service {
-	return &Service{
-		client: client,
-	}
+// NewServiceWithDefaults はデフォルト実装でサービスを作成します
+func NewServiceWithDefaults() *Service {
+	return NewService(
+		NewYouTubeClientImpl(),
+		NewFileSystemImpl(),
+		NewVideoProcessorImpl(),
+		NewTimeProviderImpl(),
+	)
 }
 
 // DownloadVideo は単一の動画をダウンロードします
 func (s *Service) DownloadVideo(ctx context.Context, request domain.DownloadRequest) (string, error) {
 	// クライアント設定を更新
-	s.client.MaxRoutines = request.MaxRoutines
-	s.client.ChunkSize = request.ChunkSize
+	s.youtubeClient.SetMaxRoutines(request.MaxRoutines)
+	s.youtubeClient.SetChunkSize(request.ChunkSize)
 
 	if request.Playlist {
 		return s.downloadPlaylist(ctx, request)
@@ -55,7 +63,7 @@ func (s *Service) DownloadVideo(ctx context.Context, request domain.DownloadRequ
 // downloadSingleVideo は単一動画をダウンロードします
 func (s *Service) downloadSingleVideo(ctx context.Context, request domain.DownloadRequest) (string, error) {
 	// 動画情報を取得
-	video, err := s.client.GetVideoContext(ctx, request.URL)
+	video, err := s.youtubeClient.GetVideoContext(ctx, request.URL)
 	if err != nil {
 		return "", s.convertError(err, "")
 	}
@@ -114,7 +122,7 @@ func (s *Service) downloadSingleVideo(ctx context.Context, request domain.Downlo
 // downloadPlaylist はプレイリストをダウンロードします
 func (s *Service) downloadPlaylist(ctx context.Context, request domain.DownloadRequest) (string, error) {
 	// プレイリスト情報を取得
-	playlist, err := s.client.GetPlaylistContext(ctx, request.URL)
+	playlist, err := s.youtubeClient.GetPlaylistContext(ctx, request.URL)
 	if err != nil {
 		return "", s.convertError(err, "")
 	}
@@ -132,7 +140,7 @@ func (s *Service) downloadPlaylist(ctx context.Context, request domain.DownloadR
 		result += fmt.Sprintf("(%d/%d) %s をダウンロード中...\n", i+1, len(playlist.Videos), entry.Title)
 
 		// 動画を取得
-		video, err := s.client.VideoFromPlaylistEntryContext(ctx, entry)
+		video, err := s.youtubeClient.VideoFromPlaylistEntryContext(ctx, entry)
 		if err != nil {
 			result += fmt.Sprintf("  エラー: %v\n", err)
 			errorCount++
@@ -181,7 +189,7 @@ func (s *Service) downloadFile(ctx context.Context, video *youtube.Video, format
 	youtubeFormat := s.convertToYouTubeFormat(format)
 
 	// ストリームを取得
-	stream, size, err := s.client.GetStreamContext(ctx, video, youtubeFormat)
+	stream, size, err := s.youtubeClient.GetStreamContext(ctx, video, youtubeFormat)
 	if err != nil {
 		return domain.NewDownloadError(
 			domain.ErrorTypeDownloadFailed,
