@@ -12,7 +12,7 @@ import (
 
 func handleDownload(cfg *config.Config) {
 	// サービスを作成
-	service := usecases.NewService()
+	service := usecases.NewServiceWithDefaults()
 
 	// ダウンロード要求を作成
 	request := domain.DownloadRequest{
