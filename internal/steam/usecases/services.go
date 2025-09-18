@@ -11,6 +11,24 @@ import (
 	steamAPI "github.com/landmaster135/devbox/internal/steam/infrastructure/steam_api"
 )
 
+// UsersServiceInterface はUsers関連のAPIを抽象化
+type UsersServiceInterface interface {
+	GetOwnedGames(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]steamAPI.OwnedGame, error)
+	GetUserRecentlyPlayedGames(ctx context.Context, steamID string) ([]steamAPI.RecentlyPlayedGame, error)
+}
+
+// AppsServiceInterface はApps関連のAPIを抽象化
+type AppsServiceInterface interface {
+	GetUserStats(ctx context.Context, steamID string, appID int) (*steamAPI.UserStats, error)
+	GetUserAchievements(ctx context.Context, steamID string, appID int, language string) ([]steamAPI.Achievement, error)
+}
+
+// SteamClientInterface は全体のクライアントを抽象化
+type SteamClientInterface interface {
+	GetUsers() *steamAPI.UsersService
+	GetApps() *steamAPI.AppsService
+}
+
 // SteamGameInfo はゲーム情報を格納する構造体
 type SteamGameInfo struct {
 	Name                    string `json:"name"`
@@ -57,15 +75,20 @@ type GameListOutput struct {
 
 // SteamService はSteam APIを使用するサービス
 type SteamService struct {
-	client *steamAPI.SteamClient
+	client SteamClientInterface
 }
 
-// NewSteamService は新しいSteamServiceを作成します
-func NewSteamService(apiKey string) *SteamService {
-	client := steamAPI.NewSteamClient(apiKey, nil)
+// NewSteamService は依存性注入対応のコンストラクタ
+func NewSteamService(client SteamClientInterface) *SteamService {
 	return &SteamService{
 		client: client,
 	}
+}
+
+// NewSteamServiceWithAPIKey はAPIキーから直接SteamServiceを作成するヘルパー関数
+func NewSteamServiceWithAPIKey(apiKey string) *SteamService {
+	client := steamAPI.NewSteamClient(apiKey, nil)
+	return NewSteamService(client)
 }
 
 // buildGameInfo は個別のゲーム情報を構築します（Steam IDを明示的に渡すバージョン）
@@ -98,13 +121,13 @@ func (s *SteamService) buildGameInfo(ctx context.Context, ownedGame steamAPI.Own
 	// 実績・統計情報の取得可能性をより詳細にチェック
 	if ownedGame.HasCommunityVisibleStats {
 		// 実際に統計情報を取得してみる（エラーが発生しても続行）
-		_, err := s.client.Apps.GetUserStats(ctx, steamID, ownedGame.AppID)
+		_, err := s.client.GetApps().GetUserStats(ctx, steamID, ownedGame.AppID)
 		if err != nil {
 			gameInfo.Stats = false
 		}
 
 		// 実績情報を取得してみる（エラーが発生しても続行）
-		_, err = s.client.Apps.GetUserAchievements(ctx, steamID, ownedGame.AppID, "en")
+		_, err = s.client.GetApps().GetUserAchievements(ctx, steamID, ownedGame.AppID, "en")
 		if err != nil {
 			gameInfo.AchievementsCanRetrieve = false
 		}
@@ -116,13 +139,13 @@ func (s *SteamService) buildGameInfo(ctx context.Context, ownedGame steamAPI.Own
 // GetGamesInfo は指定されたSteam IDのゲーム情報を取得します
 func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]SteamGameInfo, error) {
 	// 所有ゲーム一覧を取得
-	ownedGames, err := s.client.Users.GetOwnedGames(ctx, steamID, true, true)
+	ownedGames, err := s.client.GetUsers().GetOwnedGames(ctx, steamID, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}
 
 	// 最近プレイしたゲーム一覧を取得（2週間のプレイ時間情報のため）
-	recentGames, err := s.client.Users.GetUserRecentlyPlayedGames(ctx, steamID)
+	recentGames, err := s.client.GetUsers().GetUserRecentlyPlayedGames(ctx, steamID)
 	if err != nil {
 		// 最近プレイしたゲームの取得に失敗してもエラーにしない
 		fmt.Printf("Warning: failed to get recently played games: %v\n", err)
@@ -203,7 +226,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 	}
 
 	// 統計情報を取得
-	userStats, err := s.client.Apps.GetUserStats(ctx, steamID, game.AppID)
+	userStats, err := s.client.GetApps().GetUserStats(ctx, steamID, game.AppID)
 	if err == nil {
 		for _, stat := range userStats.Stats {
 			gameStats.Stats = append(gameStats.Stats, GameStat{
@@ -217,7 +240,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 	}
 
 	// 実績情報を取得
-	achievements, err := s.client.Apps.GetUserAchievements(ctx, steamID, game.AppID, "en")
+	achievements, err := s.client.GetApps().GetUserAchievements(ctx, steamID, game.AppID, "en")
 	if err == nil {
 		for _, achievement := range achievements {
 			gameStats.Achievements = append(gameStats.Achievements, GameAchievement{
@@ -237,7 +260,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 // GetGamesStats はゲームの統計情報を取得します
 func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*GameStatsInfo, error) {
 	// 所有ゲーム一覧を取得
-	ownedGames, err := s.client.Users.GetOwnedGames(ctx, steamID, true, true)
+	ownedGames, err := s.client.GetUsers().GetOwnedGames(ctx, steamID, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}

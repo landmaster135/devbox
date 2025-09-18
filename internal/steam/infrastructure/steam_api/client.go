@@ -246,3 +246,13 @@ func NewSteamClient(apiKey string, headers map[string]string) *SteamClient {
 func (sc *SteamClient) GetClient() *Client {
 	return sc.client
 }
+
+// GetUsers はUsersServiceを返します
+func (sc *SteamClient) GetUsers() *UsersService {
+	return sc.Users
+}
+
+// GetApps はAppsServiceを返します
+func (sc *SteamClient) GetApps() *AppsService {
+	return sc.Apps
+}
