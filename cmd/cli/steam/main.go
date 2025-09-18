@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/steam/usecases"
+	usecases "github.com/landmaster135/devbox/internal/steam/usecases"
 )
 
 // Config はCLIの設定を格納する構造体
@@ -17,14 +16,7 @@ type Config struct {
 	Operation   string
 	SteamAPIKey string
 	SteamID     string
-}
-
-// GameListOutput はJSONファイル出力用の構造体
-type GameListOutput struct {
-	SteamID     string                      `json:"steam_id"`
-	GeneratedAt string                      `json:"generated_at"`
-	TotalGames  int                         `json:"total_games"`
-	Games       []usecases.SteamGameInfo    `json:"games"`
+	GameID      int
 }
 
 func main() {
@@ -41,6 +33,10 @@ func main() {
 		if err := handleGamesOperation(ctx, config); err != nil {
 			log.Fatalf("Failed to execute games operation: %v", err)
 		}
+	case "game-stats":
+		if err := handleGameStatsOperation(ctx, config); err != nil {
+			log.Fatalf("Failed to execute game-stats operation: %v", err)
+		}
 	default:
 		log.Fatalf("Unknown operation: %s", config.Operation)
 	}
@@ -50,12 +46,14 @@ func main() {
 func parseFlags() Config {
 	var config Config
 
-	flag.StringVar(&config.Operation, "operation", "", "Operation to perform (required): games")
-	flag.StringVar(&config.Operation, "o", "", "Operation to perform (required): games (shorthand)")
+	flag.StringVar(&config.Operation, "operation", "", "Operation to perform (required): games, game-stats")
+	flag.StringVar(&config.Operation, "o", "", "Operation to perform (required): games, game-stats (shorthand)")
 	flag.StringVar(&config.SteamAPIKey, "steam-api-key", "", "Steam API key (required)")
 	flag.StringVar(&config.SteamAPIKey, "k", "", "Steam API key (required) (shorthand)")
 	flag.StringVar(&config.SteamID, "steam-id", "", "Steam ID (required)")
 	flag.StringVar(&config.SteamID, "s", "", "Steam ID (required) (shorthand)")
+	flag.IntVar(&config.GameID, "game-id", 0, "Game ID (required for game-stats operation)")
+	flag.IntVar(&config.GameID, "g", 0, "Game ID (required for game-stats operation) (shorthand)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Steam API CLI Tool\n\n")
@@ -65,8 +63,11 @@ func parseFlags() Config {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s --operation games --steam-api-key YOUR_KEY --steam-id 76561198000000000\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -o games -k YOUR_KEY -s 76561198000000000\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --operation game-stats --steam-api-key YOUR_KEY --steam-id 76561198000000000\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -o game-stats -k YOUR_KEY -s 76561198000000000\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nSupported operations:\n")
-		fmt.Fprintf(os.Stderr, "  games    Get user's owned games information and save to JSON file\n")
+		fmt.Fprintf(os.Stderr, "  games       Get user's owned games information and save to JSON file\n")
+		fmt.Fprintf(os.Stderr, "  game-stats  Get all games' statistics and achievements and save to JSON file\n")
 	}
 
 	flag.Parse()
@@ -92,8 +93,10 @@ func validateConfig(config Config) error {
 	switch config.Operation {
 	case "games":
 		// OK
+	case "game-stats":
+		// OK
 	default:
-		return fmt.Errorf("unsupported operation: %s (supported: games)", config.Operation)
+		return fmt.Errorf("unsupported operation: %s (supported: games, game-stats)", config.Operation)
 	}
 
 	// Steam IDの形式を簡単にチェック
@@ -113,24 +116,16 @@ func handleGamesOperation(ctx context.Context, config Config) error {
 
 	// ゲーム情報を取得
 	fmt.Println("Fetching games information...")
-	games, err := steamService.GetGamesInfoWithSteamID(ctx, config.SteamID)
+	games, err := steamService.GetGamesInfo(ctx, config.SteamID)
 	if err != nil {
 		return fmt.Errorf("failed to get games info: %w", err)
 	}
 
 	fmt.Printf("Successfully retrieved %d games\n", len(games))
 
-	// JSON出力用のデータを準備
-	output := GameListOutput{
-		SteamID:     config.SteamID,
-		GeneratedAt: time.Now().Format(time.RFC3339),
-		TotalGames:  len(games),
-		Games:       games,
-	}
-
-	// JSONファイルに出力
+	// JSONファイルに出力（サービスのメソッドを使用）
 	filename := fmt.Sprintf("steam_games_%s_%s.json", config.SteamID, time.Now().Format("20060102_150405"))
-	if err := saveToJSONFile(output, filename); err != nil {
+	if err := steamService.SaveGamesToJSON(games, config.SteamID, filename); err != nil {
 		return fmt.Errorf("failed to save to JSON file: %w", err)
 	}
 
@@ -138,24 +133,6 @@ func handleGamesOperation(ctx context.Context, config Config) error {
 
 	// 簡単な統計情報を表示
 	displayStatistics(games)
-
-	return nil
-}
-
-// saveToJSONFile はデータをJSONファイルに保存します
-func saveToJSONFile(data interface{}, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // 読みやすい形式でインデント
-
-	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("failed to encode JSON: %w", err)
-	}
 
 	return nil
 }
@@ -224,5 +201,91 @@ func displayStatistics(games []usecases.SteamGameInfo) {
 			break
 		}
 		fmt.Printf("%d. %s - %.1f hours\n", i+1, game.Name, float64(game.PlaytimeForever)/60.0)
+	}
+}
+
+// handleGameStatsOperation はgame-stats操作を処理します
+func handleGameStatsOperation(ctx context.Context, config Config) error {
+	fmt.Printf("Starting game-stats operation for Steam ID: %s\n", config.SteamID)
+
+	// Steam サービスを作成
+	steamService := usecases.NewSteamService(config.SteamAPIKey)
+
+	// 全ゲームの統計情報を取得
+	fmt.Println("Fetching all games statistics and achievements...")
+	allGameStats, err := steamService.GetGamesStats(ctx, config.SteamID)
+	if err != nil {
+		return fmt.Errorf("failed to get all games stats: %w", err)
+	}
+
+	fmt.Printf("Successfully retrieved stats for %d games\n", len(allGameStats))
+
+	// JSONファイルに出力（サービスのメソッドを使用）
+	filename := fmt.Sprintf("steam_games_stats_%s_%s.json", config.SteamID, time.Now().Format("20060102_150405"))
+	if err := steamService.SaveGamesStatsToJSON(allGameStats, filename); err != nil {
+		return fmt.Errorf("failed to save to JSON file: %w", err)
+	}
+
+	fmt.Printf("All games statistics saved to: %s\n", filename)
+
+	// 簡単な統計情報を表示
+	displayGamesStatsInfo(allGameStats)
+
+	return nil
+}
+
+// displayGamesStatsInfo は全ゲームの統計情報を表示します
+func displayGamesStatsInfo(allGameStats []*usecases.GameStatsInfo) {
+	if len(allGameStats) == 0 {
+		fmt.Println("No games found.")
+		return
+	}
+
+	fmt.Printf("\n=== All Games Statistics ===\n")
+	fmt.Printf("Total games: %d\n", len(allGameStats))
+
+	var totalStats int
+	var totalAchievements int
+	var gamesWithStats int
+	var gamesWithAchievements int
+
+	for _, gameStats := range allGameStats {
+		if len(gameStats.Stats) > 0 {
+			totalStats += len(gameStats.Stats)
+			gamesWithStats++
+		}
+		if len(gameStats.Achievements) > 0 {
+			totalAchievements += len(gameStats.Achievements)
+			gamesWithAchievements++
+		}
+	}
+
+	fmt.Printf("Games with stats: %d\n", gamesWithStats)
+	fmt.Printf("Total stats: %d\n", totalStats)
+	fmt.Printf("Games with achievements: %d\n", gamesWithAchievements)
+	fmt.Printf("Total achievements: %d\n", totalAchievements)
+
+	// 統計・実績が多いゲームトップ5
+	fmt.Println("\n=== Top 5 Games with Most Stats ===")
+
+	// ゲームを統計数でソート
+	topStatGames := make([]*usecases.GameStatsInfo, len(allGameStats))
+	copy(topStatGames, allGameStats)
+
+	// バブルソート（統計数で）
+	for i := 0; i < len(topStatGames)-1; i++ {
+		for j := 0; j < len(topStatGames)-i-1; j++ {
+			if len(topStatGames[j].Stats) < len(topStatGames[j+1].Stats) {
+				topStatGames[j], topStatGames[j+1] = topStatGames[j+1], topStatGames[j]
+			}
+		}
+	}
+
+	// トップ5を表示
+	for i, gameStats := range topStatGames {
+		if i >= 5 || len(gameStats.Stats) == 0 {
+			break
+		}
+		fmt.Printf("%d. %s - %d stats, %d achievements\n", i+1, gameStats.GameName, len(gameStats.Stats), len(gameStats.Achievements))
 	}
 }
