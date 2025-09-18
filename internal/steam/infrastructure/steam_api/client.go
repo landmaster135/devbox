@@ -81,7 +81,7 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, params ma
 
 // RequestWithoutKey はAPIキーなしでHTTPリクエストを実行します（Store APIなど用）
 func (c *Client) RequestWithoutKey(ctx context.Context, method, url string, params map[string]interface{}) (interface{}, error) {
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		cleanedParams := cleanParams(params)
 		if len(cleanedParams) > 0 {
 			u, err := buildURLWithQueryParams(url, cleanedParams)
