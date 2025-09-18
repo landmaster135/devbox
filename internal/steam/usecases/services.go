@@ -192,6 +192,48 @@ func (s *SteamService) SaveGamesToJSON(games []SteamGameInfo, steamID string, fi
 	return s.saveToJSONFile(output, filename)
 }
 
+// buildGameStatsInfo は個別のゲーム統計情報を構築します
+func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.OwnedGame, steamID string) *GameStatsInfo {
+	gameStats := &GameStatsInfo{
+		SteamID:      steamID,
+		GameName:     game.Name,
+		GameID:       game.AppID,
+		Stats:        []GameStat{},
+		Achievements: []GameAchievement{},
+	}
+
+	// 統計情報を取得
+	userStats, err := s.client.Apps.GetUserStats(ctx, steamID, game.AppID)
+	if err == nil {
+		for _, stat := range userStats.Stats {
+			gameStats.Stats = append(gameStats.Stats, GameStat{
+				Name:  stat.Name,
+				Value: stat.Value,
+			})
+		}
+	} else {
+		// エラーログを出力（デバッグ用）
+		fmt.Printf("Warning: failed to get user stats for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
+	}
+
+	// 実績情報を取得
+	achievements, err := s.client.Apps.GetUserAchievements(ctx, steamID, game.AppID, "en")
+	if err == nil {
+		for _, achievement := range achievements {
+			gameStats.Achievements = append(gameStats.Achievements, GameAchievement{
+				Name:       achievement.Name,
+				Achieved:   achievement.Achieved,
+				UnlockTime: 0,
+			})
+		}
+	} else {
+		// エラーログを出力（デバッグ用）
+		fmt.Printf("Warning: failed to get user achievements for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
+	}
+
+	return gameStats
+}
+
 // GetGamesStats はゲームの統計情報を取得します
 func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*GameStatsInfo, error) {
 	// 所有ゲーム一覧を取得
@@ -200,42 +242,30 @@ func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*Ga
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}
 
-	var allGameStats []*GameStatsInfo
+	// 並行処理でゲーム統計情報を取得
+	allGameStats := make([]*GameStatsInfo, len(ownedGames))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	for _, game := range ownedGames {
-		gameStats := &GameStatsInfo{
-			SteamID:      steamID,
-			GameName:     game.Name,
-			GameID:       game.AppID,
-			Stats:        []GameStat{},
-			Achievements: []GameAchievement{},
-		}
+	// 並行処理数を制限（Steam APIのレート制限を考慮）
+	semaphore := make(chan struct{}, 10)
 
-		// 統計情報を取得
-		userStats, err := s.client.Apps.GetUserStats(ctx, steamID, game.AppID)
-		if err == nil {
-			for _, stat := range userStats.Stats {
-				gameStats.Stats = append(gameStats.Stats, GameStat{
-					Name:  stat.Name,
-					Value: stat.Value,
-				})
-			}
-		}
+	for i, game := range ownedGames {
+		wg.Add(1)
+		go func(index int, ownedGame steamAPI.OwnedGame) {
+			defer wg.Done()
+			semaphore <- struct{}{}        // セマフォを取得
+			defer func() { <-semaphore }() // セマフォを解放
 
-		// 実績情報を取得
-		achievements, err := s.client.Apps.GetUserAchievements(ctx, steamID, game.AppID, "en")
-		if err == nil {
-			for _, achievement := range achievements {
-				gameStats.Achievements = append(gameStats.Achievements, GameAchievement{
-					Name:       achievement.Name,
-					Achieved:   achievement.Achieved,
-					UnlockTime: 0,
-				})
-			}
-		}
+			gameStats := s.buildGameStatsInfo(ctx, ownedGame, steamID)
 
-		allGameStats = append(allGameStats, gameStats)
+			mu.Lock()
+			allGameStats[index] = gameStats
+			mu.Unlock()
+		}(i, game)
 	}
+
+	wg.Wait()
 
 	return allGameStats, nil
 }

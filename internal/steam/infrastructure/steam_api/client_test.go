@@ -93,7 +93,7 @@ func TestClient_Request_Normal(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": "76561198000000000",
 	}
 
@@ -103,7 +103,7 @@ func TestClient_Request_Normal(t *testing.T) {
 	assert.NotNil(t, result)
 
 	// レスポンスがJSONとしてパースされていることを確認
-	resultMap, ok := result.(map[string]interface{})
+	resultMap, ok := result.(map[string]any)
 	assert.True(t, ok)
 	assert.Contains(t, resultMap, "response")
 }
@@ -132,7 +132,7 @@ func TestClient_Request_HTTPError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": "76561198000000000",
 	}
 
@@ -144,8 +144,10 @@ func TestClient_Request_HTTPError(t *testing.T) {
 }
 
 func TestClient_Request_SteamAPIError(t *testing.T) {
+	callCount := 0
 	mockHTTPClient := &MockHTTPClient{
 		DoFunc: func(req *http.Request) (*http.Response, error) {
+			callCount++
 			// Steam APIエラーレスポンスを設定
 			responseBody := `{"code": 403, "description": "Access Denied"}`
 			resp := &http.Response{
@@ -166,7 +168,7 @@ func TestClient_Request_SteamAPIError(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": "76561198000000000",
 	}
 
@@ -174,11 +176,15 @@ func TestClient_Request_SteamAPIError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
+	assert.Equal(t, 1, callCount, "Should not retry on Steam API error")
 
-	steamErr, ok := err.(*SteamError)
-	assert.True(t, ok)
-	assert.Equal(t, 403, steamErr.Code)
-	assert.Equal(t, "Access Denied", steamErr.Description)
+	// 安全な型アサーション
+	if steamErr, ok := err.(*SteamError); ok {
+		assert.Equal(t, 403, steamErr.Code)
+		assert.Equal(t, "Access Denied", steamErr.Description)
+	} else {
+		t.Errorf("Expected *SteamError, got %T: %v", err, err)
+	}
 }
 
 func TestClient_RequestWithoutKey_Normal(t *testing.T) {
@@ -204,7 +210,7 @@ func TestClient_RequestWithoutKey_Normal(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	params := map[string]interface{}{
+	params := map[string]any{
 		"appids": 440,
 		"cc":     "US",
 	}

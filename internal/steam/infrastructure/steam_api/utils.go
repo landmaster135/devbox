@@ -8,7 +8,7 @@ import (
 )
 
 // buildURLWithParams はAPIキーとパラメータを含むURLを構築します
-func buildURLWithParams(baseURL, apiKey string, params map[string]interface{}) string {
+func buildURLWithParams(baseURL, apiKey string, params map[string]any) string {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return baseURL
@@ -26,7 +26,7 @@ func buildURLWithParams(baseURL, apiKey string, params map[string]interface{}) s
 }
 
 // buildURLWithParamsForSearch は検索用のURLを構築します（APIキーなし）
-func buildURLWithParamsForSearch(baseURL, searchTerm string, params map[string]interface{}) string {
+func buildURLWithParamsForSearch(baseURL, searchTerm string, params map[string]any) string {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return baseURL
@@ -44,7 +44,7 @@ func buildURLWithParamsForSearch(baseURL, searchTerm string, params map[string]i
 }
 
 // cleanParams はパラメータを文字列に変換し、nilや空の値を除外します
-func cleanParams(params map[string]interface{}) map[string]string {
+func cleanParams(params map[string]any) map[string]string {
 	result := make(map[string]string)
 
 	for key, value := range params {
@@ -89,8 +89,8 @@ func cleanParams(params map[string]interface{}) map[string]string {
 }
 
 // mergeParams は2つのパラメータマップをマージします
-func mergeParams(base, additional map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func mergeParams(base, additional map[string]any) map[string]any {
+	result := make(map[string]any)
 
 	// ベースパラメータをコピー
 	for key, value := range base {

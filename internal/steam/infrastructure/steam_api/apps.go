@@ -33,7 +33,7 @@ func (a *AppsService) GetAppDetails(ctx context.Context, appID int, country, fil
 		filters = "basic"
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"appids":  appID,
 		"cc":      country,
 		"filters": filters,
@@ -82,7 +82,7 @@ func (a *AppsService) GetUserStats(ctx context.Context, steamID string, appID in
 		return nil, fmt.Errorf("invalid App ID: %d", appID)
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 		"appid":   appID,
 	}
@@ -125,7 +125,7 @@ func (a *AppsService) GetUserAchievements(ctx context.Context, steamID string, a
 		language = "en"
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"steamid": steamID,
 		"appid":   appID,
 		"l":       language,
@@ -164,7 +164,7 @@ func (a *AppsService) SearchGames(ctx context.Context, term, country string) ([]
 		country = "US"
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"f":     "games",
 		"cc":    country,
 		"realm": 1,
@@ -201,7 +201,7 @@ type SearchResult struct {
 }
 
 // GetPublishedFileDetails はWorkshopファイルの詳細を取得します
-func (a *AppsService) GetPublishedFileDetails(ctx context.Context, publishedFileIDs []int, options *PublishedFileOptions) (interface{}, error) {
+func (a *AppsService) GetPublishedFileDetails(ctx context.Context, publishedFileIDs []int, options *PublishedFileOptions) (any, error) {
 	if len(publishedFileIDs) == 0 {
 		return nil, fmt.Errorf("published file IDs are required")
 	}
@@ -210,7 +210,7 @@ func (a *AppsService) GetPublishedFileDetails(ctx context.Context, publishedFile
 		options = &PublishedFileOptions{}
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"includetags":               options.IncludeTags,
 		"includeadditionalpreviews": options.IncludeAdditionalPreviews,
 		"includechildren":           options.IncludeChildren,
@@ -297,7 +297,7 @@ func (a *AppsService) GetMultipleAppDetails(ctx context.Context, appIDs []int, c
 }
 
 // GetAppList は利用可能なアプリケーション一覧を取得します
-func (a *AppsService) GetAppList(ctx context.Context) (interface{}, error) {
+func (a *AppsService) GetAppList(ctx context.Context) (any, error) {
 	result, err := a.client.Request(ctx, "GET", "/ISteamApps/GetAppList/v2/", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get app list: %w", err)
@@ -307,12 +307,12 @@ func (a *AppsService) GetAppList(ctx context.Context) (interface{}, error) {
 }
 
 // GetServersAtAddress は指定されたアドレスのゲームサーバー情報を取得します
-func (a *AppsService) GetServersAtAddress(ctx context.Context, addr string) (interface{}, error) {
+func (a *AppsService) GetServersAtAddress(ctx context.Context, addr string) (any, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("address is required")
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"addr": addr,
 	}
 
@@ -325,7 +325,7 @@ func (a *AppsService) GetServersAtAddress(ctx context.Context, addr string) (int
 }
 
 // GetUpToDateCheck はアプリケーションのバージョンチェックを行います
-func (a *AppsService) GetUpToDateCheck(ctx context.Context, appID int, version string) (interface{}, error) {
+func (a *AppsService) GetUpToDateCheck(ctx context.Context, appID int, version string) (any, error) {
 	if !validateAppID(appID) {
 		return nil, fmt.Errorf("invalid App ID: %d", appID)
 	}
@@ -334,7 +334,7 @@ func (a *AppsService) GetUpToDateCheck(ctx context.Context, appID int, version s
 		return nil, fmt.Errorf("version is required")
 	}
 
-	params := map[string]interface{}{
+	params := map[string]any{
 		"appid":   appID,
 		"version": version,
 	}
