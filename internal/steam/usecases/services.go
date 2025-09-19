@@ -29,6 +29,76 @@ type SteamClientInterface interface {
 	GetApps() *steamAPI.AppsService
 }
 
+// FileWriterInterface はファイル書き込み機能を抽象化
+type FileWriterInterface interface {
+	WriteToFile(data any, filename string) error
+}
+
+// LoggerInterface はログ出力機能を抽象化
+type LoggerInterface interface {
+	Printf(format string, v ...any)
+	Println(v ...any)
+}
+
+// ConcurrencyManagerInterface は並行処理制御を抽象化
+type ConcurrencyManagerInterface interface {
+	GetSemaphore() chan struct{}
+	GetMaxConcurrency() int
+}
+
+// FileWriter はデフォルトのファイル書き込み実装
+type FileWriter struct{}
+
+// WriteToFile はデータをJSONファイルに保存します
+func (w *FileWriter) WriteToFile(data any, filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ") // 読みやすい形式でインデント
+
+	if err := encoder.Encode(data); err != nil {
+		return fmt.Errorf("failed to encode JSON: %w", err)
+	}
+
+	return nil
+}
+
+// Logger はデフォルトのログ出力実装
+type Logger struct{}
+
+// Printf はフォーマット付きでログを出力します
+func (l *Logger) Printf(format string, v ...any) {
+	fmt.Printf(format, v...)
+}
+
+// Println はログを出力します
+func (l *Logger) Println(v ...any) {
+	fmt.Println(v...)
+}
+
+// ConcurrencyManager はデフォルトの並行処理制御実装
+type ConcurrencyManager struct {
+	maxConcurrency int
+	semaphore      chan struct{}
+}
+
+// GetSemaphore はセマフォチャネルを返します
+func (c *ConcurrencyManager) GetSemaphore() chan struct{} {
+	if c.semaphore == nil {
+		c.semaphore = make(chan struct{}, c.maxConcurrency)
+	}
+	return c.semaphore
+}
+
+// GetMaxConcurrency は最大並行数を返します
+func (c *ConcurrencyManager) GetMaxConcurrency() int {
+	return c.maxConcurrency
+}
+
 // SteamGameInfo はゲーム情報を格納する構造体
 type SteamGameInfo struct {
 	Name                    string `json:"name"`
@@ -75,20 +145,50 @@ type GameListOutput struct {
 
 // SteamService はSteam APIを使用するサービス
 type SteamService struct {
-	client SteamClientInterface
+	client                SteamClientInterface
+	fileWriter            FileWriterInterface
+	logger                LoggerInterface
+	concurrencyController ConcurrencyManagerInterface
+}
+
+// SteamServiceConfig はSteamServiceの設定オプション
+type SteamServiceConfig struct {
+	FileWriter            FileWriterInterface
+	Logger                LoggerInterface
+	ConcurrencyController ConcurrencyManagerInterface
 }
 
 // NewSteamService は依存性注入対応のコンストラクタ
-func NewSteamService(client SteamClientInterface) *SteamService {
-	return &SteamService{
+func NewSteamService(client SteamClientInterface, config *SteamServiceConfig) *SteamService {
+	service := &SteamService{
 		client: client,
 	}
+
+	// デフォルト実装を設定
+	if config != nil {
+		service.fileWriter = config.FileWriter
+		service.logger = config.Logger
+		service.concurrencyController = config.ConcurrencyController
+	}
+
+	// nilの場合はデフォルト実装を使用
+	if service.fileWriter == nil {
+		service.fileWriter = &FileWriter{}
+	}
+	if service.logger == nil {
+		service.logger = &Logger{}
+	}
+	if service.concurrencyController == nil {
+		service.concurrencyController = &ConcurrencyManager{maxConcurrency: 10}
+	}
+
+	return service
 }
 
 // NewSteamServiceWithAPIKey はAPIキーから直接SteamServiceを作成するヘルパー関数
 func NewSteamServiceWithAPIKey(apiKey string) *SteamService {
 	client := steamAPI.NewSteamClient(apiKey, nil)
-	return NewSteamService(client)
+	return NewSteamService(client, nil)
 }
 
 // buildGameInfo は個別のゲーム情報を構築します（Steam IDを明示的に渡すバージョン）
@@ -148,7 +248,7 @@ func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]Stea
 	recentGames, err := s.client.GetUsers().GetUserRecentlyPlayedGames(ctx, steamID)
 	if err != nil {
 		// 最近プレイしたゲームの取得に失敗してもエラーにしない
-		fmt.Printf("Warning: failed to get recently played games: %v\n", err)
+		s.logger.Printf("Warning: failed to get recently played games: %v\n", err)
 		recentGames = []steamAPI.RecentlyPlayedGame{}
 	}
 
@@ -164,7 +264,7 @@ func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]Stea
 	var mu sync.Mutex
 
 	// 並行処理数を制限（Steam APIのレート制限を考慮）
-	semaphore := make(chan struct{}, 10)
+	semaphore := s.concurrencyController.GetSemaphore()
 
 	for i, game := range ownedGames {
 		wg.Add(1)
@@ -188,20 +288,7 @@ func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]Stea
 
 // saveToJSONFile はデータをJSONファイルに保存します
 func (s *SteamService) saveToJSONFile(data any, filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // 読みやすい形式でインデント
-
-	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("failed to encode JSON: %w", err)
-	}
-
-	return nil
+	return s.fileWriter.WriteToFile(data, filename)
 }
 
 // SaveGamesToJSON はゲーム一覧をJSONファイルに保存します
@@ -236,7 +323,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 		}
 	} else {
 		// エラーログを出力（デバッグ用）
-		fmt.Printf("Warning: failed to get user stats for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
+		s.logger.Printf("Warning: failed to get user stats for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
 	}
 
 	// 実績情報を取得
@@ -251,7 +338,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 		}
 	} else {
 		// エラーログを出力（デバッグ用）
-		fmt.Printf("Warning: failed to get user achievements for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
+		s.logger.Printf("Warning: failed to get user achievements for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
 	}
 
 	return gameStats
@@ -271,7 +358,7 @@ func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*Ga
 	var mu sync.Mutex
 
 	// 並行処理数を制限（Steam APIのレート制限を考慮）
-	semaphore := make(chan struct{}, 10)
+	semaphore := s.concurrencyController.GetSemaphore()
 
 	for i, game := range ownedGames {
 		wg.Add(1)
