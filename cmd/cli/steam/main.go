@@ -2,121 +2,25 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"time"
 
+	config "github.com/landmaster135/devbox/internal/steam/config"
 	usecases "github.com/landmaster135/devbox/internal/steam/usecases"
 )
 
-// Config はCLIの設定を格納する構造体
-type Config struct {
-	Operation   string
-	SteamAPIKey string
-	SteamID     string
-	GameID      int
-}
-
-func main() {
-	config := parseFlags()
-
-	if err := validateConfig(config); err != nil {
-		log.Fatalf("Configuration error: %v", err)
-	}
-
-	ctx := context.Background()
-
-	switch config.Operation {
-	case "games":
-		if err := handleGamesOperation(ctx, config); err != nil {
-			log.Fatalf("Failed to execute games operation: %v", err)
-		}
-	case "game-stats":
-		if err := handleGameStatsOperation(ctx, config); err != nil {
-			log.Fatalf("Failed to execute game-stats operation: %v", err)
-		}
-	default:
-		log.Fatalf("Unknown operation: %s", config.Operation)
-	}
-}
-
-// parseFlags はコマンドライン引数を解析します
-func parseFlags() Config {
-	var config Config
-
-	flag.StringVar(&config.Operation, "operation", "", "Operation to perform (required): games, game-stats")
-	flag.StringVar(&config.Operation, "o", "", "Operation to perform (required): games, game-stats (shorthand)")
-	flag.StringVar(&config.SteamAPIKey, "steam-api-key", "", "Steam API key (required)")
-	flag.StringVar(&config.SteamAPIKey, "k", "", "Steam API key (required) (shorthand)")
-	flag.StringVar(&config.SteamID, "steam-id", "", "Steam ID (required)")
-	flag.StringVar(&config.SteamID, "s", "", "Steam ID (required) (shorthand)")
-	flag.IntVar(&config.GameID, "game-id", 0, "Game ID (required for game-stats operation)")
-	flag.IntVar(&config.GameID, "g", 0, "Game ID (required for game-stats operation) (shorthand)")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Steam API CLI Tool\n\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s --operation games --steam-api-key YOUR_KEY --steam-id 76561198000000000\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -o games -k YOUR_KEY -s 76561198000000000\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --operation game-stats --steam-api-key YOUR_KEY --steam-id 76561198000000000\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -o game-stats -k YOUR_KEY -s 76561198000000000\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "\nSupported operations:\n")
-		fmt.Fprintf(os.Stderr, "  games       Get user's owned games information and save to JSON file\n")
-		fmt.Fprintf(os.Stderr, "  game-stats  Get all games' statistics and achievements and save to JSON file\n")
-	}
-
-	flag.Parse()
-
-	return config
-}
-
-// validateConfig は設定を検証します
-func validateConfig(config Config) error {
-	if config.Operation == "" {
-		return fmt.Errorf("operation is required")
-	}
-
-	if config.SteamAPIKey == "" {
-		return fmt.Errorf("steam-api-key is required")
-	}
-
-	if config.SteamID == "" {
-		return fmt.Errorf("steam-id is required")
-	}
-
-	// 現在サポートされている操作をチェック
-	switch config.Operation {
-	case "games":
-		// OK
-	case "game-stats":
-		// OK
-	default:
-		return fmt.Errorf("unsupported operation: %s (supported: games, game-stats)", config.Operation)
-	}
-
-	// Steam IDの形式を簡単にチェック
-	if len(config.SteamID) != 17 {
-		return fmt.Errorf("invalid Steam ID format: %s (should be 17 digits)", config.SteamID)
-	}
-
-	return nil
-}
-
 // handleGamesOperation はgames操作を処理します
-func handleGamesOperation(ctx context.Context, config Config) error {
-	fmt.Printf("Starting games operation for Steam ID: %s\n", config.SteamID)
+func handleGamesOperation(ctx context.Context, cfg *config.Config) error {
+	fmt.Printf("Starting games operation for Steam ID: %s\n", cfg.SteamID)
 
 	// Steam サービスを作成
-	steamService := usecases.NewSteamServiceWithAPIKey(config.SteamAPIKey)
+	steamService := usecases.NewSteamServiceWithAPIKey(cfg.SteamAPIKey)
 
 	// ゲーム情報を取得
 	fmt.Println("Fetching games information...")
-	games, err := steamService.GetGamesInfo(ctx, config.SteamID)
+	games, err := steamService.GetGamesInfo(ctx, cfg.SteamID)
 	if err != nil {
 		return fmt.Errorf("failed to get games info: %w", err)
 	}
@@ -124,8 +28,8 @@ func handleGamesOperation(ctx context.Context, config Config) error {
 	fmt.Printf("Successfully retrieved %d games\n", len(games))
 
 	// JSONファイルに出力（サービスのメソッドを使用）
-	filename := fmt.Sprintf("steam_games_%s_%s.json", config.SteamID, time.Now().Format("20060102_150405"))
-	if err := steamService.SaveGamesToJSON(games, config.SteamID, filename); err != nil {
+	filename := fmt.Sprintf("steam_games_%s_%s.json", cfg.SteamID, time.Now().Format("20060102_150405"))
+	if err := steamService.SaveGamesToJSON(games, cfg.SteamID, filename); err != nil {
 		return fmt.Errorf("failed to save to JSON file: %w", err)
 	}
 
@@ -133,6 +37,36 @@ func handleGamesOperation(ctx context.Context, config Config) error {
 
 	// 簡単な統計情報を表示
 	displayStatistics(games)
+
+	return nil
+}
+
+// handleGameStatsOperation はgame-stats操作を処理します
+func handleGameStatsOperation(ctx context.Context, cfg *config.Config) error {
+	fmt.Printf("Starting game-stats operation for Steam ID: %s\n", cfg.SteamID)
+
+	// Steam サービスを作成
+	steamService := usecases.NewSteamServiceWithAPIKey(cfg.SteamAPIKey)
+
+	// 全ゲームの統計情報を取得
+	fmt.Println("Fetching all games statistics and achievements...")
+	allGameStats, err := steamService.GetGamesStats(ctx, cfg.SteamID)
+	if err != nil {
+		return fmt.Errorf("failed to get all games stats: %w", err)
+	}
+
+	fmt.Printf("Successfully retrieved stats for %d games\n", len(allGameStats))
+
+	// JSONファイルに出力（サービスのメソッドを使用）
+	filename := fmt.Sprintf("steam_games_stats_%s_%s.json", cfg.SteamID, time.Now().Format("20060102_150405"))
+	if err := steamService.SaveGamesStatsToJSON(allGameStats, filename); err != nil {
+		return fmt.Errorf("failed to save to JSON file: %w", err)
+	}
+
+	fmt.Printf("All games statistics saved to: %s\n", filename)
+
+	// 簡単な統計情報を表示
+	displayGamesStatsInfo(allGameStats)
 
 	return nil
 }
@@ -204,36 +138,6 @@ func displayStatistics(games []usecases.SteamGameInfo) {
 	}
 }
 
-// handleGameStatsOperation はgame-stats操作を処理します
-func handleGameStatsOperation(ctx context.Context, config Config) error {
-	fmt.Printf("Starting game-stats operation for Steam ID: %s\n", config.SteamID)
-
-	// Steam サービスを作成
-	steamService := usecases.NewSteamServiceWithAPIKey(config.SteamAPIKey)
-
-	// 全ゲームの統計情報を取得
-	fmt.Println("Fetching all games statistics and achievements...")
-	allGameStats, err := steamService.GetGamesStats(ctx, config.SteamID)
-	if err != nil {
-		return fmt.Errorf("failed to get all games stats: %w", err)
-	}
-
-	fmt.Printf("Successfully retrieved stats for %d games\n", len(allGameStats))
-
-	// JSONファイルに出力（サービスのメソッドを使用）
-	filename := fmt.Sprintf("steam_games_stats_%s_%s.json", config.SteamID, time.Now().Format("20060102_150405"))
-	if err := steamService.SaveGamesStatsToJSON(allGameStats, filename); err != nil {
-		return fmt.Errorf("failed to save to JSON file: %w", err)
-	}
-
-	fmt.Printf("All games statistics saved to: %s\n", filename)
-
-	// 簡単な統計情報を表示
-	displayGamesStatsInfo(allGameStats)
-
-	return nil
-}
-
 // displayGamesStatsInfo は全ゲームの統計情報を表示します
 func displayGamesStatsInfo(allGameStats []*usecases.GameStatsInfo) {
 	if len(allGameStats) == 0 {
@@ -287,5 +191,36 @@ func displayGamesStatsInfo(allGameStats []*usecases.GameStatsInfo) {
 			break
 		}
 		fmt.Printf("%d. %s - %d stats, %d achievements\n", i+1, gameStats.GameName, len(gameStats.Stats), len(gameStats.Achievements))
+	}
+}
+
+func main() {
+	// コマンドライン引数を解析
+	cfg, err := config.ParseFlags()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+
+	// ヘルプが要求された場合
+	if cfg.Help {
+		config.PrintUsage()
+		return
+	}
+
+	ctx := context.Background()
+
+	switch cfg.Operation {
+	case "games":
+		if err := handleGamesOperation(ctx, cfg); err != nil {
+			log.Fatalf("Failed to execute games operation: %v", err)
+		}
+	case "game-stats":
+		if err := handleGameStatsOperation(ctx, cfg); err != nil {
+			log.Fatalf("Failed to execute game-stats operation: %v", err)
+		}
+	default:
+		log.Fatalf("Unknown operation: %s", cfg.Operation)
 	}
 }

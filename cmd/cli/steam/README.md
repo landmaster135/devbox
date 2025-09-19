@@ -6,10 +6,13 @@ Steam Web APIを使用してユーザーのゲーム情報を取得し、JSONフ
 
 - ユーザーの所有ゲーム一覧の取得
 - ゲーム情報の詳細取得（名前、ID、アイコン、サムネイル、プレイ時間など）
+- 全ゲームの統計情報と実績情報の一括取得
 - JSONファイルへの出力
 - 統計情報の表示
 
 ## 取得できるゲーム情報
+
+### games操作で取得できる情報
 
 各ゲームについて以下の情報を取得できます：
 
@@ -23,6 +26,22 @@ Steam Web APIを使用してユーザーのゲーム情報を取得し、JSONフ
 - **recent_time_last_played**: 最後にプレイした時刻（Unix timestamp）
 - **achievements_can_be_retrieved**: 実績情報が取得可能かどうか
 - **stats**: 統計情報が取得可能かどうか
+
+### game-stats操作で取得できる情報
+
+全ゲームの詳細な統計情報と実績情報を一括取得できます：
+
+**統計情報（stats）**:
+- ゲーム内の各種統計データ（キル数、デス数、プレイ時間など）
+- ゲームごとに異なる統計項目
+- 数値データとして取得
+
+**実績情報（achievements）**:
+- 実績名と表示名
+- 実績の説明
+- 達成状況（achieved: true/false）
+- 達成日時（Unix timestamp）
+- 実績アイコンのURL
 
 ## 必要な環境
 
@@ -62,32 +81,34 @@ go run ./cmd/cli/steam -o games -k YOUR_API_KEY -s STEAM_ID
 
 | パラメータ | ショートハンド | 必須 | 説明 |
 |-----------|---------------|------|------|
-| `--operation` | `-o` | ✓ | 実行する操作（現在は`games`のみサポート） |
-| `--steam-api-key` | `-k` | ✓ | Steam Web API キー |
-| `--steam-id` | `-s` | ✓ | 対象ユーザーの17桁のSteam ID |
+| `--operation` | `-o` | * | 実行する操作（`games`, `game-stats`） |
+| `--steam-api-key` | `-k` | * | Steam Web API キー |
+| `--steam-id` | `-s` | * | 対象ユーザーの17桁のSteam ID |
+| `--game-id` | `-g` | - | ゲームID（game-stats操作で使用） |
 
 ### Steam IDの確認方法
 
 Steam IDは以下の方法で確認できます：
 
 1. **Steam プロフィールURL**から：
-   - `https://steamcommunity.com/profiles/76561198000000000/` の数字部分
+  - `https://steamcommunity.com/profiles/76561198000000000/` の数字部分
    
 2. **カスタムURL**の場合：
-   - [SteamID Finder](https://steamidfinder.com/)などのツールを使用
+  - [SteamID Finder](https://steamidfinder.com/)などのツールを使用
 
 3. **Steam クライアント**から：
-   - プロフィール → プロフィールを編集 → カスタムURL
+  - プロフィール → プロフィールを編集 → カスタムURL
 
 ## 出力
 
 ### JSONファイル
 
-実行すると、以下の形式でJSONファイルが生成されます：
+実行すると、操作に応じて以下の形式でJSONファイルが生成されます：
 
-**ファイル名**: `steam_games_{STEAM_ID}_{TIMESTAMP}.json`
+**games操作の出力**
 
-**ファイル構造**:
+ファイル名: `steam_games_{STEAM_ID}_{TIMESTAMP}.json`
+
 ```json
 {
   "steam_id": "76561198000000000",
@@ -110,6 +131,38 @@ Steam IDは以下の方法で確認できます：
 }
 ```
 
+**game-stats操作の出力**
+
+ファイル名: `steam_games_stats_{STEAM_ID}_{TIMESTAMP}.json`
+
+```json
+[
+  {
+    "game_name": "Counter-Strike 2",
+    "game_id": 730,
+    "stats": [
+      {
+        "name": "total_kills",
+        "value": 12345
+      },
+      {
+        "name": "total_deaths", 
+        "value": 9876
+      }
+    ],
+    "achievements": [
+      {
+        "name": "First Kill",
+        "display_name": "First Blood",
+        "description": "Get your first kill",
+        "achieved": true,
+        "unlock_time": 1705123456
+      }
+    ]
+  }
+]
+```
+
 ### コンソール出力
 
 実行時には以下の情報がコンソールに表示されます：
@@ -121,11 +174,17 @@ Steam IDは以下の方法で確認できます：
 ## 使用例
 
 ```bash
-# 基本的な使用例
+# ゲーム一覧の取得
 go run ./cmd/cli/steam --operation games --steam-api-key ABCD1234567890 --steam-id 76561198000000000
 
-# ショートハンドを使用
+# ゲーム統計・実績情報の取得
+go run ./cmd/cli/steam --operation game-stats --steam-api-key ABCD1234567890 --steam-id 76561198000000000
+
+# ショートハンドを使用（ゲーム一覧）
 go run ./cmd/cli/steam -o games -k ABCD1234567890 -s 76561198000000000
+
+# ショートハンドを使用（統計・実績情報）
+go run ./cmd/cli/steam -o game-stats -k ABCD1234567890 -s 76561198000000000
 ```
 
 ## エラーハンドリング
@@ -149,15 +208,15 @@ go run ./cmd/cli/steam -o games -k ABCD1234567890 -s 76561198000000000
 ### よくある問題
 
 1. **"invalid Steam ID format" エラー**
-   - Steam IDが17桁の数字であることを確認してください
+  - Steam IDが17桁の数字であることを確認してください
 
 2. **"failed to get owned games" エラー**
-   - Steam API キーが正しいことを確認してください
-   - 対象ユーザーのプロフィールが公開されていることを確認してください
+  - Steam API キーが正しいことを確認してください
+  - 対象ユーザーのプロフィールが公開されていることを確認してください
 
 3. **"HTTP error: 403" エラー**
-   - Steam API キーが無効、または期限切れの可能性があります
-   - 新しいAPI キーを取得してください
+  - Steam API キーが無効、または期限切れの可能性があります
+  - 新しいAPI キーを取得してください
 
 ### デバッグ
 
