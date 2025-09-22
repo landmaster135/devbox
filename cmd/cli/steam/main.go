@@ -29,11 +29,12 @@ func handleGamesOperation(ctx context.Context, cfg *config.Config) error {
 
 	// JSONファイルに出力（サービスのメソッドを使用）
 	filename := fmt.Sprintf("steam_games_%s_%s.json", cfg.SteamID, time.Now().Format("20060102_150405"))
-	if err := steamService.SaveGamesToJSON(games, cfg.SteamID, filename); err != nil {
+	filepath, err := steamService.SaveGamesToJSON(games, cfg.SteamID, cfg.OutputDir, filename)
+	if err != nil {
 		return fmt.Errorf("failed to save to JSON file: %w", err)
 	}
 
-	fmt.Printf("Games information saved to: %s\n", filename)
+	fmt.Printf("Games information saved to: %s\n", filepath)
 
 	// 簡単な統計情報を表示
 	displayStatistics(games)
@@ -59,11 +60,12 @@ func handleGameStatsOperation(ctx context.Context, cfg *config.Config) error {
 
 	// JSONファイルに出力（サービスのメソッドを使用）
 	filename := fmt.Sprintf("steam_games_stats_%s_%s.json", cfg.SteamID, time.Now().Format("20060102_150405"))
-	if err := steamService.SaveGamesStatsToJSON(allGameStats, filename); err != nil {
+	filepath, err := steamService.SaveGamesStatsToJSON(allGameStats, cfg.OutputDir, filename)
+	if err != nil {
 		return fmt.Errorf("failed to save to JSON file: %w", err)
 	}
 
-	fmt.Printf("All games statistics saved to: %s\n", filename)
+	fmt.Printf("All games statistics saved to: %s\n", filepath)
 
 	// 簡単な統計情報を表示
 	displayGamesStatsInfo(allGameStats)

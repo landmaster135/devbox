@@ -16,21 +16,21 @@ func TestSteamService_GetGamesInfo_Normal(t *testing.T) {
 			GetOwnedGamesFunc: func(ctx context.Context, steamID string, includeAppInfo, includePlayedFreeGames bool) ([]steamAPI.OwnedGame, error) {
 				return []steamAPI.OwnedGame{
 					{
-						AppID:                     123,
-						Name:                      "Test Game",
-						PlaytimeForever:           100,
-						PlaytimeDisconnected:      10,
-						RtimeLastPlayed:           1234567890,
-						ImgIconURL:                "test_icon",
-						HasCommunityVisibleStats:  true,
+						AppID:                    123,
+						Name:                     "Test Game",
+						PlaytimeForever:          100,
+						PlaytimeDisconnected:     10,
+						RtimeLastPlayed:          1234567890,
+						ImgIconURL:               "test_icon",
+						HasCommunityVisibleStats: true,
 					},
 				}, nil
 			},
 			GetUserRecentlyPlayedGamesFunc: func(ctx context.Context, steamID string) ([]steamAPI.RecentlyPlayedGame, error) {
 				return []steamAPI.RecentlyPlayedGame{
 					{
-						AppID:           123,
-						Playtime2Weeks:  50,
+						AppID:          123,
+						Playtime2Weeks: 50,
 					},
 				}, nil
 			},
@@ -123,9 +123,9 @@ func TestSteamService_GetGamesInfo_RecentGamesError(t *testing.T) {
 			GetOwnedGamesFunc: func(ctx context.Context, steamID string, includeAppInfo, includePlayedFreeGames bool) ([]steamAPI.OwnedGame, error) {
 				return []steamAPI.OwnedGame{
 					{
-						AppID:                     123,
-						Name:                      "Test Game",
-						HasCommunityVisibleStats:  false,
+						AppID:                    123,
+						Name:                     "Test Game",
+						HasCommunityVisibleStats: false,
 					},
 				}, nil
 			},
@@ -159,12 +159,14 @@ func TestSteamService_GetGamesInfo_RecentGamesError(t *testing.T) {
 func TestSteamService_SaveGamesToJSON_Normal(t *testing.T) {
 	// Arrange
 	var capturedData any
+	var capturedOutputDir string
 	var capturedFilename string
 	mockFileWriter := &MockFileWriter{
-		WriteToFileFunc: func(data any, filename string) error {
+		WriteToFileFunc: func(data any, outputDir, filename string) (string, error) {
 			capturedData = data
+			capturedOutputDir = outputDir
 			capturedFilename = filename
-			return nil
+			return outputDir + "/" + filename, nil
 		},
 	}
 
@@ -173,17 +175,24 @@ func TestSteamService_SaveGamesToJSON_Normal(t *testing.T) {
 		{Name: "Test Game", ID: 123},
 	}
 	steamID := "test_steam_id"
+	outputDir := "."
 	filename := "test.json"
 
 	// Act
-	err := service.SaveGamesToJSON(games, steamID, filename)
+	filepath, err := service.SaveGamesToJSON(games, steamID, outputDir, filename)
 
 	// Assert
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
+	if capturedOutputDir != outputDir {
+		t.Errorf("Expected outputDir '%s', got '%s'", outputDir, capturedOutputDir)
+	}
 	if capturedFilename != filename {
 		t.Errorf("Expected filename '%s', got '%s'", filename, capturedFilename)
+	}
+	if filepath != "./test.json" {
+		t.Errorf("Expected filepath './test.json', got '%s'", filepath)
 	}
 
 	output, ok := capturedData.(GameListOutput)
@@ -206,18 +215,19 @@ func TestSteamService_SaveGamesToJSON_Error(t *testing.T) {
 	// Arrange
 	expectedError := errors.New("write error")
 	mockFileWriter := &MockFileWriter{
-		WriteToFileFunc: func(data any, filename string) error {
-			return expectedError
+		WriteToFileFunc: func(data any, outputDir, filename string) (string, error) {
+			return "", expectedError
 		},
 	}
 
 	service := NewSteamService(nil, mockFileWriter, nil, nil)
 	games := []SteamGameInfo{}
 	steamID := "test_steam_id"
+	outputDir := "."
 	filename := "test.json"
 
 	// Act
-	err := service.SaveGamesToJSON(games, steamID, filename)
+	_, err := service.SaveGamesToJSON(games, steamID, outputDir, filename)
 
 	// Assert
 	if err != expectedError {
@@ -370,12 +380,14 @@ func TestSteamService_GetGamesStats_StatsAndAchievementsError(t *testing.T) {
 func TestSteamService_SaveGamesStatsToJSON_Normal(t *testing.T) {
 	// Arrange
 	var capturedData any
+	var capturedOutputDir string
 	var capturedFilename string
 	mockFileWriter := &MockFileWriter{
-		WriteToFileFunc: func(data any, filename string) error {
+		WriteToFileFunc: func(data any, outputDir, filename string) (string, error) {
 			capturedData = data
+			capturedOutputDir = outputDir
 			capturedFilename = filename
-			return nil
+			return outputDir + "/" + filename, nil
 		},
 	}
 
@@ -387,17 +399,24 @@ func TestSteamService_SaveGamesStatsToJSON_Normal(t *testing.T) {
 			GameID:   123,
 		},
 	}
+	outputDir := "."
 	filename := "test_stats.json"
 
 	// Act
-	err := service.SaveGamesStatsToJSON(gameStats, filename)
+	filepath, err := service.SaveGamesStatsToJSON(gameStats, outputDir, filename)
 
 	// Assert
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
+	if capturedOutputDir != outputDir {
+		t.Errorf("Expected outputDir '%s', got '%s'", outputDir, capturedOutputDir)
+	}
 	if capturedFilename != filename {
 		t.Errorf("Expected filename '%s', got '%s'", filename, capturedFilename)
+	}
+	if filepath != "./test_stats.json" {
+		t.Errorf("Expected filepath './test_stats.json', got '%s'", filepath)
 	}
 	if capturedData == nil {
 		t.Error("Expected data to be captured")
@@ -409,17 +428,18 @@ func TestSteamService_SaveGamesStatsToJSON_Error(t *testing.T) {
 	// Arrange
 	expectedError := errors.New("write error")
 	mockFileWriter := &MockFileWriter{
-		WriteToFileFunc: func(data any, filename string) error {
-			return expectedError
+		WriteToFileFunc: func(data any, outputDir, filename string) (string, error) {
+			return "", expectedError
 		},
 	}
 
 	service := NewSteamService(nil, mockFileWriter, nil, nil)
 	gameStats := []*GameStatsInfo{}
+	outputDir := "."
 	filename := "test_stats.json"
 
 	// Act
-	err := service.SaveGamesStatsToJSON(gameStats, filename)
+	_, err := service.SaveGamesStatsToJSON(gameStats, outputDir, filename)
 
 	// Assert
 	if err != expectedError {
@@ -458,10 +478,11 @@ func TestFileWriter_WriteToFile_CreateFileError(t *testing.T) {
 	writer := &FileWriter{}
 	testData := map[string]string{"test": "data"}
 	// 無効なパスを使用してファイル作成エラーを発生させる
-	filename := "/invalid/path/test.json"
+	outputDir := "/invalid/path"
+	filename := "test.json"
 
 	// Act
-	err := writer.WriteToFile(testData, filename)
+	_, err := writer.WriteToFile(testData, outputDir, filename)
 
 	// Assert
 	if err == nil {
@@ -479,10 +500,11 @@ func TestFileWriter_WriteToFile_EncodeError(t *testing.T) {
 	}
 	testData := &cyclicStruct{}
 	testData.Self = testData
-	filename := "/tmp/test_encode_error.json"
+	outputDir := "/tmp"
+	filename := "test_encode_error.json"
 
 	// Act
-	err := writer.WriteToFile(testData, filename)
+	_, err := writer.WriteToFile(testData, outputDir, filename)
 
 	// Assert
 	if err == nil {
@@ -506,10 +528,10 @@ func TestBuildGameInfo_WithoutIcon(t *testing.T) {
 
 	service := NewSteamService(mockClient, nil, nil, nil)
 	ownedGame := steamAPI.OwnedGame{
-		AppID:                     123,
-		Name:                      "Test Game",
-		ImgIconURL:                "", // アイコンなし
-		HasCommunityVisibleStats:  true,
+		AppID:                    123,
+		Name:                     "Test Game",
+		ImgIconURL:               "", // アイコンなし
+		HasCommunityVisibleStats: true,
 	}
 	recentGamesMap := make(map[int]steamAPI.RecentlyPlayedGame)
 	steamID := "test_steam_id"

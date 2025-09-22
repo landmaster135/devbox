@@ -11,6 +11,7 @@ func TestNewConfig_Normal(t *testing.T) {
 		steamAPIKey string
 		steamID     string
 		gameID      int
+		outputDir   string
 		wantErr     bool
 	}{
 		{
@@ -19,6 +20,7 @@ func TestNewConfig_Normal(t *testing.T) {
 			steamAPIKey: "test-api-key",
 			steamID:     "76561198000000000",
 			gameID:      0,
+			outputDir:   ".",
 			wantErr:     false,
 		},
 		{
@@ -27,18 +29,33 @@ func TestNewConfig_Normal(t *testing.T) {
 			steamAPIKey: "test-api-key",
 			steamID:     "76561198000000000",
 			gameID:      123,
+			outputDir:   "/tmp/output",
+			wantErr:     false,
+		},
+		{
+			name:        "empty output dir uses default",
+			operation:   "games",
+			steamAPIKey: "test-api-key",
+			steamID:     "76561198000000000",
+			gameID:      0,
+			outputDir:   "",
 			wantErr:     false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfig(tt.operation, tt.steamAPIKey, tt.steamID, tt.gameID)
+			config, err := NewConfig(tt.operation, tt.steamAPIKey, tt.steamID, tt.gameID, tt.outputDir)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr {
+				expectedOutputDir := tt.outputDir
+				if expectedOutputDir == "" {
+					expectedOutputDir = DefaultOutputDir
+				}
+
 				if config.Operation != tt.operation {
 					t.Errorf("NewConfig() Operation = %v, want %v", config.Operation, tt.operation)
 				}
@@ -50,6 +67,9 @@ func TestNewConfig_Normal(t *testing.T) {
 				}
 				if config.GameID != tt.gameID {
 					t.Errorf("NewConfig() GameID = %v, want %v", config.GameID, tt.gameID)
+				}
+				if config.OutputDir != expectedOutputDir {
+					t.Errorf("NewConfig() OutputDir = %v, want %v", config.OutputDir, expectedOutputDir)
 				}
 			}
 		})

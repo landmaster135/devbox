@@ -98,14 +98,18 @@ func TestMockFileWriter_WriteToFile(t *testing.T) {
 	// Arrange
 	mockWriter := &MockFileWriter{}
 	testData := map[string]string{"test": "data"}
+	outputDir := "."
 	filename := "test.json"
 
 	// Act
-	err := mockWriter.WriteToFile(testData, filename)
+	filepath, err := mockWriter.WriteToFile(testData, outputDir, filename)
 
 	// Assert
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
+	}
+	if filepath != "" {
+		t.Errorf("Expected empty filepath from default mock, got %s", filepath)
 	}
 }
 
@@ -114,19 +118,23 @@ func TestMockFileWriter_WriteToFileWithError(t *testing.T) {
 	// Arrange
 	expectedError := errors.New("write error")
 	mockWriter := &MockFileWriter{
-		WriteToFileFunc: func(data any, filename string) error {
-			return expectedError
+		WriteToFileFunc: func(data any, outputDir, filename string) (string, error) {
+			return "", expectedError
 		},
 	}
 	testData := map[string]string{"test": "data"}
+	outputDir := "."
 	filename := "test.json"
 
 	// Act
-	err := mockWriter.WriteToFile(testData, filename)
+	filepath, err := mockWriter.WriteToFile(testData, outputDir, filename)
 
 	// Assert
 	if err != expectedError {
 		t.Errorf("Expected error %v, got %v", expectedError, err)
+	}
+	if filepath != "" {
+		t.Errorf("Expected empty filepath on error, got %s", filepath)
 	}
 }
 
@@ -220,22 +228,28 @@ func TestDefaultFileWriter_WriteToFile(t *testing.T) {
 	// Arrange
 	writer := &FileWriter{}
 	testData := map[string]string{"test": "data"}
-	filename := "/tmp/test_default_writer.json"
+	outputDir := "/tmp"
+	filename := "test_default_writer.json"
 
 	// Act
-	err := writer.WriteToFile(testData, filename)
+	filepath, err := writer.WriteToFile(testData, outputDir, filename)
 
 	// Assert
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
+	expectedPath := "/tmp/test_default_writer.json"
+	if filepath != expectedPath {
+		t.Errorf("Expected filepath %s, got %s", expectedPath, filepath)
+	}
+
 	// ファイルが作成されたかチェック（クリーンアップも含む）
-	if _, err := os.Stat(filename); err != nil {
+	if _, err := os.Stat(filepath); err != nil {
 		t.Errorf("Expected file to be created, got error: %v", err)
 	} else {
 		// クリーンアップ
-		os.Remove(filename)
+		os.Remove(filepath)
 	}
 }
 

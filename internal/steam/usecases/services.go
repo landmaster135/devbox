@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -16,15 +17,15 @@ import (
 // #==============================================================#
 // MockFileWriter はFileWriterのモック実装
 type MockFileWriter struct {
-	WriteToFileFunc func(data any, filename string) error
+	WriteToFileFunc func(data any, outputDir, filename string) (string, error)
 }
 
 // WriteToFile はモックのファイル書き込みメソッド
-func (m *MockFileWriter) WriteToFile(data any, filename string) error {
+func (m *MockFileWriter) WriteToFile(data any, outputDir, filename string) (string, error) {
 	if m.WriteToFileFunc != nil {
-		return m.WriteToFileFunc(data, filename)
+		return m.WriteToFileFunc(data, outputDir, filename)
 	}
-	return nil
+	return "", nil
 }
 
 // #==============================================================#
@@ -32,7 +33,7 @@ func (m *MockFileWriter) WriteToFile(data any, filename string) error {
 // #==============================================================#
 // FileWriterInterface はファイル書き込み機能を抽象化
 type FileWriterInterface interface {
-	WriteToFile(data any, filename string) error
+	WriteToFile(data any, outputDir, filename string) (string, error)
 }
 
 // #==============================================================#
@@ -42,10 +43,18 @@ type FileWriterInterface interface {
 type FileWriter struct{}
 
 // WriteToFile はデータをJSONファイルに保存します
-func (w *FileWriter) WriteToFile(data any, filename string) error {
-	file, err := os.Create(filename)
+func (w *FileWriter) WriteToFile(data any, outputDir, filename string) (string, error) {
+	// ディレクトリが存在しない場合は作成
+	if outputDir != "." && outputDir != "" {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return "", fmt.Errorf("failed to create directory %s: %w", outputDir, err)
+		}
+	}
+
+	filepath := filepath.Join(outputDir, filename)
+	file, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
+		return "", fmt.Errorf("failed to create file: %w", err)
 	}
 	defer file.Close()
 
@@ -53,10 +62,10 @@ func (w *FileWriter) WriteToFile(data any, filename string) error {
 	encoder.SetIndent("", "  ") // 読みやすい形式でインデント
 
 	if err := encoder.Encode(data); err != nil {
-		return fmt.Errorf("failed to encode JSON: %w", err)
+		return "", fmt.Errorf("failed to encode JSON: %w", err)
 	}
 
-	return nil
+	return filepath, nil
 }
 
 // #==============================================================#
@@ -459,19 +468,19 @@ func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]Stea
 }
 
 // saveToJSONFile はデータをJSONファイルに保存します
-func (s *SteamService) saveToJSONFile(data any, filename string) error {
-	return s.GetFileWriter().WriteToFile(data, filename)
+func (s *SteamService) saveToJSONFile(data any, outputDir, filename string) (string, error) {
+	return s.GetFileWriter().WriteToFile(data, outputDir, filename)
 }
 
 // SaveGamesToJSON はゲーム一覧をJSONファイルに保存します
-func (s *SteamService) SaveGamesToJSON(games []SteamGameInfo, steamID string, filename string) error {
+func (s *SteamService) SaveGamesToJSON(games []SteamGameInfo, steamID string, outputDir, filename string) (string, error) {
 	output := GameListOutput{
 		SteamID:     steamID,
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		TotalGames:  len(games),
 		Games:       games,
 	}
-	return s.saveToJSONFile(output, filename)
+	return s.saveToJSONFile(output, outputDir, filename)
 }
 
 // buildGameStatsInfo は個別のゲーム統計情報を構築します
@@ -553,6 +562,6 @@ func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*Ga
 }
 
 // SaveGamesStatsToJSON はゲームの統計情報をJSONファイルに保存します
-func (s *SteamService) SaveGamesStatsToJSON(allGameStats []*GameStatsInfo, filename string) error {
-	return s.saveToJSONFile(allGameStats, filename)
+func (s *SteamService) SaveGamesStatsToJSON(allGameStats []*GameStatsInfo, outputDir, filename string) (string, error) {
+	return s.saveToJSONFile(allGameStats, outputDir, filename)
 }
