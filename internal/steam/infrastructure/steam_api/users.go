@@ -7,16 +7,168 @@ import (
 	"strings"
 )
 
+// #==============================================================#
+// ##       Mocks for UsersService                               ##
+// #==============================================================#
+// MockUsersService はUsersServiceのモック実装
+type MockUsersService struct {
+	SearchUserFunc                 func(ctx context.Context, vanityURL string) (*PlayerSummary, error)
+	GetUserDetailsFunc             func(ctx context.Context, steamID string) (*PlayerSummary, error)
+	GetMultipleUserDetailsFunc     func(ctx context.Context, steamIDs []string) ([]PlayerSummary, error)
+	GetUserFriendsListFunc         func(ctx context.Context, steamID string, enriched bool) ([]Friend, error)
+	GetUserRecentlyPlayedGamesFunc func(ctx context.Context, steamID string) ([]RecentlyPlayedGame, error)
+	GetOwnedGamesFunc              func(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]OwnedGame, error)
+	GetUserSteamLevelFunc          func(ctx context.Context, steamID string) (int, error)
+	GetUserBadgesFunc              func(ctx context.Context, steamID string) ([]Badge, error)
+	GetPlayerBansFunc              func(ctx context.Context, steamID string) (*PlayerBan, error)
+	GetSteamIDFunc                 func(ctx context.Context, vanityURL string) (string, error)
+	GetCommunityBadgeProgressFunc  func(ctx context.Context, steamID string, badgeID int) (any, error)
+	GetAccountPublicInfoFunc       func(ctx context.Context, steamID string) (any, error)
+	GetClientFunc                  func() ClientInterface
+}
+
+// SearchUser はモックのSearchUserメソッド
+func (m *MockUsersService) SearchUser(ctx context.Context, vanityURL string) (*PlayerSummary, error) {
+	if m.SearchUserFunc != nil {
+		return m.SearchUserFunc(ctx, vanityURL)
+	}
+	return nil, nil
+}
+
+// GetUserDetails はモックのGetUserDetailsメソッド
+func (m *MockUsersService) GetUserDetails(ctx context.Context, steamID string) (*PlayerSummary, error) {
+	if m.GetUserDetailsFunc != nil {
+		return m.GetUserDetailsFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// GetMultipleUserDetails はモックのGetMultipleUserDetailsメソッド
+func (m *MockUsersService) GetMultipleUserDetails(ctx context.Context, steamIDs []string) ([]PlayerSummary, error) {
+	if m.GetMultipleUserDetailsFunc != nil {
+		return m.GetMultipleUserDetailsFunc(ctx, steamIDs)
+	}
+	return nil, nil
+}
+
+// GetUserFriendsList はモックのGetUserFriendsListメソッド
+func (m *MockUsersService) GetUserFriendsList(ctx context.Context, steamID string, enriched bool) ([]Friend, error) {
+	if m.GetUserFriendsListFunc != nil {
+		return m.GetUserFriendsListFunc(ctx, steamID, enriched)
+	}
+	return nil, nil
+}
+
+// GetUserRecentlyPlayedGames はモックのGetUserRecentlyPlayedGamesメソッド
+func (m *MockUsersService) GetUserRecentlyPlayedGames(ctx context.Context, steamID string) ([]RecentlyPlayedGame, error) {
+	if m.GetUserRecentlyPlayedGamesFunc != nil {
+		return m.GetUserRecentlyPlayedGamesFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// GetOwnedGames はモックのGetOwnedGamesメソッド
+func (m *MockUsersService) GetOwnedGames(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]OwnedGame, error) {
+	if m.GetOwnedGamesFunc != nil {
+		return m.GetOwnedGamesFunc(ctx, steamID, includeAppInfo, includeFreeGames)
+	}
+	return nil, nil
+}
+
+// GetUserSteamLevel はモックのGetUserSteamLevelメソッド
+func (m *MockUsersService) GetUserSteamLevel(ctx context.Context, steamID string) (int, error) {
+	if m.GetUserSteamLevelFunc != nil {
+		return m.GetUserSteamLevelFunc(ctx, steamID)
+	}
+	return 0, nil
+}
+
+// GetUserBadges はモックのGetUserBadgesメソッド
+func (m *MockUsersService) GetUserBadges(ctx context.Context, steamID string) ([]Badge, error) {
+	if m.GetUserBadgesFunc != nil {
+		return m.GetUserBadgesFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// GetPlayerBans はモックのGetPlayerBansメソッド
+func (m *MockUsersService) GetPlayerBans(ctx context.Context, steamID string) (*PlayerBan, error) {
+	if m.GetPlayerBansFunc != nil {
+		return m.GetPlayerBansFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// GetSteamID はモックのGetSteamIDメソッド
+func (m *MockUsersService) GetSteamID(ctx context.Context, vanityURL string) (string, error) {
+	if m.GetSteamIDFunc != nil {
+		return m.GetSteamIDFunc(ctx, vanityURL)
+	}
+	return "", nil
+}
+
+// GetCommunityBadgeProgress はモックのGetCommunityBadgeProgressメソッド
+func (m *MockUsersService) GetCommunityBadgeProgress(ctx context.Context, steamID string, badgeID int) (any, error) {
+	if m.GetCommunityBadgeProgressFunc != nil {
+		return m.GetCommunityBadgeProgressFunc(ctx, steamID, badgeID)
+	}
+	return nil, nil
+}
+
+// GetAccountPublicInfo はモックのGetAccountPublicInfoメソッド
+func (m *MockUsersService) GetAccountPublicInfo(ctx context.Context, steamID string) (any, error) {
+	if m.GetAccountPublicInfoFunc != nil {
+		return m.GetAccountPublicInfoFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// GetClient はモックのGetClientメソッド
+func (m *MockUsersService) GetClient() ClientInterface {
+	if m.GetClientFunc != nil {
+		return m.GetClientFunc()
+	}
+	return nil
+}
+
+// #==============================================================#
+// ##       Interfaces for UsersService                          ##
+// #==============================================================#
+// UsersServiceInterface はUsers関連のAPIを抽象化
+type UsersServiceInterface interface {
+	SearchUser(ctx context.Context, vanityURL string) (*PlayerSummary, error)
+	GetUserDetails(ctx context.Context, steamID string) (*PlayerSummary, error)
+	GetMultipleUserDetails(ctx context.Context, steamIDs []string) ([]PlayerSummary, error)
+	GetUserFriendsList(ctx context.Context, steamID string, enriched bool) ([]Friend, error)
+	GetUserRecentlyPlayedGames(ctx context.Context, steamID string) ([]RecentlyPlayedGame, error)
+	GetOwnedGames(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]OwnedGame, error)
+	GetUserSteamLevel(ctx context.Context, steamID string) (int, error)
+	GetUserBadges(ctx context.Context, steamID string) ([]Badge, error)
+	GetPlayerBans(ctx context.Context, steamID string) (*PlayerBan, error)
+	GetSteamID(ctx context.Context, vanityURL string) (string, error)
+	GetCommunityBadgeProgress(ctx context.Context, steamID string, badgeID int) (any, error)
+	GetAccountPublicInfo(ctx context.Context, steamID string) (any, error)
+	GetClient() ClientInterface
+}
+
+// #==============================================================#
+// ##       Implementations for UsersService                     ##
+// #==============================================================#
 // UsersService はSteam Users APIのサービス
 type UsersService struct {
-	client *Client
+	client ClientInterface
 }
 
 // NewUsersService は新しいUsersServiceを作成します
-func NewUsersService(client *Client) *UsersService {
+func NewUsersService(client ClientInterface) *UsersService {
 	return &UsersService{
 		client: client,
 	}
+}
+
+// GetClient はクライアントを返します
+func (u *UsersService) GetClient() ClientInterface {
+	return u.client
 }
 
 // SearchUser はユーザー名でユーザーを検索します
@@ -45,7 +197,7 @@ func (u *UsersService) GetUserDetails(ctx context.Context, steamID string) (*Pla
 		"steamids": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointUserPlayerSummaries, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointUserPlayerSummaries, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user details: %w", err)
 	}
@@ -95,7 +247,7 @@ func (u *UsersService) GetMultipleUserDetails(ctx context.Context, steamIDs []st
 			"steamids": strings.Join(validIDs, ","),
 		}
 
-		result, err := u.client.Request(ctx, "GET", EndpointUserPlayerSummaries, params)
+		result, err := u.GetClient().Request(ctx, "GET", EndpointUserPlayerSummaries, params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user details: %w", err)
 		}
@@ -127,7 +279,7 @@ func (u *UsersService) GetUserFriendsList(ctx context.Context, steamID string, e
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointUserFriendList, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointUserFriendList, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get friends list: %w", err)
 	}
@@ -179,7 +331,7 @@ func (u *UsersService) GetUserRecentlyPlayedGames(ctx context.Context, steamID s
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointPlayerRecentlyPlayedGames, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointPlayerRecentlyPlayedGames, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recently played games: %w", err)
 	}
@@ -210,7 +362,7 @@ func (u *UsersService) GetOwnedGames(ctx context.Context, steamID string, includ
 		"include_played_free_games": includeFreeGames,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointPlayerOwnedGames, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointPlayerOwnedGames, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}
@@ -239,7 +391,7 @@ func (u *UsersService) GetUserSteamLevel(ctx context.Context, steamID string) (i
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointPlayerSteamLevel, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointPlayerSteamLevel, params)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get steam level: %w", err)
 	}
@@ -268,7 +420,7 @@ func (u *UsersService) GetUserBadges(ctx context.Context, steamID string) ([]Bad
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointPlayerBadges, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointPlayerBadges, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get badges: %w", err)
 	}
@@ -297,7 +449,7 @@ func (u *UsersService) GetPlayerBans(ctx context.Context, steamID string) (*Play
 		"steamids": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointUserPlayerBans, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointUserPlayerBans, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get player bans: %w", err)
 	}
@@ -330,7 +482,7 @@ func (u *UsersService) GetSteamID(ctx context.Context, vanityURL string) (string
 		"vanityurl": vanityURL,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointUserResolveVanityURL, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointUserResolveVanityURL, params)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve vanity URL: %w", err)
 	}
@@ -378,7 +530,7 @@ func (u *UsersService) GetCommunityBadgeProgress(ctx context.Context, steamID st
 		"badgeid": badgeID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointPlayerCommunityBadgeProgress, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointPlayerCommunityBadgeProgress, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get community badge progress: %w", err)
 	}
@@ -396,7 +548,7 @@ func (u *UsersService) GetAccountPublicInfo(ctx context.Context, steamID string)
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", EndpointGameServersAccountPublicInfo, params)
+	result, err := u.GetClient().Request(ctx, "GET", EndpointGameServersAccountPublicInfo, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account public info: %w", err)
 	}

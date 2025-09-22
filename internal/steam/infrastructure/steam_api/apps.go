@@ -7,16 +7,138 @@ import (
 	"strconv"
 )
 
+// #==============================================================#
+// ##       Mocks for AppsService                                ##
+// #==============================================================#
+// MockAppsService はAppsServiceのモック実装
+type MockAppsService struct {
+	GetAppDetailsFunc           func(ctx context.Context, appID int, country, filters string) (*AppDetails, error)
+	GetUserStatsFunc            func(ctx context.Context, steamID string, appID int) (*UserStats, error)
+	GetUserAchievementsFunc     func(ctx context.Context, steamID string, appID int, language string) ([]Achievement, error)
+	SearchGamesFunc             func(ctx context.Context, term, country string) ([]SearchResult, error)
+	GetPublishedFileDetailsFunc func(ctx context.Context, publishedFileIDs []int, options *PublishedFileOptions) (any, error)
+	GetMultipleAppDetailsFunc   func(ctx context.Context, appIDs []int, country, filters string) (map[int]*AppDetails, error)
+	GetAppListFunc              func(ctx context.Context) (any, error)
+	GetServersAtAddressFunc     func(ctx context.Context, addr string) (any, error)
+	GetUpToDateCheckFunc        func(ctx context.Context, appID int, version string) (any, error)
+	GetClientFunc               func() ClientInterface
+}
+
+// GetAppDetails はモックのGetAppDetailsメソッド
+func (m *MockAppsService) GetAppDetails(ctx context.Context, appID int, country, filters string) (*AppDetails, error) {
+	if m.GetAppDetailsFunc != nil {
+		return m.GetAppDetailsFunc(ctx, appID, country, filters)
+	}
+	return nil, nil
+}
+
+// GetUserStats はモックのGetUserStatsメソッド
+func (m *MockAppsService) GetUserStats(ctx context.Context, steamID string, appID int) (*UserStats, error) {
+	if m.GetUserStatsFunc != nil {
+		return m.GetUserStatsFunc(ctx, steamID, appID)
+	}
+	return nil, nil
+}
+
+// GetUserAchievements はモックのGetUserAchievementsメソッド
+func (m *MockAppsService) GetUserAchievements(ctx context.Context, steamID string, appID int, language string) ([]Achievement, error) {
+	if m.GetUserAchievementsFunc != nil {
+		return m.GetUserAchievementsFunc(ctx, steamID, appID, language)
+	}
+	return nil, nil
+}
+
+// SearchGames はモックのSearchGamesメソッド
+func (m *MockAppsService) SearchGames(ctx context.Context, term, country string) ([]SearchResult, error) {
+	if m.SearchGamesFunc != nil {
+		return m.SearchGamesFunc(ctx, term, country)
+	}
+	return nil, nil
+}
+
+// GetPublishedFileDetails はモックのGetPublishedFileDetailsメソッド
+func (m *MockAppsService) GetPublishedFileDetails(ctx context.Context, publishedFileIDs []int, options *PublishedFileOptions) (any, error) {
+	if m.GetPublishedFileDetailsFunc != nil {
+		return m.GetPublishedFileDetailsFunc(ctx, publishedFileIDs, options)
+	}
+	return nil, nil
+}
+
+// GetMultipleAppDetails はモックのGetMultipleAppDetailsメソッド
+func (m *MockAppsService) GetMultipleAppDetails(ctx context.Context, appIDs []int, country, filters string) (map[int]*AppDetails, error) {
+	if m.GetMultipleAppDetailsFunc != nil {
+		return m.GetMultipleAppDetailsFunc(ctx, appIDs, country, filters)
+	}
+	return nil, nil
+}
+
+// GetAppList はモックのGetAppListメソッド
+func (m *MockAppsService) GetAppList(ctx context.Context) (any, error) {
+	if m.GetAppListFunc != nil {
+		return m.GetAppListFunc(ctx)
+	}
+	return nil, nil
+}
+
+// GetServersAtAddress はモックのGetServersAtAddressメソッド
+func (m *MockAppsService) GetServersAtAddress(ctx context.Context, addr string) (any, error) {
+	if m.GetServersAtAddressFunc != nil {
+		return m.GetServersAtAddressFunc(ctx, addr)
+	}
+	return nil, nil
+}
+
+// GetUpToDateCheck はモックのGetUpToDateCheckメソッド
+func (m *MockAppsService) GetUpToDateCheck(ctx context.Context, appID int, version string) (any, error) {
+	if m.GetUpToDateCheckFunc != nil {
+		return m.GetUpToDateCheckFunc(ctx, appID, version)
+	}
+	return nil, nil
+}
+
+// GetClient はモックのGetClientメソッド
+func (m *MockAppsService) GetClient() ClientInterface {
+	if m.GetClientFunc != nil {
+		return m.GetClientFunc()
+	}
+	return nil
+}
+
+// #==============================================================#
+// ##       Interfaces for AppsService                           ##
+// #==============================================================#
+// AppsServiceInterface はApps関連のAPIを抽象化
+type AppsServiceInterface interface {
+	GetAppDetails(ctx context.Context, appID int, country, filters string) (*AppDetails, error)
+	GetUserStats(ctx context.Context, steamID string, appID int) (*UserStats, error)
+	GetUserAchievements(ctx context.Context, steamID string, appID int, language string) ([]Achievement, error)
+	SearchGames(ctx context.Context, term, country string) ([]SearchResult, error)
+	GetPublishedFileDetails(ctx context.Context, publishedFileIDs []int, options *PublishedFileOptions) (any, error)
+	GetMultipleAppDetails(ctx context.Context, appIDs []int, country, filters string) (map[int]*AppDetails, error)
+	GetAppList(ctx context.Context) (any, error)
+	GetServersAtAddress(ctx context.Context, addr string) (any, error)
+	GetUpToDateCheck(ctx context.Context, appID int, version string) (any, error)
+	GetClient() ClientInterface
+}
+
+// #==============================================================#
+// ##       Implementations for AppsService                      ##
+// #==============================================================#
 // AppsService はSteam Apps APIのサービス
 type AppsService struct {
-	client *Client
+	client ClientInterface
 }
 
 // NewAppsService は新しいAppsServiceを作成します
-func NewAppsService(client *Client) *AppsService {
+func NewAppsService(client ClientInterface) *AppsService {
 	return &AppsService{
 		client: client,
 	}
+}
+
+// GetClient はクライアントを返します
+func (a *AppsService) GetClient() ClientInterface {
+	return a.client
 }
 
 // GetAppDetails はアプリケーションの詳細情報を取得します
@@ -39,7 +161,7 @@ func (a *AppsService) GetAppDetails(ctx context.Context, appID int, country, fil
 		"filters": filters,
 	}
 
-	result, err := a.client.RequestWithoutKey(ctx, "GET", APIAppDetailsURL, params)
+	result, err := a.GetClient().RequestWithoutKey(ctx, "GET", APIAppDetailsURL, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get app details: %w", err)
 	}
@@ -87,7 +209,7 @@ func (a *AppsService) GetUserStats(ctx context.Context, steamID string, appID in
 		"appid":   appID,
 	}
 
-	result, err := a.client.Request(ctx, "GET", EndpointUserStatsForGame, params)
+	result, err := a.GetClient().Request(ctx, "GET", EndpointUserStatsForGame, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user stats: %w", err)
 	}
@@ -131,7 +253,7 @@ func (a *AppsService) GetUserAchievements(ctx context.Context, steamID string, a
 		"l":       language,
 	}
 
-	result, err := a.client.Request(ctx, "GET", EndpointUserPlayerAchievements, params)
+	result, err := a.GetClient().Request(ctx, "GET", EndpointUserPlayerAchievements, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user achievements: %w", err)
 	}
@@ -173,7 +295,7 @@ func (a *AppsService) SearchGames(ctx context.Context, term, country string) ([]
 
 	url := buildURLWithParamsForSearch(APIAppSearchURL, term, params)
 
-	result, err := a.client.RequestWithoutKey(ctx, "GET", url, nil)
+	result, err := a.GetClient().RequestWithoutKey(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search games: %w", err)
 	}
@@ -233,7 +355,7 @@ func (a *AppsService) GetPublishedFileDetails(ctx context.Context, publishedFile
 		params[fmt.Sprintf("publishedfileids[%d]", i)] = fileID
 	}
 
-	result, err := a.client.Request(ctx, "GET", EndpointPublishedFileDetails, params)
+	result, err := a.GetClient().Request(ctx, "GET", EndpointPublishedFileDetails, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get published file details: %w", err)
 	}
@@ -298,7 +420,7 @@ func (a *AppsService) GetMultipleAppDetails(ctx context.Context, appIDs []int, c
 
 // GetAppList は利用可能なアプリケーション一覧を取得します
 func (a *AppsService) GetAppList(ctx context.Context) (any, error) {
-	result, err := a.client.Request(ctx, "GET", EndpointAppsAppList, nil)
+	result, err := a.GetClient().Request(ctx, "GET", EndpointAppsAppList, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get app list: %w", err)
 	}
@@ -316,7 +438,7 @@ func (a *AppsService) GetServersAtAddress(ctx context.Context, addr string) (any
 		"addr": addr,
 	}
 
-	result, err := a.client.Request(ctx, "GET", EndpointAppsServersAtAddress, params)
+	result, err := a.GetClient().Request(ctx, "GET", EndpointAppsServersAtAddress, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servers at address: %w", err)
 	}
@@ -339,7 +461,7 @@ func (a *AppsService) GetUpToDateCheck(ctx context.Context, appID int, version s
 		"version": version,
 	}
 
-	result, err := a.client.Request(ctx, "GET", EndpointAppsUpToDateCheck, params)
+	result, err := a.GetClient().Request(ctx, "GET", EndpointAppsUpToDateCheck, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check up to date: %w", err)
 	}
