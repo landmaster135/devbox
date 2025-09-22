@@ -1,15 +1,26 @@
 package git
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	security "github.com/landmaster135/devbox/internal/git_diff_recorder/security"
 )
+
+// generateUniqueTestDir はハッシュ値を使用してユニークなテストディレクトリ名を生成する
+func generateUniqueTestDir(baseDir, prefix string) string {
+	// 現在時刻とテスト名からハッシュを生成
+	data := fmt.Sprintf("%s_%d_%s", prefix, time.Now().UnixNano(), "test_git_executor")
+	hash := sha256.Sum256([]byte(data))
+	hashStr := fmt.Sprintf("%x", hash)[:16] // 16文字のハッシュを使用
+	return filepath.Join(baseDir, fmt.Sprintf("%s_%s", prefix, hashStr))
+}
 
 func TestNewStandardGitExecutor(t *testing.T) {
 	executor := NewStandardGitExecutor()
@@ -33,8 +44,17 @@ func TestNewStandardGitExecutorWithValidator(t *testing.T) {
 }
 
 func TestStandardGitExecutor_Execute_ValidPath(t *testing.T) {
-	// テスト用の一時ディレクトリを作成
-	tempDir := t.TempDir()
+	// ホームディレクトリ配下にテスト用ディレクトリを作成
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("Failed to get home directory: %v", err)
+	}
+
+	tempDir := generateUniqueTestDir(homeDir, "test_git_valid")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
 
 	// テスト用のGitリポジトリを作成
 	gitDir := filepath.Join(tempDir, ".git")
@@ -43,11 +63,11 @@ func TestStandardGitExecutor_Execute_ValidPath(t *testing.T) {
 	}
 
 	// 許可されたパスでValidatorを作成
-	validator := security.NewPathValidator([]string{tempDir}, 4096)
+	validator := security.NewPathValidator([]string{homeDir}, 4096)
 	executor := NewStandardGitExecutorWithValidator(validator)
 
 	// git statusコマンドを実行（実際のgitコマンドが必要）
-	_, err := executor.Execute(tempDir, "status", "--porcelain")
+	_, err = executor.Execute(tempDir, "status", "--porcelain")
 	if err != nil {
 		// gitコマンドが利用できない環境でもテストが通るように、
 		// パス検証エラー以外は許可する
@@ -109,14 +129,23 @@ func TestStandardGitExecutor_Execute_EmptyPath(t *testing.T) {
 }
 
 func TestStandardGitExecutor_Execute_NonGitDirectory(t *testing.T) {
-	// 通常のディレクトリ（.gitディレクトリなし）でテスト
-	tempDir := t.TempDir()
+	// ホームディレクトリ配下にテスト用ディレクトリを作成（.gitディレクトリなし）
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("Failed to get home directory: %v", err)
+	}
+
+	tempDir := generateUniqueTestDir(homeDir, "test_git_nongit")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
 
 	// 許可されたパスでValidatorを作成
-	validator := security.NewPathValidator([]string{tempDir}, 4096)
+	validator := security.NewPathValidator([]string{homeDir}, 4096)
 	executor := NewStandardGitExecutorWithValidator(validator)
 
-	_, err := executor.Execute(tempDir, "status")
+	_, err = executor.Execute(tempDir, "status")
 	if err == nil {
 		t.Error("Execute() error = nil, want error for non-git directory")
 	}

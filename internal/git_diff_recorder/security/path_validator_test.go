@@ -55,23 +55,32 @@ func TestNewDefaultPathValidator(t *testing.T) {
 }
 
 func TestPathValidator_ValidateWorkingDirectory_Normal(t *testing.T) {
-	// テスト用の一時ディレクトリを作成
-	tempDir := t.TempDir()
+	// ホームディレクトリ配下にテスト用ディレクトリを作成
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("Failed to get home directory: %v", err)
+	}
+
+	testDir := generateUniqueTestDir(homeDir, "test_normal")
+	if err := os.MkdirAll(testDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(testDir)
 
 	// テスト用のGitリポジトリを作成
-	gitDir := filepath.Join(tempDir, ".git")
+	gitDir := filepath.Join(testDir, ".git")
 	if err := os.Mkdir(gitDir, 0755); err != nil {
 		t.Fatalf("Failed to create .git directory: %v", err)
 	}
 
-	validator := NewPathValidator([]string{tempDir}, 4096)
+	validator := NewPathValidator([]string{homeDir}, 4096)
 
-	validatedPath, err := validator.ValidateWorkingDirectory(tempDir)
+	validatedPath, err := validator.ValidateWorkingDirectory(testDir)
 	if err != nil {
 		t.Errorf("ValidateWorkingDirectory() error = %v, want nil", err)
 	}
 
-	expectedPath := filepath.Clean(tempDir)
+	expectedPath := filepath.Clean(testDir)
 	if validatedPath != expectedPath {
 		t.Errorf("ValidateWorkingDirectory() = %v, want %v", validatedPath, expectedPath)
 	}
@@ -265,15 +274,24 @@ func TestPathValidator_checkIsGitRepository(t *testing.T) {
 
 func TestPathValidator_ValidateWorkingDirectory_Integration(t *testing.T) {
 	// 統合テスト：実際のワークフローをテスト
-	tempDir := t.TempDir()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatalf("Failed to get home directory: %v", err)
+	}
+
+	testDir := generateUniqueTestDir(homeDir, "test_integration")
+	if err := os.MkdirAll(testDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.RemoveAll(testDir)
 
 	// テスト用のGitリポジトリを作成
-	gitDir := filepath.Join(tempDir, ".git")
+	gitDir := filepath.Join(testDir, ".git")
 	if err := os.Mkdir(gitDir, 0755); err != nil {
 		t.Fatalf("Failed to create .git directory: %v", err)
 	}
 
-	validator := NewPathValidator([]string{tempDir}, 4096)
+	validator := NewPathValidator([]string{homeDir}, 4096)
 
 	// 相対パスでテスト
 	originalWd, err := os.Getwd()
@@ -282,17 +300,17 @@ func TestPathValidator_ValidateWorkingDirectory_Integration(t *testing.T) {
 	}
 	defer os.Chdir(originalWd)
 
-	if err := os.Chdir(filepath.Dir(tempDir)); err != nil {
+	if err := os.Chdir(filepath.Dir(testDir)); err != nil {
 		t.Fatalf("Failed to change directory: %v", err)
 	}
 
-	relativePath := filepath.Base(tempDir)
+	relativePath := filepath.Base(testDir)
 	validatedPath, err := validator.ValidateWorkingDirectory(relativePath)
 	if err != nil {
 		t.Errorf("ValidateWorkingDirectory() error = %v, want nil", err)
 	}
 
-	expectedPath := filepath.Clean(tempDir)
+	expectedPath := filepath.Clean(testDir)
 	if validatedPath != expectedPath {
 		t.Errorf("ValidateWorkingDirectory() = %v, want %v", validatedPath, expectedPath)
 	}
