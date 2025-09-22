@@ -369,8 +369,8 @@ type SteamClientInterface interface {
 // #==============================================================#
 // SteamClient はSteam APIのメインクライアント
 type SteamClient struct {
-	Users *UsersService
-	Apps  *AppsService
+	Users UsersServiceInterface
+	Apps  AppsServiceInterface
 }
 
 // NewSteamClient は新しいSteam APIクライアントを作成します
@@ -384,11 +384,11 @@ func NewSteamClient(apiKey string, headers map[string]string) *SteamClient {
 }
 
 // GetUsers はUsersServiceを返します
-func (sc *SteamClient) GetUsers() *UsersService {
+func (sc *SteamClient) GetUsers() UsersServiceInterface {
 	return sc.Users
 }
 
 // GetApps はAppsServiceを返します
-func (sc *SteamClient) GetApps() *AppsService {
+func (sc *SteamClient) GetApps() AppsServiceInterface {
 	return sc.Apps
 }
