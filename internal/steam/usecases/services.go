@@ -14,6 +14,18 @@ import (
 // #==============================================================#
 // ##       Mocks for FileWriter                                 ##
 // #==============================================================#
+// MockFileWriter はFileWriterのモック実装
+type MockFileWriter struct {
+	WriteToFileFunc func(data any, filename string) error
+}
+
+// WriteToFile はモックのファイル書き込みメソッド
+func (m *MockFileWriter) WriteToFile(data any, filename string) error {
+	if m.WriteToFileFunc != nil {
+		return m.WriteToFileFunc(data, filename)
+	}
+	return nil
+}
 
 // #==============================================================#
 // ##       Interfaces for FileWriter                            ##
@@ -50,6 +62,25 @@ func (w *FileWriter) WriteToFile(data any, filename string) error {
 // #==============================================================#
 // ##       Mocks for Logger                                     ##
 // #==============================================================#
+// MockLogger はLoggerのモック実装
+type MockLogger struct {
+	PrintfFunc  func(format string, v ...any)
+	PrintlnFunc func(v ...any)
+}
+
+// Printf はモックのフォーマット付きログ出力メソッド
+func (m *MockLogger) Printf(format string, v ...any) {
+	if m.PrintfFunc != nil {
+		m.PrintfFunc(format, v...)
+	}
+}
+
+// Println はモックのログ出力メソッド
+func (m *MockLogger) Println(v ...any) {
+	if m.PrintlnFunc != nil {
+		m.PrintlnFunc(v...)
+	}
+}
 
 // #==============================================================#
 // ##       Interfaces for Logger                                ##
@@ -79,6 +110,27 @@ func (l *Logger) Println(v ...any) {
 // #==============================================================#
 // ##       Mocks for ConcurrencyManager                         ##
 // #==============================================================#
+// MockConcurrencyManager はConcurrencyManagerのモック実装
+type MockConcurrencyManager struct {
+	GetSemaphoreFunc      func() chan struct{}
+	GetMaxConcurrencyFunc func() int
+}
+
+// GetSemaphore はモックのセマフォチャネルを返します
+func (m *MockConcurrencyManager) GetSemaphore() chan struct{} {
+	if m.GetSemaphoreFunc != nil {
+		return m.GetSemaphoreFunc()
+	}
+	return make(chan struct{}, 1)
+}
+
+// GetMaxConcurrency はモックの最大並行数を返します
+func (m *MockConcurrencyManager) GetMaxConcurrency() int {
+	if m.GetMaxConcurrencyFunc != nil {
+		return m.GetMaxConcurrencyFunc()
+	}
+	return 1
+}
 
 // #==============================================================#
 // ##       Interfaces for ConcurrencyManager                    ##

@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -17,82 +16,16 @@ func NewMockSteamClient() *steamAPI.MockSteamClient {
 	}
 }
 
-// MockFileWriter はFileWriterのモック実装
-type MockFileWriter struct {
-	WriteToFileFunc func(data any, filename string) error
-	WrittenData     []any
-	WrittenFiles    []string
-}
-
-// WriteToFile はモックのファイル書き込みメソッド
-func (m *MockFileWriter) WriteToFile(data any, filename string) error {
-	m.WrittenData = append(m.WrittenData, data)
-	m.WrittenFiles = append(m.WrittenFiles, filename)
-
-	if m.WriteToFileFunc != nil {
-		return m.WriteToFileFunc(data, filename)
-	}
-	return nil
-}
-
-// MockLogger はLoggerのモック実装
-type MockLogger struct {
-	PrintfFunc     func(format string, v ...any)
-	PrintlnFunc    func(v ...any)
-	LoggedMessages []string
-}
-
-// Printf はモックのフォーマット付きログ出力メソッド
-func (m *MockLogger) Printf(format string, v ...any) {
-	message := fmt.Sprintf(format, v...)
-	m.LoggedMessages = append(m.LoggedMessages, message)
-
-	if m.PrintfFunc != nil {
-		m.PrintfFunc(format, v...)
-	}
-}
-
-// Println はモックのログ出力メソッド
-func (m *MockLogger) Println(v ...any) {
-	message := fmt.Sprint(v...)
-	m.LoggedMessages = append(m.LoggedMessages, message)
-
-	if m.PrintlnFunc != nil {
-		m.PrintlnFunc(v...)
-	}
-}
-
-// MockConcurrencyController は並行処理制御のモック実装
-type MockConcurrencyController struct {
-	maxConcurrency int
-	semaphore      chan struct{}
-}
-
-// NewMockConcurrencyController は新しいモック並行処理制御を作成します
-func NewMockConcurrencyController(maxConcurrency int) *MockConcurrencyController {
-	return &MockConcurrencyController{
-		maxConcurrency: maxConcurrency,
-		semaphore:      make(chan struct{}, maxConcurrency),
-	}
-}
-
-// GetSemaphore はモックのセマフォチャネルを返します
-func (m *MockConcurrencyController) GetSemaphore() chan struct{} {
-	return m.semaphore
-}
-
-// GetMaxConcurrency はモックの最大並行数を返します
-func (m *MockConcurrencyController) GetMaxConcurrency() int {
-	return m.maxConcurrency
-}
-
 // TestNewSteamService_Normal はNewSteamServiceの正常系テスト
 func TestNewSteamService_Normal(t *testing.T) {
 	// Arrange
 	mockClient := NewMockSteamClient()
 	mockFileWriter := &MockFileWriter{}
 	mockLogger := &MockLogger{}
-	mockConcurrencyController := NewMockConcurrencyController(5)
+	mockConcurrencyController := &MockConcurrencyManager{
+		GetMaxConcurrencyFunc: func() int { return 5 },
+		GetSemaphoreFunc:      func() chan struct{} { return make(chan struct{}, 5) },
+	}
 
 	// Act
 	service := NewSteamService(mockClient, mockFileWriter, mockLogger, mockConcurrencyController)
@@ -174,15 +107,6 @@ func TestMockFileWriter_WriteToFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	if len(mockWriter.WrittenData) != 1 {
-		t.Errorf("Expected 1 written data, got %d", len(mockWriter.WrittenData))
-	}
-	if len(mockWriter.WrittenFiles) != 1 {
-		t.Errorf("Expected 1 written file, got %d", len(mockWriter.WrittenFiles))
-	}
-	if mockWriter.WrittenFiles[0] != filename {
-		t.Errorf("Expected filename %s, got %s", filename, mockWriter.WrittenFiles[0])
-	}
 }
 
 // TestMockFileWriter_WriteToFileWithError はMockFileWriterのエラーテスト
@@ -209,7 +133,14 @@ func TestMockFileWriter_WriteToFileWithError(t *testing.T) {
 // TestMockLogger_Printf はMockLoggerのPrintfテスト
 func TestMockLogger_Printf(t *testing.T) {
 	// Arrange
-	mockLogger := &MockLogger{}
+	var capturedFormat string
+	var capturedArgs []any
+	mockLogger := &MockLogger{
+		PrintfFunc: func(format string, v ...any) {
+			capturedFormat = format
+			capturedArgs = v
+		},
+	}
 	format := "Test message: %s"
 	arg := "test"
 
@@ -217,53 +148,58 @@ func TestMockLogger_Printf(t *testing.T) {
 	mockLogger.Printf(format, arg)
 
 	// Assert
-	if len(mockLogger.LoggedMessages) != 1 {
-		t.Errorf("Expected 1 logged message, got %d", len(mockLogger.LoggedMessages))
+	if capturedFormat != format {
+		t.Errorf("Expected format %s, got %s", format, capturedFormat)
 	}
-	expectedMessage := "Test message: test"
-	if mockLogger.LoggedMessages[0] != expectedMessage {
-		t.Errorf("Expected message %s, got %s", expectedMessage, mockLogger.LoggedMessages[0])
+	if len(capturedArgs) != 1 || capturedArgs[0] != arg {
+		t.Errorf("Expected args [%s], got %v", arg, capturedArgs)
 	}
 }
 
 // TestMockLogger_Println はMockLoggerのPrintlnテスト
 func TestMockLogger_Println(t *testing.T) {
 	// Arrange
-	mockLogger := &MockLogger{}
+	var capturedArgs []any
+	mockLogger := &MockLogger{
+		PrintlnFunc: func(v ...any) {
+			capturedArgs = v
+		},
+	}
 	message := "Test message"
 
 	// Act
 	mockLogger.Println(message)
 
 	// Assert
-	if len(mockLogger.LoggedMessages) != 1 {
-		t.Errorf("Expected 1 logged message, got %d", len(mockLogger.LoggedMessages))
-	}
-	if mockLogger.LoggedMessages[0] != message {
-		t.Errorf("Expected message %s, got %s", message, mockLogger.LoggedMessages[0])
+	if len(capturedArgs) != 1 || capturedArgs[0] != message {
+		t.Errorf("Expected args [%s], got %v", message, capturedArgs)
 	}
 }
 
-// TestMockConcurrencyController はMockConcurrencyControllerのテスト
-func TestMockConcurrencyController(t *testing.T) {
+// TestMockConcurrencyManager はMockConcurrencyManagerのテスト
+func TestMockConcurrencyManager(t *testing.T) {
 	// Arrange
 	maxConcurrency := 3
-	controller := NewMockConcurrencyController(maxConcurrency)
+	semaphore := make(chan struct{}, maxConcurrency)
+	controller := &MockConcurrencyManager{
+		GetMaxConcurrencyFunc: func() int { return maxConcurrency },
+		GetSemaphoreFunc:      func() chan struct{} { return semaphore },
+	}
 
 	// Act & Assert
 	if controller.GetMaxConcurrency() != maxConcurrency {
 		t.Errorf("Expected max concurrency %d, got %d", maxConcurrency, controller.GetMaxConcurrency())
 	}
 
-	semaphore := controller.GetSemaphore()
-	if semaphore == nil {
-		t.Error("Expected semaphore to be created")
+	returnedSemaphore := controller.GetSemaphore()
+	if returnedSemaphore != semaphore {
+		t.Error("Expected same semaphore instance to be returned")
 	}
 
 	// セマフォの容量をテスト
 	for i := 0; i < maxConcurrency; i++ {
 		select {
-		case semaphore <- struct{}{}:
+		case returnedSemaphore <- struct{}{}:
 			// 成功
 		default:
 			t.Errorf("Expected to be able to send %d items to semaphore", maxConcurrency)
@@ -272,7 +208,7 @@ func TestMockConcurrencyController(t *testing.T) {
 
 	// 容量を超えた場合のテスト
 	select {
-	case semaphore <- struct{}{}:
+	case returnedSemaphore <- struct{}{}:
 		t.Error("Expected semaphore to be full")
 	default:
 		// 期待される動作
