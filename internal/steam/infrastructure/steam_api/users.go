@@ -45,7 +45,7 @@ func (u *UsersService) GetUserDetails(ctx context.Context, steamID string) (*Pla
 		"steamids": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/ISteamUser/GetPlayerSummaries/v2/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointUserPlayerSummaries, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user details: %w", err)
 	}
@@ -77,7 +77,7 @@ func (u *UsersService) GetMultipleUserDetails(ctx context.Context, steamIDs []st
 	var allPlayers []PlayerSummary
 
 	// Steam APIは一度に100個までのIDしか処理できないため、チャンクに分割
-	chunks := chunkSteamIDs(steamIDs, 100)
+	chunks := chunkSteamIDs(steamIDs, ThresholdOfIDCountsForSteamAPI)
 
 	for _, chunk := range chunks {
 		validIDs := make([]string, 0, len(chunk))
@@ -95,7 +95,7 @@ func (u *UsersService) GetMultipleUserDetails(ctx context.Context, steamIDs []st
 			"steamids": strings.Join(validIDs, ","),
 		}
 
-		result, err := u.client.Request(ctx, "GET", "/ISteamUser/GetPlayerSummaries/v2/", params)
+		result, err := u.client.Request(ctx, "GET", EndpointUserPlayerSummaries, params)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user details: %w", err)
 		}
@@ -127,7 +127,7 @@ func (u *UsersService) GetUserFriendsList(ctx context.Context, steamID string, e
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/ISteamUser/GetFriendList/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointUserFriendList, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get friends list: %w", err)
 	}
@@ -179,7 +179,7 @@ func (u *UsersService) GetUserRecentlyPlayedGames(ctx context.Context, steamID s
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/IPlayerService/GetRecentlyPlayedGames/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointPlayerRecentlyPlayedGames, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recently played games: %w", err)
 	}
@@ -210,7 +210,7 @@ func (u *UsersService) GetOwnedGames(ctx context.Context, steamID string, includ
 		"include_played_free_games": includeFreeGames,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/IPlayerService/GetOwnedGames/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointPlayerOwnedGames, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}
@@ -239,7 +239,7 @@ func (u *UsersService) GetUserSteamLevel(ctx context.Context, steamID string) (i
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/IPlayerService/GetSteamLevel/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointPlayerSteamLevel, params)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get steam level: %w", err)
 	}
@@ -268,7 +268,7 @@ func (u *UsersService) GetUserBadges(ctx context.Context, steamID string) ([]Bad
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/IPlayerService/GetBadges/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointPlayerBadges, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get badges: %w", err)
 	}
@@ -297,7 +297,7 @@ func (u *UsersService) GetPlayerBans(ctx context.Context, steamID string) (*Play
 		"steamids": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/ISteamUser/GetPlayerBans/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointUserPlayerBans, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get player bans: %w", err)
 	}
@@ -330,7 +330,7 @@ func (u *UsersService) GetSteamID(ctx context.Context, vanityURL string) (string
 		"vanityurl": vanityURL,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/ISteamUser/ResolveVanityURL/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointUserResolveVanityURL, params)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve vanity URL: %w", err)
 	}
@@ -378,7 +378,7 @@ func (u *UsersService) GetCommunityBadgeProgress(ctx context.Context, steamID st
 		"badgeid": badgeID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/IPlayerService/GetCommunityBadgeProgress/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointPlayerCommunityBadgeProgress, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get community badge progress: %w", err)
 	}
@@ -396,7 +396,7 @@ func (u *UsersService) GetAccountPublicInfo(ctx context.Context, steamID string)
 		"steamid": steamID,
 	}
 
-	result, err := u.client.Request(ctx, "GET", "/IGameServersService/GetAccountPublicInfo/v1/", params)
+	result, err := u.client.Request(ctx, "GET", EndpointGameServersAccountPublicInfo, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account public info: %w", err)
 	}

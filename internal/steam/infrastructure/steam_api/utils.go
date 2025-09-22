@@ -112,7 +112,7 @@ func validateSteamID(steamID string) bool {
 	}
 
 	// Steam ID は通常17桁の数字
-	if len(steamID) != 17 {
+	if len(steamID) != DigitsOfSteamID {
 		return false
 	}
 
@@ -131,44 +131,11 @@ func validateAppID(appID int) bool {
 	return appID > 0
 }
 
-// parseCommaSeparatedInts はカンマ区切りの文字列を整数スライスに変換します
-func parseCommaSeparatedInts(s string) ([]int, error) {
-	if s == "" {
-		return []int{}, nil
-	}
-
-	parts := strings.Split(s, ",")
-	result := make([]int, len(parts))
-
-	for i, part := range parts {
-		num, err := strconv.Atoi(strings.TrimSpace(part))
-		if err != nil {
-			return nil, fmt.Errorf("invalid number: %s", part)
-		}
-		result[i] = num
-	}
-
-	return result, nil
-}
-
-// formatSteamIDList は複数のSteam IDを適切な形式に変換します
-func formatSteamIDList(steamIDs []string) string {
-	validIDs := make([]string, 0, len(steamIDs))
-
-	for _, id := range steamIDs {
-		if validateSteamID(id) {
-			validIDs = append(validIDs, id)
-		}
-	}
-
-	return strings.Join(validIDs, ",")
-}
-
 // chunkSteamIDs はSteam IDのリストを指定されたサイズのチャンクに分割します
 // Steam APIは一度に処理できるIDの数に制限があるため
 func chunkSteamIDs(steamIDs []string, chunkSize int) [][]string {
 	if chunkSize <= 0 {
-		chunkSize = 100 // デフォルトのチャンクサイズ
+		chunkSize = ThresholdOfIDCountsForSteamAPI // デフォルトのチャンクサイズ
 	}
 
 	var chunks [][]string

@@ -87,7 +87,7 @@ func (a *AppsService) GetUserStats(ctx context.Context, steamID string, appID in
 		"appid":   appID,
 	}
 
-	result, err := a.client.Request(ctx, "GET", "/ISteamUserStats/GetUserStatsForGame/v2/", params)
+	result, err := a.client.Request(ctx, "GET", EndpointUserStatsForGame, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user stats: %w", err)
 	}
@@ -131,7 +131,7 @@ func (a *AppsService) GetUserAchievements(ctx context.Context, steamID string, a
 		"l":       language,
 	}
 
-	result, err := a.client.Request(ctx, "GET", "/ISteamUserStats/GetPlayerAchievements/v1/", params)
+	result, err := a.client.Request(ctx, "GET", EndpointUserPlayerAchievements, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user achievements: %w", err)
 	}
@@ -233,7 +233,7 @@ func (a *AppsService) GetPublishedFileDetails(ctx context.Context, publishedFile
 		params[fmt.Sprintf("publishedfileids[%d]", i)] = fileID
 	}
 
-	result, err := a.client.Request(ctx, "GET", "/IPublishedFileService/GetDetails/v1/", params)
+	result, err := a.client.Request(ctx, "GET", EndpointPublishedFileDetails, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get published file details: %w", err)
 	}
@@ -298,7 +298,7 @@ func (a *AppsService) GetMultipleAppDetails(ctx context.Context, appIDs []int, c
 
 // GetAppList は利用可能なアプリケーション一覧を取得します
 func (a *AppsService) GetAppList(ctx context.Context) (any, error) {
-	result, err := a.client.Request(ctx, "GET", "/ISteamApps/GetAppList/v2/", nil)
+	result, err := a.client.Request(ctx, "GET", EndpointAppsAppList, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get app list: %w", err)
 	}
@@ -316,7 +316,7 @@ func (a *AppsService) GetServersAtAddress(ctx context.Context, addr string) (any
 		"addr": addr,
 	}
 
-	result, err := a.client.Request(ctx, "GET", "/ISteamApps/GetServersAtAddress/v1/", params)
+	result, err := a.client.Request(ctx, "GET", EndpointAppsServersAtAddress, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get servers at address: %w", err)
 	}
@@ -339,7 +339,7 @@ func (a *AppsService) GetUpToDateCheck(ctx context.Context, appID int, version s
 		"version": version,
 	}
 
-	result, err := a.client.Request(ctx, "GET", "/ISteamApps/UpToDateCheck/v1/", params)
+	result, err := a.client.Request(ctx, "GET", EndpointAppsUpToDateCheck, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check up to date: %w", err)
 	}
