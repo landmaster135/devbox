@@ -165,14 +165,12 @@ func (m *MockConcurrencyController) GetMaxConcurrency() int {
 func TestNewSteamService_Normal(t *testing.T) {
 	// Arrange
 	mockClient := NewMockSteamClient()
-	config := &SteamServiceConfig{
-		FileWriter:            &MockFileWriter{},
-		Logger:                &MockLogger{},
-		ConcurrencyController: NewMockConcurrencyController(5),
-	}
+	mockFileWriter := &MockFileWriter{}
+	mockLogger := &MockLogger{}
+	mockConcurrencyController := NewMockConcurrencyController(5)
 
 	// Act
-	service := NewSteamService(mockClient, config)
+	service := NewSteamService(mockClient, mockFileWriter, mockLogger, mockConcurrencyController)
 
 	// Assert
 	if service == nil {
@@ -198,7 +196,7 @@ func TestNewSteamService_WithNilConfig(t *testing.T) {
 	mockClient := NewMockSteamClient()
 
 	// Act
-	service := NewSteamService(mockClient, nil)
+	service := NewSteamService(mockClient, nil, nil, nil)
 
 	// Assert
 	if service == nil {

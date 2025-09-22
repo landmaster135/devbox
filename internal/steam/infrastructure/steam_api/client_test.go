@@ -230,17 +230,6 @@ func TestNewSteamClient(t *testing.T) {
 	steamClient := NewSteamClient(apiKey, headers)
 
 	assert.NotNil(t, steamClient)
-	assert.NotNil(t, steamClient.client)
 	assert.NotNil(t, steamClient.Users)
 	assert.NotNil(t, steamClient.Apps)
-	assert.Equal(t, apiKey, steamClient.client.apiKey)
-}
-
-func TestSteamClient_GetClient(t *testing.T) {
-	steamClient := NewSteamClient("test-api-key", nil)
-
-	client := steamClient.GetClient()
-
-	assert.NotNil(t, client)
-	assert.Equal(t, steamClient.client, client)
 }

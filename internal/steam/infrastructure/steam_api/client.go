@@ -226,7 +226,6 @@ func parseURL(rawURL string) (*url.URL, error) {
 
 // SteamClient はSteam APIのメインクライアント
 type SteamClient struct {
-	client *Client
 	Users  *UsersService
 	Apps   *AppsService
 }
@@ -236,15 +235,9 @@ func NewSteamClient(apiKey string, headers map[string]string) *SteamClient {
 	client := NewClient(apiKey, headers)
 
 	return &SteamClient{
-		client: client,
 		Users:  NewUsersService(client),
 		Apps:   NewAppsService(client),
 	}
-}
-
-// GetClient はHTTPクライアントを返します
-func (sc *SteamClient) GetClient() *Client {
-	return sc.client
 }
 
 // GetUsers はUsersServiceを返します
