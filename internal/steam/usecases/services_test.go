@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,86 +9,12 @@ import (
 	steamAPI "github.com/landmaster135/devbox/internal/steam/infrastructure/steam_api"
 )
 
-// MockUsersService はUsersServiceのモック実装
-type MockUsersService struct {
-	GetOwnedGamesFunc              func(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]steamAPI.OwnedGame, error)
-	GetUserRecentlyPlayedGamesFunc func(ctx context.Context, steamID string) ([]steamAPI.RecentlyPlayedGame, error)
-}
-
-// GetOwnedGames はモックの所有ゲーム取得メソッド
-func (m *MockUsersService) GetOwnedGames(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]steamAPI.OwnedGame, error) {
-	if m.GetOwnedGamesFunc != nil {
-		return m.GetOwnedGamesFunc(ctx, steamID, includeAppInfo, includeFreeGames)
-	}
-	return []steamAPI.OwnedGame{}, nil
-}
-
-// GetUserRecentlyPlayedGames はモックの最近プレイしたゲーム取得メソッド
-func (m *MockUsersService) GetUserRecentlyPlayedGames(ctx context.Context, steamID string) ([]steamAPI.RecentlyPlayedGame, error) {
-	if m.GetUserRecentlyPlayedGamesFunc != nil {
-		return m.GetUserRecentlyPlayedGamesFunc(ctx, steamID)
-	}
-	return []steamAPI.RecentlyPlayedGame{}, nil
-}
-
-// MockAppsService はAppsServiceのモック実装
-type MockAppsService struct {
-	GetUserStatsFunc        func(ctx context.Context, steamID string, appID int) (*steamAPI.UserStats, error)
-	GetUserAchievementsFunc func(ctx context.Context, steamID string, appID int, language string) ([]steamAPI.Achievement, error)
-}
-
-// GetUserStats はモックのユーザー統計取得メソッド
-func (m *MockAppsService) GetUserStats(ctx context.Context, steamID string, appID int) (*steamAPI.UserStats, error) {
-	if m.GetUserStatsFunc != nil {
-		return m.GetUserStatsFunc(ctx, steamID, appID)
-	}
-	return &steamAPI.UserStats{}, nil
-}
-
-// GetUserAchievements はモックのユーザー実績取得メソッド
-func (m *MockAppsService) GetUserAchievements(ctx context.Context, steamID string, appID int, language string) ([]steamAPI.Achievement, error) {
-	if m.GetUserAchievementsFunc != nil {
-		return m.GetUserAchievementsFunc(ctx, steamID, appID, language)
-	}
-	return []steamAPI.Achievement{}, nil
-}
-
-// MockSteamClient はSteamClientのモック実装
-type MockSteamClient struct {
-	users *MockUsersService
-	apps  *MockAppsService
-}
-
 // NewMockSteamClient は新しいモックSteamClientを作成します
-func NewMockSteamClient() *MockSteamClient {
-	return &MockSteamClient{
-		users: &MockUsersService{},
-		apps:  &MockAppsService{},
+func NewMockSteamClient() *steamAPI.MockSteamClient {
+	return &steamAPI.MockSteamClient{
+		UsersService: &steamAPI.MockUsersService{},
+		AppsService:  &steamAPI.MockAppsService{},
 	}
-}
-
-// GetUsers はモックのUsersServiceを返します
-func (m *MockSteamClient) GetUsers() *steamAPI.UsersService {
-	// 実際のUsersServiceの代わりにモックを返すため、型変換が必要
-	// テスト用の実装として、実際のUsersServiceのインターフェースを満たすモックを返す
-	return nil // この実装は後で改善が必要
-}
-
-// GetApps はモックのAppsServiceを返します
-func (m *MockSteamClient) GetApps() *steamAPI.AppsService {
-	// 実際のAppsServiceの代わりにモックを返すため、型変換が必要
-	// テスト用の実装として、実際のAppsServiceのインターフェースを満たすモックを返す
-	return nil // この実装は後で改善が必要
-}
-
-// SetMockUsers はモックのUsersServiceを設定します
-func (m *MockSteamClient) SetMockUsers(users *MockUsersService) {
-	m.users = users
-}
-
-// SetMockApps はモックのAppsServiceを設定します
-func (m *MockSteamClient) SetMockApps(apps *MockAppsService) {
-	m.apps = apps
 }
 
 // MockFileWriter はFileWriterのモック実装

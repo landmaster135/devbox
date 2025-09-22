@@ -11,41 +11,21 @@ import (
 	steamAPI "github.com/landmaster135/devbox/internal/steam/infrastructure/steam_api"
 )
 
-// UsersServiceInterface はUsers関連のAPIを抽象化
-type UsersServiceInterface interface {
-	GetOwnedGames(ctx context.Context, steamID string, includeAppInfo, includeFreeGames bool) ([]steamAPI.OwnedGame, error)
-	GetUserRecentlyPlayedGames(ctx context.Context, steamID string) ([]steamAPI.RecentlyPlayedGame, error)
-}
+// #==============================================================#
+// ##       Mocks for FileWriter                                 ##
+// #==============================================================#
 
-// AppsServiceInterface はApps関連のAPIを抽象化
-type AppsServiceInterface interface {
-	GetUserStats(ctx context.Context, steamID string, appID int) (*steamAPI.UserStats, error)
-	GetUserAchievements(ctx context.Context, steamID string, appID int, language string) ([]steamAPI.Achievement, error)
-}
-
-// SteamClientInterface は全体のクライアントを抽象化
-type SteamClientInterface interface {
-	GetUsers() *steamAPI.UsersService
-	GetApps() *steamAPI.AppsService
-}
-
+// #==============================================================#
+// ##       Interfaces for FileWriter                            ##
+// #==============================================================#
 // FileWriterInterface はファイル書き込み機能を抽象化
 type FileWriterInterface interface {
 	WriteToFile(data any, filename string) error
 }
 
-// LoggerInterface はログ出力機能を抽象化
-type LoggerInterface interface {
-	Printf(format string, v ...any)
-	Println(v ...any)
-}
-
-// ConcurrencyManagerInterface は並行処理制御を抽象化
-type ConcurrencyManagerInterface interface {
-	GetSemaphore() chan struct{}
-	GetMaxConcurrency() int
-}
-
+// #==============================================================#
+// ##       Implementations for FileWriter                       ##
+// #==============================================================#
 // FileWriter はデフォルトのファイル書き込み実装
 type FileWriter struct{}
 
@@ -67,6 +47,22 @@ func (w *FileWriter) WriteToFile(data any, filename string) error {
 	return nil
 }
 
+// #==============================================================#
+// ##       Mocks for Logger                                     ##
+// #==============================================================#
+
+// #==============================================================#
+// ##       Interfaces for Logger                                ##
+// #==============================================================#
+// LoggerInterface はログ出力機能を抽象化
+type LoggerInterface interface {
+	Printf(format string, v ...any)
+	Println(v ...any)
+}
+
+// #==============================================================#
+// ##       Implementations for Logger                           ##
+// #==============================================================#
 // Logger はデフォルトのログ出力実装
 type Logger struct{}
 
@@ -80,6 +76,22 @@ func (l *Logger) Println(v ...any) {
 	fmt.Println(v...)
 }
 
+// #==============================================================#
+// ##       Mocks for ConcurrencyManager                         ##
+// #==============================================================#
+
+// #==============================================================#
+// ##       Interfaces for ConcurrencyManager                    ##
+// #==============================================================#
+// ConcurrencyManagerInterface は並行処理制御を抽象化
+type ConcurrencyManagerInterface interface {
+	GetSemaphore() chan struct{}
+	GetMaxConcurrency() int
+}
+
+// #==============================================================#
+// ##       Implementations for ConcurrencyManager               ##
+// #==============================================================#
 // ConcurrencyManager はデフォルトの並行処理制御実装
 type ConcurrencyManager struct {
 	maxConcurrency int
@@ -152,14 +164,14 @@ type MockSteamService struct {
 	SaveGamesToJSONFunc          func(games []SteamGameInfo, steamID string, filename string) error
 	GetGamesStatsFunc            func(ctx context.Context, steamID string) ([]*GameStatsInfo, error)
 	SaveGamesStatsToJSONFunc     func(allGameStats []*GameStatsInfo, filename string) error
-	GetClientFunc                func() SteamClientInterface
+	GetClientFunc                func() steamAPI.SteamClientInterface
 	GetFileWriterFunc            func() FileWriterInterface
 	GetLoggerFunc                func() LoggerInterface
 	GetConcurrencyControllerFunc func() ConcurrencyManagerInterface
 }
 
 // GetClient はモックのGetClientメソッド
-func (m *MockSteamService) GetClient() SteamClientInterface {
+func (m *MockSteamService) GetClient() steamAPI.SteamClientInterface {
 	if m.GetClientFunc != nil {
 		return m.GetClientFunc()
 	}
@@ -231,7 +243,7 @@ type SteamServiceInterface interface {
 	SaveGamesToJSON(games []SteamGameInfo, steamID string, filename string) error
 	GetGamesStats(ctx context.Context, steamID string) ([]*GameStatsInfo, error)
 	SaveGamesStatsToJSON(allGameStats []*GameStatsInfo, filename string) error
-	GetClient() SteamClientInterface
+	GetClient() steamAPI.SteamClientInterface
 	GetFileWriter() FileWriterInterface
 	GetLogger() LoggerInterface
 	GetConcurrencyController() ConcurrencyManagerInterface
@@ -242,14 +254,14 @@ type SteamServiceInterface interface {
 // #==============================================================#
 // SteamService はSteam APIを使用するサービス
 type SteamService struct {
-	client                SteamClientInterface
+	client                steamAPI.SteamClientInterface
 	fileWriter            FileWriterInterface
 	logger                LoggerInterface
 	concurrencyController ConcurrencyManagerInterface
 }
 
 // NewSteamService は依存性注入対応のコンストラクタ
-func NewSteamService(client SteamClientInterface, fileWriter FileWriterInterface, logger LoggerInterface, concurrencyManager ConcurrencyManagerInterface) *SteamService {
+func NewSteamService(client steamAPI.SteamClientInterface, fileWriter FileWriterInterface, logger LoggerInterface, concurrencyManager ConcurrencyManagerInterface) *SteamService {
 	service := &SteamService{
 		client: client,
 	}
@@ -280,7 +292,7 @@ func NewSteamServiceWithAPIKey(apiKey string) *SteamService {
 }
 
 // GetClient はSteamクライアントを返します
-func (s *SteamService) GetClient() SteamClientInterface {
+func (s *SteamService) GetClient() steamAPI.SteamClientInterface {
 	return s.client
 }
 
