@@ -126,7 +126,7 @@ func (c *Client) executeWithRetry(req *http.Request, maxRetries int) (any, error
 		if err != nil {
 			lastErr = err
 			// HTTPエラーまたはSteamAPIエラーの場合はリトライしない
-			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			if resp.StatusCode >= HTTPStatusCode400 && resp.StatusCode < HTTPStatusCode500 {
 				return nil, err
 			}
 			// SteamErrorの場合もリトライしない（直接返す）
@@ -152,7 +152,7 @@ func (c *Client) validateResponse(resp *http.Response) (any, error) {
 	}
 
 	// HTTPステータスコードをチェック
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= HTTPStatusCode400 {
 		return nil, fmt.Errorf("HTTP error: %d %s - %s", resp.StatusCode, resp.Status, string(body))
 	}
 
