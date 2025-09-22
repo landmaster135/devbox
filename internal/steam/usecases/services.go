@@ -151,35 +151,26 @@ type SteamService struct {
 	concurrencyController ConcurrencyManagerInterface
 }
 
-// SteamServiceConfig はSteamServiceの設定オプション
-type SteamServiceConfig struct {
-	FileWriter            FileWriterInterface
-	Logger                LoggerInterface
-	ConcurrencyController ConcurrencyManagerInterface
-}
-
 // NewSteamService は依存性注入対応のコンストラクタ
-func NewSteamService(client SteamClientInterface, config *SteamServiceConfig) *SteamService {
+func NewSteamService(client SteamClientInterface, fileWriter FileWriterInterface, logger LoggerInterface, concurrencyManager ConcurrencyManagerInterface) *SteamService {
 	service := &SteamService{
 		client: client,
 	}
 
-	// デフォルト実装を設定
-	if config != nil {
-		service.fileWriter = config.FileWriter
-		service.logger = config.Logger
-		service.concurrencyController = config.ConcurrencyController
+	// nilの場合はデフォルト実装を使用
+	service.fileWriter = &FileWriter{}
+	if fileWriter != nil {
+		service.fileWriter = fileWriter
 	}
 
-	// nilの場合はデフォルト実装を使用
-	if service.fileWriter == nil {
-		service.fileWriter = &FileWriter{}
+	service.logger = &Logger{}
+	if logger != nil {
+		service.logger = logger
 	}
-	if service.logger == nil {
-		service.logger = &Logger{}
-	}
-	if service.concurrencyController == nil {
-		service.concurrencyController = &ConcurrencyManager{maxConcurrency: 10}
+
+	service.concurrencyController = &ConcurrencyManager{maxConcurrency: 10}
+	if concurrencyManager != nil {
+		service.concurrencyController = concurrencyManager
 	}
 
 	return service
@@ -188,7 +179,7 @@ func NewSteamService(client SteamClientInterface, config *SteamServiceConfig) *S
 // NewSteamServiceWithAPIKey はAPIキーから直接SteamServiceを作成するヘルパー関数
 func NewSteamServiceWithAPIKey(apiKey string) *SteamService {
 	client := steamAPI.NewSteamClient(apiKey, nil)
-	return NewSteamService(client, nil)
+	return NewSteamService(client, nil, nil, nil)
 }
 
 // buildGameInfo は個別のゲーム情報を構築します（Steam IDを明示的に渡すバージョン）
