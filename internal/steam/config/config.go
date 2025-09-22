@@ -11,6 +11,7 @@ type Config struct {
 	SteamAPIKey string // Steam API キー
 	SteamID     string // Steam ID
 	GameID      int    // ゲームID (game-stats操作で使用)
+	OutputDir   string // JSONファイルの出力ディレクトリ
 	Help        bool   // ヘルプ表示フラグ
 }
 
@@ -18,6 +19,7 @@ type Config struct {
 const (
 	DefaultOperation = ""
 	DefaultGameID    = 0
+	DefaultOutputDir = "."
 )
 
 // validateConfig は設定を検証します
@@ -53,10 +55,15 @@ func validateConfig(operation, steamAPIKey, steamID string, gameID int) error {
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(operation, steamAPIKey, steamID string, gameID int) (*Config, error) {
+func NewConfig(operation, steamAPIKey, steamID string, gameID int, outputDir string) (*Config, error) {
 	err := validateConfig(operation, steamAPIKey, steamID, gameID)
 	if err != nil {
 		return nil, fmt.Errorf("設定の初期化に失敗しました: %w", err)
+	}
+
+	// 出力ディレクトリが空の場合はデフォルト値を使用
+	if outputDir == "" {
+		outputDir = DefaultOutputDir
 	}
 
 	return &Config{
@@ -64,6 +71,7 @@ func NewConfig(operation, steamAPIKey, steamID string, gameID int) (*Config, err
 		SteamAPIKey: steamAPIKey,
 		SteamID:     steamID,
 		GameID:      gameID,
+		OutputDir:   outputDir,
 	}, nil
 }
 
@@ -74,6 +82,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		steamAPIKey = ""
 		steamID     = ""
 		gameID      = DefaultGameID
+		outputDir   = DefaultOutputDir
 		help        = false
 	)
 
@@ -91,6 +100,10 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.IntVar(&gameID, "game-id", gameID, "Game ID (required for game-stats operation)")
 	parser.IntVar(&gameID, "g", gameID, "Game ID (required for game-stats operation) (shorthand)")
 
+	// 出力関連のフラグ
+	parser.StringVar(&outputDir, "output-dir", outputDir, "Output directory for JSON files")
+	parser.StringVar(&outputDir, "d", outputDir, "Output directory for JSON files (shorthand)")
+
 	// ヘルプ
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -104,7 +117,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, steamAPIKey, steamID, gameID)
+	return NewConfig(operation, steamAPIKey, steamID, gameID, outputDir)
 }
 
 // ParseFlags はコマンドライン引数を解析してConfigを作成する
@@ -121,10 +134,13 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -steam-api-key, -k     Steam API key (required)\n")
 	fmt.Fprintf(os.Stderr, "  -steam-id, -s          Steam ID (required)\n")
 	fmt.Fprintf(os.Stderr, "  -game-id, -g           Game ID (required for game-stats operation)\n")
+	fmt.Fprintf(os.Stderr, "  -output-dir, -d        Output directory for JSON files (default: current directory)\n")
 	fmt.Fprintf(os.Stderr, "  -help, -h              Show this help message\n")
 	fmt.Fprintf(os.Stderr, "\nExamples:\n")
 	fmt.Fprintf(os.Stderr, "  %s --operation games --steam-api-key YOUR_KEY --steam-id 76561198000000000\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -o games -k YOUR_KEY -s 76561198000000000\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s --operation games --steam-api-key YOUR_KEY --steam-id 76561198000000000 --output-dir /path/to/output\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -o games -k YOUR_KEY -s 76561198000000000 -d /path/to/output\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s --operation game-stats --steam-api-key YOUR_KEY --steam-id 76561198000000000\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -o game-stats -k YOUR_KEY -s 76561198000000000\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "\nSupported operations:\n")

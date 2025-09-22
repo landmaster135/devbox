@@ -85,6 +85,7 @@ go run ./cmd/cli/steam -o games -k YOUR_API_KEY -s STEAM_ID
 | `--steam-api-key` | `-k` | * | Steam Web API キー |
 | `--steam-id` | `-s` | * | 対象ユーザーの17桁のSteam ID |
 | `--game-id` | `-g` | - | ゲームID（game-stats操作で使用） |
+| `--output-dir` | `-d` | - | JSONファイルの出力ディレクトリ（デフォルト: カレントディレクトリ） |
 
 ### Steam IDの確認方法
 
@@ -185,6 +186,15 @@ go run ./cmd/cli/steam -o games -k ABCD1234567890 -s 76561198000000000
 
 # ショートハンドを使用（統計・実績情報）
 go run ./cmd/cli/steam -o game-stats -k ABCD1234567890 -s 76561198000000000
+
+# 出力ディレクトリを指定してゲーム一覧を取得
+go run ./cmd/cli/steam --operation games --steam-api-key ABCD1234567890 --steam-id 76561198000000000 --output-dir /path/to/output
+
+# ショートハンドで出力ディレクトリを指定
+go run ./cmd/cli/steam -o games -k ABCD1234567890 -s 76561198000000000 -d /path/to/output
+
+# 相対パスで出力ディレクトリを指定
+go run ./cmd/cli/steam -o games -k ABCD1234567890 -s 76561198000000000 -d ./data/steam
 ```
 
 ## エラーハンドリング
