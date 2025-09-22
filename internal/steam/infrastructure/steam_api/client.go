@@ -11,11 +11,102 @@ import (
 	"time"
 )
 
+// #==============================================================#
+// ##       Mocks for HTTPClient                                 ##
+// #==============================================================#
+// MockHTTPClientForClient はHTTPClientのモック実装（client.go用）
+type MockHTTPClientForClient struct {
+	DoFunc func(req *http.Request) (*http.Response, error)
+}
+
+// Do はHTTPリクエストを実行します
+func (m *MockHTTPClientForClient) Do(req *http.Request) (*http.Response, error) {
+	if m.DoFunc != nil {
+		return m.DoFunc(req)
+	}
+	return nil, nil
+}
+
+// #==============================================================#
+// ##       Interfaces for HTTPClient                            ##
+// #==============================================================#
 // HTTPClient はHTTPリクエストを実行するためのインターフェース
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// #==============================================================#
+// ##       Implementations for HTTPClient                       ##
+// #==============================================================#
+// "net/http"
+
+// #==============================================================#
+// ##       Mocks for Client                                     ##
+// #==============================================================#
+// MockClient はClientのモック実装
+type MockClient struct {
+	RequestFunc           func(ctx context.Context, method, endpoint string, params map[string]any) (any, error)
+	RequestWithoutKeyFunc func(ctx context.Context, method, url string, params map[string]any) (any, error)
+	GetHTTPClientFunc     func() HTTPClient
+	GetAPIKeyFunc         func() string
+	GetHeadersFunc        func() map[string]string
+}
+
+// GetHTTPClient はモックのGetHTTPClientメソッド
+func (m *MockClient) GetHTTPClient() HTTPClient {
+	if m.GetHTTPClientFunc != nil {
+		return m.GetHTTPClientFunc()
+	}
+	return nil
+}
+
+// GetAPIKey はモックのGetAPIKeyメソッド
+func (m *MockClient) GetAPIKey() string {
+	if m.GetAPIKeyFunc != nil {
+		return m.GetAPIKeyFunc()
+	}
+	return ""
+}
+
+// GetHeaders はモックのGetHeadersメソッド
+func (m *MockClient) GetHeaders() map[string]string {
+	if m.GetHeadersFunc != nil {
+		return m.GetHeadersFunc()
+	}
+	return nil
+}
+
+// Request はモックのRequestメソッド
+func (m *MockClient) Request(ctx context.Context, method, endpoint string, params map[string]any) (any, error) {
+	if m.RequestFunc != nil {
+		return m.RequestFunc(ctx, method, endpoint, params)
+	}
+	return nil, nil
+}
+
+// RequestWithoutKey はモックのRequestWithoutKeyメソッド
+func (m *MockClient) RequestWithoutKey(ctx context.Context, method, url string, params map[string]any) (any, error) {
+	if m.RequestWithoutKeyFunc != nil {
+		return m.RequestWithoutKeyFunc(ctx, method, url, params)
+	}
+	return nil, nil
+}
+
+// #==============================================================#
+// ##       Interfaces for Client                                ##
+// #==============================================================#
+// ClientInterface はClientを抽象化するインターフェース
+type ClientInterface interface {
+	Request(ctx context.Context, method, endpoint string, params map[string]any) (any, error)
+	RequestWithoutKey(ctx context.Context, method, url string, params map[string]any) (any, error)
+	GetHTTPClient() HTTPClient
+	GetAPIKey() string
+	GetHeaders() map[string]string
+}
+
+// #==============================================================#
+// ##       Implementations for Client                           ##
+// #==============================================================#
 // Client はSteam Web APIのHTTPクライアント
 type Client struct {
 	httpClient HTTPClient
@@ -61,9 +152,24 @@ func NewClient(apiKey string, headers map[string]string) *Client {
 	}
 }
 
+// GetHTTPClient はHTTPクライアントを返します
+func (c *Client) GetHTTPClient() HTTPClient {
+	return c.httpClient
+}
+
+// GetAPIKey はAPIキーを返します
+func (c *Client) GetAPIKey() string {
+	return c.apiKey
+}
+
+// GetHeaders はヘッダーを返します
+func (c *Client) GetHeaders() map[string]string {
+	return c.headers
+}
+
 // Request はHTTPリクエストを実行し、レスポンスを返します
 func (c *Client) Request(ctx context.Context, method, endpoint string, params map[string]any) (any, error) {
-	url := buildURLWithParams(APIBaseURL+endpoint, c.apiKey, params)
+	url := buildURLWithParams(APIBaseURL+endpoint, c.GetAPIKey(), params)
 
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
@@ -71,7 +177,7 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, params ma
 	}
 
 	// ヘッダーを設定
-	for key, value := range c.headers {
+	for key, value := range c.GetHeaders() {
 		req.Header.Set(key, value)
 	}
 
@@ -98,7 +204,7 @@ func (c *Client) RequestWithoutKey(ctx context.Context, method, url string, para
 	}
 
 	// ヘッダーを設定
-	for key, value := range c.headers {
+	for key, value := range c.GetHeaders() {
 		req.Header.Set(key, value)
 	}
 
@@ -116,7 +222,7 @@ func (c *Client) executeWithRetry(req *http.Request, maxRetries int) (any, error
 			log.Printf("Retrying request to %s, attempt %d/%d", req.URL.String(), attempt, maxRetries)
 		}
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.GetHTTPClient().Do(req)
 		if err != nil {
 			lastErr = err
 			continue
@@ -224,10 +330,47 @@ func parseURL(rawURL string) (*url.URL, error) {
 	return url.Parse(rawURL)
 }
 
+// #==============================================================#
+// ##       Mocks for SteamClient                                ##
+// #==============================================================#
+// MockSteamClient はSteamClientのモック実装
+type MockSteamClient struct {
+	UsersService *MockUsersService
+	AppsService  *MockAppsService
+}
+
+// GetUsers はモックのUsersServiceを返します
+func (m *MockSteamClient) GetUsers() UsersServiceInterface {
+	if m.UsersService != nil {
+		return m.UsersService
+	}
+	return &MockUsersService{}
+}
+
+// GetApps はモックのAppsServiceを返します
+func (m *MockSteamClient) GetApps() AppsServiceInterface {
+	if m.AppsService != nil {
+		return m.AppsService
+	}
+	return &MockAppsService{}
+}
+
+// #==============================================================#
+// ##       Interfaces for SteamClient                           ##
+// #==============================================================#
+// SteamClientInterface はSteamクライアント全体を抽象化
+type SteamClientInterface interface {
+	GetUsers() UsersServiceInterface
+	GetApps() AppsServiceInterface
+}
+
+// #==============================================================#
+// ##       Implementations for SteamClient                      ##
+// #==============================================================#
 // SteamClient はSteam APIのメインクライアント
 type SteamClient struct {
-	Users  *UsersService
-	Apps   *AppsService
+	Users *UsersService
+	Apps  *AppsService
 }
 
 // NewSteamClient は新しいSteam APIクライアントを作成します
@@ -235,8 +378,8 @@ func NewSteamClient(apiKey string, headers map[string]string) *SteamClient {
 	client := NewClient(apiKey, headers)
 
 	return &SteamClient{
-		Users:  NewUsersService(client),
-		Apps:   NewAppsService(client),
+		Users: NewUsersService(client),
+		Apps:  NewAppsService(client),
 	}
 }
 

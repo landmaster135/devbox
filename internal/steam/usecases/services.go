@@ -143,6 +143,103 @@ type GameListOutput struct {
 	Games       []SteamGameInfo `json:"games"`
 }
 
+// #==============================================================#
+// ##       Mocks for SteamService                               ##
+// #==============================================================#
+// MockSteamService はSteamServiceのモック実装
+type MockSteamService struct {
+	GetGamesInfoFunc             func(ctx context.Context, steamID string) ([]SteamGameInfo, error)
+	SaveGamesToJSONFunc          func(games []SteamGameInfo, steamID string, filename string) error
+	GetGamesStatsFunc            func(ctx context.Context, steamID string) ([]*GameStatsInfo, error)
+	SaveGamesStatsToJSONFunc     func(allGameStats []*GameStatsInfo, filename string) error
+	GetClientFunc                func() SteamClientInterface
+	GetFileWriterFunc            func() FileWriterInterface
+	GetLoggerFunc                func() LoggerInterface
+	GetConcurrencyControllerFunc func() ConcurrencyManagerInterface
+}
+
+// GetClient はモックのGetClientメソッド
+func (m *MockSteamService) GetClient() SteamClientInterface {
+	if m.GetClientFunc != nil {
+		return m.GetClientFunc()
+	}
+	return nil
+}
+
+// GetFileWriter はモックのGetFileWriterメソッド
+func (m *MockSteamService) GetFileWriter() FileWriterInterface {
+	if m.GetFileWriterFunc != nil {
+		return m.GetFileWriterFunc()
+	}
+	return nil
+}
+
+// GetLogger はモックのGetLoggerメソッド
+func (m *MockSteamService) GetLogger() LoggerInterface {
+	if m.GetLoggerFunc != nil {
+		return m.GetLoggerFunc()
+	}
+	return nil
+}
+
+// GetConcurrencyController はモックのGetConcurrencyControllerメソッド
+func (m *MockSteamService) GetConcurrencyController() ConcurrencyManagerInterface {
+	if m.GetConcurrencyControllerFunc != nil {
+		return m.GetConcurrencyControllerFunc()
+	}
+	return nil
+}
+
+// GetGamesInfo はモックのGetGamesInfoメソッド
+func (m *MockSteamService) GetGamesInfo(ctx context.Context, steamID string) ([]SteamGameInfo, error) {
+	if m.GetGamesInfoFunc != nil {
+		return m.GetGamesInfoFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// SaveGamesToJSON はモックのSaveGamesToJSONメソッド
+func (m *MockSteamService) SaveGamesToJSON(games []SteamGameInfo, steamID string, filename string) error {
+	if m.SaveGamesToJSONFunc != nil {
+		return m.SaveGamesToJSONFunc(games, steamID, filename)
+	}
+	return nil
+}
+
+// GetGamesStats はモックのGetGamesStatsメソッド
+func (m *MockSteamService) GetGamesStats(ctx context.Context, steamID string) ([]*GameStatsInfo, error) {
+	if m.GetGamesStatsFunc != nil {
+		return m.GetGamesStatsFunc(ctx, steamID)
+	}
+	return nil, nil
+}
+
+// SaveGamesStatsToJSON はモックのSaveGamesStatsToJSONメソッド
+func (m *MockSteamService) SaveGamesStatsToJSON(allGameStats []*GameStatsInfo, filename string) error {
+	if m.SaveGamesStatsToJSONFunc != nil {
+		return m.SaveGamesStatsToJSONFunc(allGameStats, filename)
+	}
+	return nil
+}
+
+// #==============================================================#
+// ##       Interfaces for SteamService                          ##
+// #==============================================================#
+// SteamServiceInterface はSteamService全体を抽象化
+type SteamServiceInterface interface {
+	GetGamesInfo(ctx context.Context, steamID string) ([]SteamGameInfo, error)
+	SaveGamesToJSON(games []SteamGameInfo, steamID string, filename string) error
+	GetGamesStats(ctx context.Context, steamID string) ([]*GameStatsInfo, error)
+	SaveGamesStatsToJSON(allGameStats []*GameStatsInfo, filename string) error
+	GetClient() SteamClientInterface
+	GetFileWriter() FileWriterInterface
+	GetLogger() LoggerInterface
+	GetConcurrencyController() ConcurrencyManagerInterface
+}
+
+// #==============================================================#
+// ##       Implementations for SteamService                     ##
+// #==============================================================#
 // SteamService はSteam APIを使用するサービス
 type SteamService struct {
 	client                SteamClientInterface
@@ -182,6 +279,26 @@ func NewSteamServiceWithAPIKey(apiKey string) *SteamService {
 	return NewSteamService(client, nil, nil, nil)
 }
 
+// GetClient はSteamクライアントを返します
+func (s *SteamService) GetClient() SteamClientInterface {
+	return s.client
+}
+
+// GetFileWriter はファイルライターを返します
+func (s *SteamService) GetFileWriter() FileWriterInterface {
+	return s.fileWriter
+}
+
+// GetLogger はロガーを返します
+func (s *SteamService) GetLogger() LoggerInterface {
+	return s.logger
+}
+
+// GetConcurrencyController は並行処理制御を返します
+func (s *SteamService) GetConcurrencyController() ConcurrencyManagerInterface {
+	return s.concurrencyController
+}
+
 // buildGameInfo は個別のゲーム情報を構築します（Steam IDを明示的に渡すバージョン）
 func (s *SteamService) buildGameInfo(ctx context.Context, ownedGame steamAPI.OwnedGame, recentGamesMap map[int]steamAPI.RecentlyPlayedGame, steamID string) SteamGameInfo {
 	gameInfo := SteamGameInfo{
@@ -212,13 +329,13 @@ func (s *SteamService) buildGameInfo(ctx context.Context, ownedGame steamAPI.Own
 	// 実績・統計情報の取得可能性をより詳細にチェック
 	if ownedGame.HasCommunityVisibleStats {
 		// 実際に統計情報を取得してみる（エラーが発生しても続行）
-		_, err := s.client.GetApps().GetUserStats(ctx, steamID, ownedGame.AppID)
+		_, err := s.GetClient().GetApps().GetUserStats(ctx, steamID, ownedGame.AppID)
 		if err != nil {
 			gameInfo.Stats = false
 		}
 
 		// 実績情報を取得してみる（エラーが発生しても続行）
-		_, err = s.client.GetApps().GetUserAchievements(ctx, steamID, ownedGame.AppID, "en")
+		_, err = s.GetClient().GetApps().GetUserAchievements(ctx, steamID, ownedGame.AppID, "en")
 		if err != nil {
 			gameInfo.AchievementsCanRetrieve = false
 		}
@@ -230,16 +347,16 @@ func (s *SteamService) buildGameInfo(ctx context.Context, ownedGame steamAPI.Own
 // GetGamesInfo は指定されたSteam IDのゲーム情報を取得します
 func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]SteamGameInfo, error) {
 	// 所有ゲーム一覧を取得
-	ownedGames, err := s.client.GetUsers().GetOwnedGames(ctx, steamID, true, true)
+	ownedGames, err := s.GetClient().GetUsers().GetOwnedGames(ctx, steamID, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}
 
 	// 最近プレイしたゲーム一覧を取得（2週間のプレイ時間情報のため）
-	recentGames, err := s.client.GetUsers().GetUserRecentlyPlayedGames(ctx, steamID)
+	recentGames, err := s.GetClient().GetUsers().GetUserRecentlyPlayedGames(ctx, steamID)
 	if err != nil {
 		// 最近プレイしたゲームの取得に失敗してもエラーにしない
-		s.logger.Printf("Warning: failed to get recently played games: %v\n", err)
+		s.GetLogger().Printf("Warning: failed to get recently played games: %v\n", err)
 		recentGames = []steamAPI.RecentlyPlayedGame{}
 	}
 
@@ -255,7 +372,7 @@ func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]Stea
 	var mu sync.Mutex
 
 	// 並行処理数を制限（Steam APIのレート制限を考慮）
-	semaphore := s.concurrencyController.GetSemaphore()
+	semaphore := s.GetConcurrencyController().GetSemaphore()
 
 	for i, game := range ownedGames {
 		wg.Add(1)
@@ -279,7 +396,7 @@ func (s *SteamService) GetGamesInfo(ctx context.Context, steamID string) ([]Stea
 
 // saveToJSONFile はデータをJSONファイルに保存します
 func (s *SteamService) saveToJSONFile(data any, filename string) error {
-	return s.fileWriter.WriteToFile(data, filename)
+	return s.GetFileWriter().WriteToFile(data, filename)
 }
 
 // SaveGamesToJSON はゲーム一覧をJSONファイルに保存します
@@ -304,7 +421,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 	}
 
 	// 統計情報を取得
-	userStats, err := s.client.GetApps().GetUserStats(ctx, steamID, game.AppID)
+	userStats, err := s.GetClient().GetApps().GetUserStats(ctx, steamID, game.AppID)
 	if err == nil {
 		for _, stat := range userStats.Stats {
 			gameStats.Stats = append(gameStats.Stats, GameStat{
@@ -314,11 +431,11 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 		}
 	} else {
 		// エラーログを出力（デバッグ用）
-		s.logger.Printf("Warning: failed to get user stats for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
+		s.GetLogger().Printf("Warning: failed to get user stats for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
 	}
 
 	// 実績情報を取得
-	achievements, err := s.client.GetApps().GetUserAchievements(ctx, steamID, game.AppID, "en")
+	achievements, err := s.GetClient().GetApps().GetUserAchievements(ctx, steamID, game.AppID, "en")
 	if err == nil {
 		for _, achievement := range achievements {
 			gameStats.Achievements = append(gameStats.Achievements, GameAchievement{
@@ -329,7 +446,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 		}
 	} else {
 		// エラーログを出力（デバッグ用）
-		s.logger.Printf("Warning: failed to get user achievements for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
+		s.GetLogger().Printf("Warning: failed to get user achievements for game %s (ID: %d): %v\n", game.Name, game.AppID, err)
 	}
 
 	return gameStats
@@ -338,7 +455,7 @@ func (s *SteamService) buildGameStatsInfo(ctx context.Context, game steamAPI.Own
 // GetGamesStats はゲームの統計情報を取得します
 func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*GameStatsInfo, error) {
 	// 所有ゲーム一覧を取得
-	ownedGames, err := s.client.GetUsers().GetOwnedGames(ctx, steamID, true, true)
+	ownedGames, err := s.GetClient().GetUsers().GetOwnedGames(ctx, steamID, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get owned games: %w", err)
 	}
@@ -349,7 +466,7 @@ func (s *SteamService) GetGamesStats(ctx context.Context, steamID string) ([]*Ga
 	var mu sync.Mutex
 
 	// 並行処理数を制限（Steam APIのレート制限を考慮）
-	semaphore := s.concurrencyController.GetSemaphore()
+	semaphore := s.GetConcurrencyController().GetSemaphore()
 
 	for i, game := range ownedGames {
 		wg.Add(1)
