@@ -1,280 +1,230 @@
 package git
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	security "github.com/landmaster135/devbox/internal/git_commit_history_retriever/security"
 )
 
-// #==============================================================#
-// ##          Tests                                             ##
-// #==============================================================#
-// TestStandardGitExecutor_Execute_Normal はExecuteの正常系テスト
-func TestStandardGitExecutor_Execute_Normal(t *testing.T) {
-	// Arrange
-	executor := NewStandardGitExecutor()
+func createTempDirWithinWorkspace(t *testing.T, prefix string) string {
+	t.Helper()
 
-	// 一時ディレクトリを作成してGitリポジトリを初期化
-	tempDir, err := os.MkdirTemp("", "git-test-*")
+	cwd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
+		t.Fatalf("failed to get working directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
 
-	// Gitリポジトリを初期化
+	baseDir := filepath.Join(cwd, "test-temp")
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		t.Fatalf("failed to prepare base test directory: %v", err)
+	}
+
+	tempDir, err := os.MkdirTemp(baseDir, prefix)
+	if err != nil {
+		t.Fatalf("failed to create temp directory: %v", err)
+	}
+
+	t.Cleanup(func() { _ = os.RemoveAll(tempDir) })
+	return tempDir
+}
+
+func createTempGitRepo(t *testing.T, prefix string) string {
+	t.Helper()
+
+	tempDir := createTempDirWithinWorkspace(t, prefix)
+
 	cmd := exec.Command("git", "init")
 	cmd.Dir = tempDir
 	if err := cmd.Run(); err != nil {
-		t.Skipf("Git not available or failed to init: %v", err)
+		t.Skipf("git not available or failed to init: %v", err)
 	}
 
-	// Act
-	output, err := executor.Execute(tempDir, "status", "--porcelain")
-
-	// Assert
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-
-	// 新しいリポジトリなので出力は空であることを期待
-	if len(output) != 0 {
-		t.Logf("Output: %s", string(output))
-		// 空でない場合もエラーにはしない（環境によって異なる可能性があるため）
-	}
+	return tempDir
 }
 
-// TestStandardGitExecutor_Execute_InvalidCommand は無効なコマンドの場合のテスト
-func TestStandardGitExecutor_Execute_InvalidCommand(t *testing.T) {
-	// Arrange
+func TestNewStandardGitExecutor(t *testing.T) {
 	executor := NewStandardGitExecutor()
-	tempDir, err := os.MkdirTemp("", "git-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Act
-	_, err = executor.Execute(tempDir, "invalid-command")
-
-	// Assert
-	if err == nil {
-		t.Error("Expected error for invalid git command, got nil")
-	}
-}
-
-// TestStandardGitExecutor_Execute_InvalidDirectory は無効なディレクトリの場合のテスト
-func TestStandardGitExecutor_Execute_InvalidDirectory(t *testing.T) {
-	// Arrange
-	executor := NewStandardGitExecutor()
-	invalidDir := "/non/existent/directory"
-
-	// Act
-	_, err := executor.Execute(invalidDir, "status")
-
-	// Assert
-	if err == nil {
-		t.Error("Expected error for invalid directory, got nil")
-	}
-}
-
-// TestStandardGitExecutor_Execute_NonGitDirectory は非Gitディレクトリの場合のテスト
-func TestStandardGitExecutor_Execute_NonGitDirectory(t *testing.T) {
-	// Arrange
-	executor := NewStandardGitExecutor()
-
-	// 一時ディレクトリを作成（Gitリポジトリではない）
-	tempDir, err := os.MkdirTemp("", "non-git-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Act
-	_, err = executor.Execute(tempDir, "status")
-
-	// Assert
-	if err == nil {
-		t.Error("Expected error for non-git directory, got nil")
-	}
-
-	// エラーメッセージに"not a git repository"が含まれることを確認
-	if !strings.Contains(err.Error(), "not a git repository") {
-		t.Logf("Error message: %v", err)
-		// 環境によってエラーメッセージが異なる可能性があるため、ログのみ
-	}
-}
-
-// TestStandardGitExecutor_Execute_EmptyArgs は引数が空の場合のテスト
-func TestStandardGitExecutor_Execute_EmptyArgs(t *testing.T) {
-	// Arrange
-	executor := NewStandardGitExecutor()
-	tempDir, err := os.MkdirTemp("", "git-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Act
-	_, err = executor.Execute(tempDir)
-
-	// Assert
-	if err == nil {
-		t.Error("Expected error for empty git args, got nil")
-	}
-}
-
-// TestStandardGitExecutor_Execute_MultipleArgs は複数引数の場合のテスト
-func TestStandardGitExecutor_Execute_MultipleArgs(t *testing.T) {
-	// Arrange
-	executor := NewStandardGitExecutor()
-
-	// 一時ディレクトリを作成してGitリポジトリを初期化
-	tempDir, err := os.MkdirTemp("", "git-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Gitリポジトリを初期化
-	cmd := exec.Command("git", "init")
-	cmd.Dir = tempDir
-	if err := cmd.Run(); err != nil {
-		t.Skipf("Git not available or failed to init: %v", err)
-	}
-
-	// Act
-	output, err := executor.Execute(tempDir, "log", "--oneline", "--max-count=1")
-
-	// Assert
-	// 新しいリポジトリなのでコミットがない場合はエラーになる
-	if err != nil {
-		// これは期待される動作（コミットがないため）
-		t.Logf("Expected error for empty repository: %v", err)
-	} else {
-		t.Logf("Unexpected output: %s", string(output))
-	}
-}
-
-// TestNewStandardGitExecutor_Normal はNewStandardGitExecutorの正常系テスト
-func TestNewStandardGitExecutor_Normal(t *testing.T) {
-	// Act
-	executor := NewStandardGitExecutor()
-
-	// Assert
 	if executor == nil {
-		t.Error("Expected executor to be non-nil")
+		t.Fatal("NewStandardGitExecutor returned nil")
+	}
+	if executor.pathValidator == nil {
+		t.Error("pathValidator should not be nil")
 	}
 
-	// インターフェースとして使用可能かチェック
 	var _ GitCommandExecutor = executor
 }
 
-// TestStandardGitExecutor_Execute_GitVersion はgit versionコマンドのテスト
+func TestNewStandardGitExecutorWithValidator(t *testing.T) {
+	validator := security.NewPathValidator([]string{"/custom/base"}, 2048)
+	executor := NewStandardGitExecutorWithValidator(validator)
+	if executor == nil {
+		t.Fatal("NewStandardGitExecutorWithValidator returned nil")
+	}
+	if executor.pathValidator != validator {
+		t.Error("pathValidator was not set from injected validator")
+	}
+}
+
+func TestStandardGitExecutor_Execute_Normal(t *testing.T) {
+	executor := NewStandardGitExecutor()
+	repoDir := createTempGitRepo(t, "git-test-normal-")
+
+	output, err := executor.Execute(repoDir, "status", "--porcelain")
+	if err != nil {
+		if strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+			t.Fatalf("unexpected path validation error: %v", err)
+		}
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if len(output) != 0 {
+		t.Logf("status output: %s", string(output))
+	}
+}
+
+func TestStandardGitExecutor_Execute_InvalidCommand(t *testing.T) {
+	executor := NewStandardGitExecutor()
+	repoDir := createTempGitRepo(t, "git-test-invalid-command-")
+
+	_, err := executor.Execute(repoDir, "invalid-command")
+	if err == nil {
+		t.Fatal("expected error for invalid command, got nil")
+	}
+	if strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+		t.Fatalf("received path validation error for valid repo: %v", err)
+	}
+}
+
+func TestStandardGitExecutor_Execute_InvalidDirectory(t *testing.T) {
+	executor := NewStandardGitExecutor()
+
+	_, err := executor.Execute("/non/existent/directory", "status")
+	if err == nil {
+		t.Fatal("expected error for invalid directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+		t.Fatalf("expected path validation error, got %v", err)
+	}
+}
+
+func TestStandardGitExecutor_Execute_NonGitDirectory(t *testing.T) {
+	executor := NewStandardGitExecutor()
+	dir := createTempDirWithinWorkspace(t, "git-test-non-git-")
+
+	_, err := executor.Execute(dir, "status")
+	if err == nil {
+		t.Fatal("expected error for non-git directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+		t.Fatalf("expected path validation error, got %v", err)
+	}
+}
+
+func TestStandardGitExecutor_Execute_EmptyArgs(t *testing.T) {
+	executor := NewStandardGitExecutor()
+	repoDir := createTempGitRepo(t, "git-test-empty-args-")
+
+	_, err := executor.Execute(repoDir)
+	if err != nil && strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+		t.Fatalf("unexpected path validation error for repo: %v", err)
+	}
+}
+
+func TestStandardGitExecutor_Execute_MultipleArgs(t *testing.T) {
+	executor := NewStandardGitExecutor()
+	repoDir := createTempGitRepo(t, "git-test-multi-args-")
+
+	_, err := executor.Execute(repoDir, "log", "--oneline", "--max-count=1")
+	if err != nil && strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+		t.Fatalf("unexpected path validation error for repo: %v", err)
+	}
+}
+
 func TestStandardGitExecutor_Execute_GitVersion(t *testing.T) {
-	// Arrange
 	executor := NewStandardGitExecutor()
-	tempDir, err := os.MkdirTemp("", "git-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	repoDir := createTempGitRepo(t, "git-test-version-")
 
-	// Act
-	output, err := executor.Execute(tempDir, "version")
-
-	// Assert
+	output, err := executor.Execute(repoDir, "version")
 	if err != nil {
-		t.Skipf("Git not available: %v", err)
+		t.Skipf("git version command not available: %v", err)
 	}
 
-	outputStr := string(output)
-	if !strings.Contains(outputStr, "git version") {
-		t.Errorf("Expected output to contain 'git version', got %s", outputStr)
+	if !strings.Contains(string(output), "git version") {
+		t.Fatalf("expected output to contain 'git version', got %s", string(output))
 	}
 }
 
-// TestStandardGitExecutor_Execute_Help はgit helpコマンドのテスト
 func TestStandardGitExecutor_Execute_Help(t *testing.T) {
-	// Arrange
 	executor := NewStandardGitExecutor()
-	tempDir, err := os.MkdirTemp("", "git-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	repoDir := createTempGitRepo(t, "git-test-help-")
 
-	// Act
-	output, err := executor.Execute(tempDir, "help", "--all")
-
-	// Assert
+	output, err := executor.Execute(repoDir, "help", "-a")
 	if err != nil {
-		t.Skipf("Git help not available: %v", err)
+		t.Skipf("git help not available: %v", err)
 	}
 
-	outputStr := string(output)
-	if len(outputStr) == 0 {
-		t.Error("Expected non-empty output from git help")
+	if len(output) == 0 {
+		t.Fatal("expected non-empty output from git help")
 	}
 }
 
-// TestStandardGitExecutor_Execute_Integration は統合テスト
 func TestStandardGitExecutor_Execute_Integration(t *testing.T) {
-	// Arrange
+	executor := NewStandardGitExecutor()
+	repoDir := createTempGitRepo(t, "git-test-integration-")
+
+	if _, err := executor.Execute(repoDir, "config", "user.name", "Test User"); err != nil {
+		t.Fatalf("failed to set user.name: %v", err)
+	}
+	if _, err := executor.Execute(repoDir, "config", "user.email", "test@example.com"); err != nil {
+		t.Fatalf("failed to set user.email: %v", err)
+	}
+
+	testFile := filepath.Join(repoDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	if _, err := executor.Execute(repoDir, "add", "test.txt"); err != nil {
+		t.Fatalf("failed to add file: %v", err)
+	}
+
+	if _, err := executor.Execute(repoDir, "commit", "-m", "Initial commit"); err != nil {
+		t.Fatalf("failed to commit: %v", err)
+	}
+
+	output, err := executor.Execute(repoDir, "log", "--oneline")
+	if err != nil {
+		t.Fatalf("failed to get log: %v", err)
+	}
+
+	if !strings.Contains(string(output), "Initial commit") {
+		t.Fatalf("expected log to contain 'Initial commit', got %s", string(output))
+	}
+}
+
+func TestStandardGitExecutor_Execute_DangerousPath(t *testing.T) {
 	executor := NewStandardGitExecutor()
 
-	// 一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "git-integration-test-*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Gitリポジトリを初期化
-	_, err = executor.Execute(tempDir, "init")
-	if err != nil {
-		t.Skipf("Git not available: %v", err)
+	dangerousPaths := []string{
+		"/path/with/../traversal",
+		"/path/with;command",
+		"/path/with|pipe",
+		"/path/with&background",
 	}
 
-	// 設定を追加
-	_, err = executor.Execute(tempDir, "config", "user.name", "Test User")
-	if err != nil {
-		t.Errorf("Failed to set git config: %v", err)
-	}
-
-	_, err = executor.Execute(tempDir, "config", "user.email", "test@example.com")
-	if err != nil {
-		t.Errorf("Failed to set git config: %v", err)
-	}
-
-	// テストファイルを作成
-	testFile := fmt.Sprintf("%s/test.txt", tempDir)
-	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	// ファイルを追加
-	_, err = executor.Execute(tempDir, "add", "test.txt")
-	if err != nil {
-		t.Errorf("Failed to add file: %v", err)
-	}
-
-	// コミット
-	_, err = executor.Execute(tempDir, "commit", "-m", "Initial commit")
-	if err != nil {
-		t.Errorf("Failed to commit: %v", err)
-	}
-
-	// ログを確認
-	output, err := executor.Execute(tempDir, "log", "--oneline")
-	if err != nil {
-		t.Errorf("Failed to get log: %v", err)
-	}
-
-	// Assert
-	outputStr := string(output)
-	if !strings.Contains(outputStr, "Initial commit") {
-		t.Errorf("Expected log to contain 'Initial commit', got %s", outputStr)
+	for _, path := range dangerousPaths {
+		t.Run(path, func(t *testing.T) {
+			_, err := executor.Execute(path, "status")
+			if err == nil {
+				t.Fatalf("expected error for dangerous path %s, got nil", path)
+			}
+			if !strings.Contains(err.Error(), "無効なワーキングディレクトリ") {
+				t.Fatalf("expected path validation error, got %v", err)
+			}
+		})
 	}
 }

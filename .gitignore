@@ -50,6 +50,7 @@ env.yml
 env.yaml
 # .clinerules
 .clinerules/*
+.agents/*
 
 ### Cloud Functions ###
 .gcloudignore
