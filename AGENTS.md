@@ -17,3 +17,6 @@ Follow the Conventional Commit pattern seen in history (`feat:`, `fix:`, `refact
 
 ## Environment & Dependencies
 Align with Go 1.23.x (`env.yml`, CI) and prefer module-managed dependencies. Install FFmpeg and Tesseract locally when working on conversion or OCR tools to match CI prerequisites. Provide configuration via environment variables, keeping secrets out of source control and using `sample_data/` for redacted fixtures.
+
+## Implementation
+Reply in Japanese.
