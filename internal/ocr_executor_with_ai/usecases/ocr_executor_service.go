@@ -1,10 +1,14 @@
 package usecases
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"mime"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
@@ -18,14 +22,18 @@ import (
 // OcrExecutorService はAI OCRを実行するサービス
 type OcrExecutorService struct {
 	client        *genai.Client
+	httpClient    *http.Client
 	base64Service *Base64ExtractorService
 	config        *config.Config
 }
 
 // NewOcrExecutorService は新しいOcrExecutorServiceを作成する
 func NewOcrExecutorService(cfg *config.Config) (*OcrExecutorService, error) {
-	var client *genai.Client
-	var err error
+	var (
+		client     *genai.Client
+		err        error
+		httpClient *http.Client
+	)
 
 	// AIタイプに応じてクライアントを作成
 	switch cfg.AiType {
@@ -42,12 +50,16 @@ func NewOcrExecutorService(cfg *config.Config) (*OcrExecutorService, error) {
 			Backend:  genai.BackendVertexAI,
 		}
 		client, err = genai.NewClient(context.Background(), clientConfig)
+	case "ollama":
+		httpClient = &http.Client{
+			Timeout: 120 * time.Second,
+		}
 	default:
-		return nil, fmt.Errorf("無効なAIタイプです: %s (gemini または vertex を指定してください)", cfg.AiType)
+		return nil, fmt.Errorf("無効なAIタイプです: %s", cfg.AiType)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("gemini APIクライアントの作成に失敗しました: %v", err)
+		return nil, fmt.Errorf("AIクライアントの作成に失敗しました: %v", err)
 	}
 
 	// Base64変換サービスを作成
@@ -55,6 +67,7 @@ func NewOcrExecutorService(cfg *config.Config) (*OcrExecutorService, error) {
 
 	return &OcrExecutorService{
 		client:        client,
+		httpClient:    httpClient,
 		base64Service: base64Service,
 		config:        cfg,
 	}, nil
@@ -103,6 +116,16 @@ func (s *OcrExecutorService) processImage(imageResult ImageResult) models.OcrRes
 		return ocrResult
 	}
 
+	if s.config.AiType == "ollama" {
+		content, err := s.callOllamaAPI(imageResult.Base64)
+		if err != nil {
+			ocrResult.Error = fmt.Sprintf("Ollama API呼び出しエラー: %v", err)
+			return ocrResult
+		}
+		ocrResult.Content = content
+		return ocrResult
+	}
+
 	// Base64データをデコード
 	imageData, err := base64.StdEncoding.DecodeString(imageResult.Base64)
 	if err != nil {
@@ -110,10 +133,10 @@ func (s *OcrExecutorService) processImage(imageResult ImageResult) models.OcrRes
 		return ocrResult
 	}
 
-	// Gemini APIを呼び出してOCRを実行
+	// Google AIを呼び出してOCRを実行
 	content, err := s.callGeminiAPI(imageData, mimeType)
 	if err != nil {
-		ocrResult.Error = fmt.Sprintf("Gemini API呼び出しエラー: %v", err)
+		ocrResult.Error = fmt.Sprintf("AI API呼び出しエラー: %v", err)
 		return ocrResult
 	}
 
@@ -193,6 +216,101 @@ func (s *OcrExecutorService) callGeminiAPI(imageData []byte, mimeType string) (s
 	}
 
 	return responseText.String(), nil
+}
+
+const (
+	ollamaGenerateEndpoint   = "http://localhost:11434/api/generate"
+	ollamaScannerBufferSize  = 1 << 20 // 1 MiB
+	ollamaRequestContentType = "application/json"
+)
+
+type ollamaResponseChunk struct {
+	Response string `json:"response"`
+	Done     bool   `json:"done"`
+	Error    string `json:"error,omitempty"`
+}
+
+// callOllamaAPI はOllama APIを呼び出してOCRを実行する
+func (s *OcrExecutorService) callOllamaAPI(imageBase64 string) (string, error) {
+	if s.httpClient == nil {
+		return "", fmt.Errorf("Ollamaクライアントが初期化されていません")
+	}
+
+	payload := map[string]any{
+		"model":  s.config.Model,
+		"prompt": strings.TrimSpace(s.config.Prompt),
+		"stream": true,
+	}
+
+	if system := strings.TrimSpace(s.config.SystemInstruction); system != "" {
+		payload["system"] = system
+	}
+	if imageBase64 != "" {
+		payload["images"] = []string{imageBase64}
+	}
+
+	options := map[string]any{}
+	if s.config.Temperature >= 0 {
+		options["temperature"] = s.config.Temperature
+	}
+	if s.config.MaxTokens > 0 {
+		options["num_predict"] = s.config.MaxTokens
+	}
+	if len(options) > 0 {
+		payload["options"] = options
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("リクエストボディの生成に失敗しました: %w", err)
+	}
+
+	ctx := context.Background()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ollamaGenerateEndpoint, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("Ollamaリクエストの作成に失敗しました: %w", err)
+	}
+	req.Header.Set("Content-Type", ollamaRequestContentType)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Ollama API呼び出しに失敗しました: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		buf := new(bytes.Buffer)
+		_, _ = buf.ReadFrom(resp.Body)
+		return "", fmt.Errorf("Ollama APIがエラーを返しました: status=%d body=%s", resp.StatusCode, strings.TrimSpace(buf.String()))
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024), ollamaScannerBufferSize)
+
+	var responseBuilder strings.Builder
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(strings.TrimSpace(string(line))) == 0 {
+			continue
+		}
+		var chunk ollamaResponseChunk
+		if err := json.Unmarshal(line, &chunk); err != nil {
+			return "", fmt.Errorf("Ollamaレスポンスの解析に失敗しました: %w", err)
+		}
+		if chunk.Error != "" {
+			return "", fmt.Errorf("Ollamaレスポンスエラー: %s", chunk.Error)
+		}
+		responseBuilder.WriteString(chunk.Response)
+		if chunk.Done {
+			break
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("Ollamaレスポンスの読み取りに失敗しました: %w", err)
+	}
+
+	return responseBuilder.String(), nil
 }
 
 // getMimeType はファイル拡張子からMIMEタイプを取得する
