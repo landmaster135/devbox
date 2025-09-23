@@ -333,6 +333,107 @@ func (t *TestConfig) TestNewConfig_MissingProject_Error(test *testing.T) {
 	}
 }
 
+func (t *TestConfig) TestNewConfig_ModelDefaultsByAiType(test *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test_config")
+	if err != nil {
+		test.Fatalf("一時ディレクトリの作成に失敗しました: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	testCases := []struct {
+		name          string
+		aiType        string
+		model         string
+		expectedModel string
+		apiKey        string
+		project       string
+		location      string
+		expectNoError bool
+	}{
+		{
+			name:          "GeminiDefaultModelConverted",
+			aiType:        "gemini",
+			model:         DefaultModel,
+			expectedModel: DefaultGeminiModel,
+			apiKey:        "test-api-key",
+			expectNoError: true,
+		},
+		{
+			name:          "GeminiCustomModelMaintained",
+			aiType:        "gemini",
+			model:         "gemini-custom-model",
+			expectedModel: "gemini-custom-model",
+			apiKey:        "test-api-key",
+			expectNoError: true,
+		},
+		{
+			name:          "VertexDefaultModelConverted",
+			aiType:        "vertex",
+			model:         DefaultModel,
+			expectedModel: DefaultVertexModel,
+			project:       "test-project",
+			location:      DefaultLocation,
+			expectNoError: true,
+		},
+		{
+			name:          "VertexCustomModelMaintained",
+			aiType:        "vertex",
+			model:         "vertex-custom-model",
+			expectedModel: "vertex-custom-model",
+			project:       "test-project",
+			location:      DefaultLocation,
+			expectNoError: true,
+		},
+		{
+			name:          "OllamaDefaultModel",
+			aiType:        "ollama",
+			model:         "",
+			expectedModel: DefaultModel,
+			expectNoError: true,
+		},
+		{
+			name:          "OllamaCustomModelMaintained",
+			aiType:        "ollama",
+			model:         "ollama-custom",
+			expectedModel: "ollama-custom",
+			expectNoError: true,
+		},
+	}
+
+	for _, tt := range testCases {
+		test.Run(tt.name, func(t *testing.T) {
+			config, err := NewConfig(
+				tempDir,
+				false,
+				tt.model,
+				DefaultPrompt,
+				DefaultSystemInstruction,
+				DefaultTemperature,
+				DefaultMaxTokens,
+				tt.aiType,
+				tt.apiKey,
+				tt.project,
+				tt.location,
+				false,
+			)
+
+			if !tt.expectNoError {
+				if err == nil {
+					t.Fatal("期待されたエラーが発生しませんでした")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("NewConfig() がエラーを返しました: %v", err)
+			}
+			if config.Model != tt.expectedModel {
+				t.Errorf("Model = %v, want %v", config.Model, tt.expectedModel)
+			}
+		})
+	}
+}
+
 func (t *TestConfig) TestNewConfig_MarkdownTableConflict_Error(test *testing.T) {
 	// テスト用の一時ディレクトリを作成
 	tempDir, err := os.MkdirTemp("", "test_config")
