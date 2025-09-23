@@ -19,6 +19,7 @@ GitHubからリポジトリ情報を取得し、Bash関数を生成してリポ�
 
 ### アーカイブ機能 (`archive`)
 - リポジトリ情報からBash関数を生成
+- **実際のリポジトリのアーカイブ処理は実行されません**
 - `archive_repos()`: git cloneとzip圧縮を実行
 - `display_zipinfo()`: zipファイルの情報を表示
 - `unzip_repos()`: zipファイルを展開
