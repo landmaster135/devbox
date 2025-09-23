@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/stretchr/testify/assert"
+
+	security "github.com/landmaster135/devbox/internal/git_info_retriever/security"
 )
 
 // #==============================================================#
@@ -151,6 +154,7 @@ func setupServiceWithMocks(t *testing.T) (*Service, *MockGitHubService, *MockFil
 	service := &Service{
 		githubService: mockGitHubService,
 		fileWriter:    mockFileWriter,
+		pathValidator: security.NewDefaultPathValidator(),
 	}
 
 	return service, mockGitHubService, mockFileWriter
@@ -289,6 +293,52 @@ func TestService_RetrieveRepositoryInfo_Normal(t *testing.T) {
 	}
 }
 
+func TestService_generateBashFunctions_SanitizesInputs(t *testing.T) {
+	service, _, _ := setupServiceWithMocks(t)
+
+	repos := createTestRepoInfo()
+	archiveDir := "./archives"
+
+	result, err := service.generateBashFunctions(repos, archiveDir)
+	assert.NoError(t, err)
+
+	validator := service.getPathValidator()
+	sanitizedArchiveDir, err := validator.ValidateArchiveDirectory(archiveDir)
+	assert.NoError(t, err)
+
+	expectedClone := "\tgit clone 'https://github.com/testuser/test-repo-1'\n"
+	assert.Contains(t, result, expectedClone)
+
+	expectedZip := fmt.Sprintf("\tzip -rq '%s/%s.zip' './%s'\n", sanitizedArchiveDir, "test-repo-1", "test-repo-1")
+	assert.Contains(t, result, expectedZip)
+
+	assert.Contains(t, result, "unzip '")
+	assert.NotContains(t, result, "git clone https://github.com/testuser/test-repo-1\n")
+}
+
+func TestService_generateBashFunctions_InvalidArchiveDir(t *testing.T) {
+	service, _, _ := setupServiceWithMocks(t)
+
+	_, err := service.generateBashFunctions(createTestRepoInfo(), "/tmp/malicious")
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "アーカイブディレクトリ"))
+}
+
+func TestService_generateBashFunctions_InvalidRepoURL(t *testing.T) {
+	service, _, _ := setupServiceWithMocks(t)
+
+	repos := []RepoInfo{
+		{
+			Name:    "test-repo-malicious",
+			HttpUrl: "https://github.com/testuser/test-repo.git;rm -rf /",
+		},
+	}
+
+	_, err := service.generateBashFunctions(repos, "./archives")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "リポジトリURLの検証に失敗しました")
+}
+
 func TestNewService_Normal(t *testing.T) {
 	service := NewService()
 	assert.NotNil(t, service)
@@ -298,6 +348,7 @@ func TestNewService_Normal(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotNil(t, serviceImpl.githubService)
 	assert.NotNil(t, serviceImpl.fileWriter)
+	assert.NotNil(t, serviceImpl.pathValidator)
 }
 
 func TestNewServiceWithDependencies_Normal(t *testing.T) {
@@ -312,6 +363,7 @@ func TestNewServiceWithDependencies_Normal(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, mockGitHubService, serviceImpl.githubService)
 	assert.Equal(t, mockFileWriter, serviceImpl.fileWriter)
+	assert.NotNil(t, serviceImpl.pathValidator)
 }
 
 // #==============================================================#
@@ -424,6 +476,10 @@ func TestGitHubServiceImpl_GetRepoInfo_Normal(t *testing.T) {
 		})
 	}
 }
+
+// #==============================================================#
+// ##          GitHubServiceImpl_fetchRepositories Tests         ##
+// #==============================================================#
 
 func TestGitHubServiceImpl_fetchRepositories_Normal(t *testing.T) {
 	const testUsername = "testuser"
