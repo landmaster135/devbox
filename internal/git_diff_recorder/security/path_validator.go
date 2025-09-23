@@ -11,6 +11,8 @@ import (
 	"unicode/utf8"
 )
 
+const maxURLDecodingIterations = 5
+
 // #==============================================================#
 // ##       Mocks for NotionConfig                               ##
 // #==============================================================#
@@ -84,6 +86,10 @@ func (pv *PathValidator) ValidateWorkingDirectory(path string) (string, error) {
 		return "", err
 	}
 
+	if err := pv.checkAllowedCharacters(normalizedPath); err != nil {
+		return "", err
+	}
+
 	// 危険な文字列のチェック（強化版）
 	if err := pv.checkEnhancedDangerousPatterns(normalizedPath); err != nil {
 		return "", err
@@ -133,9 +139,17 @@ func (pv *PathValidator) normalizeAndValidateEncoding(path string) (string, erro
 		return "", NewSecurityError(ErrorTypeEncodingAttack, path, "無効なUTF-8エンコーディング", "")
 	}
 
-	// URLエンコードされた危険文字の検出
-	if decoded, err := url.QueryUnescape(path); err == nil && decoded != path {
-		// URLデコードできる場合は、デコード後も検証
+	if err := pv.checkEncodedDangerousPatterns(path); err != nil {
+		return "", err
+	}
+
+	decoded := path
+	for range maxURLDecodingIterations {
+		next, err := url.QueryUnescape(decoded)
+		if err != nil || next == decoded {
+			break
+		}
+		decoded = next
 		if err := pv.checkEncodedDangerousPatterns(decoded); err != nil {
 			return "", err
 		}
@@ -194,21 +208,27 @@ func (pv *PathValidator) checkEncodedDangerousPatterns(path string) error {
 func (pv *PathValidator) checkEnhancedDangerousPatterns(path string) error {
 	// 基本的な危険パターン
 	basicPatterns := []string{
-		"..",   // パストラバーサル
-		"~",    // ホームディレクトリ展開
-		"$",    // 環境変数展開
-		"`",    // コマンド実行
-		";",    // コマンド区切り
-		"|",    // パイプ
-		"&",    // バックグラウンド実行
-		">",    // リダイレクト
-		"<",    // リダイレクト
-		"*",    // ワイルドカード
-		"?",    // ワイルドカード
-		"\n",   // 改行
-		"\r",   // キャリッジリターン
-		"\t",   // タブ
-		"\x00", // NULL文字
+		"..",     // パストラバーサル
+		"~",      // ホームディレクトリ展開
+		"$",      // 環境変数展開
+		"`",      // コマンド実行
+		";",      // コマンド区切り
+		"|",      // パイプ
+		"&",      // バックグラウンド実行
+		"'",      // シングルクォート
+		"\"",     // ダブルクォート
+		">",      // リダイレクト
+		"<",      // リダイレクト
+		"*",      // ワイルドカード
+		"?",      // ワイルドカード
+		"\n",     // 改行
+		"\r",     // キャリッジリターン
+		"\t",     // タブ
+		"\x00",   // NULL文字
+		"\uFF1B", // 全角セミコロン
+		"\uFF1F", // 全角クエスチョン
+		"\uFF0C", // 全角コンマ
+		"\uFF5C", // 全角パイプ
 	}
 
 	for _, pattern := range basicPatterns {
@@ -219,12 +239,12 @@ func (pv *PathValidator) checkEnhancedDangerousPatterns(path string) error {
 
 	// 正規表現による高度なパターンマッチング
 	dangerousRegexes := []*regexp.Regexp{
-		regexp.MustCompile(`\.\.[\\/]`),                    // パストラバーサル
-		regexp.MustCompile(`[\\/]\.\.[\\/]`),               // 中間パストラバーサル
-		regexp.MustCompile(`[\\/]\.\.[^[\\/\w]`),           // 偽装パストラバーサル
-		regexp.MustCompile(`\$\{[^}]*\}`),                  // 環境変数展開
-		regexp.MustCompile(`\$\([^)]*\)`),                  // コマンド置換
-		regexp.MustCompile(`[;&|><]\s*[a-zA-Z0-9_\\/.-]+`), // コマンドインジェクション
+		regexp.MustCompile(`\.\.[\\/]`),                                      // パストラバーサル
+		regexp.MustCompile(`[\\/]\.\.[\\/]`),                                 // 中間パストラバーサル
+		regexp.MustCompile(`[\\/]\.\.[^\\/\w.-]`),                            // 偽装パストラバーサル
+		regexp.MustCompile(`\$\{[^}]*\}`),                                    // 環境変数展開
+		regexp.MustCompile(`\$\([^)]*\)`),                                    // コマンド置換
+		regexp.MustCompile(`(?:;|&&|\|\||\|&|&\||\||&|>{1,2}|<{1,2})\s*\S+`), // コマンドインジェクション
 	}
 
 	for _, regex := range dangerousRegexes {
@@ -244,8 +264,13 @@ func (pv *PathValidator) checkSymlinkSafety(path string) error {
 		info, err := os.Lstat(currentPath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				// 存在しないパスは後でチェックされるのでここではスキップ
-				break
+				// 存在しないパスは後でチェックされるので親ディレクトリを確認
+				parent := filepath.Dir(currentPath)
+				if parent == currentPath {
+					break
+				}
+				currentPath = parent
+				continue
 			}
 			return fmt.Errorf("パス情報の取得に失敗しました: %w", err)
 		}
@@ -308,6 +333,30 @@ func (pv *PathValidator) checkSystemPaths(path string) error {
 	}
 
 	return nil
+}
+
+// checkAllowedCharacters はパスに許可された文字のみが含まれるか検証する
+func (pv *PathValidator) checkAllowedCharacters(path string) error {
+	for _, r := range path {
+		switch {
+		case unicode.IsLetter(r), unicode.IsDigit(r):
+			continue
+		case isAllowedPathRune(r):
+			continue
+		default:
+			return NewSecurityError(ErrorTypeDangerousPattern, path, "許可されていない文字が含まれています", fmt.Sprintf("文字コード: U+%04X", r))
+		}
+	}
+
+	return nil
+}
+
+func isAllowedPathRune(r rune) bool {
+	switch r {
+	case '/', '\\', '.', '-', '_', ' ', ':':
+		return true
+	}
+	return false
 }
 
 // checkDangerousPatterns は危険なパターンをチェックする（後方互換性のため残す）

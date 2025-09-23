@@ -87,6 +87,19 @@ func TestPathValidator_normalizeAndValidateEncoding_ControlCharacters(t *testing
 	}
 }
 
+func TestPathValidator_normalizeAndValidateEncoding_MultiStageDecoding(t *testing.T) {
+	validator := NewDefaultPathValidator()
+
+	path := "/tmp/%252e%252e%252fetc/passwd"
+	_, err := validator.normalizeAndValidateEncoding(path)
+	if err == nil {
+		t.Fatal("expected error for multi-stage encoded traversal, got nil")
+	}
+	if GetSecurityErrorType(err) != ErrorTypeEncodingAttack {
+		t.Fatalf("expected ErrorTypeEncodingAttack, got %v", GetSecurityErrorType(err))
+	}
+}
+
 func TestPathValidator_checkEncodedDangerousPatterns(t *testing.T) {
 	validator := NewDefaultPathValidator()
 
@@ -216,6 +229,21 @@ func TestPathValidator_checkEnhancedDangerousPatterns(t *testing.T) {
 		{
 			name:    "コマンドインジェクション（アンパサンド）",
 			path:    "/path & malicious_command",
+			wantErr: true,
+		},
+		{
+			name:    "コマンドインジェクション（ダブルアンパサンド）",
+			path:    "/path && malicious_command",
+			wantErr: true,
+		},
+		{
+			name:    "コマンドインジェクション（ダブルパイプ）",
+			path:    "/path || malicious_command",
+			wantErr: true,
+		},
+		{
+			name:    "コマンドインジェクション（パイプアンパサンド）",
+			path:    "/path |& logger",
 			wantErr: true,
 		},
 		{
@@ -425,7 +453,7 @@ func TestPathValidator_ValidateWorkingDirectory_Enhanced_Integration(t *testing.
 			name:    "URLエンコード攻撃",
 			path:    testDir + "/%2e%2e/file",
 			wantErr: true,
-			errType: ErrorTypeDirectoryNotFound, // 実際はディレクトリが存在しないエラーとして検出される
+			errType: ErrorTypeEncodingAttack,
 		},
 		{
 			name:    "システムパス攻撃",
@@ -450,6 +478,65 @@ func TestPathValidator_ValidateWorkingDirectory_Enhanced_Integration(t *testing.
 				}
 			}
 		})
+	}
+}
+
+func TestPathValidator_checkAllowedCharacters(t *testing.T) {
+	validator := NewDefaultPathValidator()
+
+	tests := []struct {
+		name    string
+		path    string
+		wantErr bool
+	}{
+		{
+			name:    "英数字と日本語を含むパス",
+			path:    "/home" + "/ユーザー/project",
+			wantErr: false,
+		},
+		{
+			name:    "シングルクォートを含むパス",
+			path:    "/home/user/'malicious'",
+			wantErr: true,
+		},
+		{
+			name:    "全角セミコロンを含むパス",
+			path:    "/home/user/；/project",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.checkAllowedCharacters(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("checkAllowedCharacters() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil && GetSecurityErrorType(err) != ErrorTypeDangerousPattern {
+				t.Fatalf("expected ErrorTypeDangerousPattern, got %v", GetSecurityErrorType(err))
+			}
+		})
+	}
+}
+
+func TestPathValidator_checkSymlinkSafety_ParentSymlinkTraversal(t *testing.T) {
+	baseDir := t.TempDir()
+	outsideDir := t.TempDir()
+
+	symlinkParent := filepath.Join(baseDir, "link")
+	if err := os.Symlink(outsideDir, symlinkParent); err != nil {
+		t.Fatalf("failed to create symlink: %v", err)
+	}
+
+	validator := NewPathValidator([]string{baseDir}, 4096)
+	attackPath := filepath.Join(symlinkParent, "nested", "dir")
+
+	err := validator.checkSymlinkSafety(attackPath)
+	if err == nil {
+		t.Fatal("expected symlink safety error, got nil")
+	}
+	if GetSecurityErrorType(err) != ErrorTypeSymlinkAttack {
+		t.Fatalf("expected ErrorTypeSymlinkAttack, got %v", GetSecurityErrorType(err))
 	}
 }
 
