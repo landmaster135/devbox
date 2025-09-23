@@ -43,17 +43,17 @@ go build -o bin/diff-dreamer ./cmd/cli/diff-dreamer/
 ### 基本的な使用方法
 ```bash
 # 空のテキストエリアでツール起動
-./bin/diff-dreamer
+go run ./cmd/cli/diff-dreamer
 
 # ファイル指定での比較
-./bin/diff-dreamer -left file1.txt -right file2.txt
+go run ./cmd/cli/diff-dreamer -left file1.txt -right file2.txt
 
 # 片方だけファイル指定
-./bin/diff-dreamer -left file1.txt
-./bin/diff-dreamer -right file2.txt
+go run ./cmd/cli/diff-dreamer -left file1.txt
+go run ./cmd/cli/diff-dreamer -right file2.txt
 
 # 出力ファイル名指定
-./bin/diff-dreamer -output my_diff.html
+go run ./cmd/cli/diff-dreamer -output my_diff.html
 ```
 
 ### コマンドライン引数
@@ -68,21 +68,21 @@ go build -o bin/diff-dreamer ./cmd/cli/diff-dreamer/
 
 #### 例1: 基本的な使用
 ```bash
-./bin/diff-dreamer
+go run ./cmd/cli/diff-dreamer
 ```
 - 空のテキストエリアでツールが起動
 - ブラウザで手動でテキストを入力して比較
 
 #### 例2: ファイル比較
 ```bash
-./bin/diff-dreamer -left version1.txt -right version2.txt
+go run ./cmd/cli/diff-dreamer -left version1.txt -right version2.txt
 ```
 - 指定したファイルの内容が自動的に読み込まれる
 - ブラウザで差分が表示される
 
 #### 例3: カスタム出力ファイル
 ```bash
-./bin/diff-dreamer -left old.txt -right new.txt -output comparison.html
+go run ./cmd/cli/diff-dreamer -left old.txt -right new.txt -output comparison.html
 ```
 - `comparison.html`として保存される
 
