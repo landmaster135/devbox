@@ -33,7 +33,7 @@ Git pre-commit hook用のGo製シークレット検知ツールです。JSON設�
 
 ```bash
 cd devbox
-go build -o bin/secret-detector cmd/cli/secret-detector/main.go
+go build -o bin/git-pre-commit-hooks cmd/cli/git-pre-commit-hooks/main.go
 ```
 
 ## 使用方法
@@ -41,7 +41,7 @@ go build -o bin/secret-detector cmd/cli/secret-detector/main.go
 ### 基本構文
 
 ```bash
-./bin/secret-detector [オプション]
+./bin/git-pre-commit-hooks [オプション]
 ```
 
 ### オプション
@@ -57,13 +57,13 @@ go build -o bin/secret-detector cmd/cli/secret-detector/main.go
 ### 1. 手動実行
 
 ```bash
-go run ./cmd/cli/secret-detector
+go run ./cmd/cli/git-pre-commit-hooks
 ```
 
 ### 2. バージョン確認
 
 ```bash
-go run ./cmd/cli/secret-detector --version
+go run ./cmd/cli/git-pre-commit-hooks --version
 ```
 
 出力:
@@ -74,19 +74,19 @@ Secret Detector v1.0.0
 ### 3. 詳細出力で実行
 
 ```bash
-go run ./cmd/cli/secret-detector --verbose
+go run ./cmd/cli/git-pre-commit-hooks --verbose
 ```
 
 ### 4. 特定ファイルのみチェック
 
 ```bash
-go run ./cmd/cli/secret-detector --config-file=config.json
+go run ./cmd/cli/git-pre-commit-hooks --config-file=config.json
 ```
 
 ### 5. ドライランモード
 
 ```bash
-go run ./cmd/cli/secret-detector --dry-run
+go run ./cmd/cli/git-pre-commit-hooks --dry-run
 ```
 
 ### 6. Git pre-commitフックとして使用
@@ -94,7 +94,7 @@ go run ./cmd/cli/secret-detector --dry-run
 ```bash
 # .git/hooks/pre-commit に設定
 #!/bin/bash
-./bin/secret-detector
+./bin/git-pre-commit-hooks
 ```
 
 ## 検知例
@@ -254,7 +254,7 @@ CONFIG_PATH=/home/user/config/app.conf
 ## アーキテクチャ
 
 ```
-cmd/cli/secret-detector/main.go         # CLIエントリーポイント
+cmd/cli/git-pre-commit-hooks/main.go         # CLIエントリーポイント
 internal/secret_detector/
 ├── config/
 │   ├── config.go                      # JSON設定ファイル読み込み
@@ -273,21 +273,21 @@ internal/secret_detector/
 ### 自動セットアップ（元のスクリプト使用）
 
 ```bash
-./scripts/setup-secret-detector.sh
+./scripts/setup-git-pre-commit-hooks.sh
 ```
 
 ### 手動セットアップ
 
 1. ツールをビルド:
 ```bash
-go build -o .git/hooks/secret-detector cmd/cli/secret-detector/main.go
+go build -o .git/hooks/git-pre-commit-hooks cmd/cli/git-pre-commit-hooks/main.go
 ```
 
 2. pre-commitフックを作成:
 ```bash
 cat > .git/hooks/pre-commit << 'EOF'
 #!/bin/bash
-.git/hooks/secret-detector
+.git/hooks/git-pre-commit-hooks
 EOF
 chmod +x .git/hooks/pre-commit
 ```
@@ -368,7 +368,7 @@ go tool cover -html=coverage.out -o coverage.html
 詳細な情報が必要な場合は、`--verbose`オプションを使用してください:
 
 ```bash
-go run ./cmd/cli/secret-detector --verbose
+go run ./cmd/cli/git-pre-commit-hooks --verbose
 ```
 
 ## 更新履歴

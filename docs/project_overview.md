@@ -3,11 +3,11 @@
 ## 1. プロジェクト概要
 
 ### 1.1 プロジェクトの目的
-`devbox`は開発者向けの包括的なユーティリティツール集合体です。30以上のCLIツールと20以上のMCP（Model Context Protocol）サーバーを提供し、日常的な開発作業を効率化することを目的としています。
+`devbox`は開発者向けの包括的なユーティリティツール集合体です。現在（2025年時点）で69個のCLIツールと22個のMCP（Model Context Protocol）サーバーを提供し、日常的な開発作業を効率化することを目的としています。
 
 ### 1.2 主要機能
-- **CLIツール群**: ファイル処理、画像変換、データ変換、コード解析など多様なユーティリティ
-- **MCPサーバー群**: AI開発環境との統合を可能にする外部API連携ツール
+- **CLIツール群**: ファイル処理、画像変換、データ変換、コード解析、クラウド連携など69のコマンドラインユーティリティ
+- **MCPサーバー群**: AI開発環境との統合を可能にする22個の外部API連携サーバー
 - **クロスプラットフォーム対応**: Linux、macOS、Windows環境での動作保証
 - **自動化ビルドシステム**: 効率的な開発・デプロイメントワークフロー
 
@@ -16,11 +16,12 @@
 - **アーキテクチャ**: Clean Architecture
 - **ビルドシステム**: Bash スクリプトベース
 - **主要依存関係**:
-  - `github.com/mark3labs/mcp-go`: MCP プロトコル実装
-  - 画像処理: `github.com/anthonynsimon/bild`, `github.com/gen2brain/webp`
-  - PDF処理: `github.com/pdfcpu/pdfcpu`
-  - データベース: `github.com/lib/pq` (PostgreSQL)
-  - 外部API: `golang.org/x/oauth2`, `google.golang.org/api`
+  - MCP: `github.com/mark3labs/mcp-go`
+  - 画像・動画処理: `github.com/anthonynsimon/bild`, `github.com/gen2brain/webp`, `github.com/gen2brain/avif`, `github.com/u2takey/ffmpeg-go`
+  - 文書処理: `github.com/pdfcpu/pdfcpu`
+  - データストア: `github.com/lib/pq`, `github.com/valkey-io/valkey-go`
+  - 外部API/クラウド: `github.com/google/go-github`, `cloud.google.com/go/...`, `golang.org/x/oauth2`, `google.golang.org/api`, `google.golang.org/genai`
+  - テスト: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
 
 ## 2. アーキテクチャ設計
 
@@ -69,12 +70,17 @@ graph TD
 ### 3.1 cmd/ - エントリーポイント層
 ```
 cmd/
-├── cli/          # CLIツール群（30以上のツール）
+├── cli/          # CLIツール群（69ツール、カテゴリ毎に整理）
 │   ├── arithmetic-calculator/
 │   ├── file-processor/
 │   ├── image-converter/
-│   ├── json-formatter-for-agent-interaction/
+│   ├── ops-for-golang/
+│   ├── ocr-executor/
 │   └── ...
+├── grpc/         # gRPCサーバーエントリーポイント
+│   └── main.go
+├── http/         # RESTサーバーエントリーポイント
+│   └── main.go
 ├── mcp/          # MCPサーバー群
 │   ├── router.go # MCPサーバールーティング
 │   ├── arithmetic_calculator/
@@ -89,6 +95,7 @@ cmd/
 - 設定の初期化
 - ユースケース層への処理委譲
 - エラーハンドリングと出力制御
+- HTTP/gRPCサービスの起動とハンドラ登録
 
 ### 3.2 internal/ - ビジネスロジック層
 ```
@@ -116,6 +123,7 @@ pkg/
 │       ├── linux_amd64/
 │       ├── darwin_arm64/
 │       └── win_amd64/
+├── bash/         # ビルド済みのBashユーティリティ
 └── dos/          # Windows バッチファイル
 ```
 
@@ -147,14 +155,14 @@ MCPサーバーシステムは`cmd/mcp/router.go`を中心とした統一的な�
 ```go
 // router.goの主要構造
 func Router() {
-    args := os.Args
-    switch args[1] {
-    case "arith_calc":
-        arithmetic_calculator.BuildArithCalculatorServer()
-    case "github":
-        github.BuildGitHubServer()
-    // ... 20以上のサーバー定義
-    }
+  args := os.Args
+  switch args[1] {
+  case "arith_calc":
+      arithmetic_calculator.BuildArithCalculatorServer()
+  case "github":
+      github.BuildGitHubServer()
+  // ... その他のサーバー定義
+  }
 }
 ```
 
@@ -163,23 +171,27 @@ func Router() {
 | サーバー名 | 機能概要 | 主要用途 |
 |-----------|----------|----------|
 | `arithmetic_calculator` | 数値計算処理 | 基本的な算術演算 |
-| `datetime_calculator` | 日時計算処理 | 日付・時刻の操作・変換 |
 | `brave_search` | Brave検索API | Web検索機能 |
+| `context7` | ライブラリドキュメント連携 | 技術文書検索・取得 |
+| `datetime_calculator` | 日時計算処理 | 日付・時刻の操作・変換 |
 | `duckduckgo_search` | DuckDuckGo検索API | プライバシー重視検索 |
-| `github` | GitHub API連携 | リポジトリ操作・Issue管理 |
-| `postgresql` | PostgreSQL連携 | データベース操作 |
-| `filesystem` | ファイルシステム操作 | ファイル・ディレクトリ管理 |
-| `http_request` | HTTP通信 | 外部API呼び出し |
-| `figma` | Figma API連携 | デザインファイル操作 |
 | `everart` | EverArt画像生成 | AI画像生成 |
-| `youtube_transcript` | YouTube字幕取得 | 動画字幕データ抽出 |
-| `sequentialthinking` | 段階的思考支援 | 問題解決プロセス支援 |
-| `context7` | ライブラリドキュメント | 技術文書検索・取得 |
-| `timezone` | タイムゾーン変換 | 時刻変換・管理 |
-| `git_diff_recorder` | Git差分記録 | コード変更履歴管理 |
-| `git_commit_history_retriever` | Gitコミット履歴 | コミット履歴分析 |
-| `service_implementing_viewer` | サービス実装状況 | 開発進捗可視化 |
+| `figma` | Figma API連携 | デザインファイル操作 |
+| `filesystem` | ファイルシステム操作 | ファイル・ディレクトリ管理 |
 | `gdrive` | Google Drive連携 | クラウドストレージ操作 |
+| `git_commit_history_retriever` | Gitコミット履歴取得 | 変更履歴分析 |
+| `git_diff_recorder` | Git差分記録 | コード変更履歴管理 |
+| `github` | GitHub API連携 | リポジトリ操作・Issue管理 |
+| `http_request` | HTTP通信 | 外部API呼び出し |
+| `notion_sync` | Notion API連携 | コンテンツ同期 |
+| `open_weather_map` | OpenWeatherMap API | 気象データ取得 |
+| `ops_for_golang` | Goツール操作 | ビルド・テスト補助 |
+| `postgresql` | PostgreSQL連携 | データベース操作 |
+| `sequentialthinking` | 段階的思考支援 | 問題解決プロセス支援 |
+| `service_implementing_viewer` | サービス実装状況 | 開発進捗可視化 |
+| `timezone` | タイムゾーン変換 | 時刻変換・管理 |
+| `weather_notificator` | 気象通知 | アラート配信 |
+| `youtube_transcript` | YouTube字幕取得 | 動画字幕データ抽出 |
 
 ### 4.3 拡張パターン
 新しいMCPサーバーを追加する際の標準的な手順：
@@ -225,55 +237,75 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 ## 6. 主要CLIツール群
 
-### 6.1 ファイル処理系
+### 6.1 ファイル・データ整備系
 - `file-processor`: 汎用ファイル処理
 - `file-maneuver`: ファイル操作・移動
 - `file-character-replacer`: 文字列置換処理
+- `json-file-merger`: JSONファイル統合
+- `json-modifier`: JSONデータ操作
+- `yaml-parser`: YAML解析処理
+- `zip-compressor`: アーカイブ生成
 
-### 6.2 画像処理系
+### 6.2 画像・マルチメディア系
 - `image-converter`: 画像形式変換
 - `image-filterer`: 画像フィルタリング
-- `image-renamer`: 画像ファイル名変更
-- `image-rotator`: 画像回転処理
 - `image-trimmer`: 画像トリミング
+- `image-renamer-with-exif`: EXIFを活用したリネーム
+- `movie-converter-for-gif`: GIF動画変換
+- `movie-converter-for-webm`: WebM動画変換
+- `ocr-executor-with-ai`: OCRとAI後処理
 
-### 6.3 データ変換系
-- `json-formatter-for-agent-interaction`: JSON整形
-- `json-modifier`: JSON データ操作
-- `yaml-parser`: YAML解析処理
-- `base64-extractor`: Base64エンコード・デコード
+### 6.3 データ連携・API操作系
+- `http-request`: 任意API呼び出し
+- `discord-webhook`: Webhook送信支援
+- `context7`: ライブラリドキュメント検索
+- `open-weather-map`: 天気情報取得
+- `notion-sync`: Notionコンテンツ同期
+- `gcloud-monitoring`: Cloud Monitoring クエリ
 
-### 6.4 開発支援系
+### 6.4 開発支援・運用系
 - `code-analyzer`: コード解析
 - `depends-visualizer`: 依存関係可視化
+- `git-diff-recorder`: 差分記録
 - `git-commit-history-retriever`: Git履歴分析
+- `ops-for-golang`: Goプロジェクトのビルド・テスト補助
 - `service-implementing-viewer`: サービス実装状況確認
+
+### 6.5 その他のユーティリティ
+- `unit-converter`: 単位変換
+- `iso8601-converter`: 日時フォーマット変換
+- `weather-notificator`: 気象通知
+- `memory`: メモリ使用量調査
+- `script-generator-to-build`: ビルドスクリプト生成
 
 ## 7. 開発・運用指針
 
 ### 7.1 新機能追加手順
 1. **要件定義**: 機能仕様とインターフェース設計
-2. **ディレクトリ作成**: `cmd/cli/{tool_name}` および `internal/{tool_name}`
-3. **Clean Architecture実装**:
+2. **既存実装の確認**: `docs/service_implementation_status.md`を参照し、重複実装を回避
+3. **ディレクトリ作成**: `cmd/cli/{tool_name}` および `internal/{tool_name}`
+4. **Clean Architecture実装**:
    - `internal/{tool_name}/domain/`: エンティティ・リポジトリインターフェース
    - `internal/{tool_name}/usecases/`: ビジネスロジック
    - `internal/{tool_name}/interfaces/`: 外部システム連携
    - `cmd/cli/{tool_name}/main.go`: エントリーポイント
-4. **テスト実装**: TDD原則に基づくテストコード作成
-5. **ビルドスクリプト作成**: `scripts/build_{tool_name}.sh`
-6. **ドキュメント更新**: README.md および本仕様書の更新
+5. **テスト実装**: TDD原則に基づくテストコード作成
+6. **ビルドスクリプト作成**: `scripts/build_{tool_name}.sh`
+7. **ドキュメント更新**: README.md および本仕様書の更新
 
 ### 7.2 テスト戦略
 - **単体テスト**: 各レイヤーの独立したテスト
 - **統合テスト**: レイヤー間の連携テスト
-- **カバレッジ目標**: 57.0%以上（現在の水準維持・向上）
+- **カバレッジ目標**: 90%以上（`.clinerules`準拠）
+- **テストコマンド**: `go test -v ./... -coverpkg=./... -covermode=count -coverprofile=coverage.out`
 - **テストツール**: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
 
 ### 7.3 コード品質管理
 - **命名規則**: Go標準に準拠（PascalCase、camelCase、snake_case）
+- **コード整形**: `go fmt ./...` または `goimports` による自動整形
 - **SOLID原則**: 設計原則の遵守
 - **依存関係管理**: go.modによる明示的な依存関係管理
-- **静的解析**: `go vet`, `golint`の活用
+- **静的解析**: `go vet` などの標準ツールを活用
 
 ### 7.4 デプロイメント戦略
 - **バイナリ配布**: クロスプラットフォーム対応バイナリの提供
@@ -307,12 +339,11 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 主要な外部依存関係とその用途：
 
 - **MCP関連**: `github.com/mark3labs/mcp-go`
-- **画像処理**: `github.com/anthonynsimon/bild`, `github.com/gen2brain/webp`, `github.com/gen2brain/avif`
+- **画像・動画処理**: `github.com/anthonynsimon/bild`, `github.com/gen2brain/webp`, `github.com/gen2brain/avif`, `github.com/u2takey/ffmpeg-go`
 - **PDF処理**: `github.com/pdfcpu/pdfcpu`
-- **データベース**: `github.com/lib/pq`
-- **Web関連**: `github.com/PuerkitoBio/goquery`
-- **認証**: `golang.org/x/oauth2`
-- **Google API**: `google.golang.org/api`
+- **データストア**: `github.com/lib/pq`, `github.com/valkey-io/valkey-go`
+- **Webスクレイピング**: `github.com/PuerkitoBio/goquery`
+- **外部API/認証**: `github.com/google/go-github`, `cloud.google.com/go/...`, `golang.org/x/oauth2`, `google.golang.org/api`, `google.golang.org/genai`
 - **テスト**: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
 
 ### B. 設定ファイル
