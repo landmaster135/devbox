@@ -18,7 +18,7 @@ const (
 	defaultVSCODEEmbedText       = "通知"
 	defaultVSCODEEmbedColor      = "blue"
 	footerTextInOpenWeatherEmbed = "OpenWeatherMap"
-	openWeatherIconURL           = "https://openweathermap.org/themes/openweathermap/assets/img/logo_white_cropped.png"
+	openWeatherIconURL           = "https://avatars.githubusercontent.com/u/1743227?s=200&v=4"
 	defaultOpenWeatherEmbedText  = "最新の天気予報"
 	defaultOpenWeatherEmbedColor = "orange"
 )
