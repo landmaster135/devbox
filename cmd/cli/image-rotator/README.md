@@ -41,43 +41,43 @@ image-rotator [オプション]
 カレントディレクトリ内の画像を90度回転：
 
 ```bash
-image-rotator -angle 90
+go run ./cmd/cli/image-rotator -angle 90
 ```
 
 ### 特定のディレクトリの画像を処理
 
 ```bash
-image-rotator -src ./images -angle 90
+go run ./cmd/cli/image-rotator -src ./images -angle 90
 ```
 
 ### 出力先を指定
 
 ```bash
-image-rotator -src ./images -out ./rotated_images -angle 90
+go run ./cmd/cli/image-rotator -src ./images -out ./rotated_images -angle 90
 ```
 
 ### サブディレクトリも含めて処理
 
 ```bash
-image-rotator -src ./images -r -angle 90
+go run ./cmd/cli/image-rotator -src ./images -r -angle 90
 ```
 
 ### 元ファイルを移動
 
 ```bash
-image-rotator -src ./images -move -angle 90
+go run ./cmd/cli/image-rotator -src ./images -move -angle 90
 ```
 
 ### カスタムサフィックスを指定
 
 ```bash
-image-rotator -src ./images -suffix turned -angle 90
+go run ./cmd/cli/image-rotator -src ./images -suffix turned -angle 90
 ```
 
 ### 反時計回りに回転
 
 ```bash
-image-rotator -src ./images -angle -90
+go run ./cmd/cli/image-rotator -src ./images -angle -90
 ```
 
 ## 注意事項

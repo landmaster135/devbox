@@ -175,7 +175,7 @@ func TestBraveSearchService_HandleWebSearch_CountLimit(t *testing.T) {
 // #==============================================================#
 func TestBraveSearchService_checkRateLimit_Normal(t *testing.T) {
 	mockRateLimiter := &MockRateLimiter{}
-	service := NewBraveSearchServiceWithAllDependencies(&DefaultHTTPClient{}, &DefaultEnvironmentReader{}, mockRateLimiter)
+	service := NewBraveSearchServiceWithAllDependencies(NewDefaultHTTPClient(), &DefaultEnvironmentReader{}, mockRateLimiter)
 
 	// モックの設定
 	mockRateLimiter.CheckLimitFunc = func() error {

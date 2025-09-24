@@ -44,37 +44,37 @@ image-trimmer [オプション]
 カレントディレクトリ内の画像を座標(10,20)から(300,400)までトリミング：
 
 ```bash
-image-trimmer -x1 10 -y1 20 -x2 300 -y2 400
+go run ./cmd/cli/image-trimmer -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ### 特定のディレクトリの画像を処理
 
 ```bash
-image-trimmer -src ./images -x1 10 -y1 20 -x2 300 -y2 400
+go run ./cmd/cli/image-trimmer -src ./images -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ### 出力先を指定
 
 ```bash
-image-trimmer -src ./images -out ./trimmed_images -x1 10 -y1 20 -x2 300 -y2 400
+go run ./cmd/cli/image-trimmer -src ./images -out ./trimmed_images -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ### サブディレクトリも含めて処理
 
 ```bash
-image-trimmer -src ./images -r -x1 10 -y1 20 -x2 300 -y2 400
+go run ./cmd/cli/image-trimmer -src ./images -r -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ### 元ファイルを移動
 
 ```bash
-image-trimmer -src ./images -move -x1 10 -y1 20 -x2 300 -y2 400
+go run ./cmd/cli/image-trimmer -src ./images -move -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ### カスタムサフィックスを指定
 
 ```bash
-image-trimmer -src ./images -suffix cropped -x1 10 -y1 20 -x2 300 -y2 400
+go run ./cmd/cli/image-trimmer -src ./images -suffix cropped -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
 ## 注意事項
