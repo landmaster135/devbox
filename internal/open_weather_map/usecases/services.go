@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -163,14 +164,18 @@ func (w *WeatherService) GetForecast5Days(apiKey, city string) (*ForecastRespons
 		return nil, fmt.Errorf("APIエラー: ステータスコード %d, レスポンス: %s", resp.StatusCode, string(body))
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンス読み取りエラー: %v", err)
-	}
-
 	var forecastData ForecastResponse
-	if err := json.Unmarshal(body, &forecastData); err != nil {
-		return nil, fmt.Errorf("JSON解析エラー: %v", err)
+	if err := json.NewDecoder(resp.Body).Decode(&forecastData); err != nil {
+		var syntaxErr *json.SyntaxError
+		var typeErr *json.UnmarshalTypeError
+		switch {
+		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("レスポンス読み取りエラー: %v", err)
+		case errors.As(err, &syntaxErr), errors.As(err, &typeErr):
+			return nil, fmt.Errorf("JSON解析エラー: %v", err)
+		default:
+			return nil, fmt.Errorf("レスポンス読み取りエラー: %v", err)
+		}
 	}
 
 	return &forecastData, nil

@@ -15,11 +15,11 @@ OpenWeather APIを使用して天気予報を取得するコマンドライン�
 
 ```bash
 # フラグを使用した指定
-./open-weather-map -api-key YOUR_API_KEY -city "Tokyo,JP" -max-days 3
-./open-weather-map -k YOUR_API_KEY -c "Tokyo,JP" -d 5
+go run ./cmd/cli/open-weather-map -api-key YOUR_API_KEY -city "Tokyo,JP" -max-days 3
+go run ./cmd/cli/open-weather-map -k YOUR_API_KEY -c "Tokyo,JP" -d 5
 
 # 位置引数での指定
-./open-weather-map YOUR_API_KEY "Tokyo,JP" 3
+go run ./cmd/cli/open-weather-map YOUR_API_KEY "Tokyo,JP" 3
 ```
 
 ### オプション
@@ -35,13 +35,13 @@ OpenWeather APIを使用して天気予報を取得するコマンドライン�
 
 ```bash
 # 東京の3日間予報
-./open-weather-map -k abc123 -c "Tokyo,JP" -d 3
+go run ./cmd/cli/open-weather-map -k abc123 -c "Tokyo,JP" -d 3
 
 # ロンドンの5日間予報
-./open-weather-map -api-key abc123 -city "London,UK" -max-days 5
+go run ./cmd/cli/open-weather-map -api-key abc123 -city "London,UK" -max-days 5
 
 # ニューヨークの2日間予報（位置引数）
-./open-weather-map abc123 "New York,US" 2
+go run ./cmd/cli/open-weather-map abc123 "New York,US" 2
 ```
 
 ## 出力例
@@ -82,7 +82,7 @@ go build -o open-weather-map ./cmd/cli/open-weather-map
 ### 3. 実行
 
 ```bash
-./open-weather-map -api-key YOUR_API_KEY -city "Tokyo,JP" -max-days 3
+go run ./cmd/cli/open-weather-map -api-key YOUR_API_KEY -city "Tokyo,JP" -max-days 3
 ```
 
 ## 注意事項

@@ -13,7 +13,7 @@ import (
 // MockFileReader はFileReaderRepositoryのモック実装
 type MockFileReader struct {
 	ReadFileFunc     func(filePath string) ([]byte, error)
-	LoadJSONFileFunc func(filePath string) (map[string]interface{}, error)
+	LoadJSONFileFunc func(filePath string) (map[string]any, error)
 }
 
 func (m *MockFileReader) ReadFile(filePath string) ([]byte, error) {
@@ -23,7 +23,7 @@ func (m *MockFileReader) ReadFile(filePath string) ([]byte, error) {
 	return nil, fmt.Errorf("ReadFileFunc not implemented")
 }
 
-func (m *MockFileReader) LoadJSONFile(filePath string) (map[string]interface{}, error) {
+func (m *MockFileReader) LoadJSONFile(filePath string) (map[string]any, error) {
 	if m.LoadJSONFileFunc != nil {
 		return m.LoadJSONFileFunc(filePath)
 	}
@@ -36,7 +36,7 @@ func (m *MockFileReader) LoadJSONFile(filePath string) (map[string]interface{}, 
 // FileReaderRepository はファイル読み込み操作のインターフェースです
 type FileReaderRepository interface {
 	ReadFile(filePath string) ([]byte, error)
-	LoadJSONFile(filePath string) (map[string]interface{}, error)
+	LoadJSONFile(filePath string) (map[string]any, error)
 }
 
 // #==============================================================#
@@ -67,13 +67,13 @@ func (r *OSFileReader) ReadFile(filePath string) ([]byte, error) {
 }
 
 // LoadJSONFile はJSONファイルを読み込んでmapとして返します
-func (r *OSFileReader) LoadJSONFile(filePath string) (map[string]interface{}, error) {
+func (r *OSFileReader) LoadJSONFile(filePath string) (map[string]any, error) {
 	data, err := r.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, fmt.Errorf("JSONのパースに失敗しました: %w", err)
 	}

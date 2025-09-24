@@ -3,6 +3,7 @@ package usecases
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -182,14 +183,19 @@ func (s *ArxivService) makeRequest(params url.Values) ([]Paper, error) {
 		return nil, fmt.Errorf("HTTPエラー: %d %s", resp.StatusCode, resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンス読み取りに失敗: %w", err)
-	}
-
 	var arxivResp ArxivResponse
-	if err := xml.Unmarshal(body, &arxivResp); err != nil {
-		return nil, fmt.Errorf("XML解析に失敗: %w", err)
+	if err := xml.NewDecoder(resp.Body).Decode(&arxivResp); err != nil {
+		var syntaxErr *xml.SyntaxError
+		switch {
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("レスポンス読み取りに失敗: %w", err)
+		case errors.Is(err, io.EOF):
+			return nil, fmt.Errorf("XML解析に失敗: %w", err)
+		case errors.As(err, &syntaxErr):
+			return nil, fmt.Errorf("XML解析に失敗: %w", err)
+		default:
+			return nil, fmt.Errorf("レスポンス読み取りに失敗: %w", err)
+		}
 	}
 
 	// エラーエントリのチェック

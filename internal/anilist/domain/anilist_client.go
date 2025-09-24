@@ -3,6 +3,7 @@ package domain
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -191,21 +192,25 @@ func (c *AniListClient) QueryAnimeList(req QueryAnimeRequest) (*AniListResponse,
 	}
 	defer resp.Body.Close()
 
-	// レスポンスボディを読み取り
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %v", err)
-	}
-
 	// HTTPステータスコードをチェック
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("HTTPエラー: %d - %s", resp.StatusCode, string(body))
 	}
 
 	// JSONをデコード
 	var aniListResp AniListResponse
-	if err := json.Unmarshal(body, &aniListResp); err != nil {
-		return nil, fmt.Errorf("レスポンスのJSONデコードに失敗しました: %v", err)
+	if err := json.NewDecoder(resp.Body).Decode(&aniListResp); err != nil {
+		var syntaxErr *json.SyntaxError
+		var typeErr *json.UnmarshalTypeError
+		switch {
+		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %v", err)
+		case errors.As(err, &syntaxErr), errors.As(err, &typeErr):
+			return nil, fmt.Errorf("レスポンスのJSONデコードに失敗しました: %v", err)
+		default:
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %v", err)
+		}
 	}
 
 	// GraphQLエラーをチェック
@@ -255,21 +260,25 @@ func (c *AniListClient) QueryMangaList(req QueryMangaRequest) (*AniListResponse,
 	}
 	defer resp.Body.Close()
 
-	// レスポンスボディを読み取り
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %v", err)
-	}
-
 	// HTTPステータスコードをチェック
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("HTTPエラー: %d - %s", resp.StatusCode, string(body))
 	}
 
 	// JSONをデコード
 	var aniListResp AniListResponse
-	if err := json.Unmarshal(body, &aniListResp); err != nil {
-		return nil, fmt.Errorf("レスポンスのJSONデコードに失敗しました: %v", err)
+	if err := json.NewDecoder(resp.Body).Decode(&aniListResp); err != nil {
+		var syntaxErr *json.SyntaxError
+		var typeErr *json.UnmarshalTypeError
+		switch {
+		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %v", err)
+		case errors.As(err, &syntaxErr), errors.As(err, &typeErr):
+			return nil, fmt.Errorf("レスポンスのJSONデコードに失敗しました: %v", err)
+		default:
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %v", err)
+		}
 	}
 
 	// GraphQLエラーをチェック

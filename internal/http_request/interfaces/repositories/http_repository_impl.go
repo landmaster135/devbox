@@ -29,6 +29,13 @@ const (
 	sniffBufferSize     = 4 << 10  // 4 KiB
 )
 
+var (
+	charsetContentTypeRegex = regexp.MustCompile(`charset=([^;]+)`)
+	metaCharsetRegex        = regexp.MustCompile(`<meta\s+charset\s*=\s*["']?([^"'>\s]+)["']?`)
+	metaHTTPEquivRegex      = regexp.MustCompile(`<meta\s+http-equiv\s*=\s*["']?content-type["']?\s+content\s*=\s*["'][^"']*charset=([^"';\s]+)`)
+	metaContentFirstRegex   = regexp.MustCompile(`<meta\s+content\s*=\s*["'][^"']*charset=([^"';\s]+)[^"']*["']\s+http-equiv\s*=\s*["']?content-type["']?`)
+)
+
 // NewHTTPRepository は新しいHTTPRepositoryインスタンスを作成します
 func NewHTTPRepository() *HTTPRepositoryImpl {
 	return &HTTPRepositoryImpl{
@@ -211,8 +218,7 @@ func isShiftJIS(charset string) bool {
 
 // extractCharsetFromContentType はContent-Typeヘッダーからcharsetを抽出します
 func (r *HTTPRepositoryImpl) extractCharsetFromContentType(contentType string) string {
-	re := regexp.MustCompile(`charset=([^;]+)`)
-	matches := re.FindStringSubmatch(contentType)
+	matches := charsetContentTypeRegex.FindStringSubmatch(contentType)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
@@ -225,22 +231,19 @@ func (r *HTTPRepositoryImpl) extractCharsetFromHTML(html string) string {
 	lowerHTML := strings.ToLower(html)
 
 	// <meta charset="..."> パターン
-	re1 := regexp.MustCompile(`<meta\s+charset\s*=\s*["']?([^"'>\s]+)["']?`)
-	matches := re1.FindStringSubmatch(lowerHTML)
+	matches := metaCharsetRegex.FindStringSubmatch(lowerHTML)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
 
 	// <meta http-equiv="Content-Type" content="text/html; charset=..."> パターン
-	re2 := regexp.MustCompile(`<meta\s+http-equiv\s*=\s*["']?content-type["']?\s+content\s*=\s*["'][^"']*charset=([^"';\s]+)`)
-	matches = re2.FindStringSubmatch(lowerHTML)
+	matches = metaHTTPEquivRegex.FindStringSubmatch(lowerHTML)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
 
 	// content属性が先に来るパターンも対応
-	re3 := regexp.MustCompile(`<meta\s+content\s*=\s*["'][^"']*charset=([^"';\s]+)[^"']*["']\s+http-equiv\s*=\s*["']?content-type["']?`)
-	matches = re3.FindStringSubmatch(lowerHTML)
+	matches = metaContentFirstRegex.FindStringSubmatch(lowerHTML)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
