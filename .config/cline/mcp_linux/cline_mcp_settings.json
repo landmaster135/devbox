@@ -175,7 +175,9 @@
         "NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIP": "YOUR_VALUE"
       },
       "disabled": false,
-      "autoApprove": []
+      "autoApprove": [],
+      "timeout": 90000,
+      "requestTimeout": 120000
     },
     "weather_notificator": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",

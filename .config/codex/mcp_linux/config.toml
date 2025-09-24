@@ -5,7 +5,11 @@ model_reasoning_summary = "auto"
 hide_agent_reasoning = true
 show_raw_agent_reasoning = false
 
-notify = ["bash", "-lc", "/home/user/devbox/pkg/bash/notification_about_agent_works_terminated.sh DISCORD_WEBHOOK_URL Codex完了！"]
+notify = [
+  "bash",
+  "-lc",
+  "/home/user/devbox/pkg/bash/notification_about_agent_works_terminated.sh DISCORD_WEBHOOK_URL Codex完了！",
+]
 
 [tools]
 web_search = false
@@ -130,6 +134,8 @@ args = ["notion_sync"]
 disabled = false
 autoApprove = []
 env = { NOTION_INTEGRATION_TOKEN = "YOUR_VALUE", NOTION_ENDPOINT_URL = "YOUR_VALUE", NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIP = "YOUR_VALUE" }
+timeout = "90s"
+request_timeout = "120s"
 
 [mcp_servers.weather_notificator]
 command = "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools"
