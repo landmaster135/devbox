@@ -1,7 +1,10 @@
 package config
 
 import (
+	"flag"
+	"io"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -431,6 +434,67 @@ func (t *TestConfig) TestNewConfig_ModelDefaultsByAiType(test *testing.T) {
 				t.Errorf("Model = %v, want %v", config.Model, tt.expectedModel)
 			}
 		})
+	}
+}
+
+func TestParseFlags(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	tempDir := t.TempDir()
+	os.Args = []string{"cmd", "-path", tempDir, "-ai-type", "ollama"}
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags returned error: %v", err)
+	}
+	if cfg.Path != tempDir {
+		t.Fatalf("expected path %s got %s", tempDir, cfg.Path)
+	}
+	if cfg.AiType != "ollama" {
+		t.Fatalf("expected ai type ollama, got %s", cfg.AiType)
+	}
+}
+
+func TestParseFlags_Help(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	os.Args = []string{"cmd", "-h"}
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags returned error: %v", err)
+	}
+	if !cfg.Help {
+		t.Fatal("expected Help flag to be set")
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w
+	defer func() {
+		os.Stderr = oldStderr
+	}()
+
+	PrintUsage()
+	if err := w.Close(); err != nil {
+		t.Fatalf("failed to close writer: %v", err)
+	}
+	output, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("failed to read usage output: %v", err)
+	}
+
+	if !strings.Contains(string(output), "AI OCR実行CLIツール") {
+		t.Fatalf("usage output missing header: %s", string(output))
 	}
 }
 
