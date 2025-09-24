@@ -33,22 +33,22 @@ go build -o image-renamer-with-exif main.go
 
 ```bash
 # 現在のディレクトリの画像ファイルをリネーム
-./image-renamer-with-exif
+go run ./cmd/cli/image-renamer-with-exif
 
 # 特定のディレクトリのJPEGファイルのみリネーム
-./image-renamer-with-exif --dir ./photos --ext jpg
+go run ./cmd/cli/image-renamer-with-exif --dir ./photos --ext jpg
 
 # サブディレクトリも含めて再帰的にリネーム
-./image-renamer-with-exif --dir ./photos --recursive
+go run ./cmd/cli/image-renamer-with-exif --dir ./photos --recursive
 
 # ドライランで処理対象ファイルを確認
-./image-renamer-with-exif --dir ./photos --dry-run
+go run ./cmd/cli/image-renamer-with-exif --dir ./photos --dry-run
 
 # ファイルの更新時刻を使用してリネーム
-./image-renamer-with-exif --dir ./photos --use-file-modtime
+go run ./cmd/cli/image-renamer-with-exif --dir ./photos --use-file-modtime
 
 # 詳細出力でリネーム
-./image-renamer-with-exif --dir ./photos --verbose
+go run ./cmd/cli/image-renamer-with-exif --dir ./photos --verbose
 ```
 
 ### コマンドラインオプション

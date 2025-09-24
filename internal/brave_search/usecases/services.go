@@ -130,11 +130,46 @@ type HTTPClient interface {
 }
 
 // DefaultHTTPClient は標準のhttp.Clientを使用する実装
-type DefaultHTTPClient struct{}
+type DefaultHTTPClient struct {
+	client *http.Client
+}
+
+const (
+	defaultHTTPClientTimeout      = 30 * time.Second
+	defaultMaxIdleConns           = 100
+	defaultMaxIdleConnsPerHost    = 10
+	defaultIdleConnectionLifetime = 90 * time.Second
+)
+
+func newConfiguredHTTPClient() *http.Client {
+	transport := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConns:        defaultMaxIdleConns,
+		MaxIdleConnsPerHost: defaultMaxIdleConnsPerHost,
+		IdleConnTimeout:     defaultIdleConnectionLifetime,
+	}
+
+	return &http.Client{
+		Timeout:   defaultHTTPClientTimeout,
+		Transport: transport,
+	}
+}
+
+// NewDefaultHTTPClient は再利用可能なHTTPクライアントを生成する
+func NewDefaultHTTPClient() *DefaultHTTPClient {
+	return &DefaultHTTPClient{
+		client: newConfiguredHTTPClient(),
+	}
+}
 
 func (c *DefaultHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	client := &http.Client{}
-	return client.Do(req)
+	if c == nil {
+		return http.DefaultClient.Do(req)
+	}
+	if c.client == nil {
+		c.client = newConfiguredHTTPClient()
+	}
+	return c.client.Do(req)
 }
 
 // EnvironmentReader インターフェースを定義
@@ -162,7 +197,7 @@ type BraveSearchService struct {
 // NewBraveSearchService は新しいBraveSearchServiceを作成します
 func NewBraveSearchService() *BraveSearchService {
 	return &BraveSearchService{
-		httpClient:  &DefaultHTTPClient{},
+		httpClient:  NewDefaultHTTPClient(),
 		envReader:   &DefaultEnvironmentReader{},
 		rateLimiter: NewBraveRateLimiter(),
 	}

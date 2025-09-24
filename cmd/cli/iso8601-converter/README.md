@@ -13,48 +13,48 @@ UNIXタイムスタンプとISO-8601形式の相互変換を行うコマンド�
 ### UNIXタイムスタンプからISO-8601形式への変換
 
 ```bash
-iso8601-converter --to-iso --input <unix_timestamp>
+go run ./cmd/cli/iso8601-converter --to-iso --input <unix_timestamp>
 ```
 
 例:
 ```bash
-iso8601-converter --to-iso --input 1619712000
+go run ./cmd/cli/iso8601-converter --to-iso --input 1619712000
 # 出力例: 2021-04-30T01:00:00+09:00
 ```
 
 ### ISO-8601形式からUNIXタイムスタンプへの変換
 
 ```bash
-iso8601-converter --to-unix --input <iso8601_time>
+go run ./cmd/cli/iso8601-converter --to-unix --input <iso8601_time>
 ```
 
 例:
 ```bash
-iso8601-converter --to-unix --input "2021-04-30T00:00:00Z"
+go run ./cmd/cli/iso8601-converter --to-unix --input "2021-04-30T00:00:00Z"
 # 出力例: 1619740800
 ```
 
 ### 日付からUNIXタイムスタンプへの変換（UTC）
 
 ```bash
-iso8601-converter --to-unix --input <date>
+go run ./cmd/cli/iso8601-converter --to-unix --input <date>
 ```
 
 例:
 ```bash
-iso8601-converter --to-unix --input "2021-04-30"
+go run ./cmd/cli/iso8601-converter --to-unix --input "2021-04-30"
 # 出力例: 1619740800
 ```
 
 ### 日付からUNIXタイムスタンプへの変換（JST）
 
 ```bash
-iso8601-converter --to-unix --is-jst --input <date>
+go run ./cmd/cli/iso8601-converter --to-unix --is-jst --input <date>
 ```
 
 例:
 ```bash
-iso8601-converter --to-unix --is-jst --input "2021-04-30"
+go run ./cmd/cli/iso8601-converter --to-unix --is-jst --input "2021-04-30"
 # 出力例: 1619708400
 ```
 

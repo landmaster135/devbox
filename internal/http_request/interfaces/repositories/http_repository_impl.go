@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -22,6 +23,11 @@ type HTTPRepositoryImpl struct {
 	client    *http.Client
 	userAgent string
 }
+
+const (
+	maxResponseBodySize = 10 << 20 // 10 MiB
+	sniffBufferSize     = 4 << 10  // 4 KiB
+)
 
 // NewHTTPRepository は新しいHTTPRepositoryインスタンスを作成します
 func NewHTTPRepository() *HTTPRepositoryImpl {
@@ -78,10 +84,17 @@ func (r *HTTPRepositoryImpl) SendRequest(request *models.HTTPRequest) (*models.H
 	}
 	defer resp.Body.Close()
 
-	// レスポンスボディを読み込む
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンスボディの読み込みに失敗しました: %w", err)
+	contentType := resp.Header.Get("Content-Type")
+	limited := &io.LimitedReader{R: resp.Body, N: maxResponseBodySize + 1}
+	reader := bufio.NewReader(limited)
+
+	body, convErr := r.readResponseBody(reader, contentType, request.Encoding)
+	if limited.N <= 0 {
+		return nil, fmt.Errorf("レスポンスボディが最大サイズ(%dバイト)を超えました", maxResponseBodySize)
+	}
+	if convErr != nil {
+		// 変換に失敗した場合は元のボディをそのまま使用し、エラーは無視する
+		// convErrはデバッグ用途にのみ意味を持つため、ここではハンドリングしない
 	}
 
 	// レスポンスヘッダーをマップに変換
@@ -92,18 +105,11 @@ func (r *HTTPRepositoryImpl) SendRequest(request *models.HTTPRequest) (*models.H
 		}
 	}
 
-	// 文字エンコーディングを検出・変換
-	convertedBody, err := r.convertEncoding(body, headers["Content-Type"], request.Encoding)
-	if err != nil {
-		// 変換に失敗した場合は元のボディをそのまま使用
-		convertedBody = body
-	}
-
 	// HTTPResponseを作成して返す
 	return &models.HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Headers:    headers,
-		Body:       convertedBody,
+		Body:       body,
 	}, nil
 }
 
@@ -136,39 +142,71 @@ func (r *HTTPRepositoryImpl) LoadJSONFile(filePath string) ([]byte, error) {
 	return content, nil
 }
 
-// convertEncoding は文字エンコーディングを検出・変換します
+// readResponseBody はレスポンスボディを読み込み、必要に応じてエンコーディングを変換します
+func (r *HTTPRepositoryImpl) readResponseBody(reader *bufio.Reader, contentType, specifiedEncoding string) ([]byte, error) {
+	isHTML := strings.Contains(strings.ToLower(contentType), "text/html")
+	charset := r.detectCharset(reader, contentType, specifiedEncoding, isHTML)
+
+	if isHTML && isShiftJIS(charset) {
+		var rawBuf bytes.Buffer
+		tee := io.TeeReader(reader, &rawBuf)
+		decoded := transform.NewReader(tee, japanese.ShiftJIS.NewDecoder())
+		var convertedBuf bytes.Buffer
+		if _, err := convertedBuf.ReadFrom(decoded); err != nil {
+			return rawBuf.Bytes(), fmt.Errorf("Shift_JISからUTF-8への変換に失敗しました: %w", err)
+		}
+		return convertedBuf.Bytes(), nil
+	}
+
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(reader); err != nil {
+		return nil, fmt.Errorf("レスポンスボディの読み込みに失敗しました: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// convertEncoding はテスト互換性のために残しているヘルパー
 func (r *HTTPRepositoryImpl) convertEncoding(body []byte, contentType string, specifiedEncoding string) ([]byte, error) {
-	// HTMLの場合のみ文字エンコーディング変換を実行
-	if !strings.Contains(strings.ToLower(contentType), "text/html") {
-		return body, nil
+	limited := &io.LimitedReader{R: bytes.NewReader(body), N: maxResponseBodySize + 1}
+	reader := bufio.NewReader(limited)
+	converted, err := r.readResponseBody(reader, contentType, specifiedEncoding)
+	if limited.N <= 0 {
+		return nil, fmt.Errorf("レスポンスボディが最大サイズ(%dバイト)を超えました", maxResponseBodySize)
 	}
+	return converted, err
+}
 
-	var charset string
-
-	// 指定されたエンコーディングがある場合は優先使用
+// detectCharset はレスポンスのcharsetを推測します
+func (r *HTTPRepositoryImpl) detectCharset(reader *bufio.Reader, contentType, specifiedEncoding string, isHTML bool) string {
 	if specifiedEncoding != "" && specifiedEncoding != "auto" {
-		charset = specifiedEncoding
-	} else {
-		// Content-Typeヘッダーからcharsetを検出
-		charset = r.extractCharsetFromContentType(contentType)
+		return specifiedEncoding
+	}
 
-		// Content-Typeにcharsetがない場合、HTMLのmetaタグから検出
-		if charset == "" {
-			charset = r.extractCharsetFromHTML(string(body))
+	if charset := r.extractCharsetFromContentType(contentType); charset != "" {
+		return charset
+	}
+
+	if !isHTML {
+		return ""
+	}
+
+	peek, _ := reader.Peek(sniffBufferSize)
+	if len(peek) > 0 {
+		if charset := r.extractCharsetFromHTML(string(peek)); charset != "" {
+			return charset
 		}
 	}
 
-	// Shift_JISの場合、UTF-8に変換
-	if strings.ToLower(charset) == "shift_jis" || strings.ToLower(charset) == "shift-jis" {
-		reader := transform.NewReader(bytes.NewReader(body), japanese.ShiftJIS.NewDecoder())
-		converted, err := io.ReadAll(reader)
-		if err != nil {
-			return body, fmt.Errorf("Shift_JISからUTF-8への変換に失敗しました: %w", err)
-		}
-		return converted, nil
-	}
+	return ""
+}
 
-	return body, nil
+func isShiftJIS(charset string) bool {
+	switch strings.ToLower(strings.TrimSpace(charset)) {
+	case "shift_jis", "shift-jis":
+		return true
+	default:
+		return false
+	}
 }
 
 // extractCharsetFromContentType はContent-Typeヘッダーからcharsetを抽出します
