@@ -15,6 +15,88 @@ import (
 	config "github.com/landmaster135/devbox/internal/ocr_executor_with_ai/config"
 )
 
+type contentGenerator interface {
+	GenerateContent(ctx context.Context, model string, contents []*genai.Content, config *genai.GenerateContentConfig) (*genai.GenerateContentResponse, error)
+}
+
+type genAIBaseClient struct {
+	generator contentGenerator
+}
+
+func (c *genAIBaseClient) generate(ctx context.Context, req *AIRequest) (string, error) {
+	if c.generator == nil {
+		return "", fmt.Errorf("AIクライアントが初期化されていません")
+	}
+	if len(req.ImageData) == 0 {
+		return "", fmt.Errorf("画像データが空です")
+	}
+
+	temperature := float32(req.Temperature)
+	maxTokens := int32(req.MaxTokens)
+	generateConfig := &genai.GenerateContentConfig{
+		Temperature:     &temperature,
+		MaxOutputTokens: maxTokens,
+		SystemInstruction: &genai.Content{
+			Role:  "system",
+			Parts: []*genai.Part{{Text: req.SystemInstruction}},
+		},
+		SafetySettings: []*genai.SafetySetting{
+			{
+				Category:  "HARM_CATEGORY_HATE_SPEECH",
+				Threshold: "OFF",
+			},
+			{
+				Category:  "HARM_CATEGORY_DANGEROUS_CONTENT",
+				Threshold: "OFF",
+			},
+			{
+				Category:  "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+				Threshold: "OFF",
+			},
+			{
+				Category:  "HARM_CATEGORY_HARASSMENT",
+				Threshold: "OFF",
+			},
+		},
+	}
+
+	content := &genai.Content{
+		Role: "user",
+		Parts: []*genai.Part{
+			{Text: req.Prompt},
+			{
+				InlineData: &genai.Blob{
+					Data:     req.ImageData,
+					MIMEType: req.MimeType,
+				},
+			},
+		},
+	}
+
+	response, err := c.generator.GenerateContent(ctx, req.Model, []*genai.Content{content}, generateConfig)
+	if err != nil {
+		return "", fmt.Errorf("コンテンツ生成エラー: %w", err)
+	}
+
+	if len(response.Candidates) == 0 {
+		return "", fmt.Errorf("レスポンスに候補が含まれていません")
+	}
+
+	candidate := response.Candidates[0]
+	if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
+		return "", fmt.Errorf("レスポンスにコンテンツが含まれていません")
+	}
+
+	var builder strings.Builder
+	for _, part := range candidate.Content.Parts {
+		if part.Text != "" {
+			builder.WriteString(part.Text)
+		}
+	}
+
+	return builder.String(), nil
+}
+
 // AIClient はAI OCRを実行するクライアントの共通インターフェース
 type AIClient interface {
 	Generate(ctx context.Context, req *AIRequest) (string, error)
@@ -39,26 +121,34 @@ type AIRequest struct {
 // GeminiAIClient はGemini API用クライアント
 type GeminiAIClient struct {
 	client *genai.Client
+	base   genAIBaseClient
 }
 
-// NewGeminiAIClient はGeminiAIClientを生成する
-func NewGeminiAIClient(cfg *config.Config) (AIClient, error) {
-	clientConfig := &genai.ClientConfig{
-		APIKey:  cfg.APIKey,
-		Backend: genai.BackendGeminiAPI,
+// NewGeminiAIClient はGeminiAIClientを生成する。clientを指定しない場合はcfgから生成する
+func NewGeminiAIClient(cfg *config.Config, client *genai.Client) (AIClient, error) {
+	if client == nil {
+		clientConfig := &genai.ClientConfig{
+			APIKey:  cfg.APIKey,
+			Backend: genai.BackendGeminiAPI,
+		}
+
+		var err error
+		client, err = genai.NewClient(context.Background(), clientConfig)
+		if err != nil {
+			return nil, fmt.Errorf("geminiクライアントの作成に失敗しました: %w", err)
+		}
 	}
 
-	client, err := genai.NewClient(context.Background(), clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("geminiクライアントの作成に失敗しました: %w", err)
+	if client.Models == nil {
+		return nil, fmt.Errorf("geminiクライアントの作成に失敗しました: モデルが初期化されていません")
 	}
 
-	return &GeminiAIClient{client: client}, nil
+	return &GeminiAIClient{client: client, base: genAIBaseClient{generator: client.Models}}, nil
 }
 
 // Generate はGemini APIでOCRを実行する
 func (c *GeminiAIClient) Generate(ctx context.Context, req *AIRequest) (string, error) {
-	return generateWithGenAI(ctx, c.client, req)
+	return c.base.generate(ctx, req)
 }
 
 // Close はリソースを解放する（Geminiでは特に不要）
@@ -72,27 +162,35 @@ func (c *GeminiAIClient) Close() error {
 // VertexAIClient はVertex AI用クライアント
 type VertexAIClient struct {
 	client *genai.Client
+	base   genAIBaseClient
 }
 
-// NewVertexAIClient はVertexAIClientを生成する
-func NewVertexAIClient(cfg *config.Config) (AIClient, error) {
-	clientConfig := &genai.ClientConfig{
-		Project:  cfg.Project,
-		Location: cfg.Location,
-		Backend:  genai.BackendVertexAI,
+// NewVertexAIClient はVertexAIClientを生成する。clientを指定しない場合はcfgから生成する
+func NewVertexAIClient(cfg *config.Config, client *genai.Client) (AIClient, error) {
+	if client == nil {
+		clientConfig := &genai.ClientConfig{
+			Project:  cfg.Project,
+			Location: cfg.Location,
+			Backend:  genai.BackendVertexAI,
+		}
+
+		var err error
+		client, err = genai.NewClient(context.Background(), clientConfig)
+		if err != nil {
+			return nil, fmt.Errorf("vertexクライアントの作成に失敗しました: %w", err)
+		}
 	}
 
-	client, err := genai.NewClient(context.Background(), clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("vertexクライアントの作成に失敗しました: %w", err)
+	if client.Models == nil {
+		return nil, fmt.Errorf("vertexクライアントの作成に失敗しました: モデルが初期化されていません")
 	}
 
-	return &VertexAIClient{client: client}, nil
+	return &VertexAIClient{client: client, base: genAIBaseClient{generator: client.Models}}, nil
 }
 
 // Generate はVertex AIでOCRを実行する
 func (c *VertexAIClient) Generate(ctx context.Context, req *AIRequest) (string, error) {
-	return generateWithGenAI(ctx, c.client, req)
+	return c.base.generate(ctx, req)
 }
 
 // Close はリソースを解放する（Vertexでは特に不要）
@@ -103,16 +201,29 @@ func (c *VertexAIClient) Close() error {
 // #==============================================================#
 // ##       Implementations for OllamaAIClient                   ##
 // #==============================================================#
+const (
+	ollamaGenerateEndpoint   = "http://localhost:11434/api/generate"
+	ollamaScannerBufferSize  = 1 << 20 // 1 MiB
+	ollamaRequestContentType = "application/json"
+)
+
+type ollamaResponseChunk struct {
+	Response string `json:"response"`
+	Done     bool   `json:"done"`
+	Error    string `json:"error,omitempty"`
+}
+
 // OllamaAIClient はOllama API用クライアント
 type OllamaAIClient struct {
 	httpClient *http.Client
 }
 
-// NewOllamaAIClient はOllamaAIClientを生成する
-func NewOllamaAIClient(_ *config.Config) (AIClient, error) {
-	return &OllamaAIClient{
-		httpClient: &http.Client{Timeout: 120 * time.Second},
-	}, nil
+// NewOllamaAIClient はOllamaAIClientを生成する。httpClientを指定しない場合はデフォルトを使用する
+func NewOllamaAIClient(_ *config.Config, httpClient *http.Client) (AIClient, error) {
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 120 * time.Second}
+	}
+	return &OllamaAIClient{httpClient: httpClient}, nil
 }
 
 // Generate はOllama APIでOCRを実行する
@@ -200,87 +311,4 @@ func (c *OllamaAIClient) Generate(ctx context.Context, req *AIRequest) (string, 
 // Close はリソースを解放する（Ollamaでは特に不要）
 func (c *OllamaAIClient) Close() error {
 	return nil
-}
-
-const (
-	ollamaGenerateEndpoint   = "http://localhost:11434/api/generate"
-	ollamaScannerBufferSize  = 1 << 20 // 1 MiB
-	ollamaRequestContentType = "application/json"
-)
-
-type ollamaResponseChunk struct {
-	Response string `json:"response"`
-	Done     bool   `json:"done"`
-	Error    string `json:"error,omitempty"`
-}
-
-func generateWithGenAI(ctx context.Context, client *genai.Client, req *AIRequest) (string, error) {
-	if len(req.ImageData) == 0 {
-		return "", fmt.Errorf("画像データが空です")
-	}
-
-	temperature := float32(req.Temperature)
-	maxTokens := int32(req.MaxTokens)
-	generateConfig := &genai.GenerateContentConfig{
-		Temperature:     &temperature,
-		MaxOutputTokens: maxTokens,
-		SystemInstruction: &genai.Content{
-			Role:  "system",
-			Parts: []*genai.Part{{Text: req.SystemInstruction}},
-		},
-		SafetySettings: []*genai.SafetySetting{
-			{
-				Category:  "HARM_CATEGORY_HATE_SPEECH",
-				Threshold: "OFF",
-			},
-			{
-				Category:  "HARM_CATEGORY_DANGEROUS_CONTENT",
-				Threshold: "OFF",
-			},
-			{
-				Category:  "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-				Threshold: "OFF",
-			},
-			{
-				Category:  "HARM_CATEGORY_HARASSMENT",
-				Threshold: "OFF",
-			},
-		},
-	}
-
-	content := &genai.Content{
-		Role: "user",
-		Parts: []*genai.Part{
-			{Text: req.Prompt},
-			{
-				InlineData: &genai.Blob{
-					Data:     req.ImageData,
-					MIMEType: req.MimeType,
-				},
-			},
-		},
-	}
-
-	response, err := client.Models.GenerateContent(ctx, req.Model, []*genai.Content{content}, generateConfig)
-	if err != nil {
-		return "", fmt.Errorf("コンテンツ生成エラー: %w", err)
-	}
-
-	if len(response.Candidates) == 0 {
-		return "", fmt.Errorf("レスポンスに候補が含まれていません")
-	}
-
-	candidate := response.Candidates[0]
-	if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
-		return "", fmt.Errorf("レスポンスにコンテンツが含まれていません")
-	}
-
-	var builder strings.Builder
-	for _, part := range candidate.Content.Parts {
-		if part.Text != "" {
-			builder.WriteString(part.Text)
-		}
-	}
-
-	return builder.String(), nil
 }

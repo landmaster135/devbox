@@ -29,11 +29,11 @@ func NewOcrExecutorService(cfg *config.Config) (*OcrExecutorService, error) {
 
 	switch cfg.AiType {
 	case "gemini":
-		client, err = NewGeminiAIClient(cfg)
+		client, err = newGeminiClientFactory(cfg, nil)
 	case "vertex":
-		client, err = NewVertexAIClient(cfg)
+		client, err = newVertexClientFactory(cfg, nil)
 	case "ollama":
-		client, err = NewOllamaAIClient(cfg)
+		client, err = newOllamaClientFactory(cfg, nil)
 	default:
 		return nil, fmt.Errorf("無効なAIタイプです: %s", cfg.AiType)
 	}
@@ -146,3 +146,9 @@ func (s *OcrExecutorService) Close() error {
 	}
 	return s.client.Close()
 }
+
+var (
+	newGeminiClientFactory = NewGeminiAIClient
+	newVertexClientFactory = NewVertexAIClient
+	newOllamaClientFactory = NewOllamaAIClient
+)
