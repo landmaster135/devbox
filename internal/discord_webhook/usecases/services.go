@@ -7,20 +7,30 @@ import (
 	discord "github.com/landmaster135/devbox/internal/discord_webhook/infrastructure/discord"
 )
 
+// #==============================================================#
+// ##       Const and Types                                      ##
+// #==============================================================#
 const (
-	botNameForVSCODE      = "VSCode生徒会長"
-	botNameForOpenWeather = "お天気あゆ"
-	footerTextInEmbed     = "VSCode"
-	vsCodeIconURL         = "https://code.visualstudio.com/assets/images/code-stable.png"
+	botNameForVSCODE             = "VSCode生徒会長"
+	footerTextInEmbed            = "VSCode"
+	vsCodeIconURL                = "https://code.visualstudio.com/assets/images/code-stable.png"
+	botNameForOpenWeather        = "お天気あゆ"
+	footerTextInOpenWeatherEmbed = "OpenWeatherMap"
+	openWeatherIconURL           = "https://openweathermap.org/themes/openweathermap/assets/img/logo_white_cropped.png"
+	defaultOpenWeatherEmbedText  = "最新の天気予報"
+	defaultOpenWeatherEmbedColor = "orange"
 )
 
+// #==============================================================#
+// ##       Implementations for DiscordWebhookService            ##
+// #==============================================================#
 // DiscordWebhookService はDiscord Webhook通知のサービス
 type DiscordWebhookService struct {
-	repository discord.DiscordRepository
+	repository discord.DiscordClientRepository
 }
 
 // NewDiscordWebhookService は新しいDiscordWebhookServiceを作成します
-func NewDiscordWebhookService(repository discord.DiscordRepository) *DiscordWebhookService {
+func NewDiscordWebhookService(repository discord.DiscordClientRepository) *DiscordWebhookService {
 	return &DiscordWebhookService{
 		repository: repository,
 	}
@@ -28,10 +38,14 @@ func NewDiscordWebhookService(repository discord.DiscordRepository) *DiscordWebh
 
 // NewDefaultDiscordWebhookService はデフォルト設定でDiscordWebhookServiceを作成します
 func NewDefaultDiscordWebhookService() *DiscordWebhookService {
-	repository := discord.NewDefaultDiscordRepository()
+	// repository := discord.NewDefaultDiscordRepository()
+	repository := discord.NewDefaultDiscordClient()
 	return NewDiscordWebhookService(repository)
 }
 
+// #==============================================================#
+// ##       Webhook Process                                      ##
+// #==============================================================#
 // createSimplePayload はembedなしの簡単な通知を送信します
 func (s *DiscordWebhookService) createSimplePayload(contentText string) (*discord.Payload, error) {
 	// ペイロードを作成
@@ -82,6 +96,40 @@ func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embe
 	return payload, nil
 }
 
+func (s *DiscordWebhookService) createOpenWeatherMapPayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
+	if embedText == "" {
+		embedText = defaultOpenWeatherEmbedText
+	}
+	if embedColor == "" {
+		embedColor = defaultOpenWeatherEmbedColor
+	}
+
+	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
+	if err != nil {
+		availableColors := s.repository.GetAvailableColors()
+		return nil, fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
+	}
+
+	embeds, err := s.repository.CreateEmbeds(
+		embedText,
+		colorInDecimal,
+		embedURLLinkedText,
+		footerTextInOpenWeatherEmbed,
+		openWeatherIconURL,
+		true,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("embedsの作成に失敗しました: %w", err)
+	}
+
+	payload, err := s.repository.CreatePayload(botNameForOpenWeather, contentText, embeds, false)
+	if err != nil {
+		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+	}
+
+	return payload, nil
+}
+
 func (s *DiscordWebhookService) SendWebhook(ctx context.Context, webhookURL string, payload *discord.Payload) error {
 	// Webhookを送信
 	if err := s.repository.SendWebhook(ctx, webhookURL, payload); err != nil {
@@ -106,6 +154,11 @@ func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL
 		if err != nil {
 			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 		}
+	case "open-weather-map":
+		payload, err = s.createOpenWeatherMapPayload(contentText, embedText, embedColor, embedURLLinkedText)
+		if err != nil {
+			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+		}
 	default:
 		return fmt.Errorf("未対応のembed-typeです: %s", embedType)
 	}
@@ -118,18 +171,22 @@ func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL
 	return nil
 }
 
+// #==============================================================#
+// ##       Weather Notification Process                         ##
+// #==============================================================#
 func (s *DiscordWebhookService) CreateWeatherEmbed(title, description string, fields []*discord.EmbedField) (*discord.Embed, error) {
 	// 色を10進数に変換
-	embedColor := "orange"
+	embedColor := defaultOpenWeatherEmbedColor
 	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
 	if err != nil {
 		availableColors := s.repository.GetAvailableColors()
 		return nil, fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
 	}
 
-	embed, err := s.repository.CreateWeatherEmbed(
+	embed, err := s.repository.CreateEmbed(
 		title,
 		description,
+		"",
 		colorInDecimal,
 		fields,
 		footerTextInEmbed,

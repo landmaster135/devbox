@@ -30,7 +30,7 @@
 ### 基本的な使用方法
 
 ```bash
-./weather-notificator -api-key YOUR_API_KEY -city Tokyo -max-days 3 -webhook-url YOUR_WEBHOOK_URL
+go run ./cmd/cli/weather-notificator -api-key YOUR_API_KEY -city Tokyo -max-days 3 -webhook-url YOUR_WEBHOOK_URL
 ```
 
 ### パラメータ
@@ -48,7 +48,7 @@
 ### 東京の3日間天気予報
 
 ```bash
-./weather-notificator \
+go run ./cmd/cli/weather-notificator \
   -api-key your_openweather_api_key \
   -city Tokyo \
   -max-days 3 \
@@ -58,7 +58,7 @@
 ### 大阪の5日間天気予報
 
 ```bash
-./weather-notificator \
+go run ./cmd/cli/weather-notificator \
   -api-key your_openweather_api_key \
   -city Osaka \
   -max-days 5 \
@@ -68,7 +68,7 @@
 ### スペースを含む都市名の場合
 
 ```bash
-./weather-notificator \
+go run ./cmd/cli/weather-notificator \
   -api-key your_openweather_api_key \
   -city "New York" \
   -max-days 2 \
