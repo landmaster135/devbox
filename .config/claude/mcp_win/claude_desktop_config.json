@@ -133,7 +133,9 @@
         "NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIP": "YOUR_VALUE"
       },
       "disabled": false,
-      "autoApprove": []
+      "autoApprove": [],
+      "timeout": 90000,
+      "requestTimeout": 120000
     },
     "claude_code": {
       "command": "wsl",
