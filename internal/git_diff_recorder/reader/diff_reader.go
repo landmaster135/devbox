@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -26,26 +25,46 @@ func NewDiffReader(sourceDir string) *DiffReader {
 
 // FindLatestDiffFile は指定リポジトリの最新のdiffファイルを検索する
 func (r *DiffReader) FindLatestDiffFile(repository string) (string, error) {
-	repoDir := filepath.Join(r.sourceDir, repository)
-
 	// リポジトリディレクトリが存在するかチェック
+	repoDir := filepath.Join(r.sourceDir, repository)
 	if _, err := os.Stat(repoDir); os.IsNotExist(err) {
 		return "", fmt.Errorf("リポジトリディレクトリが見つかりません: %s", repoDir)
 	}
 
-	// diffファイルを検索
-	files, err := filepath.Glob(filepath.Join(repoDir, "diff_*.txt"))
+	entries, err := os.ReadDir(repoDir)
 	if err != nil {
-		return "", fmt.Errorf("diffファイルの検索に失敗しました: %w", err)
+		return "", fmt.Errorf("diffファイルの読み込みに失敗しました: %w", err)
 	}
 
-	if len(files) == 0 {
+	var latestFile string
+	var latestModTime time.Time
+	var latestName string
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasPrefix(name, "diff_") || filepath.Ext(name) != ".txt" {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return "", fmt.Errorf("ファイル情報の取得に失敗しました: %w", err)
+		}
+
+		if latestFile == "" || name > latestName || (name == latestName && info.ModTime().After(latestModTime)) {
+			latestFile = filepath.Join(repoDir, name)
+			latestModTime = info.ModTime()
+			latestName = name
+		}
+	}
+
+	if latestFile == "" {
 		return "", fmt.Errorf("diffファイルが見つかりません: %s", repoDir)
 	}
-
-	// ファイル名でソートして最新のファイルを取得
-	sort.Strings(files)
-	latestFile := files[len(files)-1]
 
 	return latestFile, nil
 }
@@ -108,7 +127,6 @@ type DiffFileInfo struct {
 	Branch      string
 	Options     string
 }
-
 
 // GetFileInfo はdiffファイルの基本情報を取得する
 func (r *DiffReader) GetFileInfo(filePath string) (*DiffFileInfo, error) {

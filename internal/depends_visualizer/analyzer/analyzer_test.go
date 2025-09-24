@@ -164,25 +164,32 @@ func TestAnalyzeDependencies_InvalidExtension(t *testing.T) {
 	}
 }
 
-// TestContains_Normal はcontains関数の正常系テストです
-func TestContains_Normal(t *testing.T) {
-	testCases := []struct {
-		name     string
-		slice    []string
-		item     string
-		expected bool
-	}{
-		{"Contains", []string{"a", "b", "c"}, "b", true},
-		{"DoesNotContain", []string{"a", "b", "c"}, "d", false},
-		{"EmptySlice", []string{}, "a", false},
+// TestAnalyzeDependencies_Deduplicates は重複参照が1回だけ登録されることを確認します
+func TestAnalyzeDependencies_Deduplicates(t *testing.T) {
+	lines := []string{
+		"package test",
+		"",
+		"func main() {",
+		"	foo()",
+		"	foo()",
+		"}",
+		"",
+		"func foo() {}",
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := contains(tc.slice, tc.item)
-			if result != tc.expected {
-				t.Errorf("contains(%v, %s) = %v, 期待する結果: %v", tc.slice, tc.item, result, tc.expected)
-			}
-		})
+	functions := []string{"main", "foo"}
+
+	deps, err := AnalyzeDependencies(lines, functions, ".go")
+	if err != nil {
+		t.Fatalf("AnalyzeDependenciesの実行に失敗しました: %v", err)
+	}
+
+	expected := map[string][]string{
+		"main": {"foo"},
+		"foo":  {},
+	}
+
+	if !reflect.DeepEqual(deps, expected) {
+		t.Errorf("期待する依存関係: %v, 実際の依存関係: %v", expected, deps)
 	}
 }

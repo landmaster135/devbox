@@ -49,7 +49,7 @@ image-filterer [オプション]
 
 画像全体をぼかし処理（座標指定なし）：
 ```bash
-image-filterer -mode blur
+go run ./cmd/cli/image-filterer -mode blur
 ```
 
 画像全体をグレースケール変換：
