@@ -128,9 +128,19 @@ func TestNewConfig_Normal(t *testing.T) {
 			contentText: "テストメッセージ",
 			expectError: false,
 		},
+		{
+			name:        "OpenWeatherMap embed",
+			embedType:   "open-weather-map",
+			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
+			contentText: "テストメッセージ",
+			embedText:   "本日の天気予報",
+			embedColor:  "orange",
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			config, err := NewConfig(tt.embedType, tt.webhookURL, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
 
@@ -206,7 +216,7 @@ func TestNewConfig_Error(t *testing.T) {
 			embedType:     "invalid",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
 			contentText:   "テストメッセージ",
-			expectedError: "無効なembed-typeです: invalid (有効な値: none, vscode)",
+			expectedError: "無効なembed-typeです: invalid (有効な値: none, open-weather-map, vscode)",
 		},
 		{
 			name:          "無効なwebhook-URL（httpスキーム）",
@@ -240,6 +250,7 @@ func TestNewConfig_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := NewConfig(tt.embedType, tt.webhookURL, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
 
@@ -401,6 +412,7 @@ func TestParseFlagsWithParser_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mockParser := NewMockFlagParser()
 

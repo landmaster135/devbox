@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -10,12 +11,14 @@ import (
 type Config struct {
 	WebhookURL         string // webhook-url (必須)
 	ContentText        string // content-text (必須)
-	EmbedType          string // embed-type (none, vscode)
+	EmbedType          string // embed-type (none, vscode, open-weather-map)
 	EmbedText          string // embed-text (任意)
 	EmbedColor         string // embed-color (任意)
 	EmbedURLLinkedText string // embed-url-linked-text (任意)
 	Help               bool   // ヘルプ表示フラグ
 }
+
+var validEmbedTypes = []string{"none", "vscode", "open-weather-map"}
 
 // NewConfig は新しいConfigを作成する
 func NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedURLLinkedText string) (*Config, error) {
@@ -31,16 +34,8 @@ func NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedU
 	}
 
 	// embed-typeの検証
-	validEmbedTypes := []string{"none", "vscode"}
-	isValid := false
-	for _, et := range validEmbedTypes {
-		if embedType == et {
-			isValid = true
-			break
-		}
-	}
-	if !isValid {
-		return nil, fmt.Errorf("無効なembed-typeです: %s (有効な値: none, vscode)", embedType)
+	if !isValidEmbedType(embedType) {
+		return nil, fmt.Errorf("無効なembed-typeです: %s (有効な値: %s)", embedType, embedTypeHelpMessage())
 	}
 
 	// webhook-urlの基本的な検証
@@ -69,6 +64,22 @@ func NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedU
 	}, nil
 }
 
+func isValidEmbedType(embedType string) bool {
+	for _, et := range validEmbedTypes {
+		if embedType == et {
+			return true
+		}
+	}
+	return false
+}
+
+func embedTypeHelpMessage() string {
+	types := make([]string, len(validEmbedTypes))
+	copy(types, validEmbedTypes)
+	sort.Strings(types)
+	return strings.Join(types, ", ")
+}
+
 // ParseFlags はコマンドライン引数を解析してConfigを作成する
 func ParseFlags() (*Config, error) {
 	return ParseFlagsWithParser(NewStandardFlagParser())
@@ -86,7 +97,9 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		help               = false
 	)
 
-	parser.StringVar(&embedType, "embed-type", embedType, "Embedのタイプ (none, vscode)")
+	embedUsage := fmt.Sprintf("Embedのタイプ (%s)", embedTypeHelpMessage())
+
+	parser.StringVar(&embedType, "embed-type", embedType, embedUsage)
 	parser.StringVar(&embedType, "et", embedType, "embed-typeの短縮形")
 
 	parser.StringVar(&webhookURL, "webhook-url", webhookURL, "Discord WebhookのURL")
@@ -130,13 +143,16 @@ func PrintUsage() {
   VSCode風embed付き通知:
     %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "デプロイ完了" -embed-type vscode -embed-text "アプリケーションが正常にデプロイされました"
 
+  OpenWeatherMap embed付き通知:
+    %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "天気予報" -embed-type open-weather-map -embed-text "今日の天気予報"
+
   フルオプション:
     %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "通知" -embed-type vscode -embed-text "タイトル" -embed-color "green" -embed-url-linked-text "https://example.com"
 
 必須オプション:
   -webhook-url, -wu     Discord WebhookのURL
   -content-text, -ct    メッセージの本文
-  -embed-type, -et      Embedのタイプ (none, vscode)
+  -embed-type, -et      Embedのタイプ (%s)
 
 任意オプション:
   -embed-text, -et-text     Embedのタイトル
@@ -145,8 +161,9 @@ func PrintUsage() {
   -help, -h                 このヘルプを表示
 
 embed-typeについて:
-  none   : Embedを使用せず、content-textのみを送信
-  vscode : VSCode風のEmbedを使用（フッターにVSCodeアイコンを表示）
+  none             : Embedを使用せず、content-textのみを送信
+  vscode           : VSCode風のEmbedを使用（フッターにVSCodeアイコンを表示）
+  open-weather-map : 天気予報向けのEmbedをOpenWeatherMap用アイコンで送信
 
-`, os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], embedTypeHelpMessage())
 }

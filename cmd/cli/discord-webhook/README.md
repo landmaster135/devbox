@@ -7,13 +7,13 @@ Discord WebhookでメッセージやEmbed付き通知を送信するためのCLI
 - Discord Webhookへのメッセージ送信
 - Embedなしの簡単な通知
 - VSCode風のEmbed付き通知（フッターにVSCodeアイコン表示）
+- OpenWeatherMap風のEmbed付き通知（専用カラーとアイコンを使用）
 - カスタマイズ可能な色設定
 - リンク付きタイトル対応
 
 ## インストール
 
 ```bash
-cd /home/nov/devbox
 go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 ```
 
@@ -22,7 +22,7 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 ### 基本的な通知（Embedなし）
 
 ```bash
-./bin/discord-webhook \
+go run ./cmd/cli/discord-webhook \
   -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
   -content-text "Hello, Discord!" \
   -embed-type none
@@ -31,17 +31,27 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 ### VSCode風Embed付き通知
 
 ```bash
-./bin/discord-webhook \
+go run ./cmd/cli/discord-webhook \
   -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
   -content-text "デプロイ完了" \
   -embed-type vscode \
   -embed-text "アプリケーションが正常にデプロイされました"
 ```
 
+### OpenWeatherMap風Embed付き通知
+
+```bash
+go run ./cmd/cli/discord-webhook \
+  -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
+  -content-text "東京の天気予報です" \
+  -embed-type open-weather-map \
+  -embed-text "今日の天気予報"
+```
+
 ### フルオプション
 
 ```bash
-./bin/discord-webhook \
+go run ./cmd/cli/discord-webhook \
   -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
   -content-text "通知" \
   -embed-type vscode \
@@ -58,7 +68,7 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 |-----------|--------|------|
 | `-webhook-url` | `-wu` | Discord WebhookのURL |
 | `-content-text` | `-ct` | メッセージの本文 |
-| `-embed-type` | `-et` | Embedのタイプ (none, vscode) |
+| `-embed-type` | `-et` | Embedのタイプ (none, vscode, open-weather-map) |
 
 ### 任意オプション
 
@@ -67,15 +77,15 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 | `-embed-text` | `-et-text` | Embedのタイトル |
 | `-embed-color` | `-ec` | Embedの色 |
 | `-embed-url-linked-text` | `-eult` | EmbedタイトルのリンクURL |
-| `-help` | `-h` | ヘルプを表示 |
+| `-help`, `-h` | ヘルプを表示 |
 
 ### Embed色の選択肢
 
 - `green` - 緑色
 - `red` - 赤色
-- `blue` - 青色（デフォルト）
+- `blue` - 青色（VSCodeモードのデフォルト）
 - `yellow` - 黄色
-- `orange` - オレンジ色
+- `orange` - オレンジ色（OpenWeatherMapモードのデフォルト）
 - `purple` - 紫色
 - `pink` - ピンク色
 - `sky_blue` - 空色
@@ -95,18 +105,23 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 - タイムスタンプ付き
 - カスタマイズ可能な色とリンク
 
+### open-weather-map
+- OpenWeatherMap風のEmbedを使用
+- デフォルトでオレンジ色・天気予報タイトル・専用ロゴを適用
+- `-embed-text` / `-embed-color` / `-embed-url-linked-text` で上書き可能
+
 ## 使用例
 
 ### 1. シンプルな通知
 
 ```bash
-./bin/discord-webhook -wu "YOUR_WEBHOOK_URL" -ct "Hello World!" -et none
+go run ./cmd/cli/discord-webhook -wu "YOUR_WEBHOOK_URL" -ct "Hello World!" -et none
 ```
 
 ### 2. 成功通知
 
 ```bash
-./bin/discord-webhook \
+go run ./cmd/cli/discord-webhook \
   -wu "YOUR_WEBHOOK_URL" \
   -ct "ビルドが完了しました" \
   -et vscode \
@@ -117,7 +132,7 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 ### 3. エラー通知
 
 ```bash
-./bin/discord-webhook \
+go run ./cmd/cli/discord-webhook \
   -wu "YOUR_WEBHOOK_URL" \
   -ct "エラーが発生しました" \
   -et vscode \
@@ -126,16 +141,16 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
   -eult "https://github.com/your-repo/actions"
 ```
 
-### 4. デプロイ通知
+### 4. 天気予報通知（カスタム設定）
 
 ```bash
-./bin/discord-webhook \
+go run ./cmd/cli/discord-webhook \
   -wu "YOUR_WEBHOOK_URL" \
-  -ct "新しいバージョンがデプロイされました" \
-  -et vscode \
-  -et-text "デプロイ完了 v1.2.3" \
-  -ec "blue" \
-  -eult "https://your-app.com"
+  -ct "大阪の天気予報をお届けします" \
+  -et open-weather-map \
+  -et-text "大阪の週末予報" \
+  -ec "sky_blue" \
+  -eult "https://example.com/weather"
 ```
 
 ## エラーハンドリング
