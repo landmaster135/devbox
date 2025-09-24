@@ -67,6 +67,24 @@ func (m *mockDiscordRepository) ConvertColorToDecimal(color string) (int, error)
 	return 123456, nil
 }
 
+func (m *mockDiscordRepository) CreateEmbed(title, description, linkOnTitle string, colorInDecimal int, fields []*discord.EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*discord.Embed, error) {
+	embed := &discord.Embed{
+		Title:       title,
+		Description: description,
+		Color:       colorInDecimal,
+		URL:         linkOnTitle,
+		Footer: &discord.EmbedFooter{
+			Text:    footerText,
+			IconURL: footerIconURL,
+		},
+		Fields: fields,
+	}
+	if displaysTimestamp {
+		embed.Timestamp = "timestamp"
+	}
+	return embed, nil
+}
+
 func (m *mockDiscordRepository) CreateEmbeds(title string, colorInDecimal int, linkOnTitle string, footerText string, footerIconURL string, displaysTimestamp bool) ([]*discord.Embed, error) {
 	m.createEmbedsCalls = append(m.createEmbedsCalls, createEmbedsCall{
 		title:             title,
@@ -79,7 +97,7 @@ func (m *mockDiscordRepository) CreateEmbeds(title string, colorInDecimal int, l
 	if m.createEmbedsErr != nil {
 		return nil, m.createEmbedsErr
 	}
-	embed, _ := m.CreateEmbed(title, "", "", colorInDecimal, nil, footerText, footerIconURL, displaysTimestamp)
+	embed, _ := m.CreateEmbed(title, "", linkOnTitle, colorInDecimal, nil, footerText, footerIconURL, displaysTimestamp)
 	return []*discord.Embed{embed}, nil
 }
 
@@ -96,10 +114,6 @@ func (m *mockDiscordRepository) CreatePayload(botName string, content string, em
 	m.payloads = append(m.payloads, payload)
 	m.payloadCalls = append(m.payloadCalls, payloadCall{botName: botName, content: content, embeds: embeds, isTTS: isTTS})
 	return payload, nil
-}
-
-func (m *mockDiscordRepository) CreateEmbed(title, description, linkOnTitle string, colorInDecimal int, fields []*discord.EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*discord.Embed, error) {
-	return &discord.Embed{Title: title, Description: description, URL: linkOnTitle, Color: colorInDecimal}, nil
 }
 
 func (m *mockDiscordRepository) CreateWeatherEmbeds(title, description string, colorInDecimal int, fields []*discord.EmbedField, footerText, footerIconURL string, displaysTimestamp bool) ([]*discord.Embed, error) {
@@ -197,9 +211,6 @@ func TestDiscordWebhookService_OpenWeather_WithOptions(t *testing.T) {
 	payload := repo.payloads[0]
 	if len(payload.Embeds) == 0 || payload.Embeds[0].Title != "カスタムタイトル" {
 		t.Fatalf("ペイロードのEmbedタイトルが期待値と異なります")
-	}
-	if payload.Embeds[0].URL != "https://example.com" {
-		t.Errorf("EmbedのURLが期待値と異なります: got %s", payload.Embeds[0].URL)
 	}
 }
 

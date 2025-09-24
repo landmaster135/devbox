@@ -12,9 +12,11 @@ import (
 // #==============================================================#
 const (
 	botNameForVSCODE             = "VSCode生徒会長"
-	footerTextInEmbed            = "VSCode"
-	vsCodeIconURL                = "https://code.visualstudio.com/assets/images/code-stable.png"
 	botNameForOpenWeather        = "お天気あゆ"
+	footerTextInVSCODEEmbed      = "VSCode"
+	vsCodeIconURL                = "https://code.visualstudio.com/assets/images/code-stable.png"
+	defaultVSCODEEmbedText       = "通知"
+	defaultVSCODEEmbedColor      = "blue"
 	footerTextInOpenWeatherEmbed = "OpenWeatherMap"
 	openWeatherIconURL           = "https://openweathermap.org/themes/openweathermap/assets/img/logo_white_cropped.png"
 	defaultOpenWeatherEmbedText  = "最新の天気予報"
@@ -38,7 +40,6 @@ func NewDiscordWebhookService(repository discord.DiscordClientRepository) *Disco
 
 // NewDefaultDiscordWebhookService はデフォルト設定でDiscordWebhookServiceを作成します
 func NewDefaultDiscordWebhookService() *DiscordWebhookService {
-	// repository := discord.NewDefaultDiscordRepository()
 	repository := discord.NewDefaultDiscordClient()
 	return NewDiscordWebhookService(repository)
 }
@@ -57,43 +58,52 @@ func (s *DiscordWebhookService) createSimplePayload(contentText string) (*discor
 	return payload, nil
 }
 
-// createVSCodePayload はVSCode風のembed付き通知を送信します
-func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
-	// デフォルト値の設定
-	if embedText == "" {
-		embedText = "通知"
-	}
-	if embedColor == "" {
-		embedColor = "blue"
-	}
-
-	// 色を10進数に変換
+// createPayloadWithEmbed は共通のEmbed付きペイロード作成処理
+func (s *DiscordWebhookService) createPayloadWithEmbed(botName, contentText, embedText, embedColor, embedURLLinkedText, footerText, footerIconURL string) (*discord.Payload, error) {
 	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
 	if err != nil {
 		availableColors := s.repository.GetAvailableColors()
 		return nil, fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
 	}
 
-	// embedsを作成
 	embeds, err := s.repository.CreateEmbeds(
 		embedText,
 		colorInDecimal,
 		embedURLLinkedText,
-		footerTextInEmbed,
-		vsCodeIconURL,
-		true, // タイムスタンプを表示
+		footerText,
+		footerIconURL,
+		true,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("embedsの作成に失敗しました: %w", err)
 	}
 
-	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botNameForVSCODE, contentText, embeds, false)
+	payload, err := s.repository.CreatePayload(botName, contentText, embeds, false)
 	if err != nil {
 		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
 
 	return payload, nil
+}
+
+// createVSCodePayload はVSCode風のembed付き通知を送信します
+func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
+	if embedText == "" {
+		embedText = defaultVSCODEEmbedText
+	}
+	if embedColor == "" {
+		embedColor = defaultVSCODEEmbedColor
+	}
+
+	return s.createPayloadWithEmbed(
+		botNameForVSCODE,
+		contentText,
+		embedText,
+		embedColor,
+		embedURLLinkedText,
+		footerTextInVSCODEEmbed,
+		vsCodeIconURL,
+	)
 }
 
 func (s *DiscordWebhookService) createOpenWeatherMapPayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
@@ -104,30 +114,15 @@ func (s *DiscordWebhookService) createOpenWeatherMapPayload(contentText, embedTe
 		embedColor = defaultOpenWeatherEmbedColor
 	}
 
-	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
-	if err != nil {
-		availableColors := s.repository.GetAvailableColors()
-		return nil, fmt.Errorf("色の変換に失敗しました: %w\n使用可能な色: %v", err, availableColors)
-	}
-
-	embeds, err := s.repository.CreateEmbeds(
+	return s.createPayloadWithEmbed(
+		botNameForOpenWeather,
+		contentText,
 		embedText,
-		colorInDecimal,
+		embedColor,
 		embedURLLinkedText,
 		footerTextInOpenWeatherEmbed,
 		openWeatherIconURL,
-		true,
 	)
-	if err != nil {
-		return nil, fmt.Errorf("embedsの作成に失敗しました: %w", err)
-	}
-
-	payload, err := s.repository.CreatePayload(botNameForOpenWeather, contentText, embeds, false)
-	if err != nil {
-		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
-	}
-
-	return payload, nil
 }
 
 func (s *DiscordWebhookService) SendWebhook(ctx context.Context, webhookURL string, payload *discord.Payload) error {
@@ -152,12 +147,12 @@ func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL
 	case "vscode":
 		payload, err = s.createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText)
 		if err != nil {
-			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+			return err
 		}
 	case "open-weather-map":
 		payload, err = s.createOpenWeatherMapPayload(contentText, embedText, embedColor, embedURLLinkedText)
 		if err != nil {
-			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
+			return err
 		}
 	default:
 		return fmt.Errorf("未対応のembed-typeです: %s", embedType)
@@ -176,7 +171,7 @@ func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL
 // #==============================================================#
 func (s *DiscordWebhookService) CreateWeatherEmbed(title, description string, fields []*discord.EmbedField) (*discord.Embed, error) {
 	// 色を10進数に変換
-	embedColor := defaultOpenWeatherEmbedColor
+	embedColor := "orange"
 	colorInDecimal, err := s.repository.ConvertColorToDecimal(embedColor)
 	if err != nil {
 		availableColors := s.repository.GetAvailableColors()
@@ -189,7 +184,7 @@ func (s *DiscordWebhookService) CreateWeatherEmbed(title, description string, fi
 		"",
 		colorInDecimal,
 		fields,
-		footerTextInEmbed,
+		footerTextInVSCODEEmbed,
 		vsCodeIconURL,
 		true, // タイムスタンプを表示
 	)
