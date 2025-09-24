@@ -31,42 +31,42 @@ image-converter [オプション]
 | `-R` | `false` | サブディレクトリを再帰的に処理 |
 | `-lossless` | `false` | ロスレス圧縮の有効化 |
 
-### 使用例
+## 使用例
 
-#### カレントディレクトリの画像をPNGに変換
+### カレントディレクトリの画像をPNGに変換
 
 ```bash
-image-converter -ext png
+go run ./cmd/cli/image-converter -ext png
 ```
 
-#### 指定ディレクトリの画像をWebPに変換（品質90）
+### 指定ディレクトリの画像をWebPに変換（品質90）
 
 ```bash
-image-converter -src ./photos -ext webp -q 90
+go run ./cmd/cli/image-converter -src ./photos -ext webp -q 90
 ```
 
-#### サブディレクトリも含めて全画像をJPEGに変換
+### サブディレクトリも含めて全画像をJPEGに変換
 
 ```bash
-image-converter -src ./photos -ext jpg -R
+go run ./cmd/cli/image-converter -src ./photos -ext jpg -R
 ```
 
-#### 出力先ディレクトリを指定して変換
+### 出力先ディレクトリを指定して変換
 
 ```bash
-image-converter -src ./photos -out ./converted -ext avif
+go run ./cmd/cli/image-converter -src ./photos -out ./converted -ext avif
 ```
 
-#### 変換後に元ファイルをアーカイブディレクトリにコピー
+### 変換後に元ファイルをアーカイブディレクトリにコピー
 
 ```bash
-image-converter -src ./photos -ext webp -archive ./originals
+go run ./cmd/cli/image-converter -src ./photos -ext webp -archive ./originals
 ```
 
-#### 変換後に元ファイルをアーカイブディレクトリに移動
+### 変換後に元ファイルをアーカイブディレクトリに移動
 
 ```bash
-image-converter -src ./photos -ext webp -archive ./originals -move
+go run ./cmd/cli/image-converter -src ./photos -ext webp -archive ./originals -move
 ```
 
 ## サポートされているフォーマット

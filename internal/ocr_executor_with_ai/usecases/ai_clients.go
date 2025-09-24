@@ -213,6 +213,20 @@ type ollamaResponseChunk struct {
 	Error    string `json:"error,omitempty"`
 }
 
+type ollamaOptions struct {
+	Temperature *float64 `json:"temperature,omitempty"`
+	NumPredict  *int     `json:"num_predict,omitempty"`
+}
+
+type ollamaGenerateRequest struct {
+	Model   string         `json:"model"`
+	Prompt  string         `json:"prompt"`
+	Stream  bool           `json:"stream"`
+	System  string         `json:"system,omitempty"`
+	Images  []string       `json:"images,omitempty"`
+	Options *ollamaOptions `json:"options,omitempty"`
+}
+
 // OllamaAIClient はOllama API用クライアント
 type OllamaAIClient struct {
 	httpClient *http.Client
@@ -232,31 +246,37 @@ func (c *OllamaAIClient) Generate(ctx context.Context, req *AIRequest) (string, 
 		return "", fmt.Errorf("Ollamaクライアントが初期化されていません")
 	}
 
-	payload := map[string]any{
-		"model":  req.Model,
-		"prompt": strings.TrimSpace(req.Prompt),
-		"stream": true,
+	trimmedPrompt := strings.TrimSpace(req.Prompt)
+	requestBody := &ollamaGenerateRequest{
+		Model:  req.Model,
+		Prompt: trimmedPrompt,
+		Stream: true,
 	}
 
 	if system := strings.TrimSpace(req.SystemInstruction); system != "" {
-		payload["system"] = system
+		requestBody.System = system
 	}
 	if req.ImageBase64 != "" {
-		payload["images"] = []string{req.ImageBase64}
+		requestBody.Images = []string{req.ImageBase64}
 	}
 
-	options := map[string]any{}
+	var options ollamaOptions
+	var hasOptions bool
 	if req.Temperature >= 0 {
-		options["temperature"] = req.Temperature
+		temperature := req.Temperature
+		options.Temperature = &temperature
+		hasOptions = true
 	}
 	if req.MaxTokens > 0 {
-		options["num_predict"] = req.MaxTokens
+		numPredict := req.MaxTokens
+		options.NumPredict = &numPredict
+		hasOptions = true
 	}
-	if len(options) > 0 {
-		payload["options"] = options
+	if hasOptions {
+		requestBody.Options = &options
 	}
 
-	body, err := json.Marshal(payload)
+	body, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("リクエストボディの生成に失敗しました: %w", err)
 	}

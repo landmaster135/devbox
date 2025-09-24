@@ -1,4 +1,4 @@
-// main_test.go
+// services_test.go
 // Unit tests for convertFile logic.
 // These tests use stub codecs so that no real image encoding/decoding libraries
 // are required. Each test creates a temporary input file, invokes convertFile,
@@ -9,13 +9,14 @@ import (
 	"bytes"
 	"image"
 	"image/color"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 // stubDecode returns a 1×1 pixel RGBA image (actual content is irrelevant).
-func stubDecode(_ []byte) (image.Image, error) {
+func stubDecode(_ io.Reader) (image.Image, error) {
 	img := image.NewRGBA(image.Rect(0, 0, 1, 1))
 	img.Set(0, 0, color.RGBA{255, 0, 0, 255})
 	return img, nil
