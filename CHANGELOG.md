@@ -1,6 +1,8 @@
 # Changelog
 
-## v0.04 — 2025-09-25
+## v0.04 — 2025-XX-XX
+PR: #13
+
 ### Features
 | service | cli | mcp | grpc | http | 説明 |
 | :-- | :--: | :--: | :--: | :--: | :-- |
@@ -21,6 +23,8 @@
 - AniList・Steam・PostgreSQL各サービスを依存性注入構成へ再設計し、高負荷操作や並列処理に対するテストを強化。
 - Data ConverterとDB Server SyncでMarkdownテーブルや配列整形を拡充し、AniList連携データの整合性を向上。
 - Notion SyncやOps for Golangなど既存CLIにWebクリップパッチやCLIオプション拡張を追加し、開発体験を改善。
+- サービス実装統計機能で作成されるレポートに統計情報に関する内容を追加。
+- .config: Codex向け設定テンプレートを追加。
 
 ### Bug Fixes
 - git-info-retrieverのアーカイブ生成スクリプトをサニタイズし、任意のパス注入を防止。
@@ -32,6 +36,8 @@
 - cmd/grpc/docs/grpc_setting_guide.md や Weather Notificator ハンドラ README を追加し、サーバー構築と利用手順を文書化。
 
 ## v0.03 — 2025-08-13
+PR: #7
+
 ### Features
 | service | cli | mcp | 説明 |
 | :-- | :--: | :--: | :-- |
@@ -59,7 +65,7 @@
 | memory | ✅ | ❌️ | Valkey＋ファイルを併用したナレッジ管理サービス |
 | notion-blog-content-extractor | ✅ | ❌️ | NotionブログMarkdownから本文とメタ情報を抽出 |
 | notion-sync | ✅ | ✅ | MarkdownをNotionページへ反映する同期ツール |
-| ocr-executor | ✅ | ❌️ | 画像からテキストを抽出するローカルOCRツール |
+| ocr-executor | ✅ | ❌️ | 画像からテキストを抽出するローカルOCRツール (#10) |
 | ocr-executor-with-ai | ✅ | ❌️ | Gemini/Vertex AIを使ってOCRと表生成を行うCLI |
 | open-weather-map | ✅ | ✅ | OpenWeatherMapから天気予報を取得・パース |
 | ops-for-golang | ✅ | ✅ | go run/test/buildの実行を自動化する開発支援ツール |
@@ -74,26 +80,34 @@
 | weather-notificator | ✅ | ✅ | 天気予報を取得して通知するサービス |
 | youtube-transcript | ❌️ | ✅ | YouTube動画の字幕を取得するMCPサーバー |
 | zip-compressor | ✅ | ❌️ | 設定駆動でZIPアーカイブを生成するCLI |
+
 ### Improvements
 - git-diff-recorder: 読み取りモード・生成モード・未追跡ファイル対応を追加し、出力を構造化フォーマットへ統一。
 - ops-for-golang: 実行ディレクトリ指定と終了コード別エラーハンドリングを実装し、テスト自動化を強化。
 - gcloud-monitoring/gcloud-wrapper-workload-identity-federation: ダッシュボード構成と認証スクリプト生成のバリデーションを整理。
-- README.md: MCP統合や新機能群を反映した構成説明とアーキテクチャ図を追記。
+- .config: Claude Desktop、Claude Code、Cline、Discord Bot向け設定テンプレートを追加。
+- .github/workflows/test_integration.yml: ffmpegインストールをOS別に分岐しMCP追加ツールのCIを整備。
+- scripts/build_mcp_tools.sh: MCPサーバー群の一括ビルドを追加。
+- image-filterer: Blur処理とオプションを再構成し再利用性を向上。
+- pdf-merger: 結合処理のロジックと引数レイアウトを整理。
 
 ### Bug Fixes
 - git-diff-recorder: nilポインタ参照を解消し安定性を向上。
 
 ### Documentation
 - arithmetic-calculator, arxiv, base64-extractor, context7, datetime-calculator, discord-webhook, file-character-replacer, gcloud-monitoring, gcloud-wrapper-workload-identity-federation, git-commit-history-retriever, git-info-retriever, github, http-request, mcp-remote, memory, notion-blog-content-extractor, notion-sync, ocr-executor, ocr-executor-with-ai, open-weather-map, ops-for-golang, qdrant, service-implementing-viewer, valkey, weather-notificator, zip-compressor 各READMEを新規追加または全面更新。
+- README.md: MCP統合と新CLI群を反映した構成説明とアーキテクチャ図を追記。
 
 ## v0.02 — 2025-07-10
+PR: #2
+
 ### Features
 | service | cli | 説明 |
 | :-- | :--: | :-- |
 | claude-code-usage | ✅ | Claude APIの利用状況を集計してレポート化するCLI |
 | code-analyzer | ✅ | プロジェクト内ソースコードの品質指標を分析するCLI |
 | depends-visualizer | ✅ | 関数・モジュール依存関係をMermaid/PlantUML/Dotで可視化 |
-| diff-dreamer | ✅ | オフライン差分閲覧UIを提供するCLI |
+| diff-dreamer | ✅ | オフライン差分閲覧UIを提供するCLI (#4) |
 | exif-mirror | ✅ | EXIFデータを別ファイルへコピーするツール |
 | exif-modifier | ✅ | EXIFプロパティを並列編集できるCLI |
 | exif-viewer | ✅ | EXIF/メタデータをテーブル表示するCLI |
@@ -114,11 +128,16 @@
 | script-generator-to-build | ✅ | 指定CLIのビルド用シェルスクリプトを生成するCLI |
 | unit-converter | ✅ | 一般的な単位換算を実行するCLI |
 
+- cmd/powershell/Z9-11_machine_info_retriever.ps1: Windows向けマシン情報収集スクリプトを追加。
+
 ### Improvements
 - image-converter: 引数体系とヘルプ表示を整理しWebP対応を強化。
 - pdf-merger: 既存ファイル統合フローを刷新しエラーハンドリングを改善。
 - env-loader / file-processor / json-* 系: I/OバリデーションとCRLFケースのテストを追加。
-- README.md と .clinerules: 新ツール群の方針とカバレッジ目標を追記。
+- internal/independenciesディレクトリの削除とアーキテクチャリファクタリング (#5)
+- scripts/build.sh: 全CLIをビルド対象に含めるよう更新。
+- scripts/create_project_files.sh: CLIテンプレートを自動生成するスクリプトを追加。
+- .github/workflows/pull_request_stat.yml: プルリク統計収集ワークフローを追加。
 
 ### Bug Fixes
 - 特筆すべき修正は報告されていません。
@@ -126,8 +145,11 @@
 ### Documentation
 - 各新規CLI（claude-code-usage から unit-converter まで）のREADMEを追加。
 - 既存ツール（image-converter, pdf-merger 等）の利用手順を更新。
+- README.md と .clinerules: 新ツール群の方針とカバレッジ目標を追記。
 
 ## v0.01 — 2025-05-03
+PR: #1
+
 ### Features
 | service | cli | 説明 |
 | :-- | :--: | :-- |
@@ -145,12 +167,14 @@
 | yaml-parser | ✅ | YAMLを解析し各種フォーマットへ出力するCLI |
 
 ### Improvements
-- .clinerules: Clean Architecture方針とカバレッジ目標を定義。
 - .gitignore: 生成物やIDE設定ファイルを除外対象に追加。
-- README.md: プロジェクト概要と初期ツールセットの導入手順を整理。
+- pkg/dos/: Windows向けバッチスクリプト群の追加を開始。
 
 ### Bug Fixes
 - 特筆すべき修正は報告されていません。
 
 ### Documentation
 - 初期CLI群 (http-request, env-loader, file-processor, image-converter, iso8601-converter, json-file-merger, json-iso8601-converter, json-modifier, json-timestamp-modifier, pdf-encrypter, pdf-merger, yaml-parser) のREADMEを整備。
+- pkg/dos/README.md: バッチスクリプトの使い方を追記。
+- .clinerules: Clean Architecture方針とカバレッジ目標を定義。
+- README.md: プロジェクト概要と初期ツールセットの導入手順を整理。
