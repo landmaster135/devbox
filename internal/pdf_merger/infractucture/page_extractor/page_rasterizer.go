@@ -23,6 +23,7 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 	"golang.org/x/image/draw"
+	"golang.org/x/image/math/f64"
 	"golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
 )
@@ -36,7 +37,6 @@ var supportedFormats = map[string]struct{}{
 }
 
 const defaultDPI = 144.0
-const matrixTolerance = 1e-6
 
 // RasterizeOptions represents configuration for page rasterization.
 type RasterizeOptions struct {
@@ -249,35 +249,6 @@ type imagePlacement struct {
 }
 
 func (r *PageRasterizer) drawPlacement(ctx *model.Context, canvas *image.RGBA, place imagePlacement, scale float64, pageHeight float64) error {
-	m := place.matrix
-
-	if !(math.Abs(m[0][1]) < matrixTolerance && math.Abs(m[1][0]) < matrixTolerance) {
-		return fmt.Errorf("unsupported rotation or shear in image %s", place.name)
-	}
-
-	minX := m[2][0]
-	minY := m[2][1]
-	maxX := minX + m[0][0]
-	maxY := minY + m[1][1]
-
-	if maxX < minX {
-		minX, maxX = maxX, minX
-	}
-	if maxY < minY {
-		minY, maxY = maxY, minY
-	}
-
-	left := int(math.Round(minX * scale))
-	right := int(math.Round(maxX * scale))
-	top := int(math.Round((pageHeight - maxY) * scale))
-	bottom := int(math.Round((pageHeight - minY) * scale))
-
-	if left == right || top == bottom {
-		return nil
-	}
-
-	bounds := image.Rect(left, top, right, bottom)
-
 	if err := place.resource.stream.Decode(); err != nil && err != filter.ErrUnsupportedFilter {
 		return fmt.Errorf("failed to decode image stream %s: %w", place.name, err)
 	}
@@ -287,19 +258,56 @@ func (r *PageRasterizer) drawPlacement(ctx *model.Context, canvas *image.RGBA, p
 		return fmt.Errorf("failed to render image %s: %w", place.name, err)
 	}
 
-	buf, err := io.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return err
 	}
 
-	img, _, err := image.Decode(bytes.NewReader(buf))
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
 
-	dst := image.NewRGBA(bounds.Sub(bounds.Min))
-	draw.ApproxBiLinear.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
-	imagedraw.Draw(canvas, bounds, dst, image.Point{}, imagedraw.Over)
+	if img.Bounds().Empty() {
+		return nil
+	}
+
+	width := float64(img.Bounds().Dx())
+	height := float64(img.Bounds().Dy())
+	mat := place.matrix
+
+	mapPoint := func(xs, ys float64) (float64, float64) {
+		if width == 0 || height == 0 {
+			return 0, 0
+		}
+		u := xs / width
+		v := 1.0 - ys/height
+		user := mat.Transform(types.Point{X: u, Y: v})
+		x := user.X * scale
+		y := (pageHeight - user.Y) * scale
+		return x, y
+	}
+
+	x0, y0 := mapPoint(0, 0)
+	x1, y1 := mapPoint(width, 0)
+	x2, y2 := mapPoint(0, height)
+	x3, y3 := mapPoint(width, height)
+
+	minX := math.Min(math.Min(x0, x1), math.Min(x2, x3))
+	maxX := math.Max(math.Max(x0, x1), math.Max(x2, x3))
+	minY := math.Min(math.Min(y0, y1), math.Min(y2, y3))
+	maxY := math.Max(math.Max(y0, y1), math.Max(y2, y3))
+
+	if math.Abs(maxX-minX) < 1e-6 || math.Abs(maxY-minY) < 1e-6 {
+		return nil
+	}
+
+	aff := f64.Aff3{
+		(x1 - x0) / width, (x2 - x0) / height, x0,
+		(y1 - y0) / width, (y2 - y0) / height, y0,
+	}
+
+	draw.ApproxBiLinear.Transform(canvas, aff, img, img.Bounds(), draw.Over, nil)
 
 	return nil
 }
