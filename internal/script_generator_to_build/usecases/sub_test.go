@@ -310,6 +310,42 @@ func TestDefaultREADMEParser_ParseUsageExamples_EdgeCases(t *testing.T) {
 		}
 	})
 
+	t.Run("ParseUsageExamples_EscapeBackslashAndQuotes", func(t *testing.T) {
+		// Arrange
+		parser := &DefaultREADMEParser{}
+		content := []byte(`# Sample Tool
+
+## 使用例
+
+` + "```" + `
+$ go run ./cmd/cli/sample-tool \
+-flag1 value \
+-additional-args "--format=json"
+` + "```" + `
+`)
+
+		// Act
+		result, err := parser.ParseUsageExamples(content)
+
+		// Assert
+		if err != nil {
+			t.Fatalf("ParseUsageExamples() returned error: %v", err)
+		}
+		expected := []string{
+			`echo "  $ go run ./cmd/cli/sample-tool \\"`,
+			`echo "  -flag1 value \\"`,
+			`echo "  -additional-args \"--format=json\""`,
+		}
+		if len(result) != len(expected) {
+			t.Fatalf("Expected %d usage examples, got %d", len(expected), len(result))
+		}
+		for i := range expected {
+			if result[i] != expected[i] {
+				t.Errorf("Expected usage example '%s', got '%s'", expected[i], result[i])
+			}
+		}
+	})
+
 	t.Run("ParseUsageExamples_NestedHeaders", func(t *testing.T) {
 		// Arrange
 		parser := &DefaultREADMEParser{}

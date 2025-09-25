@@ -194,12 +194,23 @@ func (p *DefaultREADMEParser) ParseUsageExamples(content []byte) ([]string, erro
 		// コードブロック内の行を追加
 		if inCodeBlock {
 			if trimmedLine != "" {
-				usageLines = append(usageLines, fmt.Sprintf("echo \"  %s\"", trimmedLine))
+				escapedLine := escapeUsageExampleLine(trimmedLine)
+				usageLines = append(usageLines, fmt.Sprintf("echo \"  %s\"", escapedLine))
 			}
 		}
 	}
 
 	return usageLines, nil
+}
+
+var usageExampleEscaper = strings.NewReplacer(
+	"\\", "\\\\",
+	"\"", "\\\"",
+)
+
+// escapeUsageExampleLine は使用例行をシェルスクリプト内の echo コマンドに安全に埋め込めるようエスケープします。
+func escapeUsageExampleLine(line string) string {
+	return usageExampleEscaper.Replace(line)
 }
 
 // ScriptGenerator はスクリプト生成のインターフェースです
