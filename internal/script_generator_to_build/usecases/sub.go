@@ -7,6 +7,15 @@ import (
 	"strings"
 )
 
+// FileSystem はファイルシステム操作のインターフェースです
+type FileSystem interface {
+	ReadDir(dirname string) ([]os.DirEntry, error)
+	Stat(name string) (os.FileInfo, error)
+	WriteFile(name string, data []byte, perm os.FileMode) error
+	ReadFile(name string) ([]byte, error)
+	MkdirAll(path string, perm os.FileMode) error
+}
+
 // OSFileSystem は実際のファイルシステム操作を行う実装です
 type OSFileSystem struct{}
 
@@ -35,6 +44,11 @@ func (fs *OSFileSystem) MkdirAll(path string, perm os.FileMode) error {
 	return os.MkdirAll(path, perm)
 }
 
+// InputReader は入力読み取りのインターフェースです
+type InputReader interface {
+	ReadString(delim byte) (string, error)
+}
+
 // StdinReader は標準入力から読み取る実装です
 type StdinReader struct {
 	reader *bufio.Reader
@@ -50,6 +64,11 @@ func NewStdinReader() *StdinReader {
 // ReadString は標準入力から文字列を読み取ります
 func (r *StdinReader) ReadString(delim byte) (string, error) {
 	return r.reader.ReadString(delim)
+}
+
+// READMEParser はREADMEファイル解析のインターフェースです
+type READMEParser interface {
+	ParseUsageExamples(content []byte) ([]string, error)
 }
 
 // DefaultREADMEParser はREADMEファイルの解析を行う実装です
@@ -181,6 +200,11 @@ func (p *DefaultREADMEParser) ParseUsageExamples(content []byte) ([]string, erro
 	}
 
 	return usageLines, nil
+}
+
+// ScriptGenerator はスクリプト生成のインターフェースです
+type ScriptGenerator interface {
+	GenerateContent(packageName, packagePath string, usageExamples []string) string
 }
 
 // DefaultScriptGenerator はビルドスクリプトの生成を行う実装です

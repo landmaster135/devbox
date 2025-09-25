@@ -205,13 +205,13 @@ func (m *MockFileInfo) Sys() interface{} {
 func TestNewApp_Normal(t *testing.T) {
 	t.Run("NewApp_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{
+		cfg := &config.ServiceConfig{
 			PackageName: "test-package",
 			ShowHelp:    false,
 		}
 
 		// Act
-		app := NewApp(cfg)
+		app := NewService(cfg)
 
 		// Assert
 		if app == nil {
@@ -243,7 +243,7 @@ func TestNewApp_Normal(t *testing.T) {
 func TestNewAppWithDependencies_Normal(t *testing.T) {
 	t.Run("NewAppWithDependencies_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{
+		cfg := &config.ServiceConfig{
 			PackageName: "test-package",
 			ShowHelp:    false,
 		}
@@ -253,7 +253,7 @@ func TestNewAppWithDependencies_Normal(t *testing.T) {
 		mockGenerator := &MockScriptGenerator{}
 
 		// Act
-		app := NewAppWithDependencies(cfg, mockFS, mockReader, mockParser, mockGenerator)
+		app := NewServiceWithDependencies(cfg, mockFS, mockReader, mockParser, mockGenerator)
 
 		// Assert
 		if app == nil {
@@ -281,11 +281,11 @@ func TestNewAppWithDependencies_Normal(t *testing.T) {
 func TestApp_Run_ShowHelp_Normal(t *testing.T) {
 	t.Run("Run_ShowHelp_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{
+		cfg := &config.ServiceConfig{
 			PackageName: "",
 			ShowHelp:    true,
 		}
-		app := NewApp(cfg)
+		app := NewService(cfg)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
 
@@ -307,7 +307,7 @@ func TestApp_Run_ShowHelp_Normal(t *testing.T) {
 func TestApp_Run_WithPackageName_Normal(t *testing.T) {
 	t.Run("Run_WithPackageName_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{
+		cfg := &config.ServiceConfig{
 			PackageName: "test-package",
 			ShowHelp:    false,
 		}
@@ -349,7 +349,7 @@ func TestApp_Run_WithPackageName_Normal(t *testing.T) {
 			return fmt.Sprintf("#!/bin/bash\necho \"Building %s...\"\n", packageName)
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, mockReader, mockParser, mockGenerator)
+		app := NewServiceWithDependencies(cfg, mockFS, mockReader, mockParser, mockGenerator)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
 
@@ -371,7 +371,7 @@ func TestApp_Run_WithPackageName_Normal(t *testing.T) {
 func TestApp_getAvailablePackages_Normal(t *testing.T) {
 	t.Run("getAvailablePackages_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		packages := []string{"package-a", "package-b", "package-c"}
@@ -384,7 +384,7 @@ func TestApp_getAvailablePackages_Normal(t *testing.T) {
 			return mockEntries, nil
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 
 		// Act
 		result, err := app.getAvailablePackages()
@@ -415,14 +415,14 @@ func TestApp_getAvailablePackages_Normal(t *testing.T) {
 func TestApp_getAvailablePackages_DirectoryNotFound(t *testing.T) {
 	t.Run("getAvailablePackages_DirectoryNotFound", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.ReadDirFunc = func(dirname string) ([]os.DirEntry, error) {
 			return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました")
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 
 		// Act
 		result, err := app.getAvailablePackages()
@@ -441,7 +441,7 @@ func TestApp_getAvailablePackages_DirectoryNotFound(t *testing.T) {
 func TestApp_selectPackage_Normal(t *testing.T) {
 	t.Run("selectPackage_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 		mockReader := NewMockInputReader([]string{"2"}) // 2番目のパッケージを選択
 
@@ -455,7 +455,7 @@ func TestApp_selectPackage_Normal(t *testing.T) {
 			return mockEntries, nil
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, mockReader, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, mockReader, nil, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -479,7 +479,7 @@ func TestApp_selectPackage_Normal(t *testing.T) {
 func TestApp_selectPackage_NoPackagesAvailable(t *testing.T) {
 	t.Run("selectPackage_NoPackagesAvailable", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 		mockReader := NewMockInputReader([]string{})
 
@@ -487,7 +487,7 @@ func TestApp_selectPackage_NoPackagesAvailable(t *testing.T) {
 			return []os.DirEntry{}, nil // 空のリストを返す
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, mockReader, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, mockReader, nil, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -510,7 +510,7 @@ func TestApp_selectPackage_NoPackagesAvailable(t *testing.T) {
 func TestApp_validatePackage_Normal(t *testing.T) {
 	t.Run("validatePackage_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.StatFunc = func(name string) (os.FileInfo, error) {
@@ -520,7 +520,7 @@ func TestApp_validatePackage_Normal(t *testing.T) {
 			return nil, os.ErrNotExist
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 
 		// Act
 		err := app.validatePackage("test-package")
@@ -536,14 +536,14 @@ func TestApp_validatePackage_Normal(t *testing.T) {
 func TestApp_validatePackage_PackageNotFound(t *testing.T) {
 	t.Run("validatePackage_PackageNotFound", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.StatFunc = func(name string) (os.FileInfo, error) {
 			return nil, os.ErrNotExist
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 
 		// Act
 		err := app.validatePackage("non-existent-package")
@@ -562,7 +562,7 @@ func TestApp_validatePackage_PackageNotFound(t *testing.T) {
 func TestApp_parseREADMEFile_Normal(t *testing.T) {
 	t.Run("parseREADMEFile_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 		mockParser := &MockREADMEParser{}
 
@@ -587,7 +587,7 @@ func TestApp_parseREADMEFile_Normal(t *testing.T) {
 			return expectedUsageExamples, nil
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, mockParser, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, mockParser, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -612,14 +612,14 @@ func TestApp_parseREADMEFile_Normal(t *testing.T) {
 func TestApp_parseREADMEFile_NoREADME(t *testing.T) {
 	t.Run("parseREADMEFile_NoREADME", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.StatFunc = func(name string) (os.FileInfo, error) {
 			return nil, os.ErrNotExist
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -639,7 +639,7 @@ func TestApp_parseREADMEFile_NoREADME(t *testing.T) {
 func TestApp_writeScriptFile_Normal(t *testing.T) {
 	t.Run("writeScriptFile_Normal", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		var writtenPath string
@@ -655,7 +655,7 @@ func TestApp_writeScriptFile_Normal(t *testing.T) {
 			return nil
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 		w := &bytes.Buffer{}
 		content := "#!/bin/bash\necho \"test script\""
 
@@ -696,7 +696,7 @@ func TestExitCodes(t *testing.T) {
 func TestApp_Run_ErrorCases(t *testing.T) {
 	t.Run("Run_PackageSelectionError", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{
+		cfg := &config.ServiceConfig{
 			PackageName: "",
 			ShowHelp:    false,
 		}
@@ -707,7 +707,7 @@ func TestApp_Run_ErrorCases(t *testing.T) {
 			return nil, fmt.Errorf("directory read error")
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, mockReader, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, mockReader, nil, nil)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
 
@@ -722,7 +722,7 @@ func TestApp_Run_ErrorCases(t *testing.T) {
 
 	t.Run("Run_GenerateBuildScriptError", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{
+		cfg := &config.ServiceConfig{
 			PackageName: "non-existent-package",
 			ShowHelp:    false,
 		}
@@ -732,7 +732,7 @@ func TestApp_Run_ErrorCases(t *testing.T) {
 			return nil, os.ErrNotExist
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 		stdout := &bytes.Buffer{}
 		stderr := &bytes.Buffer{}
 
