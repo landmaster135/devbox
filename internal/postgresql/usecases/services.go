@@ -374,13 +374,19 @@ func (s *PostgreSQLService) GetTablesMinimum(ctx context.Context) ([]Table, erro
 
 // GetTableSchemaMinimum はテーブルの最小限のスキーマ情報を取得します
 func (s *PostgreSQLService) GetTableSchemaMinimum(ctx context.Context, tableName string) ([]Column, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT column_name, data_type
 		FROM information_schema.columns
-		WHERE table_name = $1
+		WHERE table_schema = $1
+		  AND table_name = $2
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, schema, name)
 	if err != nil {
 		return nil, err
 	}
@@ -404,16 +410,24 @@ func (s *PostgreSQLService) GetTableSchemaMinimum(ctx context.Context, tableName
 
 // fetchTableWithComments はテーブル名とコメントを取得します
 func (s *PostgreSQLService) fetchTableWithComments(ctx context.Context, tableName string) (TableSummary, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return TableSummary{}, err
+	}
+
 	query := `
 		SELECT t.table_name,
-		       COALESCE(pg_catalog.obj_description(pg_catalog.pg_class.oid), '') AS table_comment
+		       COALESCE(pg_catalog.obj_description(c.oid), '') AS table_comment
 		FROM information_schema.tables t
-		JOIN pg_catalog.pg_class ON pg_catalog.pg_class.relname = t.table_name
-		WHERE t.table_schema = 'public' AND t.table_name = $1
+		JOIN pg_catalog.pg_class c ON c.relname = t.table_name
+		JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+		WHERE t.table_schema = $1
+		  AND t.table_name = $2
+		  AND n.nspname = $1
 	`
 
 	var table TableSummary
-	err := s.executor.QueryRowContext(ctx, query, tableName).Scan(&table.Name, &table.Comment)
+	err = s.executor.QueryRowContext(ctx, query, schema, name).Scan(&table.Name, &table.Comment)
 	if err != nil {
 		return TableSummary{}, err
 	}
@@ -423,6 +437,11 @@ func (s *PostgreSQLService) fetchTableWithComments(ctx context.Context, tableNam
 
 // fetchPrimaryKeys はテーブルの主キーカラムを取得します
 func (s *PostgreSQLService) fetchPrimaryKeys(ctx context.Context, tableName string) ([]string, error) {
+	qualified, _, _, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT a.attname
 		FROM pg_index i
@@ -432,7 +451,7 @@ func (s *PostgreSQLService) fetchPrimaryKeys(ctx context.Context, tableName stri
 		ORDER BY a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, qualified)
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +490,12 @@ func (s *PostgreSQLService) fetchUniqueKeys(ctx context.Context, tableName strin
 			c.conname, a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	qualified, _, _, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.executor.QueryContext(ctx, query, qualified)
 	if err != nil {
 		return nil, err
 	}
@@ -526,7 +550,12 @@ func (s *PostgreSQLService) fetchForeignKeys(ctx context.Context, tableName stri
 			c.conname, a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	qualified, _, _, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.executor.QueryContext(ctx, query, qualified)
 	if err != nil {
 		return nil, err
 	}
@@ -563,6 +592,11 @@ func (s *PostgreSQLService) fetchForeignKeys(ctx context.Context, tableName stri
 
 // fetchTableColumns はテーブルのカラム情報を取得します
 func (s *PostgreSQLService) fetchTableColumns(ctx context.Context, tableName string) ([]ColumnInfo, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			c.column_name,
@@ -578,13 +612,13 @@ func (s *PostgreSQLService) fetchTableColumns(ctx context.Context, tableName str
 		JOIN
 			pg_catalog.pg_class ON pg_catalog.pg_class.relname = c.table_name
 		WHERE
-			c.table_schema = 'public'
-			AND c.table_name = $1
+			c.table_schema = $1
+			AND c.table_name = $2
 		ORDER BY
 			c.ordinal_position
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, schema, name)
 	if err != nil {
 		return nil, err
 	}
@@ -608,6 +642,11 @@ func (s *PostgreSQLService) fetchTableColumns(ctx context.Context, tableName str
 
 // fetchTableIndexes はテーブルのインデックス情報を取得します
 func (s *PostgreSQLService) fetchTableIndexes(ctx context.Context, tableName string) ([]IndexInfo, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			i.relname AS index_name,
@@ -621,17 +660,20 @@ func (s *PostgreSQLService) fetchTableIndexes(ctx context.Context, tableName str
 			pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = ANY(ix.indkey)
 		JOIN
 			pg_class t ON t.oid = ix.indrelid
+	JOIN
+		pg_namespace n ON n.oid = t.relnamespace
 		LEFT JOIN
 			pg_constraint c ON c.conindid = ix.indexrelid
 		WHERE
 			t.relname = $1
+			AND n.nspname = $2
 			AND c.contype IS NULL
 			AND NOT ix.indisprimary
 		ORDER BY
 			i.relname, a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, name, schema)
 	if err != nil {
 		return nil, err
 	}

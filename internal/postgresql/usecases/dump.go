@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -68,6 +69,8 @@ type DumpTaskResult struct {
 	Failed  *FailedDump
 }
 
+const defaultTableSchema = "public"
+
 func quoteQualifiedTableName(tableName string) (string, []string, error) {
 	if tableName == "" {
 		return "", nil, errors.New("テーブル名が指定されていません")
@@ -87,6 +90,37 @@ func quoteQualifiedTableName(tableName string) (string, []string, error) {
 	}
 
 	return strings.Join(quotedParts, "."), parts, nil
+}
+
+func qualifyTableIdentifier(tableName string) (qualified string, schema string, name string, err error) {
+	if tableName == "" {
+		return "", "", "", errors.New("テーブル名が指定されていません")
+	}
+
+	parts := strings.Split(tableName, ".")
+	if len(parts) > 2 {
+		return "", "", "", fmt.Errorf("サポートされていないテーブル識別子です: %s", tableName)
+	}
+
+	schema = defaultTableSchema
+	name = parts[len(parts)-1]
+	if len(parts) == 2 {
+		schema = parts[0]
+	}
+
+	if schema == "" {
+		schema = defaultTableSchema
+	}
+
+	if !identifierPattern.MatchString(schema) {
+		return "", "", "", fmt.Errorf("スキーマ名に使用できない文字が含まれています: %s", schema)
+	}
+	if !identifierPattern.MatchString(name) {
+		return "", "", "", fmt.Errorf("テーブル名に使用できない文字が含まれています: %s", tableName)
+	}
+
+	qualified = fmt.Sprintf("%s.%s", pq.QuoteIdentifier(schema), pq.QuoteIdentifier(name))
+	return qualified, schema, name, nil
 }
 
 // #==============================================================#
@@ -412,11 +446,12 @@ func (d *TableDumper) writeCSVFile(filePath string, data []map[string]any) error
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	// ヘッダーを書き込み
+	// ヘッダーを書き込み（決定的な順序を保証するためキーをソート）
 	var headers []string
 	for key := range data[0] {
 		headers = append(headers, key)
 	}
+	sort.Strings(headers)
 	if err := writer.Write(headers); err != nil {
 		return err
 	}
@@ -452,12 +487,15 @@ func (d *TableDumper) writeSQLFile(filePath string, data []map[string]any, table
 	sqlBuilder.WriteString(fmt.Sprintf("-- Table dump for %s\n", tableName))
 	sqlBuilder.WriteString(fmt.Sprintf("-- Generated at %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
 
-	// カラム名を取得
+	// カラム名を取得（決定的な順序を保証するためキーをソート）
 	var columns []string
-	var quotedColumns []string
 	for key := range data[0] {
 		columns = append(columns, key)
-		quotedColumns = append(quotedColumns, pq.QuoteIdentifier(key))
+	}
+	sort.Strings(columns)
+	quotedColumns := make([]string, len(columns))
+	for i, col := range columns {
+		quotedColumns[i] = pq.QuoteIdentifier(col)
 	}
 
 	quotedTable, _, err := quoteQualifiedTableName(tableName)
@@ -587,8 +625,9 @@ func (d *TableDumper) collectDumpResults(resultChan <-chan DumpTaskResult, resul
 
 // executeConcurrentDumps は並行処理でテーブルダンプを実行します
 func (d *TableDumper) executeConcurrentDumps(ctx context.Context, databaseName string, tables []Table, concurrency int, outputPath, format string, limit *int) (*DumpAllTablesResult, error) {
-	// 並行処理数を決定
-	maxConcurrency := min(concurrency, len(tables))
+	if concurrency <= 0 {
+		concurrency = 1
+	}
 
 	// 結果を格納する構造体を初期化
 	result := d.createInitialResult(databaseName, len(tables))
@@ -596,6 +635,12 @@ func (d *TableDumper) executeConcurrentDumps(ctx context.Context, databaseName s
 	// テーブルが0個の場合は早期リターン
 	if len(tables) == 0 {
 		return result, nil
+	}
+
+	// 並行処理数を決定
+	maxConcurrency := min(concurrency, len(tables))
+	if maxConcurrency <= 0 {
+		maxConcurrency = 1
 	}
 
 	// 並行処理用のチャネルを作成
@@ -683,6 +728,12 @@ func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format stri
 		return nil, fmt.Errorf("データベース名取得エラー: %w", err)
 	}
 
+	// 並行処理数のデフォルトと下限を補完
+	effectiveConcurrency := 1
+	if concurrency != nil && *concurrency > 0 {
+		effectiveConcurrency = *concurrency
+	}
+
 	// 並行処理でダンプを実行
-	return d.executeConcurrentDumps(ctx, databaseName, tables, *concurrency, outputPath, format, limit)
+	return d.executeConcurrentDumps(ctx, databaseName, tables, effectiveConcurrency, outputPath, format, limit)
 }
