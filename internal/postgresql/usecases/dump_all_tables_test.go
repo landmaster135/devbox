@@ -174,23 +174,22 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	}
 
 	// テーブル一覧取得の成功レスポンス
-	tableRows := NewMockRows([]string{"table_name"}, [][]any{
-		{"users"},
-		{"products"},
-	})
-
 	// データベース名取得の成功レスポンス
 	dbRow := NewMockRow([]any{"testdb"}, nil)
 
 	// 各テーブルのダンプクエリの成功レスポンス
-	usersRows := NewMockRows([]string{"id", "name"}, [][]any{
-		{1, "John"},
-		{2, "Jane"},
-	})
+	usersRows := func() RowsInterface {
+		return NewMockRows([]string{"id", "name"}, [][]any{
+			{1, "John"},
+			{2, "Jane"},
+		})
+	}
 
-	productsRows := NewMockRows([]string{"id", "title"}, [][]any{
-		{1, "Product A"},
-	})
+	productsRows := func() RowsInterface {
+		return NewMockRows([]string{"id", "title"}, [][]any{
+			{1, "Product A"},
+		})
+	}
 
 	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
 		if query == `
@@ -199,11 +198,14 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 		WHERE table_schema = 'public'
 		ORDER BY table_name
 	` {
-			return tableRows, nil
-		} else if query == "SELECT * FROM users" {
-			return usersRows, nil
-		} else if query == "SELECT * FROM products" {
-			return productsRows, nil
+			return NewMockRows([]string{"table_name"}, [][]any{
+				{"users"},
+				{"products"},
+			}), nil
+		} else if query == "SELECT * FROM \"users\"" {
+			return usersRows(), nil
+		} else if query == "SELECT * FROM \"products\"" {
+			return productsRows(), nil
 		}
 		return nil, errors.New("unexpected query")
 	}
@@ -258,9 +260,6 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 		return nil
 	}
 
-	// 空のテーブル一覧
-	emptyRows := NewMockRows([]string{"table_name"}, [][]any{})
-
 	// データベース名取得
 	dbRow := NewMockRow([]any{"testdb"}, nil)
 
@@ -271,7 +270,7 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 		WHERE table_schema = 'public'
 		ORDER BY table_name
 	` {
-			return emptyRows, nil
+			return NewMockRows([]string{"table_name"}, [][]any{}), nil
 		}
 		return nil, errors.New("unexpected query")
 	}

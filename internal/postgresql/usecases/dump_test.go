@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,6 +50,14 @@ func (m *MockFileWriter) Create(name string) (*os.File, error) {
 func createTestTableDumper() (*TableDumper, *MockDatabaseQueryExecutor, *MockFileWriter) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
 	mockFileWriter := &MockFileWriter{}
+
+	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+		trimmed := strings.TrimSpace(query)
+		if strings.Contains(trimmed, "FROM information_schema.tables") {
+			return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
+		}
+		return nil, fmt.Errorf("unexpected query: %s", trimmed)
+	}
 
 	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
 
@@ -143,6 +152,24 @@ func TestTableDumper_validateOptions_InvalidFormat(t *testing.T) {
 	assert.Contains(t, err.Error(), "サポートされていないフォーマットです")
 }
 
+func TestTableDumper_validateOptions_InvalidTableNameCharacters(t *testing.T) {
+	// Arrange
+	dumper, _, _ := createTestTableDumper()
+	options := DumpOptions{
+		TableName:  "users;DROP",
+		OutputPath: "/tmp/dump",
+		Format:     "json",
+		Limit:      nil,
+	}
+
+	// Act
+	err := dumper.validateOptions(options)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "テーブル名に使用できない文字が含まれています")
+}
+
 func TestTableDumper_validateOptions_InvalidLimit(t *testing.T) {
 	// Arrange
 	dumper, _, _ := createTestTableDumper()
@@ -193,10 +220,11 @@ func TestTableDumper_buildQuery_WithoutLimit(t *testing.T) {
 	}
 
 	// Act
-	query := dumper.buildQuery(options)
+	query, err := dumper.buildQuery(options)
 
 	// Assert
-	assert.Equal(t, "SELECT * FROM users", query)
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM \"users\"", query)
 }
 
 func TestTableDumper_buildQuery_WithLimit(t *testing.T) {
@@ -209,10 +237,11 @@ func TestTableDumper_buildQuery_WithLimit(t *testing.T) {
 	}
 
 	// Act
-	query := dumper.buildQuery(options)
+	query, err := dumper.buildQuery(options)
 
 	// Assert
-	assert.Equal(t, "SELECT * FROM users LIMIT 100", query)
+	assert.NoError(t, err)
+	assert.Equal(t, "SELECT * FROM \"users\" LIMIT 100", query)
 }
 
 // #==============================================================#
