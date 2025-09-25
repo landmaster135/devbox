@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	pageextractor "github.com/landmaster135/devbox/internal/pdf_merger/infractucture/page_extractor"
 	api "github.com/pdfcpu/pdfcpu/pkg/api"
 	types "github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 )
@@ -530,23 +531,20 @@ func (s *ImageExtractionService) ExtractToImages(pdfPath, outputDir, imageFormat
 		return fmt.Errorf("PDFのページ数取得に失敗しました: %w", err)
 	}
 
-	// ページ範囲の指定
-	rangeInfo := s.GetRangeOfPages(startPage, endPage, totalPages)
-
-	cfg := api.LoadConfiguration()
-
-	// pdfcpuを使ってPDFページを画像として出力
-	// 注意: pdfcpuのバージョンによって利用可能なAPIが異なります
-	// ExtractImagesFileを試し、失敗した場合は代替手段を試行
-	err = api.ExtractImagesFile(pdfPath, outputDir, rangeInfo.PageSelection, cfg)
-	if err != nil {
-		return fmt.Errorf("PDFからの画像抽出に失敗しました: %w", err)
+	// ページ範囲の指定（バリデーション用情報は呼び出し側でログ表示済み）
+	if err := s.ValidatePageRange(startPage, endPage, totalPages); err != nil {
+		return err
 	}
 
-	// 抽出された画像ファイルの名前を4桁連番形式に整理
-	err = s.renameExtractedImagesWithFourDigits(outputDir, filepath.Base(pdfPath), startPage)
+	rasterizer := pageextractor.NewPageRasterizer()
+	_, err = rasterizer.Rasterize(pdfPath, pageextractor.RasterizeOptions{
+		OutputDir: outputDir,
+		Format:    imageFormat,
+		StartPage: startPage,
+		EndPage:   endPage,
+	})
 	if err != nil {
-		return fmt.Errorf("画像ファイル名の整理に失敗しました: %w", err)
+		return fmt.Errorf("PDFページの画像変換に失敗しました: %w", err)
 	}
 
 	return nil
