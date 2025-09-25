@@ -176,8 +176,8 @@
       },
       "disabled": false,
       "autoApprove": [],
-      "timeout": 90000,
-      "requestTimeout": 120000
+      "timeout": 120000,
+      "requestTimeout": 150000
     },
     "weather_notificator": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
