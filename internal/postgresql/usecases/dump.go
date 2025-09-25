@@ -4,13 +4,19 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	pq "github.com/lib/pq"
 )
+
+var identifierPattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
 // #==============================================================#
 // ##          Data Structures                                   ##
@@ -60,6 +66,27 @@ type DumpTaskResult struct {
 	Success bool
 	Result  *DumpResult
 	Failed  *FailedDump
+}
+
+func quoteQualifiedTableName(tableName string) (string, []string, error) {
+	if tableName == "" {
+		return "", nil, errors.New("テーブル名が指定されていません")
+	}
+
+	parts := strings.Split(tableName, ".")
+	if len(parts) > 2 {
+		return "", nil, fmt.Errorf("サポートされていないテーブル識別子です: %s", tableName)
+	}
+
+	quotedParts := make([]string, len(parts))
+	for i, part := range parts {
+		if part == "" || !identifierPattern.MatchString(part) {
+			return "", nil, fmt.Errorf("テーブル名に使用できない文字が含まれています: %s", tableName)
+		}
+		quotedParts[i] = pq.QuoteIdentifier(part)
+	}
+
+	return strings.Join(quotedParts, "."), parts, nil
 }
 
 // #==============================================================#
@@ -145,13 +172,20 @@ func (d *TableDumper) DumpTable(ctx context.Context, options DumpOptions) (*Dump
 		return nil, fmt.Errorf("オプション検証エラー: %w", err)
 	}
 
+	if err := d.ensureAllowedTable(ctx, options.TableName); err != nil {
+		return nil, fmt.Errorf("テーブル検証エラー: %w", err)
+	}
+
 	// 出力ディレクトリを作成
 	if err := d.ensureOutputDirectory(options.OutputPath); err != nil {
 		return nil, fmt.Errorf("出力ディレクトリ作成エラー: %w", err)
 	}
 
 	// クエリを構築
-	query := d.buildQuery(options)
+	query, err := d.buildQuery(options)
+	if err != nil {
+		return nil, fmt.Errorf("クエリ構築エラー: %w", err)
+	}
 
 	// データを取得
 	data, err := d.fetchTableData(ctx, query)
@@ -183,8 +217,8 @@ func (d *TableDumper) DumpTable(ctx context.Context, options DumpOptions) (*Dump
 
 // validateOptions はオプションを検証します
 func (d *TableDumper) validateOptions(options DumpOptions) error {
-	if options.TableName == "" {
-		return fmt.Errorf("テーブル名が指定されていません")
+	if _, _, err := quoteQualifiedTableName(options.TableName); err != nil {
+		return err
 	}
 
 	if options.OutputPath == "" {
@@ -214,15 +248,46 @@ func (d *TableDumper) validateOptions(options DumpOptions) error {
 	return nil
 }
 
+// ensureAllowedTable はテーブルが存在し、ホワイトリストに一致することを確認します
+func (d *TableDumper) ensureAllowedTable(ctx context.Context, tableName string) error {
+	_, parts, err := quoteQualifiedTableName(tableName)
+	if err != nil {
+		return err
+	}
+
+	if len(parts) == 2 && parts[0] != "public" {
+		return fmt.Errorf("サポートされていないスキーマが指定されました: %s", parts[0])
+	}
+
+	tables, err := d.getAllTables(ctx)
+	if err != nil {
+		return fmt.Errorf("テーブル一覧取得エラー: %w", err)
+	}
+
+	targetName := parts[len(parts)-1]
+	for _, tbl := range tables {
+		if tbl.Name == targetName {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("指定されたテーブルが存在しません: %s", tableName)
+}
+
 // buildQuery はダンプ用のクエリを構築します
-func (d *TableDumper) buildQuery(options DumpOptions) string {
-	query := fmt.Sprintf("SELECT * FROM %s", options.TableName)
+func (d *TableDumper) buildQuery(options DumpOptions) (string, error) {
+	quotedTable, _, err := quoteQualifiedTableName(options.TableName)
+	if err != nil {
+		return "", err
+	}
+
+	query := fmt.Sprintf("SELECT * FROM %s", quotedTable)
 
 	if options.Limit != nil {
 		query += fmt.Sprintf(" LIMIT %d", *options.Limit)
 	}
 
-	return query
+	return query, nil
 }
 
 // fetchTableData はテーブルデータを取得します
@@ -389,14 +454,21 @@ func (d *TableDumper) writeSQLFile(filePath string, data []map[string]any, table
 
 	// カラム名を取得
 	var columns []string
+	var quotedColumns []string
 	for key := range data[0] {
 		columns = append(columns, key)
+		quotedColumns = append(quotedColumns, pq.QuoteIdentifier(key))
+	}
+
+	quotedTable, _, err := quoteQualifiedTableName(tableName)
+	if err != nil {
+		return err
 	}
 
 	// INSERT文を生成
 	for _, row := range data {
-		sqlBuilder.WriteString(fmt.Sprintf("INSERT INTO %s (", tableName))
-		sqlBuilder.WriteString(strings.Join(columns, ", "))
+		sqlBuilder.WriteString(fmt.Sprintf("INSERT INTO %s (", quotedTable))
+		sqlBuilder.WriteString(strings.Join(quotedColumns, ", "))
 		sqlBuilder.WriteString(") VALUES (")
 
 		var values []string
