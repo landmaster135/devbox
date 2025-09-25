@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Top-level layout centers around `cmd/`, `internal/`, `pkg/`, `scripts/`, and `util/`. Each CLI tool lives in `cmd/cli/<tool>` with matching domain and usecase packages under `internal/<tool>/...`, following the Clean Architecture layering documented in `.clinerules`. Deployment artifacts land in `pkg/bin/<tool>/<platform>/`, while shared assets and sample fixtures stay in `assets/` and `sample_data/`. Review `docs/service_implementation_status.md` before extending a tool to avoid duplicated work.
+Top-level layout centers around `cmd/`, `internal/`, `pkg/`, `scripts/`, and `util/`. Each CLI tool lives in `cmd/cli/<tool>` with matching domain and usecase packages under `internal/<tool>/...`, following the Clean Architecture layering documented in `.clinerules`. Deployment artifacts land in `pkg/bin/<tool>/<platform>/`, while shared assets and sample fixtures stay in `assets/` and `sample_data/`. Review `docs/implementation_guide.md` before implementing a functionality to grasp the design patterns. Also, review `docs/service_implementation_status.md` before extending a tool to avoid duplicated work.
 
 ## Build, Test, and Development Commands
 Use `./scripts/create_project_files.sh <package>` to scaffold new tool packages. `./scripts/build.sh` orchestrates every tool-specific `build_*.sh` script (excluding MCP) and fills `pkg/bin/`. Run `./scripts/build_mcp_tools.sh` for MCP-only binaries. Service entry points run via `go run ./cmd/http/main.go` (REST) and `go run ./cmd/grpc/main.go` (gRPC). When iterating on a single CLI, call its dedicated script, e.g. `./scripts/build_image_converter.sh`.
@@ -23,3 +23,4 @@ Remember replying in Japanese.
 Confirm if `./agents` directory in project root directory is set. Then, also confirm if the following files exist to receive instructions from user.
 - instructions.md
 - test_results.md
+After completing a CLI tool implementation, update the corresponding `cmd/cli/<tool>/README.md` with usage instructions and examples by referencing existing documents such as `cmd/cli/arithmetic-calculator/README.md` and `cmd/cli/service-implementing-viewer/README.md`.

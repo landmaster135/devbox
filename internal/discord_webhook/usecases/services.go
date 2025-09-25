@@ -184,8 +184,8 @@ func (s *DiscordWebhookService) CreateWeatherEmbed(title, description string, fi
 		"",
 		colorInDecimal,
 		fields,
-		footerTextInVSCODEEmbed,
-		vsCodeIconURL,
+		footerTextInOpenWeatherEmbed,
+		openWeatherIconURL,
 		true, // タイムスタンプを表示
 	)
 	if err != nil {
