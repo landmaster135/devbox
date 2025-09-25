@@ -134,8 +134,8 @@ args = ["notion_sync"]
 disabled = false
 autoApprove = []
 env = { NOTION_INTEGRATION_TOKEN = "YOUR_VALUE", NOTION_ENDPOINT_URL = "YOUR_VALUE", NOTION_ENDPOINT_URL_TO_PATCH_WEB_CLIP = "YOUR_VALUE" }
-timeout = "90s"
-request_timeout = "120s"
+timeout = "120s"
+request_timeout = "150s"
 
 [mcp_servers.weather_notificator]
 command = "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools"
