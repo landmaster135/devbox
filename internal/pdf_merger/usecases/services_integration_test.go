@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -307,11 +308,11 @@ func TestPDFCreationService_AddImagesToExistingPDF(t *testing.T) {
 	})
 }
 
-// TestPDFCreationService_getNameOfTemporaryPDF_Integration は統合テストでgetNameOfTemporaryPDFが実際に呼ばれることを確認
-func TestPDFCreationService_getNameOfTemporaryPDF_Integration(t *testing.T) {
+// TestPDFCreationService_createTemporaryPDF_Integration は AddImagesToExistingPDF 内で一時ファイルが適切に扱われることを検証
+func TestPDFCreationService_createTemporaryPDF_Integration(t *testing.T) {
 	service := NewPDFCreationService()
 
-	t.Run("AddImagesToExistingPDF内でgetNameOfTemporaryPDFが呼ばれる", func(t *testing.T) {
+	t.Run("一時ファイルが出力ディレクトリ内で生成され後始末される", func(t *testing.T) {
 		tmpDir, cleanup := setupTestData(t)
 		defer cleanup()
 
@@ -319,15 +320,25 @@ func TestPDFCreationService_getNameOfTemporaryPDF_Integration(t *testing.T) {
 		images := []string{filepath.Join(tmpDir, sampleFileOfJPG0101)}
 		outputPDF := filepath.Join(tmpDir, "output.pdf")
 
-		// この呼び出しによってgetNameOfTemporaryPDFが内部で実行される
 		err := service.AddImagesToExistingPDF(existingPDF, images, outputPDF)
 		if err != nil {
 			t.Fatalf("AddImagesToExistingPDF()でエラーが発生: %v", err)
 		}
 
-		// 出力ファイルが作成されていることを確認（間接的にgetNameOfTemporaryPDFが動作したことを確認）
+		// 出力ファイルが作成されていることを確認（間接的に一時ファイルが利用されたことを確認）
 		if _, err := os.Stat(outputPDF); os.IsNotExist(err) {
 			t.Error("出力PDFファイルが作成されませんでした")
+		}
+
+		entries, err := os.ReadDir(tmpDir)
+		if err != nil {
+			t.Fatalf("ディレクトリ一覧の取得に失敗: %v", err)
+		}
+
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "pdfmerge_temp_") {
+				t.Errorf("一時PDFファイルが削除されていません: %s", entry.Name())
+			}
 		}
 	})
 }

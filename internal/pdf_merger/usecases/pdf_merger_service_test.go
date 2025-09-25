@@ -2,10 +2,17 @@ package usecases
 
 import (
 	"bytes"
+	"log"
 	"os"
 	"strings"
 	"testing"
 )
+
+func newTestPDFMergerService() (*PDFMergerService, *bytes.Buffer) {
+	var buf bytes.Buffer
+	logger := log.New(&buf, "", 0)
+	return NewPDFMergerServiceWithLogger(logger), &buf
+}
 
 func TestPDFMergerService_Process(t *testing.T) {
 	tests := []struct {
@@ -72,10 +79,9 @@ func TestPDFMergerService_Process(t *testing.T) {
 				os.Remove("test_data/tmp/empty_test.pdf")
 			}()
 
-			service := NewPDFMergerService()
-			var stdout, stderr bytes.Buffer
+			service, logBuf := newTestPDFMergerService()
 
-			err := service.Process(tt.opts, &stdout, &stderr)
+			err := service.Process(tt.opts)
 
 			if tt.expectError {
 				if err == nil {
@@ -85,8 +91,8 @@ func TestPDFMergerService_Process(t *testing.T) {
 				if err != nil {
 					t.Errorf("予期しないエラーが発生しました: %v", err)
 				}
-				if tt.expectedOutput != "" && !strings.Contains(stdout.String(), tt.expectedOutput) {
-					t.Errorf("期待される出力が含まれていません。期待: %s, 実際: %s", tt.expectedOutput, stdout.String())
+				if tt.expectedOutput != "" && !strings.Contains(logBuf.String(), tt.expectedOutput) {
+					t.Errorf("期待される出力が含まれていません。期待: %s, 実際: %s", tt.expectedOutput, logBuf.String())
 				}
 			}
 		})
@@ -138,10 +144,9 @@ func TestPDFMergerService_handleImageExtraction(t *testing.T) {
 			}
 			defer os.RemoveAll("test_data/tmp/extract_handle_test")
 
-			service := NewPDFMergerService()
-			var stdout, stderr bytes.Buffer
+			service, _ := newTestPDFMergerService()
 
-			err := service.handleImageExtraction(tt.opts, &stdout, &stderr)
+			err := service.handleImageExtraction(tt.opts)
 
 			if tt.expectError {
 				if err == nil {
@@ -212,10 +217,9 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 				os.Remove("test_data/tmp/handle_empty_test.pdf")
 			}()
 
-			service := NewPDFMergerService()
-			var stdout, stderr bytes.Buffer
+			service, _ := newTestPDFMergerService()
 
-			err := service.handlePDFCreation(tt.opts, &stdout, &stderr)
+			err := service.handlePDFCreation(tt.opts)
 
 			if tt.expectError {
 				if err == nil {
@@ -306,10 +310,9 @@ func TestPDFMergerService_Integration(t *testing.T) {
 			EndPage:     0,
 		}
 
-		service := NewPDFMergerService()
-		var stdout, stderr bytes.Buffer
+		service, logBuf := newTestPDFMergerService()
 
-		err := service.Process(opts, &stdout, &stderr)
+		err := service.Process(opts)
 		if err != nil {
 			t.Fatalf("画像抽出処理でエラーが発生: %v", err)
 		}
@@ -325,7 +328,7 @@ func TestPDFMergerService_Integration(t *testing.T) {
 		}
 
 		// 出力メッセージの確認
-		output := stdout.String()
+		output := logBuf.String()
 		if !strings.Contains(output, "PDF画像抽出を開始します") {
 			t.Error("期待される開始メッセージが出力されていません")
 		}
@@ -343,10 +346,9 @@ func TestPDFMergerService_Integration(t *testing.T) {
 			Out: outputFile,
 		}
 
-		service := NewPDFMergerService()
-		var stdout, stderr bytes.Buffer
+		service, logBuf := newTestPDFMergerService()
 
-		err := service.Process(opts, &stdout, &stderr)
+		err := service.Process(opts)
 		if err != nil {
 			t.Fatalf("PDF作成処理でエラーが発生: %v", err)
 		}
@@ -357,7 +359,7 @@ func TestPDFMergerService_Integration(t *testing.T) {
 		}
 
 		// 出力メッセージの確認
-		output := stdout.String()
+		output := logBuf.String()
 		if !strings.Contains(output, "検出した画像") {
 			t.Error("期待される画像検出メッセージが出力されていません")
 		}
