@@ -121,7 +121,7 @@ func TestGetTableSchemaMinimum_Normal(t *testing.T) {
 		AddRow("created_at", "timestamp")
 
 	mock.ExpectQuery("SELECT column_name, data_type FROM information_schema.columns").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -152,7 +152,7 @@ func TestGetTableSchemaMinimum_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT column_name, data_type FROM information_schema.columns").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -402,7 +402,7 @@ func TestHandleToGetTableSchemaMinimum_Normal(t *testing.T) {
 		AddRow("created_at", "timestamp")
 
 	mock.ExpectQuery("SELECT column_name, data_type FROM information_schema.columns").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -433,7 +433,7 @@ func TestHandleToGetTableSchemaMinimum_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT column_name, data_type FROM information_schema.columns").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行

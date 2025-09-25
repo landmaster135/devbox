@@ -24,7 +24,7 @@ func TestFetchTableWithComments_Normal(t *testing.T) {
 		AddRow("users", "ユーザーテーブル")
 
 	mock.ExpectQuery("SELECT t.table_name, COALESCE").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -50,7 +50,7 @@ func TestFetchTableWithComments_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT t.table_name, COALESCE").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -84,7 +84,7 @@ func TestFetchPrimaryKeys_Normal(t *testing.T) {
 		AddRow("email")
 
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -111,7 +111,7 @@ func TestFetchPrimaryKeys_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -145,7 +145,7 @@ func TestFetchUniqueKeys_Normal(t *testing.T) {
 		AddRow("users_username_key", "username")
 
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -174,7 +174,7 @@ func TestFetchUniqueKeys_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -207,7 +207,7 @@ func TestFetchForeignKeys_Normal(t *testing.T) {
 		AddRow("users_role_id_fkey", "role_id", "roles", "id")
 
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -236,7 +236,7 @@ func TestFetchForeignKeys_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -270,7 +270,7 @@ func TestFetchTableColumns_Normal(t *testing.T) {
 		AddRow("name", "character varying", "YES", sql.NullString{Valid: false}, "名前")
 
 	mock.ExpectQuery("SELECT c.column_name, c.data_type, c.is_nullable").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -303,7 +303,7 @@ func TestFetchTableColumns_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT c.column_name, c.data_type, c.is_nullable").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -337,7 +337,7 @@ func TestFetchTableIndexes_Normal(t *testing.T) {
 		AddRow("users_name_idx", "name", false)
 
 	mock.ExpectQuery("SELECT i.relname AS index_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("users", "public").
 		WillReturnRows(rows)
 
 	// 関数を実行
@@ -368,7 +368,7 @@ func TestFetchTableIndexes_Error(t *testing.T) {
 
 	// クエリエラーのモック
 	mock.ExpectQuery("SELECT i.relname AS index_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("users", "public").
 		WillReturnError(fmt.Errorf("データベースエラー"))
 
 	// 関数を実行
@@ -400,28 +400,28 @@ func TestGetTableDetail_Normal(t *testing.T) {
 	tableRows := newMockRows("table_name", "table_comment").
 		AddRow("users", "ユーザーテーブル")
 	mock.ExpectQuery("SELECT t.table_name, COALESCE").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(tableRows)
 
 	// fetchPrimaryKeysのモック
 	pkRows := newMockRows("attname").
 		AddRow("id")
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(pkRows)
 
 	// fetchUniqueKeysのモック
 	ukRows := newMockRows("constraint_name", "column_name").
 		AddRow("users_email_key", "email")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(ukRows)
 
 	// fetchForeignKeysのモック
 	fkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
 		AddRow("users_role_id_fkey", "role_id", "roles", "id")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(fkRows)
 
 	// fetchTableColumnsのモック
@@ -429,14 +429,14 @@ func TestGetTableDetail_Normal(t *testing.T) {
 		AddRow("id", "integer", "NO", sql.NullString{String: "nextval('users_id_seq'::regclass)", Valid: true}, "ID").
 		AddRow("name", "character varying", "YES", sql.NullString{Valid: false}, "名前")
 	mock.ExpectQuery("SELECT c.column_name, c.data_type, c.is_nullable").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(colRows)
 
 	// fetchTableIndexesのモック
 	idxRows := newMockRows("index_name", "column_name", "is_unique").
 		AddRow("users_email_idx", "email", true)
 	mock.ExpectQuery("SELECT i.relname AS index_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("users", "public").
 		WillReturnRows(idxRows)
 
 	// 関数を実行
@@ -473,7 +473,7 @@ func TestGetTableDetail_FetchTableWithCommentsError(t *testing.T) {
 
 	// fetchTableWithCommentsのエラーモック
 	mock.ExpectQuery("SELECT t.table_name, COALESCE").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnError(fmt.Errorf("テーブル情報の取得エラー"))
 
 	// 関数を実行
@@ -512,42 +512,42 @@ func TestGetAllTableSummaries_Normal(t *testing.T) {
 	usersPkRows := newMockRows("attname").
 		AddRow("id")
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(usersPkRows)
 
 	// users テーブルの一意キー情報のモック
 	usersUkRows := newMockRows("constraint_name", "column_name").
 		AddRow("users_email_key", "email")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(usersUkRows)
 
 	// users テーブルの外部キー情報のモック
 	usersFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
 		AddRow("users_role_id_fkey", "role_id", "roles", "id")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(usersFkRows)
 
 	// products テーブルの主キー情報のモック
 	productsPkRows := newMockRows("attname").
 		AddRow("id")
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("products").
+		WithArgs("\"public\".\"products\"").
 		WillReturnRows(productsPkRows)
 
 	// products テーブルの一意キー情報のモック
 	productsUkRows := newMockRows("constraint_name", "column_name").
 		AddRow("products_code_key", "code")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("products").
+		WithArgs("\"public\".\"products\"").
 		WillReturnRows(productsUkRows)
 
 	// products テーブルの外部キー情報のモック
 	productsFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
 		AddRow("products_category_id_fkey", "category_id", "categories", "id")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("products").
+		WithArgs("\"public\".\"products\"").
 		WillReturnRows(productsFkRows)
 
 	// 関数を実行
@@ -620,28 +620,28 @@ func TestHandleToGetTableSchema_Normal(t *testing.T) {
 	tableRows := newMockRows("table_name", "table_comment").
 		AddRow("users", "ユーザーテーブル")
 	mock.ExpectQuery("SELECT t.table_name, COALESCE").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(tableRows)
 
 	// fetchPrimaryKeysのモック
 	pkRows := newMockRows("attname").
 		AddRow("id")
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(pkRows)
 
 	// fetchUniqueKeysのモック
 	ukRows := newMockRows("constraint_name", "column_name").
 		AddRow("users_email_key", "email")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(ukRows)
 
 	// fetchForeignKeysのモック
 	fkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
 		AddRow("users_role_id_fkey", "role_id", "roles", "id")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(fkRows)
 
 	// fetchTableColumnsのモック
@@ -649,14 +649,14 @@ func TestHandleToGetTableSchema_Normal(t *testing.T) {
 		AddRow("id", "integer", "NO", sql.NullString{String: "nextval('users_id_seq'::regclass)", Valid: true}, "ID").
 		AddRow("name", "character varying", "YES", sql.NullString{Valid: false}, "名前")
 	mock.ExpectQuery("SELECT c.column_name, c.data_type, c.is_nullable").
-		WithArgs("users").
+		WithArgs("public", "users").
 		WillReturnRows(colRows)
 
 	// fetchTableIndexesのモック
 	idxRows := newMockRows("index_name", "column_name", "is_unique").
 		AddRow("users_email_idx", "email", true)
 	mock.ExpectQuery("SELECT i.relname AS index_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("users", "public").
 		WillReturnRows(idxRows)
 
 	// 関数を実行
@@ -692,42 +692,42 @@ func TestHandleToListTables_Normal(t *testing.T) {
 	usersPkRows := newMockRows("attname").
 		AddRow("id")
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(usersPkRows)
 
 	// users テーブルの一意キー情報のモック
 	usersUkRows := newMockRows("constraint_name", "column_name").
 		AddRow("users_email_key", "email")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(usersUkRows)
 
 	// users テーブルの外部キー情報のモック
 	usersFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
 		AddRow("users_role_id_fkey", "role_id", "roles", "id")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("users").
+		WithArgs("\"public\".\"users\"").
 		WillReturnRows(usersFkRows)
 
 	// products テーブルの主キー情報のモック
 	productsPkRows := newMockRows("attname").
 		AddRow("id")
 	mock.ExpectQuery("SELECT a.attname FROM pg_index").
-		WithArgs("products").
+		WithArgs("\"public\".\"products\"").
 		WillReturnRows(productsPkRows)
 
 	// products テーブルの一意キー情報のモック
 	productsUkRows := newMockRows("constraint_name", "column_name").
 		AddRow("products_code_key", "code")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
-		WithArgs("products").
+		WithArgs("\"public\".\"products\"").
 		WillReturnRows(productsUkRows)
 
 	// products テーブルの外部キー情報のモック
 	productsFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
 		AddRow("products_category_id_fkey", "category_id", "categories", "id")
 	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
-		WithArgs("products").
+		WithArgs("\"public\".\"products\"").
 		WillReturnRows(productsFkRows)
 
 	// 関数を実行
