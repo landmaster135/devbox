@@ -70,6 +70,8 @@ args = ["postgresql"]
 disabled = true
 autoApprove = []
 env = { POSTGRESQL_DATABASE_URL = "YOUR_URL" }
+timeout = "30s"
+request_timeout = "60s"
 
 [mcp_servers.everart]
 command = "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools"
