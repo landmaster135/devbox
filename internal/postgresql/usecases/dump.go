@@ -2,7 +2,9 @@ package usecases
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/csv"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -455,6 +458,102 @@ func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sorted
 	}
 }
 
+func formatCSVValue(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	case []byte:
+		if len(v) == 0 {
+			return ""
+		}
+		return base64.StdEncoding.EncodeToString(v)
+	case time.Time:
+		return v.Format(time.RFC3339Nano)
+	case bool:
+		return strconv.FormatBool(v)
+	case int:
+		return strconv.FormatInt(int64(v), 10)
+	case int8:
+		return strconv.FormatInt(int64(v), 10)
+	case int16:
+		return strconv.FormatInt(int64(v), 10)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case float32:
+		return strconv.FormatFloat(float64(v), 'g', -1, 32)
+	case float64:
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprint(value)
+	}
+}
+
+func formatSQLValue(value any) string {
+	switch v := value.(type) {
+	case nil:
+		return "NULL"
+	case string:
+		return pq.QuoteLiteral(v)
+	case []byte:
+		if len(v) == 0 {
+			return "decode('', 'hex')"
+		}
+		hexStr := hex.EncodeToString(v)
+		return fmt.Sprintf("decode('%s','hex')", hexStr)
+	case time.Time:
+		return pq.QuoteLiteral(v.Format(time.RFC3339Nano))
+	case bool:
+		if v {
+			return "TRUE"
+		}
+		return "FALSE"
+	case int:
+		return strconv.FormatInt(int64(v), 10)
+	case int8:
+		return strconv.FormatInt(int64(v), 10)
+	case int16:
+		return strconv.FormatInt(int64(v), 10)
+	case int32:
+		return strconv.FormatInt(int64(v), 10)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case uint:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(v), 10)
+	case uint64:
+		return strconv.FormatUint(v, 10)
+	case float32:
+		return strconv.FormatFloat(float64(v), 'g', -1, 32)
+	case float64:
+		return strconv.FormatFloat(v, 'g', -1, 64)
+	case fmt.Stringer:
+		return pq.QuoteLiteral(v.String())
+	default:
+		return pq.QuoteLiteral(fmt.Sprint(value))
+	}
+}
+
 type jsonStreamWriter struct {
 	file     *os.File
 	rows     int
@@ -588,12 +687,7 @@ func (w *csvStreamWriter) WriteBatch(rows []map[string]any) error {
 	for _, row := range rows {
 		values := make([]string, len(w.headers))
 		for i, header := range w.headers {
-			value := row[header]
-			if value == nil {
-				values[i] = ""
-				continue
-			}
-			values[i] = fmt.Sprintf("%v", value)
+			values[i] = formatCSVValue(row[header])
 		}
 
 		if err := w.writer.Write(values); err != nil {
@@ -705,18 +799,7 @@ func (w *sqlStreamWriter) WriteBatch(rows []map[string]any) error {
 
 		values := make([]string, len(w.columns))
 		for i, col := range w.columns {
-			value := row[col]
-			if value == nil {
-				values[i] = "NULL"
-				continue
-			}
-
-			switch v := value.(type) {
-			case string:
-				values[i] = fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''"))
-			default:
-				values[i] = fmt.Sprintf("%v", v)
-			}
+			values[i] = formatSQLValue(row[col])
 		}
 
 		if _, err := w.file.WriteString(strings.Join(values, ", ")); err != nil {

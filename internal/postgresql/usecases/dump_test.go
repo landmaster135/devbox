@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -438,13 +439,28 @@ func TestCSVStreamWriter_WriteBatch(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "test.csv")
-	headers := []string{"id", "name"}
+	headers := []string{"id", "name", "score", "active", "created_at", "payload"}
 	writer, err := newCSVStreamWriter(&DefaultFileWriter{}, filePath, headers)
 	assert.NoError(t, err)
 
+	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 6000, time.UTC)
 	rows := []map[string]any{
-		{"id": 1, "name": "John"},
-		{"id": 2, "name": "Jane"},
+		{
+			"id":         1,
+			"name":       "John",
+			"score":      1.2345,
+			"active":     true,
+			"created_at": createdAt,
+			"payload":    []byte("hi"),
+		},
+		{
+			"id":         2,
+			"name":       "Jane",
+			"score":      2.5,
+			"active":     false,
+			"created_at": createdAt.Add(time.Minute),
+			"payload":    nil,
+		},
 	}
 
 	// Act
@@ -454,7 +470,12 @@ func TestCSVStreamWriter_WriteBatch(t *testing.T) {
 	// Assert
 	data, err := os.ReadFile(filePath)
 	assert.NoError(t, err)
-	assert.Equal(t, "id,name\n1,John\n2,Jane\n", string(data))
+	expected := strings.Join([]string{
+		"id,name,score,active,created_at,payload",
+		fmt.Sprintf("1,John,1.2345,true,%s,aGk=", createdAt.Format(time.RFC3339Nano)),
+		fmt.Sprintf("2,Jane,2.5,false,%s,", createdAt.Add(time.Minute).Format(time.RFC3339Nano)),
+	}, "\n") + "\n"
+	assert.Equal(t, expected, string(data))
 	assert.Equal(t, 2, writer.RowsWritten())
 }
 
@@ -462,13 +483,26 @@ func TestSQLStreamWriter_WriteBatch(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "users.sql")
-	columns := []string{"id", "name"}
+	columns := []string{"id", "name", "active", "created_at", "payload"}
 	writer, err := newSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
 	assert.NoError(t, err)
 
+	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 6000, time.UTC)
 	rows := []map[string]any{
-		{"id": 1, "name": "John"},
-		{"id": 2, "name": "Jane"},
+		{
+			"id":         1,
+			"name":       "John",
+			"active":     true,
+			"created_at": createdAt,
+			"payload":    []byte{0xDE, 0xAD, 0xBE, 0xEF},
+		},
+		{
+			"id":         2,
+			"name":       "Jane",
+			"active":     false,
+			"created_at": createdAt.Add(time.Minute),
+			"payload":    nil,
+		},
 	}
 
 	// Act
@@ -482,6 +516,11 @@ func TestSQLStreamWriter_WriteBatch(t *testing.T) {
 	assert.Contains(t, content, "-- Table dump for users")
 	assert.Contains(t, content, "INSERT INTO \"users\"")
 	assert.Contains(t, content, "'John'")
+	assert.Contains(t, content, "TRUE")
+	assert.Contains(t, content, "FALSE")
+	assert.Contains(t, content, createdAt.Format(time.RFC3339Nano))
+	assert.Contains(t, content, "decode('deadbeef','hex')")
+	assert.Contains(t, content, "NULL")
 	assert.Equal(t, 2, writer.RowsWritten())
 }
 
