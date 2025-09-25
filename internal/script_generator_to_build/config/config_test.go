@@ -12,7 +12,7 @@ type TestAppConfig struct{}
 // TestAppConfig_SetDefaults_Normal はSetDefaultsメソッドの正常系テストです
 func (t *TestAppConfig) TestAppConfig_SetDefaults_Normal(test *testing.T) {
 	// Arrange
-	config := &AppConfig{}
+	config := &ServiceConfig{}
 
 	// Act
 	config.SetDefaults()
@@ -40,7 +40,7 @@ func TestAppConfig_SetDefaults_Normal(t *testing.T) {
 // TestAppConfig_SetDefaults_WithExistingValues は既存値がある場合のテストです
 func (t *TestAppConfig) TestAppConfig_SetDefaults_WithExistingValues(test *testing.T) {
 	// Arrange
-	config := &AppConfig{
+	config := &ServiceConfig{
 		BaseDir:    "/custom/base",
 		CLIDir:     "custom/cli",
 		ScriptsDir: "custom/scripts",
@@ -73,7 +73,7 @@ func TestAppConfig_SetDefaults_WithExistingValues(t *testing.T) {
 // TestAppConfig_SetDefaults_BaseDirFallback はBaseDir設定時のフォールバック処理テストです
 func (t *TestAppConfig) TestAppConfig_SetDefaults_BaseDirFallback(test *testing.T) {
 	// Arrange
-	config := &AppConfig{}
+	config := &ServiceConfig{}
 
 	// 現在のワーキングディレクトリを取得して期待値を設定
 	expectedBaseDir, err := os.Getwd()
@@ -98,7 +98,7 @@ func TestAppConfig_SetDefaults_BaseDirFallback(t *testing.T) {
 // TestAppConfig_GetCLIPath_Normal はGetCLIPathメソッドの正常系テストです
 func (t *TestAppConfig) TestAppConfig_GetCLIPath_Normal(test *testing.T) {
 	// Arrange
-	config := &AppConfig{
+	config := &ServiceConfig{
 		BaseDir: "/home/user/project",
 		CLIDir:  "cmd/cli",
 	}
@@ -150,7 +150,7 @@ func (t *TestAppConfig) TestAppConfig_GetCLIPath_WithDifferentPaths(test *testin
 	for _, tc := range testCases {
 		test.Run(tc.name, func(t *testing.T) {
 			// Arrange
-			config := &AppConfig{
+			config := &ServiceConfig{
 				BaseDir: tc.baseDir,
 				CLIDir:  tc.cliDir,
 			}
@@ -174,7 +174,7 @@ func TestAppConfig_GetCLIPath_WithDifferentPaths(t *testing.T) {
 // TestAppConfig_GetScriptsPath_Normal はGetScriptsPathメソッドの正常系テストです
 func (t *TestAppConfig) TestAppConfig_GetScriptsPath_Normal(test *testing.T) {
 	// Arrange
-	config := &AppConfig{
+	config := &ServiceConfig{
 		BaseDir:    "/home/user/project",
 		ScriptsDir: "scripts",
 	}
@@ -226,7 +226,7 @@ func (t *TestAppConfig) TestAppConfig_GetScriptsPath_WithDifferentPaths(test *te
 	for _, tc := range testCases {
 		test.Run(tc.name, func(t *testing.T) {
 			// Arrange
-			config := &AppConfig{
+			config := &ServiceConfig{
 				BaseDir:    tc.baseDir,
 				ScriptsDir: tc.scriptsDir,
 			}
@@ -250,7 +250,7 @@ func TestAppConfig_GetScriptsPath_WithDifferentPaths(t *testing.T) {
 // TestAppConfig_Integration は統合テストです
 func (t *TestAppConfig) TestAppConfig_Integration(test *testing.T) {
 	// Arrange
-	config := &AppConfig{
+	config := &ServiceConfig{
 		PackageName: "test-package",
 		ShowHelp:    true,
 	}
@@ -286,7 +286,7 @@ func TestAppConfig_Integration(t *testing.T) {
 // TestAppConfig_SetDefaults_ErrorHandling はSetDefaultsのエラーハンドリングテストです
 func (t *TestAppConfig) TestAppConfig_SetDefaults_ErrorHandling(test *testing.T) {
 	// Arrange
-	config := &AppConfig{
+	config := &ServiceConfig{
 		BaseDir: "", // 空文字列でテスト
 	}
 
@@ -321,13 +321,13 @@ func (t *TestAppConfig) TestAppConfig_GetPaths_EdgeCases(test *testing.T) {
 	// Arrange
 	testCases := []struct {
 		name     string
-		config   *AppConfig
+		config   *ServiceConfig
 		testType string
 		expected string
 	}{
 		{
 			name: "Special characters in BaseDir",
-			config: &AppConfig{
+			config: &ServiceConfig{
 				BaseDir: "/path/with spaces/and-special_chars",
 				CLIDir:  "cmd/cli",
 			},
@@ -336,7 +336,7 @@ func (t *TestAppConfig) TestAppConfig_GetPaths_EdgeCases(test *testing.T) {
 		},
 		{
 			name: "Special characters in ScriptsDir",
-			config: &AppConfig{
+			config: &ServiceConfig{
 				BaseDir:    "/base",
 				ScriptsDir: "scripts-with_special.chars",
 			},
@@ -345,7 +345,7 @@ func (t *TestAppConfig) TestAppConfig_GetPaths_EdgeCases(test *testing.T) {
 		},
 		{
 			name: "Very long paths",
-			config: &AppConfig{
+			config: &ServiceConfig{
 				BaseDir: "/very/long/path/that/might/cause/issues/in/some/systems/but/should/work/fine",
 				CLIDir:  "cmd/cli/with/nested/structure",
 			},
@@ -354,7 +354,7 @@ func (t *TestAppConfig) TestAppConfig_GetPaths_EdgeCases(test *testing.T) {
 		},
 		{
 			name: "Dot paths",
-			config: &AppConfig{
+			config: &ServiceConfig{
 				BaseDir:    ".",
 				ScriptsDir: "./scripts",
 			},

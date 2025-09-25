@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 )
 
-// AppConfig はアプリケーションの設定を表します
-type AppConfig struct {
+// ServiceConfig はアプリケーションの設定を表します
+type ServiceConfig struct {
 	PackageName string
 	ShowHelp    bool
 
@@ -18,7 +18,7 @@ type AppConfig struct {
 }
 
 // SetDefaults はデフォルト値を設定します
-func (c *AppConfig) SetDefaults() {
+func (c *ServiceConfig) SetDefaults() {
 	if c.BaseDir == "" {
 		wd, err := os.Getwd()
 		if err != nil {
@@ -40,11 +40,11 @@ func (c *AppConfig) SetDefaults() {
 }
 
 // GetCLIPath はCLIディレクトリの完全パスを返します
-func (c *AppConfig) GetCLIPath() string {
+func (c *ServiceConfig) GetCLIPath() string {
 	return filepath.Join(c.BaseDir, c.CLIDir)
 }
 
 // GetScriptsPath はスクリプトディレクトリの完全パスを返します
-func (c *AppConfig) GetScriptsPath() string {
+func (c *ServiceConfig) GetScriptsPath() string {
 	return filepath.Join(c.BaseDir, c.ScriptsDir)
 }

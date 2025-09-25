@@ -22,14 +22,14 @@ func main() {
 		packageName = args[0]
 	}
 
-	// アプリケーション設定
-	appConfig := &config.AppConfig{
+	// サービス設定
+	appConfig := &config.ServiceConfig{
 		PackageName: packageName,
 		ShowHelp:    showHelp,
 	}
 
-	// アプリケーションを実行
-	app := usecases.NewApp(appConfig)
+	// サービスを実行
+	app := usecases.NewService(appConfig)
 	exitCode := app.Run(os.Stdout, os.Stderr)
 
 	// 終了コードを設定
