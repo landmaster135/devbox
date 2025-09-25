@@ -59,7 +59,7 @@ type FailedDump struct {
 // DumpTask は並行処理用のダンプタスクを表します
 type DumpTask struct {
 	Table   Table
-	Options DumpOptions
+	Options *DumpOptions
 }
 
 // DumpTaskResult は並行処理用のダンプタスク結果を表します
@@ -200,7 +200,11 @@ func NewTableDumperWithDependencies(executor DatabaseQueryExecutor, fileWriter F
 }
 
 // DumpTable はテーブルの全レコードをダンプします
-func (d *TableDumper) DumpTable(ctx context.Context, options DumpOptions) (*DumpResult, error) {
+func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (result *DumpResult, err error) {
+	if options == nil {
+		return nil, errors.New("オプションが指定されていません")
+	}
+
 	// パラメータ検証
 	if err := d.validateOptions(options); err != nil {
 		return nil, fmt.Errorf("オプション検証エラー: %w", err)
@@ -221,25 +225,48 @@ func (d *TableDumper) DumpTable(ctx context.Context, options DumpOptions) (*Dump
 		return nil, fmt.Errorf("クエリ構築エラー: %w", err)
 	}
 
-	// データを取得
-	data, err := d.fetchTableData(ctx, query)
+	rows, err := d.executor.QueryContextRows(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("データ取得エラー: %w", err)
 	}
+	defer rows.Close()
 
-	// ファイル名を生成
+	columnOrder, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("カラム情報取得エラー: %w", err)
+	}
+
+	sortedColumns := make([]string, len(columnOrder))
+	copy(sortedColumns, columnOrder)
+	sort.Strings(sortedColumns)
+
 	fileName := d.generateFileName(options.TableName, options.Format)
 	filePath := filepath.Join(options.OutputPath, fileName)
 
-	// フォーマットに応じてファイルに出力
-	if err := d.writeDataToFile(filePath, data, options.Format, options.TableName); err != nil {
-		return nil, fmt.Errorf("ファイル書き込みエラー: %w", err)
+	writer, err := d.newStreamWriter(options.Format, filePath, options.TableName, sortedColumns)
+	if err != nil {
+		return nil, fmt.Errorf("ファイル初期化エラー: %w", err)
 	}
 
-	// 結果を作成
-	result := &DumpResult{
+	defer func() {
+		closeErr := writer.Close()
+		if closeErr != nil {
+			if err == nil {
+				err = closeErr
+			}
+			result = nil
+		}
+	}()
+
+	if err := d.streamRows(rows, columnOrder, writer); err != nil {
+		return nil, fmt.Errorf("データ書き込みエラー: %w", err)
+	}
+
+	recordCount := writer.RowsWritten()
+
+	result = &DumpResult{
 		TableName:   options.TableName,
-		RecordCount: len(data),
+		RecordCount: recordCount,
 		OutputPath:  options.OutputPath,
 		FileName:    fileName,
 		Format:      options.Format,
@@ -250,7 +277,11 @@ func (d *TableDumper) DumpTable(ctx context.Context, options DumpOptions) (*Dump
 }
 
 // validateOptions はオプションを検証します
-func (d *TableDumper) validateOptions(options DumpOptions) error {
+func (d *TableDumper) validateOptions(options *DumpOptions) error {
+	if options == nil {
+		return errors.New("オプションが指定されていません")
+	}
+
 	if _, _, err := quoteQualifiedTableName(options.TableName); err != nil {
 		return err
 	}
@@ -309,7 +340,11 @@ func (d *TableDumper) ensureAllowedTable(ctx context.Context, tableName string) 
 }
 
 // buildQuery はダンプ用のクエリを構築します
-func (d *TableDumper) buildQuery(options DumpOptions) (string, error) {
+func (d *TableDumper) buildQuery(options *DumpOptions) (string, error) {
+	if options == nil {
+		return "", errors.New("オプションが指定されていません")
+	}
+
 	quotedTable, _, err := quoteQualifiedTableName(options.TableName)
 	if err != nil {
 		return "", err
@@ -322,59 +357,6 @@ func (d *TableDumper) buildQuery(options DumpOptions) (string, error) {
 	}
 
 	return query, nil
-}
-
-// fetchTableData はテーブルデータを取得します
-func (d *TableDumper) fetchTableData(ctx context.Context, query string) ([]map[string]any, error) {
-	rows, err := d.executor.QueryContextRows(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	// カラム名を取得
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	// 結果を格納するスライス
-	var result []map[string]any
-
-	// 各行を処理
-	for rows.Next() {
-		// スキャン用のインターフェースのスライスを作成
-		values := make([]any, len(columns))
-		valuePtrs := make([]any, len(columns))
-		for i := range columns {
-			valuePtrs[i] = &values[i]
-		}
-
-		// 行をスキャン
-		if err := rows.Scan(valuePtrs...); err != nil {
-			return nil, err
-		}
-
-		// 行データをマップに変換
-		row := make(map[string]any)
-		for i, col := range columns {
-			val := values[i]
-			// バイト配列の場合は文字列に変換
-			if b, ok := val.([]byte); ok {
-				row[col] = string(b)
-			} else {
-				row[col] = val
-			}
-		}
-
-		result = append(result, row)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return result, nil
 }
 
 // ensureOutputDirectory は出力ディレクトリが存在することを確認し、必要に応じて作成します
@@ -407,67 +389,245 @@ func (d *TableDumper) getFileExtension(format string) string {
 	}
 }
 
-// writeDataToFile はデータをファイルに書き込みます
-func (d *TableDumper) writeDataToFile(filePath string, data []map[string]any, format string, tableName string) error {
-	switch format {
-	case "json":
-		return d.writeJSONFile(filePath, data)
-	case "csv":
-		return d.writeCSVFile(filePath, data)
-	case "sql":
-		return d.writeSQLFile(filePath, data, tableName)
-	default:
-		return fmt.Errorf("サポートされていないフォーマット: %s", format)
-	}
-}
-
-// writeJSONFile はJSONファイルを書き込みます
-func (d *TableDumper) writeJSONFile(filePath string, data []map[string]any) error {
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
+// streamRows は取得した行を一定件数ずつ writer に書き込みます
+func (d *TableDumper) streamRows(rows RowsInterface, columnOrder []string, writer tableDataWriter) error {
+	if writer == nil {
+		return errors.New("writerが初期化されていません")
 	}
 
-	return d.fileWriter.WriteFile(filePath, jsonData, 0644)
-}
+	batch := make([]map[string]any, 0, 1000)
 
-// writeCSVFile はCSVファイルを書き込みます
-func (d *TableDumper) writeCSVFile(filePath string, data []map[string]any) error {
-	if len(data) == 0 {
-		return d.fileWriter.WriteFile(filePath, []byte(""), 0644)
-	}
+	for rows.Next() {
+		values := make([]any, len(columnOrder))
+		valuePtrs := make([]any, len(columnOrder))
+		for i := range columnOrder {
+			valuePtrs[i] = &values[i]
+		}
 
-	file, err := d.fileWriter.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+		if err := rows.Scan(valuePtrs...); err != nil {
+			return err
+		}
 
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// ヘッダーを書き込み（決定的な順序を保証するためキーをソート）
-	var headers []string
-	for key := range data[0] {
-		headers = append(headers, key)
-	}
-	sort.Strings(headers)
-	if err := writer.Write(headers); err != nil {
-		return err
-	}
-
-	// データを書き込み
-	for _, row := range data {
-		var values []string
-		for _, header := range headers {
-			value := row[header]
-			if value == nil {
-				values = append(values, "")
+		row := make(map[string]any, len(columnOrder))
+		for i, col := range columnOrder {
+			val := values[i]
+			if b, ok := val.([]byte); ok {
+				row[col] = string(b)
 			} else {
-				values = append(values, fmt.Sprintf("%v", value))
+				row[col] = val
 			}
 		}
-		if err := writer.Write(values); err != nil {
+
+		batch = append(batch, row)
+		if len(batch) == 1000 {
+			if err := writer.WriteBatch(batch); err != nil {
+				return err
+			}
+			batch = batch[:0]
+		}
+	}
+
+	if len(batch) > 0 {
+		if err := writer.WriteBatch(batch); err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
+}
+
+type tableDataWriter interface {
+	WriteBatch(rows []map[string]any) error
+	Close() error
+	RowsWritten() int
+}
+
+func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sortedColumns []string) (tableDataWriter, error) {
+	switch format {
+	case "json":
+		return newJSONStreamWriter(d.fileWriter, filePath)
+	case "csv":
+		return newCSVStreamWriter(d.fileWriter, filePath, sortedColumns)
+	case "sql":
+		return newSQLStreamWriter(d.fileWriter, filePath, tableName, sortedColumns)
+	default:
+		return nil, fmt.Errorf("サポートされていないフォーマット: %s", format)
+	}
+}
+
+type jsonStreamWriter struct {
+	file     *os.File
+	rows     int
+	closed   bool
+	closeErr error
+}
+
+func newJSONStreamWriter(fileWriter FileWriter, filePath string) (*jsonStreamWriter, error) {
+	file, err := fileWriter.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := file.WriteString("["); err != nil {
+		_ = file.Close()
+		return nil, err
+	}
+
+	return &jsonStreamWriter{file: file}, nil
+}
+
+func (w *jsonStreamWriter) WriteBatch(rows []map[string]any) error {
+	if w.closed {
+		return errors.New("既にクローズされたライターに書き込めません")
+	}
+
+	for _, row := range rows {
+		rowJSON, err := json.MarshalIndent(row, "", "  ")
+		if err != nil {
+			return err
+		}
+
+		prefix := "\n"
+		if w.rows > 0 {
+			prefix = ",\n"
+		}
+
+		if _, err := w.file.WriteString(prefix); err != nil {
+			return err
+		}
+		if _, err := w.file.WriteString("  "); err != nil {
+			return err
+		}
+		if _, err := w.file.WriteString(strings.ReplaceAll(string(rowJSON), "\n", "\n  ")); err != nil {
+			return err
+		}
+
+		w.rows++
+	}
+
+	return nil
+}
+
+func (w *jsonStreamWriter) Close() error {
+	if w.closed {
+		return w.closeErr
+	}
+	w.closed = true
+
+	if w.file == nil {
+		return nil
+	}
+
+	var err error
+	if w.rows > 0 {
+		_, err = w.file.WriteString("\n]")
+	} else {
+		_, err = w.file.WriteString("]")
+	}
+
+	if err != nil {
+		w.closeErr = err
+		_ = w.file.Close()
+		return err
+	}
+
+	if closeErr := w.file.Close(); closeErr != nil {
+		err = closeErr
+	}
+
+	w.closeErr = err
+	return err
+}
+
+func (w *jsonStreamWriter) RowsWritten() int {
+	return w.rows
+}
+
+type csvStreamWriter struct {
+	file     *os.File
+	writer   *csv.Writer
+	headers  []string
+	rows     int
+	closed   bool
+	closeErr error
+}
+
+func newCSVStreamWriter(fileWriter FileWriter, filePath string, headers []string) (*csvStreamWriter, error) {
+	file, err := fileWriter.Create(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	writer := csv.NewWriter(file)
+
+	if len(headers) > 0 {
+		if err := writer.Write(headers); err != nil {
+			writer.Flush()
+			_ = file.Close()
+			return nil, err
+		}
+		writer.Flush()
+		if err := writer.Error(); err != nil {
+			_ = file.Close()
+			return nil, err
+		}
+	}
+
+	return &csvStreamWriter{
+		file:    file,
+		writer:  writer,
+		headers: headers,
+	}, nil
+}
+
+func (w *csvStreamWriter) WriteBatch(rows []map[string]any) error {
+	if w.closed {
+		return errors.New("既にクローズされたライターに書き込めません")
+	}
+
+	for _, row := range rows {
+		values := make([]string, len(w.headers))
+		for i, header := range w.headers {
+			value := row[header]
+			if value == nil {
+				values[i] = ""
+				continue
+			}
+			values[i] = fmt.Sprintf("%v", value)
+		}
+
+		if err := w.writer.Write(values); err != nil {
+			return err
+		}
+		w.rows++
+	}
+
+	w.writer.Flush()
+	if err := w.writer.Error(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *csvStreamWriter) Close() error {
+	if w.closed {
+		return w.closeErr
+	}
+	w.closed = true
+
+	if w.writer != nil {
+		w.writer.Flush()
+		if err := w.writer.Error(); err != nil {
+			w.closeErr = err
+			_ = w.file.Close()
+			return err
+		}
+	}
+
+	if w.file != nil {
+		if err := w.file.Close(); err != nil {
+			w.closeErr = err
 			return err
 		}
 	}
@@ -475,61 +635,131 @@ func (d *TableDumper) writeCSVFile(filePath string, data []map[string]any) error
 	return nil
 }
 
-// writeSQLFile はSQL INSERT文ファイルを書き込みます
-func (d *TableDumper) writeSQLFile(filePath string, data []map[string]any, tableName string) error {
-	if len(data) == 0 {
-		return d.fileWriter.WriteFile(filePath, []byte("-- No data to export\n"), 0644)
+func (w *csvStreamWriter) RowsWritten() int {
+	return w.rows
+}
+
+type sqlStreamWriter struct {
+	file          *os.File
+	tableName     string
+	quotedTable   string
+	columns       []string
+	quotedColumns []string
+	headerWritten bool
+	rows          int
+	closed        bool
+	closeErr      error
+	generatedAt   time.Time
+}
+
+func newSQLStreamWriter(fileWriter FileWriter, filePath, tableName string, columns []string) (*sqlStreamWriter, error) {
+	file, err := fileWriter.Create(filePath)
+	if err != nil {
+		return nil, err
 	}
 
-	var sqlBuilder strings.Builder
-
-	// ヘッダーコメント
-	sqlBuilder.WriteString(fmt.Sprintf("-- Table dump for %s\n", tableName))
-	sqlBuilder.WriteString(fmt.Sprintf("-- Generated at %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
-
-	// カラム名を取得（決定的な順序を保証するためキーをソート）
-	var columns []string
-	for key := range data[0] {
-		columns = append(columns, key)
+	quotedTable, _, err := quoteQualifiedTableName(tableName)
+	if err != nil {
+		_ = file.Close()
+		return nil, err
 	}
-	sort.Strings(columns)
+
 	quotedColumns := make([]string, len(columns))
 	for i, col := range columns {
 		quotedColumns[i] = pq.QuoteIdentifier(col)
 	}
 
-	quotedTable, _, err := quoteQualifiedTableName(tableName)
-	if err != nil {
-		return err
+	return &sqlStreamWriter{
+		file:          file,
+		tableName:     tableName,
+		quotedTable:   quotedTable,
+		columns:       columns,
+		quotedColumns: quotedColumns,
+		generatedAt:   time.Now(),
+	}, nil
+}
+
+func (w *sqlStreamWriter) WriteBatch(rows []map[string]any) error {
+	if w.closed {
+		return errors.New("既にクローズされたライターに書き込めません")
 	}
 
-	// INSERT文を生成
-	for _, row := range data {
-		sqlBuilder.WriteString(fmt.Sprintf("INSERT INTO %s (", quotedTable))
-		sqlBuilder.WriteString(strings.Join(quotedColumns, ", "))
-		sqlBuilder.WriteString(") VALUES (")
+	if len(rows) == 0 {
+		return nil
+	}
 
-		var values []string
-		for _, col := range columns {
+	if !w.headerWritten {
+		if _, err := fmt.Fprintf(w.file, "-- Table dump for %s\n", w.tableName); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w.file, "-- Generated at %s\n\n", w.generatedAt.Format("2006-01-02 15:04:05")); err != nil {
+			return err
+		}
+		w.headerWritten = true
+	}
+
+	for _, row := range rows {
+		if _, err := fmt.Fprintf(w.file, "INSERT INTO %s (%s) VALUES (", w.quotedTable, strings.Join(w.quotedColumns, ", ")); err != nil {
+			return err
+		}
+
+		values := make([]string, len(w.columns))
+		for i, col := range w.columns {
 			value := row[col]
 			if value == nil {
-				values = append(values, "NULL")
-			} else {
-				// 文字列の場合はクォートで囲む
-				switch v := value.(type) {
-				case string:
-					values = append(values, fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''")))
-				default:
-					values = append(values, fmt.Sprintf("%v", v))
-				}
+				values[i] = "NULL"
+				continue
+			}
+
+			switch v := value.(type) {
+			case string:
+				values[i] = fmt.Sprintf("'%s'", strings.ReplaceAll(v, "'", "''"))
+			default:
+				values[i] = fmt.Sprintf("%v", v)
 			}
 		}
 
-		sqlBuilder.WriteString(strings.Join(values, ", "))
-		sqlBuilder.WriteString(");\n")
+		if _, err := w.file.WriteString(strings.Join(values, ", ")); err != nil {
+			return err
+		}
+		if _, err := w.file.WriteString(");\n"); err != nil {
+			return err
+		}
+
+		w.rows++
 	}
 
-	return d.fileWriter.WriteFile(filePath, []byte(sqlBuilder.String()), 0644)
+	return nil
+}
+
+func (w *sqlStreamWriter) Close() error {
+	if w.closed {
+		return w.closeErr
+	}
+	w.closed = true
+
+	if w.file == nil {
+		return nil
+	}
+
+	if w.rows == 0 {
+		if _, err := w.file.WriteString("-- No data to export\n"); err != nil {
+			w.closeErr = err
+			_ = w.file.Close()
+			return err
+		}
+	}
+
+	if err := w.file.Close(); err != nil {
+		w.closeErr = err
+		return err
+	}
+
+	return nil
+}
+
+func (w *sqlStreamWriter) RowsWritten() int {
+	return w.rows
 }
 
 // #==============================================================#
@@ -676,7 +906,7 @@ func (d *TableDumper) executeConcurrentDumps(ctx context.Context, databaseName s
 
 	// タスクをチャネルに送信
 	for _, table := range tables {
-		options := DumpOptions{
+		options := &DumpOptions{
 			TableName:  table.Name,
 			OutputPath: outputPath,
 			Format:     format,

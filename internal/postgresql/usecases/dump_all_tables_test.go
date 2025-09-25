@@ -172,6 +172,12 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 		assert.Equal(t, outputPath, path)
 		return nil
 	}
+	suite.mockWriter.CreateFunc = func(name string) (*os.File, error) {
+		return os.CreateTemp("", "dump-all-tables-empty-*.tmp")
+	}
+	suite.mockWriter.CreateFunc = func(name string) (*os.File, error) {
+		return os.CreateTemp("", "dump-all-tables-*.tmp")
+	}
 
 	// テーブル一覧取得の成功レスポンス
 	// データベース名取得の成功レスポンス

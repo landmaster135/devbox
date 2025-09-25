@@ -879,7 +879,7 @@ func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, ou
 	}
 
 	// ダンプオプションを作成
-	options := DumpOptions{
+	options := &DumpOptions{
 		TableName:  tableName,
 		OutputPath: outputPath,
 		Format:     format,

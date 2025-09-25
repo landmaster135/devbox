@@ -110,7 +110,7 @@ func TestTableDumper_validateOptions_Normal(t *testing.T) {
 	}
 
 	// Act
-	err := dumper.validateOptions(options)
+	err := dumper.validateOptions(&options)
 
 	// Assert
 	assert.NoError(t, err)
@@ -127,7 +127,7 @@ func TestTableDumper_validateOptions_EmptyTableName(t *testing.T) {
 	}
 
 	// Act
-	err := dumper.validateOptions(options)
+	err := dumper.validateOptions(&options)
 
 	// Assert
 	assert.Error(t, err)
@@ -145,7 +145,7 @@ func TestTableDumper_validateOptions_InvalidFormat(t *testing.T) {
 	}
 
 	// Act
-	err := dumper.validateOptions(options)
+	err := dumper.validateOptions(&options)
 
 	// Assert
 	assert.Error(t, err)
@@ -163,7 +163,7 @@ func TestTableDumper_validateOptions_InvalidTableNameCharacters(t *testing.T) {
 	}
 
 	// Act
-	err := dumper.validateOptions(options)
+	err := dumper.validateOptions(&options)
 
 	// Assert
 	assert.Error(t, err)
@@ -182,7 +182,7 @@ func TestTableDumper_validateOptions_InvalidLimit(t *testing.T) {
 	}
 
 	// Act
-	err := dumper.validateOptions(options)
+	err := dumper.validateOptions(&options)
 
 	// Assert
 	assert.Error(t, err)
@@ -200,7 +200,7 @@ func TestTableDumper_validateOptions_PathTraversal(t *testing.T) {
 	}
 
 	// Act
-	err := dumper.validateOptions(options)
+	err := dumper.validateOptions(&options)
 
 	// Assert
 	assert.Error(t, err)
@@ -220,7 +220,7 @@ func TestTableDumper_buildQuery_WithoutLimit(t *testing.T) {
 	}
 
 	// Act
-	query, err := dumper.buildQuery(options)
+	query, err := dumper.buildQuery(&options)
 
 	// Assert
 	assert.NoError(t, err)
@@ -237,7 +237,7 @@ func TestTableDumper_buildQuery_WithLimit(t *testing.T) {
 	}
 
 	// Act
-	query, err := dumper.buildQuery(options)
+	query, err := dumper.buildQuery(&options)
 
 	// Assert
 	assert.NoError(t, err)
@@ -382,18 +382,28 @@ func TestTableDumper_ensureOutputDirectory_CreateDirectoryError(t *testing.T) {
 }
 
 // #==============================================================#
-// ##          writeJSONFile Tests                               ##
+// ##          Stream Writer Tests                               ##
 // #==============================================================#
 
-func TestTableDumper_writeJSONFile_Normal(t *testing.T) {
+func TestJSONStreamWriter_WriteBatch(t *testing.T) {
 	// Arrange
-	dumper, _, mockFileWriter := createTestTableDumper()
-	filePath := "/tmp/test.json"
-	data := []map[string]any{
-		{"id": 1, "name": "John"},
-		{"id": 2, "name": "Jane"},
-	}
-	expectedJSON := `[
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "test.json")
+	writer, err := newJSONStreamWriter(&DefaultFileWriter{}, filePath)
+	assert.NoError(t, err)
+
+	batch1 := []map[string]any{{"id": 1, "name": "John"}}
+	batch2 := []map[string]any{{"id": 2, "name": "Jane"}}
+
+	// Act
+	assert.NoError(t, writer.WriteBatch(batch1))
+	assert.NoError(t, writer.WriteBatch(batch2))
+	assert.NoError(t, writer.Close())
+
+	// Assert
+	data, err := os.ReadFile(filePath)
+	assert.NoError(t, err)
+	expected := `[
   {
     "id": 1,
     "name": "John"
@@ -403,94 +413,94 @@ func TestTableDumper_writeJSONFile_Normal(t *testing.T) {
     "name": "Jane"
   }
 ]`
+	assert.Equal(t, expected, string(data))
+	assert.Equal(t, 2, writer.RowsWritten())
+}
 
-	mockFileWriter.WriteFileFunc = func(filename string, data []byte, perm os.FileMode) error {
-		assert.Equal(t, filePath, filename)
-		assert.Equal(t, []byte(expectedJSON), data)
-		assert.Equal(t, os.FileMode(0644), perm)
-		return nil
-	}
-
-	// Act
-	err := dumper.writeJSONFile(filePath, data)
-
-	// Assert
+func TestJSONStreamWriter_CloseWithoutRows(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "empty.json")
+	writer, err := newJSONStreamWriter(&DefaultFileWriter{}, filePath)
 	assert.NoError(t, err)
-}
-
-func TestTableDumper_writeJSONFile_WriteError(t *testing.T) {
-	// Arrange
-	dumper, _, mockFileWriter := createTestTableDumper()
-	filePath := "/tmp/test.json"
-	data := []map[string]any{
-		{"id": 1, "name": "John"},
-	}
-	expectedError := fmt.Errorf("write error")
-
-	mockFileWriter.WriteFileFunc = func(filename string, data []byte, perm os.FileMode) error {
-		assert.Equal(t, filePath, filename)
-		assert.Equal(t, os.FileMode(0644), perm)
-		return expectedError
-	}
 
 	// Act
-	err := dumper.writeJSONFile(filePath, data)
+	assert.NoError(t, writer.Close())
 
 	// Assert
-	assert.Error(t, err)
-	assert.Equal(t, expectedError, err)
+	data, err := os.ReadFile(filePath)
+	assert.NoError(t, err)
+	assert.Equal(t, "[]", string(data))
+	assert.Equal(t, 0, writer.RowsWritten())
 }
 
-// #==============================================================#
-// ##          writeSQLFile Tests                                ##
-// #==============================================================#
-
-func TestTableDumper_writeSQLFile_Normal(t *testing.T) {
+func TestCSVStreamWriter_WriteBatch(t *testing.T) {
 	// Arrange
-	dumper, _, mockFileWriter := createTestTableDumper()
-	filePath := "/tmp/users_20250822_170305.sql"
-	tableName := "users"
-	data := []map[string]any{
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "test.csv")
+	headers := []string{"id", "name"}
+	writer, err := newCSVStreamWriter(&DefaultFileWriter{}, filePath, headers)
+	assert.NoError(t, err)
+
+	rows := []map[string]any{
 		{"id": 1, "name": "John"},
 		{"id": 2, "name": "Jane"},
 	}
 
-	mockFileWriter.WriteFileFunc = func(filename string, data []byte, perm os.FileMode) error {
-		assert.Equal(t, filePath, filename)
-		assert.Equal(t, os.FileMode(0644), perm)
-		// SQLの内容が含まれていることを確認
-		assert.Contains(t, string(data), "INSERT INTO")
-		assert.Contains(t, string(data), tableName)
-		return nil
-	}
-
 	// Act
-	err := dumper.writeSQLFile(filePath, data, tableName)
+	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.Close())
 
 	// Assert
+	data, err := os.ReadFile(filePath)
 	assert.NoError(t, err)
+	assert.Equal(t, "id,name\n1,John\n2,Jane\n", string(data))
+	assert.Equal(t, 2, writer.RowsWritten())
 }
 
-func TestTableDumper_writeSQLFile_EmptyData(t *testing.T) {
+func TestSQLStreamWriter_WriteBatch(t *testing.T) {
 	// Arrange
-	dumper, _, mockFileWriter := createTestTableDumper()
-	filePath := "/tmp/empty.sql"
-	tableName := "empty_table"
-	data := []map[string]any{}
-	expectedContent := "-- No data to export\n"
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "users.sql")
+	columns := []string{"id", "name"}
+	writer, err := newSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
+	assert.NoError(t, err)
 
-	mockFileWriter.WriteFileFunc = func(filename string, data []byte, perm os.FileMode) error {
-		assert.Equal(t, filePath, filename)
-		assert.Equal(t, []byte(expectedContent), data)
-		assert.Equal(t, os.FileMode(0644), perm)
-		return nil
+	rows := []map[string]any{
+		{"id": 1, "name": "John"},
+		{"id": 2, "name": "Jane"},
 	}
 
 	// Act
-	err := dumper.writeSQLFile(filePath, data, tableName)
+	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.Close())
 
 	// Assert
+	data, err := os.ReadFile(filePath)
 	assert.NoError(t, err)
+	content := string(data)
+	assert.Contains(t, content, "-- Table dump for users")
+	assert.Contains(t, content, "INSERT INTO \"users\"")
+	assert.Contains(t, content, "'John'")
+	assert.Equal(t, 2, writer.RowsWritten())
+}
+
+func TestSQLStreamWriter_CloseWithoutRows(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "empty.sql")
+	columns := []string{"id"}
+	writer, err := newSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
+	assert.NoError(t, err)
+
+	// Act
+	assert.NoError(t, writer.Close())
+
+	// Assert
+	data, err := os.ReadFile(filePath)
+	assert.NoError(t, err)
+	assert.Equal(t, "-- No data to export\n", string(data))
+	assert.Equal(t, 0, writer.RowsWritten())
 }
 
 // #==============================================================#
@@ -506,7 +516,7 @@ func TestTableDumper_DumpTable_ValidationError(t *testing.T) {
 	}
 
 	// Act
-	result, err := dumper.DumpTable(context.Background(), options)
+	result, err := dumper.DumpTable(context.Background(), &options)
 
 	// Assert
 	assert.Error(t, err)
@@ -533,7 +543,7 @@ func TestTableDumper_DumpTable_DirectoryCreationError(t *testing.T) {
 	}
 
 	// Act
-	result, err := dumper.DumpTable(context.Background(), options)
+	result, err := dumper.DumpTable(context.Background(), &options)
 
 	// Assert
 	assert.Error(t, err)
