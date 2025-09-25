@@ -2,13 +2,12 @@ package usecases
 
 import (
 	"fmt"
-	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	api "github.com/pdfcpu/pdfcpu/pkg/api"
 	types "github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
@@ -31,24 +30,40 @@ type PDFMergerOptions struct {
 	EndPage     int
 }
 
+// Logger はPDFMergerService内で利用するログ出力のインターフェース
+type Logger interface {
+	Printf(format string, v ...any)
+	Println(v ...any)
+}
+
 // PDFMergerService はPDFマージャーの全体的な処理を統括するサービス
-type PDFMergerService struct{}
+type PDFMergerService struct {
+	logger Logger
+}
 
 // NewPDFMergerService は新しい PDFMergerService のインスタンスを作成します
 func NewPDFMergerService() *PDFMergerService {
-	return &PDFMergerService{}
+	return NewPDFMergerServiceWithLogger(log.New(os.Stdout, "", 0))
+}
+
+// NewPDFMergerServiceWithLogger はロガーを注入して新しいサービスを作成します
+func NewPDFMergerServiceWithLogger(logger Logger) *PDFMergerService {
+	if logger == nil {
+		logger = log.New(os.Stdout, "", 0)
+	}
+	return &PDFMergerService{logger: logger}
 }
 
 // Process はオプションに応じて適切な処理を実行します
-func (s *PDFMergerService) Process(opts PDFMergerOptions, stdout, stderr io.Writer) error {
+func (s *PDFMergerService) Process(opts PDFMergerOptions) error {
 	if opts.Extract != "" {
-		return s.handleImageExtraction(opts, stdout, stderr)
+		return s.handleImageExtraction(opts)
 	}
-	return s.handlePDFCreation(opts, stdout, stderr)
+	return s.handlePDFCreation(opts)
 }
 
 // handleImageExtraction はPDFからの画像抽出を処理します
-func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions, stdout, stderr io.Writer) error {
+func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions) error {
 	// 出力ディレクトリが指定されていない場合はエラー
 	if opts.OutputDir == "" {
 		return fmt.Errorf("画像抽出時は --output-dir オプションが必須です")
@@ -76,11 +91,11 @@ func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions, stdout, 
 	// ページ範囲の情報を取得
 	rangeInfo := imageService.GetRangeOfPages(opts.StartPage, opts.EndPage, totalPages)
 
-	fmt.Fprintf(stdout, "PDF画像抽出を開始します...\n")
-	fmt.Fprintf(stdout, "入力PDF    : %s\n", opts.Extract)
-	fmt.Fprintf(stdout, "出力ディレクトリ: %s\n", opts.OutputDir)
-	fmt.Fprintf(stdout, "画像形式   : %s\n", opts.ImageFormat)
-	fmt.Fprintf(stdout, "ページ範囲 : %s\n", rangeInfo.Message)
+	s.logger.Println("PDF画像抽出を開始します...")
+	s.logger.Printf("入力PDF    : %s", opts.Extract)
+	s.logger.Printf("出力ディレクトリ: %s", opts.OutputDir)
+	s.logger.Printf("画像形式   : %s", opts.ImageFormat)
+	s.logger.Printf("ページ範囲 : %s", rangeInfo.Message)
 
 	// 画像抽出の実行
 	err = imageService.ExtractToImages(opts.Extract, opts.OutputDir, opts.ImageFormat, opts.StartPage, opts.EndPage)
@@ -88,12 +103,12 @@ func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions, stdout, 
 		return err
 	}
 
-	fmt.Fprintln(stdout, "画像抽出が完了しました。")
+	s.logger.Println("画像抽出が完了しました。")
 	return nil
 }
 
 // handlePDFCreation は既存のPDF作成機能を処理します
-func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions, stdout, stderr io.Writer) error {
+func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	// PDF作成サービスのインスタンスを作成
 	pdfService := NewPDFCreationService()
 
@@ -107,7 +122,7 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions, stdout, stde
 		return fmt.Errorf("画像が見つかりませんでした")
 	}
 
-	fmt.Fprintf(stdout, "検出した画像: %d 枚\n", len(images))
+	s.logger.Printf("検出した画像: %d 枚", len(images))
 
 	// 既存PDFファイルが指定されている場合は既存PDFに画像を追加
 	if opts.Add != "" {
@@ -116,7 +131,7 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions, stdout, stde
 			return fmt.Errorf("既存PDFファイルが見つかりません: %s", opts.Add)
 		}
 
-		fmt.Fprintf(stdout, "既存 PDF   : %s\n", opts.Add)
+		s.logger.Printf("既存 PDF   : %s", opts.Add)
 
 		// 既存PDFに画像を追加
 		err = pdfService.AddImagesToExistingPDF(opts.Add, images, output)
@@ -124,7 +139,7 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions, stdout, stde
 			return err
 		}
 
-		fmt.Fprintln(stdout, "既存PDFに画像を追加しました。完了です。")
+		s.logger.Println("既存PDFに画像を追加しました。完了です。")
 	} else {
 		// 新規PDFの生成
 		err = pdfService.MergeImagesIntoPDF(images, output)
@@ -132,10 +147,10 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions, stdout, stde
 			return err
 		}
 
-		fmt.Fprintln(stdout, "PDF を生成しました。完了です。")
+		s.logger.Println("PDF を生成しました。完了です。")
 	}
 
-	fmt.Fprintf(stdout, "出力 PDF   : %s\n", output)
+	s.logger.Printf("出力 PDF   : %s", output)
 	return nil
 }
 
@@ -210,11 +225,33 @@ func (s *PDFCreationService) MergeImagesIntoPDF(images []string, output string) 
 	return nil
 }
 
-// getNameOfTemporaryPDF は一時的なPDFファイル名を生成します
-func (s *PDFCreationService) getNameOfTemporaryPDF() string {
-	timestamp := time.Now().Format("20060102150405")
-	tempPDF := fmt.Sprintf("added_%s.pdf", timestamp)
-	return tempPDF
+// createTemporaryPDF は一時的なPDFファイルを作成し、そのパスを返します
+func (s *PDFCreationService) createTemporaryPDF(output string) (string, error) {
+	outputDir := filepath.Dir(output)
+	if outputDir == "" {
+		outputDir = "."
+	}
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return "", fmt.Errorf("一時PDFファイルの作成に失敗しました: %w", err)
+	}
+
+	tempFile, err := os.CreateTemp(outputDir, "pdfmerge_temp_*.pdf")
+	if err != nil {
+		return "", fmt.Errorf("一時PDFファイルの作成に失敗しました: %w", err)
+	}
+
+	name := tempFile.Name()
+	if err := tempFile.Close(); err != nil {
+		return "", fmt.Errorf("一時PDFファイルのクローズに失敗しました: %w", err)
+	}
+
+	// pdfcpu側で新規に作成できるよう、空ファイルは削除してパスのみ確保する
+	if err := os.Remove(name); err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("一時PDFファイルの初期化に失敗しました: %w", err)
+	}
+
+	return name, nil
 }
 
 // AddImagesToExistingPDF は既存のPDFファイルに画像ページを追加します
@@ -230,7 +267,10 @@ func (s *PDFCreationService) AddImagesToExistingPDF(existingPDF string, images [
 	cfg.OptimizeDuplicateContentStreams = true
 
 	// 一時的に画像からPDFを作成
-	tempPDF := s.getNameOfTemporaryPDF()
+	tempPDF, err := s.createTemporaryPDF(output)
+	if err != nil {
+		return err
+	}
 	defer os.Remove(tempPDF) // 関数終了時に一時ファイルを削除
 
 	// 画像をPDFに変換

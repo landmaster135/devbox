@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -535,41 +536,57 @@ func TestImageExtractionService_calculateActualPageNumber(t *testing.T) {
 	}
 }
 
-// getNameOfTemporaryPDF のテスト
-func TestPDFCreationService_getNameOfTemporaryPDF(t *testing.T) {
+// createTemporaryPDF のテスト
+func TestPDFCreationService_createTemporaryPDF(t *testing.T) {
 	service := NewPDFCreationService()
 
-	t.Run("一時PDFファイル名の形式確認", func(t *testing.T) {
-		got := service.getNameOfTemporaryPDF()
+	t.Run("出力ディレクトリ配下に一時ファイルを生成", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "pdf-temp-*")
+		if err != nil {
+			t.Fatalf("一時ディレクトリの作成に失敗: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
 
-		// ファイル名が "added_" で始まることを確認
-		if !reflect.DeepEqual(got[:6], "added_") {
-			t.Errorf("getNameOfTemporaryPDF() should start with 'added_', got %v", got)
+		output := filepath.Join(tmpDir, "result.pdf")
+		path, err := service.createTemporaryPDF(output)
+		if err != nil {
+			t.Fatalf("createTemporaryPDF() でエラーが発生: %v", err)
+		}
+		defer os.Remove(path)
+
+		if filepath.Dir(path) != tmpDir {
+			t.Errorf("一時ファイルのディレクトリが一致しません: got %s, want %s", filepath.Dir(path), tmpDir)
 		}
 
-		// ファイル名が ".pdf" で終わることを確認
-		if !reflect.DeepEqual(got[len(got)-4:], ".pdf") {
-			t.Errorf("getNameOfTemporaryPDF() should end with '.pdf', got %v", got)
-		}
-
-		// タイムスタンプ部分の長さを確認（added_YYYYMMDDHHMMSS.pdf = 6 + 14 + 4 = 24文字）
-		if len(got) != 24 {
-			t.Errorf("getNameOfTemporaryPDF() length should be 24, got %v", len(got))
+		if _, err := os.Stat(path); err == nil {
+			t.Errorf("一時PDFが事前に存在しています: %s", path)
+		} else if !os.IsNotExist(err) {
+			t.Fatalf("一時PDFの存在確認で想定外のエラー: %v", err)
 		}
 	})
 
-	t.Run("複数回呼び出しで異なるファイル名", func(t *testing.T) {
-		// 短時間で複数回呼び出して、異なるファイル名が生成されることを確認
-		// （タイムスタンプが秒単位なので、同じ秒内では同じ名前になる可能性がある）
-		name1 := service.getNameOfTemporaryPDF()
-		name2 := service.getNameOfTemporaryPDF()
-
-		// 最低限、両方とも正しい形式であることを確認
-		if !reflect.DeepEqual(name1[:6], "added_") || !reflect.DeepEqual(name1[len(name1)-4:], ".pdf") {
-			t.Errorf("First call returned invalid format: %v", name1)
+	t.Run("連続呼び出しで異なるパスを返す", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "pdf-temp-*")
+		if err != nil {
+			t.Fatalf("一時ディレクトリの作成に失敗: %v", err)
 		}
-		if !reflect.DeepEqual(name2[:6], "added_") || !reflect.DeepEqual(name2[len(name2)-4:], ".pdf") {
-			t.Errorf("Second call returned invalid format: %v", name2)
+		defer os.RemoveAll(tmpDir)
+
+		output := filepath.Join(tmpDir, "result.pdf")
+		path1, err := service.createTemporaryPDF(output)
+		if err != nil {
+			t.Fatalf("1回目の createTemporaryPDF() でエラーが発生: %v", err)
+		}
+		defer os.Remove(path1)
+
+		path2, err := service.createTemporaryPDF(output)
+		if err != nil {
+			t.Fatalf("2回目の createTemporaryPDF() でエラーが発生: %v", err)
+		}
+		defer os.Remove(path2)
+
+		if path1 == path2 {
+			t.Errorf("一時PDFのパスが重複しました: %s", path1)
 		}
 	})
 }

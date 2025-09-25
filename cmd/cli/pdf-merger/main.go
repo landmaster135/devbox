@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	usecases "github.com/landmaster135/devbox/internal/pdf_merger/usecases"
@@ -63,8 +64,9 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	// サービス実行
-	service := usecases.NewPDFMergerService()
-	if err := service.Process(opts, stdout, stderr); err != nil {
+	logger := log.New(stdout, "", 0)
+	service := usecases.NewPDFMergerServiceWithLogger(logger)
+	if err := service.Process(opts); err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		return exitCodeError
 	}
