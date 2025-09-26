@@ -187,3 +187,21 @@ func TestBuildUpdateSecretVersionAliasesCommand(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildNotificationWrappedCommand(t *testing.T) {
+	service := NewService()
+
+	script, ok := service.BuildNotificationWrappedCommand(DiscordNotificationParams{
+		Operation:  "create-secret",
+		SecretName: "test-secret",
+	}, "gcloud secrets create 'test-secret' --replication-policy='automatic'")
+
+	if !ok {
+		t.Fatalf("expected notification script")
+	}
+
+	expected := "send_discord_notification \"シークレットを作るよ！\"\nif gcloud secrets create 'test-secret' --replication-policy='automatic'; then\n  send_discord_notification_about_gsm \"作ったよ！\" \"シークレットを作ったよ！\" \"green\"\nelse\n  send_discord_notification_about_gsm \"失敗…\" \"シークレットが作れなかったよ…\" \"red\"\nfi"
+	if script != expected {
+		t.Fatalf("unexpected notification script:\n%s", script)
+	}
+}

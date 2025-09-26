@@ -71,4 +71,14 @@ func main() {
 	}
 
 	service.PrintHighlightedCommand(command)
+	notificationScript, ok := service.BuildNotificationWrappedCommand(
+		usecases.DiscordNotificationParams{
+			Operation:  config.Operation,
+			SecretName: config.SecretName,
+		},
+		command,
+	)
+	if ok {
+		service.PrintNotificationScript(notificationScript)
+	}
 }

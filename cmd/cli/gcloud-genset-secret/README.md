@@ -9,6 +9,7 @@ Google Cloud Secret Manager の `gcloud` コマンドを生成する CLI ツー�
 - **ワンショット作成**: シークレット作成と値登録を 1 本のコマンドで連結 (`&&`) 出力
 - **参照/更新**: バージョンアクセス・ラベル更新・エイリアス更新コマンドを出力
 - **CLI 単体**: 標準出力に生成結果を返すシンプルなツール
+- **Discord通知コマンド**: Secret Manager操作の成功/失敗をDiscordに送るためのコマンドも併せて出力
 
 ## インストール
 
@@ -94,6 +95,22 @@ Output:
 ```bash
 gcloud secrets versions access '5' --secret='SECRET_NAME'
 ```
+
+### Discord通知コマンド
+
+各 `gcloud` コマンドの直後に、Secret Manager 向け成功/失敗通知を送る Discord Webhook コマンドも表示されます。`DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD` 環境変数を設定した上で、必要に応じて成功・失敗いずれかのコマンドを実行してください。
+
+```bash
+通知付きシェルコマンド
+==============================
+send_discord_notification "シークレットを作るよ！"
+if gcloud secrets create 'my-secret' --replication-policy='automatic'; then
+  send_discord_notification_about_gsm "作ったよ！" "シークレットを作ったよ！" "green"
+else
+  send_discord_notification_about_gsm "失敗…" "シークレットが作れなかったよ…" "red"
+fi
+```
+通知内容の詳細カスタマイズや CLI の利用例については [`cmd/cli/discord-webhook/README.md`](../discord-webhook/README.md) も参照してください。
 
 ## アーキテクチャ
 
