@@ -1,6 +1,9 @@
 package usecases
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBuildUploadFilesCommand(t *testing.T) {
 	service := NewService()
@@ -117,5 +120,38 @@ func TestBuildRemoveReadAllCommand(t *testing.T) {
 	expected := "gsutil acl ch -d AllUsers 'gs://bucket/file'"
 	if cmd != expected {
 		t.Fatalf("unexpected command: %s", cmd)
+	}
+}
+
+func TestBuildNotificationWrappedCommand(t *testing.T) {
+	service := NewService()
+	command := "gsutil -m cp -r './data' 'gs://bucket/'"
+	script, ok := service.BuildNotificationWrappedCommand("upload-files", command)
+	if !ok {
+		t.Fatalf("expected notification script")
+	}
+
+	expected := strings.Join([]string{
+		"$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \\",
+		"  -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"  -content-text 'ファイルをアップロードするよ！' \\",
+		"  -embed-type 'none'",
+		"if gsutil -m cp -r './data' 'gs://bucket/'; then",
+		"  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \\",
+		"    -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"    -content-text 'アップしたよ！' \\",
+		"    -embed-type 'google-cloud-storage-success' \\",
+		"    -embed-text 'ファイルをアップロードしたよ！'",
+		"else",
+		"  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \\",
+		"    -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"    -content-text '失敗…' \\",
+		"    -embed-type 'google-cloud-storage-failed' \\",
+		"    -embed-text 'ファイルのアップロードに失敗したよ…'",
+		"fi",
+	}, "\n")
+
+	if script != expected {
+		t.Fatalf("unexpected notification script:\n%s", script)
 	}
 }

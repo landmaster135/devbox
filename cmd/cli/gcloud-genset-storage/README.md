@@ -4,19 +4,19 @@ Google Cloud Storage (GCS) 操作用の `gsutil` / `gcloud` コマンドを生�
 
 ## サポートする操作
 
-| operation             | 説明 |
-|-----------------------|------|
-| `upload-files`        | ローカルディレクトリを GCS バケットへアップロード (`gsutil -m cp -r`) |
-| `download-files`      | GCS 上の複数オブジェクトをローカルへダウンロード (`gsutil -m cp`) |
-| `create-bucket`       | 指定クラス / ロケーションでバケットを作成 (`gsutil mb`) |
-| `list-contents`       | GCS バケット (またはローカルディレクトリ) の内容を列挙 (`gsutil ls` / `ls`) |
-| `show-details`        | バケットやオブジェクトの詳細情報を表示 (`gsutil ls -Lb/-L`) |
-| `list-names`          | バケット配下またはオブジェクトのパス一覧を取得 (`gsutil ls`) |
-| `delete-object`       | オブジェクト / フォルダを削除 (`gsutil rm`) |
-| `get-acl`             | ACL を取得 (`gsutil acl get`) |
-| `set-acl`             | ACL をファイルから設定 (`gsutil acl set`) |
-| `grant-read-all`      | 全ユーザに READ 権限を付与 (`gsutil acl ch -u AllUsers:R`) |
-| `remove-read-all`     | 全ユーザの READ 権限を解除 (`gsutil acl ch -d AllUsers`) |
+| operation         | 説明 |
+|-------------------|------|
+| `upload-files`    | ローカルディレクトリを GCS バケットへアップロード (`gsutil -m cp -r`) |
+| `download-files`  | GCS 上の複数オブジェクトをローカルへダウンロード (`gsutil -m cp`) |
+| `create-bucket`   | 指定クラス / ロケーションでバケットを作成 (`gsutil mb`) |
+| `list-contents`   | GCS バケット (またはローカルディレクトリ) の内容を列挙 (`gsutil ls` / `ls`) |
+| `show-details`    | バケットやオブジェクトの詳細情報を表示 (`gsutil ls -Lb/-L`) |
+| `list-names`      | バケット配下またはオブジェクトのパス一覧を取得 (`gsutil ls`) |
+| `delete-object`   | オブジェクト / フォルダを削除 (`gsutil rm`) |
+| `get-acl`         | ACL を取得 (`gsutil acl get`) |
+| `set-acl`         | ACL をファイルから設定 (`gsutil acl set`) |
+| `grant-read-all`  | 全ユーザに READ 権限を付与 (`gsutil acl ch -u AllUsers:R`) |
+| `remove-read-all` | 全ユーザの READ 権限を解除 (`gsutil acl ch -d AllUsers`) |
 
 ## 使用例
 
