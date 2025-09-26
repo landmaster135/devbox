@@ -1,6 +1,9 @@
 package usecases
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBuildCreateSecretCommand(t *testing.T) {
 	service := NewService()
@@ -200,7 +203,25 @@ func TestBuildNotificationWrappedCommand(t *testing.T) {
 		t.Fatalf("expected notification script")
 	}
 
-	expected := "send_discord_notification \"シークレットを作るよ！\"\nif gcloud secrets create 'test-secret' --replication-policy='automatic'; then\n  send_discord_notification_about_gsm \"作ったよ！\" \"シークレットを作ったよ！\" \"green\"\nelse\n  send_discord_notification_about_gsm \"失敗…\" \"シークレットが作れなかったよ…\" \"red\"\nfi"
+	expected := strings.Join([]string{
+		"go run ./cmd/cli/discord-webhook \\",
+		"  -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"  -content-text 'シークレットを作るよ！' \\",
+		"  -embed-type 'none'",
+		"if gcloud secrets create 'test-secret' --replication-policy='automatic'; then",
+		"  go run ./cmd/cli/discord-webhook \\",
+		"    -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"    -content-text '作ったよ！' \\",
+		"    -embed-type 'google-secret-manager-success' \\",
+		"    -embed-text 'シークレットを作ったよ！'",
+		"else",
+		"  go run ./cmd/cli/discord-webhook \\",
+		"    -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"    -content-text '失敗…' \\",
+		"    -embed-type 'google-secret-manager-failed' \\",
+		"    -embed-text 'シークレットが作れなかったよ…'",
+		"fi",
+	}, "\n")
 	if script != expected {
 		t.Fatalf("unexpected notification script:\n%s", script)
 	}

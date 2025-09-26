@@ -103,11 +103,22 @@ gcloud secrets versions access '5' --secret='SECRET_NAME'
 ```bash
 通知付きシェルコマンド
 ==============================
-send_discord_notification "シークレットを作るよ！"
+go run ./cmd/cli/discord-webhook \
+  -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
+  -content-text 'シークレットを作るよ！' \
+  -embed-type 'none'
 if gcloud secrets create 'my-secret' --replication-policy='automatic'; then
-  send_discord_notification_about_gsm "作ったよ！" "シークレットを作ったよ！" "green"
+  go run ./cmd/cli/discord-webhook \
+    -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
+    -content-text '作ったよ！' \
+    -embed-type 'google-secret-manager-success' \
+    -embed-text 'シークレットを作ったよ！'
 else
-  send_discord_notification_about_gsm "失敗…" "シークレットが作れなかったよ…" "red"
+  go run ./cmd/cli/discord-webhook \
+    -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
+    -content-text '失敗…' \
+    -embed-type 'google-secret-manager-failed' \
+    -embed-text 'シークレットが作れなかったよ…'
 fi
 ```
 通知内容の詳細カスタマイズや CLI の利用例については [`cmd/cli/discord-webhook/README.md`](../discord-webhook/README.md) も参照してください。
