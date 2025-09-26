@@ -5,7 +5,7 @@ import (
 	"os"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_storage/config"
-	"github.com/landmaster135/devbox/internal/gcloud_genset_storage/usecases"
+	usecases "github.com/landmaster135/devbox/internal/gcloud_genset_storage/usecases"
 )
 
 func main() {
