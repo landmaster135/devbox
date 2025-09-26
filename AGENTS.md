@@ -20,7 +20,7 @@ Align with Go 1.23.x (`env.yml`, CI) and prefer module-managed dependencies. Ins
 
 ## Implementation
 Remember replying in Japanese.
-Confirm if `./agents` directory in project root directory is set. Then, also confirm if the following files exist to receive instructions from user.
+Confirm if `.agents` directory in project root directory is set. Then, also confirm if the following files exist to receive instructions from user.
 - instructions.md
 - test_results.md
 After completing a CLI tool implementation, update the corresponding `cmd/cli/<tool>/README.md` with usage instructions and examples by referencing existing documents such as `cmd/cli/arithmetic-calculator/README.md` and `cmd/cli/service-implementing-viewer/README.md`.

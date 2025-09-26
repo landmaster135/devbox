@@ -11,14 +11,32 @@ import (
 type Config struct {
 	WebhookURL         string // webhook-url (必須)
 	ContentText        string // content-text (必須)
-	EmbedType          string // embed-type (none, vscode, open-weather-map)
+	EmbedType          string // embed-type (none, vscode, open-weather-map, google-*-success, google-*-failed)
 	EmbedText          string // embed-text (任意)
 	EmbedColor         string // embed-color (任意)
 	EmbedURLLinkedText string // embed-url-linked-text (任意)
 	Help               bool   // ヘルプ表示フラグ
 }
 
-var validEmbedTypes = []string{"none", "vscode", "open-weather-map"}
+var validEmbedTypes = []string{
+	"none",
+	"vscode",
+	"open-weather-map",
+	"google-compute-engine-success",
+	"google-compute-engine-failed",
+	"google-secret-manager-success",
+	"google-secret-manager-failed",
+	"google-cloud-storage-success",
+	"google-cloud-storage-failed",
+	"google-cloud-scheduler-success",
+	"google-cloud-scheduler-failed",
+	"google-cloud-iam-success",
+	"google-cloud-iam-failed",
+	"google-cloud-run-success",
+	"google-cloud-run-failed",
+	"google-cloud-run-function-success",
+	"google-cloud-run-function-failed",
+}
 
 // NewConfig は新しいConfigを作成する
 func NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedURLLinkedText string) (*Config, error) {
@@ -164,6 +182,7 @@ embed-typeについて:
   none             : Embedを使用せず、content-textのみを送信
   vscode           : VSCode風のEmbedを使用（フッターにVSCodeアイコンを表示）
   open-weather-map : 天気予報向けのEmbedをOpenWeatherMap用アイコンで送信
+  google-*-success / google-*-failed : Google Cloud各サービスのリクエスト結果を通知（compute-engine, secret-manager, cloud-storage, cloud-scheduler, cloud-iam, cloud-run, cloud-run-function）
 
 `, os.Args[0], os.Args[0], os.Args[0], os.Args[0], embedTypeHelpMessage())
 }

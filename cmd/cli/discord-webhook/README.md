@@ -8,6 +8,7 @@ Discord WebhookでメッセージやEmbed付き通知を送信するためのCLI
 - Embedなしの簡単な通知
 - VSCode風のEmbed付き通知（フッターにVSCodeアイコン表示）
 - OpenWeatherMap風のEmbed付き通知（専用カラーとアイコンを使用）
+- Google Cloud各サービス（Compute Engine / Secret Manager / Cloud Runなど）の成功・失敗通知Embed
 - カスタマイズ可能な色設定
 - リンク付きタイトル対応
 
@@ -48,6 +49,25 @@ go run ./cmd/cli/discord-webhook \
   -embed-text "今日の天気予報"
 ```
 
+### Google Cloudサービスの結果通知
+
+Google Cloudの各サービス名と成功/失敗に応じたEmbedタイプを指定します。Embedテキストや色を省略すると、成功時は緑、失敗時は赤で送信されます。
+
+```bash
+# Google Compute Engineの操作成功
+go run ./cmd/cli/discord-webhook \
+  -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
+  -content-text "GCEインスタンスの作成に成功しました" \
+  -embed-type google-compute-engine-success
+
+# Cloud Runのデプロイ失敗（赤色で通知）
+go run ./cmd/cli/discord-webhook \
+  -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
+  -content-text "Cloud Runデプロイでエラーが発生しました" \
+  -embed-type google-cloud-run-failed \
+  -embed-text "デプロイジョブが失敗しました"
+```
+
 ### フルオプション
 
 ```bash
@@ -68,7 +88,7 @@ go run ./cmd/cli/discord-webhook \
 |-----------|--------|------|
 | `-webhook-url` | `-wu` | Discord WebhookのURL |
 | `-content-text` | `-ct` | メッセージの本文 |
-| `-embed-type` | `-et` | Embedのタイプ (none, vscode, open-weather-map) |
+| `-embed-type` | `-et` | Embedのタイプ (none, vscode, open-weather-map, google-*-success, google-*-failed) |
 
 ### 任意オプション
 
@@ -108,6 +128,13 @@ go run ./cmd/cli/discord-webhook \
 ### open-weather-map
 - OpenWeatherMap風のEmbedを使用
 - デフォルトでオレンジ色・天気予報タイトル・専用ロゴを適用
+- `-embed-text` / `-embed-color` / `-embed-url-linked-text` で上書き可能
+
+### gcloud系
+`google-*-success` / `google-*-failed`の形式で指定
+- Google Cloudの各サービス（`compute-engine`, `secret-manager`, `cloud-storage`, `cloud-scheduler`, `cloud-iam`, `cloud-run`, `cloud-run-function`）に対応
+- `-success`指定時はデフォルトで緑色、`-failed`指定時は赤色で通知
+- Embedのフッターにサービス名とGoogle Cloudアイコンを表示
 - `-embed-text` / `-embed-color` / `-embed-url-linked-text` で上書き可能
 
 ## 使用例
