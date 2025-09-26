@@ -137,6 +137,13 @@ func TestNewConfig_Normal(t *testing.T) {
 			embedColor:  "orange",
 			expectError: false,
 		},
+		{
+			name:        "Google Compute Engine success embed",
+			embedType:   "google-compute-engine-success",
+			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
+			contentText: "テストメッセージ",
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -216,7 +223,7 @@ func TestNewConfig_Error(t *testing.T) {
 			embedType:     "invalid",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
 			contentText:   "テストメッセージ",
-			expectedError: "無効なembed-typeです: invalid (有効な値: none, open-weather-map, vscode)",
+			expectedError: "無効なembed-typeです: invalid (有効な値: google-cloud-iam-failed, google-cloud-iam-success, google-cloud-run-failed, google-cloud-run-function-failed, google-cloud-run-function-success, google-cloud-run-success, google-cloud-scheduler-failed, google-cloud-scheduler-success, google-cloud-storage-failed, google-cloud-storage-success, google-compute-engine-failed, google-compute-engine-success, google-secret-manager-failed, google-secret-manager-success, none, open-weather-map, vscode)",
 		},
 		{
 			name:          "無効なwebhook-URL（httpスキーム）",
@@ -346,6 +353,25 @@ func TestParseFlagsWithParser_Normal(t *testing.T) {
 		}
 		if config.EmbedURLLinkedText != "https://example.com" {
 			t.Errorf("EmbedURLLinkedText = %v, want %v", config.EmbedURLLinkedText, "https://example.com")
+		}
+	})
+
+	t.Run("Google Cloud成功Embed", func(t *testing.T) {
+		mockParser := NewMockFlagParser()
+
+		mockParser.SetStringFlag("embed-type", "google-cloud-run-success")
+		mockParser.SetStringFlag("webhook-url", "https://discord.com/api/webhooks/123456789/abcdefg")
+		mockParser.SetStringFlag("content-text", "テストメッセージ")
+
+		config, err := ParseFlagsWithParser(mockParser)
+
+		if err != nil {
+			t.Errorf("予期しないエラーが発生しました: %v", err)
+			return
+		}
+
+		if config.EmbedType != "google-cloud-run-success" {
+			t.Errorf("EmbedType = %v, want %v", config.EmbedType, "google-cloud-run-success")
 		}
 	})
 
