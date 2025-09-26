@@ -134,8 +134,8 @@
       },
       "disabled": false,
       "autoApprove": [],
-      "timeout": 180000,
-      "requestTimeout": 210000
+      "timeout": 240000,
+      "requestTimeout": 270000
     },
     "claude_code": {
       "command": "wsl",
