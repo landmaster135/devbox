@@ -19,7 +19,7 @@ go build -o bin/gcloud-genset-monitoring ./cmd/cli/gcloud-genset-monitoring
 ## 使用方法
 
 ```bash
-go run ./cmd/cli/gcloud-genset-monitoring -operation list-dashboards -project my-project -format json
+go run ./cmd/cli/gcloud-genset-monitoring -operation list-dashboards -project MY_PROJECT -format json
 ```
 
 標準出力に生成された `gcloud` コマンドが強調表示で出力されます。そのままコピーして実行できます。
@@ -29,7 +29,7 @@ go run ./cmd/cli/gcloud-genset-monitoring -operation list-dashboards -project my
 | オプション | 説明 | 必須 | 対応オペレーション | 例 |
 |------------|------|------|---------------------|----|
 | `-operation` | 実行する操作 (`list-dashboards` / `describe-dashboard` / `list-snoozes` / `list-uptime-configs`) | * | 全て | `-operation list-dashboards` |
-| `-project` | Google Cloud プロジェクト ID |  | 全て | `-project my-project` |
+| `-project` | Google Cloud プロジェクト ID |  | 全て | `-project MY_PROJECT` |
 | `-filter` | 結果をフィルタリングする式 |  | list-dashboards, list-snoozes, list-uptime-configs | `-filter displayName:test` |
 | `-format` | 出力形式 (table, json, yaml など) |  | 全て | `-format json` |
 | `-page-size` | 1ページあたりの取得件数 |  | list-dashboards, list-snoozes, list-uptime-configs | `-page-size 50` |
@@ -55,7 +55,7 @@ go run ./cmd/cli/gcloud-genset-monitoring -operation list-dashboards -project my
 ```bash
 $ go run ./cmd/cli/gcloud-genset-monitoring \
   -operation list-dashboards \
-  -project my-project \
+  -project MY_PROJECT \
   -filter 'displayName:test' \
   -page-size 20 \
   -sort-by displayName \
@@ -65,7 +65,7 @@ $ go run ./cmd/cli/gcloud-genset-monitoring \
 
 出力:
 ```
-gcloud monitoring dashboards list --project=my-project --filter=displayName:test --format="json" --page-size=20 --sort-by=displayName --limit=50
+gcloud monitoring dashboards list --project=MY_PROJECT --filter=displayName:test --format="json" --page-size=20 --sort-by=displayName --limit=50
 ```
 
 ### ダッシュボード詳細コマンドの生成
@@ -73,14 +73,14 @@ gcloud monitoring dashboards list --project=my-project --filter=displayName:test
 ```bash
 $ go run ./cmd/cli/gcloud-genset-monitoring \
   -operation describe-dashboard \
-  -project my-project \
+  -project MY_PROJECT \
   -dashboard-id dashboards/123456789 \
   -format yaml
 ```
 
 出力:
 ```
-gcloud monitoring dashboards describe dashboards/123456789 --project=my-project --format="yaml"
+gcloud monitoring dashboards describe dashboards/123456789 --project=MY_PROJECT --format="yaml"
 ```
 
 ### Snooze 設定一覧コマンドの生成
@@ -88,7 +88,7 @@ gcloud monitoring dashboards describe dashboards/123456789 --project=my-project 
 ```bash
 $ go run ./cmd/cli/gcloud-genset-monitoring \
   -operation list-snoozes \
-  -project my-project \
+  -project MY_PROJECT \
   -filter 'displayName:maintenance' \
   -page-size 10 \
   -limit 20 \
@@ -97,7 +97,7 @@ $ go run ./cmd/cli/gcloud-genset-monitoring \
 
 出力:
 ```
-gcloud monitoring snoozes list --project=my-project --filter=displayName:maintenance --page-size=10 --limit=20 --uri
+gcloud monitoring snoozes list --project=MY_PROJECT --filter=displayName:maintenance --page-size=10 --limit=20 --uri
 ```
 
 ## テスト

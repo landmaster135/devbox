@@ -70,14 +70,14 @@ gcloud logging read "severity>=ERROR AND resource.type=gce_instance" --limit=25 
 ```bash
 $ go run ./cmd/cli/gcloud-genset-logging \
   -operation create-sink \
-  -sink-name my-error-sink \
+  -sink-name MY_SINK \
   -destination storage.googleapis.com/my-bucket \
   -log-filter 'severity>=ERROR'
 ```
 
 Output:
 ```bash
-gcloud logging sinks create my-error-sink storage.googleapis.com/my-bucket --log-filter="severity>=ERROR"
+gcloud logging sinks create MY_SINK storage.googleapis.com/my-bucket --log-filter="severity>=ERROR"
 ```
 
 ## アーキテクチャ
