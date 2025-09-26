@@ -30,6 +30,9 @@ func main() {
 	}
 
 	service.PrintHighlightedCommand(command)
+	if script, ok := service.BuildNotificationWrappedCommand(config.Operation, command); ok {
+		service.PrintNotificationScript(script)
+	}
 }
 
 func buildCommandFromConfig(service *usecases.Service, conf *cfg.Config) (string, error) {
