@@ -44,7 +44,7 @@ Google Cloud Run サービス用のモニタリングダッシュボードを自
 ### 必須パラメータ
 
 ```bash
-./gcloud-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring-dashboard \
   -operation=create-dashboard-for-cloud-run \
   -project=<Google Cloud プロジェクトID> \
   -location=<Cloud Run サービスのロケーション> \
@@ -54,7 +54,7 @@ Google Cloud Run サービス用のモニタリングダッシュボードを自
 ### オプションパラメータ
 
 ```bash
-./gcloud-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring-dashboard \
   -operation=create-dashboard-for-cloud-run \
   -project=my-project \
   -location=us-central1 \
@@ -85,7 +85,7 @@ gcloud auth application-default login
 ### サービスアカウントを指定する場合
 
 ```bash
-./gcloud-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring-dashboard \
   -operation=create-dashboard-for-cloud-run \
   -project=my-project \
   -location=us-central1 \
@@ -109,8 +109,8 @@ gcloud auth application-default login
 ## ビルド
 
 ```bash
-cd devbox/cmd/cli/gcloud-monitoring
-go build -o gcloud-monitoring .
+cd devbox/cmd/cli/gcloud-genset-monitoring-dashboard
+go build -o gcloud-genset-monitoring-dashboard .
 ```
 
 ## テスト
@@ -133,7 +133,7 @@ go test ./internal/gcloud_monitoring/... -v
 
 ### 基本的な使用例
 ```bash
-go run ./cmd/cli/gcloud-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring-dashboard \
   -operation=create-dashboard-for-cloud-run \
   -project=my-gcp-project \
   -location=us-central1 \
@@ -143,7 +143,7 @@ go run ./cmd/cli/gcloud-monitoring \
 ### サービスアカウントを使用する例
 
 ```bash
-go run ./cmd/cli/gcloud-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring-dashboard \
   -operation=create-dashboard-for-cloud-run \
   -project=my-gcp-project \
   -location=asia-northeast1 \
@@ -154,7 +154,7 @@ go run ./cmd/cli/gcloud-monitoring \
 ### ヘルプの表示
 
 ```bash
-go run ./cmd/cli/gcloud-monitoring -help
+go run ./cmd/cli/gcloud-genset-monitoring-dashboard -help
 ```
 
 ## エラーハンドリング

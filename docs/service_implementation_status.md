@@ -40,7 +40,11 @@
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
 | file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ❌️  | ✅  | ❌️  | ❌️ |
-| gcloud-monitoring                           | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-init                          | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-logging                       | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-monitoring                    | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-monitoring-dashboard          | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-secret                        | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-wrapper-workload-identity-federation | ✅  | ❌️  | ❌️  | ❌️ |
 | gdrive                                      | ❌️  | ✅  | ❌️  | ❌️ |
 | git-commit-history-retriever                | ✅  | ✅  | ❌️  | ❌️ |
@@ -84,28 +88,30 @@
 | sequentialthinking                          | ❌️  | ✅  | ❌️  | ❌️ |
 | service-implementing-viewer                 | ✅  | ✅  | ❌️  | ❌️ |
 | shell                                       | ❌️  | ✅  | ❌️  | ❌️ |
+| steam                                       | ✅  | ❌️  | ❌️  | ❌️ |
 | timezone                                    | ❌️  | ✅  | ❌️  | ❌️ |
 | unit-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | util                                        | ❌️  | ✅  | ❌️  | ❌️ |
 | valkey                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | weather-notificator                         | ✅  | ✅  | ✅  | ✅ |
 | yaml-parser                                 | ✅  | ❌️  | ❌️  | ❌️ |
+| youtube-downloader                          | ✅  | ❌️  | ❌️  | ❌️ |
 | youtube-transcript                          | ❌️  | ✅  | ❌️  | ❌️ |
 | zip-compressor                              | ✅  | ❌️  | ❌️  | ❌️ |
 
 ## 統計情報
 
-- **総サービス数**: 78
-- **CLIツール実装数**: 67
+- **総サービス数**: 84
+- **CLIツール実装数**: 73
 - **MCPツール実装数**: 24
 - **gRPCハンドラ実装数**: 1
-- **HTTPハンドラ実装数**: 0
-- **CLIのみ実装**: 54
+- **HTTPハンドラ実装数**: 1
+- **CLIのみ実装**: 60
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
 - **CLI+MCP両方実装**: 13
-- **全て実装済み**: 0
+- **全て実装済み**: 1
 
 ## 注意事項
 
