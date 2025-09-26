@@ -1,6 +1,12 @@
 package config
 
-import "testing"
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
 
 type mockFlagParser struct {
 	stringVars   map[string]*string
@@ -247,5 +253,115 @@ func TestParseFlagsWithParser_Help(t *testing.T) {
 	}
 	if !cfg.Help {
 		t.Fatalf("expected help flag to remain true")
+	}
+}
+
+func TestValidateAliasOption(t *testing.T) {
+	cases := []struct {
+		name    string
+		option  string
+		wantErr bool
+	}{
+		{"clear", "--clear-version-aliases", false},
+		{"remove", "--remove-version-aliases=prod", false},
+		{"update", "--update-version-aliases=prod=5", false},
+		{"empty", "", true},
+		{"unknown", "--nope", true},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateAliasOption(tc.option)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected error but got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestParseFlags_StandardParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{
+		"cmd",
+		"-operation=add-secret-version",
+		"-secret-name=my-secret",
+		"-secret-value=VALUE",
+	}
+	defer func() { os.Args = originalArgs }()
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Operation != OperationAddSecretVersion {
+		t.Fatalf("unexpected operation: %s", cfg.Operation)
+	}
+	if cfg.SecretValue != "VALUE" {
+		t.Fatalf("unexpected secret value: %s", cfg.SecretValue)
+	}
+}
+
+func TestStandardFlagParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"cmd", "-string=value", "-bool", "extra"}
+	defer func() { os.Args = originalArgs }()
+
+	parser := NewStandardFlagParser()
+
+	var str string
+	var flag bool
+
+	parser.StringVar(&str, "string", "default", "")
+	parser.BoolVar(&flag, "bool", false, "")
+
+	if err := parser.Parse(); err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if str != "value" {
+		t.Fatalf("unexpected string value: %s", str)
+	}
+	if !flag {
+		t.Fatalf("expected bool to be true")
+	}
+
+	args := parser.Args()
+	if len(args) != 1 || args[0] != "extra" {
+		t.Fatalf("unexpected remaining args: %v", args)
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"gcloud-genset-secret"}
+	defer func() { os.Args = originalArgs }()
+
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	PrintUsage()
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("failed to read usage output: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Google Cloud Secret Manager") {
+		t.Fatalf("usage output missing expected description: %s", output)
+	}
+	if !strings.Contains(output, "update-secret-version-aliases") {
+		t.Fatalf("usage output missing alias section: %s", output)
 	}
 }

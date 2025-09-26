@@ -1,6 +1,9 @@
 package usecases
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -239,4 +242,40 @@ func TestBuildCommand_InvalidOperation(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unsupported operation")
 	}
+}
+
+func TestPrintHighlightedCommand(t *testing.T) {
+	service := NewService()
+
+	output := captureStdout(func() {
+		service.PrintHighlightedCommand("gcloud billing budgets list")
+	})
+
+	if !strings.Contains(output, "生成された gcloud コマンド") {
+		t.Fatalf("expected highlighted output, got: %s", output)
+	}
+	if !strings.Contains(output, "gcloud billing budgets list") {
+		t.Fatalf("expected command in output, got: %s", output)
+	}
+}
+
+func captureStdout(fn func()) string {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		panic(err)
+	}
+
+	return buf.String()
 }

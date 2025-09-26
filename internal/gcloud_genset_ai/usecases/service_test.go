@@ -1,6 +1,12 @@
 package usecases
 
-import "testing"
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestBuildUndeployProcessorVersionCommand(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
@@ -36,4 +42,40 @@ func TestBuildUndeployProcessorVersionCommand(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrintHighlightedCommand(t *testing.T) {
+	service := NewService()
+
+	output := captureStdout(func() {
+		service.PrintHighlightedCommand("gcloud ai example")
+	})
+
+	if !strings.Contains(output, "生成された gcloud コマンド") {
+		t.Fatalf("expected header in output: %s", output)
+	}
+	if !strings.Contains(output, "gcloud ai example") {
+		t.Fatalf("expected command in output: %s", output)
+	}
+}
+
+func captureStdout(fn func()) string {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		panic(err)
+	}
+
+	return buf.String()
 }
