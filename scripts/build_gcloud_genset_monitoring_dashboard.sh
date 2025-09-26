@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/gcloud-monitoring"
+CMD_DIR="cmd/cli/gcloud-genset-monitoring-dashboard"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin/cli"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="gcloud-monitoring"
+OUTPUT_NAME="gcloud-genset-monitoring-dashboard"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,8 +38,8 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./gcloud-monitoring \"
-echo "  -operation=create-dashboard-for-cloud-run \"
-echo "  -project=my-gcp-project \"
-echo "  -location=us-central1 \"
+echo "  go run ./cmd/cli/gcloud-genset-monitoring-dashboard \\"
+echo "  -operation=create-dashboard-for-cloud-run \\"
+echo "  -project=my-gcp-project \\"
+echo "  -location=us-central1 \\"
 echo "  -service=my-web-app"

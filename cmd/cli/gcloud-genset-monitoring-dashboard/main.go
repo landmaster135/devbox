@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/gcloud_monitoring/config"
-	"github.com/landmaster135/devbox/internal/gcloud_monitoring/usecases"
+	"github.com/landmaster135/devbox/internal/gcloud_genset_monitoring_dashboard/config"
+	"github.com/landmaster135/devbox/internal/gcloud_genset_monitoring_dashboard/usecases"
 )
 
 func main() {

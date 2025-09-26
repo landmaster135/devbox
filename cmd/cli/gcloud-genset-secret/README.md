@@ -103,18 +103,18 @@ gcloud secrets versions access '5' --secret='SECRET_NAME'
 ```bash
 通知付きシェルコマンド
 ==============================
-go run ./cmd/cli/discord-webhook \
+$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \
   -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
   -content-text 'シークレットを作るよ！' \
   -embed-type 'none'
 if gcloud secrets create 'my-secret' --replication-policy='automatic'; then
-  go run ./cmd/cli/discord-webhook \
+  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \
     -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
     -content-text '作ったよ！' \
     -embed-type 'google-secret-manager-success' \
     -embed-text 'シークレットを作ったよ！'
 else
-  go run ./cmd/cli/discord-webhook \
+  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \
     -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
     -content-text '失敗…' \
     -embed-type 'google-secret-manager-failed' \
