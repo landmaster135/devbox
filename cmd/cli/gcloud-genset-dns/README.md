@@ -1,6 +1,6 @@
 # Gcloud Genset DNS
 
-Google Cloud DNS の `gcloud dns` コマンドを組み立てる CLI ツールです。`managed-zones list` 実行時に設定すべきフラグを整理し、再利用しやすいコマンド文字列として出力します。
+Google Cloud DNS の `gcloud dns` コマンドを組み立てる CLI ツールです。
 
 ## 概要
 

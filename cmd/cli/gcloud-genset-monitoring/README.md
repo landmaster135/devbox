@@ -1,6 +1,6 @@
 # Gcloud Genset Monitoring
 
-Google Cloud Monitoring の `gcloud` コマンドを生成する CLI ツールです。ダッシュボードやスヌーズ、Uptime チェックの情報取得に必要なフラグを整理し、コピーして実行できる形で出力します。
+Google Cloud Monitoring の `gcloud` コマンドを生成する CLI ツールです。
 
 ## 概要
 

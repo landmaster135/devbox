@@ -1,6 +1,6 @@
 # Gcloud Genset Init
 
-Google Cloud プロジェクトの初期設定で利用する `gcloud` コマンドを生成する CLI ツールです。`auth login` と `config set project` を安全に組み立て、都度のコマンド入力を省力化します。
+Google Cloud プロジェクトの初期設定で利用する `gcloud` コマンドを生成する CLI ツールです。
 
 ## 概要
 
