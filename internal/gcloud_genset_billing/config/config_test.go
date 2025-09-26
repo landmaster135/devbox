@@ -1,6 +1,12 @@
 package config
 
-import "testing"
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
 
 type mockFlagParser struct {
 	stringVars   map[string]*string
@@ -10,6 +16,7 @@ type mockFlagParser struct {
 	intValues    map[string]int
 	boolValues   map[string]bool
 	parseError   error
+	args         []string
 }
 
 func newMockFlagParser() *mockFlagParser {
@@ -55,7 +62,10 @@ func (m *mockFlagParser) Parse() error {
 }
 
 func (m *mockFlagParser) Args() []string {
-	return []string{}
+	if len(m.args) == 0 {
+		return []string{}
+	}
+	return append([]string(nil), m.args...)
 }
 
 func (m *mockFlagParser) setString(name, value string) {
@@ -77,6 +87,10 @@ func (m *mockFlagParser) setBool(name string, value bool) {
 	if ptr, ok := m.boolVars[name]; ok {
 		*ptr = value
 	}
+}
+
+func (m *mockFlagParser) setArgs(args []string) {
+	m.args = append([]string(nil), args...)
 }
 
 func TestParseFlagsWithParser_Success(t *testing.T) {
@@ -178,4 +192,113 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 			t.Fatal("expected error when budget-id is missing")
 		}
 	})
+}
+
+func TestParseFlagsWithParser_Help(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setBool("help", true)
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.Help {
+		t.Fatalf("expected help flag to be true")
+	}
+}
+
+func TestParseFlags_StandardParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{
+		"cmd",
+		"-operation=list-projects",
+		"-limit=7",
+		"-filter=project_id:test",
+		"-billing-account=0000-1111-2222",
+	}
+	defer func() { os.Args = originalArgs }()
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Operation != OperationListProjects {
+		t.Fatalf("unexpected operation: %s", cfg.Operation)
+	}
+	if cfg.Limit != 7 {
+		t.Fatalf("unexpected limit: %d", cfg.Limit)
+	}
+	if cfg.Filter != "project_id:test" {
+		t.Fatalf("unexpected filter: %s", cfg.Filter)
+	}
+	if cfg.BillingAccount != "0000-1111-2222" {
+		t.Fatalf("unexpected billing account: %s", cfg.BillingAccount)
+	}
+}
+
+func TestStandardFlagParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"cmd", "-string=value", "-int=9", "-bool", "extra"}
+	defer func() { os.Args = originalArgs }()
+
+	parser := NewStandardFlagParser()
+
+	var str string
+	var num int
+	var flag bool
+
+	parser.StringVar(&str, "string", "default", "")
+	parser.IntVar(&num, "int", 0, "")
+	parser.BoolVar(&flag, "bool", false, "")
+
+	if err := parser.Parse(); err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if str != "value" {
+		t.Fatalf("unexpected string value: %s", str)
+	}
+	if num != 9 {
+		t.Fatalf("unexpected int value: %d", num)
+	}
+	if !flag {
+		t.Fatalf("expected bool flag to be true")
+	}
+
+	args := parser.Args()
+	if len(args) != 1 || args[0] != "extra" {
+		t.Fatalf("unexpected remaining args: %v", args)
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"gcloud-genset-billing"}
+	defer func() { os.Args = originalArgs }()
+
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	PrintUsage()
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("failed to read usage output: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Google Cloud Billing") {
+		t.Fatalf("usage output missing expected description: %s", output)
+	}
+	if !strings.Contains(output, "list-budgets / list-projects 操作用") {
+		t.Fatalf("usage output missing expected section: %s", output)
+	}
 }

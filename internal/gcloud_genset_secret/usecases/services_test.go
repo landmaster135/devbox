@@ -1,7 +1,10 @@
 package usecases
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -97,23 +100,50 @@ func TestBuildAddSecretVersionCommand(t *testing.T) {
 			t.Fatal("expected error when secret value is missing")
 		}
 	})
+
+	t.Run("missing name", func(t *testing.T) {
+		_, err := service.BuildAddSecretVersionCommand(AddSecretVersionParams{SecretValue: "value"})
+		if err == nil {
+			t.Fatal("expected error when secret name is missing")
+		}
+	})
 }
 
 func TestBuildCreateAndAddSecretVersionCommand(t *testing.T) {
 	service := NewService()
 
-	command, err := service.BuildCreateAndAddSecretVersionCommand(CreateAndAddSecretVersionParams{
-		SecretName:  "combo-secret",
-		SecretValue: "combo",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	t.Run("success", func(t *testing.T) {
+		command, err := service.BuildCreateAndAddSecretVersionCommand(CreateAndAddSecretVersionParams{
+			SecretName:  "combo-secret",
+			SecretValue: "combo",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 
-	expected := "gcloud secrets create 'combo-secret' --replication-policy='automatic' && echo -n 'combo' | gcloud secrets versions add 'combo-secret' --data-file=-"
-	if command != expected {
-		t.Fatalf("unexpected command: %s", command)
-	}
+		expected := "gcloud secrets create 'combo-secret' --replication-policy='automatic' && echo -n 'combo' | gcloud secrets versions add 'combo-secret' --data-file=-"
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("create secret error", func(t *testing.T) {
+		_, err := service.BuildCreateAndAddSecretVersionCommand(CreateAndAddSecretVersionParams{
+			SecretValue: "value",
+		})
+		if err == nil {
+			t.Fatal("expected error when secret name is missing")
+		}
+	})
+
+	t.Run("add version error", func(t *testing.T) {
+		_, err := service.BuildCreateAndAddSecretVersionCommand(CreateAndAddSecretVersionParams{
+			SecretName: "combo-secret",
+		})
+		if err == nil {
+			t.Fatal("expected error when secret value is missing")
+		}
+	})
 }
 
 func TestBuildAccessSecretVersionCommand(t *testing.T) {
@@ -145,6 +175,13 @@ func TestBuildAccessSecretVersionCommand(t *testing.T) {
 			t.Fatalf("unexpected command: %s", command)
 		}
 	})
+
+	t.Run("missing secret", func(t *testing.T) {
+		_, err := service.BuildAccessSecretVersionCommand(AccessSecretVersionParams{})
+		if err == nil {
+			t.Fatal("expected error when secret name is missing")
+		}
+	})
 }
 
 func TestBuildUpdateSecretLabelsCommand(t *testing.T) {
@@ -161,6 +198,13 @@ func TestBuildUpdateSecretLabelsCommand(t *testing.T) {
 	expected := "gcloud secrets update 'labeled' --update-labels='env=prod,team=devops'"
 	if command != expected {
 		t.Fatalf("unexpected command: %s", command)
+	}
+
+	if _, err := service.BuildUpdateSecretLabelsCommand(UpdateSecretLabelsParams{Labels: "env=prod"}); err == nil {
+		t.Fatal("expected error when secret name is missing")
+	}
+	if _, err := service.BuildUpdateSecretLabelsCommand(UpdateSecretLabelsParams{SecretName: "labeled"}); err == nil {
+		t.Fatal("expected error when labels are missing")
 	}
 }
 
@@ -181,6 +225,20 @@ func TestBuildUpdateSecretVersionAliasesCommand(t *testing.T) {
 		}
 	})
 
+	t.Run("clear aliases", func(t *testing.T) {
+		command, err := service.BuildUpdateSecretVersionAliasesCommand(UpdateSecretVersionAliasesParams{
+			SecretName:  "alias",
+			AliasOption: "--clear-version-aliases",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := "gcloud secrets update 'alias' --clear-version-aliases"
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
 	t.Run("invalid option", func(t *testing.T) {
 		_, err := service.BuildUpdateSecretVersionAliasesCommand(UpdateSecretVersionAliasesParams{
 			SecretName:  "alias",
@@ -188,6 +246,13 @@ func TestBuildUpdateSecretVersionAliasesCommand(t *testing.T) {
 		})
 		if err == nil {
 			t.Fatal("expected error for invalid alias option")
+		}
+	})
+
+	t.Run("missing secret", func(t *testing.T) {
+		_, err := service.BuildUpdateSecretVersionAliasesCommand(UpdateSecretVersionAliasesParams{AliasOption: "--clear-version-aliases"})
+		if err == nil {
+			t.Fatal("expected error when secret name is missing")
 		}
 	})
 }
@@ -226,4 +291,116 @@ func TestBuildNotificationWrappedCommand(t *testing.T) {
 	if script != expected {
 		t.Fatalf("unexpected notification script:\n%s", script)
 	}
+
+	t.Run("unknown operation", func(t *testing.T) {
+		if _, ok := service.BuildNotificationWrappedCommand(DiscordNotificationParams{Operation: "unknown"}, "cmd"); ok {
+			t.Fatalf("expected false when template is missing")
+		}
+	})
+}
+
+func TestPrintHighlightedCommand(t *testing.T) {
+	service := NewService()
+
+	output := captureStdout(func() {
+		service.PrintHighlightedCommand("gcloud secrets list")
+	})
+
+	if !strings.Contains(output, "生成された gcloud コマンド") {
+		t.Fatalf("expected header in output: %s", output)
+	}
+	if !strings.Contains(output, "gcloud secrets list") {
+		t.Fatalf("expected command in output: %s", output)
+	}
+}
+
+func TestPrintNotificationScript(t *testing.T) {
+	service := NewService()
+
+	output := captureStdout(func() {
+		service.PrintNotificationScript("echo hi")
+	})
+	if !strings.Contains(output, "通知付きシェルコマンド") {
+		t.Fatalf("expected header in output: %s", output)
+	}
+	if !strings.Contains(output, "echo hi") {
+		t.Fatalf("expected script content in output: %s", output)
+	}
+
+	// 空文字の場合は出力しない
+	output = captureStdout(func() {
+		service.PrintNotificationScript("   ")
+	})
+	if output != "" {
+		t.Fatalf("expected no output for blank script, got: %q", output)
+	}
+}
+
+func TestIndentCommand(t *testing.T) {
+	indented := indentCommand("line1\nline2", "  ")
+	expected := "  line1\n  line2"
+	if indented != expected {
+		t.Fatalf("unexpected indented result: %s", indented)
+	}
+
+	if indentCommand("", "  ") != "" {
+		t.Fatalf("expected empty string when command is empty")
+	}
+}
+
+func TestShelled(t *testing.T) {
+	if got := shelled("text"); got != "'text'" {
+		t.Fatalf("unexpected quoted text: %s", got)
+	}
+	if got := shelled(""); got != "''" {
+		t.Fatalf("expected empty shell quote, got: %s", got)
+	}
+}
+
+func TestValidateAliasOptionFunc(t *testing.T) {
+	cases := []struct {
+		name    string
+		option  string
+		wantErr bool
+	}{
+		{"clear", "--clear-version-aliases", false},
+		{"remove", "--remove-version-aliases=prod", false},
+		{"update", "--update-version-aliases=prod=5", false},
+		{"empty", "", true},
+		{"invalid", "--nope", true},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateAliasOption(tc.option)
+			if tc.wantErr && err == nil {
+				t.Fatalf("expected error but got nil")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func captureStdout(fn func()) string {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout = w
+
+	fn()
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		panic(err)
+	}
+
+	return buf.String()
 }

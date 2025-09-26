@@ -13,6 +13,7 @@ type mockFlagParser struct {
 	boolVars     map[string]*bool
 	stringValues map[string]string
 	boolValues   map[string]bool
+	args         []string
 	parseErr     error
 }
 
@@ -25,7 +26,7 @@ func newMockFlagParser() *mockFlagParser {
 	}
 }
 
-func (m *mockFlagParser) StringVar(p *string, name, value, usage string) {
+func (m *mockFlagParser) StringVar(p *string, name string, value string, usage string) {
 	if preset, ok := m.stringValues[name]; ok {
 		*p = preset
 	} else {
@@ -44,7 +45,7 @@ func (m *mockFlagParser) BoolVar(p *bool, name string, value bool, usage string)
 }
 
 func (m *mockFlagParser) Parse() error   { return m.parseErr }
-func (m *mockFlagParser) Args() []string { return nil }
+func (m *mockFlagParser) Args() []string { return m.args }
 
 func (m *mockFlagParser) setString(name, value string) {
 	m.stringValues[name] = value
@@ -60,38 +61,34 @@ func (m *mockFlagParser) setBool(name string, value bool) {
 	}
 }
 
+func (m *mockFlagParser) setArgs(args []string) { m.args = args }
+
 func TestParseFlagsWithParser_Success(t *testing.T) {
 	parser := newMockFlagParser()
-	parser.setString("operation", OperationAuthLogin)
-	parser.setString("project-id", " my-project ")
-	parser.setString("additional-args", " --quiet ")
+	parser.setString("operation", OperationUndeployProcessorVersion)
+	parser.setString("region", " us-central1 ")
+	parser.setString("project-number", " 1234567890 ")
+	parser.setString("processor-id", " processor-abc ")
+	parser.setString("version-id", " version-001 ")
 
 	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Operation != OperationAuthLogin {
+	if cfg.Operation != OperationUndeployProcessorVersion {
 		t.Fatalf("operation mismatch: %s", cfg.Operation)
 	}
-	if cfg.ProjectID != "my-project" {
-		t.Fatalf("project-id mismatch: %s", cfg.ProjectID)
+	if cfg.Region != "us-central1" {
+		t.Fatalf("region mismatch: %s", cfg.Region)
 	}
-	if cfg.AdditionalArgs != "--quiet" {
-		t.Fatalf("additional args mismatch: %s", cfg.AdditionalArgs)
+	if cfg.ProjectNumber != "1234567890" {
+		t.Fatalf("project number mismatch: %s", cfg.ProjectNumber)
 	}
-}
-
-func TestParseFlagsWithParser_SetProject(t *testing.T) {
-	parser := newMockFlagParser()
-	parser.setString("operation", OperationSetProjectConfig)
-	parser.setString("project-id", "sample")
-
-	cfg, err := ParseFlagsWithParser(parser)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if cfg.ProcessorID != "processor-abc" {
+		t.Fatalf("processor id mismatch: %s", cfg.ProcessorID)
 	}
-	if cfg.Operation != OperationSetProjectConfig || cfg.ProjectID != "sample" {
-		t.Fatalf("unexpected config: %+v", cfg)
+	if cfg.VersionID != "version-001" {
+		t.Fatalf("version id mismatch: %s", cfg.VersionID)
 	}
 }
 
@@ -103,23 +100,59 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 		}
 	})
 
-	t.Run("unknown operation", func(t *testing.T) {
+	t.Run("unsupported operation", func(t *testing.T) {
 		parser := newMockFlagParser()
 		parser.setString("operation", "unknown")
 		if _, err := ParseFlagsWithParser(parser); err == nil {
-			t.Fatal("expected error for unknown operation")
+			t.Fatal("expected error when operation is unknown")
 		}
 	})
 
-	t.Run("missing project", func(t *testing.T) {
+	t.Run("missing region", func(t *testing.T) {
 		parser := newMockFlagParser()
-		parser.setString("operation", OperationAuthLogin)
+		parser.setString("operation", OperationUndeployProcessorVersion)
+		parser.setString("project-number", "123")
+		parser.setString("processor-id", "proc")
+		parser.setString("version-id", "ver")
 		if _, err := ParseFlagsWithParser(parser); err == nil {
-			t.Fatal("expected error when project-id is missing")
+			t.Fatal("expected error when region is missing")
 		}
 	})
 
-	t.Run("help bypass", func(t *testing.T) {
+	t.Run("missing project number", func(t *testing.T) {
+		parser := newMockFlagParser()
+		parser.setString("operation", OperationUndeployProcessorVersion)
+		parser.setString("region", "us")
+		parser.setString("processor-id", "proc")
+		parser.setString("version-id", "ver")
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error when project-number is missing")
+		}
+	})
+
+	t.Run("missing processor id", func(t *testing.T) {
+		parser := newMockFlagParser()
+		parser.setString("operation", OperationUndeployProcessorVersion)
+		parser.setString("region", "us")
+		parser.setString("project-number", "123")
+		parser.setString("version-id", "ver")
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error when processor-id is missing")
+		}
+	})
+
+	t.Run("missing version id", func(t *testing.T) {
+		parser := newMockFlagParser()
+		parser.setString("operation", OperationUndeployProcessorVersion)
+		parser.setString("region", "us")
+		parser.setString("project-number", "123")
+		parser.setString("processor-id", "proc")
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error when version-id is missing")
+		}
+	})
+
+	t.Run("help flag bypasses validation", func(t *testing.T) {
 		parser := newMockFlagParser()
 		parser.setBool("help", true)
 		cfg, err := ParseFlagsWithParser(parser)
@@ -127,22 +160,33 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !cfg.Help {
-			t.Fatal("expected help flag to be true")
+			t.Fatal("help flag should be true")
 		}
 	})
+
 }
 
 func TestParseFlags_StandardParser(t *testing.T) {
 	originalArgs := os.Args
-	os.Args = []string{"cmd", "-operation=auth-login", "-project-id=my-project", "-additional-args=--quiet"}
+	os.Args = []string{
+		"cmd",
+		"-operation=undeploy-processor-version",
+		"-region=us-central1",
+		"-project-number=1234567890",
+		"-processor-id=processor-abc",
+		"-version-id=version-001",
+	}
 	defer func() { os.Args = originalArgs }()
 
 	cfg, err := ParseFlags()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.ProjectID != "my-project" || cfg.AdditionalArgs != "--quiet" {
+	if cfg.Operation != OperationUndeployProcessorVersion || cfg.Region != "us-central1" {
 		t.Fatalf("unexpected config: %+v", cfg)
+	}
+	if cfg.ProjectNumber != "1234567890" || cfg.ProcessorID != "processor-abc" || cfg.VersionID != "version-001" {
+		t.Fatalf("unexpected parsed values: %+v", cfg)
 	}
 }
 
@@ -164,7 +208,6 @@ func TestStandardFlagParser(t *testing.T) {
 	if str != "value" || !flag {
 		t.Fatalf("unexpected parsed values: str=%s flag=%v", str, flag)
 	}
-
 	args := parser.Args()
 	if len(args) != 1 || args[0] != "extra" {
 		t.Fatalf("unexpected remaining args: %v", args)
@@ -173,7 +216,7 @@ func TestStandardFlagParser(t *testing.T) {
 
 func TestPrintUsage(t *testing.T) {
 	originalArgs := os.Args
-	os.Args = []string{"gcloud-genset-init"}
+	os.Args = []string{"gcloud-genset-ai"}
 	defer func() { os.Args = originalArgs }()
 
 	oldStderr := os.Stderr
@@ -194,10 +237,10 @@ func TestPrintUsage(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "gcloud 初期設定向けのコマンド生成ツール") {
+	if !strings.Contains(output, "Document AI") {
 		t.Fatalf("usage output missing description: %s", output)
 	}
-	if !strings.Contains(output, "auth-login") || !strings.Contains(output, "set-project-config") {
-		t.Fatalf("usage output missing operations: %s", output)
+	if !strings.Contains(output, "undeploy-processor-version") {
+		t.Fatalf("usage output missing operation description: %s", output)
 	}
 }

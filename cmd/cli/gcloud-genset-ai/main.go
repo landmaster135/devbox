@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	cfg "github.com/landmaster135/devbox/internal/gcloud-genset-ai/config"
-	usecases "github.com/landmaster135/devbox/internal/gcloud-genset-ai/usecases"
+	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_ai/config"
+	usecases "github.com/landmaster135/devbox/internal/gcloud_genset_ai/usecases"
 )
 
 func main() {

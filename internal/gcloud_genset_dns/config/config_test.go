@@ -1,6 +1,12 @@
 package config
 
-import "testing"
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
 
 type MockFlagParser struct {
 	stringVars   map[string]*string
@@ -188,5 +194,107 @@ func TestParseFlagsWithParser_Help(t *testing.T) {
 	}
 	if !cfg.Help {
 		t.Fatalf("expected help to be true")
+	}
+}
+
+func TestParseFlags_StandardParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{
+		"cmd",
+		"-operation=managed-zones-list",
+		"-project=my-project",
+		"-format=json",
+		"-filter=name=example",
+		"-limit=5",
+		"-page-size=3",
+		"-sort-by=name",
+		"-verbosity=debug",
+		"-uri",
+		"-additional-args=--account=my-account",
+	}
+	defer func() { os.Args = originalArgs }()
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Project != "my-project" || cfg.Format != "json" || cfg.Filter != "name=example" {
+		t.Fatalf("unexpected config values: %+v", cfg)
+	}
+	if cfg.Limit != 5 || cfg.PageSize != 3 {
+		t.Fatalf("unexpected numeric values: limit=%d pageSize=%d", cfg.Limit, cfg.PageSize)
+	}
+	if cfg.SortBy != "name" || cfg.Verbosity != "debug" {
+		t.Fatalf("unexpected sort or verbosity: sort=%s verbosity=%s", cfg.SortBy, cfg.Verbosity)
+	}
+	if !cfg.URI {
+		t.Fatalf("expected uri flag to be true")
+	}
+	if cfg.AdditionalArgs != "--account=my-account" {
+		t.Fatalf("unexpected additional args: %s", cfg.AdditionalArgs)
+	}
+}
+
+func TestStandardFlagParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"cmd", "-string=value", "-int=7", "-bool", "extra"}
+	defer func() { os.Args = originalArgs }()
+
+	parser := NewStandardFlagParser()
+
+	var str string
+	var num int
+	var flag bool
+
+	parser.StringVar(&str, "string", "default", "")
+	parser.IntVar(&num, "int", 0, "")
+	parser.BoolVar(&flag, "bool", false, "")
+
+	if err := parser.Parse(); err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if str != "value" {
+		t.Fatalf("unexpected string value: %s", str)
+	}
+	if num != 7 {
+		t.Fatalf("unexpected int value: %d", num)
+	}
+	if !flag {
+		t.Fatalf("expected bool flag to be true")
+	}
+
+	args := parser.Args()
+	if len(args) != 1 || args[0] != "extra" {
+		t.Fatalf("unexpected remaining args: %v", args)
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"gcloud-genset-dns"}
+	defer func() { os.Args = originalArgs }()
+
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	PrintUsage()
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("failed to read usage output: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Google Cloud DNS") {
+		t.Fatalf("usage output missing expected content: %s", output)
 	}
 }
