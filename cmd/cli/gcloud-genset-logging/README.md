@@ -1,6 +1,6 @@
 # Gcloud Genset Logging
 
-Google Cloud Logging の `gcloud` コマンドを生成する CLI ツールです。`logging read` や `logging sinks create` の呼び出しに必要なフラグを整理し、適切なフィルターや引数を組み立てます。
+Google Cloud Logging の `gcloud` コマンドを生成する CLI ツールです。
 
 ## 概要
 
