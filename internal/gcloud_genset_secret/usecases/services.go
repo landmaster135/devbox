@@ -18,6 +18,13 @@ func NewService() *Service {
 	return &Service{}
 }
 
+const (
+	discordWebhookEnvVarName = "DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD"
+	discordCLIPath           = "$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook"
+	successEmbedType         = "google-secret-manager-success"
+	failureEmbedType         = "google-secret-manager-failed"
+)
+
 // DiscordNotificationParams はDiscord通知用コマンド生成に必要な情報を表す。
 type DiscordNotificationParams struct {
 	Operation  string
@@ -184,24 +191,28 @@ func (s *Service) BuildNotificationWrappedCommand(params DiscordNotificationPara
 	}
 
 	var lines []string
-	if template.start != "" {
-		lines = append(lines, template.start)
+	if template.startContent != "" {
+		lines = append(lines, buildSimpleNotificationCommand(template.startContent))
 	}
 
-	if template.failure != "" {
-		lines = append(lines, fmt.Sprintf("if %s; then", gcloudCommand))
-		if template.success != "" {
-			lines = append(lines, fmt.Sprintf("  %s", template.success))
-		}
-		lines = append(lines, "else")
-		lines = append(lines, fmt.Sprintf("  %s", template.failure))
-		lines = append(lines, "fi")
-	} else {
-		lines = append(lines, gcloudCommand)
-		if template.success != "" {
-			lines = append(lines, template.success)
-		}
+	successCommand := ""
+	if template.successContent != "" {
+		successCommand = buildEmbedNotificationCommand(template.successContent, template.successEmbedText, successEmbedType)
 	}
+	failureCommand := ""
+	if template.failureContent != "" {
+		failureCommand = buildEmbedNotificationCommand(template.failureContent, template.failureEmbedText, failureEmbedType)
+	}
+
+	lines = append(lines, fmt.Sprintf("if %s; then", gcloudCommand))
+	if successCommand != "" {
+		lines = append(lines, indentCommand(successCommand, "  "))
+	}
+	lines = append(lines, "else")
+	if failureCommand != "" {
+		lines = append(lines, indentCommand(failureCommand, "  "))
+	}
+	lines = append(lines, "fi")
 
 	script := strings.Join(lines, "\n")
 	return script, true
@@ -252,41 +263,95 @@ func shellQuote(value string) string {
 	return "'" + escaped + "'"
 }
 
+func buildSimpleNotificationCommand(content string) string {
+	return buildDiscordWebhookCommand(content, "none", "")
+}
+
+func buildEmbedNotificationCommand(content, embedText, embedType string) string {
+	return buildDiscordWebhookCommand(content, embedType, embedText)
+}
+
+func buildDiscordWebhookCommand(content, embedType, embedText string) string {
+	var lines []string
+	lines = append(lines, fmt.Sprintf("%s \\", discordCLIPath))
+	lines = append(lines, fmt.Sprintf("  -webhook-url \"$%s\" \\", discordWebhookEnvVarName))
+	lines = append(lines, fmt.Sprintf("  -content-text %s \\", shellQuote(content)))
+	embedLine := fmt.Sprintf("  -embed-type %s", shelled(embedType))
+	if embedText != "" {
+		lines = append(lines, embedLine+" \\")
+		lines = append(lines, fmt.Sprintf("  -embed-text %s", shellQuote(embedText)))
+	} else {
+		lines = append(lines, embedLine)
+	}
+	return strings.Join(lines, "\n")
+}
+func indentCommand(command, indent string) string {
+	if command == "" {
+		return ""
+	}
+	parts := strings.Split(command, "\n")
+	for i, part := range parts {
+		parts[i] = indent + part
+	}
+	return strings.Join(parts, "\n")
+}
+
+func shelled(value string) string {
+	if value == "" {
+		return "''"
+	}
+	return shellQuote(value)
+}
+
 type notificationTemplate struct {
-	start   string
-	success string
-	failure string
+	startContent     string
+	successContent   string
+	successEmbedText string
+	failureContent   string
+	failureEmbedText string
 }
 
 var notificationTemplates = map[string]notificationTemplate{
 	"create-secret": {
-		start:   "send_discord_notification \"シークレットを作るよ！\"",
-		success: "send_discord_notification_about_gsm \"作ったよ！\" \"シークレットを作ったよ！\" \"green\"",
-		failure: "send_discord_notification_about_gsm \"失敗…\" \"シークレットが作れなかったよ…\" \"red\"",
+		startContent:     "シークレットを作るよ！",
+		successContent:   "作ったよ！",
+		successEmbedText: "シークレットを作ったよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "シークレットが作れなかったよ…",
 	},
 	"add-secret-version": {
-		start:   "send_discord_notification \"シークレットのバージョンを作るよ！\"",
-		success: "send_discord_notification_about_gsm \"作ったよ！\" \"シークレットにバージョンを追加したよ！\" \"green\"",
-		failure: "send_discord_notification_about_gsm \"失敗…\" \"シークレットにバージョンを作れなかったよ…\" \"red\"",
+		startContent:     "シークレットのバージョンを作るよ！",
+		successContent:   "作ったよ！",
+		successEmbedText: "シークレットにバージョンを追加したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "シークレットにバージョンを作れなかったよ…",
 	},
 	"create-and-add-secret-version": {
-		start:   "send_discord_notification \"シークレットとバージョンを作るよ！\"",
-		success: "send_discord_notification_about_gsm \"作ったよ！\" \"シークレットと新しいバージョンを追加したよ！\" \"green\"",
-		failure: "send_discord_notification_about_gsm \"失敗…\" \"シークレットとバージョンの作成に失敗したよ…\" \"red\"",
+		startContent:     "シークレットとバージョンを作るよ！",
+		successContent:   "作ったよ！",
+		successEmbedText: "シークレットと新しいバージョンを追加したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "シークレットとバージョンの作成に失敗したよ…",
 	},
 	"access-secret-version": {
-		start:   "send_discord_notification \"シークレットの値を取得するよ！\"",
-		success: "send_discord_notification_about_gsm \"取れた！\" \"シークレットを取得したよ！\" \"green\"",
-		failure: "send_discord_notification_about_gsm \"失敗…\" \"シークレットを取れなかったよ…\" \"red\"",
+		startContent:     "シークレットの値を取得するよ！",
+		successContent:   "取れた！",
+		successEmbedText: "シークレットを取得したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "シークレットを取れなかったよ…",
 	},
 	"update-secret-labels": {
-		start:   "send_discord_notification \"シークレットのラベルを更新するよ！\"",
-		success: "send_discord_notification_about_gsm \"更新したよ！\" \"シークレットのラベルを更新したよ！\" \"green\"",
-		failure: "send_discord_notification_about_gsm \"失敗…\" \"シークレットのラベル更新に失敗したよ…\" \"red\"",
+		startContent:     "シークレットのラベルを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "シークレットのラベルを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "シークレットのラベル更新に失敗したよ…",
 	},
 	"update-secret-version-aliases": {
-		start:   "send_discord_notification \"シークレットのエイリアスを更新するよ！\"",
-		success: "send_discord_notification_about_gsm \"更新したよ！\" \"シークレットのエイリアスを更新したよ！\" \"green\"",
-		failure: "send_discord_notification_about_gsm \"失敗…\" \"シークレットのエイリアス更新に失敗したよ…\" \"red\"",
+		startContent:     "シークレットのエイリアスを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "シークレットのエイリアスを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "シークレットのエイリアス更新に失敗したよ…",
 	},
 }
