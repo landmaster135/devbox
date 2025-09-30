@@ -9,6 +9,7 @@ Google Cloud IAM / Workload Identity Federation の `gcloud` コマンドを素�
 - **Workload Identity Pool 管理**: プールの作成・更新・削除・復元・一覧・詳細取得を単一 CLI で呼び出し
 - **Workload Identity Provider 管理**: OIDC プロバイダーの作成・更新・クリーンアップを支援 (GitHub Actions 用のエイリアスも提供)
 - **Federation セットアップ/クリーンアップ**: リポジトリ連携一式を自動化するシェルスクリプトを生成
+- **Discord 通知スクリプト**: 成功/失敗を Discord Webhook に飛ばす補助コマンドも併せて表示
 - **出力のみ**: CLI 自体は `gcloud` を実行せず、生成結果を標準出力に表示する安全設計
 
 ## インストール
@@ -86,7 +87,7 @@ go run ./cmd/cli/gcloud-genset-iam \
 
 ### 1. サービスアカウントを作成しロール付与
 ```bash
-$ go run ./cmd/cli/gcloud-genset-iam \
+go run ./cmd/cli/gcloud-genset-iam \
   -operation create-service-account \
   -service-account-id SERVICE_ACCOUNT_ID \
   -project-id MY_PROJECT \
@@ -95,7 +96,7 @@ $ go run ./cmd/cli/gcloud-genset-iam \
 
 ### 2. Workload Identity Pool を作成して GitHub Actions 用プロバイダーを登録
 ```bash
-$ go run ./cmd/cli/gcloud-genset-iam \
+go run ./cmd/cli/gcloud-genset-iam \
   -operation setup-workload-identity-federation \
   -project-id MY_PROJECT \
   -pool-id github-pool \
@@ -108,7 +109,7 @@ $ go run ./cmd/cli/gcloud-genset-iam \
 
 ### 3. Federation リソースのクリーンアップ
 ```bash
-$ go run ./cmd/cli/gcloud-genset-iam \
+go run ./cmd/cli/gcloud-genset-iam \
   -operation cleanup-workload-identity-federation \
   -project-id MY_PROJECT \
   -pool-id POOL_ID \

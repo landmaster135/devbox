@@ -56,7 +56,7 @@ go run ./cmd/cli/gcloud-genset-secret -operation create-secret -secret-name my-s
 ### シークレットを作成し値まで登録
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-secret \
+go run ./cmd/cli/gcloud-genset-secret \
   -operation create-and-add-secret-version \
   -secret-name SECRET_NAME \
   -secret-value 'SECRET_PASSWORD'
@@ -70,7 +70,7 @@ gcloud secrets create 'SECRET_NAME' --replication-policy='automatic' && echo -n 
 ### user-managed でシークレットを作成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-secret \
+go run ./cmd/cli/gcloud-genset-secret \
   -operation create-secret \
   -secret-name multi-region-secret \
   -replication-policy user-managed \
@@ -85,7 +85,7 @@ gcloud secrets create 'multi-region-secret' --replication-policy='user-managed' 
 ### バージョンを取得
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-secret \
+go run ./cmd/cli/gcloud-genset-secret \
   -operation access-secret-version \
   -secret-name SECRET_NAME \
   -version 5

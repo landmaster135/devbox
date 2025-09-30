@@ -13,6 +13,197 @@ func NewService() *Service {
 	return &Service{}
 }
 
+const (
+	discordWebhookEnvVarName = "DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD"
+	discordCLIPath           = "$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook"
+	iamSuccessEmbedType      = "google-iam-success"
+	iamFailureEmbedType      = "google-iam-failed"
+)
+
+// DiscordNotificationParams は通知コマンド生成に必要な情報を表す。
+type DiscordNotificationParams struct {
+	Operation string
+}
+
+type notificationTemplate struct {
+	startContent     string
+	successContent   string
+	successEmbedText string
+	failureContent   string
+	failureEmbedText string
+}
+
+var notificationTemplates = map[string]notificationTemplate{
+	"add-iam-policy-binding-to-project": {
+		startContent:     "サービスアカウントにIAMポリシーをバインドするよ！",
+		successContent:   "バインドしたよ！",
+		successEmbedText: "IAMポリシーをバインドしたよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "IAMポリシーをバインドできなかったよ…",
+	},
+	"add-iam-policy-binding-to-service-account": {
+		startContent:     "サービスアカウントにIAMポリシーバインディングを追加するよ！",
+		successContent:   "IAMポリシーバインディングを追加したよ！",
+		successEmbedText: "サービスアカウントにIAMポリシーバインディングを追加したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントにIAMポリシーバインディングを追加できなかったよ…",
+	},
+	"add-workload-identity-binding-to-service-account": {
+		startContent:     "サービスアカウントにWorkload Identityバインディングを追加するよ！",
+		successContent:   "IAMポリシーバインディングを追加したよ！",
+		successEmbedText: "サービスアカウントにWorkload Identityバインディングを追加したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントにWorkload Identityバインディングを追加できなかったよ…",
+	},
+	"create-service-account": {
+		startContent:     "サービスアカウントを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "サービスアカウントを作成してIAMポリシーをバインドしたよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントの作成もしくはIAMポリシーバインドに失敗したよ…",
+	},
+	"list-service-accounts": {
+		startContent:     "サービスアカウントを列挙するよ！",
+		successContent:   "列挙したよ！",
+		successEmbedText: "サービスアカウントを列挙したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントを列挙できなかったよ…",
+	},
+	"disable-service-account": {
+		startContent:     "サービスアカウントを無効化するよ！",
+		successContent:   "無効化したよ！",
+		successEmbedText: "サービスアカウントを無効化したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントを無効化できなかったよ…",
+	},
+	"enable-service-account": {
+		startContent:     "サービスアカウントを有効化するよ！",
+		successContent:   "有効化したよ！",
+		successEmbedText: "サービスアカウントを有効化したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントを有効化できなかったよ…",
+	},
+	"delete-service-account": {
+		startContent:     "サービスアカウントを削除するよ！",
+		successContent:   "削除したよ！",
+		successEmbedText: "サービスアカウントを削除したよ！（復元したかったらundeleteしてね。）",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントを削除できなかったよ…",
+	},
+	"undelete-service-account": {
+		startContent:     "サービスアカウントを復元するよ！",
+		successContent:   "復元したよ！",
+		successEmbedText: "サービスアカウントを復元したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントを復元できなかったよ…",
+	},
+	"update-service-account": {
+		startContent:     "サービスアカウントを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "サービスアカウントを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントを更新できなかったよ…",
+	},
+	"describe-service-account": {
+		startContent:     "サービスアカウントの詳細を取得するよ！",
+		successContent:   "詳細を取得したよ！",
+		successEmbedText: "サービスアカウントの詳細を取得したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスアカウントの詳細を取得できなかったよ…",
+	},
+	"create-workload-identity-pool": {
+		startContent:     "Workload Identity Poolを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "Workload Identity Poolを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Poolを作成できなかったよ…",
+	},
+	"list-workload-identity-pools": {
+		startContent:     "Workload Identity Poolsの一覧を取得するよ！",
+		successContent:   "一覧を取得したよ！",
+		successEmbedText: "Workload Identity Poolsを一覧を取得したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Poolの一覧を取得できなかったよ…",
+	},
+	"describe-workload-identity-pool": {
+		startContent:     "Workload Identity Poolの詳細を取得するよ！",
+		successContent:   "詳細を取得したよ！",
+		successEmbedText: "Workload Identity Poolsの詳細を取得したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Poolの詳細を取得できなかったよ…",
+	},
+	"delete-workload-identity-pool": {
+		startContent:     "Workload Identity Poolを削除するよ！",
+		successContent:   "削除したよ！",
+		successEmbedText: "Workload Identity Poolを削除したよ！（復元したかったらundeleteしてね。）",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Poolを削除できなかったよ…",
+	},
+	"undelete-workload-identity-pool": {
+		startContent:     "Workload Identity Poolを復元するよ！",
+		successContent:   "復元したよ！",
+		successEmbedText: "Workload Identity Poolを復元したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Poolを復元できなかったよ…",
+	},
+	"update-workload-identity-pool": {
+		startContent:     "Workload Identity Poolを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "Workload Identity Poolを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Poolを更新できなかったよ…",
+	},
+	"create-oidc-workload-identity-pool-provider": {
+		startContent:     "OIDC Workload Identity Pool Providerを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "OIDC Workload Identity Pool Providerを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "OIDC Workload Identity Pool Providerを作成できなかったよ…",
+	},
+	"create-oidc-workload-identity-pool-provider-for-github-actions": {
+		startContent:     "GitHub Actions用のOIDC Workload Identity Pool Providerを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "GitHub Actions用のOIDC Workload Identity Pool Providerを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "GitHub Actions用のOIDC Workload Identity Pool Providerを作成できなかったよ…",
+	},
+	"list-workload-identity-pool-providers": {
+		startContent:     "Workload Identity Pool Providerの一覧を取得するよ！",
+		successContent:   "一覧を取得したよ！",
+		successEmbedText: "Workload Identity Pool Providerの一覧を取得したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Pool Providerの一覧を取得できなかったよ…",
+	},
+	"describe-workload-identity-pool-provider": {
+		startContent:     "Workload Identity Pool Providerの詳細を取得するよ！",
+		successContent:   "詳細を取得したよ！",
+		successEmbedText: "Workload Identity Pool Providerの詳細を取得したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Pool Providerの詳細を取得できなかったよ…",
+	},
+	"update-oidc-workload-identity-pool-provider": {
+		startContent:     "OIDC Workload Identity Pool Providerを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "OIDC Workload Identity Pool Providerを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "OIDC Workload Identity Pool Providerを更新できなかったよ…",
+	},
+	"delete-workload-identity-pool-provider": {
+		startContent:     "Workload Identity Pool Providerを削除するよ！",
+		successContent:   "削除したよ！",
+		successEmbedText: "Workload Identity Pool Providerを削除したよ！（復元したかったらundeleteしてね。）",
+		failureContent:   "失敗…",
+		failureEmbedText: "Workload Identity Pool Providerを削除できなかったよ…",
+	},
+	"undelete-workload-identity-pool-provider": {
+		startContent:     "OIDC Workload Identity Pool Providerを復元するよ！",
+		successContent:   "復元したよ！",
+		successEmbedText: "OIDC Workload Identity Pool Providerを復元したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "OIDC Workload Identity Pool Providerを復元できなかったよ…",
+	},
+}
+
 // AddIamPolicyBindingToProjectParams はプロジェクトへのポリシーバインドに必要な情報。
 type AddIamPolicyBindingToProjectParams struct {
 	ProjectID        string
@@ -971,6 +1162,55 @@ func (s *Service) BuildCleanupWorkloadIdentityFederationScript(params CleanupWor
 	return strings.Join(commands, "\n"), nil
 }
 
+// BuildNotificationWrappedCommand はDiscord通知を含むシェルスクリプトを生成する。
+func (s *Service) BuildNotificationWrappedCommand(params DiscordNotificationParams, gcloudCommand string) (string, bool) {
+	template, ok := notificationTemplates[params.Operation]
+	if !ok {
+		return "", false
+	}
+
+	var lines []string
+	if template.startContent != "" {
+		lines = append(lines, buildSimpleNotificationCommand(template.startContent))
+	}
+
+	successCommand := ""
+	if template.successContent != "" {
+		successCommand = buildEmbedNotificationCommand(template.successContent, template.successEmbedText, iamSuccessEmbedType)
+	}
+	failureCommand := ""
+	if template.failureContent != "" {
+		failureCommand = buildEmbedNotificationCommand(template.failureContent, template.failureEmbedText, iamFailureEmbedType)
+	}
+
+	lines = append(lines, fmt.Sprintf("if %s; then", gcloudCommand))
+	if successCommand != "" {
+		lines = append(lines, indentCommand(successCommand, "  "))
+	}
+	lines = append(lines, "else")
+	if failureCommand != "" {
+		lines = append(lines, indentCommand(failureCommand, "  "))
+	}
+	lines = append(lines, "fi")
+
+	script := strings.Join(lines, "\n")
+	return script, true
+}
+
+// PrintNotificationScript は通知用スクリプトを整形して表示する。
+func (s *Service) PrintNotificationScript(script string) {
+	if strings.TrimSpace(script) == "" {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("==============================")
+	fmt.Println("通知付きシェルコマンド")
+	fmt.Println("==============================")
+	fmt.Println(script)
+	fmt.Println("==============================")
+}
+
 // PrintHighlightedCommand は生成したコマンドを装飾して表示する。
 func (s *Service) PrintHighlightedCommand(command string) {
 	fmt.Println("\n==============================")
@@ -985,6 +1225,47 @@ func optionalDescriptionFlag(description string) string {
 		return ""
 	}
 	return fmt.Sprintf(" --description=%s", shellQuote(description))
+}
+
+func buildSimpleNotificationCommand(content string) string {
+	return buildDiscordWebhookCommand(content, "none", "")
+}
+
+func buildEmbedNotificationCommand(content, embedText, embedType string) string {
+	return buildDiscordWebhookCommand(content, embedType, embedText)
+}
+
+func buildDiscordWebhookCommand(content, embedType, embedText string) string {
+	var lines []string
+	lines = append(lines, fmt.Sprintf("%s \\", discordCLIPath))
+	lines = append(lines, fmt.Sprintf("  -webhook-url \"$%s\" \\", discordWebhookEnvVarName))
+	lines = append(lines, fmt.Sprintf("  -content-text %s \\", shellQuote(content)))
+	embedLine := fmt.Sprintf("  -embed-type %s", shelled(embedType))
+	if embedText != "" {
+		lines = append(lines, embedLine+" \\")
+		lines = append(lines, fmt.Sprintf("  -embed-text %s", shellQuote(embedText)))
+	} else {
+		lines = append(lines, embedLine)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func indentCommand(command, indent string) string {
+	if command == "" {
+		return ""
+	}
+	parts := strings.Split(command, "\n")
+	for i, part := range parts {
+		parts[i] = indent + part
+	}
+	return strings.Join(parts, "\n")
+}
+
+func shelled(value string) string {
+	if value == "" {
+		return "''"
+	}
+	return shellQuote(value)
 }
 
 func joinCommand(parts ...string) string {

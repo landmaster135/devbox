@@ -310,3 +310,25 @@ func TestBuildCleanupWorkloadIdentityFederationScript(t *testing.T) {
 		t.Fatalf("confirmation prompt should be omitted when skip-confirmation is true: %s", scriptSkip)
 	}
 }
+
+func TestBuildNotificationWrappedCommand(t *testing.T) {
+	service := NewService()
+	script, ok := service.BuildNotificationWrappedCommand(
+		DiscordNotificationParams{Operation: "add-iam-policy-binding-to-project"},
+		"gcloud test",
+	)
+	if !ok {
+		t.Fatal("expected notification script to be generated")
+	}
+
+	if !strings.Contains(script, "サービスアカウントにIAMポリシーをバインドするよ！") {
+		t.Fatalf("start notification missing: %s", script)
+	}
+	if !strings.Contains(script, "if gcloud test; then") {
+		t.Fatalf("gcloud command not wrapped: %s", script)
+	}
+
+	if _, ok := service.BuildNotificationWrappedCommand(DiscordNotificationParams{Operation: "unknown"}, "cmd"); ok {
+		t.Fatal("unexpected notification for unknown operation")
+	}
+}

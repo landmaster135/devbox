@@ -44,7 +44,7 @@ go run ./cmd/cli/gcloud-genset-init -operation auth-login -project-id MY_PROJECT
 ### 認証コマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-init \
+go run ./cmd/cli/gcloud-genset-init \
   -operation auth-login \
   -project-id MY_PROJECT_123 \
   -additional-args '--quiet'
@@ -58,7 +58,7 @@ gcloud auth login 'MY_PROJECT_123' --quiet
 ### プロジェクト設定コマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-init \
+go run ./cmd/cli/gcloud-genset-init \
   -operation set-project-config \
   -project-id MY_PROJECT_123
 ```
