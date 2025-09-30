@@ -1,6 +1,9 @@
 package usecases
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -283,6 +286,436 @@ func TestBuildDeleteCloudRunFunctionCommand(t *testing.T) {
 	}
 }
 
+func TestBuildDeleteCloudRunFunctionCommand_MissingParams(t *testing.T) {
+	service := NewService()
+
+	if _, err := service.BuildDeleteCloudRunFunctionCommand(DeleteCloudRunFunctionParams{}); err == nil {
+		t.Fatal("expected error when parameters are missing")
+	}
+}
+
+func TestBuildCommandVariants(t *testing.T) {
+	service := NewService()
+
+	t.Run("deploy cloud run container", func(t *testing.T) {
+		expected, err := service.BuildDeployCloudRunContainerCommand(DeployCloudRunContainerParams{
+			ServiceName:          "svc",
+			ProjectID:            "proj",
+			Region:               "asia-northeast1",
+			Timeout:              "45m",
+			RunServiceAccount:    "svc@proj.iam.gserviceaccount.com",
+			AllowUnauthenticated: false,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:            cfg.OperationDeployCloudRunContainer,
+			ServiceName:          "svc",
+			ProjectID:            "proj",
+			Region:               "asia-northeast1",
+			Timeout:              "45m",
+			RunServiceAccount:    "svc@proj.iam.gserviceaccount.com",
+			AllowUnauthenticated: false,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("deploy cloud run container missing params", func(t *testing.T) {
+		if _, err := service.BuildDeployCloudRunContainerCommand(DeployCloudRunContainerParams{ProjectID: "proj"}); err == nil {
+			t.Fatal("expected error for missing parameters")
+		}
+	})
+
+	t.Run("update cloud run container env", func(t *testing.T) {
+		expected, err := service.BuildUpdateCloudRunContainerEnvCommand(UpdateCloudRunContainerEnvParams{
+			ServiceName: "svc",
+			ProjectID:   "proj",
+			Region:      "asia-northeast1",
+			EnvFile:     "env.yaml",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:   cfg.OperationUpdateCloudRunContainerEnv,
+			ServiceName: "svc",
+			ProjectID:   "proj",
+			Region:      "asia-northeast1",
+			EnvFile:     "env.yaml",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("update cloud run container env missing params", func(t *testing.T) {
+		if _, err := service.BuildUpdateCloudRunContainerEnvCommand(UpdateCloudRunContainerEnvParams{ServiceName: "svc"}); err == nil {
+			t.Fatal("expected error for missing parameters")
+		}
+	})
+
+	t.Run("deploy cloud run function", func(t *testing.T) {
+		expected, err := service.BuildDeployCloudRunFunctionCommand(DeployCloudRunFunctionParams{
+			FunctionName: "fn",
+			Region:       "asia-northeast1",
+			EntryPoint:   "Handle",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:    cfg.OperationDeployCloudRunFunction,
+			FunctionName: "fn",
+			Region:       "asia-northeast1",
+			EntryPoint:   "Handle",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("deploy cloud run function missing params", func(t *testing.T) {
+		if _, err := service.BuildDeployCloudRunFunctionCommand(DeployCloudRunFunctionParams{FunctionName: "fn"}); err == nil {
+			t.Fatal("expected error when region or entry point missing")
+		}
+	})
+
+	t.Run("deploy cloud run function triggered by pubsub", func(t *testing.T) {
+		expected, err := service.BuildDeployCloudRunFunctionTriggeredByPubSubCommand(DeployCloudRunFunctionTriggeredByPubSubParams{
+			FunctionName:          "fn",
+			ProjectID:             "proj",
+			Region:                "asia-northeast1",
+			EntryPoint:            "Process",
+			TriggerServiceAccount: "svc@proj.iam.gserviceaccount.com",
+			TriggerTopic:          "topic",
+			APIClientID:           "client",
+			APIClientSecret:       "secret",
+			APIEndpoint:           "https://example.com",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:             cfg.OperationDeployCloudRunFunctionTriggeredByPubSub,
+			FunctionName:          "fn",
+			ProjectID:             "proj",
+			Region:                "asia-northeast1",
+			EntryPoint:            "Process",
+			TriggerServiceAccount: "svc@proj.iam.gserviceaccount.com",
+			TriggerTopic:          "topic",
+			APIClientID:           "client",
+			APIClientSecret:       "secret",
+			APIEndpoint:           "https://example.com",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("deploy cloud run function triggered by pubsub missing params", func(t *testing.T) {
+		if _, err := service.BuildDeployCloudRunFunctionTriggeredByPubSubCommand(DeployCloudRunFunctionTriggeredByPubSubParams{FunctionName: "fn"}); err == nil {
+			t.Fatal("expected error when required parameters are missing")
+		}
+	})
+
+	t.Run("update cloud run function env", func(t *testing.T) {
+		expected, err := service.BuildUpdateCloudRunFunctionEnvCommand(UpdateCloudRunFunctionEnvParams{
+			ServiceName: "fn",
+			Region:      "asia-northeast1",
+			EnvVars:     "KEY=VALUE",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:   cfg.OperationUpdateCloudRunFunctionEnv,
+			ServiceName: "fn",
+			Region:      "asia-northeast1",
+			EnvVars:     "KEY=VALUE",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("update cloud run function env missing params", func(t *testing.T) {
+		if _, err := service.BuildUpdateCloudRunFunctionEnvCommand(UpdateCloudRunFunctionEnvParams{Region: "asia"}); err == nil {
+			t.Fatal("expected error when service name or env vars missing")
+		}
+	})
+
+	t.Run("update cloud run service env", func(t *testing.T) {
+		expected, err := service.BuildUpdateCloudRunServiceEnvCommand(UpdateCloudRunServiceEnvParams{
+			ServiceName: "svc",
+			ProjectID:   "proj",
+			Region:      "asia-northeast1",
+			EnvFile:     "env.yaml",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:   cfg.OperationUpdateCloudRunServiceEnv,
+			ServiceName: "svc",
+			ProjectID:   "proj",
+			Region:      "asia-northeast1",
+			EnvFile:     "env.yaml",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("update cloud run service env missing params", func(t *testing.T) {
+		if _, err := service.BuildUpdateCloudRunServiceEnvCommand(UpdateCloudRunServiceEnvParams{ServiceName: "svc"}); err == nil {
+			t.Fatal("expected error when project or region missing")
+		}
+	})
+
+	t.Run("create pubsub topic", func(t *testing.T) {
+		expected, err := service.BuildCreateCloudPubSubTopicCommand(CreateCloudPubSubTopicParams{
+			TopicName:                "topic",
+			MessageRetentionDuration: "2d",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:                cfg.OperationCreateCloudPubSubTopic,
+			TopicName:                "topic",
+			MessageRetentionDuration: "2d",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("create pubsub topic missing params", func(t *testing.T) {
+		if _, err := service.BuildCreateCloudPubSubTopicCommand(CreateCloudPubSubTopicParams{}); err == nil {
+			t.Fatal("expected error when parameters missing")
+		}
+	})
+
+	t.Run("list pubsub topics", func(t *testing.T) {
+		expected, err := service.BuildListCloudPubSubTopicsCommand(ListCloudPubSubTopicsParams{TopicName: "topic"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation: cfg.OperationListCloudPubSubTopics,
+			TopicName: "topic",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("create pubsub subscription missing params", func(t *testing.T) {
+		if _, err := service.BuildCreateCloudPubSubSubscriptionCommand(CreateCloudPubSubSubscriptionParams{SubscriptionName: "sub"}); err == nil {
+			t.Fatal("expected error when required parameters missing")
+		}
+	})
+
+	t.Run("list pubsub subscriptions", func(t *testing.T) {
+		expected, err := service.BuildListCloudPubSubSubscriptionsCommand(ListCloudPubSubSubscriptionsParams{
+			SubscriptionName: "sub",
+			ShowURI:          true,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:        cfg.OperationListCloudPubSubSubscriptions,
+			SubscriptionName: "sub",
+			ShowURI:          true,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("delete pubsub subscriptions and topics missing params", func(t *testing.T) {
+		if _, err := service.BuildDeleteCloudPubSubSubscriptionsAndTopicsCommand(DeleteCloudPubSubSubscriptionsAndTopicsParams{}); err == nil {
+			t.Fatal("expected error when nothing specified")
+		}
+	})
+
+	t.Run("create pubsub subscription", func(t *testing.T) {
+		expected, err := service.BuildCreateCloudPubSubSubscriptionCommand(CreateCloudPubSubSubscriptionParams{
+			SubscriptionName:         "sub",
+			TopicName:                "topic",
+			TopicProject:             "proj",
+			PushEndpoint:             "https://custom",
+			PushServiceAccount:       "svc@proj",
+			MessageRetentionDuration: "2d",
+			ExpirationPeriod:         "never",
+			MaxRetryDelay:            "600s",
+			MinRetryDelay:            "10s",
+			AckDeadline:              "120",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:                cfg.OperationCreateCloudPubSubSubscription,
+			SubscriptionName:         "sub",
+			TopicName:                "topic",
+			TopicProject:             "proj",
+			PushEndpoint:             "https://custom",
+			PushServiceAccount:       "svc@proj",
+			MessageRetentionDuration: "2d",
+			ExpirationPeriod:         "never",
+			MaxRetryDelay:            "600s",
+			MinRetryDelay:            "10s",
+			AckDeadline:              "120",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("delete pubsub subscriptions missing params", func(t *testing.T) {
+		if _, err := service.BuildDeleteCloudPubSubSubscriptionsCommand(DeleteCloudPubSubSubscriptionsParams{}); err == nil {
+			t.Fatal("expected error when subscription names missing")
+		}
+	})
+
+	t.Run("delete pubsub subscriptions and topics", func(t *testing.T) {
+		expected, err := service.BuildDeleteCloudPubSubSubscriptionsAndTopicsCommand(DeleteCloudPubSubSubscriptionsAndTopicsParams{
+			SubscriptionNames: []string{"sub1"},
+			TopicNames:        []string{"topic1"},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:         cfg.OperationDeleteCloudPubSubSubscriptionsAndTopics,
+			SubscriptionNames: []string{"sub1"},
+			TopicNames:        []string{"topic1"},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("delete pubsub topics missing params", func(t *testing.T) {
+		if _, err := service.BuildDeleteCloudPubSubTopicsCommand(DeleteCloudPubSubTopicsParams{}); err == nil {
+			t.Fatal("expected error when topic names missing")
+		}
+	})
+
+	t.Run("delete pubsub subscriptions", func(t *testing.T) {
+		expected, err := service.BuildDeleteCloudPubSubSubscriptionsCommand(DeleteCloudPubSubSubscriptionsParams{SubscriptionNames: []string{"sub1", "sub2"}})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:         cfg.OperationDeleteCloudPubSubSubscriptions,
+			SubscriptionNames: []string{"sub1", "sub2"},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("delete cloud run function missing params", func(t *testing.T) {
+		if _, err := service.BuildDeleteCloudRunFunctionCommand(DeleteCloudRunFunctionParams{ServiceName: "svc"}); err == nil {
+			t.Fatal("expected error when region missing")
+		}
+	})
+
+	t.Run("delete pubsub topics", func(t *testing.T) {
+		expected, err := service.BuildDeleteCloudPubSubTopicsCommand(DeleteCloudPubSubTopicsParams{TopicNames: []string{"topic1"}})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:  cfg.OperationDeleteCloudPubSubTopics,
+			TopicNames: []string{"topic1"},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+
+	t.Run("delete cloud run function", func(t *testing.T) {
+		expected, err := service.BuildDeleteCloudRunFunctionCommand(DeleteCloudRunFunctionParams{
+			ServiceName: "svc",
+			Region:      "asia",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		command, err := service.BuildCommand(&cfg.Config{
+			Operation:   cfg.OperationDeleteCloudRunFunction,
+			ServiceName: "svc",
+			Region:      "asia",
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if command != expected {
+			t.Fatalf("unexpected command: %s", command)
+		}
+	})
+}
+
 func TestBuildNotificationWrappedCommand_DeployCloudRunContainer(t *testing.T) {
 	service := NewService()
 
@@ -310,6 +743,67 @@ func TestBuildNotificationWrappedCommand_NoTemplate(t *testing.T) {
 
 	if _, ok := service.BuildNotificationWrappedCommand(cfg.OperationCreateCloudPubSubTopic, "gcloud pubsub topics create 'topic'"); ok {
 		t.Fatal("expected notification template to be unavailable")
+	}
+}
+
+func TestPrintHighlightedCommand(t *testing.T) {
+	service := NewService()
+
+	output := captureStdout(func() {
+		service.PrintHighlightedCommand("gcloud run deploy 'svc'")
+	})
+
+	if !strings.Contains(output, "生成された gcloud コマンド") {
+		t.Fatalf("unexpected output: %s", output)
+	}
+	if !strings.Contains(output, "gcloud run deploy 'svc'") {
+		t.Fatalf("command not printed: %s", output)
+	}
+}
+
+func TestPrintNotificationScript(t *testing.T) {
+	service := NewService()
+
+	emptyOutput := captureStdout(func() {
+		service.PrintNotificationScript("  ")
+	})
+	if strings.TrimSpace(emptyOutput) != "" {
+		t.Fatalf("expected no output, got %q", emptyOutput)
+	}
+
+	scriptOutput := captureStdout(func() {
+		service.PrintNotificationScript("echo hello")
+	})
+	if !strings.Contains(scriptOutput, "通知付きシェルコマンド") || !strings.Contains(scriptOutput, "echo hello") {
+		t.Fatalf("unexpected script output: %s", scriptOutput)
+	}
+}
+
+func captureStdout(fn func()) string {
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		panic(err)
+	}
+	os.Stdout = w
+	fn()
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	return buf.String()
+}
+
+func TestIndentCommand(t *testing.T) {
+	if indentCommand("", "  ") != "" {
+		t.Fatal("expected empty command to remain empty")
+	}
+
+	result := indentCommand("echo hi\nls", "  ")
+	expected := "  echo hi\n  ls"
+	if result != expected {
+		t.Fatalf("unexpected indentation: %s", result)
 	}
 }
 
