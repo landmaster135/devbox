@@ -10,6 +10,15 @@ import (
 // Service は gcloud コマンド生成を担当する。
 type Service struct{}
 
+const (
+	discordWebhookEnvVarName    = "DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD"
+	discordCLIPath              = "$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook"
+	runSuccessEmbedType         = "google-cloud-run-success"
+	runFailureEmbedType         = "google-cloud-run-failed"
+	runFunctionSuccessEmbedType = "google-cloud-run-function-success"
+	runFunctionFailureEmbedType = "google-cloud-run-function-failed"
+)
+
 // NewService は Service のインスタンスを返す。
 func NewService() *Service {
 	return &Service{}
@@ -528,6 +537,54 @@ func (s *Service) PrintHighlightedCommand(command string) {
 	fmt.Println("==============================")
 }
 
+// BuildNotificationWrappedCommand は Discord 通知付きのシェルスクリプトを生成する。
+func (s *Service) BuildNotificationWrappedCommand(operation string, gcloudCommand string) (string, bool) {
+	template, ok := notificationTemplates[operation]
+	if !ok {
+		return "", false
+	}
+
+	var lines []string
+	if template.startContent != "" {
+		lines = append(lines, buildSimpleNotificationCommand(template.startContent))
+	}
+
+	successCommand := ""
+	if template.successContent != "" {
+		successCommand = buildEmbedNotificationCommand(template.successContent, template.successEmbedText, template.successEmbedType)
+	}
+	failureCommand := ""
+	if template.failureContent != "" {
+		failureCommand = buildEmbedNotificationCommand(template.failureContent, template.failureEmbedText, template.failureEmbedType)
+	}
+
+	lines = append(lines, fmt.Sprintf("if %s; then", gcloudCommand))
+	if successCommand != "" {
+		lines = append(lines, indentCommand(successCommand, "  "))
+	}
+	lines = append(lines, "else")
+	if failureCommand != "" {
+		lines = append(lines, indentCommand(failureCommand, "  "))
+	}
+	lines = append(lines, "fi")
+
+	return strings.Join(lines, "\n"), true
+}
+
+// PrintNotificationScript は通知コマンドを枠付きで表示する。
+func (s *Service) PrintNotificationScript(script string) {
+	if strings.TrimSpace(script) == "" {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("==============================")
+	fmt.Println("通知付きシェルコマンド")
+	fmt.Println("==============================")
+	fmt.Println(script)
+	fmt.Println("==============================")
+}
+
 func shellQuote(value string) string {
 	escaped := strings.ReplaceAll(value, "'", "'\\''")
 	return "'" + escaped + "'"
@@ -536,4 +593,105 @@ func shellQuote(value string) string {
 func doubleQuote(value string) string {
 	escaped := strings.ReplaceAll(value, "\"", "\\\"")
 	return "\"" + escaped + "\""
+}
+
+func buildSimpleNotificationCommand(content string) string {
+	return buildDiscordWebhookCommand(content, "none", "")
+}
+
+func buildEmbedNotificationCommand(content, embedText, embedType string) string {
+	return buildDiscordWebhookCommand(content, embedType, embedText)
+}
+
+func buildDiscordWebhookCommand(content, embedType, embedText string) string {
+	var lines []string
+	lines = append(lines, fmt.Sprintf("%s \\", discordCLIPath))
+	lines = append(lines, fmt.Sprintf("  -webhook-url \"$%s\" \\", discordWebhookEnvVarName))
+	lines = append(lines, fmt.Sprintf("  -content-text %s \\", shellQuote(content)))
+	embedLine := fmt.Sprintf("  -embed-type %s", shellQuote(embedType))
+	if strings.TrimSpace(embedText) != "" {
+		lines = append(lines, embedLine+" \\")
+		lines = append(lines, fmt.Sprintf("  -embed-text %s", shellQuote(embedText)))
+	} else {
+		lines = append(lines, embedLine)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func indentCommand(command, indent string) string {
+	if command == "" {
+		return ""
+	}
+	parts := strings.Split(command, "\n")
+	for i, part := range parts {
+		parts[i] = indent + part
+	}
+	return strings.Join(parts, "\n")
+}
+
+type notificationTemplate struct {
+	startContent     string
+	successContent   string
+	successEmbedText string
+	successEmbedType string
+	failureContent   string
+	failureEmbedText string
+	failureEmbedType string
+}
+
+var notificationTemplates = map[string]notificationTemplate{
+	cfg.OperationDeployCloudRunContainer: {
+		startContent:     "コンテナをデプロイするよ！",
+		successContent:   "デプロイしたよ！",
+		successEmbedText: "コンテナをデプロイしたよ！",
+		successEmbedType: runSuccessEmbedType,
+		failureContent:   "失敗…",
+		failureEmbedText: "コンテナをデプロイできなかったよ…",
+		failureEmbedType: runFailureEmbedType,
+	},
+	cfg.OperationUpdateCloudRunContainerEnv: {
+		startContent:     "コンテナの環境変数を更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "コンテナの環境変数を更新したよ！",
+		successEmbedType: runSuccessEmbedType,
+		failureContent:   "失敗…",
+		failureEmbedText: "コンテナの環境変数を更新できなかったよ…",
+		failureEmbedType: runFailureEmbedType,
+	},
+	cfg.OperationDeployCloudRunFunction: {
+		startContent:     "関数をデプロイするよ！",
+		successContent:   "デプロイしたよ！",
+		successEmbedText: "関数をデプロイしたよ！",
+		successEmbedType: runFunctionSuccessEmbedType,
+		failureContent:   "失敗…",
+		failureEmbedText: "関数をデプロイできなかったよ…",
+		failureEmbedType: runFunctionFailureEmbedType,
+	},
+	cfg.OperationDeployCloudRunFunctionTriggeredByPubSub: {
+		startContent:     "関数をデプロイするよ！",
+		successContent:   "デプロイしたよ！",
+		successEmbedText: "関数をデプロイしたよ！",
+		successEmbedType: runFunctionSuccessEmbedType,
+		failureContent:   "失敗…",
+		failureEmbedText: "関数をデプロイできなかったよ…",
+		failureEmbedType: runFunctionFailureEmbedType,
+	},
+	cfg.OperationUpdateCloudRunFunctionEnv: {
+		startContent:     "関数の環境変数を更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "関数の環境変数を更新したよ！",
+		successEmbedType: runFunctionSuccessEmbedType,
+		failureContent:   "失敗…",
+		failureEmbedText: "関数の環境変数を更新できなかったよ…",
+		failureEmbedType: runFunctionFailureEmbedType,
+	},
+	cfg.OperationUpdateCloudRunServiceEnv: {
+		startContent:     "サービスの環境変数を更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "サービスの環境変数を更新したよ！",
+		successEmbedType: runSuccessEmbedType,
+		failureContent:   "失敗…",
+		failureEmbedText: "サービスの環境変数を更新できなかったよ…",
+		failureEmbedType: runFailureEmbedType,
+	},
 }
