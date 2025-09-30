@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_scheduler/config"
 )
 
 const (
@@ -21,6 +23,18 @@ type Service struct{}
 // NewService は Service のインスタンスを返す。
 func NewService() *Service {
 	return &Service{}
+}
+
+const (
+	discordWebhookEnvVarName = "DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD"
+	discordCLIPath           = "$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook"
+	successEmbedType         = "google-cloud-scheduler-success"
+	failureEmbedType         = "google-cloud-scheduler-failed"
+)
+
+// DiscordNotificationParams は Discord 通知生成に必要な情報を表す。
+type DiscordNotificationParams struct {
+	Operation string
 }
 
 // CreatePubSubJobParams は Pub/Sub ジョブ生成時のパラメータを表す。
@@ -394,6 +408,54 @@ func (s *Service) PrintHighlightedCommand(command string) {
 	fmt.Println("==============================")
 }
 
+// BuildNotificationWrappedCommand は通知付きシェルスクリプトを生成する。
+func (s *Service) BuildNotificationWrappedCommand(params DiscordNotificationParams, gcloudCommand string) (string, bool) {
+	template, ok := notificationTemplates[params.Operation]
+	if !ok {
+		return "", false
+	}
+
+	var lines []string
+	if template.startContent != "" {
+		lines = append(lines, buildSimpleNotificationCommand(template.startContent))
+	}
+
+	successCommand := ""
+	if template.successContent != "" {
+		successCommand = buildEmbedNotificationCommand(template.successContent, template.successEmbedText, successEmbedType)
+	}
+	failureCommand := ""
+	if template.failureContent != "" {
+		failureCommand = buildEmbedNotificationCommand(template.failureContent, template.failureEmbedText, failureEmbedType)
+	}
+
+	lines = append(lines, fmt.Sprintf("if %s; then", gcloudCommand))
+	if successCommand != "" {
+		lines = append(lines, indentCommand(successCommand, "  "))
+	}
+	lines = append(lines, "else")
+	if failureCommand != "" {
+		lines = append(lines, indentCommand(failureCommand, "  "))
+	}
+	lines = append(lines, "fi")
+
+	return strings.Join(lines, "\n"), true
+}
+
+// PrintNotificationScript は通知付きシェルスクリプトを整形して出力する。
+func (s *Service) PrintNotificationScript(script string) {
+	if strings.TrimSpace(script) == "" {
+		return
+	}
+
+	fmt.Println()
+	fmt.Println("==============================")
+	fmt.Println("通知付きシェルコマンド")
+	fmt.Println("==============================")
+	fmt.Println(script)
+	fmt.Println("==============================")
+}
+
 func buildJobControlCommand(action string, params JobControlParams) (string, error) {
 	jobName := strings.TrimSpace(params.JobName)
 	if jobName == "" {
@@ -443,7 +505,144 @@ func sanitizeMessageBody(body string) string {
 	return strings.ReplaceAll(withoutCR, "\n", "")
 }
 
+func buildSimpleNotificationCommand(content string) string {
+	return buildDiscordWebhookCommand(content, "none", "")
+}
+
+func buildEmbedNotificationCommand(content, embedText, embedType string) string {
+	return buildDiscordWebhookCommand(content, embedType, embedText)
+}
+
+func buildDiscordWebhookCommand(content, embedType, embedText string) string {
+	lines := []string{
+		fmt.Sprintf("%s \\", discordCLIPath),
+		fmt.Sprintf("  -webhook-url \"$%s\" \\", discordWebhookEnvVarName),
+		fmt.Sprintf("  -content-text %s \\", shellQuote(content)),
+	}
+	embedLine := fmt.Sprintf("  -embed-type %s", shelled(embedType))
+	if embedText != "" {
+		lines = append(lines, embedLine+" \\")
+		lines = append(lines, fmt.Sprintf("  -embed-text %s", shellQuote(embedText)))
+	} else {
+		lines = append(lines, embedLine)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func indentCommand(command, indent string) string {
+	if command == "" {
+		return ""
+	}
+	parts := strings.Split(command, "\n")
+	for i, part := range parts {
+		parts[i] = indent + part
+	}
+	return strings.Join(parts, "\n")
+}
+
+func shelled(value string) string {
+	if value == "" {
+		return "''"
+	}
+	return shellQuote(value)
+}
+
 func shellQuote(value string) string {
 	escaped := strings.ReplaceAll(value, "'", "'\"'\"'")
 	return "'" + escaped + "'"
+}
+
+type notificationTemplate struct {
+	startContent     string
+	successContent   string
+	successEmbedText string
+	failureContent   string
+	failureEmbedText string
+}
+
+var notificationTemplates = map[string]notificationTemplate{
+	cfg.OperationCreatePubSubJob: {
+		startContent:     "ジョブを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "ジョブを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを作成できなかったよ…",
+	},
+	cfg.OperationCreateHTTPJob: {
+		startContent:     "ジョブを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "ジョブを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを作成できなかったよ…",
+	},
+	cfg.OperationCreateCloudSQLJob: {
+		startContent:     "ジョブを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "ジョブを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを作成できなかったよ…",
+	},
+	cfg.OperationCreateStartCloudSQLJob: {
+		startContent:     "ジョブを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "ジョブを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを作成できなかったよ…",
+	},
+	cfg.OperationCreateStopCloudSQLJob: {
+		startContent:     "ジョブを作成するよ！",
+		successContent:   "作成したよ！",
+		successEmbedText: "ジョブを作成したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを作成できなかったよ…",
+	},
+	cfg.OperationListJobs: {
+		startContent:     "ジョブを一覧表示するよ！",
+		successContent:   "一覧表示したよ！",
+		successEmbedText: "ジョブを一覧表示したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを一覧表示できなかったよ…",
+	},
+	cfg.OperationUpdateHTTPJob: {
+		startContent:     "HTTPジョブを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "HTTPジョブを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "HTTPジョブを更新できなかったよ…",
+	},
+	cfg.OperationUpdatePubSubJob: {
+		startContent:     "PUB/SUBジョブを更新するよ！",
+		successContent:   "更新したよ！",
+		successEmbedText: "PUB/SUBジョブを更新したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "PUB/SUBジョブを更新できなかったよ…",
+	},
+	cfg.OperationPauseJob: {
+		startContent:     "ジョブを一時停止するよ！",
+		successContent:   "一時停止したよ！",
+		successEmbedText: "ジョブを一時停止したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを一時停止できなかったよ…",
+	},
+	cfg.OperationResumeJob: {
+		startContent:     "ジョブを再開するよ！",
+		successContent:   "再開したよ！",
+		successEmbedText: "ジョブを再開したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを再開できなかったよ…",
+	},
+	cfg.OperationDeleteJob: {
+		startContent:     "ジョブを削除するよ！",
+		successContent:   "削除したよ！",
+		successEmbedText: "ジョブを削除したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを削除できなかったよ…",
+	},
+	cfg.OperationRunJob: {
+		startContent:     "ジョブを強制実行するよ！",
+		successContent:   "強制実行したよ！",
+		successEmbedText: "ジョブを強制実行したよ！",
+		failureContent:   "失敗…",
+		failureEmbedText: "ジョブを強制実行できなかったよ…",
+	},
 }

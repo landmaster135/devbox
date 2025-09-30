@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_scheduler/config"
 )
 
 func TestBuildCreatePubSubJobCommand(t *testing.T) {
@@ -301,6 +303,64 @@ func TestPrintHighlightedCommand(t *testing.T) {
 	}
 	if !strings.Contains(output, "gcloud scheduler jobs list") {
 		t.Fatalf("expected command in output: %s", output)
+	}
+}
+
+func TestBuildNotificationWrappedCommand(t *testing.T) {
+	t.Parallel()
+	service := NewService()
+	command := "gcloud scheduler jobs create pubsub 'demo-job'"
+	script, ok := service.BuildNotificationWrappedCommand(DiscordNotificationParams{Operation: cfg.OperationCreatePubSubJob}, command)
+	if !ok {
+		t.Fatal("expected notification script to be generated")
+	}
+
+	expected := strings.Join([]string{
+		"$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \\",
+		"  -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"  -content-text 'ジョブを作成するよ！' \\",
+		"  -embed-type 'none'",
+		"if gcloud scheduler jobs create pubsub 'demo-job'; then",
+		"  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \\",
+		"    -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"    -content-text '作成したよ！' \\",
+		"    -embed-type 'google-cloud-scheduler-success' \\",
+		"    -embed-text 'ジョブを作成したよ！'",
+		"else",
+		"  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \\",
+		"    -webhook-url \"$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD\" \\",
+		"    -content-text '失敗…' \\",
+		"    -embed-type 'google-cloud-scheduler-failed' \\",
+		"    -embed-text 'ジョブを作成できなかったよ…'",
+		"fi",
+	}, "\n")
+
+	if script != expected {
+		t.Fatalf("unexpected notification script:\n%s", script)
+	}
+}
+
+func TestBuildNotificationWrappedCommand_Unknown(t *testing.T) {
+	t.Parallel()
+	service := NewService()
+	if _, ok := service.BuildNotificationWrappedCommand(DiscordNotificationParams{Operation: "unknown"}, "echo noop"); ok {
+		t.Fatal("expected false for unsupported operation")
+	}
+}
+
+func TestPrintNotificationScript(t *testing.T) {
+	t.Parallel()
+	service := NewService()
+	script := "dummy"
+	output := captureStdout(func() {
+		service.PrintNotificationScript(script)
+	})
+
+	if !strings.Contains(output, "通知付きシェルコマンド") {
+		t.Fatalf("expected notification header, got: %s", output)
+	}
+	if !strings.Contains(output, script) {
+		t.Fatalf("expected script in output, got: %s", output)
 	}
 }
 
