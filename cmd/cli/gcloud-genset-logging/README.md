@@ -52,7 +52,7 @@ go run ./cmd/cli/gcloud-genset-logging -operation logging-read -severity ERROR -
 ### ログ取得コマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-logging \
+go run ./cmd/cli/gcloud-genset-logging \
   -operation logging-read \
   -severity ERROR \
   -resource-type gce_instance \
@@ -68,7 +68,7 @@ gcloud logging read "severity>=ERROR AND resource.type=gce_instance" --limit=25 
 ### ログシンク作成コマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-logging \
+go run ./cmd/cli/gcloud-genset-logging \
   -operation create-sink \
   -sink-name MY_SINK \
   -destination storage.googleapis.com/my-bucket \

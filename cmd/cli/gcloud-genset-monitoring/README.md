@@ -53,7 +53,7 @@ go run ./cmd/cli/gcloud-genset-monitoring -operation list-dashboards -project MY
 ### ダッシュボード一覧を JSON で取得するコマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring \
   -operation list-dashboards \
   -project MY_PROJECT \
   -filter 'displayName:test' \
@@ -71,7 +71,7 @@ gcloud monitoring dashboards list --project=MY_PROJECT --filter=displayName:test
 ### ダッシュボード詳細コマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring \
   -operation describe-dashboard \
   -project MY_PROJECT \
   -dashboard-id dashboards/123456789 \
@@ -86,7 +86,7 @@ gcloud monitoring dashboards describe dashboards/123456789 --project=MY_PROJECT 
 ### Snooze 設定一覧コマンドの生成
 
 ```bash
-$ go run ./cmd/cli/gcloud-genset-monitoring \
+go run ./cmd/cli/gcloud-genset-monitoring \
   -operation list-snoozes \
   -project MY_PROJECT \
   -filter 'displayName:maintenance' \
