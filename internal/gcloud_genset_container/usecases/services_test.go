@@ -283,6 +283,36 @@ func TestBuildDeleteCloudRunFunctionCommand(t *testing.T) {
 	}
 }
 
+func TestBuildNotificationWrappedCommand_DeployCloudRunContainer(t *testing.T) {
+	service := NewService()
+
+	script, ok := service.BuildNotificationWrappedCommand(cfg.OperationDeployCloudRunContainer, "gcloud run deploy 'svc'")
+	if !ok {
+		t.Fatal("expected notification script to be generated")
+	}
+
+	if !strings.Contains(script, "コンテナをデプロイするよ！") {
+		t.Fatalf("start notification missing: %s", script)
+	}
+	if !strings.Contains(script, "if gcloud run deploy 'svc'; then") {
+		t.Fatalf("gcloud execution block missing: %s", script)
+	}
+	if !strings.Contains(script, "google-cloud-run-success") {
+		t.Fatalf("success embed type missing: %s", script)
+	}
+	if !strings.Contains(script, "google-cloud-run-failed") {
+		t.Fatalf("failure embed type missing: %s", script)
+	}
+}
+
+func TestBuildNotificationWrappedCommand_NoTemplate(t *testing.T) {
+	service := NewService()
+
+	if _, ok := service.BuildNotificationWrappedCommand(cfg.OperationCreateCloudPubSubTopic, "gcloud pubsub topics create 'topic'"); ok {
+		t.Fatal("expected notification template to be unavailable")
+	}
+}
+
 func TestBuildCommand_Dispatch(t *testing.T) {
 	service := NewService()
 

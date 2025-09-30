@@ -8,6 +8,7 @@ Cloud Run コンテナ／Cloud Functions (Gen2)／Pub/Sub の日常運用コマ�
 - **Cloud Functions (Gen2)**: HTTP/PubSub トリガーのデプロイや環境変数更新コマンドを生成
 - **Pub/Sub**: トピック/サブスクリプション作成・一覧・削除をサポート
 - **出力強調表示**: 生成されたコマンドを枠付きで表示し、そのままコピーできます
+- **Discord通知スクリプト**: 同じ内容を Discord に送るためのシェルスニペットも併せて出力
 
 ## インストール
 
@@ -90,6 +91,28 @@ go run ./cmd/cli/gcloud-genset-container \
 生成された gcloud コマンド
 ==============================
 gcloud run deploy 'my-svc' --source . --project='my-project' --region='asia-northeast1' --timeout='45m' --service-account='my-svc@my-project.iam.gserviceaccount.com' --no-allow-unauthenticated
+==============================
+
+==============================
+通知付きシェルコマンド
+==============================
+$HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \
+  -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
+  -content-text 'コンテナをデプロイするよ！' \
+  -embed-type 'none'
+if gcloud run deploy 'my-svc' --source . --project='my-project' --region='asia-northeast1' --timeout='45m' --service-account='my-svc@my-project.iam.gserviceaccount.com' --no-allow-unauthenticated; then
+  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \
+    -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
+    -content-text 'デプロイしたよ！' \
+    -embed-type 'google-cloud-run-success' \
+    -embed-text 'コンテナをデプロイしたよ！'
+else
+  $HOME/devbox/pkg/bin/cli/linux_amd64/discord-webhook \
+    -webhook-url "$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD" \
+    -content-text '失敗…' \
+    -embed-type 'google-cloud-run-failed' \
+    -embed-text 'コンテナをデプロイできなかったよ…'
+fi
 ==============================
 ```
 
