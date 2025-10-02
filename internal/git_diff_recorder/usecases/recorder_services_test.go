@@ -242,7 +242,7 @@ func TestConfig_ParseFlags_GenMode(t *testing.T) {
 	if err != nil {
 		t.Errorf("引数解析でエラーが発生しました: %v", err)
 	}
-	if !cfg.GenMode {
+	if !cfg.OutputMode {
 		t.Error("GenModeがtrueになっていません")
 	}
 	if cfg.GitDir != "/tmp/git" {
