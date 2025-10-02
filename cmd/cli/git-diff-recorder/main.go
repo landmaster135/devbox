@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/git_diff_recorder/config"
-	"github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
+	config "github.com/landmaster135/devbox/internal/git_diff_recorder/config"
+	usecases "github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
 )
 
 // runOutputMode は出力モードを実行する

@@ -3,8 +3,8 @@ package usecases
 import (
 	"fmt"
 
-	"github.com/landmaster135/devbox/internal/git_diff_recorder/config"
-	"github.com/landmaster135/devbox/internal/git_diff_recorder/git"
+	config "github.com/landmaster135/devbox/internal/git_diff_recorder/config"
+	git "github.com/landmaster135/devbox/internal/git_diff_recorder/git"
 )
 
 // GitDiffGeneratorService は指定されたGitディレクトリから直接差分を生成するサービス
