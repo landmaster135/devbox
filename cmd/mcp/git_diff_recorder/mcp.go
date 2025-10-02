@@ -7,8 +7,8 @@ import (
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
 
-	"github.com/landmaster135/devbox/internal/git_diff_recorder/config"
-	"github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
+	config "github.com/landmaster135/devbox/internal/git_diff_recorder/config"
+	usecases "github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
 )
 
 func handleGetGitDiff(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
