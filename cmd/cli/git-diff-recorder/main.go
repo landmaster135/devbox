@@ -8,8 +8,8 @@ import (
 	"github.com/landmaster135/devbox/internal/git_diff_recorder/usecases"
 )
 
-// runGenMode は生成モードを実行する
-func runGenMode(cfg *config.Config) error {
+// runOutputMode は出力モードを実行する
+func runOutputMode(cfg *config.Config) error {
 	// 生成サービスを作成
 	service := usecases.NewGitDiffGeneratorService(cfg.GitDir, cfg)
 
@@ -66,8 +66,8 @@ func main() {
 	}
 
 	if cfg.GenMode {
-		// 生成モード
-		if err := runGenMode(cfg); err != nil {
+		// 出力モード
+		if err := runOutputMode(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 			os.Exit(1)
 		}

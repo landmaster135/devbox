@@ -24,9 +24,9 @@ go run ./cmd/cli/db-server-sync -operation=append-anime -input-file-path=anilist
 
 | パラメータ | 必須 | 説明 |
 |-----------|------|------|
-| `-operation` | ✓ | 実行する操作（現在は`append-anime`のみ対応） |
-| `-input-file-path` | ✓ | 入力ファイルのパス（AniListデータのJSONファイル） |
-| `-output-file-path` | ✓ | 出力ファイルのパス |
+| `-operation` | * | 実行する操作（現在は`append-anime`のみ対応） |
+| `-input-file-path` | * | 入力ファイルのパス（AniListデータのJSONファイル） |
+| `-output-file-path` | * | 出力ファイルのパス |
 | `-additional-input-file-path` | | 追加入力ファイルのパス（tier情報等） |
 | `-help` | | ヘルプを表示 |
 
