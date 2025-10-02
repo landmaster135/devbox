@@ -72,3 +72,5 @@ internal/exif_modifier/test_data/tmp/*
 !internal/exif_modifier/test_data/tmp/.gitkeep
 internal/exif_mirror/test_data/tmp/*
 !internal/exif_mirror/test_data/tmp/.gitkeep
+# internal/git_diff_recorder/ai_model
+# !internal/git_diff_recorder/ai_model/.gitkeep

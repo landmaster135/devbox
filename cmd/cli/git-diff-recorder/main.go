@@ -65,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cfg.GenMode {
+	if cfg.OutputMode {
 		// 出力モード
 		if err := runOutputMode(cfg); err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)

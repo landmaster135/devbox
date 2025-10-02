@@ -18,7 +18,7 @@ type Config struct {
 	OutputDir  string
 	StagedOnly bool
 	ReadMode   bool
-	GenMode    bool
+	OutputMode bool
 	SourceDir  string
 	Repository string
 	GitDir     string
@@ -45,10 +45,10 @@ func (cp *ConfigParser) ParseFlags() (*Config, error) {
 	cp.flagParser.StringVar(&config.OutputDir, "output-dir", "", "出力先ディレクトリ (記録モード時必須)")
 	cp.flagParser.BoolVar(&config.StagedOnly, "staged-only", false, "ステージング済み差分のみ記録 (デフォルト: false)")
 	cp.flagParser.BoolVar(&config.ReadMode, "read-mode", false, "読み取りモードを有効にする")
-	cp.flagParser.BoolVar(&config.GenMode, "gen-mode", false, "生成モードを有効にする")
+	cp.flagParser.BoolVar(&config.OutputMode, "output-mode", false, "出力モードを有効にする")
 	cp.flagParser.StringVar(&config.SourceDir, "source-dir", "", "読み取り対象のディレクトリ (読み取りモード時必須)")
 	cp.flagParser.StringVar(&config.Repository, "repository", "", "対象リポジトリ名 (読み取りモード時必須)")
-	cp.flagParser.StringVar(&config.GitDir, "git-dir", "", "対象Gitディレクトリ (生成モード時必須、記録モード時オプション)")
+	cp.flagParser.StringVar(&config.GitDir, "git-dir", "", "対象Gitディレクトリ (出力モード時必須、記録モード時オプション)")
 
 	if err := cp.flagParser.Parse(); err != nil {
 		return nil, err
@@ -59,10 +59,10 @@ func (cp *ConfigParser) ParseFlags() (*Config, error) {
 
 // validateConfig は設定の妥当性を検証する
 func (cp *ConfigParser) validateConfig(config *Config) (*Config, error) {
-	if config.GenMode {
-		// 生成モードの場合
+	if config.OutputMode {
+		// 出力モードの場合
 		if config.GitDir == "" {
-			return nil, fmt.Errorf("生成モードでは --git-dir は必須パラメータです")
+			return nil, fmt.Errorf("出力モードでは --git-dir は必須パラメータです")
 		}
 	} else if config.ReadMode {
 		// 読み取りモードの場合
@@ -102,12 +102,12 @@ func PrintUsage() {
 	fmt.Printf("        ステージング済み差分のみ記録 (デフォルト: false)\n")
 	fmt.Printf("  -read-mode\n")
 	fmt.Printf("        読み取りモードを有効にする\n")
-	fmt.Printf("  -gen-mode\n")
-	fmt.Printf("        生成モードを有効にする\n")
+	fmt.Printf("  -output-mode\n")
+	fmt.Printf("        出力モードを有効にする\n")
 	fmt.Printf("  -source-dir string\n")
 	fmt.Printf("        読み取り対象のディレクトリ (読み取りモード時必須)\n")
 	fmt.Printf("  -repository string\n")
 	fmt.Printf("        対象リポジトリ名 (読み取りモード時必須)\n")
 	fmt.Printf("  -git-dir string\n")
-	fmt.Printf("        対象Gitディレクトリ (生成モード時必須、記録モード時オプション)\n")
+	fmt.Printf("        対象Gitディレクトリ (出力モード時必須、記録モード時オプション)\n")
 }

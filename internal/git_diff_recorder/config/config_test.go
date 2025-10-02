@@ -51,7 +51,7 @@ func TestConfigParser_ParseFlags_RecordMode(t *testing.T) {
 	if cfg.ReadMode {
 		t.Error("ReadModeがfalseであるべきです")
 	}
-	if cfg.GenMode {
+	if cfg.OutputMode {
 		t.Error("GenModeがfalseであるべきです")
 	}
 }
@@ -221,7 +221,7 @@ func TestConfigParser_ParseFlags_GenMode(t *testing.T) {
 	if err != nil {
 		t.Errorf("引数解析でエラーが発生しました: %v", err)
 	}
-	if !cfg.GenMode {
+	if !cfg.OutputMode {
 		t.Error("GenModeがtrueであるべきです")
 	}
 	if cfg.GitDir != "/tmp/git" {
