@@ -53,7 +53,7 @@ func TestFetchDailySummarySuccess(t *testing.T) {
 			atomic.AddInt32(&activityCalls, 1)
 			return &http.Response{
 				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewBufferString(`{"status":0,"body":{"activities":[{"date":"2024-10-01","timezone":"Europe/Paris","steps":8000,"calories":250.5,"totalcalories":300.0,"distance":6500.0,"elevation":10.5,"soft":1200,"moderate":600,"intense":300,"active":2100,"hr_average":58.5,"hr_min":45.0,"hr_max":120.0}],"more":false,"offset":0}}`)),
+				Body:       io.NopCloser(bytes.NewBufferString(`{"status":0,"body":{"activities":[{"date":"2024-10-01","timezone":"Europe/Paris","steps":8000,"calories":250.5,"totalcalories":300.0,"distance":6500.0,"elevation":10.5,"soft":1200,"moderate":600,"intense":300,"active":2100,"hr_average":58.5,"hr_min":45.0,"hr_max":120.0,"brand":18,"modelid":1060,"model":"Android step tracker","is_tracker":false}],"more":false,"offset":0}}`)),
 				Header:     http.Header{"Content-Type": []string{"application/json"}},
 			}, nil
 		default:
@@ -131,6 +131,18 @@ func TestFetchDailySummarySuccess(t *testing.T) {
 	if summary.Timezone != "Europe/Paris" {
 		t.Fatalf("summary timezone mismatch: %s", summary.Timezone)
 	}
+	if summary.Activity.DeviceBrand == nil || *summary.Activity.DeviceBrand != 18 {
+		t.Fatalf("unexpected device brand: %+v", summary.Activity.DeviceBrand)
+	}
+	if summary.Activity.DeviceModelID == nil || *summary.Activity.DeviceModelID != 1060 {
+		t.Fatalf("unexpected device model id: %+v", summary.Activity.DeviceModelID)
+	}
+	if summary.Activity.DeviceModelName == nil || *summary.Activity.DeviceModelName != "Android step tracker" {
+		t.Fatalf("unexpected device model name: %+v", summary.Activity.DeviceModelName)
+	}
+	if summary.Activity.IsTracker == nil || *summary.Activity.IsTracker {
+		t.Fatalf("unexpected tracker flag: %+v", summary.Activity.IsTracker)
+	}
 }
 
 func TestFetchDailySummaryMeasureAPIError(t *testing.T) {
@@ -165,5 +177,37 @@ func TestFetchDailySummaryMissingToken(t *testing.T) {
 	_, err := service.FetchDailySummary(context.Background(), DailySummaryRequest{UserID: 1, StartDate: time.Now(), EndDate: time.Now()})
 	if err == nil {
 		t.Fatalf("expected error when token is missing")
+	}
+}
+
+func TestMergeActivitySummariesDeviceFields(t *testing.T) {
+	base := ActivitySummary{}
+	incoming := ActivitySummary{
+		DeviceBrand:     intPtr(18),
+		DeviceModelID:   intPtr(1060),
+		DeviceModelName: stringPtr("Android step tracker"),
+		IsTracker:       boolPtr(false),
+	}
+	result := mergeActivitySummaries(base, incoming)
+	if result.DeviceBrand == nil || *result.DeviceBrand != 18 {
+		t.Fatalf("unexpected device brand: %+v", result.DeviceBrand)
+	}
+	if result.DeviceModelID == nil || *result.DeviceModelID != 1060 {
+		t.Fatalf("unexpected device model id: %+v", result.DeviceModelID)
+	}
+	if result.DeviceModelName == nil || *result.DeviceModelName != "Android step tracker" {
+		t.Fatalf("unexpected device model name: %+v", result.DeviceModelName)
+	}
+	if result.IsTracker == nil || *result.IsTracker {
+		t.Fatalf("unexpected tracker flag: %+v", result.IsTracker)
+	}
+}
+
+func TestPointerHelpers(t *testing.T) {
+	if v := boolPtr(true); v == nil || !*v {
+		t.Fatalf("boolPtr failed: %+v", v)
+	}
+	if v := stringPtr("hello"); v == nil || *v != "hello" {
+		t.Fatalf("stringPtr failed: %+v", v)
 	}
 }
