@@ -16,48 +16,56 @@ Withings Public Health Data API の OAuth フローに沿って認可 URL の生
 ## OAuth フローに沿った利用手順
 
 1. **認可 URL を生成**
-   ```bash
-   GOCACHE=$(pwd)/.gocache go run ./cmd/cli/withings \
-     -operation auth-url \
-     -client-id "YOUR_CLIENT_ID" \
-     -redirect-uri "https://yourapp.example/oauth/callback" \
-     -scope "user.metrics,user.activity" \
-     -state "random_state_value"
-   ```
-   表示された URL をブラウザで開くと、ユーザーが Withings のログインと許可を行い、設定した `redirect_uri` に `code` と `state` が付加されてリダイレクトされます。`code` はアクセストークンに交換することが可能な認可コードとなります。（リダイレクト先で必ずしもサーバが起動されている必要はありません。）
+```bash
+go run ./cmd/cli/withings \
+  -operation auth-url \
+  -client-id "YOUR_CLIENT_ID" \
+  -redirect-uri "https://yourapp.example/oauth/callback" \
+  -scope "user.metrics,user.activity" \
+  -state "random_state_value"
+```
+表示された URL をブラウザで開くと、ユーザーが Withings のログインと許可を行い、設定した `redirect_uri` に `code` と `state` が付加されてリダイレクトされます。`code` はアクセストークンに交換することが可能な認可コードとなります。（リダイレクト先で必ずしもサーバが起動されている必要はありません。）
 
 2. **認可コードをアクセストークンへ交換**
-   ```bash
-   GOCACHE=$(pwd)/.gocache go run ./cmd/cli/withings \
-     -operation request-token \
-     -client-id "YOUR_CLIENT_ID" \
-     -client-secret "YOUR_CLIENT_SECRET" \
-     -authorization-code "CODE_FROM_CALLBACK" \
-     -redirect-uri "https://yourapp.example/oauth/callback"
-   ```
-   標準出力に JSON が表示され、その中に `body.userid`, `body.access_token`, `body.refresh_token` が含まれます。リフレッシュトークンは長期的なアクセスに必要なので安全な場所へ保存してください。
+```bash
+go run ./cmd/cli/withings \
+  -operation request-token \
+  -client-id "YOUR_CLIENT_ID" \
+  -client-secret "YOUR_CLIENT_SECRET" \
+  -authorization-code "CODE_FROM_CALLBACK" \
+  -redirect-uri "https://yourapp.example/oauth/callback"
+```
+標準出力に JSON が表示され、その中に `body.userid`, `body.access_token`, `body.refresh_token` が含まれます。リフレッシュトークンは長期的なアクセスに必要なので安全な場所へ保存してください。
 
 3. **リフレッシュトークンでアクセストークンを更新**（任意、後日再実行する際）
-   ```bash
-   GOCACHE=$(pwd)/.gocache go run ./cmd/cli/withings \
-     -operation refresh-token \
-     -client-id "YOUR_CLIENT_ID" \
-     -client-secret "YOUR_CLIENT_SECRET" \
-     -refresh-token "STORED_REFRESH_TOKEN"
-   ```
-   新しいアクセストークンと最新のリフレッシュトークンが出力されます。Withings では新しいリフレッシュトークンを受け取った後 8 時間で旧アクセストークンが失効するため、常に最新の値を保管してください。
+```bash
+go run ./cmd/cli/withings \
+  -operation refresh-token \
+  -client-id "YOUR_CLIENT_ID" \
+  -client-secret "YOUR_CLIENT_SECRET" \
+  -refresh-token "STORED_REFRESH_TOKEN"
+```
+新しいアクセストークンと最新のリフレッシュトークンが出力されます。Withings では新しいリフレッシュトークンを受け取った後 8 時間で旧アクセストークンが失効するため、常に最新の値を保管してください。
 
 4. **日次サマリを取得**
-   ```bash
-   GOCACHE=$(pwd)/.gocache go run ./cmd/cli/withings \
-     -operation daily-summary \
-     -access-token "ACCESS_TOKEN" \
-     -user-id 12345678 \
-     -start-date 2025-09-01 \
-     -end-date 2025-09-07 \
-     -measure-types weight,diastolic,systolic,heart_rate
-   ```
-   体重・血圧・アクティビティなどの日次サマリが JSON で出力されます。`-include-activity=false` を指定すると活動サマリを省くことも可能です。
+```bash
+go run ./cmd/cli/withings \
+  -operation daily-summary \
+  -access-token "ACCESS_TOKEN" \
+  -user-id 12345678 \
+  -start-date 2025-09-01 \
+  -end-date 2025-09-07 \
+  -measure-types weight,diastolic,systolic,heart_rate
+```
+体重・血圧・アクティビティなどの日次サマリが JSON で出力されます。`-include-activity=false` を指定すると活動サマリを省くことも可能です。
+
+### 測定タイプの指定 (`-measure-types`)
+
+- `all` を指定すると Withings Measure API のフィルタを無効化し、取得可能なすべての測定値を返します。
+- 個別に指定する場合はカンマ区切りで入力します（例: `weight,diastolic,heart_rate`）。
+- 利用可能なエイリアスは `internal/withings/config/aliases.go` に定義されています。数値 ID を直接指定することもできます。
+
+> アクティビティ項目（歩数など）は `user.activity` スコープが付与されたアクセストークンで `-include-activity=true` の場合に `activity` ブロックとして出力されます。
 
 ## 主なフラグ
 
