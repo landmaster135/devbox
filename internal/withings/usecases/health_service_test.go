@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -308,5 +309,68 @@ func TestPointerHelpers(t *testing.T) {
 	}
 	if v := stringPtr("hello"); v == nil || *v != "hello" {
 		t.Fatalf("stringPtr failed: %+v", v)
+	}
+}
+
+func TestFetchActivitiesPagination(t *testing.T) {
+	var calls int
+	stubClient := &stubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		bodyBytes, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Fatalf("failed to read request body: %v", err)
+		}
+		req.Body.Close()
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+		form, err := url.ParseQuery(string(bodyBytes))
+		if err != nil {
+			t.Fatalf("failed to parse form: %v", err)
+		}
+		if form.Get("action") != "getactivity" {
+			t.Fatalf("unexpected action: %s", form.Get("action"))
+		}
+		calls++
+		switch calls {
+		case 1:
+			if form.Get("offset") != "" {
+				t.Fatalf("unexpected offset on first call: %s", form.Get("offset"))
+			}
+			resp := `{"status":0,"body":{"activities":[{"date":"2024-10-02","timezone":"Europe/Paris","steps":5000,"calories":150.0}],"more":true,"offset":42}}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(resp)), Header: http.Header{"Content-Type": []string{"application/json"}}}, nil
+		case 2:
+			if form.Get("offset") != "42" {
+				t.Fatalf("expected offset=42, got %s", form.Get("offset"))
+			}
+			resp := `{"status":0,"body":{"activities":[{"date":"2024-10-03","timezone":"Europe/Paris","soft":300,"active":900}],"more":false,"offset":0}}`
+			return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(resp)), Header: http.Header{"Content-Type": []string{"application/json"}}}, nil
+		default:
+			return nil, fmt.Errorf("unexpected call count: %d", calls)
+		}
+	}}
+
+	svc := NewHealthServiceWithHTTPClient("https://api.example.com", stubClient)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+	start := time.Date(2024, 10, 2, 0, 0, 0, 0, time.UTC)
+
+	result, err := svc.fetchActivities(ctx, "token", 1, start, start)
+	if err != nil {
+		t.Fatalf("fetchActivities returned error: %v", err)
+	}
+	if calls != 2 {
+		t.Fatalf("expected 2 calls, got %d", calls)
+	}
+	entry, ok := result.activities["2024-10-03"]
+	if !ok {
+		t.Fatalf("expected entry for 2024-10-03")
+	}
+	if entry.summary.SoftSeconds == nil || *entry.summary.SoftSeconds != 300 {
+		t.Fatalf("expected soft seconds from second page")
+	}
+	if entry.summary.ActiveSeconds == nil || *entry.summary.ActiveSeconds != 900 {
+		t.Fatalf("expected active seconds from second page")
+	}
+	if entry.timezone != "Europe/Paris" {
+		t.Fatalf("expected timezone to persist, got %s", entry.timezone)
 	}
 }
