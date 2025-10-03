@@ -35,9 +35,12 @@ type Service struct {
 	userAgent  string
 }
 
-// NewService は標準の HTTP クライアントを用いた Service を生成します。
-func NewService() *Service {
-	client := &http.Client{Timeout: 15 * time.Second}
+// NewService は指定したタイムアウトで HTTP クライアントを作成して Service を生成します。
+func NewService(timeout time.Duration) *Service {
+	if timeout <= 0 {
+		timeout = 15 * time.Second
+	}
+	client := &http.Client{Timeout: timeout}
 	return NewServiceWithHTTPClient(DefaultBaseURL, client)
 }
 
@@ -61,6 +64,15 @@ func (s *Service) SetUserAgent(agent string) {
 	if trimmed := strings.TrimSpace(agent); trimmed != "" {
 		s.userAgent = trimmed
 	}
+}
+
+// SetBaseURL は API 呼び出し時のベース URL を上書きします。
+func (s *Service) SetBaseURL(baseURL string) {
+	trimmed := strings.TrimSpace(baseURL)
+	if trimmed == "" {
+		return
+	}
+	s.baseURL = strings.TrimRight(trimmed, "/")
 }
 
 // DailySummaryRequest は FetchDailySummary の入力を表します。

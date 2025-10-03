@@ -161,7 +161,7 @@ func TestFetchDailySummaryMeasureAPIError(t *testing.T) {
 }
 
 func TestFetchDailySummaryMissingToken(t *testing.T) {
-	service := NewService()
+	service := NewService(0)
 	_, err := service.FetchDailySummary(context.Background(), DailySummaryRequest{UserID: 1, StartDate: time.Now(), EndDate: time.Now()})
 	if err == nil {
 		t.Fatalf("expected error when token is missing")
