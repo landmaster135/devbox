@@ -61,7 +61,7 @@ func TestFetchDailySummarySuccess(t *testing.T) {
 		}
 	}}
 
-	service := NewServiceWithHTTPClient("http://example.com", stubClient)
+	service := NewHealthServiceWithHTTPClient("http://example.com", stubClient)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	t.Cleanup(cancel)
@@ -142,7 +142,7 @@ func TestFetchDailySummaryMeasureAPIError(t *testing.T) {
 		}, nil
 	}}
 
-	service := NewServiceWithHTTPClient("http://example.com", stubClient)
+	service := NewHealthServiceWithHTTPClient("http://example.com", stubClient)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	t.Cleanup(cancel)
@@ -161,7 +161,7 @@ func TestFetchDailySummaryMeasureAPIError(t *testing.T) {
 }
 
 func TestFetchDailySummaryMissingToken(t *testing.T) {
-	service := NewService(0)
+	service := NewHealthService(0)
 	_, err := service.FetchDailySummary(context.Background(), DailySummaryRequest{UserID: 1, StartDate: time.Now(), EndDate: time.Now()})
 	if err == nil {
 		t.Fatalf("expected error when token is missing")

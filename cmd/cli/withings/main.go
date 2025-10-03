@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	healthService := usecases.NewService(cfg.Timeout)
+	healthService := usecases.NewHealthService(cfg.Timeout)
 	authService := usecases.NewAuthService(cfg.Timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout+5*time.Second)
@@ -89,7 +89,7 @@ func handleRefreshToken(ctx context.Context, authService *usecases.AuthService, 
 	emitTokenResponse(resp)
 }
 
-func handleDailySummary(ctx context.Context, service *usecases.Service, cfg *config.Config) {
+func handleDailySummary(ctx context.Context, service *usecases.HealthService, cfg *config.Config) {
 	req := usecases.DailySummaryRequest{
 		AccessToken:     cfg.AccessToken,
 		UserID:          cfg.UserID,

@@ -28,28 +28,28 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Service は Withings API から健康データを取得するユースケースを提供します。
-type Service struct {
+// HealthService は Withings API から健康データを取得するユースケースを提供します。
+type HealthService struct {
 	httpClient HTTPClient
 	baseURL    string
 	userAgent  string
 }
 
-// NewService は指定したタイムアウトで HTTP クライアントを作成して Service を生成します。
-func NewService(timeout time.Duration) *Service {
+// NewHealthService は指定したタイムアウトで HTTP クライアントを作成して HealthService を生成します。
+func NewHealthService(timeout time.Duration) *HealthService {
 	if timeout <= 0 {
 		timeout = 15 * time.Second
 	}
 	client := &http.Client{Timeout: timeout}
-	return NewServiceWithHTTPClient(DefaultBaseURL, client)
+	return NewHealthServiceWithHTTPClient(DefaultBaseURL, client)
 }
 
-// NewServiceWithHTTPClient はベース URL と HTTP クライアントを差し替えて Service を生成します。
-func NewServiceWithHTTPClient(baseURL string, client HTTPClient) *Service {
+// NewHealthServiceWithHTTPClient はベース URL と HTTP クライアントを差し替えて HealthService を生成します。
+func NewHealthServiceWithHTTPClient(baseURL string, client HTTPClient) *HealthService {
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	svc := &Service{
+	svc := &HealthService{
 		httpClient: client,
 		baseURL:    DefaultBaseURL,
 		userAgent:  defaultUserAgent,
@@ -60,14 +60,14 @@ func NewServiceWithHTTPClient(baseURL string, client HTTPClient) *Service {
 }
 
 // SetUserAgent は API 呼び出し時の User-Agent を上書きします。
-func (s *Service) SetUserAgent(agent string) {
+func (s *HealthService) SetUserAgent(agent string) {
 	if trimmed := strings.TrimSpace(agent); trimmed != "" {
 		s.userAgent = trimmed
 	}
 }
 
 // SetBaseURL は API 呼び出し時のベース URL を上書きします。
-func (s *Service) SetBaseURL(baseURL string) {
+func (s *HealthService) SetBaseURL(baseURL string) {
 	trimmed := strings.TrimSpace(baseURL)
 	if trimmed == "" {
 		return
@@ -113,10 +113,14 @@ type ActivitySummary struct {
 	HrAverageBPM      *float64 `json:"hr_average_bpm,omitempty"`
 	HrMinBPM          *float64 `json:"hr_min_bpm,omitempty"`
 	HrMaxBPM          *float64 `json:"hr_max_bpm,omitempty"`
+	DeviceBrand       *int     `json:"device_brand,omitempty"`
+	DeviceModelID     *int     `json:"device_model_id,omitempty"`
+	DeviceModelName   *string  `json:"device_model_name,omitempty"`
+	IsTracker         *bool    `json:"is_tracker,omitempty"`
 }
 
 // FetchDailySummary は指定期間の測定値と活動サマリをまとめて取得します。
-func (s *Service) FetchDailySummary(ctx context.Context, req DailySummaryRequest) (*DailySummaryResponse, error) {
+func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryRequest) (*DailySummaryResponse, error) {
 	if strings.TrimSpace(req.AccessToken) == "" {
 		return nil, errors.New("access token が指定されていません")
 	}
@@ -196,7 +200,7 @@ func (s *Service) FetchDailySummary(ctx context.Context, req DailySummaryRequest
 	}, nil
 }
 
-func (s *Service) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
+func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
 	offset := 0
 	loops := 0
 	result := &measureFetchResult{measurements: make(map[string]map[string]float64)}
@@ -295,7 +299,7 @@ func (s *Service) fetchMeasures(ctx context.Context, token string, userID int64,
 	return result, nil
 }
 
-func (s *Service) fetchActivities(ctx context.Context, token string, userID int64, start, end time.Time) (*activityFetchResult, error) {
+func (s *HealthService) fetchActivities(ctx context.Context, token string, userID int64, start, end time.Time) (*activityFetchResult, error) {
 	offset := 0
 	loops := 0
 	result := &activityFetchResult{
@@ -369,7 +373,7 @@ func (s *Service) fetchActivities(ctx context.Context, token string, userID int6
 	return result, nil
 }
 
-func (s *Service) postForm(ctx context.Context, path string, token string, form url.Values) (*http.Response, error) {
+func (s *HealthService) postForm(ctx context.Context, path string, token string, form url.Values) (*http.Response, error) {
 	endpoint := s.baseURL + path
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {
@@ -493,6 +497,10 @@ type activityItem struct {
 	HrAverage     *float64 `json:"hr_average"`
 	HrMin         *float64 `json:"hr_min"`
 	HrMax         *float64 `json:"hr_max"`
+	Brand         *int     `json:"brand"`
+	ModelID       *int     `json:"modelid"`
+	Model         *string  `json:"model"`
+	IsTracker     *bool    `json:"is_tracker"`
 }
 
 type flexibleBool bool
@@ -565,6 +573,18 @@ func buildActivitySummary(item activityItem) ActivitySummary {
 	if item.HrMax != nil {
 		summary.HrMaxBPM = floatPtr(*item.HrMax)
 	}
+	if item.Brand != nil {
+		summary.DeviceBrand = intPtr(*item.Brand)
+	}
+	if item.ModelID != nil {
+		summary.DeviceModelID = intPtr(*item.ModelID)
+	}
+	if item.Model != nil {
+		summary.DeviceModelName = stringPtr(*item.Model)
+	}
+	if item.IsTracker != nil {
+		summary.IsTracker = boolPtr(*item.IsTracker)
+	}
 	return summary
 }
 
@@ -605,6 +625,18 @@ func mergeActivitySummaries(base, incoming ActivitySummary) ActivitySummary {
 	if incoming.HrMaxBPM != nil {
 		base.HrMaxBPM = incoming.HrMaxBPM
 	}
+	if incoming.DeviceBrand != nil {
+		base.DeviceBrand = incoming.DeviceBrand
+	}
+	if incoming.DeviceModelID != nil {
+		base.DeviceModelID = incoming.DeviceModelID
+	}
+	if incoming.DeviceModelName != nil {
+		base.DeviceModelName = incoming.DeviceModelName
+	}
+	if incoming.IsTracker != nil {
+		base.IsTracker = incoming.IsTracker
+	}
 	return base
 }
 
@@ -614,6 +646,16 @@ func intPtr(v int) *int {
 }
 
 func floatPtr(v float64) *float64 {
+	value := v
+	return &value
+}
+
+func boolPtr(v bool) *bool {
+	value := v
+	return &value
+}
+
+func stringPtr(v string) *string {
 	value := v
 	return &value
 }
