@@ -19,7 +19,7 @@ import (
 const (
 	// DefaultBaseURL は Withings Public API のベース URL です。
 	DefaultBaseURL     = "https://wbsapi.withings.net"
-	defaultUserAgent   = "devtool-withings-cli/1.0"
+	defaultUserAgent   = "devbox-withings-cli/0.1"
 	maxPaginationLoops = 100
 )
 
@@ -46,17 +46,17 @@ func NewService(timeout time.Duration) *Service {
 
 // NewServiceWithHTTPClient はベース URL と HTTP クライアントを差し替えて Service を生成します。
 func NewServiceWithHTTPClient(baseURL string, client HTTPClient) *Service {
-	if strings.TrimSpace(baseURL) == "" {
-		baseURL = DefaultBaseURL
-	}
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	return &Service{
+	svc := &Service{
 		httpClient: client,
-		baseURL:    strings.TrimRight(baseURL, "/"),
+		baseURL:    DefaultBaseURL,
 		userAgent:  defaultUserAgent,
 	}
+	svc.SetBaseURL(baseURL)
+	svc.SetUserAgent(defaultUserAgent)
+	return svc
 }
 
 // SetUserAgent は API 呼び出し時の User-Agent を上書きします。

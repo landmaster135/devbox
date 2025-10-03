@@ -11,12 +11,6 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/withings/usecases"
 )
 
-const (
-	cliUserAgent       = "devbox-withings-cli/0.1"
-	authorizeBaseURL   = "https://account.withings.com/oauth2_user/authorize2"
-	oauthTokenEndpoint = "https://wbsapi.withings.net/v2/oauth2"
-)
-
 func main() {
 	cfg, err := config.ParseFlags()
 	if err != nil {
@@ -31,11 +25,7 @@ func main() {
 	}
 
 	healthService := usecases.NewService(cfg.Timeout)
-	healthService.SetUserAgent(cliUserAgent)
-	healthService.SetBaseURL(cfg.BaseURL)
-
 	authService := usecases.NewAuthService(cfg.Timeout)
-	authService.SetEndpoints(authorizeBaseURL, oauthTokenEndpoint)
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout+5*time.Second)
 	defer cancel()

@@ -38,12 +38,14 @@ func NewAuthServiceWithClient(client HTTPClient, timeout time.Duration) *AuthSer
 	if client == nil {
 		client = &http.Client{Timeout: timeout}
 	}
-	return &AuthService{
+	svc := &AuthService{
 		httpClient:     client,
 		authorizeURL:   defaultAuthorizeBaseURL,
 		tokenEndpoint:  defaultOAuthTokenEndpoint,
 		requestTimeout: timeout,
 	}
+	svc.SetEndpoints(defaultAuthorizeBaseURL, defaultOAuthTokenEndpoint)
+	return svc
 }
 
 // NewAuthServiceWithEndpoints はベースURLを差し替えて AuthService を構築します。
