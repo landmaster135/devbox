@@ -27,43 +27,39 @@ type AuthService struct {
 	requestTimeout time.Duration
 }
 
-// NewAuthService は標準設定の AuthService を返します。
-func NewAuthService(client HTTPClient) *AuthService {
+// NewAuthService は指定されたタイムアウトで初期化された AuthService を返します。
+func NewAuthService(timeout time.Duration) *AuthService {
+	return NewAuthServiceWithClient(nil, timeout)
+}
+
+// NewAuthServiceWithClient は HTTP クライアントを差し替えて AuthService を返します。
+func NewAuthServiceWithClient(client HTTPClient, timeout time.Duration) *AuthService {
+	timeout = normalizeOAuthTimeout(timeout)
 	if client == nil {
-		client = &http.Client{Timeout: defaultOAuthTimeout}
+		client = &http.Client{Timeout: timeout}
 	}
 	return &AuthService{
 		httpClient:     client,
 		authorizeURL:   defaultAuthorizeBaseURL,
 		tokenEndpoint:  defaultOAuthTokenEndpoint,
-		requestTimeout: defaultOAuthTimeout,
+		requestTimeout: timeout,
 	}
 }
 
 // NewAuthServiceWithEndpoints はベースURLを差し替えて AuthService を構築します。
-func NewAuthServiceWithEndpoints(client HTTPClient, authorizeURL, tokenEndpoint string) *AuthService {
-	if client == nil {
-		client = &http.Client{Timeout: defaultOAuthTimeout}
-	}
-	svc := &AuthService{
-		httpClient:     client,
-		authorizeURL:   strings.TrimSpace(authorizeURL),
-		tokenEndpoint:  strings.TrimSpace(tokenEndpoint),
-		requestTimeout: defaultOAuthTimeout,
-	}
-	if svc.authorizeURL == "" {
-		svc.authorizeURL = defaultAuthorizeBaseURL
-	}
-	if svc.tokenEndpoint == "" {
-		svc.tokenEndpoint = defaultOAuthTokenEndpoint
-	}
+func NewAuthServiceWithEndpoints(timeout time.Duration, authorizeURL, tokenEndpoint string) *AuthService {
+	svc := NewAuthService(timeout)
+	svc.SetEndpoints(authorizeURL, tokenEndpoint)
 	return svc
 }
 
-// WithRequestTimeout は OAuth リクエストのタイムアウトを上書きします。
-func (s *AuthService) WithRequestTimeout(timeout time.Duration) {
-	if timeout > 0 {
-		s.requestTimeout = timeout
+// SetEndpoints は認可URLとトークンエンドポイントを上書きします。
+func (s *AuthService) SetEndpoints(authorizeURL, tokenEndpoint string) {
+	if trimmed := strings.TrimSpace(authorizeURL); trimmed != "" {
+		s.authorizeURL = trimmed
+	}
+	if trimmed := strings.TrimSpace(tokenEndpoint); trimmed != "" {
+		s.tokenEndpoint = trimmed
 	}
 }
 
@@ -316,4 +312,11 @@ func normalizeScope(scope string) string {
 		}
 	}
 	return strings.Join(result, ",")
+}
+
+func normalizeOAuthTimeout(timeout time.Duration) time.Duration {
+	if timeout <= 0 {
+		return defaultOAuthTimeout
+	}
+	return timeout
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
@@ -31,13 +30,12 @@ func main() {
 		return
 	}
 
-	httpClient := &http.Client{Timeout: cfg.Timeout}
-
-	healthService := usecases.NewServiceWithHTTPClient(cfg.BaseURL, httpClient)
+	healthService := usecases.NewService(cfg.Timeout)
 	healthService.SetUserAgent(cliUserAgent)
+	healthService.SetBaseURL(cfg.BaseURL)
 
-	authService := usecases.NewAuthServiceWithEndpoints(httpClient, authorizeBaseURL, oauthTokenEndpoint)
-	authService.WithRequestTimeout(cfg.Timeout)
+	authService := usecases.NewAuthService(cfg.Timeout)
+	authService.SetEndpoints(authorizeBaseURL, oauthTokenEndpoint)
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout+5*time.Second)
 	defer cancel()
