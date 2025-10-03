@@ -17,7 +17,7 @@ type DbServerSyncServiceTest struct {
 
 func TestDbServerSyncService_ProcessAppendAnime_Normal(t *testing.T) {
 	test := &DbServerSyncServiceTest{
-		service: NewDbServerSyncService(),
+		service: NewDBServerSyncService(),
 	}
 
 	// テスト用の一時ディレクトリを作成
@@ -126,7 +126,7 @@ func TestDbServerSyncService_ProcessAppendAnime_Normal(t *testing.T) {
 
 func TestDbServerSyncService_ProcessAppendAnime_WithoutAdditionalData_Normal(t *testing.T) {
 	test := &DbServerSyncServiceTest{
-		service: NewDbServerSyncService(),
+		service: NewDBServerSyncService(),
 	}
 
 	// テスト用の一時ディレクトリを作成
