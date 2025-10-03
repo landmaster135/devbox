@@ -358,39 +358,6 @@ func normalizeCommaSeparated(value string) string {
 	return strings.Join(normalized, ",")
 }
 
-var measureAliases = map[string]int{
-	"weight":                  1,
-	"weightkg":                1,
-	"height":                  4,
-	"fat_free_mass":           5,
-	"fatfreemass":             5,
-	"fat_ratio":               6,
-	"fatpercentage":           6,
-	"fat_mass":                8,
-	"fatmass":                 8,
-	"diastolic":               9,
-	"diastolic_bp":            9,
-	"systolic":                10,
-	"systolic_bp":             10,
-	"heart_pulse":             11,
-	"heart_rate":              11,
-	"temperature":             12,
-	"spo2":                    54,
-	"body_temperature":        71,
-	"skin_temperature":        73,
-	"muscle_mass":             76,
-	"hydration":               77,
-	"bone_mass":               88,
-	"pulse_wave_velocity":     91,
-	"vo2max":                  123,
-	"qrs_interval":            135,
-	"pr_interval":             136,
-	"qt_interval":             137,
-	"corrected_qt_interval":   138,
-	"atrial_fibrillation":     139,
-	"atrial_fibrillation_ppg": 139,
-}
-
 func parseMeasureTypes(value string) ([]int, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
@@ -409,6 +376,9 @@ func parseMeasureTypes(value string) ([]int, error) {
 		t := normalizeToken(token)
 		if t == "" {
 			continue
+		}
+		if t == "all" {
+			return nil, nil
 		}
 		if num, err := strconv.Atoi(t); err == nil {
 			if num <= 0 {
