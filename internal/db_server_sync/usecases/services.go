@@ -11,8 +11,8 @@ import (
 // DbServerSyncService はデータベースサーバー同期サービスを表す構造体
 type DbServerSyncService struct{}
 
-// NewDbServerSyncService は新しいDbServerSyncServiceを作成する
-func NewDbServerSyncService() *DbServerSyncService {
+// NewDBServerSyncService は新しいDbServerSyncServiceを作成する
+func NewDBServerSyncService() *DbServerSyncService {
 	return &DbServerSyncService{}
 }
 

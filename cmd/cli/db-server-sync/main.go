@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// データベースサーバー同期サービスを初期化
-	service := usecases.NewDbServerSyncService()
+	service := usecases.NewDBServerSyncService()
 
 	// 操作に応じて処理を実行
 	switch cfg.Operation {
