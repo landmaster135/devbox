@@ -119,6 +119,17 @@ type ActivitySummary struct {
 	IsTracker         *bool    `json:"is_tracker,omitempty"`
 }
 
+func (s *HealthService) ShouldRetryDailySummaryWithRefresh(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "status=401") ||
+		strings.Contains(message, "status=403") ||
+		strings.Contains(message, "unauthorized") ||
+		strings.Contains(message, "invalid_token")
+}
+
 // FetchDailySummary は指定期間の測定値と活動サマリをまとめて取得します。
 func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryRequest) (*DailySummaryResponse, error) {
 	if strings.TrimSpace(req.AccessToken) == "" {

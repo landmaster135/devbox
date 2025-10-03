@@ -38,7 +38,7 @@ func main() {
 	case config.OperationRefreshToken:
 		handleRefreshToken(ctx, authService, cfg)
 	case config.OperationDailySummary:
-		handleDailySummary(ctx, healthService, cfg)
+		handleDailySummary(ctx, healthService, authService, cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の operation が指定されました: %s\n", cfg.Operation)
 		os.Exit(1)
@@ -89,7 +89,7 @@ func handleRefreshToken(ctx context.Context, authService *usecases.AuthService, 
 	emitTokenResponse(resp)
 }
 
-func handleDailySummary(ctx context.Context, service *usecases.HealthService, cfg *config.Config) {
+func handleDailySummary(ctx context.Context, healthService *usecases.HealthService, authService *usecases.AuthService, cfg *config.Config) {
 	req := usecases.DailySummaryRequest{
 		AccessToken:     cfg.AccessToken,
 		UserID:          cfg.UserID,
@@ -99,10 +99,15 @@ func handleDailySummary(ctx context.Context, service *usecases.HealthService, cf
 		IncludeActivity: cfg.IncludeActivity,
 	}
 
-	resp, err := service.FetchDailySummary(ctx, req)
+	resp, err := healthService.FetchDailySummary(ctx, req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
+		if healthService.ShouldRetryDailySummaryWithRefresh(err) {
+			resp, err = retryDailySummaryWithRefresh(ctx, healthService, authService, cfg, req, err)
+		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -111,6 +116,51 @@ func handleDailySummary(ctx context.Context, service *usecases.HealthService, cf
 		fmt.Fprintf(os.Stderr, "エラー: 出力のエンコードに失敗しました: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func retryDailySummaryWithRefresh(
+	ctx context.Context,
+	healthService *usecases.HealthService,
+	authService *usecases.AuthService,
+	cfg *config.Config,
+	req usecases.DailySummaryRequest,
+	originalErr error,
+) (*usecases.DailySummaryResponse, error) {
+	if cfg.RefreshToken == "" {
+		return nil, originalErr
+	}
+	if cfg.ClientID == "" || cfg.ClientSecret == "" {
+		return nil, fmt.Errorf("日次サマリの取得に失敗しました: %v\nリフレッシュトークンで再試行するには client-id と client-secret を指定してください", originalErr)
+	}
+
+	fmt.Fprintf(os.Stderr, "警告: アクセストークンでの取得に失敗したため refresh-token で再試行します...\n")
+	refreshResp, err := authService.RefreshAccessToken(ctx, usecases.RefreshRequest{
+		ClientID:     cfg.ClientID,
+		ClientSecret: cfg.ClientSecret,
+		RefreshToken: cfg.RefreshToken,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("アクセストークンのリフレッシュに失敗しました: %w\n元のエラー: %v", err, originalErr)
+	}
+	if refreshResp == nil || refreshResp.Body.AccessToken == "" {
+		return nil, fmt.Errorf("リフレッシュレスポンスにアクセストークンが含まれていません\n元のエラー: %v", originalErr)
+	}
+
+	cfg.AccessToken = refreshResp.Body.AccessToken
+	req.AccessToken = refreshResp.Body.AccessToken
+
+	fmt.Fprintf(os.Stderr, "情報: 新しいアクセストークンで日次サマリ取得を再試行します。\nアクセストークン: %s\n", cfg.AccessToken)
+	if refreshResp.Body.RefreshToken != "" {
+		cfg.RefreshToken = refreshResp.Body.RefreshToken
+		fmt.Fprintf(os.Stderr, "新しいリフレッシュトークンを安全な場所に保管してください: %s\n", cfg.RefreshToken)
+	}
+
+	resp, err := healthService.FetchDailySummary(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("リフレッシュ後の日次サマリ取得にも失敗しました: %v\n元のエラー: %v", err, originalErr)
+	}
+
+	return resp, nil
 }
 
 func emitTokenResponse(resp *usecases.TokenResponse) {
