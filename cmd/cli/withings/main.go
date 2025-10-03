@@ -83,6 +83,9 @@ func handleRequestToken(ctx context.Context, httpClient *http.Client, cfg *confi
 	form.Set("client_secret", cfg.ClientSecret)
 	form.Set("code", cfg.AuthorizationCode)
 	form.Set("redirect_uri", cfg.RedirectURI)
+	if cfg.State != "" {
+		form.Set("state", cfg.State)
+	}
 
 	payload, err := executeOAuthRequest(ctx, httpClient, form)
 	if err != nil {
@@ -95,7 +98,7 @@ func handleRequestToken(ctx context.Context, httpClient *http.Client, cfg *confi
 
 func handleRefreshToken(ctx context.Context, httpClient *http.Client, cfg *config.Config) {
 	form := url.Values{}
-	form.Set("action", "refresh")
+	form.Set("action", "requesttoken")
 	form.Set("grant_type", "refresh_token")
 	form.Set("client_id", cfg.ClientID)
 	form.Set("client_secret", cfg.ClientSecret)
@@ -213,15 +216,46 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+type flexibleString string
+
+func (fs *flexibleString) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		*fs = ""
+		return nil
+	}
+
+	switch trimmed[0] {
+	case '"':
+		var s string
+		if err := json.Unmarshal(trimmed, &s); err != nil {
+			return err
+		}
+		*fs = flexibleString(s)
+		return nil
+	default:
+		var num json.Number
+		if err := json.Unmarshal(trimmed, &num); err != nil {
+			return err
+		}
+		*fs = flexibleString(num.String())
+		return nil
+	}
+}
+
+func (fs flexibleString) String() string {
+	return string(fs)
+}
+
 type tokenResponse struct {
-	Status int         `json:"status"`
+	Status int `json:"status"`
 	Error  any `json:"error"`
 	Body   struct {
-		UserID       string `json:"userid"`
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
-		ExpiresIn    int    `json:"expires_in"`
-		TokenType    string `json:"token_type"`
-		Scope        string `json:"scope"`
+		UserID       flexibleString `json:"userid"`
+		AccessToken  string         `json:"access_token"`
+		RefreshToken string         `json:"refresh_token"`
+		ExpiresIn    int            `json:"expires_in"`
+		TokenType    string         `json:"token_type"`
+		Scope        string         `json:"scope"`
 	} `json:"body"`
 }
