@@ -22,6 +22,16 @@ func NewCoreService(healthService *HealthService, authService *AuthService) *Cor
 	}
 }
 
+// GetHealthService は内部で保持している GetHealthService を返します。
+func (s *CoreService) GetHealthService() *HealthService {
+	return s.healthService
+}
+
+// GetAuthService は内部で保持している GetAuthService を返します。
+func (s *CoreService) GetAuthService() *AuthService {
+	return s.authService
+}
+
 // RetryDailySummaryWithRefresh はアクセストークンでの日次サマリ取得が失敗した際に
 // リフレッシュトークンを用いて再試行します。
 func (s *CoreService) RetryDailySummaryWithRefresh(

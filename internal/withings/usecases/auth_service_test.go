@@ -166,3 +166,61 @@ func TestDoTokenRequestHTTPErrors(t *testing.T) {
 		t.Fatalf("expected status error, got %#v err=%v", resp, err)
 	}
 }
+
+func TestParseFlexibleStringNullAndInvalid(t *testing.T) {
+	value, err := parseFlexibleString([]byte("null"))
+	if err != nil {
+		t.Fatalf("unexpected error for null: %v", err)
+	}
+	if value != "" {
+		t.Fatalf("expected empty string for null, got %q", value)
+	}
+
+	if _, err := parseFlexibleString([]byte("{")); err == nil {
+		t.Fatal("expected error for invalid JSON input")
+	}
+}
+
+func TestValidateTokenRequest(t *testing.T) {
+	tests := []struct {
+		name  string
+		req   TokenRequest
+		error string
+	}{
+		{
+			name:  "missing client",
+			req:   TokenRequest{Code: "code", RedirectURI: "https://example.com"},
+			error: "client_id と client_secret",
+		},
+		{
+			name:  "missing code",
+			req:   TokenRequest{ClientID: "id", ClientSecret: "secret", RedirectURI: "https://example.com"},
+			error: "authorization code",
+		},
+		{
+			name:  "missing redirect",
+			req:   TokenRequest{ClientID: "id", ClientSecret: "secret", Code: "code"},
+			error: "redirect_uri",
+		},
+		{
+			name: "valid",
+			req:  TokenRequest{ClientID: "id", ClientSecret: "secret", Code: "code", RedirectURI: "https://example.com"},
+		},
+	}
+
+	for _, tt := range tests {
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateTokenRequest(tc.req)
+			if tc.error == "" {
+				if err != nil {
+					t.Fatalf("expected no error, got %v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.error) {
+				t.Fatalf("expected error containing %q, got %v", tc.error, err)
+			}
+		})
+	}
+}

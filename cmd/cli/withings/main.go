@@ -39,7 +39,7 @@ func main() {
 	case config.OperationRefreshToken:
 		handleRefreshToken(ctx, authService, cfg)
 	case config.OperationDailySummary:
-		handleDailySummary(ctx, healthService, coreService, cfg)
+		handleDailySummary(ctx, coreService, cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の operation が指定されました: %s\n", cfg.Operation)
 		os.Exit(1)
@@ -90,7 +90,8 @@ func handleRefreshToken(ctx context.Context, authService *usecases.AuthService, 
 	emitTokenResponse(resp)
 }
 
-func handleDailySummary(ctx context.Context, healthService *usecases.HealthService, coreService *usecases.CoreService, cfg *config.Config) {
+func handleDailySummary(ctx context.Context, coreService *usecases.CoreService, cfg *config.Config) {
+	healthService := coreService.GetHealthService()
 	req := usecases.DailySummaryRequest{
 		AccessToken:     cfg.AccessToken,
 		UserID:          cfg.UserID,
