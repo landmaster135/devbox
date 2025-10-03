@@ -105,6 +105,16 @@ func TestSetEndpoints(t *testing.T) {
 	}
 }
 
+func TestNewAuthServiceWithEndpoints(t *testing.T) {
+	svc := NewAuthServiceWithEndpoints(3*time.Second, " https://auth.example/ ", " https://token.example ")
+	if svc.authorizeURL != "https://auth.example/" || svc.tokenEndpoint != "https://token.example" {
+		t.Fatalf("endpoints not normalized: %s %s", svc.authorizeURL, svc.tokenEndpoint)
+	}
+	if svc.requestTimeout != 3*time.Second {
+		t.Fatalf("timeout not applied: %v", svc.requestTimeout)
+	}
+}
+
 func TestExchangeAuthorizationCodeValidation(t *testing.T) {
 	svc := NewAuthService(5 * time.Second)
 	_, err := svc.ExchangeAuthorizationCode(context.Background(), TokenRequest{})
@@ -132,5 +142,27 @@ func TestParseFlexibleString(t *testing.T) {
 	value, err = parseFlexibleString([]byte("\"456\""))
 	if err != nil || value != "456" {
 		t.Fatalf("unexpected string value: %s, err: %v", value, err)
+	}
+}
+
+func TestDoTokenRequestHTTPErrors(t *testing.T) {
+	svc := NewAuthService(5 * time.Second)
+	svc.httpClient = &authStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 500, Body: io.NopCloser(strings.NewReader("oops")), Header: make(http.Header)}, nil
+	}}
+
+	_, err := svc.doTokenRequest(context.Background(), url.Values{})
+	if err == nil {
+		t.Fatal("expected HTTP error")
+	}
+
+	svc.httpClient = &authStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		respBody := `{"status":247,"error":"invalid"}`
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(respBody)), Header: make(http.Header)}, nil
+	}}
+
+	resp, err := svc.doTokenRequest(context.Background(), url.Values{"action": {"requesttoken"}})
+	if err == nil || resp.Status != 247 {
+		t.Fatalf("expected status error, got %#v err=%v", resp, err)
 	}
 }
