@@ -9,7 +9,7 @@ Withings Public Health Data API の OAuth フローに沿って認可 URL の生
 | `auth-url`       | 認可 URL を生成し、ブラウザで開くべきリンクを出力します。 | `-client-id`, `-redirect-uri`（任意で `-scope`, `-state`, `-mode`） |
 | `request-token`  | 認可コードからアクセストークン／リフレッシュトークン／ユーザーIDを取得します。 | `-client-id`, `-client-secret`, `-authorization-code`, `-redirect-uri` |
 | `refresh-token`  | リフレッシュトークンを使って新しいアクセストークンを取得します。 | `-client-id`, `-client-secret`, `-refresh-token` |
-| `daily-summary` (既定) | 指定期間の測定値と活動サマリを取得して JSON 出力します。 | `-access-token`, `-user-id`, `-start-date`（任意で `-end-date`, `-measure-types`, `-include-activity`） |
+| `daily-summary` (既定) | 指定期間の測定値と活動サマリを取得して JSON 出力します。 | `-access-token`, `-user-id`, `-start-date`（任意で `-end-date`, `-measure-types`, `-include-activity`、`-refresh-token` と `-client-id`, `-client-secret` を併用するとトークン自動更新） |
 
 `-operation` を省略した場合は `daily-summary` が実行されます。
 
@@ -58,6 +58,7 @@ go run ./cmd/cli/withings \
   -measure-types weight,diastolic,systolic,heart_rate
 ```
 体重・血圧・アクティビティなどの日次サマリが JSON で出力されます。`-include-activity=false` を指定すると活動サマリを省くことも可能です。
+アクセストークンが期限切れの場合は、同時に `-refresh-token`, `-client-id`, `-client-secret` を与えることで CLI が自動的にアクセストークンを再取得し、再試行します。再発行されたアクセストークン／リフレッシュトークンは標準エラー出力に表示されるので安全に保管してください。
 
 ### 測定タイプの指定 (`-measure-types`)
 
@@ -76,7 +77,7 @@ go run ./cmd/cli/withings \
 | `-scope` | 認可 URL で要求するスコープ（例: `user.metrics,user.activity`）。複数はカンマ区切り。
 | `-state` | 認可 URL に付与する任意文字列。CSRF 対策に使用し、コールバックで検証してください。
 | `-authorization-code` | 認可コールバックのクエリパラメータ `code`。
-| `-refresh-token` | 既に取得済みのリフレッシュトークン。`refresh-token` 操作で新しいアクセストークンを得る際に使用します。
+| `-refresh-token` | 既に取得済みのリフレッシュトークン。`refresh-token` 操作のほか、`daily-summary` でアクセストークンが無効化された場合の自動再取得にも利用されます（`-client-id`, `-client-secret` とセット）。
 | `-access-token` | API 呼び出しで使用するアクセストークン。`daily-summary` 操作で必須。
 | `-user-id` | Withings から払い出される数値のユーザー ID。初回の `request-token` レスポンス内 `body.userid` でも取得できます。
 | `-start-date` / `-end-date` | 日次データ取得の範囲（YYYY-MM-DD）。終了日を省略すると開始日のみ取得します。
