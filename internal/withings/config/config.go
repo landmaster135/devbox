@@ -24,8 +24,6 @@ const (
 	DefaultOperation = OperationDailySummary
 	// DefaultOutputFormat は CLI の標準出力形式です。
 	DefaultOutputFormat = "json"
-	// DefaultBaseURL は Withings Public API の既定エンドポイントです。
-	DefaultBaseURL = "https://wbsapi.withings.net"
 	// defaultTimeout は API 呼び出しに利用するデフォルトのタイムアウトです。
 	defaultTimeout = 15 * time.Second
 )
@@ -49,7 +47,6 @@ type Config struct {
 	MeasureTypes      []int
 	IncludeActivity   bool
 	OutputFormat      string
-	BaseURL           string
 	Timeout           time.Duration
 	Help              bool
 }
@@ -128,7 +125,6 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		measureTypesStr   string
 		includeActivity   = true
 		outputFormat      = DefaultOutputFormat
-		baseURL           = DefaultBaseURL
 		timeout           = defaultTimeout
 		help              bool
 	)
@@ -155,7 +151,6 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&measureTypesStr, "measure-types", measureTypesStr, "取得する measure type (カンマ区切り, 例: weight,fat_mass,diastolic)")
 	parser.BoolVar(&includeActivity, "include-activity", includeActivity, "日次活動サマリを同時に取得するか")
 	parser.StringVar(&outputFormat, "output", outputFormat, "出力フォーマット (json)")
-	parser.StringVar(&baseURL, "base-url", baseURL, "Withings API ベース URL (通常は変更不要)")
 	parser.DurationVar(&timeout, "timeout", timeout, "API 呼び出しのタイムアウト (例: 20s, 1m)")
 	parser.BoolVar(&help, "help", help, "このヘルプを表示")
 	parser.BoolVar(&help, "h", help, "help の短縮指定")
@@ -192,11 +187,6 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		operation = DefaultOperation
 	}
 
-	baseURL = strings.TrimSpace(baseURL)
-	if baseURL == "" {
-		baseURL = DefaultBaseURL
-	}
-
 	if timeout <= 0 {
 		timeout = defaultTimeout
 	}
@@ -215,7 +205,6 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		ResponseType:      strings.TrimSpace(strings.ToLower(responseType)),
 		IncludeActivity:   includeActivity,
 		OutputFormat:      strings.ToLower(strings.TrimSpace(outputFormat)),
-		BaseURL:           baseURL,
 		Timeout:           timeout,
 	}
 
