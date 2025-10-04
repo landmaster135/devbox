@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
@@ -562,5 +563,100 @@ func TestCoreServiceRetryDailySummaryWithRefreshPropagatesRequestFields(t *testi
 	}
 	if receivedForm.Get("meastypes") != "1,6,9" {
 		t.Fatalf("unexpected measure types: %s", receivedForm.Get("meastypes"))
+	}
+}
+
+func TestRoundDailySummaryResponseRounding(t *testing.T) {
+	weight := 70.129
+	spo2 := math.Inf(1)
+	distance := 6543.219
+	calories := 250.123
+	totalCalories := 300.987
+	nanValue := math.NaN()
+
+	resp := &DailySummaryResponse{
+		Summaries: []DailySummary{
+			{
+				Measures: &DailySummaryMeasures{
+					WeightKg:    &weight,
+					Spo2Percent: &spo2,
+				},
+				Activity: &ActivitySummary{
+					DistanceMeter:     &distance,
+					CaloriesKcal:      &calories,
+					TotalCaloriesKcal: &totalCalories,
+					HrAverageBPM:      &nanValue,
+				},
+			},
+			{},
+		},
+	}
+
+	roundDailySummaryResponse(resp)
+
+	if resp.Summaries[0].Measures == nil || resp.Summaries[0].Measures.WeightKg == nil {
+		t.Fatalf("weight should be rounded")
+	}
+	if got := *resp.Summaries[0].Measures.WeightKg; got != 70.13 {
+		t.Fatalf("unexpected rounded weight: %v", got)
+	}
+	if resp.Summaries[0].Measures.Spo2Percent == nil || !math.IsInf(*resp.Summaries[0].Measures.Spo2Percent, 0) {
+		t.Fatalf("infinite value should remain unchanged")
+	}
+
+	activity := resp.Summaries[0].Activity
+	if activity == nil || activity.DistanceMeter == nil {
+		t.Fatalf("activity should not be nil")
+	}
+	if got := *activity.DistanceMeter; got != 6543.22 {
+		t.Fatalf("unexpected rounded distance: %v", got)
+	}
+	if got := *activity.CaloriesKcal; got != 250.12 {
+		t.Fatalf("unexpected rounded calories: %v", got)
+	}
+	if got := *activity.TotalCaloriesKcal; got != 300.99 {
+		t.Fatalf("unexpected rounded total calories: %v", got)
+	}
+	if activity.HrAverageBPM == nil || !math.IsNaN(*activity.HrAverageBPM) {
+		t.Fatalf("NaN value should remain NaN")
+	}
+
+	roundDailySummaryResponse(nil)
+}
+
+func TestFetchDailySummaryWithRetryRequiresHealthService(t *testing.T) {
+	core := &CoreService{}
+	_, err := core.FetchDailySummaryWithRetry(context.Background(), &configpkg.Config{})
+	if err == nil || !strings.Contains(err.Error(), "health service") {
+		t.Fatalf("expected health service error, got %v", err)
+	}
+}
+
+func TestFetchDailySummaryWithRetryRequiresConfig(t *testing.T) {
+	health := NewHealthService(0)
+	core := NewCoreService(health, nil)
+	_, err := core.FetchDailySummaryWithRetry(context.Background(), nil)
+	if err == nil || !strings.Contains(err.Error(), "config") {
+		t.Fatalf("expected config error, got %v", err)
+	}
+}
+
+func TestFetchDailySummaryWithRetryPropagatesNonRetryableError(t *testing.T) {
+	health := NewHealthServiceWithHTTPClient("https://api.example.com", &coreStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		return nil, errors.New("network down")
+	}})
+	core := NewCoreService(health, nil)
+
+	cfg := &configpkg.Config{
+		AccessToken:     "token",
+		UserID:          123,
+		StartDate:       time.Date(2024, 10, 7, 0, 0, 0, 0, time.UTC),
+		EndDate:         time.Date(2024, 10, 7, 0, 0, 0, 0, time.UTC),
+		IncludeActivity: false,
+	}
+
+	_, err := core.FetchDailySummaryWithRetry(context.Background(), cfg)
+	if err == nil || !strings.Contains(err.Error(), "network down") {
+		t.Fatalf("expected propagated error, got %v", err)
 	}
 }

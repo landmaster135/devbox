@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -316,5 +317,157 @@ func TestParseFlagsHelp(t *testing.T) {
 	}
 	if !cfg.Help {
 		t.Fatalf("expected Help=true when -help specified")
+	}
+}
+func TestParseFlagsWithParserDailySummaryValidationErrors(t *testing.T) {
+	cases := []struct {
+		name    string
+		setup   func(*mockFlagParser)
+		wantErr string
+	}{
+		{
+			name: "missing access token",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.int64Values["user-id"] = 1
+				p.stringValues["start-date"] = "2025-10-01"
+				p.stringValues["end-date"] = "2025-10-01"
+			},
+			wantErr: "access-token",
+		},
+		{
+			name: "missing user id",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.stringValues["access-token"] = "token"
+				p.stringValues["start-date"] = "2025-10-01"
+			},
+			wantErr: "user-id",
+		},
+		{
+			name: "missing start date",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.stringValues["access-token"] = "token"
+				p.int64Values["user-id"] = 1
+			},
+			wantErr: "start-date",
+		},
+		{
+			name: "invalid start date format",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.stringValues["access-token"] = "token"
+				p.int64Values["user-id"] = 1
+				p.stringValues["start-date"] = "2025/10/01"
+			},
+			wantErr: "start-date の解析に失敗しました",
+		},
+		{
+			name: "end before start",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.stringValues["access-token"] = "token"
+				p.int64Values["user-id"] = 1
+				p.stringValues["start-date"] = "2025-10-02"
+				p.stringValues["end-date"] = "2025-10-01"
+			},
+			wantErr: "end-date は",
+		},
+		{
+			name: "invalid measure types",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.stringValues["access-token"] = "token"
+				p.int64Values["user-id"] = 1
+				p.stringValues["start-date"] = "2025-10-01"
+				p.stringValues["measure-types"] = "-5"
+			},
+			wantErr: "未知の measure type 指定",
+		},
+		{
+			name: "unsupported output format",
+			setup: func(p *mockFlagParser) {
+				p.stringValues["operation"] = OperationDailySummary
+				p.stringValues["access-token"] = "token"
+				p.int64Values["user-id"] = 1
+				p.stringValues["start-date"] = "2025-10-01"
+				p.stringValues["end-date"] = "2025-10-01"
+				p.stringValues["output"] = "csv"
+			},
+			wantErr: "未対応の output フォーマット",
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.stringValues["end-date"] = "2025-10-01"
+			parser.boolValues["include-activity"] = true
+			parser.stringValues["operation"] = OperationDailySummary
+			tc.setup(parser)
+
+			_, err := ParseFlagsWithParser(parser)
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("expected error containing %q, got %v", tc.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestParseFlagsWithParserDailySummaryArgsFallback(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.stringValues["operation"] = OperationDailySummary
+	parser.boolValues["include-activity"] = true
+	parser.args = []string{"token-from-args", "42", "2025-11-01", "2025-11-02"}
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.AccessToken != "token-from-args" {
+		t.Fatalf("expected access token from args, got %s", cfg.AccessToken)
+	}
+	if cfg.UserID != 42 {
+		t.Fatalf("expected user id from args, got %d", cfg.UserID)
+	}
+	if cfg.StartDate.IsZero() || cfg.EndDate.IsZero() {
+		t.Fatalf("dates should be parsed from args")
+	}
+}
+
+func TestParseFlagsWithParserDailySummaryArgsInvalidUserID(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.stringValues["operation"] = OperationDailySummary
+	parser.boolValues["include-activity"] = true
+	parser.args = []string{"token-from-args", "abc", "2025-11-01"}
+
+	_, err := ParseFlagsWithParser(parser)
+	if err == nil || !strings.Contains(err.Error(), "ユーザー ID の解析に失敗しました") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseMeasureTypesDuplicateAndSorting(t *testing.T) {
+	types, err := parseMeasureTypes("3, weight ,3,1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expected := []int{1, 3}
+	if !reflect.DeepEqual(types, expected) {
+		t.Fatalf("unexpected types: %v", types)
+	}
+}
+
+func TestParseMeasureTypesRejectsNonPositive(t *testing.T) {
+	if _, err := parseMeasureTypes("0"); err == nil {
+		t.Fatal("expected error for zero")
+	}
+}
+
+func TestParseDateEmptyString(t *testing.T) {
+	if _, err := parseDate(" "); err == nil || !strings.Contains(err.Error(), "空の日付文字列です") {
+		t.Fatalf("expected empty string error, got %v", err)
 	}
 }
