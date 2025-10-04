@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -321,4 +323,134 @@ func normalizeOAuthTimeout(timeout time.Duration) time.Duration {
 		return defaultOAuthTimeout
 	}
 	return timeout
+}
+
+// ExportDailySummary は日次サマリの結果を Withings Health Mate 形式の JSON として保存します。
+func (s *AuthService) ExportDailySummary(resp *DailySummaryResponse, path string) error {
+	if resp == nil {
+		return fmt.Errorf("daily summary レスポンスが空です")
+	}
+	if strings.TrimSpace(path) == "" {
+		return fmt.Errorf("出力ファイルパスが指定されていません")
+	}
+
+	entries := buildHealthMateEntries(resp)
+	export := healthMateExport{
+		Data:        healthMateExportData{HealthMates: entries},
+		Description: "Health Mate data from Withings",
+		Name:        "My Health Mate Data",
+	}
+
+	if dir := filepath.Dir(path); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("ディレクトリの作成に失敗しました: %w", err)
+		}
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("ファイルの作成に失敗しました: %w", err)
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(export); err != nil {
+		return fmt.Errorf("JSON のエンコードに失敗しました: %w", err)
+	}
+
+	return nil
+}
+
+type healthMateExport struct {
+	Data        healthMateExportData `json:"data"`
+	Description string               `json:"description"`
+	Name        string               `json:"name"`
+}
+
+type healthMateExportData struct {
+	HealthMates []map[string]any `json:"health_mates"`
+}
+
+func buildHealthMateEntries(resp *DailySummaryResponse) []map[string]any {
+	if resp == nil {
+		return nil
+	}
+
+	entries := make([]map[string]any, 0, len(resp.Summaries))
+	for _, summary := range resp.Summaries {
+		entry := make(map[string]any)
+		if summary.Date != "" {
+			entry["date"] = summary.Date
+		}
+		for key, value := range summary.Measures {
+			entry[key] = value
+		}
+		if summary.Activity != nil {
+			for key, value := range activitySummaryToMap(summary.Activity) {
+				entry[key] = value
+			}
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries
+}
+
+func activitySummaryToMap(activity *ActivitySummary) map[string]any {
+	if activity == nil {
+		return nil
+	}
+
+	result := make(map[string]any)
+	if activity.Steps != nil {
+		result["steps"] = *activity.Steps
+	}
+	if activity.DistanceMeter != nil {
+		result["distance_meter"] = *activity.DistanceMeter
+	}
+	if activity.ElevationMeter != nil {
+		result["elevation_meter"] = *activity.ElevationMeter
+	}
+	if activity.CaloriesKcal != nil {
+		result["calories_kcal"] = *activity.CaloriesKcal
+	}
+	if activity.TotalCaloriesKcal != nil {
+		result["total_calories_kcal"] = *activity.TotalCaloriesKcal
+	}
+	if activity.SoftSeconds != nil {
+		result["soft_seconds"] = *activity.SoftSeconds
+	}
+	if activity.ModerateSeconds != nil {
+		result["moderate_seconds"] = *activity.ModerateSeconds
+	}
+	if activity.IntenseSeconds != nil {
+		result["intense_seconds"] = *activity.IntenseSeconds
+	}
+	if activity.ActiveSeconds != nil {
+		result["active_seconds"] = *activity.ActiveSeconds
+	}
+	if activity.HrAverageBPM != nil {
+		result["hr_average_bpm"] = *activity.HrAverageBPM
+	}
+	if activity.HrMinBPM != nil {
+		result["hr_min_bpm"] = *activity.HrMinBPM
+	}
+	if activity.HrMaxBPM != nil {
+		result["hr_max_bpm"] = *activity.HrMaxBPM
+	}
+	if activity.DeviceBrand != nil {
+		result["device_brand"] = *activity.DeviceBrand
+	}
+	if activity.DeviceModelID != nil {
+		result["device_model_id"] = *activity.DeviceModelID
+	}
+	if activity.DeviceModelName != nil {
+		result["device_model_name"] = *activity.DeviceModelName
+	}
+	if activity.IsTracker != nil {
+		result["is_tracker"] = *activity.IsTracker
+	}
+
+	return result
 }

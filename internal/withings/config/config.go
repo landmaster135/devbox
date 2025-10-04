@@ -47,6 +47,7 @@ type Config struct {
 	MeasureTypes      []int
 	IncludeActivity   bool
 	OutputFormat      string
+	OutputFilePath    string
 	Timeout           time.Duration
 	Help              bool
 }
@@ -125,6 +126,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		measureTypesStr   string
 		includeActivity   = true
 		outputFormat      = DefaultOutputFormat
+		outputFilePath    string
 		timeout           = defaultTimeout
 		help              bool
 	)
@@ -151,6 +153,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&measureTypesStr, "measure-types", measureTypesStr, "取得する measure type (カンマ区切り, 例: weight,fat_mass,diastolic)")
 	parser.BoolVar(&includeActivity, "include-activity", includeActivity, "日次活動サマリを同時に取得するか")
 	parser.StringVar(&outputFormat, "output", outputFormat, "出力フォーマット (json)")
+	parser.StringVar(&outputFilePath, "output-file-path", outputFilePath, "日次サマリを指定形式の JSON ファイルへ書き出す出力先パス")
 	parser.DurationVar(&timeout, "timeout", timeout, "API 呼び出しのタイムアウト (例: 20s, 1m)")
 	parser.BoolVar(&help, "help", help, "このヘルプを表示")
 	parser.BoolVar(&help, "h", help, "help の短縮指定")
@@ -205,6 +208,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		ResponseType:      strings.TrimSpace(strings.ToLower(responseType)),
 		IncludeActivity:   includeActivity,
 		OutputFormat:      strings.ToLower(strings.TrimSpace(outputFormat)),
+		OutputFilePath:    strings.TrimSpace(outputFilePath),
 		Timeout:           timeout,
 	}
 
@@ -324,6 +328,7 @@ func PrintUsage() {
   -start-date / -end-date   取得期間 (YYYY-MM-DD)
   -measure-types     取得対象 measure type (カンマ区切り)
   -include-activity  活動サマリを含めるか (daily-summary 用, デフォルト true)
+  -output-file-path  daily-summary の結果を指定形式の JSON ファイルとして保存するファイルパス
   -timeout           API 呼び出しのタイムアウト (例: 20s)
 
 `)

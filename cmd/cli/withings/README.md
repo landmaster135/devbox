@@ -9,7 +9,7 @@ Withings Public Health Data API の OAuth フローに沿って認可 URL の生
 | `auth-url`       | 認可 URL を生成し、ブラウザで開くべきリンクを出力します。 | `-client-id`, `-redirect-uri`（任意で `-scope`, `-state`, `-mode`） |
 | `request-token`  | 認可コードからアクセストークン／リフレッシュトークン／ユーザーIDを取得します。 | `-client-id`, `-client-secret`, `-authorization-code`, `-redirect-uri` |
 | `refresh-token`  | リフレッシュトークンを使って新しいアクセストークンを取得します。 | `-client-id`, `-client-secret`, `-refresh-token` |
-| `daily-summary` (既定) | 指定期間の測定値と活動サマリを取得して JSON 出力します。 | `-access-token`, `-user-id`, `-start-date`（任意で `-end-date`, `-measure-types`, `-include-activity`、`-refresh-token` と `-client-id`, `-client-secret` を併用するとトークン自動更新） |
+| `daily-summary` (既定) | 指定期間の測定値と活動サマリを取得して JSON 出力します。 | `-access-token`, `-user-id`, `-start-date`（任意で `-end-date`, `-measure-types`, `-include-activity`, `-output-file-path`、`-refresh-token` と `-client-id`, `-client-secret` を併用するとトークン自動更新） |
 
 `-operation` を省略した場合は `daily-summary` が実行されます。
 
@@ -55,10 +55,31 @@ go run ./cmd/cli/withings \
   -user-id 12345678 \
   -start-date 2025-09-01 \
   -end-date 2025-09-07 \
-  -measure-types weight,diastolic,systolic,heart_rate
+  -measure-types weight,diastolic,systolic,heart_rate \
+  -output-file-path ./tmp/withings/daily-summary.json
 ```
 体重・血圧・アクティビティなどの日次サマリが JSON で出力されます。`-include-activity=false` を指定すると活動サマリを省くことも可能です。
 アクセストークンが期限切れの場合は、同時に `-refresh-token`, `-client-id`, `-client-secret` を与えることで CLI が自動的にアクセストークンを再取得し、再試行します。再発行されたアクセストークン／リフレッシュトークンは標準エラー出力に表示されるので安全に保管してください。
+
+`-output-file-path` を指定した場合は、標準出力とは別に以下の形式で JSON ファイルが生成されます。ヘルスメトリクスと活動サマリが 1 日単位でマージされ、`"data.health_mates"` 配列に格納されます。
+
+```json
+{
+  "data": {
+    "health_mates": [
+      {
+        "date": "2025-09-01",
+        "bone_mass_kg": 2.6,
+        "fat_free_mass_kg": 50.613,
+        "steps": 12345,
+        "is_tracker": true
+      }
+    ]
+  },
+  "description": "Health Mate data from Withings",
+  "name": "My Health Mate Data"
+}
+```
 
 ### 測定タイプの指定 (`-measure-types`)
 
@@ -83,6 +104,7 @@ go run ./cmd/cli/withings \
 | `-start-date` / `-end-date` | 日次データ取得の範囲（YYYY-MM-DD）。終了日を省略すると開始日のみ取得します。
 | `-measure-types` | 取得したい測定タイプの別名または数値 ID（例: `weight`, `diastolic`, `heart_rate`）。
 | `-include-activity` | 活動サマリを同時取得するか (`true`/`false`)。既定は `true`。
+| `-output-file-path` | `daily-summary` の結果を Withings Health Mate 形式の JSON として保存するファイルパス。存在しないディレクトリは自動作成します。
 | `-timeout` | HTTP タイムアウト。既定は 15 秒。
 
 ## 代表的なスコープ
