@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func TestAuthServiceExportDailySummary(t *testing.T) {
-	svc := NewAuthService(2 * time.Second)
+func TestHealthServiceExportDailySummary(t *testing.T) {
+	svc := NewHealthService(2 * time.Second)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "withings-summary.json")
