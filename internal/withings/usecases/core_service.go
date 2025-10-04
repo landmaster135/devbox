@@ -22,14 +22,45 @@ func NewCoreService(healthService *HealthService, authService *AuthService) *Cor
 	}
 }
 
-// GetHealthService は内部で保持している GetHealthService を返します。
+// GetHealthService は内部で保持している healthService を返します。
 func (s *CoreService) GetHealthService() *HealthService {
 	return s.healthService
 }
 
-// GetAuthService は内部で保持している GetAuthService を返します。
+// GetAuthService は内部で保持している authService を返します。
 func (s *CoreService) GetAuthService() *AuthService {
 	return s.authService
+}
+
+// FetchDailySummaryWithRetry は CLI の日次サマリ取得処理を実行します。
+func (s *CoreService) FetchDailySummaryWithRetry(ctx context.Context, cfg *config.Config) (*DailySummaryResponse, error) {
+	if s == nil || s.healthService == nil {
+		return nil, fmt.Errorf("health service が初期化されていません")
+	}
+	if cfg == nil {
+		return nil, fmt.Errorf("config が指定されていません")
+	}
+
+	req := DailySummaryRequest{
+		AccessToken:     cfg.AccessToken,
+		UserID:          cfg.UserID,
+		StartDate:       cfg.StartDate,
+		EndDate:         cfg.EndDate,
+		MeasureTypes:    cfg.MeasureTypes,
+		IncludeActivity: cfg.IncludeActivity,
+	}
+
+	resp, err := s.GetHealthService().FetchDailySummary(ctx, req)
+	if err != nil {
+		if s.GetHealthService().ShouldRetryDailySummaryWithRefresh(err) {
+			resp, err = s.RetryDailySummaryWithRefresh(ctx, cfg, req, err)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
 }
 
 // RetryDailySummaryWithRefresh はアクセストークンでの日次サマリ取得が失敗した際に

@@ -91,25 +91,10 @@ func handleRefreshToken(ctx context.Context, authService *usecases.AuthService, 
 }
 
 func handleDailySummary(ctx context.Context, coreService *usecases.CoreService, cfg *config.Config) {
-	healthService := coreService.GetHealthService()
-	req := usecases.DailySummaryRequest{
-		AccessToken:     cfg.AccessToken,
-		UserID:          cfg.UserID,
-		StartDate:       cfg.StartDate,
-		EndDate:         cfg.EndDate,
-		MeasureTypes:    cfg.MeasureTypes,
-		IncludeActivity: cfg.IncludeActivity,
-	}
-
-	resp, err := healthService.FetchDailySummary(ctx, req)
+	resp, err := coreService.FetchDailySummaryWithRetry(ctx, cfg)
 	if err != nil {
-		if healthService.ShouldRetryDailySummaryWithRefresh(err) {
-			resp, err = coreService.RetryDailySummaryWithRefresh(ctx, cfg, req, err)
-		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-			os.Exit(1)
-		}
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
 	}
 
 	encoder := json.NewEncoder(os.Stdout)

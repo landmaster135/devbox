@@ -40,6 +40,151 @@ func TestCoreServiceAccessors(t *testing.T) {
 	}
 }
 
+func TestCoreServiceDailySummaryRetriesOnUnauthorized(t *testing.T) {
+	const (
+		expiredToken = "expired-token"
+		newAccess    = "new-access-token"
+		newRefresh   = "new-refresh-token"
+	)
+
+	var authCalls int
+	authClient := &coreStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		if err := req.ParseForm(); err != nil {
+			t.Fatalf("failed to parse refresh form: %v", err)
+		}
+		if req.Form.Get("grant_type") != "refresh_token" {
+			t.Fatalf("unexpected grant type: %s", req.Form.Get("grant_type"))
+		}
+		if req.Form.Get("refresh_token") != "refresh-old" {
+			t.Fatalf("unexpected refresh token: %s", req.Form.Get("refresh_token"))
+		}
+		authCalls++
+		body := fmt.Sprintf(`{"status":0,"body":{"userid":"123","access_token":"%s","refresh_token":"%s","expires_in":3600,"token_type":"Bearer","scope":"user.metrics"}}`, newAccess, newRefresh)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(body)),
+		}, nil
+	}}
+	authService := NewAuthServiceWithClient(authClient, time.Second)
+
+	var measureCalls int
+	healthClient := &coreStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path != "/measure" {
+			t.Fatalf("unexpected path: %s", req.URL.Path)
+		}
+		measureCalls++
+		authHeader := req.Header.Get("Authorization")
+		switch measureCalls {
+		case 1:
+			if authHeader != "Bearer "+expiredToken {
+				t.Fatalf("expected expired token on first call, got %s", authHeader)
+			}
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader("unauthorized")),
+			}, nil
+		case 2:
+			if authHeader != "Bearer "+newAccess {
+				t.Fatalf("expected refreshed token, got %s", authHeader)
+			}
+			payload := `{"status":0,"body":{"updatetime":1727740800,"timezone":"UTC","measuregrps":[{"grpid":1,"category":1,"date":1727740800,"measures":[{"value":70000,"type":1,"unit":-3}]}],"more":false,"offset":0}}`
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     http.Header{"Content-Type": []string{"application/json"}},
+				Body:       io.NopCloser(strings.NewReader(payload)),
+			}, nil
+		default:
+			return nil, fmt.Errorf("unexpected measure call count: %d", measureCalls)
+		}
+	}}
+	healthService := NewHealthServiceWithHTTPClient("https://api.example.com", healthClient)
+
+	coreService := NewCoreService(healthService, authService)
+
+	cfg := &configpkg.Config{
+		ClientID:        "client-id",
+		ClientSecret:    "client-secret",
+		RefreshToken:    "refresh-old",
+		AccessToken:     expiredToken,
+		UserID:          42,
+		StartDate:       time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:         time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+		IncludeActivity: false,
+	}
+
+	resp, err := coreService.FetchDailySummaryWithRetry(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("response must not be nil")
+	}
+	if len(resp.Summaries) != 1 {
+		t.Fatalf("expected one summary, got %d", len(resp.Summaries))
+	}
+	if cfg.AccessToken != newAccess {
+		t.Fatalf("access token not updated: %s", cfg.AccessToken)
+	}
+	if cfg.RefreshToken != newRefresh {
+		t.Fatalf("refresh token not updated: %s", cfg.RefreshToken)
+	}
+	if measureCalls != 2 {
+		t.Fatalf("expected two measure calls, got %d", measureCalls)
+	}
+	if authCalls != 1 {
+		t.Fatalf("expected one auth call, got %d", authCalls)
+	}
+}
+
+func TestCoreServiceDailySummarySuccessWithoutRetry(t *testing.T) {
+	var measureCalls int
+	healthClient := &coreStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		measureCalls++
+		payload := `{"status":0,"body":{"timezone":"UTC","measuregrps":[{"grpid":1,"category":1,"date":1727740800,"measures":[{"value":80000,"type":1,"unit":-3}]}],"more":false,"offset":0}}`
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(payload)),
+		}, nil
+	}}
+	healthService := NewHealthServiceWithHTTPClient("https://api.example.com", healthClient)
+
+	authClient := &coreStubHTTPClient{handler: func(req *http.Request) (*http.Response, error) {
+		t.Fatal("refresh should not be invoked on success")
+		return nil, nil
+	}}
+	authService := NewAuthServiceWithClient(authClient, time.Second)
+
+	coreService := NewCoreService(healthService, authService)
+
+	cfg := &configpkg.Config{
+		ClientID:        "client",
+		ClientSecret:    "secret",
+		RefreshToken:    "refresh-token",
+		AccessToken:     "valid-token",
+		UserID:          99,
+		StartDate:       time.Date(2024, 10, 7, 0, 0, 0, 0, time.UTC),
+		EndDate:         time.Date(2024, 10, 7, 0, 0, 0, 0, time.UTC),
+		IncludeActivity: false,
+	}
+
+	resp, err := coreService.FetchDailySummaryWithRetry(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp == nil || len(resp.Summaries) != 1 {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+	if cfg.AccessToken != "valid-token" {
+		t.Fatalf("access token should remain unchanged, got %s", cfg.AccessToken)
+	}
+	if measureCalls != 1 {
+		t.Fatalf("expected single measure call, got %d", measureCalls)
+	}
+}
+
 func TestCoreServiceRetryDailySummaryWithRefreshSuccess(t *testing.T) {
 	const (
 		expiredToken = "expired-token"
