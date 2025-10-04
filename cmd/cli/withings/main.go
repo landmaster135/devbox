@@ -111,7 +111,7 @@ func handleDailySummary(ctx context.Context, coreService *usecases.CoreService, 
 
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(resp); err != nil {
+	if err := encoder.Encode(usecases.FlattenDailySummaryResponse(resp)); err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: 出力のエンコードに失敗しました: %v\n", err)
 		os.Exit(1)
 	}

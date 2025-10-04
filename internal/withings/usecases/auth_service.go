@@ -369,88 +369,10 @@ type healthMateExport struct {
 }
 
 type healthMateExportData struct {
-	HealthMates []map[string]any `json:"health_mates"`
+	HealthMates []FlattenedDailySummary `json:"health_mates"`
 }
 
-func buildHealthMateEntries(resp *DailySummaryResponse) []map[string]any {
-	if resp == nil {
-		return nil
-	}
-
-	entries := make([]map[string]any, 0, len(resp.Summaries))
-	for _, summary := range resp.Summaries {
-		entry := make(map[string]any)
-		if summary.Date != "" {
-			entry["date"] = summary.Date
-		}
-		for key, value := range summary.Measures {
-			entry[key] = value
-		}
-		if summary.Activity != nil {
-			for key, value := range activitySummaryToMap(summary.Activity) {
-				entry[key] = value
-			}
-		}
-		entries = append(entries, entry)
-	}
-
-	return entries
-}
-
-func activitySummaryToMap(activity *ActivitySummary) map[string]any {
-	if activity == nil {
-		return nil
-	}
-
-	result := make(map[string]any)
-	if activity.Steps != nil {
-		result["steps"] = *activity.Steps
-	}
-	if activity.DistanceMeter != nil {
-		result["distance_meter"] = *activity.DistanceMeter
-	}
-	if activity.ElevationMeter != nil {
-		result["elevation_meter"] = *activity.ElevationMeter
-	}
-	if activity.CaloriesKcal != nil {
-		result["calories_kcal"] = *activity.CaloriesKcal
-	}
-	if activity.TotalCaloriesKcal != nil {
-		result["total_calories_kcal"] = *activity.TotalCaloriesKcal
-	}
-	if activity.SoftSeconds != nil {
-		result["soft_seconds"] = *activity.SoftSeconds
-	}
-	if activity.ModerateSeconds != nil {
-		result["moderate_seconds"] = *activity.ModerateSeconds
-	}
-	if activity.IntenseSeconds != nil {
-		result["intense_seconds"] = *activity.IntenseSeconds
-	}
-	if activity.ActiveSeconds != nil {
-		result["active_seconds"] = *activity.ActiveSeconds
-	}
-	if activity.HrAverageBPM != nil {
-		result["hr_average_bpm"] = *activity.HrAverageBPM
-	}
-	if activity.HrMinBPM != nil {
-		result["hr_min_bpm"] = *activity.HrMinBPM
-	}
-	if activity.HrMaxBPM != nil {
-		result["hr_max_bpm"] = *activity.HrMaxBPM
-	}
-	if activity.DeviceBrand != nil {
-		result["device_brand"] = *activity.DeviceBrand
-	}
-	if activity.DeviceModelID != nil {
-		result["device_model_id"] = *activity.DeviceModelID
-	}
-	if activity.DeviceModelName != nil {
-		result["device_model_name"] = *activity.DeviceModelName
-	}
-	if activity.IsTracker != nil {
-		result["is_tracker"] = *activity.IsTracker
-	}
-
-	return result
+func buildHealthMateEntries(resp *DailySummaryResponse) []FlattenedDailySummary {
+	flattened := FlattenDailySummaryResponse(resp)
+	return flattened.Summaries
 }
