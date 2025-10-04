@@ -98,12 +98,12 @@ func handleDailySummary(ctx context.Context, coreService *usecases.CoreService, 
 	}
 
 	if cfg.OutputFilePath != "" {
-		authSvc := coreService.GetAuthService()
-		if authSvc == nil {
-			fmt.Fprintf(os.Stderr, "エラー: authService が初期化されていません\n")
+		healthSvc := coreService.GetHealthService()
+		if healthSvc == nil {
+			fmt.Fprintf(os.Stderr, "エラー: healthService が初期化されていません\n")
 			os.Exit(1)
 		}
-		if err := authSvc.ExportDailySummary(resp, cfg.OutputFilePath); err != nil {
+		if err := healthSvc.ExportDailySummary(resp, cfg.OutputFilePath); err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: JSON ファイルの出力に失敗しました: %v\n", err)
 			os.Exit(1)
 		}
