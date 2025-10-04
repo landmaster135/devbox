@@ -13,7 +13,8 @@ Withings Public Health Data API の OAuth フローに沿って認可 URL の生
 
 `-operation` を省略した場合は `daily-summary` が実行されます。
 
-## OAuth フローに沿った利用手順
+## 使用例
+OAuth フローに沿った利用手順です。
 
 1. **認可 URL を生成**
 ```bash
