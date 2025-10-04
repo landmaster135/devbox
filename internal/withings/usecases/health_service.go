@@ -294,6 +294,9 @@ type ActivitySummary struct {
 	IsTracker         *bool    `json:"is_tracker,omitempty"`
 }
 
+// #==============================================================#
+// ##       ShouldRetryDailySummaryWithRefresh Process           ##
+// #==============================================================#
 func (s *HealthService) ShouldRetryDailySummaryWithRefresh(err error) bool {
 	if err == nil {
 		return false
@@ -303,6 +306,244 @@ func (s *HealthService) ShouldRetryDailySummaryWithRefresh(err error) bool {
 		strings.Contains(message, "status=403") ||
 		strings.Contains(message, "unauthorized") ||
 		strings.Contains(message, "invalid_token")
+}
+
+// #==============================================================#
+// ##       FetchDailySummary Process                            ##
+// #==============================================================#
+func (s *HealthService) postForm(ctx context.Context, path string, token string, form url.Values) (*http.Response, error) {
+	endpoint := s.baseURL + path
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("リクエストの構築に失敗しました: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	if s.userAgent != "" {
+		req.Header.Set("User-Agent", s.userAgent)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("API リクエストに失敗しました: %w", err)
+	}
+	return resp, nil
+}
+
+func truncateForLog(data []byte) string {
+	const limit = 512
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) <= limit {
+		return string(trimmed)
+	}
+	return string(trimmed[:limit]) + "..."
+}
+
+func joinInts(values []int) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = strconv.Itoa(v)
+	}
+	return strings.Join(parts, ",")
+}
+
+func (s *HealthService) postFormJSON(ctx context.Context, path string, token string, form url.Values, apiName string) ([]byte, error) {
+	resp, err := s.postForm(ctx, path, token, form)
+	if err != nil {
+		return nil, err
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("%s のレスポンス読み取りに失敗しました: %w", apiName, err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%s がエラーを返しました: status=%d, body=%s", apiName, resp.StatusCode, truncateForLog(bodyBytes))
+	}
+
+	return bodyBytes, nil
+}
+
+func (s *HealthService) executePaginatedForm(
+	ctx context.Context,
+	endpointPath string,
+	token string,
+	form url.Values,
+	apiName string,
+	handler func([]byte) (bool, int, error),
+) error {
+	offset := 0
+	loops := 0
+
+	for {
+		if loops >= maxPaginationLoops {
+			return fmt.Errorf("%s のページネーション制限を超えました (%d)", apiName, maxPaginationLoops)
+		}
+		loops++
+
+		if offset > 0 {
+			form.Set("offset", strconv.Itoa(offset))
+		} else {
+			form.Del("offset")
+		}
+
+		bodyBytes, err := s.postFormJSON(ctx, endpointPath, token, form, apiName)
+		if err != nil {
+			return err
+		}
+
+		more, nextOffset, err := handler(bodyBytes)
+		if err != nil {
+			return err
+		}
+		if !more || nextOffset == 0 {
+			break
+		}
+		offset = nextOffset
+	}
+
+	return nil
+}
+
+func convertMeasureValue(value int64, unit int) float64 {
+	return float64(value) * math.Pow10(unit)
+}
+
+func labelForMeasureType(measureType int) string {
+	if label, ok := measureTypeLabels[measureType]; ok {
+		return label
+	}
+	return fmt.Sprintf("measure_%d", measureType)
+}
+
+func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
+	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
+	latestByDate := make(map[string]map[int]time.Time)
+
+	startUnix := strconv.FormatInt(start.Unix(), 10)
+	endUnix := strconv.FormatInt(end.Unix(), 10)
+	userIDStr := strconv.FormatInt(userID, 10)
+	form := url.Values{
+		"action":    {"getmeas"},
+		"userid":    {userIDStr},
+		"startdate": {startUnix},
+		"enddate":   {endUnix},
+		"category":  {"1"},
+	}
+	if len(measureTypes) > 0 {
+		form.Set("meastypes", joinInts(measureTypes))
+	}
+	loc := time.UTC
+	cachedLocationName := ""
+
+	err := s.executePaginatedForm(ctx, EndpointOfMeasure, token, form, "measure API", func(bodyBytes []byte) (bool, int, error) {
+		var payload measureAPIResponse
+		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+			return false, 0, fmt.Errorf("measure API の JSON 解析に失敗しました: %w", err)
+		}
+
+		if payload.Status != 0 {
+			return false, 0, fmt.Errorf("measure API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
+		}
+
+		if tzName := payload.Body.Timezone; tzName != "" {
+			result.timezone = tzName
+			if cachedLocationName != tzName {
+				if tz, err := time.LoadLocation(tzName); err == nil {
+					loc = tz
+					cachedLocationName = tzName
+				}
+			}
+		}
+
+		for _, group := range payload.Body.Measuregrps {
+			if group.Category != 1 {
+				continue
+			}
+			recordedAt := time.Unix(group.Date, 0).In(loc)
+			dateKey := recordedAt.Format("2006-01-02")
+			latestForDate := latestByDate[dateKey]
+			if latestForDate == nil {
+				latestForDate = make(map[int]time.Time)
+			}
+			summary := result.measurements[dateKey]
+			for _, m := range group.Measures {
+				lastTime := latestForDate[m.Type]
+				if !lastTime.IsZero() && !lastTime.Before(recordedAt) {
+					continue
+				}
+				value := convertMeasureValue(m.Value, m.Unit)
+				if summary == nil {
+					summary = &DailySummaryMeasures{}
+				}
+				label := labelForMeasureType(m.Type)
+				if summary.set(label, value) {
+					latestForDate[m.Type] = recordedAt
+					result.measurements[dateKey] = summary
+					latestByDate[dateKey] = latestForDate
+				}
+			}
+		}
+
+		return payload.Body.More.Bool(), payload.Body.Offset, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *HealthService) fetchActivities(ctx context.Context, token string, userID int64, start, end time.Time) (*activityFetchResult, error) {
+	result := &activityFetchResult{
+		activities: make(map[string]activityEntryWithTZ),
+	}
+	form := url.Values{}
+	form.Set("action", "getactivity")
+	form.Set("userid", strconv.FormatInt(userID, 10))
+	form.Set("startdateymd", start.Format("2006-01-02"))
+	form.Set("enddateymd", end.Format("2006-01-02"))
+
+	err := s.executePaginatedForm(ctx, EndpointOfMeasureV2, token, form, "activity API", func(bodyBytes []byte) (bool, int, error) {
+		var payload activityAPIResponse
+		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+			return false, 0, fmt.Errorf("activity API の JSON 解析に失敗しました: %w", err)
+		}
+
+		if payload.Status != 0 {
+			return false, 0, fmt.Errorf("activity API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
+		}
+
+		if result.defaultTimezone == "" && len(payload.Body.Activities) > 0 {
+			result.defaultTimezone = payload.Body.Activities[0].Timezone
+		}
+
+		for _, activity := range payload.Body.Activities {
+			summary := buildActivitySummary(activity)
+			existing, ok := result.activities[activity.Date]
+			tz := activity.Timezone
+			if tz == "" && ok {
+				tz = existing.timezone
+			}
+			result.activities[activity.Date] = activityEntryWithTZ{summary: summary, timezone: tz}
+		}
+
+		return payload.Body.More.Bool(), payload.Body.Offset, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func normalizeDateRange(start, end time.Time) (time.Time, time.Time) {
+	startUTC := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
+	endUTC := time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 0, time.UTC)
+	return startUTC, endUTC
 }
 
 // FetchDailySummary は指定期間の測定値と活動サマリをまとめて取得します。
@@ -381,240 +622,6 @@ func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryR
 	}, nil
 }
 
-func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
-	offset := 0
-	loops := 0
-	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
-	latestByDate := make(map[string]map[int]time.Time)
-
-	startUnix := strconv.FormatInt(start.Unix(), 10)
-	endUnix := strconv.FormatInt(end.Unix(), 10)
-	userIDStr := strconv.FormatInt(userID, 10)
-	form := url.Values{
-		"action":    {"getmeas"},
-		"userid":    {userIDStr},
-		"startdate": {startUnix},
-		"enddate":   {endUnix},
-		"category":  {"1"},
-	}
-	if len(measureTypes) > 0 {
-		form.Set("meastypes", joinInts(measureTypes))
-	}
-	loc := time.UTC
-	cachedLocationName := ""
-
-	for {
-		if loops >= maxPaginationLoops {
-			return nil, fmt.Errorf("measure API のページネーション制限を超えました (%d)", maxPaginationLoops)
-		}
-		loops++
-
-		if offset > 0 {
-			form.Set("offset", strconv.Itoa(offset))
-		} else {
-			form.Del("offset")
-		}
-
-		resp, err := s.postForm(ctx, EndpointOfMeasure, token, form)
-		if err != nil {
-			return nil, err
-		}
-
-		bodyBytes, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, fmt.Errorf("measure API のレスポンス読み取りに失敗しました: %w", err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("measure API がエラーを返しました: status=%d, body=%s", resp.StatusCode, truncateForLog(bodyBytes))
-		}
-
-		var payload measureAPIResponse
-		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
-			return nil, fmt.Errorf("measure API の JSON 解析に失敗しました: %w", err)
-		}
-
-		if payload.Status != 0 {
-			return nil, fmt.Errorf("measure API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
-		}
-
-		if tzName := payload.Body.Timezone; tzName != "" {
-			result.timezone = tzName
-			if cachedLocationName != tzName {
-				if tz, err := time.LoadLocation(tzName); err == nil {
-					loc = tz
-					cachedLocationName = tzName
-				}
-			}
-		}
-
-		for _, group := range payload.Body.Measuregrps {
-			if group.Category != 1 {
-				continue
-			}
-			recordedAt := time.Unix(group.Date, 0).In(loc)
-			dateKey := recordedAt.Format("2006-01-02")
-			latestForDate := latestByDate[dateKey]
-			if latestForDate == nil {
-				latestForDate = make(map[int]time.Time)
-			}
-			summary := result.measurements[dateKey]
-			for _, m := range group.Measures {
-				lastTime := latestForDate[m.Type]
-				if !lastTime.IsZero() && !lastTime.Before(recordedAt) {
-					continue
-				}
-				value := convertMeasureValue(m.Value, m.Unit)
-				if summary == nil {
-					summary = &DailySummaryMeasures{}
-				}
-				label := labelForMeasureType(m.Type)
-				if summary.set(label, value) {
-					latestForDate[m.Type] = recordedAt
-					result.measurements[dateKey] = summary
-					latestByDate[dateKey] = latestForDate
-				}
-			}
-		}
-
-		if !payload.Body.More.Bool() {
-			break
-		}
-		if payload.Body.Offset == 0 {
-			break
-		}
-		offset = payload.Body.Offset
-	}
-
-	return result, nil
-}
-
-func (s *HealthService) fetchActivities(ctx context.Context, token string, userID int64, start, end time.Time) (*activityFetchResult, error) {
-	offset := 0
-	loops := 0
-	result := &activityFetchResult{
-		activities: make(map[string]activityEntryWithTZ),
-	}
-	form := url.Values{}
-	form.Set("action", "getactivity")
-	form.Set("userid", strconv.FormatInt(userID, 10))
-	form.Set("startdateymd", start.Format("2006-01-02"))
-	form.Set("enddateymd", end.Format("2006-01-02"))
-
-	for {
-		if loops >= maxPaginationLoops {
-			return nil, fmt.Errorf("activity API のページネーション制限を超えました (%d)", maxPaginationLoops)
-		}
-		loops++
-
-		if offset > 0 {
-			form.Set("offset", strconv.Itoa(offset))
-		}
-
-		resp, err := s.postForm(ctx, EndpointOfMeasureV2, token, form)
-		if err != nil {
-			return nil, err
-		}
-
-		bodyBytes, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			return nil, fmt.Errorf("activity API のレスポンス読み取りに失敗しました: %w", err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("activity API がエラーを返しました: status=%d, body=%s", resp.StatusCode, truncateForLog(bodyBytes))
-		}
-
-		var payload activityAPIResponse
-		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
-			return nil, fmt.Errorf("activity API の JSON 解析に失敗しました: %w", err)
-		}
-
-		if payload.Status != 0 {
-			return nil, fmt.Errorf("activity API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
-		}
-
-		if result.defaultTimezone == "" && len(payload.Body.Activities) > 0 {
-			result.defaultTimezone = payload.Body.Activities[0].Timezone
-		}
-
-		for _, activity := range payload.Body.Activities {
-			summary := buildActivitySummary(activity)
-			existing, ok := result.activities[activity.Date]
-			tz := activity.Timezone
-			if tz == "" && ok {
-				tz = existing.timezone
-			}
-			result.activities[activity.Date] = activityEntryWithTZ{summary: summary, timezone: tz}
-		}
-
-		if !payload.Body.More.Bool() {
-			break
-		}
-		if payload.Body.Offset == 0 {
-			break
-		}
-		offset = payload.Body.Offset
-	}
-
-	return result, nil
-}
-
-func (s *HealthService) postForm(ctx context.Context, path string, token string, form url.Values) (*http.Response, error) {
-	endpoint := s.baseURL + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
-	if err != nil {
-		return nil, fmt.Errorf("リクエストの構築に失敗しました: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
-	if s.userAgent != "" {
-		req.Header.Set("User-Agent", s.userAgent)
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := s.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("API リクエストに失敗しました: %w", err)
-	}
-	return resp, nil
-}
-
-func normalizeDateRange(start, end time.Time) (time.Time, time.Time) {
-	startUTC := time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC)
-	endUTC := time.Date(end.Year(), end.Month(), end.Day(), 23, 59, 59, 0, time.UTC)
-	return startUTC, endUTC
-}
-
-func convertMeasureValue(value int64, unit int) float64 {
-	return float64(value) * math.Pow10(unit)
-}
-
-func joinInts(values []int) string {
-	parts := make([]string, len(values))
-	for i, v := range values {
-		parts[i] = strconv.Itoa(v)
-	}
-	return strings.Join(parts, ",")
-}
-
-func labelForMeasureType(measureType int) string {
-	if label, ok := measureTypeLabels[measureType]; ok {
-		return label
-	}
-	return fmt.Sprintf("measure_%d", measureType)
-}
-
-func truncateForLog(data []byte) string {
-	const limit = 512
-	trimmed := bytes.TrimSpace(data)
-	if len(trimmed) <= limit {
-		return string(trimmed)
-	}
-	return string(trimmed[:limit]) + "..."
-}
-
 type measureFetchResult struct {
 	timezone     string
 	measurements map[string]*DailySummaryMeasures
@@ -631,8 +638,8 @@ type activityEntryWithTZ struct {
 }
 
 type measureAPIResponse struct {
-	Status int         `json:"status"`
-	Error  interface{} `json:"error"`
+	Status int `json:"status"`
+	Error  any `json:"error"`
 	Body   struct {
 		Updatetime  int64          `json:"updatetime"`
 		Timezone    string         `json:"timezone"`
@@ -656,8 +663,8 @@ type measureItem struct {
 }
 
 type activityAPIResponse struct {
-	Status int         `json:"status"`
-	Error  interface{} `json:"error"`
+	Status int `json:"status"`
+	Error  any `json:"error"`
 	Body   struct {
 		Activities []activityItem `json:"activities"`
 		More       flexibleBool   `json:"more"`
