@@ -2,6 +2,8 @@ package usecases
 
 import (
 	"errors"
+	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -110,5 +112,38 @@ func TestFlexibleBoolUnmarshal(t *testing.T) {
 				t.Fatalf("expected %v, got %v", tc.want, fb.Bool())
 			}
 		})
+	}
+}
+
+func TestDailySummaryMeasuresSet(t *testing.T) {
+	measures := &DailySummaryMeasures{}
+	val := reflect.ValueOf(measures).Elem()
+	typ := val.Type()
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		tag := field.Tag.Get("json")
+		if tag == "" {
+			continue
+		}
+		label := strings.Split(tag, ",")[0]
+		if label == "" {
+			continue
+		}
+		value := float64(i) + 0.75
+		if !measures.set(label, value) {
+			t.Fatalf("expected set to succeed for %s", label)
+		}
+		fieldValue := val.Field(i)
+		if fieldValue.IsNil() {
+			t.Fatalf("pointer for %s not initialized", label)
+		}
+		if got := fieldValue.Elem().Float(); got != value {
+			t.Fatalf("unexpected value for %s: %v", label, got)
+		}
+	}
+
+	if measures.set("unknown_label", 1.23) {
+		t.Fatalf("set should fail for unknown label")
 	}
 }

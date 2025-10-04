@@ -9,7 +9,7 @@ type FlattenedDailySummaryResponse struct {
 // FlattenedDailySummary は計測値と活動値をフラットに表現した 1 日分のサマリです。
 type FlattenedDailySummary struct {
 	MeasuredAt string `json:"measured_at,omitempty"`
-	FlattenedMeasures
+	*FlattenedMeasures
 	*FlattenedActivity
 }
 
@@ -94,49 +94,48 @@ func FlattenDailySummaryResponse(resp *DailySummaryResponse) FlattenedDailySumma
 	}
 }
 
-func toFlattenedMeasures(measures *DailySummaryMeasures) FlattenedMeasures {
-	var result FlattenedMeasures
+func toFlattenedMeasures(measures *DailySummaryMeasures) *FlattenedMeasures {
 	if measures == nil {
-		return result
+		return nil
 	}
 
-	result.MeasuresWeightKg = measures.WeightKg
-	result.MeasuresHeightMeter = measures.HeightMeter
-	result.MeasuresFatFreeMassKg = measures.FatFreeMassKg
-	result.MeasuresFatRatioPercent = measures.FatRatioPercent
-	result.MeasuresFatMassKg = measures.FatMassKg
-	result.MeasuresDiastolicBpMmhg = measures.DiastolicBpMmhg
-	result.MeasuresSystolicBpMmhg = measures.SystolicBpMmhg
-	result.MeasuresHeartPulseBpm = measures.HeartPulseBpm
-	result.MeasuresTemperatureC = measures.TemperatureC
-	result.MeasuresSpo2Percent = measures.Spo2Percent
-	result.MeasuresBodyTemperatureC = measures.BodyTemperatureC
-	result.MeasuresSkinTemperatureC = measures.SkinTemperatureC
-	result.MeasuresMuscleMassKg = measures.MuscleMassKg
-	result.MeasuresHydrationKg = measures.HydrationKg
-	result.MeasuresBoneMassKg = measures.BoneMassKg
-	result.MeasuresPulseWaveVelocityMPerS = measures.PulseWaveVelocityMPerS
-	result.MeasuresVo2MaxMlPerMinPerKg = measures.Vo2MaxMlPerMinPerKg
-	result.MeasuresAtrialFibrillationResult = measures.AtrialFibrillationResult
-	result.MeasuresQrsDurationMs = measures.QrsDurationMs
-	result.MeasuresPrDurationMs = measures.PrDurationMs
-	result.MeasuresQtDurationMs = measures.QtDurationMs
-	result.MeasuresQtCorrectedDurationMs = measures.QtCorrectedDurationMs
-	result.MeasuresAtrialFibrillationPpg = measures.AtrialFibrillationPpg
-	result.MeasuresVascularAgeYears = measures.VascularAgeYears
-	result.MeasuresNerveHealthConductanceFeet = measures.NerveHealthConductanceFeet
-	result.MeasuresExtracellularWaterKg = measures.ExtracellularWaterKg
-	result.MeasuresIntracellularWaterKg = measures.IntracellularWaterKg
-	result.MeasuresVisceralFatIndex = measures.VisceralFatIndex
-	result.MeasuresSegmentFatFreeMassKg = measures.SegmentFatFreeMassKg
-	result.MeasuresSegmentFatMassKg = measures.SegmentFatMassKg
-	result.MeasuresSegmentMuscleMassKg = measures.SegmentMuscleMassKg
-	result.MeasuresElectrodermalActivityFeet = measures.ElectrodermalActivityFeet
-	result.MeasuresBasalMetabolicRate = measures.BasalMetabolicRate
-	result.MeasuresMetabolicAgeYears = measures.MetabolicAgeYears
-	result.MeasuresElectrochemicalSkinConduct = measures.ElectrochemicalSkinConduct
-
-	return result
+	return &FlattenedMeasures{
+		MeasuresWeightKg:                   measures.WeightKg,
+		MeasuresHeightMeter:                measures.HeightMeter,
+		MeasuresFatFreeMassKg:              measures.FatFreeMassKg,
+		MeasuresFatRatioPercent:            measures.FatRatioPercent,
+		MeasuresFatMassKg:                  measures.FatMassKg,
+		MeasuresDiastolicBpMmhg:            measures.DiastolicBpMmhg,
+		MeasuresSystolicBpMmhg:             measures.SystolicBpMmhg,
+		MeasuresHeartPulseBpm:              measures.HeartPulseBpm,
+		MeasuresTemperatureC:               measures.TemperatureC,
+		MeasuresSpo2Percent:                measures.Spo2Percent,
+		MeasuresBodyTemperatureC:           measures.BodyTemperatureC,
+		MeasuresSkinTemperatureC:           measures.SkinTemperatureC,
+		MeasuresMuscleMassKg:               measures.MuscleMassKg,
+		MeasuresHydrationKg:                measures.HydrationKg,
+		MeasuresBoneMassKg:                 measures.BoneMassKg,
+		MeasuresPulseWaveVelocityMPerS:     measures.PulseWaveVelocityMPerS,
+		MeasuresVo2MaxMlPerMinPerKg:        measures.Vo2MaxMlPerMinPerKg,
+		MeasuresAtrialFibrillationResult:   measures.AtrialFibrillationResult,
+		MeasuresQrsDurationMs:              measures.QrsDurationMs,
+		MeasuresPrDurationMs:               measures.PrDurationMs,
+		MeasuresQtDurationMs:               measures.QtDurationMs,
+		MeasuresQtCorrectedDurationMs:      measures.QtCorrectedDurationMs,
+		MeasuresAtrialFibrillationPpg:      measures.AtrialFibrillationPpg,
+		MeasuresVascularAgeYears:           measures.VascularAgeYears,
+		MeasuresNerveHealthConductanceFeet: measures.NerveHealthConductanceFeet,
+		MeasuresExtracellularWaterKg:       measures.ExtracellularWaterKg,
+		MeasuresIntracellularWaterKg:       measures.IntracellularWaterKg,
+		MeasuresVisceralFatIndex:           measures.VisceralFatIndex,
+		MeasuresSegmentFatFreeMassKg:       measures.SegmentFatFreeMassKg,
+		MeasuresSegmentFatMassKg:           measures.SegmentFatMassKg,
+		MeasuresSegmentMuscleMassKg:        measures.SegmentMuscleMassKg,
+		MeasuresElectrodermalActivityFeet:  measures.ElectrodermalActivityFeet,
+		MeasuresBasalMetabolicRate:         measures.BasalMetabolicRate,
+		MeasuresMetabolicAgeYears:          measures.MetabolicAgeYears,
+		MeasuresElectrochemicalSkinConduct: measures.ElectrochemicalSkinConduct,
+	}
 }
 
 func toFlattenedActivity(activity *ActivitySummary) *FlattenedActivity {
