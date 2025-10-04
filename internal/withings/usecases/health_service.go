@@ -535,43 +535,65 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 	return result, nil
 }
 
-func (s *HealthService) fetchActivities(ctx context.Context, token string, userID int64, start, end time.Time) (*activityFetchResult, error) {
-	result := &activityFetchResult{
-		activities: make(map[string]activityEntryWithTZ),
-	}
+func (s *HealthService) buildActivityForm(userID int64, start, end time.Time) url.Values {
 	form := url.Values{}
 	form.Set("action", "getactivity")
 	form.Set("userid", strconv.FormatInt(userID, 10))
 	form.Set("startdateymd", start.Format("2006-01-02"))
 	form.Set("enddateymd", end.Format("2006-01-02"))
+	return form
+}
 
-	err := s.executePaginatedForm(ctx, EndpointOfMeasureV2, token, form, "activity API", func(bodyBytes []byte) (bool, int, error) {
-		var payload activityAPIResponse
-		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
-			return false, 0, fmt.Errorf("activity API の JSON 解析に失敗しました: %w", err)
-		}
+func (s *HealthService) parseActivityResponse(body []byte) (*activityAPIResponse, error) {
+	var payload activityAPIResponse
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("activity API の JSON 解析に失敗しました: %w", err)
+	}
+	if payload.Status != 0 {
+		return nil, fmt.Errorf("activity API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
+	}
+	return &payload, nil
+}
 
-		if payload.Status != 0 {
-			return false, 0, fmt.Errorf("activity API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
-		}
+func (s *HealthService) applyActivityTimezone(result *activityFetchResult, activities []activityItem) {
+	if result.defaultTimezone != "" || len(activities) == 0 {
+		return
+	}
+	result.defaultTimezone = activities[0].Timezone
+}
 
-		if result.defaultTimezone == "" && len(payload.Body.Activities) > 0 {
-			result.defaultTimezone = payload.Body.Activities[0].Timezone
-		}
-
-		for _, activity := range payload.Body.Activities {
-			summary := buildActivitySummary(activity)
-			existing, ok := result.activities[activity.Date]
-			tz := activity.Timezone
-			if tz == "" && ok {
-				tz = existing.timezone
+func (s *HealthService) collectActivities(result *activityFetchResult, activities []activityItem) {
+	for _, activity := range activities {
+		summary := buildActivitySummary(activity)
+		timezone := activity.Timezone
+		if timezone == "" {
+			if existing, ok := result.activities[activity.Date]; ok {
+				timezone = existing.timezone
 			}
-			result.activities[activity.Date] = activityEntryWithTZ{summary: summary, timezone: tz}
 		}
+		result.activities[activity.Date] = activityEntryWithTZ{summary: summary, timezone: timezone}
+	}
+}
+
+func (s *HealthService) fetchActivities(ctx context.Context, token string, userID int64, start, end time.Time) (*activityFetchResult, error) {
+	result := &activityFetchResult{
+		activities: make(map[string]activityEntryWithTZ),
+	}
+	form := s.buildActivityForm(userID, start, end)
+
+	handler := func(bodyBytes []byte) (bool, int, error) {
+		payload, err := s.parseActivityResponse(bodyBytes)
+		if err != nil {
+			return false, 0, err
+		}
+
+		s.applyActivityTimezone(result, payload.Body.Activities)
+		s.collectActivities(result, payload.Body.Activities)
 
 		return payload.Body.More.Bool(), payload.Body.Offset, nil
-	})
-	if err != nil {
+	}
+
+	if err := s.executePaginatedForm(ctx, EndpointOfMeasureV2, token, form, "activity API", handler); err != nil {
 		return nil, err
 	}
 
