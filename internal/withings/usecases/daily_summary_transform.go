@@ -94,83 +94,48 @@ func FlattenDailySummaryResponse(resp *DailySummaryResponse) FlattenedDailySumma
 	}
 }
 
-func toFlattenedMeasures(measures map[string]float64) FlattenedMeasures {
+func toFlattenedMeasures(measures *DailySummaryMeasures) FlattenedMeasures {
 	var result FlattenedMeasures
-	for key, value := range measures {
-		v := value
-		switch key {
-		case "weight_kg":
-			result.MeasuresWeightKg = &v
-		case "height_meter":
-			result.MeasuresHeightMeter = &v
-		case "fat_free_mass_kg":
-			result.MeasuresFatFreeMassKg = &v
-		case "fat_ratio_percent":
-			result.MeasuresFatRatioPercent = &v
-		case "fat_mass_kg":
-			result.MeasuresFatMassKg = &v
-		case "diastolic_bp_mmhg":
-			result.MeasuresDiastolicBpMmhg = &v
-		case "systolic_bp_mmhg":
-			result.MeasuresSystolicBpMmhg = &v
-		case "heart_pulse_bpm":
-			result.MeasuresHeartPulseBpm = &v
-		case "temperature_c":
-			result.MeasuresTemperatureC = &v
-		case "spo2_percent":
-			result.MeasuresSpo2Percent = &v
-		case "body_temperature_c":
-			result.MeasuresBodyTemperatureC = &v
-		case "skin_temperature_c":
-			result.MeasuresSkinTemperatureC = &v
-		case "muscle_mass_kg":
-			result.MeasuresMuscleMassKg = &v
-		case "hydration_kg":
-			result.MeasuresHydrationKg = &v
-		case "bone_mass_kg":
-			result.MeasuresBoneMassKg = &v
-		case "pulse_wave_velocity_m_per_s":
-			result.MeasuresPulseWaveVelocityMPerS = &v
-		case "vo2max_ml_per_min_per_kg":
-			result.MeasuresVo2MaxMlPerMinPerKg = &v
-		case "atrial_fibrillation_result":
-			result.MeasuresAtrialFibrillationResult = &v
-		case "qrs_duration_ms":
-			result.MeasuresQrsDurationMs = &v
-		case "pr_duration_ms":
-			result.MeasuresPrDurationMs = &v
-		case "qt_duration_ms":
-			result.MeasuresQtDurationMs = &v
-		case "qt_corrected_duration_ms":
-			result.MeasuresQtCorrectedDurationMs = &v
-		case "atrial_fibrillation_ppg":
-			result.MeasuresAtrialFibrillationPpg = &v
-		case "vascular_age_years":
-			result.MeasuresVascularAgeYears = &v
-		case "nerve_health_conductance_feet":
-			result.MeasuresNerveHealthConductanceFeet = &v
-		case "extracellular_water_kg":
-			result.MeasuresExtracellularWaterKg = &v
-		case "intracellular_water_kg":
-			result.MeasuresIntracellularWaterKg = &v
-		case "visceral_fat_index":
-			result.MeasuresVisceralFatIndex = &v
-		case "segment_fat_free_mass_kg":
-			result.MeasuresSegmentFatFreeMassKg = &v
-		case "segment_fat_mass_kg":
-			result.MeasuresSegmentFatMassKg = &v
-		case "segment_muscle_mass_kg":
-			result.MeasuresSegmentMuscleMassKg = &v
-		case "electrodermal_activity_feet":
-			result.MeasuresElectrodermalActivityFeet = &v
-		case "basal_metabolic_rate":
-			result.MeasuresBasalMetabolicRate = &v
-		case "metabolic_age_years":
-			result.MeasuresMetabolicAgeYears = &v
-		case "electrochemical_skin_conductance":
-			result.MeasuresElectrochemicalSkinConduct = &v
-		}
+	if measures == nil {
+		return result
 	}
+
+	result.MeasuresWeightKg = measures.WeightKg
+	result.MeasuresHeightMeter = measures.HeightMeter
+	result.MeasuresFatFreeMassKg = measures.FatFreeMassKg
+	result.MeasuresFatRatioPercent = measures.FatRatioPercent
+	result.MeasuresFatMassKg = measures.FatMassKg
+	result.MeasuresDiastolicBpMmhg = measures.DiastolicBpMmhg
+	result.MeasuresSystolicBpMmhg = measures.SystolicBpMmhg
+	result.MeasuresHeartPulseBpm = measures.HeartPulseBpm
+	result.MeasuresTemperatureC = measures.TemperatureC
+	result.MeasuresSpo2Percent = measures.Spo2Percent
+	result.MeasuresBodyTemperatureC = measures.BodyTemperatureC
+	result.MeasuresSkinTemperatureC = measures.SkinTemperatureC
+	result.MeasuresMuscleMassKg = measures.MuscleMassKg
+	result.MeasuresHydrationKg = measures.HydrationKg
+	result.MeasuresBoneMassKg = measures.BoneMassKg
+	result.MeasuresPulseWaveVelocityMPerS = measures.PulseWaveVelocityMPerS
+	result.MeasuresVo2MaxMlPerMinPerKg = measures.Vo2MaxMlPerMinPerKg
+	result.MeasuresAtrialFibrillationResult = measures.AtrialFibrillationResult
+	result.MeasuresQrsDurationMs = measures.QrsDurationMs
+	result.MeasuresPrDurationMs = measures.PrDurationMs
+	result.MeasuresQtDurationMs = measures.QtDurationMs
+	result.MeasuresQtCorrectedDurationMs = measures.QtCorrectedDurationMs
+	result.MeasuresAtrialFibrillationPpg = measures.AtrialFibrillationPpg
+	result.MeasuresVascularAgeYears = measures.VascularAgeYears
+	result.MeasuresNerveHealthConductanceFeet = measures.NerveHealthConductanceFeet
+	result.MeasuresExtracellularWaterKg = measures.ExtracellularWaterKg
+	result.MeasuresIntracellularWaterKg = measures.IntracellularWaterKg
+	result.MeasuresVisceralFatIndex = measures.VisceralFatIndex
+	result.MeasuresSegmentFatFreeMassKg = measures.SegmentFatFreeMassKg
+	result.MeasuresSegmentFatMassKg = measures.SegmentFatMassKg
+	result.MeasuresSegmentMuscleMassKg = measures.SegmentMuscleMassKg
+	result.MeasuresElectrodermalActivityFeet = measures.ElectrodermalActivityFeet
+	result.MeasuresBasalMetabolicRate = measures.BasalMetabolicRate
+	result.MeasuresMetabolicAgeYears = measures.MetabolicAgeYears
+	result.MeasuresElectrochemicalSkinConduct = measures.ElectrochemicalSkinConduct
+
 	return result
 }
 
