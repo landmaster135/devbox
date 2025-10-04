@@ -438,23 +438,32 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
 	seen := make(map[string]map[int]measurementValue)
 
+	startUnix := strconv.FormatInt(start.Unix(), 10)
+	endUnix := strconv.FormatInt(end.Unix(), 10)
+	userIDStr := strconv.FormatInt(userID, 10)
+	form := url.Values{
+		"action":    {"getmeas"},
+		"userid":    {userIDStr},
+		"startdate": {startUnix},
+		"enddate":   {endUnix},
+		"category":  {"1"},
+	}
+	if len(measureTypes) > 0 {
+		form.Set("meastypes", joinInts(measureTypes))
+	}
+	loc := time.UTC
+	cachedLocationName := ""
+
 	for {
 		if loops >= maxPaginationLoops {
 			return nil, fmt.Errorf("measure API のページネーション制限を超えました (%d)", maxPaginationLoops)
 		}
 		loops++
 
-		form := url.Values{}
-		form.Set("action", "getmeas")
-		form.Set("userid", strconv.FormatInt(userID, 10))
-		form.Set("startdate", strconv.FormatInt(start.Unix(), 10))
-		form.Set("enddate", strconv.FormatInt(end.Unix(), 10))
-		form.Set("category", "1")
-		if len(measureTypes) > 0 {
-			form.Set("meastypes", joinInts(measureTypes))
-		}
 		if offset > 0 {
 			form.Set("offset", strconv.Itoa(offset))
+		} else {
+			form.Del("offset")
 		}
 
 		resp, err := s.postForm(ctx, "/measure", token, form)
@@ -481,14 +490,13 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 			return nil, fmt.Errorf("measure API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
 		}
 
-		if payload.Body.Timezone != "" {
-			result.timezone = payload.Body.Timezone
-		}
-
-		loc := time.UTC
-		if payload.Body.Timezone != "" {
-			if tz, err := time.LoadLocation(payload.Body.Timezone); err == nil {
-				loc = tz
+		if tzName := payload.Body.Timezone; tzName != "" {
+			result.timezone = tzName
+			if cachedLocationName != tzName {
+				if tz, err := time.LoadLocation(tzName); err == nil {
+					loc = tz
+					cachedLocationName = tzName
+				}
 			}
 		}
 
