@@ -8,7 +8,7 @@ set /p access_token="Input your Access Token on Withings: "
 set /p refresh_token="Input your Refresh Token on Withings: "
 
 echo --- プログラムを実行します ---
-.\pkg\bin\cli\win_amd64\withings.exe -operation daily-summary -start-date %start_date% -end-date %end_date% -measure-types all -user-id %user_id% -client-id %client_id% -client-secret %client_sec% -access-token %access_token% -refresh-token %refresh_token% -output-file-path .\9_json_for_health_mates\%end_date%_out.json
+.\pkg\bin\cli\win_amd64\withings.exe -operation daily-summary -start-date %start_date% -end-date %end_date% -measure-types all -user-id %user_id% -client-id "%client_id%" -client-secret %client_sec% -access-token "%access_token%" -refresh-token "%refresh_token%" -output-file-path .\9_json_for_health_mates\%end_date%_out.json
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---
