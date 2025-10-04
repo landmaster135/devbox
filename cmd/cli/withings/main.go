@@ -97,6 +97,18 @@ func handleDailySummary(ctx context.Context, coreService *usecases.CoreService, 
 		os.Exit(1)
 	}
 
+	if cfg.OutputFilePath != "" {
+		authSvc := coreService.GetAuthService()
+		if authSvc == nil {
+			fmt.Fprintf(os.Stderr, "エラー: authService が初期化されていません\n")
+			os.Exit(1)
+		}
+		if err := authSvc.ExportDailySummary(resp, cfg.OutputFilePath); err != nil {
+			fmt.Fprintf(os.Stderr, "エラー: JSON ファイルの出力に失敗しました: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(resp); err != nil {
@@ -132,4 +144,5 @@ func emitTokenResponse(resp *usecases.TokenResponse) {
 	if resp.Body.RefreshToken != "" {
 		fmt.Fprintf(os.Stderr, "リフレッシュトークンを安全な場所に保管してください: %s\n", resp.Body.RefreshToken)
 	}
+
 }

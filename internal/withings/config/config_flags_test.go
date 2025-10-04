@@ -116,6 +116,7 @@ func TestParseFlagsWithParserDailySummary(t *testing.T) {
 	parser.stringValues["start-date"] = "2025-10-01"
 	parser.stringValues["end-date"] = "2025-10-02"
 	parser.stringValues["measure-types"] = "weight,diastolic"
+	parser.stringValues["output-file-path"] = "./out.json"
 	parser.boolValues["include-activity"] = false
 	parser.int64Values["user-id"] = 12345
 
@@ -138,6 +139,9 @@ func TestParseFlagsWithParserDailySummary(t *testing.T) {
 	}
 	if cfg.IncludeActivity {
 		t.Fatalf("includeActivity should be false")
+	}
+	if cfg.OutputFilePath != "./out.json" {
+		t.Fatalf("unexpected output file path: %s", cfg.OutputFilePath)
 	}
 }
 
