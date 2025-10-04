@@ -138,23 +138,6 @@ type DailySummaryMeasures struct {
 	ElectrochemicalSkinConduct *float64 `json:"electrochemical_skin_conductance,omitempty"`
 }
 
-func buildDailySummaryMeasures(values map[string]float64) *DailySummaryMeasures {
-	if len(values) == 0 {
-		return nil
-	}
-	measures := &DailySummaryMeasures{}
-	var hasValue bool
-	for label, value := range values {
-		if measures.set(label, value) {
-			hasValue = true
-		}
-	}
-	if !hasValue {
-		return nil
-	}
-	return measures
-}
-
 func (m *DailySummaryMeasures) set(label string, value float64) bool {
 	if m == nil {
 		return false
@@ -289,6 +272,59 @@ func (m *DailySummaryMeasures) roundToTwoDecimalPlaces() {
 	round(&m.ElectrochemicalSkinConduct)
 }
 
+func cloneDailySummaryMeasures(src *DailySummaryMeasures) *DailySummaryMeasures {
+	if src == nil {
+		return nil
+	}
+
+	dst := &DailySummaryMeasures{}
+	copyFloat := func(target **float64, value *float64) {
+		if value == nil {
+			return
+		}
+		v := *value
+		*target = &v
+	}
+
+	copyFloat(&dst.WeightKg, src.WeightKg)
+	copyFloat(&dst.HeightMeter, src.HeightMeter)
+	copyFloat(&dst.FatFreeMassKg, src.FatFreeMassKg)
+	copyFloat(&dst.FatRatioPercent, src.FatRatioPercent)
+	copyFloat(&dst.FatMassKg, src.FatMassKg)
+	copyFloat(&dst.DiastolicBpMmhg, src.DiastolicBpMmhg)
+	copyFloat(&dst.SystolicBpMmhg, src.SystolicBpMmhg)
+	copyFloat(&dst.HeartPulseBpm, src.HeartPulseBpm)
+	copyFloat(&dst.TemperatureC, src.TemperatureC)
+	copyFloat(&dst.Spo2Percent, src.Spo2Percent)
+	copyFloat(&dst.BodyTemperatureC, src.BodyTemperatureC)
+	copyFloat(&dst.SkinTemperatureC, src.SkinTemperatureC)
+	copyFloat(&dst.MuscleMassKg, src.MuscleMassKg)
+	copyFloat(&dst.HydrationKg, src.HydrationKg)
+	copyFloat(&dst.BoneMassKg, src.BoneMassKg)
+	copyFloat(&dst.PulseWaveVelocityMPerS, src.PulseWaveVelocityMPerS)
+	copyFloat(&dst.Vo2MaxMlPerMinPerKg, src.Vo2MaxMlPerMinPerKg)
+	copyFloat(&dst.AtrialFibrillationResult, src.AtrialFibrillationResult)
+	copyFloat(&dst.QrsDurationMs, src.QrsDurationMs)
+	copyFloat(&dst.PrDurationMs, src.PrDurationMs)
+	copyFloat(&dst.QtDurationMs, src.QtDurationMs)
+	copyFloat(&dst.QtCorrectedDurationMs, src.QtCorrectedDurationMs)
+	copyFloat(&dst.AtrialFibrillationPpg, src.AtrialFibrillationPpg)
+	copyFloat(&dst.VascularAgeYears, src.VascularAgeYears)
+	copyFloat(&dst.NerveHealthConductanceFeet, src.NerveHealthConductanceFeet)
+	copyFloat(&dst.ExtracellularWaterKg, src.ExtracellularWaterKg)
+	copyFloat(&dst.IntracellularWaterKg, src.IntracellularWaterKg)
+	copyFloat(&dst.VisceralFatIndex, src.VisceralFatIndex)
+	copyFloat(&dst.SegmentFatFreeMassKg, src.SegmentFatFreeMassKg)
+	copyFloat(&dst.SegmentFatMassKg, src.SegmentFatMassKg)
+	copyFloat(&dst.SegmentMuscleMassKg, src.SegmentMuscleMassKg)
+	copyFloat(&dst.ElectrodermalActivityFeet, src.ElectrodermalActivityFeet)
+	copyFloat(&dst.BasalMetabolicRate, src.BasalMetabolicRate)
+	copyFloat(&dst.MetabolicAgeYears, src.MetabolicAgeYears)
+	copyFloat(&dst.ElectrochemicalSkinConduct, src.ElectrochemicalSkinConduct)
+
+	return dst
+}
+
 // ActivitySummary は Withings の日次活動サマリをラップします。
 type ActivitySummary struct {
 	Steps             *int     `json:"steps,omitempty"`
@@ -347,11 +383,11 @@ func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryR
 
 	summaries := make(map[string]*DailySummary)
 
-	for dateKey, measureMap := range measureResult.measurements {
+	for dateKey, measures := range measureResult.measurements {
 		summaries[dateKey] = &DailySummary{
 			Date:     dateKey,
 			Timezone: measureResult.timezone,
-			Measures: buildDailySummaryMeasures(measureMap),
+			Measures: cloneDailySummaryMeasures(measures),
 		}
 	}
 
@@ -399,7 +435,7 @@ func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryR
 func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
 	offset := 0
 	loops := 0
-	result := &measureFetchResult{measurements: make(map[string]map[string]float64)}
+	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
 	seen := make(map[string]map[int]measurementValue)
 
 	for {
@@ -484,12 +520,17 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 	}
 
 	for dateKey, typeMap := range seen {
-		measurements := make(map[string]float64, len(typeMap))
+		measures := &DailySummaryMeasures{}
+		var hasValue bool
 		for measureType, stored := range typeMap {
 			label := labelForMeasureType(measureType)
-			measurements[label] = stored.value
+			if measures.set(label, stored.value) {
+				hasValue = true
+			}
 		}
-		result.measurements[dateKey] = measurements
+		if hasValue {
+			result.measurements[dateKey] = measures
+		}
 	}
 
 	return result, nil
@@ -630,7 +671,7 @@ type measurementValue struct {
 
 type measureFetchResult struct {
 	timezone     string
-	measurements map[string]map[string]float64
+	measurements map[string]*DailySummaryMeasures
 }
 
 type activityFetchResult struct {
