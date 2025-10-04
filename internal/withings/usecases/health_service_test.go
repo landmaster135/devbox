@@ -278,29 +278,6 @@ func TestFetchDailySummaryMissingToken(t *testing.T) {
 	}
 }
 
-func TestMergeActivitySummariesDeviceFields(t *testing.T) {
-	base := ActivitySummary{}
-	incoming := ActivitySummary{
-		DeviceBrand:     intPtr(18),
-		DeviceModelID:   intPtr(1060),
-		DeviceModelName: stringPtr("Android step tracker"),
-		IsTracker:       boolPtr(false),
-	}
-	result := mergeActivitySummaries(base, incoming)
-	if result.DeviceBrand == nil || *result.DeviceBrand != 18 {
-		t.Fatalf("unexpected device brand: %+v", result.DeviceBrand)
-	}
-	if result.DeviceModelID == nil || *result.DeviceModelID != 1060 {
-		t.Fatalf("unexpected device model id: %+v", result.DeviceModelID)
-	}
-	if result.DeviceModelName == nil || *result.DeviceModelName != "Android step tracker" {
-		t.Fatalf("unexpected device model name: %+v", result.DeviceModelName)
-	}
-	if result.IsTracker == nil || *result.IsTracker {
-		t.Fatalf("unexpected tracker flag: %+v", result.IsTracker)
-	}
-}
-
 func TestPointerHelpers(t *testing.T) {
 	if v := boolPtr(true); v == nil || !*v {
 		t.Fatalf("boolPtr failed: %+v", v)

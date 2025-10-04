@@ -18,9 +18,11 @@ import (
 
 const (
 	// DefaultBaseURL は Withings Public API のベース URL です。
-	DefaultBaseURL     = "https://wbsapi.withings.net"
-	defaultUserAgent   = "devbox-withings-cli/0.1"
-	maxPaginationLoops = 100
+	DefaultBaseURL      = "https://wbsapi.withings.net"
+	EndpointOfMeasure   = "/measure"
+	EndpointOfMeasureV2 = "/v2/measure"
+	defaultUserAgent    = "devbox-withings-cli/0.1"
+	maxPaginationLoops  = 100
 )
 
 // HTTPClient は http.Client 互換のインターフェースです。
@@ -272,59 +274,6 @@ func (m *DailySummaryMeasures) roundToTwoDecimalPlaces() {
 	round(&m.ElectrochemicalSkinConduct)
 }
 
-func cloneDailySummaryMeasures(src *DailySummaryMeasures) *DailySummaryMeasures {
-	if src == nil {
-		return nil
-	}
-
-	dst := &DailySummaryMeasures{}
-	copyFloat := func(target **float64, value *float64) {
-		if value == nil {
-			return
-		}
-		v := *value
-		*target = &v
-	}
-
-	copyFloat(&dst.WeightKg, src.WeightKg)
-	copyFloat(&dst.HeightMeter, src.HeightMeter)
-	copyFloat(&dst.FatFreeMassKg, src.FatFreeMassKg)
-	copyFloat(&dst.FatRatioPercent, src.FatRatioPercent)
-	copyFloat(&dst.FatMassKg, src.FatMassKg)
-	copyFloat(&dst.DiastolicBpMmhg, src.DiastolicBpMmhg)
-	copyFloat(&dst.SystolicBpMmhg, src.SystolicBpMmhg)
-	copyFloat(&dst.HeartPulseBpm, src.HeartPulseBpm)
-	copyFloat(&dst.TemperatureC, src.TemperatureC)
-	copyFloat(&dst.Spo2Percent, src.Spo2Percent)
-	copyFloat(&dst.BodyTemperatureC, src.BodyTemperatureC)
-	copyFloat(&dst.SkinTemperatureC, src.SkinTemperatureC)
-	copyFloat(&dst.MuscleMassKg, src.MuscleMassKg)
-	copyFloat(&dst.HydrationKg, src.HydrationKg)
-	copyFloat(&dst.BoneMassKg, src.BoneMassKg)
-	copyFloat(&dst.PulseWaveVelocityMPerS, src.PulseWaveVelocityMPerS)
-	copyFloat(&dst.Vo2MaxMlPerMinPerKg, src.Vo2MaxMlPerMinPerKg)
-	copyFloat(&dst.AtrialFibrillationResult, src.AtrialFibrillationResult)
-	copyFloat(&dst.QrsDurationMs, src.QrsDurationMs)
-	copyFloat(&dst.PrDurationMs, src.PrDurationMs)
-	copyFloat(&dst.QtDurationMs, src.QtDurationMs)
-	copyFloat(&dst.QtCorrectedDurationMs, src.QtCorrectedDurationMs)
-	copyFloat(&dst.AtrialFibrillationPpg, src.AtrialFibrillationPpg)
-	copyFloat(&dst.VascularAgeYears, src.VascularAgeYears)
-	copyFloat(&dst.NerveHealthConductanceFeet, src.NerveHealthConductanceFeet)
-	copyFloat(&dst.ExtracellularWaterKg, src.ExtracellularWaterKg)
-	copyFloat(&dst.IntracellularWaterKg, src.IntracellularWaterKg)
-	copyFloat(&dst.VisceralFatIndex, src.VisceralFatIndex)
-	copyFloat(&dst.SegmentFatFreeMassKg, src.SegmentFatFreeMassKg)
-	copyFloat(&dst.SegmentFatMassKg, src.SegmentFatMassKg)
-	copyFloat(&dst.SegmentMuscleMassKg, src.SegmentMuscleMassKg)
-	copyFloat(&dst.ElectrodermalActivityFeet, src.ElectrodermalActivityFeet)
-	copyFloat(&dst.BasalMetabolicRate, src.BasalMetabolicRate)
-	copyFloat(&dst.MetabolicAgeYears, src.MetabolicAgeYears)
-	copyFloat(&dst.ElectrochemicalSkinConduct, src.ElectrochemicalSkinConduct)
-
-	return dst
-}
-
 // ActivitySummary は Withings の日次活動サマリをラップします。
 type ActivitySummary struct {
 	Steps             *int     `json:"steps,omitempty"`
@@ -387,7 +336,7 @@ func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryR
 		summaries[dateKey] = &DailySummary{
 			Date:     dateKey,
 			Timezone: measureResult.timezone,
-			Measures: cloneDailySummaryMeasures(measures),
+			Measures: measures,
 		}
 	}
 
@@ -466,7 +415,7 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 			form.Del("offset")
 		}
 
-		resp, err := s.postForm(ctx, "/measure", token, form)
+		resp, err := s.postForm(ctx, EndpointOfMeasure, token, form)
 		if err != nil {
 			return nil, err
 		}
@@ -547,6 +496,11 @@ func (s *HealthService) fetchActivities(ctx context.Context, token string, userI
 	result := &activityFetchResult{
 		activities: make(map[string]activityEntryWithTZ),
 	}
+	form := url.Values{}
+	form.Set("action", "getactivity")
+	form.Set("userid", strconv.FormatInt(userID, 10))
+	form.Set("startdateymd", start.Format("2006-01-02"))
+	form.Set("enddateymd", end.Format("2006-01-02"))
 
 	for {
 		if loops >= maxPaginationLoops {
@@ -554,16 +508,11 @@ func (s *HealthService) fetchActivities(ctx context.Context, token string, userI
 		}
 		loops++
 
-		form := url.Values{}
-		form.Set("action", "getactivity")
-		form.Set("userid", strconv.FormatInt(userID, 10))
-		form.Set("startdateymd", start.Format("2006-01-02"))
-		form.Set("enddateymd", end.Format("2006-01-02"))
 		if offset > 0 {
 			form.Set("offset", strconv.Itoa(offset))
 		}
 
-		resp, err := s.postForm(ctx, "/v2/measure", token, form)
+		resp, err := s.postForm(ctx, EndpointOfMeasureV2, token, form)
 		if err != nil {
 			return nil, err
 		}
@@ -593,9 +542,6 @@ func (s *HealthService) fetchActivities(ctx context.Context, token string, userI
 		for _, activity := range payload.Body.Activities {
 			summary := buildActivitySummary(activity)
 			existing, ok := result.activities[activity.Date]
-			if ok {
-				summary = mergeActivitySummaries(existing.summary, summary)
-			}
 			tz := activity.Timezone
 			if tz == "" && ok {
 				tz = existing.timezone
@@ -823,58 +769,6 @@ func buildActivitySummary(item activityItem) ActivitySummary {
 		summary.IsTracker = boolPtr(*item.IsTracker)
 	}
 	return summary
-}
-
-func mergeActivitySummaries(base, incoming ActivitySummary) ActivitySummary {
-	if incoming.Steps != nil {
-		base.Steps = incoming.Steps
-	}
-	if incoming.DistanceMeter != nil {
-		base.DistanceMeter = incoming.DistanceMeter
-	}
-	if incoming.ElevationMeter != nil {
-		base.ElevationMeter = incoming.ElevationMeter
-	}
-	if incoming.CaloriesKcal != nil {
-		base.CaloriesKcal = incoming.CaloriesKcal
-	}
-	if incoming.TotalCaloriesKcal != nil {
-		base.TotalCaloriesKcal = incoming.TotalCaloriesKcal
-	}
-	if incoming.SoftSeconds != nil {
-		base.SoftSeconds = incoming.SoftSeconds
-	}
-	if incoming.ModerateSeconds != nil {
-		base.ModerateSeconds = incoming.ModerateSeconds
-	}
-	if incoming.IntenseSeconds != nil {
-		base.IntenseSeconds = incoming.IntenseSeconds
-	}
-	if incoming.ActiveSeconds != nil {
-		base.ActiveSeconds = incoming.ActiveSeconds
-	}
-	if incoming.HrAverageBPM != nil {
-		base.HrAverageBPM = incoming.HrAverageBPM
-	}
-	if incoming.HrMinBPM != nil {
-		base.HrMinBPM = incoming.HrMinBPM
-	}
-	if incoming.HrMaxBPM != nil {
-		base.HrMaxBPM = incoming.HrMaxBPM
-	}
-	if incoming.DeviceBrand != nil {
-		base.DeviceBrand = incoming.DeviceBrand
-	}
-	if incoming.DeviceModelID != nil {
-		base.DeviceModelID = incoming.DeviceModelID
-	}
-	if incoming.DeviceModelName != nil {
-		base.DeviceModelName = incoming.DeviceModelName
-	}
-	if incoming.IsTracker != nil {
-		base.IsTracker = incoming.IsTracker
-	}
-	return base
 }
 
 func intPtr(v int) *int {
