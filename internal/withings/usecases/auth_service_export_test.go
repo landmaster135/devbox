@@ -68,19 +68,19 @@ func TestAuthServiceExportDailySummary(t *testing.T) {
 	}
 
 	entry := payload.Data.HealthMates[0]
-	assertFloat(t, entry["bone_mass_kg"], 2.6)
-	assertFloat(t, entry["fat_free_mass_kg"], 50.613)
-	if stepsVal, ok := entry["steps"].(float64); !ok || int(stepsVal) != steps {
-		t.Fatalf("unexpected steps value: %#v", entry["steps"])
+	assertFloat(t, entry["measures_bone_mass_kg"], 2.6)
+	assertFloat(t, entry["measures_fat_free_mass_kg"], 50.613)
+	if stepsVal, ok := entry["activity_steps"].(float64); !ok || int(stepsVal) != steps {
+		t.Fatalf("unexpected activity_steps value: %#v", entry["activity_steps"])
 	}
-	if avg, ok := entry["hr_average_bpm"].(float64); !ok || avg != hrAvg {
-		t.Fatalf("unexpected hr_average_bpm: %#v", entry["hr_average_bpm"])
+	if avg, ok := entry["activity_hr_average_bpm"].(float64); !ok || avg != hrAvg {
+		t.Fatalf("unexpected activity_hr_average_bpm: %#v", entry["activity_hr_average_bpm"])
 	}
-	if tracker, ok := entry["is_tracker"].(bool); !ok || tracker != isTracker {
-		t.Fatalf("unexpected is_tracker: %#v", entry["is_tracker"])
+	if tracker, ok := entry["activity_is_tracker"].(bool); !ok || tracker != isTracker {
+		t.Fatalf("unexpected activity_is_tracker: %#v", entry["activity_is_tracker"])
 	}
-	if date, ok := entry["date"].(string); !ok || date != "2025-10-01" {
-		t.Fatalf("unexpected date: %#v", entry["date"])
+	if measuredAt, ok := entry["measured_at"].(string); !ok || measuredAt != "2025-10-01" {
+		t.Fatalf("unexpected measured_at: %#v", entry["measured_at"])
 	}
 	if _, ok := entry["timezone"]; ok {
 		t.Fatalf("timezone should not be present: %#v", entry["timezone"])

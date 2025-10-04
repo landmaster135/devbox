@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 
 	config "github.com/landmaster135/devbox/internal/withings/config"
@@ -32,6 +33,48 @@ func (s *CoreService) GetAuthService() *AuthService {
 	return s.authService
 }
 
+// roundDailySummaryResponse は日次サマリレスポンス内の浮動小数を四捨五入して小数第2位に揃えます。
+func roundDailySummaryResponse(resp *DailySummaryResponse) {
+	if resp == nil {
+		return
+	}
+
+	roundFloatPointer := func(target **float64) {
+		if target == nil || *target == nil {
+			return
+		}
+		value := **target
+		if math.IsNaN(value) || math.IsInf(value, 0) {
+			return
+		}
+		**target = math.Round(value*100) / 100
+	}
+
+	for i := range resp.Summaries {
+		summary := &resp.Summaries[i]
+
+		for key, value := range summary.Measures {
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				continue
+			}
+			summary.Measures[key] = math.Round(value*100) / 100
+		}
+
+		if summary.Activity == nil {
+			continue
+		}
+
+		activity := summary.Activity
+		roundFloatPointer(&activity.DistanceMeter)
+		roundFloatPointer(&activity.ElevationMeter)
+		roundFloatPointer(&activity.CaloriesKcal)
+		roundFloatPointer(&activity.TotalCaloriesKcal)
+		roundFloatPointer(&activity.HrAverageBPM)
+		roundFloatPointer(&activity.HrMinBPM)
+		roundFloatPointer(&activity.HrMaxBPM)
+	}
+}
+
 // FetchDailySummaryWithRetry は CLI の日次サマリ取得処理を実行します。
 func (s *CoreService) FetchDailySummaryWithRetry(ctx context.Context, cfg *config.Config) (*DailySummaryResponse, error) {
 	if s == nil || s.healthService == nil {
@@ -58,6 +101,10 @@ func (s *CoreService) FetchDailySummaryWithRetry(ctx context.Context, cfg *confi
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if resp != nil {
+		roundDailySummaryResponse(resp)
 	}
 
 	return resp, nil
@@ -110,6 +157,8 @@ func (s *CoreService) RetryDailySummaryWithRefresh(
 	if err != nil {
 		return nil, fmt.Errorf("リフレッシュ後の日次サマリ取得にも失敗しました: %v\n元のエラー: %v", err, originalErr)
 	}
+
+	roundDailySummaryResponse(resp)
 
 	return resp, nil
 }
