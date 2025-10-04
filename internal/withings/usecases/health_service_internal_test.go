@@ -67,10 +67,11 @@ func TestHealthServiceShouldRetryDailySummaryWithRefresh(t *testing.T) {
 }
 
 func TestLabelForMeasureType(t *testing.T) {
-	if got := labelForMeasureType(1); got != "weight_kg" {
+	svc := NewHealthService(0)
+	if got := svc.labelForMeasureType(1); got != "weight_kg" {
 		t.Fatalf("unexpected known label: %s", got)
 	}
-	if got := labelForMeasureType(999); got != "measure_999" {
+	if got := svc.labelForMeasureType(999); got != "measure_999" {
 		t.Fatalf("unexpected fallback label: %s", got)
 	}
 }

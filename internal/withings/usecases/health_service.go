@@ -408,89 +408,127 @@ func (s *HealthService) executePaginatedForm(
 	return nil
 }
 
-func convertMeasureValue(value int64, unit int) float64 {
+func (s *HealthService) convertMeasureValue(value int64, unit int) float64 {
 	return float64(value) * math.Pow10(unit)
 }
 
-func labelForMeasureType(measureType int) string {
+func (s *HealthService) labelForMeasureType(measureType int) string {
 	if label, ok := measureTypeLabels[measureType]; ok {
 		return label
 	}
 	return fmt.Sprintf("measure_%d", measureType)
 }
 
-func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
-	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
-	latestByDate := make(map[string]map[int]time.Time)
-
-	startUnix := strconv.FormatInt(start.Unix(), 10)
-	endUnix := strconv.FormatInt(end.Unix(), 10)
-	userIDStr := strconv.FormatInt(userID, 10)
+func (s *HealthService) buildMeasureForm(userID int64, start, end time.Time, measureTypes []int) url.Values {
 	form := url.Values{
 		"action":    {"getmeas"},
-		"userid":    {userIDStr},
-		"startdate": {startUnix},
-		"enddate":   {endUnix},
+		"userid":    {strconv.FormatInt(userID, 10)},
+		"startdate": {strconv.FormatInt(start.Unix(), 10)},
+		"enddate":   {strconv.FormatInt(end.Unix(), 10)},
 		"category":  {"1"},
 	}
 	if len(measureTypes) > 0 {
 		form.Set("meastypes", joinInts(measureTypes))
 	}
-	loc := time.UTC
+	return form
+}
+
+func (s *HealthService) parseMeasureResponse(body []byte) (*measureAPIResponse, error) {
+	var payload measureAPIResponse
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("measure API の JSON 解析に失敗しました: %w", err)
+	}
+	if payload.Status != 0 {
+		return nil, fmt.Errorf("measure API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
+	}
+	return &payload, nil
+}
+
+func (s *HealthService) resolveTimezone(tzName string, current *time.Location, cachedName string) (*time.Location, string) {
+	if tzName == "" || tzName == cachedName {
+		return current, cachedName
+	}
+	if tz, err := time.LoadLocation(tzName); err == nil {
+		return tz, tzName
+	}
+	return current, tzName
+}
+
+func (s *HealthService) ensureDailySummary(measurements map[string]*DailySummaryMeasures, dateKey string) *DailySummaryMeasures {
+	summary := measurements[dateKey]
+	if summary == nil {
+		summary = &DailySummaryMeasures{}
+		measurements[dateKey] = summary
+	}
+	return summary
+}
+
+func (s *HealthService) ensureLatestByDate(latestByDate map[string]map[int]time.Time, dateKey string) map[int]time.Time {
+	latest := latestByDate[dateKey]
+	if latest == nil {
+		latest = make(map[int]time.Time)
+		latestByDate[dateKey] = latest
+	}
+	return latest
+}
+
+func (s *HealthService) shouldSkipMeasurement(lastRecorded time.Time, recordedAt time.Time) bool {
+	return !lastRecorded.IsZero() && !lastRecorded.Before(recordedAt)
+}
+
+func (s *HealthService) storeMeasurement(summary *DailySummaryMeasures, latest map[int]time.Time, item measureItem, recordedAt time.Time) {
+	value := s.convertMeasureValue(item.Value, item.Unit)
+	label := s.labelForMeasureType(item.Type)
+	if !summary.set(label, value) {
+		return
+	}
+	latest[item.Type] = recordedAt
+}
+
+func (s *HealthService) collectMeasureGroups(groups []measureGroup, loc *time.Location, measurements map[string]*DailySummaryMeasures, latestByDate map[string]map[int]time.Time) {
+	for _, group := range groups {
+		if group.Category != 1 {
+			continue
+		}
+		recordedAt := time.Unix(group.Date, 0).In(loc)
+		dateKey := recordedAt.Format("2006-01-02")
+		summary := s.ensureDailySummary(measurements, dateKey)
+		latestForDate := s.ensureLatestByDate(latestByDate, dateKey)
+
+		for _, item := range group.Measures {
+			if s.shouldSkipMeasurement(latestForDate[item.Type], recordedAt) {
+				continue
+			}
+			s.storeMeasurement(summary, latestForDate, item, recordedAt)
+		}
+	}
+}
+
+func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID int64, start, end time.Time, measureTypes []int) (*measureFetchResult, error) {
+	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
+	latestByDate := make(map[string]map[int]time.Time)
+	form := s.buildMeasureForm(userID, start, end, measureTypes)
+
+	location := time.UTC
 	cachedLocationName := ""
 
-	err := s.executePaginatedForm(ctx, EndpointOfMeasure, token, form, "measure API", func(bodyBytes []byte) (bool, int, error) {
-		var payload measureAPIResponse
-		if err := json.Unmarshal(bodyBytes, &payload); err != nil {
-			return false, 0, fmt.Errorf("measure API の JSON 解析に失敗しました: %w", err)
-		}
-
-		if payload.Status != 0 {
-			return false, 0, fmt.Errorf("measure API でエラーが発生しました: status=%d, error=%v", payload.Status, payload.Error)
+	handler := func(body []byte) (bool, int, error) {
+		payload, err := s.parseMeasureResponse(body)
+		if err != nil {
+			return false, 0, err
 		}
 
 		if tzName := payload.Body.Timezone; tzName != "" {
 			result.timezone = tzName
-			if cachedLocationName != tzName {
-				if tz, err := time.LoadLocation(tzName); err == nil {
-					loc = tz
-					cachedLocationName = tzName
-				}
-			}
+			location, cachedLocationName = s.resolveTimezone(tzName, location, cachedLocationName)
 		}
 
-		for _, group := range payload.Body.Measuregrps {
-			if group.Category != 1 {
-				continue
-			}
-			recordedAt := time.Unix(group.Date, 0).In(loc)
-			dateKey := recordedAt.Format("2006-01-02")
-			latestForDate := latestByDate[dateKey]
-			if latestForDate == nil {
-				latestForDate = make(map[int]time.Time)
-			}
-			summary := result.measurements[dateKey]
-			for _, m := range group.Measures {
-				lastTime := latestForDate[m.Type]
-				if !lastTime.IsZero() && !lastTime.Before(recordedAt) {
-					continue
-				}
-				value := convertMeasureValue(m.Value, m.Unit)
-				if summary == nil {
-					summary = &DailySummaryMeasures{}
-				}
-				label := labelForMeasureType(m.Type)
-				if summary.set(label, value) {
-					latestForDate[m.Type] = recordedAt
-					result.measurements[dateKey] = summary
-					latestByDate[dateKey] = latestForDate
-				}
-			}
-		}
+		s.collectMeasureGroups(payload.Body.Measuregrps, location, result.measurements, latestByDate)
 
 		return payload.Body.More.Bool(), payload.Body.Offset, nil
-	})
-	if err != nil {
+	}
+
+	if err := s.executePaginatedForm(ctx, EndpointOfMeasure, token, form, "measure API", handler); err != nil {
 		return nil, err
 	}
 
