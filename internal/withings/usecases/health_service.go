@@ -93,10 +93,200 @@ type DailySummaryResponse struct {
 
 // DailySummary は 1 日分の測定値と活動サマリです。
 type DailySummary struct {
-	Date     string             `json:"date"`
-	Timezone string             `json:"timezone,omitempty"`
-	Measures map[string]float64 `json:"measures,omitempty"`
-	Activity *ActivitySummary   `json:"activity,omitempty"`
+	Date     string                `json:"date"`
+	Timezone string                `json:"timezone,omitempty"`
+	Measures *DailySummaryMeasures `json:"measures,omitempty"`
+	Activity *ActivitySummary      `json:"activity,omitempty"`
+}
+
+// DailySummaryMeasures は測定値をラベルごとに保持します。
+type DailySummaryMeasures struct {
+	WeightKg                   *float64 `json:"weight_kg,omitempty"`
+	HeightMeter                *float64 `json:"height_meter,omitempty"`
+	FatFreeMassKg              *float64 `json:"fat_free_mass_kg,omitempty"`
+	FatRatioPercent            *float64 `json:"fat_ratio_percent,omitempty"`
+	FatMassKg                  *float64 `json:"fat_mass_kg,omitempty"`
+	DiastolicBpMmhg            *float64 `json:"diastolic_bp_mmhg,omitempty"`
+	SystolicBpMmhg             *float64 `json:"systolic_bp_mmhg,omitempty"`
+	HeartPulseBpm              *float64 `json:"heart_pulse_bpm,omitempty"`
+	TemperatureC               *float64 `json:"temperature_c,omitempty"`
+	Spo2Percent                *float64 `json:"spo2_percent,omitempty"`
+	BodyTemperatureC           *float64 `json:"body_temperature_c,omitempty"`
+	SkinTemperatureC           *float64 `json:"skin_temperature_c,omitempty"`
+	MuscleMassKg               *float64 `json:"muscle_mass_kg,omitempty"`
+	HydrationKg                *float64 `json:"hydration_kg,omitempty"`
+	BoneMassKg                 *float64 `json:"bone_mass_kg,omitempty"`
+	PulseWaveVelocityMPerS     *float64 `json:"pulse_wave_velocity_m_per_s,omitempty"`
+	Vo2MaxMlPerMinPerKg        *float64 `json:"vo2max_ml_per_min_per_kg,omitempty"`
+	AtrialFibrillationResult   *float64 `json:"atrial_fibrillation_result,omitempty"`
+	QrsDurationMs              *float64 `json:"qrs_duration_ms,omitempty"`
+	PrDurationMs               *float64 `json:"pr_duration_ms,omitempty"`
+	QtDurationMs               *float64 `json:"qt_duration_ms,omitempty"`
+	QtCorrectedDurationMs      *float64 `json:"qt_corrected_duration_ms,omitempty"`
+	AtrialFibrillationPpg      *float64 `json:"atrial_fibrillation_ppg,omitempty"`
+	VascularAgeYears           *float64 `json:"vascular_age_years,omitempty"`
+	NerveHealthConductanceFeet *float64 `json:"nerve_health_conductance_feet,omitempty"`
+	ExtracellularWaterKg       *float64 `json:"extracellular_water_kg,omitempty"`
+	IntracellularWaterKg       *float64 `json:"intracellular_water_kg,omitempty"`
+	VisceralFatIndex           *float64 `json:"visceral_fat_index,omitempty"`
+	SegmentFatFreeMassKg       *float64 `json:"segment_fat_free_mass_kg,omitempty"`
+	SegmentFatMassKg           *float64 `json:"segment_fat_mass_kg,omitempty"`
+	SegmentMuscleMassKg        *float64 `json:"segment_muscle_mass_kg,omitempty"`
+	ElectrodermalActivityFeet  *float64 `json:"electrodermal_activity_feet,omitempty"`
+	BasalMetabolicRate         *float64 `json:"basal_metabolic_rate,omitempty"`
+	MetabolicAgeYears          *float64 `json:"metabolic_age_years,omitempty"`
+	ElectrochemicalSkinConduct *float64 `json:"electrochemical_skin_conductance,omitempty"`
+}
+
+func buildDailySummaryMeasures(values map[string]float64) *DailySummaryMeasures {
+	if len(values) == 0 {
+		return nil
+	}
+	measures := &DailySummaryMeasures{}
+	var hasValue bool
+	for label, value := range values {
+		if measures.set(label, value) {
+			hasValue = true
+		}
+	}
+	if !hasValue {
+		return nil
+	}
+	return measures
+}
+
+func (m *DailySummaryMeasures) set(label string, value float64) bool {
+	if m == nil {
+		return false
+	}
+	v := value
+	switch label {
+	case "weight_kg":
+		m.WeightKg = &v
+	case "height_meter":
+		m.HeightMeter = &v
+	case "fat_free_mass_kg":
+		m.FatFreeMassKg = &v
+	case "fat_ratio_percent":
+		m.FatRatioPercent = &v
+	case "fat_mass_kg":
+		m.FatMassKg = &v
+	case "diastolic_bp_mmhg":
+		m.DiastolicBpMmhg = &v
+	case "systolic_bp_mmhg":
+		m.SystolicBpMmhg = &v
+	case "heart_pulse_bpm":
+		m.HeartPulseBpm = &v
+	case "temperature_c":
+		m.TemperatureC = &v
+	case "spo2_percent":
+		m.Spo2Percent = &v
+	case "body_temperature_c":
+		m.BodyTemperatureC = &v
+	case "skin_temperature_c":
+		m.SkinTemperatureC = &v
+	case "muscle_mass_kg":
+		m.MuscleMassKg = &v
+	case "hydration_kg":
+		m.HydrationKg = &v
+	case "bone_mass_kg":
+		m.BoneMassKg = &v
+	case "pulse_wave_velocity_m_per_s":
+		m.PulseWaveVelocityMPerS = &v
+	case "vo2max_ml_per_min_per_kg":
+		m.Vo2MaxMlPerMinPerKg = &v
+	case "atrial_fibrillation_result":
+		m.AtrialFibrillationResult = &v
+	case "qrs_duration_ms":
+		m.QrsDurationMs = &v
+	case "pr_duration_ms":
+		m.PrDurationMs = &v
+	case "qt_duration_ms":
+		m.QtDurationMs = &v
+	case "qt_corrected_duration_ms":
+		m.QtCorrectedDurationMs = &v
+	case "atrial_fibrillation_ppg":
+		m.AtrialFibrillationPpg = &v
+	case "vascular_age_years":
+		m.VascularAgeYears = &v
+	case "nerve_health_conductance_feet":
+		m.NerveHealthConductanceFeet = &v
+	case "extracellular_water_kg":
+		m.ExtracellularWaterKg = &v
+	case "intracellular_water_kg":
+		m.IntracellularWaterKg = &v
+	case "visceral_fat_index":
+		m.VisceralFatIndex = &v
+	case "segment_fat_free_mass_kg":
+		m.SegmentFatFreeMassKg = &v
+	case "segment_fat_mass_kg":
+		m.SegmentFatMassKg = &v
+	case "segment_muscle_mass_kg":
+		m.SegmentMuscleMassKg = &v
+	case "electrodermal_activity_feet":
+		m.ElectrodermalActivityFeet = &v
+	case "basal_metabolic_rate":
+		m.BasalMetabolicRate = &v
+	case "metabolic_age_years":
+		m.MetabolicAgeYears = &v
+	case "electrochemical_skin_conductance":
+		m.ElectrochemicalSkinConduct = &v
+	default:
+		return false
+	}
+	return true
+}
+
+func (m *DailySummaryMeasures) roundToTwoDecimalPlaces() {
+	if m == nil {
+		return
+	}
+	round := func(target **float64) {
+		if target == nil || *target == nil {
+			return
+		}
+		value := **target
+		if math.IsNaN(value) || math.IsInf(value, 0) {
+			return
+		}
+		**target = math.Round(value*100) / 100
+	}
+
+	round(&m.WeightKg)
+	round(&m.HeightMeter)
+	round(&m.FatFreeMassKg)
+	round(&m.FatRatioPercent)
+	round(&m.FatMassKg)
+	round(&m.DiastolicBpMmhg)
+	round(&m.SystolicBpMmhg)
+	round(&m.HeartPulseBpm)
+	round(&m.TemperatureC)
+	round(&m.Spo2Percent)
+	round(&m.BodyTemperatureC)
+	round(&m.SkinTemperatureC)
+	round(&m.MuscleMassKg)
+	round(&m.HydrationKg)
+	round(&m.BoneMassKg)
+	round(&m.PulseWaveVelocityMPerS)
+	round(&m.Vo2MaxMlPerMinPerKg)
+	round(&m.AtrialFibrillationResult)
+	round(&m.QrsDurationMs)
+	round(&m.PrDurationMs)
+	round(&m.QtDurationMs)
+	round(&m.QtCorrectedDurationMs)
+	round(&m.AtrialFibrillationPpg)
+	round(&m.VascularAgeYears)
+	round(&m.NerveHealthConductanceFeet)
+	round(&m.ExtracellularWaterKg)
+	round(&m.IntracellularWaterKg)
+	round(&m.VisceralFatIndex)
+	round(&m.SegmentFatFreeMassKg)
+	round(&m.SegmentFatMassKg)
+	round(&m.SegmentMuscleMassKg)
+	round(&m.ElectrodermalActivityFeet)
+	round(&m.BasalMetabolicRate)
+	round(&m.MetabolicAgeYears)
+	round(&m.ElectrochemicalSkinConduct)
 }
 
 // ActivitySummary は Withings の日次活動サマリをラップします。
@@ -158,15 +348,10 @@ func (s *HealthService) FetchDailySummary(ctx context.Context, req DailySummaryR
 	summaries := make(map[string]*DailySummary)
 
 	for dateKey, measureMap := range measureResult.measurements {
-		// map を複製して呼び出し元での意図せぬ変更を防ぐ
-		measuresCopy := make(map[string]float64, len(measureMap))
-		for k, v := range measureMap {
-			measuresCopy[k] = v
-		}
 		summaries[dateKey] = &DailySummary{
 			Date:     dateKey,
 			Timezone: measureResult.timezone,
-			Measures: measuresCopy,
+			Measures: buildDailySummaryMeasures(measureMap),
 		}
 	}
 

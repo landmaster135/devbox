@@ -53,11 +53,8 @@ func roundDailySummaryResponse(resp *DailySummaryResponse) {
 	for i := range resp.Summaries {
 		summary := &resp.Summaries[i]
 
-		for key, value := range summary.Measures {
-			if math.IsNaN(value) || math.IsInf(value, 0) {
-				continue
-			}
-			summary.Measures[key] = math.Round(value*100) / 100
+		if summary.Measures != nil {
+			summary.Measures.roundToTwoDecimalPlaces()
 		}
 
 		if summary.Activity == nil {

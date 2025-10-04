@@ -23,10 +23,10 @@ func TestHealthServiceExportDailySummary(t *testing.T) {
 			{
 				Date:     "2025-10-01",
 				Timezone: "Europe/Paris",
-				Measures: map[string]float64{
+				Measures: buildDailySummaryMeasures(map[string]float64{
 					"bone_mass_kg":     2.6,
 					"fat_free_mass_kg": 50.613,
-				},
+				}),
 				Activity: &ActivitySummary{
 					Steps:        &steps,
 					HrAverageBPM: &hrAvg,

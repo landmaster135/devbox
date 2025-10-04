@@ -101,20 +101,18 @@ func TestFetchDailySummarySuccess(t *testing.T) {
 		t.Fatalf("unexpected summary date: %s", summary.Date)
 	}
 
-	weight, ok := summary.Measures["weight_kg"]
-	if !ok {
+	if summary.Measures == nil || summary.Measures.WeightKg == nil {
 		t.Fatalf("weight_kg not found in measures: %+v", summary.Measures)
 	}
-	if math.Abs(weight-70.0) > 1e-6 {
-		t.Fatalf("unexpected weight value: %f", weight)
+	if math.Abs(*summary.Measures.WeightKg-70.0) > 1e-6 {
+		t.Fatalf("unexpected weight value: %f", *summary.Measures.WeightKg)
 	}
 
-	pulse, ok := summary.Measures["heart_pulse_bpm"]
-	if !ok {
+	if summary.Measures.HeartPulseBpm == nil {
 		t.Fatalf("heart_pulse_bpm not found in measures")
 	}
-	if math.Abs(pulse-60.0) > 1e-6 {
-		t.Fatalf("unexpected heart pulse: %f", pulse)
+	if math.Abs(*summary.Measures.HeartPulseBpm-60.0) > 1e-6 {
+		t.Fatalf("unexpected heart pulse: %f", *summary.Measures.HeartPulseBpm)
 	}
 
 	if summary.Activity == nil {
