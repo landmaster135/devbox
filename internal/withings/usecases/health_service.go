@@ -436,7 +436,7 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 	offset := 0
 	loops := 0
 	result := &measureFetchResult{measurements: make(map[string]*DailySummaryMeasures)}
-	seen := make(map[string]map[int]measurementValue)
+	latestByDate := make(map[string]map[int]time.Time)
 
 	startUnix := strconv.FormatInt(start.Unix(), 10)
 	endUnix := strconv.FormatInt(end.Unix(), 10)
@@ -506,14 +506,25 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 			}
 			recordedAt := time.Unix(group.Date, 0).In(loc)
 			dateKey := recordedAt.Format("2006-01-02")
-			if _, ok := seen[dateKey]; !ok {
-				seen[dateKey] = make(map[int]measurementValue)
+			latestForDate := latestByDate[dateKey]
+			if latestForDate == nil {
+				latestForDate = make(map[int]time.Time)
 			}
+			summary := result.measurements[dateKey]
 			for _, m := range group.Measures {
+				lastTime := latestForDate[m.Type]
+				if !lastTime.IsZero() && !lastTime.Before(recordedAt) {
+					continue
+				}
 				value := convertMeasureValue(m.Value, m.Unit)
-				current := seen[dateKey][m.Type]
-				if current.timestamp.IsZero() || current.timestamp.Before(recordedAt) {
-					seen[dateKey][m.Type] = measurementValue{value: value, timestamp: recordedAt}
+				if summary == nil {
+					summary = &DailySummaryMeasures{}
+				}
+				label := labelForMeasureType(m.Type)
+				if summary.set(label, value) {
+					latestForDate[m.Type] = recordedAt
+					result.measurements[dateKey] = summary
+					latestByDate[dateKey] = latestForDate
 				}
 			}
 		}
@@ -525,20 +536,6 @@ func (s *HealthService) fetchMeasures(ctx context.Context, token string, userID 
 			break
 		}
 		offset = payload.Body.Offset
-	}
-
-	for dateKey, typeMap := range seen {
-		measures := &DailySummaryMeasures{}
-		var hasValue bool
-		for measureType, stored := range typeMap {
-			label := labelForMeasureType(measureType)
-			if measures.set(label, stored.value) {
-				hasValue = true
-			}
-		}
-		if hasValue {
-			result.measurements[dateKey] = measures
-		}
 	}
 
 	return result, nil
@@ -670,11 +667,6 @@ func truncateForLog(data []byte) string {
 		return string(trimmed)
 	}
 	return string(trimmed[:limit]) + "..."
-}
-
-type measurementValue struct {
-	value     float64
-	timestamp time.Time
 }
 
 type measureFetchResult struct {
