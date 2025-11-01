@@ -5,52 +5,59 @@
 
 set -e
 
-# 色付きの出力用
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
+function process_for_pre_commit_hook() {
+  # local tool_dir="."
+  local tool_dir="$1"
+  local dir_for_common_hooks="$tool_dir/.git/hooks"
+  local dir_for_common_pre_commit_hooks="$dir_for_common_hooks/pre-commit"
+  local dir_for_git_pre_commit_hooks="$dir_for_common_hooks/git-pre-commit-hooks"
+  local file_for_git_pre_commit_hooks="$dir_for_git_pre_commit_hooks/git-pre-commit-hooks"
 
-echo -e "${BLUE}🔧 Setting up Go-based secret detector for Git hooks...${NC}"
+  # 色付きの出力用
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'
+  NC='\033[0m'
 
-# 現在のディレクトリを確認
-if [ ! -d ".git" ]; then
-  echo -e "${RED}❌ This directory is not a Git repository${NC}"
-  exit 1
-fi
+  echo -e "${BLUE}🔧 Setting up Go-based secret detector for Git hooks...${NC}"
 
-# ビルド済みバイナリのパス
-BINARY_PATH="./pkg/bin/cli/linux_amd64/git-pre-commit-hooks"
+  # 現在のディレクトリを確認
+  if [ ! -d ".git" ]; then
+    echo -e "${RED}❌ This directory is not a Git repository${NC}"
+    exit 1
+  fi
 
-# バイナリが存在するかチェック
-if [ ! -f "$BINARY_PATH" ]; then
-  echo -e "${RED}❌ Binary not found at $BINARY_PATH${NC}"
-  echo -e "${YELLOW}Please run './scripts/build_secret_detector.sh' first${NC}"
-  exit 1
-fi
+  # ビルド済みバイナリのパス
+  BINARY_PATH="./pkg/bin/cli/linux_amd64/git-pre-commit-hooks"
 
-echo -e "${GREEN}✅ Binary found: $BINARY_PATH${NC}"
+  # バイナリが存在するかチェック
+  if [ ! -f "$BINARY_PATH" ]; then
+    echo -e "${RED}❌ Binary not found at $BINARY_PATH${NC}"
+    echo -e "${YELLOW}Please run './scripts/build_secret_detector.sh' first${NC}"
+    exit 1
+  fi
 
-# バイナリが実行可能かチェック
-if [ ! -x "$BINARY_PATH" ]; then
-  echo -e "${YELLOW}⚠️  Making binary executable...${NC}"
-  chmod +x "$BINARY_PATH"
-fi
+  echo -e "${GREEN}✅ Binary found: $BINARY_PATH${NC}"
 
-# ツールディレクトリを作成
-TOOL_DIR=".git/hooks/git-pre-commit-hooks"
-mkdir -p "$TOOL_DIR"
+  # バイナリが実行可能かチェック
+  if [ ! -x "$BINARY_PATH" ]; then
+    echo -e "${YELLOW}⚠️  Making binary executable...${NC}"
+    chmod +x "$BINARY_PATH"
+  fi
 
-# バイナリをコピー
-echo -e "${YELLOW}📦 Copying binary to Git hooks directory...${NC}"
-cp "$BINARY_PATH" "$TOOL_DIR/git-pre-commit-hooks"
-chmod +x "$TOOL_DIR/git-pre-commit-hooks"
+  # ツールディレクトリを作成
+  mkdir -p "$dir_for_git_pre_commit_hooks"
 
-# Pre-commitフックを作成
-echo -e "${YELLOW}🔗 Creating pre-commit hook...${NC}"
+  # バイナリをコピー
+  echo -e "${YELLOW}📦 Copying binary to Git hooks directory...${NC}"
+  cp "$BINARY_PATH" "$file_for_git_pre_commit_hooks"
+  chmod +x "$file_for_git_pre_commit_hooks"
 
-cat > .git/hooks/pre-commit << 'EOF'
+  # Pre-commitフックを作成
+  echo -e "${YELLOW}🔗 Creating pre-commit hook...${NC}"
+
+  cat > "$dir_for_common_pre_commit_hooks" << 'EOF'
 #!/bin/bash
 
 # Execute the secret detector tool implemented with Go
@@ -65,36 +72,69 @@ else
 fi
 EOF
 
-# 実行権限を付与
-chmod +x .git/hooks/pre-commit
+  # 実行権限を付与
+  chmod +x "$dir_for_common_pre_commit_hooks"
 
-echo -e "${GREEN}✅ Setup completed successfully!${NC}"
-echo ""
-echo -e "${BLUE}📝 Usage:${NC}"
-echo "  • The pre-commit hook will automatically run on 'git commit'"
-echo "  • To bypass the check: git commit --no-verify"
-echo "  • To test manually: .git/hooks/git-pre-commit-hooks/git-pre-commit-hooks"
-echo ""
+  echo -e "${GREEN}✅ Setup completed successfully!${NC}"
+  echo ""
+  echo -e "${BLUE}📝 Usage:${NC}"
+  echo "  • The pre-commit hook will automatically run on 'git commit'"
+  echo "  • To bypass the check: git commit --no-verify"
+  echo "  • To test manually: $file_for_git_pre_commit_hooks"
+  echo ""
 
-# テスト実行
-echo -e "${YELLOW}🧪 Testing the tool...${NC}"
-if .git/hooks/git-pre-commit-hooks/git-pre-commit-hooks --version; then
-  echo -e "${GREEN}✅ Tool is working correctly${NC}"
-else
-  echo -e "${YELLOW}⚠️  Tool test completed (may show 'no staged files' message)${NC}"
-fi
+  # テスト実行
+  echo -e "${YELLOW}🧪 Testing the tool...${NC}"
+  if "$file_for_git_pre_commit_hooks" --version; then
+    echo -e "${GREEN}✅ Tool is working correctly${NC}"
+  else
+    echo -e "${YELLOW}⚠️  Tool test completed (may show 'no staged files' message)${NC}"
+  fi
 
-echo ""
-echo -e "${GREEN}🎉 Secret detector is now active for this repository!${NC}"
-echo ""
-echo -e "${BLUE}📋 What was installed:${NC}"
-echo "  • Binary: .git/hooks/git-pre-commit-hooks/git-pre-commit-hooks"
-echo "  • Hook: .git/hooks/pre-commit"
-echo ""
-echo -e "${BLUE}🔧 To update the tool:${NC}"
-echo "  1. Run: ./scripts/build_secret_detector.sh"
-echo "  2. Run: ./scripts/setup-git-pre-commit-hooks-hook.sh"
-echo ""
-echo -e "${BLUE}🗑️  To remove the hook:${NC}"
-echo "  • Delete: .git/hooks/pre-commit"
-echo "  • Delete: .git/hooks/git-pre-commit-hooks/"
+  echo ""
+  echo -e "${GREEN}🎉 Secret detector is now active for this repository!${NC}"
+  echo ""
+  echo -e "${BLUE}📋 What was installed:${NC}"
+  echo "  • Binary: $file_for_git_pre_commit_hooks"
+  echo "  • Hook: $dir_for_common_pre_commit_hooks"
+  echo ""
+  echo -e "${BLUE}🔧 To update the tool:${NC}"
+  echo "  1. Run: ./scripts/build_secret_detector.sh"
+  echo "  2. Run: ./scripts/setup-git-pre-commit-hooks-hook.sh"
+  echo ""
+  echo -e "${BLUE}🗑️  To remove the hook:${NC}"
+  echo "  • Delete: $dir_for_common_pre_commit_hooks"
+  echo "  • Delete: $dir_for_git_pre_commit_hooks/"
+}
+
+
+function show_help() {
+  local FUNC="${FUNCNAME[0]}"
+  cat <<EOF
+[INFO] [$FUNC] Git pre-commit hook用の処理を行います。
+
+使用方法:
+  ./pkg/bash/setup-git-pre-commit-hooks.sh <HOOK_TOOL_DIR>
+
+例:
+  ./pkg/bash/setup-git-pre-commit-hooks.sh '/home/user/my_project'
+
+--help を指定するとこのメッセージを表示します。
+EOF
+}
+
+# === 実行部 ===
+function main() {
+  local FUNC="${FUNCNAME[0]}"
+
+  if [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+  fi
+
+  local tool_dir="$1"
+
+  process_for_pre_commit_hook $tool_dir
+}
+
+main "$@"

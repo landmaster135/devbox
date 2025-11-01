@@ -1,6 +1,6 @@
-# Secret Detector
+# Git pre-commit hooks
 
-Git pre-commit hook用のGo製シークレット検知ツールです。JSON設定ファイル内の機密情報と、全ファイル内の禁止されたホームパスを自動検知し、コミット前にブロックします。
+Git pre-commit hook用のシークレット等に対する検知ツールです。JSON設定ファイル内の機密情報と、全ファイル内の禁止されたホームパスを自動検知し、コミット前にブロックします。
 
 ## 概要
 
