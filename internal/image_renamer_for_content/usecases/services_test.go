@@ -25,7 +25,7 @@ func TestProcessContentImageRename_SortByName(t *testing.T) {
 	config := cfg.Config{
 		SrcDir:     dir,
 		SortByName: true,
-		ContentID:  "MA",
+		Operation:  "mackerel",
 	}
 
 	stdout := &bytes.Buffer{}
@@ -98,10 +98,10 @@ func TestProcessContentImageRename_SortByTime(t *testing.T) {
 	config := cfg.Config{
 		SrcDir:     dir,
 		SortByTime: true,
-		ContentID:  "MA",
 		Delimiter:  "-",
 		Suffix:     "99",
 		Start:      5,
+		Operation:  "mackerel",
 	}
 
 	stdout := &bytes.Buffer{}
@@ -153,7 +153,7 @@ func TestProcessContentImageRename_MissingSortFlag(t *testing.T) {
 
 	config := cfg.Config{
 		SrcDir:    dir,
-		ContentID: "MA",
+		Operation: "mackerel",
 	}
 
 	stdout := &bytes.Buffer{}
@@ -168,5 +168,22 @@ func TestProcessContentImageRename_MissingSortFlag(t *testing.T) {
 	}
 	if failed != 0 {
 		t.Fatalf("expected 0 failures prior to processing, got %d", failed)
+	}
+}
+
+func TestProcessContentImageRename_InvalidOperation(t *testing.T) {
+	config := cfg.Config{
+		SrcDir:    "./not-real",
+		Operation: "unknown",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	if _, _, err := ProcessContentImageRename(config, stdout, stderr); err == nil {
+		t.Fatalf("expected error for invalid operation")
+	}
+	if stderr.Len() == 0 {
+		t.Fatalf("expected error message to be written to stderr")
 	}
 }

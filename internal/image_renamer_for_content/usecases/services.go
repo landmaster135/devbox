@@ -39,6 +39,10 @@ var supportedExtensions = map[string]struct{}{
 func ProcessContentImageRename(config cfg.Config, stdout, stderr io.Writer) (int, int, error) {
 	config.Normalize()
 
+	if err := applyOperationPreset(&config, stderr); err != nil {
+		return 0, 0, err
+	}
+
 	if err := validateConfig(&config, stderr); err != nil {
 		return 0, 0, err
 	}
@@ -96,9 +100,28 @@ func ProcessContentImageRename(config cfg.Config, stdout, stderr io.Writer) (int
 	return successCount, errorCount, nil
 }
 
+func applyOperationPreset(config *cfg.Config, stderr io.Writer) error {
+	switch config.Operation {
+	case "mackerel":
+		config.ContentID = "MA"
+		if config.Digits <= 0 {
+			config.Digits = 4
+		}
+	default:
+		if config.Operation == "" {
+			fmt.Fprintln(stderr, "エラー: -operation フラグで実行モードを指定してください。例: -operation mackerel")
+		} else {
+			fmt.Fprintf(stderr, "エラー: 未対応のoperationが指定されました: %s\n", config.Operation)
+		}
+		return errors.New("invalid operation")
+	}
+
+	return nil
+}
+
 func validateConfig(config *cfg.Config, stderr io.Writer) error {
 	if config.ContentID == "" {
-		fmt.Fprintln(stderr, "エラー: コンテンツIDを -content フラグで指定してください。")
+		fmt.Fprintln(stderr, "エラー: コンテンツIDが設定されていません。operation を確認してください。")
 		return errors.New("content id is required")
 	}
 
