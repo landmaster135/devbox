@@ -22,10 +22,9 @@ func parseFlags(args []string, stderr io.Writer) (cfg.Config, error) {
 		srcDir     string
 		sortByName bool
 		sortByTime bool
-		contentID  string
+		op         string
 		suffix     string
 		delimiter  string
-		digits     int
 		start      int
 		recursive  bool
 		workers    int
@@ -39,10 +38,9 @@ func parseFlags(args []string, stderr io.Writer) (cfg.Config, error) {
 	flagSet.StringVar(&srcDir, "src", ".", "リネーム対象のソースディレクトリ")
 	flagSet.BoolVar(&sortByName, "name", false, "ファイル名順で並べ替え")
 	flagSet.BoolVar(&sortByTime, "time", false, "更新日時順で並べ替え")
-	flagSet.StringVar(&contentID, "content", "", "コンテンツID (必須)")
+	flagSet.StringVar(&op, "operation", "", "実行モード (例: mackerel)")
 	flagSet.StringVar(&suffix, "suffix", "01", "シリアルの後ろに付加するサフィックス")
 	flagSet.StringVar(&delimiter, "delimiter", "", "コンテンツIDとシリアルの間に挟む区切り文字")
-	flagSet.IntVar(&digits, "digits", 4, "シリアル番号の桁数")
 	flagSet.IntVar(&start, "start", 1, "シリアル番号の開始値")
 	flagSet.BoolVar(&recursive, "r", false, "サブディレクトリを再帰的に処理")
 	flagSet.IntVar(&workers, "workers", defaultWorkers, fmt.Sprintf("並行ワーカー数 (デフォルト: %d)", defaultWorkers))
@@ -55,18 +53,19 @@ func parseFlags(args []string, stderr io.Writer) (cfg.Config, error) {
 		workers = cfg.DefaultWorkers()
 	}
 
-	return cfg.Config{
+	config := cfg.Config{
 		SrcDir:     srcDir,
 		SortByName: sortByName,
 		SortByTime: sortByTime,
-		ContentID:  contentID,
 		Suffix:     suffix,
 		Delimiter:  delimiter,
-		Digits:     digits,
 		Start:      start,
 		Recursive:  recursive,
 		Workers:    workers,
-	}, nil
+		Operation:  op,
+	}
+
+	return config, nil
 }
 
 func run(args []string, stdout, stderr io.Writer) exitCode {

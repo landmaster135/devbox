@@ -23,10 +23,9 @@
 | `-src` | `.` | スキャンするソースディレクトリ |
 | `-name` | `false` | ファイル名順で並べ替え |
 | `-time` | `false` | 更新日時順で並べ替え |
-| `-content` | (必須) | コンテンツID（プレフィックス） |
+| `-operation` | (必須) | 実行モード。現在は `mackerel` のみ対応し、コンテンツID `MA`・4桁連番でリネーム |
 | `-suffix` | `01` | 連番の後ろに付けるサフィックス（`_<suffix>` が付与されます） |
 | `-delimiter` | `` | コンテンツIDと連番の間に挟む任意の区切り文字 |
-| `-digits` | `4` | 連番の桁数（ゼロパディング） |
 | `-start` | `1` | 連番の開始番号 |
 | `-r` | `false` | サブディレクトリを再帰的に処理 |
 | `-workers` | CPU数 − 1 | 並行処理に用いるワーカー数 |
@@ -37,16 +36,16 @@
 
 ```bash
 # ファイル名順でリネーム (MA0001_01.jpg 形式)
-go run ./cmd/cli/image-renamer-for-content -content MA -name
+go run ./cmd/cli/image-renamer-for-content -operation mackerel -name
 
 # 更新日時順で連番を付与し、サフィックスと区切り文字を変更
-go run ./cmd/cli/image-renamer-for-content -src ./images -content CT -time -suffix final -delimiter "-"
+go run ./cmd/cli/image-renamer-for-content -src ./images -operation mackerel -time -suffix final -delimiter "-"
 
 # 5番から連番を開始し、再帰的に処理
-go run ./cmd/cli/image-renamer-for-content -content BLOG -name -start 5 -r
+go run ./cmd/cli/image-renamer-for-content -operation mackerel -name -start 5 -r
 
 # ワーカー数を固定して実行
-go run ./cmd/cli/image-renamer-for-content -content MA -name -workers 4
+go run ./cmd/cli/image-renamer-for-content -operation mackerel -name -workers 4
 ```
 
 ## ビルド

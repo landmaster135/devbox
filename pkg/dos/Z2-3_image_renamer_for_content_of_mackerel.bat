@@ -11,7 +11,7 @@ if %errorlevel% == 1 (
 echo %sort%
 
 echo --- ƒvƒƒOƒ‰ƒ€‚ğÀs‚µ‚Ü‚· ---
-.\pkg\bin\cli\win_amd64\image-renamer-for-content.exe -src . -content "MA" -digits 4 -delimiter "" -suffix "" -start %start% %sort%
+.\pkg\bin\cli\win_amd64\image-renamer-for-content.exe -src . -operation "mackerel" -delimiter "" -suffix "" -start %start% %sort%
 endlocal
 
 echo.
