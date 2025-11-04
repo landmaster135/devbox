@@ -187,3 +187,33 @@ func TestProcessContentImageRename_InvalidOperation(t *testing.T) {
 		t.Fatalf("expected error message to be written to stderr")
 	}
 }
+
+func TestApplyOperationPresetVariants(t *testing.T) {
+	tests := []struct {
+		name           string
+		operation      string
+		expectedID     string
+		expectedDigits int
+	}{
+		{name: "Mackerel", operation: "mackerel", expectedID: "MA", expectedDigits: 4},
+		{name: "WebClip", operation: "web_clip", expectedID: "WC", expectedDigits: 9},
+		{name: "Date", operation: "date", expectedID: "DA", expectedDigits: 5},
+		{name: "Wine", operation: "wine", expectedID: "WI", expectedDigits: 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := cfg.Config{Operation: tt.operation}
+			err := applyOperationPreset(&config, &bytes.Buffer{})
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if config.ContentID != tt.expectedID {
+				t.Fatalf("expected content ID %s, got %s", tt.expectedID, config.ContentID)
+			}
+			if config.Digits != tt.expectedDigits {
+				t.Fatalf("expected digits %d, got %d", tt.expectedDigits, config.Digits)
+			}
+		})
+	}
+}

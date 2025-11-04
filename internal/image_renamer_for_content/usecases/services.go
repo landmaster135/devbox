@@ -104,12 +104,19 @@ func applyOperationPreset(config *cfg.Config, stderr io.Writer) error {
 	switch config.Operation {
 	case "mackerel":
 		config.ContentID = "MA"
-		if config.Digits <= 0 {
-			config.Digits = 4
-		}
+		config.Digits = 4
+	case "web_clip":
+		config.ContentID = "WC"
+		config.Digits = 9
+	case "date":
+		config.ContentID = "DA"
+		config.Digits = 5
+	case "wine":
+		config.ContentID = "WI"
+		config.Digits = 4
 	default:
 		if config.Operation == "" {
-			fmt.Fprintln(stderr, "エラー: -operation フラグで実行モードを指定してください。例: -operation mackerel")
+			fmt.Fprintln(stderr, "エラー: -operation フラグで実行モードを指定してください。例: -operation mackerel / web_clip / date / wine")
 		} else {
 			fmt.Fprintf(stderr, "エラー: 未対応のoperationが指定されました: %s\n", config.Operation)
 		}

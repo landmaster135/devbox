@@ -23,7 +23,7 @@
 | `-src` | `.` | スキャンするソースディレクトリ |
 | `-name` | `false` | ファイル名順で並べ替え |
 | `-time` | `false` | 更新日時順で並べ替え |
-| `-operation` | (必須) | 実行モード。現在は `mackerel` のみ対応し、コンテンツID `MA`・4桁連番でリネーム |
+| `-operation` | (必須) | 実行モード。`mackerel` (MA・4桁), `web_clip` (WC・9桁), `date` (DA・5桁), `wine` (WI・4桁) に対応 |
 | `-suffix` | `01` | 連番の後ろに付けるサフィックス（`_<suffix>` が付与されます） |
 | `-delimiter` | `` | コンテンツIDと連番の間に挟む任意の区切り文字 |
 | `-start` | `1` | 連番の開始番号 |
@@ -38,11 +38,14 @@
 # ファイル名順でリネーム (MA0001_01.jpg 形式)
 go run ./cmd/cli/image-renamer-for-content -operation mackerel -name
 
+# Webクリップ向けに9桁連番でリネーム
+go run ./cmd/cli/image-renamer-for-content -operation web_clip -name
+
 # 更新日時順で連番を付与し、サフィックスと区切り文字を変更
 go run ./cmd/cli/image-renamer-for-content -src ./images -operation mackerel -time -suffix final -delimiter "-"
 
 # 5番から連番を開始し、再帰的に処理
-go run ./cmd/cli/image-renamer-for-content -operation mackerel -name -start 5 -r
+go run ./cmd/cli/image-renamer-for-content -operation date -name -start 5 -r
 
 # ワーカー数を固定して実行
 go run ./cmd/cli/image-renamer-for-content -operation mackerel -name -workers 4
