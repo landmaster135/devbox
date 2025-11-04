@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -215,5 +216,349 @@ func TestApplyOperationPresetVariants(t *testing.T) {
 				t.Fatalf("expected digits %d, got %d", tt.expectedDigits, config.Digits)
 			}
 		})
+	}
+}
+
+func TestProcessContentImageRename_NoImages(t *testing.T) {
+	dir := t.TempDir()
+
+	config := cfg.Config{
+		SrcDir:     dir,
+		SortByName: true,
+		Operation:  "wine",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, failed, err := ProcessContentImageRename(config, stdout, stderr)
+	if err != nil {
+		t.Fatalf("expected no error when directory is empty, got %v", err)
+	}
+	if success != 0 || failed != 0 {
+		t.Fatalf("expected zero success and failure, got success=%d, failed=%d", success, failed)
+	}
+
+	if !strings.Contains(stdout.String(), "画像ファイルが見つかりませんでした") {
+		t.Fatalf("expected message about missing images, got %q", stdout.String())
+	}
+}
+
+func TestProcessContentImageRename_InvalidDirectory(t *testing.T) {
+	missingDir := filepath.Join(t.TempDir(), "missing")
+
+	config := cfg.Config{
+		SrcDir:     missingDir,
+		SortByTime: true,
+		Operation:  "date",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, failed, err := ProcessContentImageRename(config, stdout, stderr)
+	if err == nil {
+		t.Fatalf("expected error for missing directory")
+	}
+	if success != 0 || failed != 0 {
+		t.Fatalf("expected zero counts when initialization fails, got success=%d failed=%d", success, failed)
+	}
+	if stderr.Len() == 0 {
+		t.Fatalf("expected error output for missing directory")
+	}
+}
+
+func TestFindImageFilesRecursive(t *testing.T) {
+	root := t.TempDir()
+	topFile := filepath.Join(root, "top.jpg")
+	if err := os.WriteFile(topFile, []byte("foo"), 0o644); err != nil {
+		t.Fatalf("failed to create top file: %v", err)
+	}
+
+	subDir := filepath.Join(root, "nested")
+	if err := os.Mkdir(subDir, 0o755); err != nil {
+		t.Fatalf("failed to create nested dir: %v", err)
+	}
+	subFile := filepath.Join(subDir, "inner.webp")
+	if err := os.WriteFile(subFile, []byte("bar"), 0o644); err != nil {
+		t.Fatalf("failed to create nested file: %v", err)
+	}
+
+	filesNonRecursive, err := findImageFiles(root, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(filesNonRecursive) != 1 || filesNonRecursive[0] != topFile {
+		t.Fatalf("expected only top-level file, got %v", filesNonRecursive)
+	}
+
+	filesRecursive, err := findImageFiles(root, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(filesRecursive) != 2 {
+		t.Fatalf("expected two files with recursion, got %v", filesRecursive)
+	}
+
+	paths := map[string]struct{}{}
+	for _, path := range filesRecursive {
+		paths[path] = struct{}{}
+	}
+	if _, ok := paths[topFile]; !ok {
+		t.Fatalf("expected top file in recursive result")
+	}
+	if _, ok := paths[subFile]; !ok {
+		t.Fatalf("expected nested file in recursive result")
+	}
+}
+
+func TestBuildFileInfosPartialFailure(t *testing.T) {
+	dir := t.TempDir()
+	good := filepath.Join(dir, "good.png")
+	if err := os.WriteFile(good, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+	missing := filepath.Join(dir, "missing.png")
+
+	stderr := &bytes.Buffer{}
+	infos, err := buildFileInfos([]string{good, missing}, stderr)
+	if err == nil {
+		t.Fatalf("expected error due to missing file")
+	}
+	if len(infos) != 1 || infos[0].path != good {
+		t.Fatalf("expected only existing file info, got %+v", infos)
+	}
+	if !strings.Contains(stderr.String(), "情報取得に失敗") {
+		t.Fatalf("expected error log for missing file, got %q", stderr.String())
+	}
+}
+
+func TestRenameFilesSkipAndWorkers(t *testing.T) {
+	dir := t.TempDir()
+	initialPath := filepath.Join(dir, "MA0001_01.jpg")
+	if err := os.WriteFile(initialPath, []byte("data"), 0o644); err != nil {
+		t.Fatalf("failed to create initial file: %v", err)
+	}
+
+	info := fileInfo{path: initialPath, name: filepath.Base(initialPath)}
+	config := cfg.Config{
+		ContentID: "MA",
+		Digits:    4,
+		Suffix:    "01",
+		Start:     1,
+		Workers:   5,
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, errors := renameFiles([]fileInfo{info}, config, stdout, stderr)
+	if success != 1 || errors != 0 {
+		t.Fatalf("expected skip counted as success, got success=%d errors=%d", success, errors)
+	}
+	if _, err := os.Stat(initialPath); err != nil {
+		t.Fatalf("expected original file to remain, err=%v", err)
+	}
+}
+
+func TestRenameFilesRenameError(t *testing.T) {
+	dir := t.TempDir()
+	original := filepath.Join(dir, "orig.jpg")
+	if err := os.WriteFile(original, []byte("content"), 0o644); err != nil {
+		t.Fatalf("failed to create original file: %v", err)
+	}
+
+	targetDir := filepath.Join(dir, "MA0001_01.jpg")
+	if err := os.Mkdir(targetDir, 0o755); err != nil {
+		t.Fatalf("failed to create blocking directory: %v", err)
+	}
+
+	info := fileInfo{path: original, name: filepath.Base(original)}
+	config := cfg.Config{
+		ContentID: "MA",
+		Digits:    4,
+		Suffix:    "01",
+		Start:     1,
+		Workers:   2,
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, errors := renameFiles([]fileInfo{info}, config, stdout, stderr)
+	if success != 0 || errors != 1 {
+		t.Fatalf("expected rename failure to count as error, got success=%d errors=%d", success, errors)
+	}
+	if !strings.Contains(stderr.String(), "リネームに失敗") {
+		t.Fatalf("expected rename failure logged, got %q", stderr.String())
+	}
+	if _, err := os.Stat(original); err != nil {
+		t.Fatalf("expected original file to remain after failure: %v", err)
+	}
+}
+
+func TestValidateConfigDigitsAndStartErrors(t *testing.T) {
+	dir := t.TempDir()
+
+	buffer := &bytes.Buffer{}
+	configDigits := &cfg.Config{
+		ContentID:  "MA",
+		SortByName: true,
+		Digits:     0,
+		Start:      1,
+		SrcDir:     dir,
+	}
+	if err := validateConfig(configDigits, buffer); err == nil {
+		t.Fatalf("expected error when digits <= 0")
+	}
+
+	configStart := &cfg.Config{
+		ContentID:  "MA",
+		SortByName: true,
+		Digits:     4,
+		Start:      0,
+		SrcDir:     dir,
+	}
+	buffer.Reset()
+	if err := validateConfig(configStart, buffer); err == nil {
+		t.Fatalf("expected error when start <= 0")
+	}
+}
+
+func TestValidateConfigBothSortFlags(t *testing.T) {
+	dir := t.TempDir()
+
+	config := &cfg.Config{
+		ContentID:  "MA",
+		SortByName: true,
+		SortByTime: true,
+		Digits:     4,
+		Start:      1,
+		SrcDir:     dir,
+	}
+	if err := validateConfig(config, &bytes.Buffer{}); err != nil {
+		t.Fatalf("did not expect error when both sort flags set, got %v", err)
+	}
+	if config.SortByTime {
+		t.Fatalf("expected SortByTime to be reset to false when both flags provided")
+	}
+}
+
+func TestProcessContentImageRename_RenameFailure(t *testing.T) {
+	dir := t.TempDir()
+	input := filepath.Join(dir, "input.jpg")
+	if err := os.WriteFile(input, []byte("sample"), 0o644); err != nil {
+		t.Fatalf("failed to create input file: %v", err)
+	}
+
+	blockingDir := filepath.Join(dir, "MA0001_01.jpg")
+	if err := os.Mkdir(blockingDir, 0o755); err != nil {
+		t.Fatalf("failed to create blocking directory: %v", err)
+	}
+
+	config := cfg.Config{
+		SrcDir:     dir,
+		SortByName: true,
+		Operation:  "mackerel",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, failed, err := ProcessContentImageRename(config, stdout, stderr)
+	if err == nil {
+		t.Fatalf("expected error when rename fails")
+	}
+	if success != 0 || failed != 1 {
+		t.Fatalf("expected zero success and one failure, got success=%d failed=%d", success, failed)
+	}
+	if !strings.Contains(stderr.String(), "リネームに失敗") {
+		t.Fatalf("expected stderr to mention rename failure, got %q", stderr.String())
+	}
+}
+
+func TestProcessContentImageRename_WarnsMissingFileInfo(t *testing.T) {
+	dir := t.TempDir()
+	file1 := filepath.Join(dir, "a.jpg")
+	if err := os.WriteFile(file1, []byte("a"), 0o644); err != nil {
+		t.Fatalf("failed to create file1: %v", err)
+	}
+
+	missingTarget := filepath.Join(dir, "does-not-exist.jpg")
+	brokenLink := filepath.Join(dir, "broken.jpg")
+	if err := os.Symlink(missingTarget, brokenLink); err != nil {
+		t.Skipf("symlink not supported on this platform: %v", err)
+	}
+
+	config := cfg.Config{
+		SrcDir:     dir,
+		SortByName: true,
+		Operation:  "mackerel",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, failed, err := ProcessContentImageRename(config, stdout, stderr)
+	if err != nil {
+		t.Fatalf("did not expect fatal error, got %v", err)
+	}
+	if success != 1 || failed != 0 {
+		t.Fatalf("expected one success and zero failures, got success=%d failed=%d", success, failed)
+	}
+	if !strings.Contains(stderr.String(), "警告: 一部のファイル情報の取得に失敗しました") {
+		t.Fatalf("expected warning about missing file info, got %q", stderr.String())
+	}
+}
+
+func TestFindImageFilesError(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	if _, err := findImageFiles(missing, true); err == nil {
+		t.Fatalf("expected error when directory missing")
+	}
+}
+
+func TestBuildNewFileNameVariants(t *testing.T) {
+	configDelimiter := cfg.Config{ContentID: "AB", Digits: 3, Delimiter: "-"}
+	if got := buildNewFileName(configDelimiter, 7, ".png"); got != "AB-007.png" {
+		t.Fatalf("unexpected result with delimiter, got %s", got)
+	}
+
+	configSuffix := cfg.Config{ContentID: "CD", Digits: 2, Suffix: "final"}
+	if got := buildNewFileName(configSuffix, 3, ".jpg"); got != "CD03_final.jpg" {
+		t.Fatalf("unexpected result with suffix, got %s", got)
+	}
+
+	configPlain := cfg.Config{ContentID: "EF", Digits: 2}
+	if got := buildNewFileName(configPlain, 12, ".webp"); got != "EF12.webp" {
+		t.Fatalf("unexpected result without extras, got %s", got)
+	}
+}
+
+func TestProcessContentImageRename_SourceNotDirectory(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "single.jpg")
+	if err := os.WriteFile(filePath, []byte("content"), 0o644); err != nil {
+		t.Fatalf("failed to create file: %v", err)
+	}
+
+	config := cfg.Config{
+		SrcDir:     filePath,
+		SortByName: true,
+		Operation:  "wine",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, failed, err := ProcessContentImageRename(config, stdout, stderr)
+	if err == nil {
+		t.Fatalf("expected error when src is not directory")
+	}
+	if success != 0 || failed != 0 {
+		t.Fatalf("expected zero counts on directory error, got success=%d failed=%d", success, failed)
+	}
+	if stderr.Len() == 0 {
+		t.Fatalf("expected stderr to contain error message")
 	}
 }
