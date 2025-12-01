@@ -6,39 +6,39 @@
 ### Gitコミットメッセージ生成 (外部API 利用)
 非ステージング差分を解析:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator.yml --command git-commit-message
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/git_commit_message_generator.yml --command git-commit-message
 ```
 ステージング済み差分のみ:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator.yml --command git-commit-message-staged
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/git_commit_message_generator.yml --command git-commit-message-staged
 ```
 カレントディレクトリを `git_dir` に指定 (非ステージング):
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator.yml --command git-commit-message-pwd
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/git_commit_message_generator.yml --command git-commit-message-pwd
 ```
 カレントディレクトリ + ステージングのみ:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator.yml --command git-commit-message-staged-pwd
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/git_commit_message_generator.yml --command git-commit-message-staged-pwd
 ```
 
 ### 逆張り応答エージェント
 単発プロンプトで実行:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/contradict.yml "I think TypeScript is the best."
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict.yml "I think TypeScript is the best."
 ```
 標準入力を使った逐次実行:
 ```bash
-echo "Rust is difficult." | cagent run /home/user/devbox/.config/cagent/config_linux/contradict.yml -
+echo "Rust is difficult." | cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict.yml -
 ```
 
 ### 学習支援エージェント Alloy
 学習テーマを指定して実行:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/alloy.yml "Help me understand differential equations."
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/alloy.yml "Help me understand differential equations."
 ```
 既存セッションに追加メッセージを送る場合:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/alloy.yml "Can you give me practice problems?"
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/alloy.yml "Can you give me practice problems?"
 ```
 
 ## Windows 用: `config_win`

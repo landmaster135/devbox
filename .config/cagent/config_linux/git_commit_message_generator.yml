@@ -3,7 +3,7 @@ version: "2"
 
 agents:
   root:
-    model: openai
+    model: anthropic
     description: "General coding assistant"
     instruction: !include ../prompts/git-commit-message.md
     commands:
@@ -20,8 +20,8 @@ agents:
           - get_git_diff
 
 models:
-  openai:
-    provider: openai
-    model: gpt-4o
-    max_tokens: 2000
+  anthropic:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 1024
     temperature: 0.2
