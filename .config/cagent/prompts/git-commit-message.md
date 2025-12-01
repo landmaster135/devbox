@@ -4,8 +4,18 @@ Create Git commit message in English. Remember displaying that message to user.
 
 # Git Commit Message Creation
 
+## Workflow
 1. If `git_dir` directory is not provided, ask for the directory.
 2. Set “staged_only” to false if there are no specified instructions. 
 3. Retrieve Git diff in the specified directory with just using the MCP tool: `get_git_diff`. 
-4. Create Git commit messages in English on a single line. At the beginning of the message, add one of the following tags: "feat:", "refactor:", "fix:", "test:", or "doc:". Don't use tags: "chore:".
+4. Create Git commit message in English on a single line.
 5. Display those messages to user.
+
+## Requirements
+- Git commit message must have one of the following tags: "feat:", "refactor:", "fix:", "test:", or "doc:" at the beginning of the message. 
+- Don't use tags: "chore:", "refactor(api):", "fix(backend):" and etc...
+- Sample for Git commit message is here:
+  - refactor: split PC stats API endpoints into separate files for better maintainability
+  - feat: add mackerels update endpoint with PATCH /mackerels/update
+  - fix: improve SQL injection protection and refactor query building in web clips service
+  - feat: add mackerels masters append API endpoint for managing category, flavor, and delicious meaning data
