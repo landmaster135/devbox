@@ -1,0 +1,27 @@
+#!/usr/bin/env cagent run
+version: "2"
+
+agents:
+  root:
+    model: anthropic
+    description: "General coding assistant. Create Git commit message."
+    instruction: !include ./prompt.md
+    commands:
+      git-commit-message: "Create Git commit message. git_dir=''"
+      git-commit-message-staged: "Create Git commit message. git_dir='' staged_only=true"
+      git-commit-message-pwd: "Create Git commit message. git_dir='.'"
+      git-commit-message-staged-pwd: "Create Git commit message. git_dir='.' staged_only=true"
+    toolsets:
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - git_diff_recorder
+        tools:
+          - get_git_diff
+
+models:
+  anthropic:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 1024
+    temperature: 0.2

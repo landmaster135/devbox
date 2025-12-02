@@ -53,8 +53,7 @@ env.yaml
 .clinerules/*
 .agents/*
 !.agents/.gitkeep
-.config/cagent/config_linux_prod/*
-!.config/cagent/config_linux_prod/.gitkeep
+.config/cagent/config_linux/**/*_prod.yml
 
 ### Cloud Functions ###
 .gcloudignore
