@@ -127,7 +127,7 @@ go run ./cmd/cli/youtube-downloader -url "https://www.youtube.com/watch?v=dQw4w9
 
 ## 技術仕様
 
-- **言語**: Go 1.23+
+- **言語**: Go
 - **YouTubeライブラリ**: github.com/kkdai/youtube/v2
 - **FFmpegライブラリ**: github.com/u2takey/ffmpeg-go
 - **並列ダウンロード**: チャンク分割による高速化

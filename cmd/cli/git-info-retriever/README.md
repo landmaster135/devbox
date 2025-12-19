@@ -236,7 +236,7 @@ go build -o bin/git-info-retriever ./cmd/cli/git-info-retriever
 
 ## 技術仕様
 
-- **言語**: Go 1.23.5
+- **言語**: Go
 - **依存関係**:
   - `github.com/google/go-github`: GitHub API クライアント
   - `golang.org/x/oauth2`: OAuth2 認証

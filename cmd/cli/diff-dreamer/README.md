@@ -30,7 +30,7 @@ Diff Dreamerは、difff《ﾃﾞｭﾌﾌ》と同様のUIを提供するテキ�
 ## インストール
 
 ### 前提条件
-- Go 1.23.5以上
+- Go
 
 ### ビルド
 ```bash
@@ -89,7 +89,7 @@ go run ./cmd/cli/diff-dreamer -left old.txt -right new.txt -output comparison.ht
 ## 技術仕様
 
 ### アーキテクチャ
-- **言語**: Go 1.23.5
+- **言語**: Go
 - **フロントエンド**: Vanilla JavaScript + CSS
 - **差分アルゴリズム**: LCS（Longest Common Subsequence）ベース
 - **ファイル埋め込み**: `go:embed`を使用してWebアセットを組み込み

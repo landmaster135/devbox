@@ -128,5 +128,5 @@ cd devbox
 
 ## 依存関係
 
-- Go 1.23.5+
+- Go
 - github.com/pdfcpu/pdfcpu v0.10.2

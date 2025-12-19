@@ -191,7 +191,7 @@ go run ./cmd/cli/gcloud-genset-monitoring-dashboard -help
 
 ## 依存関係
 
-- Go 1.23.5+
+- Go
 - Google Cloud Go SDK
 - Google Cloud Run API
 - Google Cloud Monitoring API

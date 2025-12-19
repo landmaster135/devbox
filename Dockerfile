@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage: compile the HTTP server binary
-FROM golang:1.23.7-bookworm AS builder
+FROM golang:1.25-bookworm AS builder
 WORKDIR /workspace
 
 # Download dependencies first for better layer caching

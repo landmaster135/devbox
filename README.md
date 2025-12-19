@@ -1,12 +1,12 @@
 # devbox
-![Go](https://img.shields.io/badge/Go-1.23-%2300ADD8?logo=go)
+![Go](https://img.shields.io/badge/Go-1.25-%2300ADD8?logo=go)
 ![Coverage](https://img.shields.io/badge/Coverage-58.4%25-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 Provides utilities for development.
 
 # Usage
-- Go 1.23.5 or later
+- Go 1.25.5 or later
 
 # Development
 
