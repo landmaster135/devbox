@@ -27,25 +27,39 @@ go build -o bin/service-implementing-viewer cmd/cli/service-implementing-viewer/
 ### 基本的な使用方法
 
 ```bash
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=<ルートディレクトリ> -target-dirs=<対象ディレクトリ>
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=<ルートディレクトリ> -target-dirs=<対象ディレクトリ>
 ```
 
 ### オプション
 
 - `-root-dir` (必須): スキャンするルートディレクトリのパス
 - `-target-dirs` (必須): 対象ディレクトリ名をカンマ区切りで指定
+- `-operation` (必須): 実行するオペレーション。`output` は標準出力に表示、`write` は指定ファイルを書き換え
+- `-write-file`: `-operation=write` の際に必須。結果を書き込むMarkdownファイルのパス
+
+### オペレーション種別
+
+- `output`: 従来通り、Markdown表と統計情報を標準出力へ表示します。
+- `write`: `### 実装状況一覧` と `### 統計情報` が含まれるMarkdownファイルを開き、両セクションの内容を最新結果で自動置換します。
 
 ## 使用例
 
 ```bash
 # cliとmcpディレクトリをスキャン
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp
 
 # 全ディレクトリをスキャン
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers
 
 # 複数のディレクトリをスキャン
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=/path/to/project -target-dirs="cli,mcp,powershell"
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=/path/to/project -target-dirs="cli,mcp,powershell"
+
+# ドキュメントを直接更新（writeモード）
+go run cmd/cli/service-implementing-viewer/main.go \
+  -operation=write \
+  -root-dir=/home/user/devbox/cmd \
+  -target-dirs=cli,mcp,grpc/handlers,http/handlers \
+  -write-file=docs/service_implementation_status.md
 ```
 
 ## 出力例

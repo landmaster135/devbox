@@ -22,10 +22,19 @@ func handleGetServiceImplementingStatus(ctx context.Context, request mcp.CallToo
 		return nil, err
 	}
 
+	operation, err := request.RequireString("operation")
+	if err != nil {
+		return nil, err
+	}
+
 	// target_dirsをカンマ区切りで分割
 	targetDirs := parseTargetDirs(targetDirsStr)
 	if len(targetDirs) == 0 {
 		return nil, fmt.Errorf("target_dirsが空です")
+	}
+
+	if operation != "output" {
+		return nil, fmt.Errorf("未対応のoperationです: %s", operation)
 	}
 
 	// ServiceImplementingViewerServiceを初期化
@@ -84,6 +93,10 @@ func BuildServiceImplementingViewerServer() {
 
 	getServiceImplementingStatusTool := mcp.NewTool("get_service_implementing_status",
 		mcp.WithDescription("Get service implementation status across different directories"),
+		mcp.WithString("operation",
+			mcp.Required(),
+			mcp.Description("Operation to execute (output)"),
+		),
 		mcp.WithString("root_dir",
 			mcp.Required(),
 			mcp.Description("Absolute path to the root directory"),

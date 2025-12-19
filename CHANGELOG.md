@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.05 — 2025-12-19
+
+PR: #18
+
+### Features
+- **service-implementing-viewer (CLI/MCP)**: `-operation`/`-write`フラグを追加し、出力と同時にドキュメントへ反映できる書き込みモードを実装。
+- **自動ドキュメント生成**: `internal/service_implementing_viewer/usecases/document_updater`を新設し、docs配下の実装状況表をコマンドから更新可能に。
+- **Issue/PRテンプレート**: `.github/ISSUE_TEMPLATE`と`PULL_REQUEST_TEMPLATE`を整備し、提出時のチェックリストと概要入力を標準化。
+
+### Improvements
+- `cmd/cli/service-implementing-viewer/README.md`の利用手順やサンプルを刷新し、writeモードの例を追記。
+- `docs/project_overview.md`と`docs/service_implementation_status.md`に自動更新フローや統計テーブルの最新値を反映。
+- READMEのパッケージ概要セクションを再整理し、読みやすさを向上。
+
+### Refactor
+- 旧`util`パッケージ（ロガー/ユーティリティ）の撤去に伴い、依存箇所を直接実装へ移行して構成を単純化。
+
+### CI / Testing
+- GitHub Actionsからツールの実装状況を自動更新するコミットを追加し、実装状況のドキュメントの陳腐化を防止。
+
 ## v0.04 — 2025-12-19
 PR: #13
 
