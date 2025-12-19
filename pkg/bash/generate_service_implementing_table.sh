@@ -1,6 +1,6 @@
 #!/bin/bash
 function generate_service_implementing_table(){
-  ./pkg/bin/cli/linux_amd64/service-implementing-viewer -root-dir=$HOME/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers -operation=output
+  ./pkg/bin/cli/linux_amd64/service-implementing-viewer -operation=output -root-dir=$HOME/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers
 }
 
 function show_help() {

@@ -10,16 +10,18 @@ type Config struct {
 	RootDir    string   // ルートディレクトリ（必須）
 	TargetDirs []string // 対象ディレクトリ（必須、カンマ区切り）
 	Operation  string   // 実行する操作（必須）
+	WriteFile  string   // operation=write の場合に必須
 }
 
-var allowedOperations = []string{"output"}
+var allowedOperations = []string{"output", "write"}
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(rootDir, targetDirs, operation string) (*Config, error) {
+func NewConfig(rootDir, targetDirs, operation, writeFile string) (*Config, error) {
 	c := &Config{
 		RootDir:    rootDir,
 		TargetDirs: parseTargetDirs(targetDirs),
 		Operation:  operation,
+		WriteFile:  writeFile,
 	}
 
 	var err error
@@ -68,6 +70,10 @@ func validateConfig(config *Config) (*Config, error) {
 		return nil, fmt.Errorf("--operation は次のいずれかを指定してください: %s", strings.Join(allowedOperations, ", "))
 	}
 
+	if config.Operation == "write" && config.WriteFile == "" {
+		return nil, fmt.Errorf("--write-file は operation=write の場合に必須です")
+	}
+
 	return config, nil
 }
 
@@ -96,17 +102,18 @@ func NewConfigParser(flagParser FlagParser, osArgs OSArgs) *ConfigParser {
 
 // ParseFlags はコマンドライン引数を解析してConfigを返す
 func (cp *ConfigParser) ParseFlags() (*Config, error) {
-	var rootDir, targetDirs, operation string
+	var rootDir, targetDirs, operation, writeFile string
 
 	cp.flagParser.StringVar(&rootDir, "root-dir", "", "ルートディレクトリ（必須）")
 	cp.flagParser.StringVar(&targetDirs, "target-dirs", "", "対象ディレクトリ（必須、カンマ区切り）")
 	cp.flagParser.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作（必須: %s）", strings.Join(allowedOperations, ", ")))
+	cp.flagParser.StringVar(&writeFile, "write-file", "", "書き込み先ファイルパス（operation=write で必須）")
 
 	if err := cp.flagParser.Parse(); err != nil {
 		return nil, err
 	}
 
-	return NewConfig(rootDir, targetDirs, operation)
+	return NewConfig(rootDir, targetDirs, operation, writeFile)
 }
 
 // ParseFlags は後方互換性のための関数
@@ -129,7 +136,10 @@ func PrintUsage() {
 	fmt.Printf("        対象ディレクトリ（必須、カンマ区切り）\n")
 	fmt.Printf("  -operation string\n")
 	fmt.Printf("        実行する操作（必須: %s）\n", strings.Join(allowedOperations, ", "))
+	fmt.Printf("  -write-file string\n")
+	fmt.Printf("        operation=write で必須: 更新対象のMarkdownファイル\n")
 	fmt.Printf("\n使用例:\n")
 	fmt.Printf("  %s -root-dir=$HOME/devbox -target-dirs=cli,mcp -operation=output\n", osArgs.Args()[0])
 	fmt.Printf("  %s -root-dir=/path/to/project -target-dirs=\"cli,mcp,powershell\" -operation=output\n", osArgs.Args()[0])
+	fmt.Printf("  %s -root-dir=$HOME/devbox -target-dirs=cli,mcp,grpc/handlers,http/handlers -operation=write -write-file=docs/service_implementation_status.md\n", osArgs.Args()[0])
 }

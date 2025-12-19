@@ -20,7 +20,7 @@ func TestNewConfig_Normal(t *testing.T) {
 	operation := "output"
 
 	// Act
-	config, err := NewConfig(rootDir, targetDirs, operation)
+	config, err := NewConfig(rootDir, targetDirs, operation, "")
 
 	// Assert
 	if err != nil {
@@ -44,6 +44,9 @@ func TestNewConfig_Normal(t *testing.T) {
 	if config.Operation != operation {
 		t.Errorf("Operationが期待値と異なります。期待値: %s, 実際: %s", operation, config.Operation)
 	}
+	if config.WriteFile != "" {
+		t.Errorf("WriteFileが期待値と異なります。期待値: 空, 実際: %s", config.WriteFile)
+	}
 }
 
 // TestNewConfig_EmptyRootDir は空のRootDirのテスト
@@ -53,7 +56,7 @@ func TestNewConfig_EmptyRootDir(t *testing.T) {
 	targetDirs := "cli,mcp"
 
 	// Act
-	config, err := NewConfig(rootDir, targetDirs, "output")
+	config, err := NewConfig(rootDir, targetDirs, "output", "")
 
 	// Assert
 	if err == nil {
@@ -74,7 +77,7 @@ func TestNewConfig_EmptyTargetDirs(t *testing.T) {
 	targetDirs := ""
 
 	// Act
-	config, err := NewConfig(rootDir, targetDirs, "output")
+	config, err := NewConfig(rootDir, targetDirs, "output", "")
 
 	// Assert
 	if err == nil {
@@ -85,6 +88,28 @@ func TestNewConfig_EmptyTargetDirs(t *testing.T) {
 	}
 	if err.Error() != "設定の初期化に失敗しました: --target-dirs は必須パラメータです" {
 		t.Errorf("エラーメッセージが期待値と異なります: %v", err)
+	}
+}
+
+// TestNewConfig_WriteOperationWithoutFile はwrite指定時のwrite-file必須テスト
+func TestNewConfig_WriteOperationWithoutFile(t *testing.T) {
+	// Arrange
+	rootDir := "/test/root"
+	targetDirs := "cli,mcp"
+
+	// Act
+	config, err := NewConfig(rootDir, targetDirs, "write", "")
+
+	// Assert
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if config != nil {
+		t.Error("configがnilではありません")
+	}
+	expected := "設定の初期化に失敗しました: --write-file は operation=write の場合に必須です"
+	if err.Error() != expected {
+		t.Errorf("エラーメッセージが期待値と異なります。期待値: %s, 実際: %s", expected, err.Error())
 	}
 }
 
@@ -127,6 +152,7 @@ func TestValidateConfig_Normal(t *testing.T) {
 		RootDir:    "/test/root",
 		TargetDirs: []string{"cli", "mcp"},
 		Operation:  "output",
+		WriteFile:  "",
 	}
 
 	// Act
@@ -175,6 +201,7 @@ func TestValidateConfig_EmptyTargetDirs(t *testing.T) {
 		RootDir:    "/test/root",
 		TargetDirs: []string{},
 		Operation:  "output",
+		WriteFile:  "",
 	}
 
 	// Act
@@ -199,6 +226,7 @@ func TestValidateConfig_EmptyOperation(t *testing.T) {
 		RootDir:    "/test/root",
 		TargetDirs: []string{"cli", "mcp"},
 		Operation:  "",
+		WriteFile:  "",
 	}
 
 	// Act
@@ -223,6 +251,7 @@ func TestValidateConfig_InvalidOperation(t *testing.T) {
 		RootDir:    "/test/root",
 		TargetDirs: []string{"cli", "mcp"},
 		Operation:  "invalid",
+		WriteFile:  "",
 	}
 
 	// Act
@@ -240,11 +269,53 @@ func TestValidateConfig_InvalidOperation(t *testing.T) {
 	}
 }
 
+// TestValidateConfig_WriteOperationRequiresFile はwrite時のwrite-file必須を検証する
+func TestValidateConfig_WriteOperationRequiresFile(t *testing.T) {
+	config := &Config{
+		RootDir:    "/test/root",
+		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "write",
+		WriteFile:  "",
+	}
+
+	result, err := validateConfig(config)
+
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if result != nil {
+		t.Error("結果がnilではありません")
+	}
+	expected := "--write-file は operation=write の場合に必須です"
+	if err.Error() != expected {
+		t.Errorf("エラーメッセージが期待値と異なります: %v", err)
+	}
+}
+
+// TestValidateConfig_WriteOperationWithFile はwrite時にファイル指定で成功することを検証する
+func TestValidateConfig_WriteOperationWithFile(t *testing.T) {
+	config := &Config{
+		RootDir:    "/test/root",
+		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "write",
+		WriteFile:  "docs/service_implementation_status.md",
+	}
+
+	result, err := validateConfig(config)
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if result == nil {
+		t.Fatal("結果がnilです")
+	}
+}
+
 // MockFlagParser はテスト用のFlagParser実装
 type MockFlagParser struct {
 	rootDir    string
 	targetDirs string
 	operation  string
+	writeFile  string
 	parseError error
 }
 
@@ -257,6 +328,8 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
 		*p = m.targetDirs
 	case "operation":
 		*p = m.operation
+	case "write-file":
+		*p = m.writeFile
 	}
 }
 
@@ -316,6 +389,35 @@ func TestConfigParser_ParseFlags_Normal(t *testing.T) {
 	}
 	if config.Operation != "output" {
 		t.Errorf("Operationが期待値と異なります。期待値: output, 実際: %s", config.Operation)
+	}
+	if config.WriteFile != "" {
+		t.Errorf("WriteFileが期待値と異なります。期待値: 空, 実際: %s", config.WriteFile)
+	}
+}
+
+// TestConfigParser_ParseFlags_WriteOperation はwrite用フラグの解析を検証する
+func TestConfigParser_ParseFlags_WriteOperation(t *testing.T) {
+	mockFlagParser := &MockFlagParser{
+		rootDir:    "/test/root",
+		targetDirs: "cli,mcp",
+		operation:  "write",
+		writeFile:  "docs/service_implementation_status.md",
+		parseError: nil,
+	}
+	mockOSArgs := &MockOSArgs{
+		args: []string{"program", "-root-dir=/test/root", "-target-dirs=cli,mcp", "-operation=write", "-write-file=docs/service_implementation_status.md"},
+	}
+	configParser := NewConfigParser(mockFlagParser, mockOSArgs)
+
+	config, err := configParser.ParseFlags()
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if config.WriteFile != "docs/service_implementation_status.md" {
+		t.Errorf("WriteFileが期待値と異なります: %s", config.WriteFile)
+	}
+	if config.Operation != "write" {
+		t.Errorf("Operationが期待値と異なります: %s", config.Operation)
 	}
 }
 
@@ -472,6 +574,9 @@ func TestParseFlags(t *testing.T) {
 	if config.Operation != "output" {
 		t.Errorf("Operationが期待値と異なります: %s", config.Operation)
 	}
+	if config.WriteFile != "" {
+		t.Errorf("WriteFileが期待値と異なります: %s", config.WriteFile)
+	}
 }
 
 // TestPrintUsage は使用方法メッセージを検証する
@@ -493,8 +598,11 @@ func TestPrintUsage(t *testing.T) {
 		"対象ディレクトリ（必須、カンマ区切り）",
 		"-operation string",
 		"実行する操作（必須: output",
+		"-write-file string",
+		"operation=write で必須",
 		"使用例:",
 		"-operation=output",
+		"-operation=write",
 	}
 
 	for _, fragment := range expectedFragments {
