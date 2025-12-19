@@ -60,49 +60,35 @@ go run ./cmd/grpc/main.go
 
 ```mermaid
 graph TD
-  A[cmd/cli/*] --> B[internal/*/usecases]
-  A --> C[internal/*/interfaces]
-  A --> D[internal/*/domain]
-  
-  B --> D
-  C --> D
-  
-  E[scripts/*.sh] --> F[pkg/bin/*/]
-  A --> G[util]
-  B --> G
-  C --> G
-  
-  F --> H[DOS Batch Files]
-  F --> I[Cross-platform Binaries]
-  
-  G --> J[標準ライブラリ]
+    A[cmd Layer] --> B[internal/usecases]
+    A --> C[internal/interfaces]
+    A --> D[internal/domain]
+    
+    B --> D
+    C --> D
+    
+    E[scripts] --> F[pkg/bin]
+    E --> A
+    
+    F --> H[Cross-platform Binaries]
 
-  %% Style Settings
-  classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
-  classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
-  classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
-  classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
-  classDef util fill:#ddd,stroke:#333,stroke-width:1px;
-  classDef stdlib fill:#eee,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
+    classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
+    classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
 
-  class A cmd;
-  class B internal;
-  class C internal;
-  class D internal;
-  class E scripts;
-  class F pkg;
-  class G util;
-  class H pkg;
-  class I pkg;
-  class J stdlib;
+    class A cmd;
+    class B,C,D internal;
+    class E scripts;
+    class F,H pkg;
 ```
 
 ## Package Overview
 
-- **cmd/**: 各CLIツールのエントリーポイント群。30以上のコマンドラインツールが含まれており、それぞれが独立したアプリケーションとして動作します。主要ツール例：
-  - `file-processor`: ファイル処理ユーティリティ
+- **cmd/**: 各CLIツールのエントリーポイント群。多様なコマンドラインツールが含まれており、それぞれが独立したアプリケーションとして動作します。主要ツール例：
+  - `exif-modifier`: Exif処理ユーティリティ
   - `image-converter`: 画像形式変換ツール
-  - `json-formatter-for-agent-interaction`: JSON整形ツール
+  - `json-file-merger`: JSONファイル統合ツール
   - `code-analyzer`: コード解析ツール
   - `depends-visualizer`: 依存関係可視化ツール
 
@@ -116,8 +102,6 @@ graph TD
   - `dos/`: Windows環境向けのバッチファイル群
 
 - **scripts/**: ビルドとデプロイメント自動化スクリプト群。各ツールの個別ビルドスクリプトと統合ビルドスクリプトを提供します。
-
-- **util/**: 全ツール共通のユーティリティ機能。ロギング、共通処理、ヘルパー関数を提供します。
 
 # Service Implementing Status
 
