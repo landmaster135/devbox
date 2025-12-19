@@ -20,6 +20,8 @@ func main() {
 	switch cfg.Operation {
 	case "output":
 		handleOutputOperation(cfg)
+	case "write":
+		handleWriteOperation(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応のoperationです: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -50,4 +52,21 @@ func handleOutputOperation(cfg *config.Config) {
 	fmt.Printf("- **HTTPハンドラのみ実装**: %d\n", statistics.HTTPOnlyCount)
 	fmt.Printf("- **CLI+MCP両方実装**: %d\n", statistics.BothCLIMCPCount)
 	fmt.Printf("- **全て実装済み**: %d\n", statistics.AllImplementedCount)
+}
+
+func handleWriteOperation(cfg *config.Config) {
+	service := usecases.NewServiceImplementingViewerService(cfg.RootDir, cfg.TargetDirs)
+
+	result, statistics, err := service.GetServiceImplementingStatus()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+		if err := usecases.UpdateDocumentationFile(cfg.WriteFile, result, statistics); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("ファイルを更新しました: %s\n", cfg.WriteFile)
 }
