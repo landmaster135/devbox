@@ -9,13 +9,17 @@ import (
 type Config struct {
 	RootDir    string   // ルートディレクトリ（必須）
 	TargetDirs []string // 対象ディレクトリ（必須、カンマ区切り）
+	Operation  string   // 実行する操作（必須）
 }
 
+var allowedOperations = []string{"output"}
+
 // NewConfig は新しいConfigを作成する
-func NewConfig(rootDir, targetDirs string) (*Config, error) {
+func NewConfig(rootDir, targetDirs, operation string) (*Config, error) {
 	c := &Config{
 		RootDir:    rootDir,
 		TargetDirs: parseTargetDirs(targetDirs),
+		Operation:  operation,
 	}
 
 	var err error
@@ -55,7 +59,25 @@ func validateConfig(config *Config) (*Config, error) {
 		return nil, fmt.Errorf("--target-dirs は必須パラメータです")
 	}
 
+	// Operationは必須
+	if config.Operation == "" {
+		return nil, fmt.Errorf("--operation は必須です")
+	}
+
+	if !isValidOperation(config.Operation) {
+		return nil, fmt.Errorf("--operation は次のいずれかを指定してください: %s", strings.Join(allowedOperations, ", "))
+	}
+
 	return config, nil
+}
+
+func isValidOperation(operation string) bool {
+	for _, allowed := range allowedOperations {
+		if allowed == operation {
+			return true
+		}
+	}
+	return false
 }
 
 // ConfigParser はConfig解析を行う構造体
@@ -74,16 +96,17 @@ func NewConfigParser(flagParser FlagParser, osArgs OSArgs) *ConfigParser {
 
 // ParseFlags はコマンドライン引数を解析してConfigを返す
 func (cp *ConfigParser) ParseFlags() (*Config, error) {
-	var rootDir, targetDirs string
+	var rootDir, targetDirs, operation string
 
 	cp.flagParser.StringVar(&rootDir, "root-dir", "", "ルートディレクトリ（必須）")
 	cp.flagParser.StringVar(&targetDirs, "target-dirs", "", "対象ディレクトリ（必須、カンマ区切り）")
+	cp.flagParser.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作（必須: %s）", strings.Join(allowedOperations, ", ")))
 
 	if err := cp.flagParser.Parse(); err != nil {
 		return nil, err
 	}
 
-	return NewConfig(rootDir, targetDirs)
+	return NewConfig(rootDir, targetDirs, operation)
 }
 
 // ParseFlags は後方互換性のための関数
@@ -104,7 +127,9 @@ func PrintUsage() {
 	fmt.Printf("        ルートディレクトリ（必須）\n")
 	fmt.Printf("  -target-dirs string\n")
 	fmt.Printf("        対象ディレクトリ（必須、カンマ区切り）\n")
+	fmt.Printf("  -operation string\n")
+	fmt.Printf("        実行する操作（必須: %s）\n", strings.Join(allowedOperations, ", "))
 	fmt.Printf("\n使用例:\n")
-	fmt.Printf("  %s -root-dir=$HOME/devbox -target-dirs=cli,mcp\n", osArgs.Args()[0])
-	fmt.Printf("  %s -root-dir=/path/to/project -target-dirs=\"cli,mcp,powershell\"\n", osArgs.Args()[0])
+	fmt.Printf("  %s -root-dir=$HOME/devbox -target-dirs=cli,mcp -operation=output\n", osArgs.Args()[0])
+	fmt.Printf("  %s -root-dir=/path/to/project -target-dirs=\"cli,mcp,powershell\" -operation=output\n", osArgs.Args()[0])
 }

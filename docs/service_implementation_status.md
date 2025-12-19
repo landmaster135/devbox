@@ -137,6 +137,7 @@ MCPツール実行例：
   "server_name": "service_implementing_viewer",
   "tool_name": "get_service_implementing_status",
   "arguments": {
+    "operation": "output",
     "root_dir": "/home/user/devbox",
     "target_dirs": "cmd/cli,cmd/mcp"
   }

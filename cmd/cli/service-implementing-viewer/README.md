@@ -27,25 +27,26 @@ go build -o bin/service-implementing-viewer cmd/cli/service-implementing-viewer/
 ### 基本的な使用方法
 
 ```bash
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=<ルートディレクトリ> -target-dirs=<対象ディレクトリ>
+go run cmd/cli/service-implementing-viewer/main.go -root-dir=<ルートディレクトリ> -target-dirs=<対象ディレクトリ> -operation=output
 ```
 
 ### オプション
 
 - `-root-dir` (必須): スキャンするルートディレクトリのパス
 - `-target-dirs` (必須): 対象ディレクトリ名をカンマ区切りで指定
+- `-operation` (必須): 実行するオペレーション。既存機能は `output` を指定
 
 ## 使用例
 
 ```bash
 # cliとmcpディレクトリをスキャン
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp
 
 # 全ディレクトリをスキャン
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers
 
 # 複数のディレクトリをスキャン
-go run cmd/cli/service-implementing-viewer/main.go -root-dir=/path/to/project -target-dirs="cli,mcp,powershell"
+go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=/path/to/project -target-dirs="cli,mcp,powershell"
 ```
 
 ## 出力例

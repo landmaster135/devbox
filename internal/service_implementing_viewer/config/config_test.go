@@ -17,9 +17,10 @@ func TestNewConfig_Normal(t *testing.T) {
 	// Arrange
 	rootDir := "/test/root"
 	targetDirs := "cli,mcp,powershell"
+	operation := "output"
 
 	// Act
-	config, err := NewConfig(rootDir, targetDirs)
+	config, err := NewConfig(rootDir, targetDirs, operation)
 
 	// Assert
 	if err != nil {
@@ -40,6 +41,9 @@ func TestNewConfig_Normal(t *testing.T) {
 			t.Errorf("TargetDirs[%d]が期待値と異なります。期待値: %s, 実際: %s", i, expected, config.TargetDirs[i])
 		}
 	}
+	if config.Operation != operation {
+		t.Errorf("Operationが期待値と異なります。期待値: %s, 実際: %s", operation, config.Operation)
+	}
 }
 
 // TestNewConfig_EmptyRootDir は空のRootDirのテスト
@@ -49,7 +53,7 @@ func TestNewConfig_EmptyRootDir(t *testing.T) {
 	targetDirs := "cli,mcp"
 
 	// Act
-	config, err := NewConfig(rootDir, targetDirs)
+	config, err := NewConfig(rootDir, targetDirs, "output")
 
 	// Assert
 	if err == nil {
@@ -70,7 +74,7 @@ func TestNewConfig_EmptyTargetDirs(t *testing.T) {
 	targetDirs := ""
 
 	// Act
-	config, err := NewConfig(rootDir, targetDirs)
+	config, err := NewConfig(rootDir, targetDirs, "output")
 
 	// Assert
 	if err == nil {
@@ -122,6 +126,7 @@ func TestValidateConfig_Normal(t *testing.T) {
 	config := &Config{
 		RootDir:    "/test/root",
 		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "output",
 	}
 
 	// Act
@@ -145,6 +150,7 @@ func TestValidateConfig_EmptyRootDir(t *testing.T) {
 	config := &Config{
 		RootDir:    "",
 		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "output",
 	}
 
 	// Act
@@ -168,6 +174,7 @@ func TestValidateConfig_EmptyTargetDirs(t *testing.T) {
 	config := &Config{
 		RootDir:    "/test/root",
 		TargetDirs: []string{},
+		Operation:  "output",
 	}
 
 	// Act
@@ -185,10 +192,59 @@ func TestValidateConfig_EmptyTargetDirs(t *testing.T) {
 	}
 }
 
+// TestValidateConfig_EmptyOperation は空Operationの検証テスト
+func TestValidateConfig_EmptyOperation(t *testing.T) {
+	// Arrange
+	config := &Config{
+		RootDir:    "/test/root",
+		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "",
+	}
+
+	// Act
+	result, err := validateConfig(config)
+
+	// Assert
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if result != nil {
+		t.Error("結果がnilではありません")
+	}
+	if err.Error() != "--operation は必須です" {
+		t.Errorf("エラーメッセージが期待値と異なります: %v", err)
+	}
+}
+
+// TestValidateConfig_InvalidOperation は不正Operationの検証テスト
+func TestValidateConfig_InvalidOperation(t *testing.T) {
+	// Arrange
+	config := &Config{
+		RootDir:    "/test/root",
+		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "invalid",
+	}
+
+	// Act
+	result, err := validateConfig(config)
+
+	// Assert
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if result != nil {
+		t.Error("結果がnilではありません")
+	}
+	if !strings.Contains(err.Error(), "--operation は次のいずれかを指定してください") {
+		t.Errorf("エラーメッセージが期待値と異なります: %v", err)
+	}
+}
+
 // MockFlagParser はテスト用のFlagParser実装
 type MockFlagParser struct {
 	rootDir    string
 	targetDirs string
+	operation  string
 	parseError error
 }
 
@@ -199,6 +255,8 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
 		*p = m.rootDir
 	case "target-dirs":
 		*p = m.targetDirs
+	case "operation":
+		*p = m.operation
 	}
 }
 
@@ -231,10 +289,11 @@ func TestConfigParser_ParseFlags_Normal(t *testing.T) {
 	mockFlagParser := &MockFlagParser{
 		rootDir:    "/test/root",
 		targetDirs: "cli,mcp",
+		operation:  "output",
 		parseError: nil,
 	}
 	mockOSArgs := &MockOSArgs{
-		args: []string{"program", "-root-dir=/test/root", "-target-dirs=cli,mcp"},
+		args: []string{"program", "-root-dir=/test/root", "-target-dirs=cli,mcp", "-operation=output"},
 	}
 	configParser := NewConfigParser(mockFlagParser, mockOSArgs)
 
@@ -255,6 +314,9 @@ func TestConfigParser_ParseFlags_Normal(t *testing.T) {
 	if len(config.TargetDirs) != len(expectedTargetDirs) {
 		t.Errorf("TargetDirsの長さが期待値と異なります。期待値: %d, 実際: %d", len(expectedTargetDirs), len(config.TargetDirs))
 	}
+	if config.Operation != "output" {
+		t.Errorf("Operationが期待値と異なります。期待値: output, 実際: %s", config.Operation)
+	}
 }
 
 // TestConfigParser_ParseFlags_ParseError はConfigParserのParseFlags解析エラーテスト
@@ -263,6 +325,7 @@ func TestConfigParser_ParseFlags_ParseError(t *testing.T) {
 	mockFlagParser := &MockFlagParser{
 		rootDir:    "/test/root",
 		targetDirs: "cli,mcp",
+		operation:  "output",
 		parseError: &MockError{"parse error"},
 	}
 	mockOSArgs := &MockOSArgs{
@@ -390,7 +453,7 @@ func TestParseFlags(t *testing.T) {
 		flag.CommandLine = originalFlagSet
 	}()
 
-	os.Args = []string{"service-implementing-viewer", "-root-dir=/workspace", "-target-dirs=cli,mcp"}
+	os.Args = []string{"service-implementing-viewer", "-root-dir=/workspace", "-target-dirs=cli,mcp", "-operation=output"}
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	flagSet.SetOutput(io.Discard)
 	flag.CommandLine = flagSet
@@ -405,6 +468,9 @@ func TestParseFlags(t *testing.T) {
 	}
 	if len(config.TargetDirs) != 2 || config.TargetDirs[0] != "cli" || config.TargetDirs[1] != "mcp" {
 		t.Errorf("TargetDirsが期待値と異なります: %v", config.TargetDirs)
+	}
+	if config.Operation != "output" {
+		t.Errorf("Operationが期待値と異なります: %s", config.Operation)
 	}
 }
 
@@ -425,7 +491,10 @@ func TestPrintUsage(t *testing.T) {
 		"ルートディレクトリ（必須）",
 		"-target-dirs string",
 		"対象ディレクトリ（必須、カンマ区切り）",
+		"-operation string",
+		"実行する操作（必須: output",
 		"使用例:",
+		"-operation=output",
 	}
 
 	for _, fragment := range expectedFragments {
