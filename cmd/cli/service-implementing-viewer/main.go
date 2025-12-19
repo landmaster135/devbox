@@ -17,20 +17,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	// サービスを作成
+	switch cfg.Operation {
+	case "output":
+		handleOutputOperation(cfg)
+	case "write":
+		handleWriteOperation(cfg)
+	default:
+		fmt.Fprintf(os.Stderr, "エラー: 未対応のoperationです: %s\n", cfg.Operation)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+}
+
+func handleOutputOperation(cfg *config.Config) {
 	service := usecases.NewServiceImplementingViewerService(cfg.RootDir, cfg.TargetDirs)
 
-	// サービス実装状況を取得
 	result, statistics, err := service.GetServiceImplementingStatus()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 結果を出力
 	fmt.Print(result)
 
-	// 統計情報を出力
 	fmt.Printf("\n## 統計情報\n\n")
 	fmt.Printf("- **総サービス数**: %d\n", statistics.TotalServices)
 	fmt.Printf("- **CLIツール実装数**: %d\n", statistics.CLICount)
@@ -43,4 +52,21 @@ func main() {
 	fmt.Printf("- **HTTPハンドラのみ実装**: %d\n", statistics.HTTPOnlyCount)
 	fmt.Printf("- **CLI+MCP両方実装**: %d\n", statistics.BothCLIMCPCount)
 	fmt.Printf("- **全て実装済み**: %d\n", statistics.AllImplementedCount)
+}
+
+func handleWriteOperation(cfg *config.Config) {
+	service := usecases.NewServiceImplementingViewerService(cfg.RootDir, cfg.TargetDirs)
+
+	result, statistics, err := service.GetServiceImplementingStatus()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+		if err := usecases.UpdateDocumentationFile(cfg.WriteFile, result, statistics); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("ファイルを更新しました: %s\n", cfg.WriteFile)
 }

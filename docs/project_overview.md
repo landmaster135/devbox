@@ -37,32 +37,27 @@
 
 ```mermaid
 graph TD
-    A[cmd Layer] --> B[internal/usecases]
-    A --> C[internal/interfaces]
-    A --> D[internal/domain]
-    
-    B --> D
-    C --> D
-    
-    E[scripts] --> F[pkg/bin]
-    A --> G[util]
-    B --> G
-    C --> G
-    
-    F --> H[Cross-platform Binaries]
-    G --> I[Standard Library]
+  A[cmd Layer] --> B[internal/usecases]
+  A --> C[internal/interfaces]
+  A --> D[internal/domain]
+  
+  B --> D
+  C --> D
+  
+  E[scripts] --> F[pkg/bin]
+  E --> A
+  
+  F --> H[Cross-platform Binaries]
 
-    classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
-    classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
-    classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
-    classDef util fill:#ddd,stroke:#333,stroke-width:1px;
+  classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
+  classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
+  classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
+  classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
 
-    class A cmd;
-    class B,C,D internal;
-    class E scripts;
-    class F,H pkg;
-    class G util;
+  class A cmd;
+  class B,C,D internal;
+  class E scripts;
+  class F,H pkg;
 ```
 
 ## 3. ディレクトリ構造詳細
@@ -168,30 +163,7 @@ func Router() {
 
 ### 4.2 提供MCPサーバー一覧
 
-| サーバー名 | 機能概要 | 主要用途 |
-|-----------|----------|----------|
-| `arithmetic_calculator` | 数値計算処理 | 基本的な算術演算 |
-| `brave_search` | Brave検索API | Web検索機能 |
-| `context7` | ライブラリドキュメント連携 | 技術文書検索・取得 |
-| `datetime_calculator` | 日時計算処理 | 日付・時刻の操作・変換 |
-| `duckduckgo_search` | DuckDuckGo検索API | プライバシー重視検索 |
-| `everart` | EverArt画像生成 | AI画像生成 |
-| `figma` | Figma API連携 | デザインファイル操作 |
-| `filesystem` | ファイルシステム操作 | ファイル・ディレクトリ管理 |
-| `gdrive` | Google Drive連携 | クラウドストレージ操作 |
-| `git_commit_history_retriever` | Gitコミット履歴取得 | 変更履歴分析 |
-| `git_diff_recorder` | Git差分記録 | コード変更履歴管理 |
-| `github` | GitHub API連携 | リポジトリ操作・Issue管理 |
-| `http_request` | HTTP通信 | 外部API呼び出し |
-| `notion_sync` | Notion API連携 | コンテンツ同期 |
-| `open_weather_map` | OpenWeatherMap API | 気象データ取得 |
-| `ops_for_golang` | Goツール操作 | ビルド・テスト補助 |
-| `postgresql` | PostgreSQL連携 | データベース操作 |
-| `sequentialthinking` | 段階的思考支援 | 問題解決プロセス支援 |
-| `service_implementing_viewer` | サービス実装状況 | 開発進捗可視化 |
-| `timezone` | タイムゾーン変換 | 時刻変換・管理 |
-| `weather_notificator` | 気象通知 | アラート配信 |
-| `youtube_transcript` | YouTube字幕取得 | 動画字幕データ抽出 |
+[service_implementation_status.md](./service_implementation_status.md)を参照。
 
 ### 4.3 拡張パターン
 新しいMCPサーバーを追加する際の標準的な手順：

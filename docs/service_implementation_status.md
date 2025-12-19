@@ -40,11 +40,20 @@
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
 | file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ❌️  | ✅  | ❌️  | ❌️ |
+| gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-container                     | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-deployment                    | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-dns                           | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-iam                           | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-init                          | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-logging                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-monitoring                    | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-monitoring-dashboard          | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-scheduler                     | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-secret                        | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-storage                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-wrapper-workload-identity-federation | ✅  | ❌️  | ❌️  | ❌️ |
 | gdrive                                      | ❌️  | ✅  | ❌️  | ❌️ |
 | git-commit-history-retriever                | ✅  | ✅  | ❌️  | ❌️ |
@@ -57,7 +66,9 @@
 | http-request                                | ✅  | ✅  | ❌️  | ❌️ |
 | image-converter                             | ✅  | ❌️  | ❌️  | ❌️ |
 | image-filterer                              | ✅  | ❌️  | ❌️  | ❌️ |
+| image-filterer-v2                           | ✅  | ❌️  | ❌️  | ❌️ |
 | image-renamer                               | ✅  | ❌️  | ❌️  | ❌️ |
+| image-renamer-for-content                   | ✅  | ❌️  | ❌️  | ❌️ |
 | image-renamer-for-screenshot                | ✅  | ❌️  | ❌️  | ❌️ |
 | image-renamer-with-exif                     | ✅  | ❌️  | ❌️  | ❌️ |
 | image-rotator                               | ✅  | ❌️  | ❌️  | ❌️ |
@@ -94,19 +105,20 @@
 | util                                        | ❌️  | ✅  | ❌️  | ❌️ |
 | valkey                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | weather-notificator                         | ✅  | ✅  | ✅  | ✅ |
+| withings                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | yaml-parser                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | youtube-downloader                          | ✅  | ❌️  | ❌️  | ❌️ |
 | youtube-transcript                          | ❌️  | ✅  | ❌️  | ❌️ |
 | zip-compressor                              | ✅  | ❌️  | ❌️  | ❌️ |
 
-## 統計情報
+### 統計情報
 
-- **総サービス数**: 84
-- **CLIツール実装数**: 73
+- **総サービス数**: 96
+- **CLIツール実装数**: 85
 - **MCPツール実装数**: 24
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 60
+- **CLIのみ実装**: 72
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
@@ -124,9 +136,27 @@
 このドキュメントを最新の状態に更新するには、以下の手順を実行してください。`$HOME`は、実行環境によって異なることでしょう：
 
 ### 1. CLIツールを使用した更新
-
+ドキュメントの更新
 ```bash
 cd $HOME/devbox
+go run cmd/cli/service-implementing-viewer/main.go \
+  -operation=write \
+  -root-dir=$HOME/devbox/cmd \
+  -target-dirs=cli,mcp,grpc/handlers,http/handlers \
+  -write-file=./docs/service_implementation_status.md
+```
+
+プレビューのみの場合
+```bash
+cd $HOME/devbox
+go run cmd/cli/service-implementing-viewer/main.go \
+  -operation=output \
+  -root-dir=$HOME/devbox/cmd \
+  -target-dirs=cli,mcp,grpc/handlers,http/handlers
+```
+
+シェルファイルからも確認可能
+```bash
 ./pkg/bash/generate_service_implementing_table.sh
 ```
 
@@ -137,6 +167,7 @@ MCPツール実行例：
   "server_name": "service_implementing_viewer",
   "tool_name": "get_service_implementing_status",
   "arguments": {
+    "operation": "output",
     "root_dir": "/home/user/devbox",
     "target_dirs": "cmd/cli,cmd/mcp"
   }

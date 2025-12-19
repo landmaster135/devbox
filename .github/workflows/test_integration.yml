@@ -74,11 +74,18 @@ jobs:
         uses: tj-actions/coverage-badge-go@v2
         with:
           filename: ${{ env.COV_FILE }}
+      - name: Update service implementation doc
+        run: |
+          go run ./cmd/cli/service-implementing-viewer/main.go \
+            -operation=write \
+            -root-dir=${{ github.workspace }}/cmd \
+            -target-dirs=cli,mcp,grpc/handlers,http/handlers \
+            -write-file=docs/service_implementation_status.md
       - name: Push changes
         if: ${{ matrix.coverage-badge }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add README.md
+          git add README.md docs/service_implementation_status.md
           git log -1
           git diff --cached --quiet || (git commit -m "chore: Updated coverage badge [skip ci]" && git push origin HEAD)
