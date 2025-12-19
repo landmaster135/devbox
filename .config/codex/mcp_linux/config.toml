@@ -11,6 +11,9 @@ notify = [
   "/home/user/devbox/pkg/bash/notification_about_agent_works_terminated.sh DISCORD_WEBHOOK_URL Codex完了！",
 ]
 
+[shell_environment_policy]
+exclude = ["env.yml"]
+
 [tools]
 web_search = true
 
