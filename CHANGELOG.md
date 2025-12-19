@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.04 — 2025-XX-XX
+## v0.04 — 2025-12-19
 PR: #13
 
 ### Features
@@ -16,6 +16,23 @@ PR: #13
 | steam | ✅ | ❌️ | ❌️ | ❌️ | Steam Web APIから所有ゲーム・統計・実績を取得しJSONに出力するCLI。 |
 | youtube-downloader | ✅ | ❌️ | ❌️ | ❌️ | YouTube動画やプレイリストを並列ダウンロードしFFmpegで高品質結合できるCLI。 |
 | weather-notificator | ✅ | ✅ | ✅ | ✅ | OpenWeatherMap予報をCLI/MCP/HTTP/gRPC経由で配信し、Discord埋め込み通知にも対応。 |
+| gcloud-genset-ai | ✅ | ❌️ | ❌️ | ❌️ | Document AIプロセッサのアンデプロイ用curl/gcloudコマンドを安全に組み立てるCLI。 |
+| gcloud-genset-billing | ✅ | ❌️ | ❌️ | ❌️ | Billingの予算・プロジェクト情報取得コマンドを自動生成し、フィルタやリミットも補助。 |
+| gcloud-genset-cloudsql | ✅ | ❌️ | ❌️ | ❌️ | Cloud SQLの削除/削除保護/起動ポリシー変更を手順どおりに並べたgcloudコマンドを出力。 |
+| gcloud-genset-container | ✅ | ❌️ | ❌️ | ❌️ | Cloud Run/Functions/Pub/Sub操作とDiscord通知スニペットを一括生成し、環境変数更新にも対応。 |
+| gcloud-genset-deployment | ✅ | ❌️ | ❌️ | ❌️ | Deployment Managerのデプロイ一覧取得コマンドをフィルターやフォーマット付きで実行。 |
+| gcloud-genset-dns | ✅ | ❌️ | ❌️ | ❌️ | Cloud DNS managed-zonesリスト用のgcloudコマンドを柔軟なフラグ付きで生成。 |
+| gcloud-genset-iam | ✅ | ❌️ | ❌️ | ❌️ | サービスアカウント操作とWorkload Identity Federationセットアップ/クリーンアップを支援するコマンド群。 |
+| gcloud-genset-init | ✅ | ❌️ | ❌️ | ❌️ | プロジェクト初期設定で使う`gcloud auth login`や`config set project`を追加引数込みで整形。 |
+| gcloud-genset-logging | ✅ | ❌️ | ❌️ | ❌️ | Logging readやシンク作成コマンドをseverity/フィルター/追加引数から組み立てるCLI。 |
+| gcloud-genset-monitoring | ✅ | ❌️ | ❌️ | ❌️ | Monitoringダッシュボード/スヌーズ/アップタイム設定の`gcloud monitoring`コマンドをテンプレ化。 |
+| gcloud-genset-monitoring-dashboard | ✅ | ❌️ | ❌️ | ❌️ | Cloud Runサービス向けに16ウィジェット構成の監視ダッシュボードをAPI経由で作成。 |
+| gcloud-genset-scheduler | ✅ | ❌️ | ❌️ | ❌️ | Cloud SchedulerのHTTP/PubSub/CloudSQLジョブ生成と更新/停止/削除コマンドを自動化。 |
+| gcloud-genset-secret | ✅ | ❌️ | ❌️ | ❌️ | Secret Managerの作成・値登録・エイリアス/ラベル更新コマンドとDiscord通知スクリプトを生成。 |
+| gcloud-genset-storage | ✅ | ❌️ | ❌️ | ❌️ | GCSアップロード/ダウンロード/ACL/バケット作成などのgsutilコマンドを整形出力。 |
+| image-filterer-v2 | ✅ | ❌️ | ❌️ | ❌️ | グレースケール/ティント/ビネットをCPUのみで適用できる第2世代画像フィルタCLI。 |
+| image-renamer-for-content | ✅ | ❌️ | ❌️ | ❌️ | コンテンツIDプリセットと並列ワーカーでWeb素材を一括リネームするCLI。 |
+| withings | ✅ | ❌️ | ❌️ | ❌️ | Withings Public Health Data APIでOAuth/日次サマリ取得/トークン自動更新を行うヘルスデータCLI。 |
 
 ### Improvements
 - Discord通知パイプラインにOpenWeatherMapスタイルの埋め込み・完了通知・JST表記を追加し配信品質を向上。
@@ -24,11 +41,20 @@ PR: #13
 - Data ConverterとDB Server SyncでMarkdownテーブルや配列整形を拡充し、AniList連携データの整合性を向上。
 - Notion SyncやOps for Golangなど既存CLIにWebクリップパッチやCLIオプション拡張を追加し、開発体験を改善。
 - サービス実装統計機能で作成されるレポートに統計情報に関する内容を追加。
-- .config: Codex向け設定テンプレートを追加。
+- .config: Codex/Cagent向け設定テンプレートを追加。
+- Go のバージョンアップデート: 1.23.5 -> 1.25.5
+- gcloud-gensetファミリーをCloud Run/Secret Manager/Storage/CloudSQL/Billing/Logging/DNS/Deployment/Scheduler/Containerまで拡張し、Discord通知テンプレートとWorkload Identity Federation雛形もCLIで生成できるよう統合。
+- WithingsヘルスサービスをAuth/Core/Health層へ再分割し、測定タイプ`all`、JSONファイルエクスポート、アクセストークン自動更新、キャッシュ最適化、包括的テストで日次サマリ取得を堅牢化。
+- image-renamer-for-contentにmackerel/web_clip/date/wineプリセットやソート・開始番号・ワーカー数指定を加え、DOSバッチ／ビルドスクリプトとテストで画像命名ワークフローを高速化。
+- setup-git-pre-commit-hooksスクリプトとgit commit message generatorをモジュール化し、cagentブログエージェント設定・Anthropicモデル・プロンプト再編・Shell環境ポリシーでワークフローを共通化。
+- OCR ExecutorをAIクライアントから分離し、Ollama OCR対応・http.Client再利用・ストリーミングデコードでマルチモデル処理の遅延を削減。
+- PostgreSQLダンプ機能の追加。
 
 ### Bug Fixes
 - git-info-retrieverのアーカイブ生成スクリプトをサニタイズし、任意のパス注入を防止。
-- Gitコマンド用パスバリデータでURLエンコードやシンボリックパスを遮断し、差分／履歴取得時の安全性を向上。
+- Gitコマンド用パスバリデータとgit-commit-history-executorの安全なワーキングディレクトリ検証でURLエンコードやシンボリックパス、ディレクトリ外アクセスを遮断し、差分／履歴取得時の安全性を向上。
+- PostgreSQLテーブルダンプ系ツールでschema-qualifiedクエリ、識別子クオート、列順固定、並列実行ガード、CSV/SQLエンコーダの正規化を行い、エクスポート結果の破損を防止。
+- script-generator-to-buildの使用例にバックスラッシュとクォートのエスケープを施し、生成スクリプトをコピー&ペーストしても安全に動作。
 
 ### Documentation
 - docs/service_implementation_status.md を更新し、gRPC/HTTP列と統計を追加して最新のサービス実装状況を反映。
