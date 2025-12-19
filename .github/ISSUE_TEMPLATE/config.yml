@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🌟 Feature request
+    url: https://github.com/landmaster135/devbox/issues/new?labels=enhancement
+    about: Please use our GitHub Issue for making feature requests.

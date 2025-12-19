@@ -85,7 +85,6 @@ graph TD
 ```
 
 ## Package Overview
-
 - **cmd/**: 各CLIツールのエントリーポイント群。多様なコマンドラインツールが含まれており、それぞれが独立したアプリケーションとして動作します。主要ツール例：
   - `exif-modifier`: Exif処理ユーティリティ
   - `image-converter`: 画像形式変換ツール
@@ -105,7 +104,6 @@ graph TD
 - **scripts/**: ビルドとデプロイメント自動化スクリプト群。各ツールの個別ビルドスクリプトと統合ビルドスクリプトを提供します。
 
 # Service Implementing Status
-
 [Here](./docs/service_implementation_status.md)
 
 # License
