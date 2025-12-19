@@ -139,7 +139,7 @@ func (r *ExtractResult) FormatAsText() string {
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("=== Base64 Extraction Results ===\n"))
+	output.WriteString("=== Base64 Extraction Results ===\n")
 	output.WriteString(fmt.Sprintf("Total Images: %d\n\n", r.Total))
 
 	for i, image := range r.Images {

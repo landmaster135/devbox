@@ -51,8 +51,8 @@ func TestConfigParser_ParseFlags_RecordMode(t *testing.T) {
 	if cfg.ReadMode {
 		t.Error("ReadModeがfalseであるべきです")
 	}
-	if cfg.GenMode {
-		t.Error("GenModeがfalseであるべきです")
+	if cfg.OutputMode {
+		t.Error("OutputModeがfalseであるべきです")
 	}
 }
 
@@ -67,7 +67,7 @@ func TestConfigParser_ParseFlags_AllFlags(t *testing.T) {
 	mockParser.SetStringValue("output-dir", "/tmp/output")
 	mockParser.SetBoolValue("staged-only", true)
 	mockParser.SetBoolValue("read-mode", false)
-	mockParser.SetBoolValue("gen-mode", false)
+	mockParser.SetBoolValue("output-mode", false)
 	mockParser.SetStringValue("source-dir", "/tmp/source")
 	mockParser.SetStringValue("repository", "test-repo")
 	mockParser.SetStringValue("git-dir", "/tmp/git")
@@ -204,14 +204,14 @@ func TestStandardOSArgs_Creation(t *testing.T) {
 	}
 }
 
-// TestConfigParser_ParseFlags_GenMode は生成モードの正常系テスト
-func TestConfigParser_ParseFlags_GenMode(t *testing.T) {
+// TestConfigParser_ParseFlags_OutputMode は出力モードの正常系テスト
+func TestConfigParser_ParseFlags_OutputMode(t *testing.T) {
 	// Arrange
 	mockParser := NewMockFlagParser()
-	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder", "--gen-mode", "--git-dir", "/tmp/git"})
+	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder", "--output-mode", "--git-dir", "/tmp/git"})
 	configParser := NewConfigParser(mockParser, mockOSArgs)
 
-	mockParser.SetBoolValue("gen-mode", true)
+	mockParser.SetBoolValue("output-mode", true)
 	mockParser.SetStringValue("git-dir", "/tmp/git")
 
 	// Act
@@ -221,8 +221,8 @@ func TestConfigParser_ParseFlags_GenMode(t *testing.T) {
 	if err != nil {
 		t.Errorf("引数解析でエラーが発生しました: %v", err)
 	}
-	if !cfg.GenMode {
-		t.Error("GenModeがtrueであるべきです")
+	if !cfg.OutputMode {
+		t.Error("OutputModeがtrueであるべきです")
 	}
 	if cfg.GitDir != "/tmp/git" {
 		t.Errorf("GitDirが期待値と異なります。期待値: /tmp/git, 実際: %s", cfg.GitDir)
@@ -258,14 +258,14 @@ func TestConfigParser_ParseFlags_ReadMode(t *testing.T) {
 	}
 }
 
-// TestConfigParser_validateConfig_GenModeMissingGitDir は生成モードでgit-dir不足のテスト
-func TestConfigParser_validateConfig_GenModeMissingGitDir(t *testing.T) {
+// TestConfigParser_validateConfig_OutputModeMissingGitDir は出力モードでgit-dir不足のテスト
+func TestConfigParser_validateConfig_OutputModeMissingGitDir(t *testing.T) {
 	// Arrange
 	mockParser := NewMockFlagParser()
 	mockOSArgs := NewMockOSArgs([]string{"git-diff-recorder"})
 	configParser := NewConfigParser(mockParser, mockOSArgs)
 
-	mockParser.SetBoolValue("gen-mode", true)
+	mockParser.SetBoolValue("output-mode", true)
 	// git-dirを設定しない
 
 	// Act
@@ -278,7 +278,7 @@ func TestConfigParser_validateConfig_GenModeMissingGitDir(t *testing.T) {
 	if cfg != nil {
 		t.Error("エラー時にはconfigはnilであるべきです")
 	}
-	if !strings.Contains(err.Error(), "生成モードでは --git-dir は必須パラメータです") {
+	if !strings.Contains(err.Error(), "出力モードでは --git-dir は必須パラメータです") {
 		t.Errorf("期待されるエラーメッセージと異なります: %v", err)
 	}
 }
@@ -318,7 +318,7 @@ func TestConfigParser_validateConfig_RecordModeMissingOutputDir(t *testing.T) {
 
 	// 全てのモードフラグをfalseに設定（記録モードがデフォルト）
 	mockParser.SetBoolValue("read-mode", false)
-	mockParser.SetBoolValue("gen-mode", false)
+	mockParser.SetBoolValue("output-mode", false)
 	// output-dirを設定しない
 
 	// Act

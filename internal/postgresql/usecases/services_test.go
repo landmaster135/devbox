@@ -4,10 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"os"
+	"strings"
 	"testing"
 
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // #==============================================================#
@@ -16,57 +20,96 @@ import (
 
 // MockDatabaseExecutor はテスト用のDatabaseExecutorモック
 type MockDatabaseExecutor struct {
-	mock.Mock
+	QueryContextFunc       func(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContextFunc    func(ctx context.Context, query string, args ...any) *sql.Row
+	BeginTxFunc            func(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
+	PingFunc               func() error
+	CloseFunc              func() error
+	QueryContextRowsFunc   func(ctx context.Context, query string, args ...any) (RowsInterface, error)
+	QueryRowContextRowFunc func(ctx context.Context, query string, args ...any) RowInterface
 }
 
-func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	arguments := m.Called(ctx, query, args)
-	return arguments.Get(0).(*sql.Rows), arguments.Error(1)
+func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if m.QueryContextFunc != nil {
+		return m.QueryContextFunc(ctx, query, args)
+	}
+	return nil, nil
 }
 
-func (m *MockDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	arguments := m.Called(ctx, query, args)
-	return arguments.Get(0).(*sql.Row)
+func (m *MockDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	if m.QueryRowContextFunc != nil {
+		return m.QueryRowContextFunc(ctx, query, args)
+	}
+	return nil
 }
 
 func (m *MockDatabaseExecutor) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error) {
-	arguments := m.Called(ctx, opts)
-	return arguments.Get(0).(*sql.Tx), arguments.Error(1)
+	if m.BeginTxFunc != nil {
+		return m.BeginTxFunc(ctx, opts)
+	}
+	return nil, nil
 }
 
 func (m *MockDatabaseExecutor) Ping() error {
-	arguments := m.Called()
-	return arguments.Error(0)
+	if m.PingFunc != nil {
+		return m.PingFunc()
+	}
+	return nil
 }
 
 func (m *MockDatabaseExecutor) Close() error {
-	arguments := m.Called()
-	return arguments.Error(0)
+	if m.CloseFunc != nil {
+		return m.CloseFunc()
+	}
+	return nil
+}
+
+// QueryContextRows は新しいインターフェース用のメソッド
+func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	if m.QueryContextRowsFunc != nil {
+		return m.QueryContextRowsFunc(ctx, query, args)
+	}
+	return nil, nil
+}
+
+// QueryRowContextRow は新しいインターフェース用のメソッド
+func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
+	if m.QueryRowContextRowFunc != nil {
+		return m.QueryRowContextRowFunc(ctx, query, args)
+	}
+	return nil
 }
 
 // MockTemplateRenderer はテスト用のTemplateRendererモック
 type MockTemplateRenderer struct {
-	mock.Mock
+	RenderTableDetailFunc func(detail *TableDetail) (string, error)
+	RenderTableListFunc   func(data ListTablesData) (string, error)
 }
 
 func (m *MockTemplateRenderer) RenderTableDetail(detail *TableDetail) (string, error) {
-	arguments := m.Called(detail)
-	return arguments.String(0), arguments.Error(1)
+	if m.RenderTableDetailFunc != nil {
+		return m.RenderTableDetailFunc(detail)
+	}
+	return "", nil
 }
 
 func (m *MockTemplateRenderer) RenderTableList(data ListTablesData) (string, error) {
-	arguments := m.Called(data)
-	return arguments.String(0), arguments.Error(1)
+	if m.RenderTableListFunc != nil {
+		return m.RenderTableListFunc(data)
+	}
+	return "", nil
 }
 
 // MockJSONMarshaler はテスト用のJSONMarshalerモック
 type MockJSONMarshaler struct {
-	mock.Mock
+	MarshalIndentFunc func(v any, prefix, indent string) ([]byte, error)
 }
 
-func (m *MockJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
-	arguments := m.Called(v, prefix, indent)
-	return arguments.Get(0).([]byte), arguments.Error(1)
+func (m *MockJSONMarshaler) MarshalIndent(v any, prefix, indent string) ([]byte, error) {
+	if m.MarshalIndentFunc != nil {
+		return m.MarshalIndentFunc(v, prefix, indent)
+	}
+	return nil, nil
 }
 
 // #==============================================================#
@@ -77,11 +120,13 @@ func createTestPostgreSQLService() *PostgreSQLService {
 	mockExecutor := &MockDatabaseExecutor{}
 	mockRenderer := &MockTemplateRenderer{}
 	mockMarshaler := &MockJSONMarshaler{}
+	tableDumper := NewTableDumper(mockExecutor)
 
 	return NewPostgreSQLServiceWithDependencies(
 		mockExecutor,
 		mockRenderer,
 		mockMarshaler,
+		tableDumper,
 		"postgres://test:test@localhost/testdb",
 		"postgres://test@localhost/testdb",
 	)
@@ -101,6 +146,7 @@ func TestNewPostgreSQLServiceWithDependencies_Normal(t *testing.T) {
 	mockExecutor := &MockDatabaseExecutor{}
 	mockRenderer := &MockTemplateRenderer{}
 	mockMarshaler := &MockJSONMarshaler{}
+	tableDumper := NewTableDumper(mockExecutor)
 	databaseURL := "postgres://test:test@localhost/testdb"
 	resourceBase := "postgres://test@localhost/testdb"
 
@@ -109,6 +155,7 @@ func TestNewPostgreSQLServiceWithDependencies_Normal(t *testing.T) {
 		mockExecutor,
 		mockRenderer,
 		mockMarshaler,
+		tableDumper,
 		databaseURL,
 		resourceBase,
 	)
@@ -123,14 +170,15 @@ func TestPostgreSQLService_Close_Normal(t *testing.T) {
 	// Arrange
 	service := createTestPostgreSQLService()
 	mockExecutor := service.executor.(*MockDatabaseExecutor)
-	mockExecutor.On("Close").Return(nil)
+	mockExecutor.CloseFunc = func() error {
+		return nil
+	}
 
 	// Act
 	err := service.Close()
 
 	// Assert
 	assert.NoError(t, err)
-	mockExecutor.AssertExpectations(t)
 }
 
 func TestPostgreSQLService_Close_Error(t *testing.T) {
@@ -138,7 +186,9 @@ func TestPostgreSQLService_Close_Error(t *testing.T) {
 	service := createTestPostgreSQLService()
 	mockExecutor := service.executor.(*MockDatabaseExecutor)
 	expectedError := errors.New("close error")
-	mockExecutor.On("Close").Return(expectedError)
+	mockExecutor.CloseFunc = func() error {
+		return expectedError
+	}
 
 	// Act
 	err := service.Close()
@@ -146,7 +196,6 @@ func TestPostgreSQLService_Close_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Equal(t, expectedError, err)
-	mockExecutor.AssertExpectations(t)
 }
 
 // #==============================================================#
@@ -214,7 +263,7 @@ func TestCreateResourceBaseURL_InvalidURL(t *testing.T) {
 func TestDefaultJSONMarshaler_MarshalIndent_Normal(t *testing.T) {
 	// Arrange
 	marshaler := &DefaultJSONMarshaler{}
-	data := map[string]interface{}{
+	data := map[string]any{
 		"name": "test",
 		"id":   1,
 	}
@@ -235,7 +284,7 @@ func TestDefaultJSONMarshaler_MarshalIndent_InvalidData(t *testing.T) {
 	// Arrange
 	marshaler := &DefaultJSONMarshaler{}
 	// 循環参照を作成してJSONエラーを発生させる
-	data := make(map[string]interface{})
+	data := make(map[string]any)
 	data["self"] = data
 	prefix := ""
 	indent := "  "
@@ -246,4 +295,141 @@ func TestDefaultJSONMarshaler_MarshalIndent_InvalidData(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Nil(t, result)
+}
+
+func TestDefaultDatabaseExecutor_QueryHelpers(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+
+	executor := &DefaultDatabaseExecutor{db: db}
+	ctx := context.Background()
+
+	mock.ExpectQuery("SELECT 1").
+		WillReturnRows(sqlmock.NewRows([]string{"value"}).AddRow(1))
+
+	rows, err := executor.QueryContextRows(ctx, "SELECT 1")
+	require.NoError(t, err)
+
+	cols, err := rows.Columns()
+	require.NoError(t, err)
+	assert.Equal(t, []string{"value"}, cols)
+
+	if assert.True(t, rows.Next()) {
+		var value int
+		require.NoError(t, rows.Scan(&value))
+		assert.Equal(t, 1, value)
+	}
+	assert.False(t, rows.Next())
+	assert.NoError(t, rows.Err())
+	assert.NoError(t, rows.Close())
+
+	mock.ExpectQuery("SELECT 'hello'").
+		WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow("hello"))
+
+	row := executor.QueryRowContextRow(ctx, "SELECT 'hello'")
+	var name string
+	require.NoError(t, row.Scan(&name))
+	assert.Equal(t, "hello", name)
+
+	mock.ExpectPing()
+	mock.ExpectClose()
+
+	assert.NoError(t, executor.Ping())
+	assert.NoError(t, executor.Close())
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestPostgreSQLService_HandleToDumpTable_Defaults(t *testing.T) {
+	mockExecutor := &MockDatabaseExecutor{}
+	mockRenderer := &MockTemplateRenderer{}
+	mockMarshaler := &MockJSONMarshaler{}
+	mockQueryExecutor := &MockDatabaseQueryExecutor{}
+	tempDir := t.TempDir()
+
+	mockFileWriter := &MockFileWriter{
+		CreateFunc: func(name string) (*os.File, error) {
+			return os.CreateTemp(tempDir, "dump-table-*.json")
+		},
+	}
+
+	tableDumper := NewTableDumperWithDependencies(mockQueryExecutor, mockFileWriter)
+	service := NewPostgreSQLServiceWithDependencies(
+		mockExecutor,
+		mockRenderer,
+		mockMarshaler,
+		tableDumper,
+		"postgres://user:pass@localhost/testdb",
+		"postgres://user@localhost/testdb",
+	)
+
+	mockQueryExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+		trimmed := strings.TrimSpace(query)
+		switch {
+		case strings.Contains(trimmed, "FROM information_schema.tables"):
+			return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
+		case strings.HasPrefix(trimmed, "SELECT * FROM \"users\""):
+			return NewMockRows([]string{"id", "name"}, [][]any{{1, "Alice"}}), nil
+		default:
+			return nil, fmt.Errorf("unexpected query: %s", trimmed)
+		}
+	}
+
+	result, err := service.HandleToDumpTable(context.Background(), "users", "", "", nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "users", result.TableName)
+	assert.Equal(t, 1, result.RecordCount)
+	assert.Equal(t, ".", result.OutputPath)
+	assert.Equal(t, "json", result.Format)
+}
+
+func TestPostgreSQLService_HandleToDumpAllTables_Defaults(t *testing.T) {
+	mockExecutor := &MockDatabaseExecutor{}
+	mockRenderer := &MockTemplateRenderer{}
+	mockMarshaler := &MockJSONMarshaler{}
+	mockQueryExecutor := &MockDatabaseQueryExecutor{}
+	tempDir := t.TempDir()
+
+	mockFileWriter := &MockFileWriter{
+		CreateFunc: func(name string) (*os.File, error) {
+			return os.CreateTemp(tempDir, "dump-all-*.json")
+		},
+	}
+
+	tableDumper := NewTableDumperWithDependencies(mockQueryExecutor, mockFileWriter)
+	service := NewPostgreSQLServiceWithDependencies(
+		mockExecutor,
+		mockRenderer,
+		mockMarshaler,
+		tableDumper,
+		"postgres://user:pass@localhost/testdb",
+		"postgres://user@localhost/testdb",
+	)
+
+	mockQueryExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+		trimmed := strings.TrimSpace(query)
+		switch {
+		case strings.Contains(trimmed, "FROM information_schema.tables"):
+			return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
+		case strings.HasPrefix(trimmed, "SELECT * FROM \"users\""):
+			return NewMockRows([]string{"id", "name"}, [][]any{{1, "Alice"}}), nil
+		default:
+			return nil, fmt.Errorf("unexpected query: %s", trimmed)
+		}
+	}
+
+	mockQueryExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) RowInterface {
+		return NewMockRow([]any{"testdb"}, nil)
+	}
+
+	result, err := service.HandleToDumpAllTables(context.Background(), "", "", nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "testdb", result.DatabaseName)
+	assert.Equal(t, 1, result.TotalTables)
+	require.Len(t, result.Results, 1)
+	assert.Equal(t, "users", result.Results[0].TableName)
+	assert.Equal(t, ".", result.Results[0].OutputPath)
+	assert.Equal(t, "json", result.Results[0].Format)
 }

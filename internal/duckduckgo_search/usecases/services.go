@@ -13,6 +13,15 @@ import (
 	"time"
 )
 
+var (
+	htmlTagRegex         = regexp.MustCompile(`<[^>]*>`)
+	extraSpaceRegex      = regexp.MustCompile(`\s+`)
+	linkRegexPrimary     = regexp.MustCompile(`<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>`)
+	linkRegexAlternative = regexp.MustCompile(`<h2[^>]*><a[^>]+href="([^"]+)"[^>]*>([^<]+)</a></h2>`)
+	linkRegexGeneric     = regexp.MustCompile(`<a[^>]+href="([^"]+)"[^>]*>([^<]+)</a>`)
+	resultDescRegex      = regexp.MustCompile(`<a class="result__snippet"[^>]*>([^<]+)</a>`)
+)
+
 // #==============================================================#
 // ##          Data Structures                                   ##
 // #==============================================================#
@@ -141,13 +150,11 @@ func (s *DuckDuckGoSearchService) cleanText(text string) string {
 	text = strings.ReplaceAll(text, "&#39;", "'")
 
 	// HTMLタグの除去
-	tagRegex := regexp.MustCompile(`<[^>]*>`)
-	text = tagRegex.ReplaceAllString(text, "")
+	text = htmlTagRegex.ReplaceAllString(text, "")
 
 	// 余分な空白の除去
 	text = strings.TrimSpace(text)
-	spaceRegex := regexp.MustCompile(`\s+`)
-	text = spaceRegex.ReplaceAllString(text, " ")
+	text = extraSpaceRegex.ReplaceAllString(text, " ")
 
 	return text
 }
@@ -184,44 +191,34 @@ func (s *DuckDuckGoSearchService) parseSearchResults(html string, maxResults int
 
 	// DuckDuckGoのHTML構造に基づく正規表現パターン
 	// 結果のリンクを抽出
-	linkPattern := `<a class="result__a" href="([^"]+)"[^>]*>([^<]+)</a>`
-	linkRegex := regexp.MustCompile(linkPattern)
-	linkMatches := linkRegex.FindAllStringSubmatch(html, -1)
+	linkMatches := linkRegexPrimary.FindAllStringSubmatch(html, -1)
+
+	if len(linkMatches) == 0 {
+		linkMatches = linkRegexAlternative.FindAllStringSubmatch(html, -1)
+	}
+
+	if len(linkMatches) == 0 {
+		linkMatches = linkRegexGeneric.FindAllStringSubmatch(html, -1)
+		if len(linkMatches) > 0 {
+			// フィルタリング - 明らかに検索結果ではないリンクを除外
+			var filteredMatches [][]string
+			for _, match := range linkMatches {
+				url := match[1]
+				title := match[2]
+				// 内部リンクや画像リンクを除外
+				if !strings.Contains(url, "duckduckgo.com") &&
+					!strings.HasPrefix(url, "#") &&
+					!strings.HasPrefix(url, "javascript:") &&
+					len(title) > 5 { // タイトルが短すぎるものを除外
+					filteredMatches = append(filteredMatches, match)
+				}
+			}
+			linkMatches = filteredMatches
+		}
+	}
 
 	// 結果の説明を抽出
-	descPattern := `<a class="result__snippet"[^>]*>([^<]+)</a>`
-	descRegex := regexp.MustCompile(descPattern)
-	descMatches := descRegex.FindAllStringSubmatch(html, -1)
-
-	// より柔軟なパターンも試す
-	if len(linkMatches) == 0 {
-		// 代替パターン1
-		linkPattern = `<h2[^>]*><a[^>]+href="([^"]+)"[^>]*>([^<]+)</a></h2>`
-		linkRegex = regexp.MustCompile(linkPattern)
-		linkMatches = linkRegex.FindAllStringSubmatch(html, -1)
-	}
-
-	if len(linkMatches) == 0 {
-		// 代替パターン2 - より汎用的なリンクパターン
-		linkPattern = `<a[^>]+href="([^"]+)"[^>]*>([^<]+)</a>`
-		linkRegex = regexp.MustCompile(linkPattern)
-		linkMatches = linkRegex.FindAllStringSubmatch(html, -1)
-
-		// フィルタリング - 明らかに検索結果ではないリンクを除外
-		var filteredMatches [][]string
-		for _, match := range linkMatches {
-			url := match[1]
-			title := match[2]
-			// 内部リンクや画像リンクを除外
-			if !strings.Contains(url, "duckduckgo.com") &&
-				!strings.HasPrefix(url, "#") &&
-				!strings.HasPrefix(url, "javascript:") &&
-				len(title) > 5 { // タイトルが短すぎるものを除外
-				filteredMatches = append(filteredMatches, match)
-			}
-		}
-		linkMatches = filteredMatches
-	}
+	descMatches := resultDescRegex.FindAllStringSubmatch(html, -1)
 
 	// 結果を構築
 	for i, linkMatch := range linkMatches {

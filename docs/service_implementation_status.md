@@ -2,131 +2,146 @@
 
 このドキュメントは、devboxプロジェクトにおける各サービスの実装状況を記録しています。
 
-## 実装状況一覧
+## 実装状況
 
-以下の表は、各サービスがCLIツール（`cmd/cli`）とMCPツール（`cmd/mcp`）として実装されているかを示しています。
+以下の表は、各サービスが下記のツールとして実装されているかを示しています。
+- CLIツール（`cmd/cli`）
+- MCPツール（`cmd/mcp`）
+- gRPCハンドラ（`grpc/handlers`）
+- HTTP REST API ハンドラ（`http/handlers`）
 
-| service                              | cmd/cli | cmd/mcp |
-| :----------------------------------: | :-: | :-: |
-| arithmetic-calculator                | ✅  | ✅ |
-| base64-extractor                     | ✅  | ❌️ |
-| brave-search                         | ❌️  | ✅ |
-| claude-code-usage                    | ✅  | ❌️ |
-| code-analyzer                        | ✅  | ❌️ |
-| context7                             | ✅  | ✅ |
-| datetime-calculator                  | ✅  | ✅ |
-| depends-visualizer                   | ✅  | ❌️ |
-| diff-dreamer                         | ✅  | ❌️ |
-| duckduckgo-search                    | ❌️  | ✅ |
-| env-loader                           | ✅  | ❌️ |
-| everart                              | ❌️  | ✅ |
-| exif-mirror                          | ✅  | ❌️ |
-| exif-modifier                        | ✅  | ❌️ |
-| exif-viewer                          | ✅  | ❌️ |
-| figma                                | ❌️  | ✅ |
-| file-character-replacer              | ✅  | ❌️ |
-| file-maneuver                        | ✅  | ❌️ |
-| file-processor                       | ✅  | ❌️ |
-| filesystem                           | ❌️  | ✅ |
-| gdrive                               | ❌️  | ✅ |
-| git-commit-history-retriever         | ✅  | ✅ |
-| git-diff-recorder                    | ✅  | ✅ |
-| github                               | ❌️  | ✅ |
-| goo-scraper                          | ✅  | ❌️ |
-| http-request                         | ✅  | ✅ |
-| image-converter                      | ✅  | ❌️ |
-| image-filterer                       | ✅  | ❌️ |
-| image-renamer                        | ✅  | ❌️ |
-| image-renamer-for-screenshot         | ✅  | ❌️ |
-| image-renamer-with-exif              | ✅  | ❌️ |
-| image-rotator                        | ✅  | ❌️ |
-| image-trim-describer                 | ✅  | ❌️ |
-| image-trimmer                        | ✅  | ❌️ |
-| iso8601-converter                    | ✅  | ❌️ |
-| json-file-merger                     | ✅  | ❌️ |
-| json-formatter-for-agent-interaction | ✅  | ❌️ |
-| json-iso8601-converter               | ✅  | ❌️ |
-| json-modifier                        | ✅  | ❌️ |
-| json-timestamp-modifier              | ✅  | ❌️ |
-| kana-converter                       | ✅  | ❌️ |
-| movie-converter-for-gif              | ✅  | ❌️ |
-| movie-converter-for-webm             | ✅  | ❌️ |
-| ocr-executor                         | ✅  | ❌️ |
-| pdf-encrypter                        | ✅  | ❌️ |
-| pdf-merger                           | ✅  | ❌️ |
-| postgresql                           | ❌️  | ✅ |
-| script-generator-to-build            | ✅  | ❌️ |
-| sequentialthinking                   | ❌️  | ✅ |
-| service-implementing-viewer          | ✅  | ✅ |
-| shell                                | ❌️  | ✅ |
-| timezone                             | ❌️  | ✅ |
-| unit-converter                       | ✅  | ❌️ |
-| util                                 | ❌️  | ✅ |
-| yaml-parser                          | ✅  | ❌️ |
-| youtube-transcript                   | ❌️  | ✅ |
+### 実装状況一覧
+
+| service                                     | cli | mcp | grpc/handlers | http/handlers |
+| :-----------------------------------------: | :-: | :-: | :-: | :-: |
+| anilist                                     | ✅  | ❌️  | ❌️  | ❌️ |
+| arithmetic-calculator                       | ✅  | ✅  | ❌️  | ❌️ |
+| arxiv                                       | ✅  | ❌️  | ❌️  | ❌️ |
+| base64-extractor                            | ✅  | ❌️  | ❌️  | ❌️ |
+| brave-search                                | ❌️  | ✅  | ❌️  | ❌️ |
+| claude-code-usage                           | ✅  | ❌️  | ❌️  | ❌️ |
+| code-analyzer                               | ✅  | ❌️  | ❌️  | ❌️ |
+| color-code-converter                        | ✅  | ❌️  | ❌️  | ❌️ |
+| context7                                    | ✅  | ✅  | ❌️  | ❌️ |
+| data-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
+| datetime-calculator                         | ✅  | ✅  | ❌️  | ❌️ |
+| db-server-sync                              | ✅  | ❌️  | ❌️  | ❌️ |
+| depends-visualizer                          | ✅  | ❌️  | ❌️  | ❌️ |
+| diff-dreamer                                | ✅  | ❌️  | ❌️  | ❌️ |
+| discord-webhook                             | ✅  | ❌️  | ❌️  | ❌️ |
+| duckduckgo-search                           | ❌️  | ✅  | ❌️  | ❌️ |
+| env-loader                                  | ✅  | ❌️  | ❌️  | ❌️ |
+| everart                                     | ❌️  | ✅  | ❌️  | ❌️ |
+| exif-mirror                                 | ✅  | ❌️  | ❌️  | ❌️ |
+| exif-modifier                               | ✅  | ❌️  | ❌️  | ❌️ |
+| exif-viewer                                 | ✅  | ❌️  | ❌️  | ❌️ |
+| figma                                       | ❌️  | ✅  | ❌️  | ❌️ |
+| file-character-replacer                     | ✅  | ❌️  | ❌️  | ❌️ |
+| file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
+| file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
+| filesystem                                  | ❌️  | ✅  | ❌️  | ❌️ |
+| gcloud-genset-init                          | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-logging                       | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-monitoring                    | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-monitoring-dashboard          | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-secret                        | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-wrapper-workload-identity-federation | ✅  | ❌️  | ❌️  | ❌️ |
+| gdrive                                      | ❌️  | ✅  | ❌️  | ❌️ |
+| git-commit-history-retriever                | ✅  | ✅  | ❌️  | ❌️ |
+| git-diff-recorder                           | ✅  | ✅  | ❌️  | ❌️ |
+| git-info-retriever                          | ✅  | ❌️  | ❌️  | ❌️ |
+| git-pre-commit-hooks                        | ✅  | ❌️  | ❌️  | ❌️ |
+| github                                      | ✅  | ✅  | ❌️  | ❌️ |
+| goo-scraper                                 | ✅  | ❌️  | ❌️  | ❌️ |
+| grpc-request                                | ✅  | ❌️  | ❌️  | ❌️ |
+| http-request                                | ✅  | ✅  | ❌️  | ❌️ |
+| image-converter                             | ✅  | ❌️  | ❌️  | ❌️ |
+| image-filterer                              | ✅  | ❌️  | ❌️  | ❌️ |
+| image-renamer                               | ✅  | ❌️  | ❌️  | ❌️ |
+| image-renamer-for-screenshot                | ✅  | ❌️  | ❌️  | ❌️ |
+| image-renamer-with-exif                     | ✅  | ❌️  | ❌️  | ❌️ |
+| image-rotator                               | ✅  | ❌️  | ❌️  | ❌️ |
+| image-trim-describer                        | ✅  | ❌️  | ❌️  | ❌️ |
+| image-trimmer                               | ✅  | ❌️  | ❌️  | ❌️ |
+| iso8601-converter                           | ✅  | ❌️  | ❌️  | ❌️ |
+| json-file-merger                            | ✅  | ❌️  | ❌️  | ❌️ |
+| json-formatter-for-agent-interaction        | ✅  | ❌️  | ❌️  | ❌️ |
+| json-iso8601-converter                      | ✅  | ❌️  | ❌️  | ❌️ |
+| json-modifier                               | ✅  | ❌️  | ❌️  | ❌️ |
+| json-timestamp-modifier                     | ✅  | ❌️  | ❌️  | ❌️ |
+| kana-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
+| mcp-remote                                  | ✅  | ❌️  | ❌️  | ❌️ |
+| memory                                      | ✅  | ❌️  | ❌️  | ❌️ |
+| movie-converter-for-gif                     | ✅  | ❌️  | ❌️  | ❌️ |
+| movie-converter-for-webm                    | ✅  | ❌️  | ❌️  | ❌️ |
+| notion-blog-content-extractor               | ✅  | ❌️  | ❌️  | ❌️ |
+| notion-sync                                 | ✅  | ✅  | ❌️  | ❌️ |
+| ocr-executor                                | ✅  | ❌️  | ❌️  | ❌️ |
+| ocr-executor-with-ai                        | ✅  | ❌️  | ❌️  | ❌️ |
+| open-weather-map                            | ✅  | ✅  | ❌️  | ❌️ |
+| ops-for-golang                              | ✅  | ✅  | ❌️  | ❌️ |
+| pdf-encrypter                               | ✅  | ❌️  | ❌️  | ❌️ |
+| pdf-merger                                  | ✅  | ❌️  | ❌️  | ❌️ |
+| postgresql                                  | ✅  | ✅  | ❌️  | ❌️ |
+| qdrant                                      | ✅  | ❌️  | ❌️  | ❌️ |
+| script-generator-to-build                   | ✅  | ❌️  | ❌️  | ❌️ |
+| sequentialthinking                          | ❌️  | ✅  | ❌️  | ❌️ |
+| service-implementing-viewer                 | ✅  | ✅  | ❌️  | ❌️ |
+| shell                                       | ❌️  | ✅  | ❌️  | ❌️ |
+| steam                                       | ✅  | ❌️  | ❌️  | ❌️ |
+| timezone                                    | ❌️  | ✅  | ❌️  | ❌️ |
+| unit-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
+| util                                        | ❌️  | ✅  | ❌️  | ❌️ |
+| valkey                                      | ✅  | ❌️  | ❌️  | ❌️ |
+| weather-notificator                         | ✅  | ✅  | ✅  | ✅ |
+| yaml-parser                                 | ✅  | ❌️  | ❌️  | ❌️ |
+| youtube-downloader                          | ✅  | ❌️  | ❌️  | ❌️ |
+| youtube-transcript                          | ❌️  | ✅  | ❌️  | ❌️ |
+| zip-compressor                              | ✅  | ❌️  | ❌️  | ❌️ |
 
 ## 統計情報
 
-### 実装済みサービス数
-- **CLIツール**: 38サービス
-- **MCPツール**: 20サービス
-- **両方実装済み**: 8サービス
-
-### 実装パターン
-- **CLIのみ**: 30サービス
-- **MCPのみ**: 12サービス
-- **両方実装**: 8サービス
+- **総サービス数**: 84
+- **CLIツール実装数**: 73
+- **MCPツール実装数**: 24
+- **gRPCハンドラ実装数**: 1
+- **HTTPハンドラ実装数**: 1
+- **CLIのみ実装**: 60
+- **MCPのみ実装**: 11
+- **gRPCハンドラのみ実装**: 0
+- **HTTPハンドラのみ実装**: 0
+- **CLI+MCP両方実装**: 13
+- **全て実装済み**: 1
 
 ## 注意事項
 
 - ✅: 実装済み
 - ❌️: 未実装
 - この状況は`service-implementing-viewer`ツールを使用して自動生成されています
-- 最終更新: 2025年7月29日
 
 ## ドキュメント更新手順
 
 このドキュメントを最新の状態に更新するには、以下の手順を実行してください。`$HOME`は、実行環境によって異なることでしょう：
 
-### 1. MCPツールを使用した自動更新
+### 1. CLIツールを使用した更新
 
 ```bash
-# devboxディレクトリに移動
 cd $HOME/devbox
-
-# service-implementing-viewerのMCPツールを使用して最新の実装状況を取得
-# ClineなどのAIツールから以下のMCPツールを実行：
+./pkg/bash/generate_service_implementing_table.sh
 ```
 
+### 2. MCPツールを使用した更新
 MCPツール実行例：
 ```json
 {
   "server_name": "service_implementing_viewer",
   "tool_name": "get_service_implementing_status",
   "arguments": {
-    "root_dir": "$HOME/devbox",
+    "root_dir": "/home/user/devbox",
     "target_dirs": "cmd/cli,cmd/mcp"
   }
 }
 ```
-
-### 2. 手動での確認方法
-
-MCPツールが利用できない場合は、以下のコマンドで手動確認できます：
-
-```bash
-# CLIツールの一覧を取得
-ls -1 $HOME/devbox/cmd/cli/
-
-# MCPツールの一覧を取得
-ls -1 $HOME/devbox/cmd/mcp/
-```
-
-### 3. ドキュメントの更新
-
-1. 上記の方法で取得した最新の実装状況を基に、このドキュメントの表を更新
-2. 統計情報セクションの数値を再計算して更新
-3. 最終更新日を現在の日付に変更
 
 ### 4. 更新頻度の推奨
 

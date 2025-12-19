@@ -224,15 +224,15 @@ func TestConfig_ParseFlags_ReadMode(t *testing.T) {
 	}
 }
 
-// TestConfig_ParseFlags_GenMode は生成モードのテスト
-func TestConfig_ParseFlags_GenMode(t *testing.T) {
+// TestConfig_ParseFlags_OutputMode は出力モードのテスト
+func TestConfig_ParseFlags_OutputMode(t *testing.T) {
 	// Arrange
 	mockParser := config.NewMockFlagParser()
-	mockOSArgs := config.NewMockOSArgs([]string{"git-diff-recorder", "--gen-mode", "--git-dir", "/tmp/git"})
+	mockOSArgs := config.NewMockOSArgs([]string{"git-diff-recorder", "--output-mode", "--git-dir", "/tmp/git"})
 	configParser := config.NewConfigParser(mockParser, mockOSArgs)
 
 	// テスト用の値を設定
-	mockParser.SetBoolValue("gen-mode", true)
+	mockParser.SetBoolValue("output-mode", true)
 	mockParser.SetStringValue("git-dir", "/tmp/git")
 
 	// Act
@@ -242,8 +242,8 @@ func TestConfig_ParseFlags_GenMode(t *testing.T) {
 	if err != nil {
 		t.Errorf("引数解析でエラーが発生しました: %v", err)
 	}
-	if !cfg.GenMode {
-		t.Error("GenModeがtrueになっていません")
+	if !cfg.OutputMode {
+		t.Error("OutputModeがtrueになっていません")
 	}
 	if cfg.GitDir != "/tmp/git" {
 		t.Errorf("GitDirが期待値と異なります。期待値: /tmp/git, 実際: %s", cfg.GitDir)
@@ -273,15 +273,15 @@ func TestConfig_ParseFlags_ReadModeMissingSourceDir(t *testing.T) {
 	}
 }
 
-// TestConfig_ParseFlags_GenModeMissingGitDir は生成モードで必須パラメータ不足のテスト
-func TestConfig_ParseFlags_GenModeMissingGitDir(t *testing.T) {
+// TestConfig_ParseFlags_OutputModeMissingGitDir は出力モードで必須パラメータ不足のテスト
+func TestConfig_ParseFlags_OutputModeMissingGitDir(t *testing.T) {
 	// Arrange
 	mockParser := config.NewMockFlagParser()
-	mockOSArgs := config.NewMockOSArgs([]string{"git-diff-recorder", "--gen-mode"})
+	mockOSArgs := config.NewMockOSArgs([]string{"git-diff-recorder", "--output-mode"})
 	configParser := config.NewConfigParser(mockParser, mockOSArgs)
 
 	// テスト用の値を設定（git-dirを設定しない）
-	mockParser.SetBoolValue("gen-mode", true)
+	mockParser.SetBoolValue("output-mode", true)
 
 	// Act
 	cfg, err := configParser.ParseFlags()

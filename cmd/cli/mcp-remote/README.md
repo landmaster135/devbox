@@ -127,7 +127,7 @@ internal/mcp_remote/
 
 ### 依存関係
 
-- Go 1.23+
+- Go
 - `github.com/mark3labs/mcp-go` - MCPプロトコル実装
 - `github.com/stretchr/testify` - テストフレームワーク
 

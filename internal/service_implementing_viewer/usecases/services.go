@@ -14,6 +14,21 @@ type ServiceStatus struct {
 	Directories map[string]bool // ディレクトリ名 -> 存在フラグ
 }
 
+// ServiceStatistics はサービス実装の統計情報を表す構造体
+type ServiceStatistics struct {
+	CLICount            int // CLIツールの実装数
+	MCPCount            int // MCPツールの実装数
+	GRPCCount           int // gRPCハンドラの実装数
+	HTTPCount           int // HTTPハンドラの実装数
+	CLIOnlyCount        int // CLIのみの実装数
+	MCPOnlyCount        int // MCPのみの実装数
+	GRPCOnlyCount       int // gRPCハンドラのみの実装数
+	HTTPOnlyCount       int // HTTPハンドラのみの実装数
+	BothCLIMCPCount     int // CLI+MCP両方実装済みの数
+	AllImplementedCount int // 全て実装済みの数（CLI+MCP+gRPC+HTTP）
+	TotalServices       int // 総サービス数
+}
+
 // ServiceImplementingViewerService はサービス実装状況を確認するサービス
 type ServiceImplementingViewerService struct {
 	rootDir    string
@@ -29,7 +44,7 @@ func NewServiceImplementingViewerService(rootDir string, targetDirs []string) *S
 }
 
 // GetServiceImplementingStatus はサービス実装状況を取得する
-func (s *ServiceImplementingViewerService) GetServiceImplementingStatus() (string, error) {
+func (s *ServiceImplementingViewerService) GetServiceImplementingStatus() (string, *ServiceStatistics, error) {
 	// 各対象ディレクトリからサービス名を収集
 	allServices := make(map[string]bool)
 	servicesByDir := make(map[string][]string)
@@ -38,7 +53,7 @@ func (s *ServiceImplementingViewerService) GetServiceImplementingStatus() (strin
 		dirPath := filepath.Join(s.rootDir, targetDir)
 		services, err := s.getServicesInDirectory(dirPath)
 		if err != nil {
-			return "", fmt.Errorf("ディレクトリ %s の読み取りに失敗しました: %v", dirPath, err)
+			return "", nil, fmt.Errorf("ディレクトリ %s の読み取りに失敗しました: %v", dirPath, err)
 		}
 
 		servicesByDir[targetDir] = services
@@ -70,8 +85,11 @@ func (s *ServiceImplementingViewerService) GetServiceImplementingStatus() (strin
 		serviceStatuses = append(serviceStatuses, status)
 	}
 
+	// 統計情報を計算
+	statistics := s.calculateStatistics(serviceStatuses)
+
 	// 表形式で出力
-	return s.formatAsTable(serviceStatuses), nil
+	return s.formatAsTable(serviceStatuses), statistics, nil
 }
 
 // getServicesInDirectory は指定されたディレクトリ内のサービス名を取得する
@@ -182,4 +200,98 @@ func (s *ServiceImplementingViewerService) formatAsTable(serviceStatuses []Servi
 	}
 
 	return result.String()
+}
+
+// calculateStatistics は統計情報を計算する
+func (s *ServiceImplementingViewerService) calculateStatistics(serviceStatuses []ServiceStatus) *ServiceStatistics {
+	stats := &ServiceStatistics{
+		TotalServices: len(serviceStatuses),
+	}
+
+	// 各ディレクトリのマッピングを作成
+	dirMapping := make(map[string]string)
+	for _, dir := range s.targetDirs {
+		switch {
+		case strings.Contains(dir, "cli"):
+			dirMapping["cli"] = dir
+		case strings.Contains(dir, "mcp"):
+			dirMapping["mcp"] = dir
+		case strings.Contains(dir, "grpc/handlers"):
+			dirMapping["grpc"] = dir
+		case strings.Contains(dir, "http/handlers"):
+			dirMapping["http"] = dir
+		}
+	}
+
+	// 各サービスの実装状況を分析
+	for _, status := range serviceStatuses {
+		hasCLI := false
+		hasMCP := false
+		hasGRPC := false
+		hasHTTP := false
+
+		// CLI実装チェック
+		if cliDir, exists := dirMapping["cli"]; exists && status.Directories[cliDir] {
+			hasCLI = true
+			stats.CLICount++
+		}
+
+		// MCP実装チェック
+		if mcpDir, exists := dirMapping["mcp"]; exists && status.Directories[mcpDir] {
+			hasMCP = true
+			stats.MCPCount++
+		}
+
+		// gRPC実装チェック
+		if grpcDir, exists := dirMapping["grpc"]; exists && status.Directories[grpcDir] {
+			hasGRPC = true
+			stats.GRPCCount++
+		}
+
+		// HTTP実装チェック
+		if httpDir, exists := dirMapping["http"]; exists && status.Directories[httpDir] {
+			hasHTTP = true
+			stats.HTTPCount++
+		}
+
+		// 組み合わせパターンの計算
+		implementedCount := 0
+		if hasCLI {
+			implementedCount++
+		}
+		if hasMCP {
+			implementedCount++
+		}
+		if hasGRPC {
+			implementedCount++
+		}
+		if hasHTTP {
+			implementedCount++
+		}
+
+		// 単独実装のカウント
+		if implementedCount == 1 {
+			if hasCLI {
+				stats.CLIOnlyCount++
+			} else if hasMCP {
+				stats.MCPOnlyCount++
+			} else if hasGRPC {
+				stats.GRPCOnlyCount++
+			} else if hasHTTP {
+				stats.HTTPOnlyCount++
+			}
+		}
+
+		// CLI+MCP両方実装
+		if hasCLI && hasMCP {
+			stats.BothCLIMCPCount++
+		}
+
+		// 全て実装済み
+		if hasCLI && hasMCP && hasGRPC && hasHTTP {
+			stats.AllImplementedCount++
+		}
+	}
+
+	return stats
 }

@@ -36,31 +36,31 @@
 #### VLCスナップショットファイルのリネーム
 
 ```bash
-./image-renamer-for-screenshot -vlc -src ./videos/screenshots
+go run ./cmd/cli/image-renamer-for-screenshot -vlc -src ./videos/screenshots
 ```
 
 #### Windowsスクリーンショットファイルのリネーム
 
 ```bash
-./image-renamer-for-screenshot -win -src ./screenshots
+go run ./cmd/cli/image-renamer-for-screenshot -win -src ./screenshots
 ```
 
 #### Androidスクリーンショット/録画ファイルのリネーム
 
 ```bash
-./image-renamer-for-screenshot -android -src ./android/media
+go run ./cmd/cli/image-renamer-for-screenshot -android -src ./android/media
 ```
 
 #### 再帰的にスキャン
 
 ```bash
-./image-renamer-for-screenshot -vlc -r -src ./media
+go run ./cmd/cli/image-renamer-for-screenshot -vlc -r -src ./media
 ```
 
 #### 全てのスクリーンショットファイルをYYYYMMDDHHMMSS形式にリネーム
 
 ```bash
-./image-renamer-for-screenshot -to-datetime -src ./screenshots
+go run ./cmd/cli/image-renamer-for-screenshot -to-datetime -src ./screenshots
 ```
 
 このオプションは以下のファイル名パターンを自動検出してリネームします：

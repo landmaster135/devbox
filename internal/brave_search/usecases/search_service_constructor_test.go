@@ -42,7 +42,7 @@ func TestDefaultEnvironmentReader_Getenv(t *testing.T) {
 // ##          Default HTTP Client Tests                        ##
 // #==============================================================#
 func TestDefaultHTTPClient_Do(t *testing.T) {
-	client := &DefaultHTTPClient{}
+	client := NewDefaultHTTPClient()
 
 	// 簡単なHTTPリクエストのテスト（実際のネットワーク呼び出しは避ける）
 	req, err := http.NewRequest("GET", "http://httpbin.org/status/200", nil)

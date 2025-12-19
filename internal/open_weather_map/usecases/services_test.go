@@ -227,6 +227,29 @@ func TestWeatherService_GetForecast5Days_NetworkError(t *testing.T) {
 	}
 }
 
+// TestWeatherService_GetForecast5Days_JSONError はJSON解析エラーのテストを行う
+func TestWeatherService_GetForecast5Days_JSONError(t *testing.T) {
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("{invalid json}")),
+			}, nil
+		},
+	}
+
+	service := NewWeatherServiceWithHTTPClient(mockClient)
+	_, err := service.GetForecast5Days("test-key", "Tokyo,JP")
+
+	if err == nil {
+		t.Fatal("GetForecast5Days() error = nil, want error")
+	}
+
+	if !strings.Contains(err.Error(), "JSON解析エラー") {
+		t.Errorf("Error message = %v, want to contain 'JSON解析エラー'", err.Error())
+	}
+}
+
 // TestWeatherService_GetForecastByDays_Normal は正常な日数指定予報取得をテストする
 func TestWeatherService_GetForecastByDays_Normal(t *testing.T) {
 	mockResponse := createMockForecastResponse()
@@ -326,6 +349,142 @@ func TestWeatherService_FormatForecastOutput_Normal(t *testing.T) {
 	}
 }
 
+// TestWeatherService_AggregateForecastByDays_UsesJST は日付集約がJSTで行われることをテストする
+func TestWeatherService_AggregateForecastByDays_UsesJST(t *testing.T) {
+	service := NewWeatherService()
+	nowJST := time.Now().In(jstLocation)
+	base := time.Date(nowJST.Year(), nowJST.Month(), nowJST.Day(), 6, 0, 0, 0, jstLocation)
+
+	forecast := &ForecastResponse{
+		List: []struct {
+			Dt   int64 `json:"dt"`
+			Main struct {
+				Temp      float64 `json:"temp"`
+				FeelsLike float64 `json:"feels_like"`
+				TempMin   float64 `json:"temp_min"`
+				TempMax   float64 `json:"temp_max"`
+				Pressure  int     `json:"pressure"`
+				Humidity  int     `json:"humidity"`
+			} `json:"main"`
+			Weather []struct {
+				Main        string `json:"main"`
+				Description string `json:"description"`
+				Icon        string `json:"icon"`
+			} `json:"weather"`
+			Wind struct {
+				Speed float64 `json:"speed"`
+				Deg   int     `json:"deg"`
+			} `json:"wind"`
+			DtTxt string `json:"dt_txt"`
+		}{
+			{
+				Dt: base.UTC().Unix(),
+				Main: struct {
+					Temp      float64 `json:"temp"`
+					FeelsLike float64 `json:"feels_like"`
+					TempMin   float64 `json:"temp_min"`
+					TempMax   float64 `json:"temp_max"`
+					Pressure  int     `json:"pressure"`
+					Humidity  int     `json:"humidity"`
+				}{
+					Temp:      18.0,
+					FeelsLike: 18.0,
+					TempMin:   17.0,
+					TempMax:   20.0,
+					Pressure:  1012,
+					Humidity:  60,
+				},
+				Weather: []struct {
+					Main        string `json:"main"`
+					Description string `json:"description"`
+					Icon        string `json:"icon"`
+				}{
+					{
+						Main:        "Clouds",
+						Description: "曇り",
+						Icon:        "02d",
+					},
+				},
+				Wind: struct {
+					Speed float64 `json:"speed"`
+					Deg   int     `json:"deg"`
+				}{
+					Speed: 2.5,
+					Deg:   90,
+				},
+				DtTxt: base.Format("2006-01-02 15:04:05"),
+			},
+			{
+				Dt: base.Add(12 * time.Hour).UTC().Unix(),
+				Main: struct {
+					Temp      float64 `json:"temp"`
+					FeelsLike float64 `json:"feels_like"`
+					TempMin   float64 `json:"temp_min"`
+					TempMax   float64 `json:"temp_max"`
+					Pressure  int     `json:"pressure"`
+					Humidity  int     `json:"humidity"`
+				}{
+					Temp:      22.0,
+					FeelsLike: 21.5,
+					TempMin:   16.0,
+					TempMax:   23.5,
+					Pressure:  1010,
+					Humidity:  55,
+				},
+				Weather: []struct {
+					Main        string `json:"main"`
+					Description string `json:"description"`
+					Icon        string `json:"icon"`
+				}{
+					{
+						Main:        "Clear",
+						Description: "晴れ",
+						Icon:        "01n",
+					},
+				},
+				Wind: struct {
+					Speed float64 `json:"speed"`
+					Deg   int     `json:"deg"`
+				}{
+					Speed: 1.8,
+					Deg:   110,
+				},
+				DtTxt: base.Add(12 * time.Hour).Format("2006-01-02 15:04:05"),
+			},
+		},
+	}
+
+	result := service.aggregateForecastByDays(forecast, 1)
+	if len(result) != 1 {
+		t.Fatalf("aggregateForecastByDays() len = %d, want 1", len(result))
+	}
+
+	day := result[0]
+	if day.Date.Location() != jstLocation {
+		t.Errorf("Date location = %v, want JST", day.Date.Location())
+	}
+
+	expectedDate := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, jstLocation)
+	if !day.Date.Equal(expectedDate) {
+		t.Errorf("Date = %v, want %v", day.Date, expectedDate)
+	}
+
+	if len(day.Details) != 2 {
+		t.Fatalf("Details len = %d, want 2", len(day.Details))
+	}
+
+	if day.Details[0].Time.Location() != jstLocation || day.Details[1].Time.Location() != jstLocation {
+		t.Error("Detail times are not converted to JST")
+	}
+
+	if day.MinTemp != 16.0 {
+		t.Errorf("MinTemp = %v, want 16.0", day.MinTemp)
+	}
+	if day.MaxTemp != 23.5 {
+		t.Errorf("MaxTemp = %v, want 23.5", day.MaxTemp)
+	}
+}
+
 // TestGetWeatherEmoji_Normal は天気絵文字マッピングのテストを行う
 func TestGetWeatherEmoji_Normal(t *testing.T) {
 	tests := []struct {
@@ -403,5 +562,71 @@ func TestWeatherService_HandleWeatherForecast_Normal(t *testing.T) {
 
 	if !strings.Contains(result, "Tokyo,JP の3日間天気予報") {
 		t.Errorf("HandleWeatherForecast() result does not contain expected header")
+	}
+}
+
+// TestWeatherService_HandleWeatherForecast_Error はハンドラーでのエラー伝播をテストする
+func TestWeatherService_HandleWeatherForecast_Error(t *testing.T) {
+	mockClient := &MockHTTPClient{
+		DoFunc: func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Body:       io.NopCloser(strings.NewReader(`{"cod":401,"message":"Invalid API key"}`)),
+			}, nil
+		},
+	}
+
+	service := NewWeatherServiceWithHTTPClient(mockClient)
+	_, err := service.HandleWeatherForecast("bad-key", "Tokyo,JP", 3)
+
+	if err == nil {
+		t.Fatal("HandleWeatherForecast() error = nil, want error")
+	}
+
+	if !strings.Contains(err.Error(), "APIエラー") {
+		t.Errorf("Error message = %v, want to contain 'APIエラー'", err.Error())
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+// TestHTTPClient_Do は標準HTTPクライアントのDoをテストする
+func TestHTTPClient_Do(t *testing.T) {
+	client := NewHTTPClient()
+	client.client.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.String() != "https://example.com" {
+			t.Errorf("unexpected request URL: %s", req.URL.String())
+		}
+		return &http.Response{
+			StatusCode: http.StatusAccepted,
+			Body:       io.NopCloser(strings.NewReader("ok")),
+		}, nil
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Do() error = %v, want nil", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		t.Errorf("StatusCode = %d, want %d", resp.StatusCode, http.StatusAccepted)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("failed to read body: %v", err)
+	}
+	if string(body) != "ok" {
+		t.Errorf("body = %s, want ok", string(body))
 	}
 }

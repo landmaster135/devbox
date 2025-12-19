@@ -1,0 +1,57 @@
+[
+  {
+    "anilist_id": 5114,
+    "con_id": "AN0001",
+    "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0001_01.webp",
+    "fleeting_tier": 0,
+    "funny_tier": 0,
+    "heartwarming_tier": 0,
+    "motivating_tier": 1,
+    "nihilistic_tier": 0,
+    "tearjerking_tier": 0
+  },
+  {
+    "anilist_id": 10800,
+    "con_id": "AN0002",
+    "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0002_01.webp",
+    "fleeting_tier": 0,
+    "funny_tier": 0,
+    "heartwarming_tier": 0,
+    "motivating_tier": 2,
+    "nihilistic_tier": 0,
+    "tearjerking_tier": 0
+  },
+  {
+    "anilist_id": 11887,
+    "con_id": "AN0003",
+    "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0003_01.webp",
+    "fleeting_tier": 0,
+    "funny_tier": 1,
+    "heartwarming_tier": 0,
+    "motivating_tier": 0,
+    "nihilistic_tier": 0,
+    "tearjerking_tier": 0
+  },
+  {
+    "anilist_id": 138425,
+    "con_id": "AN0610",
+    "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0610_01.webp",
+    "fleeting_tier": null,
+    "funny_tier": null,
+    "heartwarming_tier": null,
+    "motivating_tier": null,
+    "nihilistic_tier": null,
+    "tearjerking_tier": null
+  },
+  {
+    "anilist_id": 176301,
+    "con_id": "AN0611",
+    "cover_image_url_edited": "https://storage.googleapis.com/test/test_contents/AN0611_01.webp",
+    "fleeting_tier": null,
+    "funny_tier": null,
+    "heartwarming_tier": null,
+    "motivating_tier": null,
+    "nihilistic_tier": null,
+    "tearjerking_tier": null
+  }
+]

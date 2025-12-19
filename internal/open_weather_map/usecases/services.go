@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,19 +11,30 @@ import (
 	"time"
 )
 
-// HTTPClient はHTTPリクエストを実行するためのインターフェース
-type HTTPClient interface {
+// #==============================================================#
+// ##       Const and Types                                      ##
+// #==============================================================#
+var jstLocation = time.FixedZone("Asia/Tokyo", 9*60*60)
+
+// #==============================================================#
+// ##       Interfaces for HTTPClient                            ##
+// #==============================================================#
+// HTTPClientRepository はHTTPリクエストを実行するためのインターフェース
+type HTTPClientRepository interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// DefaultHTTPClient は標準のhttp.Clientを使用する実装
-type DefaultHTTPClient struct {
+// #==============================================================#
+// ##       Implementations for HTTPClient                       ##
+// #==============================================================#
+// HTTPClient は標準のhttp.Clientを使用する実装
+type HTTPClient struct {
 	client *http.Client
 }
 
-// NewDefaultHTTPClient は新しいDefaultHTTPClientを作成する
-func NewDefaultHTTPClient() *DefaultHTTPClient {
-	return &DefaultHTTPClient{
+// NewHTTPClient は新しいDefaultHTTPClientを作成する
+func NewHTTPClient() *HTTPClient {
+	return &HTTPClient{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -30,7 +42,7 @@ func NewDefaultHTTPClient() *DefaultHTTPClient {
 }
 
 // Do はHTTPリクエストを実行する
-func (c *DefaultHTTPClient) Do(req *http.Request) (*http.Response, error) {
+func (c *HTTPClient) Do(req *http.Request) (*http.Response, error) {
 	return c.client.Do(req)
 }
 
@@ -115,22 +127,25 @@ func getWeatherEmoji(weatherMain string) string {
 	}
 }
 
+// #==============================================================#
+// ##       Implementations for WeatherService                   ##
+// #==============================================================#
 // WeatherService はOpenWeather APIを使用した天気予報サービス
 type WeatherService struct {
-	httpClient HTTPClient
+	httpClient HTTPClientRepository
 	baseURL    string
 }
 
 // NewWeatherService は新しいWeatherServiceを作成する
 func NewWeatherService() *WeatherService {
 	return &WeatherService{
-		httpClient: NewDefaultHTTPClient(),
+		httpClient: NewHTTPClient(),
 		baseURL:    "https://api.openweathermap.org/data/2.5",
 	}
 }
 
 // NewWeatherServiceWithHTTPClient はHTTPクライアントを注入したWeatherServiceを作成する
-func NewWeatherServiceWithHTTPClient(httpClient HTTPClient) *WeatherService {
+func NewWeatherServiceWithHTTPClient(httpClient HTTPClientRepository) *WeatherService {
 	return &WeatherService{
 		httpClient: httpClient,
 		baseURL:    "https://api.openweathermap.org/data/2.5",
@@ -163,14 +178,18 @@ func (w *WeatherService) GetForecast5Days(apiKey, city string) (*ForecastRespons
 		return nil, fmt.Errorf("APIエラー: ステータスコード %d, レスポンス: %s", resp.StatusCode, string(body))
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンス読み取りエラー: %v", err)
-	}
-
 	var forecastData ForecastResponse
-	if err := json.Unmarshal(body, &forecastData); err != nil {
-		return nil, fmt.Errorf("JSON解析エラー: %v", err)
+	if err := json.NewDecoder(resp.Body).Decode(&forecastData); err != nil {
+		var syntaxErr *json.SyntaxError
+		var typeErr *json.UnmarshalTypeError
+		switch {
+		case errors.Is(err, io.EOF), errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("レスポンス読み取りエラー: %v", err)
+		case errors.As(err, &syntaxErr), errors.As(err, &typeErr):
+			return nil, fmt.Errorf("JSON解析エラー: %v", err)
+		default:
+			return nil, fmt.Errorf("レスポンス読み取りエラー: %v", err)
+		}
 	}
 
 	return &forecastData, nil
@@ -181,7 +200,7 @@ func (w *WeatherService) aggregateForecastByDays(forecast *ForecastResponse, day
 	dayMap := make(map[string]*DayForecast)
 
 	for _, item := range forecast.List {
-		t := time.Unix(item.Dt, 0)
+		t := time.Unix(item.Dt, 0).In(jstLocation)
 		dateKey := t.Format("2006-01-02")
 
 		// 指定日数を超えた場合はスキップ
@@ -191,7 +210,7 @@ func (w *WeatherService) aggregateForecastByDays(forecast *ForecastResponse, day
 
 		if dayMap[dateKey] == nil {
 			dayMap[dateKey] = &DayForecast{
-				Date:           time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location()),
+				Date:           time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, jstLocation),
 				MinTemp:        item.Main.TempMin,
 				MaxTemp:        item.Main.TempMax,
 				Weather:        item.Weather[0].Main,
@@ -225,7 +244,7 @@ func (w *WeatherService) aggregateForecastByDays(forecast *ForecastResponse, day
 
 	// 日付順でソート
 	var result []DayForecast
-	now := time.Now()
+	now := time.Now().In(jstLocation)
 	for i := 0; i < days && i < len(dayMap); i++ {
 		targetDate := now.AddDate(0, 0, i)
 		dateKey := targetDate.Format("2006-01-02")

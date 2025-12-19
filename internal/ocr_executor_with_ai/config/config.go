@@ -9,12 +9,12 @@ import (
 type Config struct {
 	Path                   string  // 画像ファイルまたはディレクトリのパス
 	Recursive              bool    // ディレクトリを再帰的に検索するか
-	Model                  string  // 使用するGeminiモデル
+	Model                  string  // 使用するモデル
 	Prompt                 string  // OCR用プロンプト
 	SystemInstruction      string  // システム指示
 	Temperature            float64 // 生成パラメータ
 	MaxTokens              int     // 最大トークン数
-	AiType                 string  // AIタイプ ("gemini" または "vertex")
+	AiType                 string  // AIタイプ ("gemini" / "vertex" / "ollama")
 	APIKey                 string  // Gemini API キー
 	Project                string  // Google Cloud プロジェクトID
 	Location               string  // Google Cloud ロケーション
@@ -24,7 +24,9 @@ type Config struct {
 
 // デフォルト値の定数
 const (
-	DefaultModel               = "gemini-2.5-flash-lite"
+	DefaultModel               = "qwen2.5vl"
+	DefaultGeminiModel         = "gemini-2.5-flash-lite"
+	DefaultVertexModel         = "gemini-1.5-pro-002"
 	DefaultPrompt              = "OCRして。補足や説明は不要です。"
 	DefaultMarkdownTablePrompt = "OCRして、Markdownのテーブル形式にして。"
 	DefaultSystemInstruction   = "OCRして。"
@@ -55,8 +57,8 @@ func validateConfig(path string, recursive bool, model, prompt, systemInstructio
 	}
 
 	// AIタイプの検証
-	if aiType != "gemini" && aiType != "vertex" {
-		return fmt.Errorf("無効なAIタイプです: %s (gemini または vertex を指定してください)", aiType)
+	if aiType != "gemini" && aiType != "vertex" && aiType != "ollama" {
+		return fmt.Errorf("無効なAIタイプです: %s (gemini / vertex / ollama を指定してください)", aiType)
 	}
 
 	// 認証情報の検証
@@ -85,6 +87,22 @@ func NewConfig(path string, recursive bool, model, prompt, systemInstruction str
 		}
 		// Markdownテーブル用のプロンプトを設定
 		prompt = DefaultMarkdownTablePrompt
+	}
+
+	// AIタイプに応じてモデルのデフォルトを補正
+	switch aiType {
+	case "gemini":
+		if model == "" || model == DefaultModel {
+			model = DefaultGeminiModel
+		}
+	case "vertex":
+		if model == "" || model == DefaultModel {
+			model = DefaultVertexModel
+		}
+	case "ollama":
+		if model == "" {
+			model = DefaultModel
+		}
 	}
 
 	return &Config{
@@ -128,7 +146,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.BoolVar(&recursive, "r", recursive, "再帰の短縮形")
 
 	// モデル設定
-	parser.StringVar(&model, "model", model, "使用するGeminiモデル")
+	parser.StringVar(&model, "model", model, "使用するモデル")
 	parser.StringVar(&model, "m", model, "モデルの短縮形")
 
 	// プロンプト設定
@@ -144,7 +162,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.IntVar(&maxTokens, "mt", maxTokens, "最大トークンの短縮形")
 
 	// 認証関連のフラグ
-	parser.StringVar(&aiType, "ai-type", aiType, "AIタイプ (gemini, vertex)")
+	parser.StringVar(&aiType, "ai-type", aiType, "AIタイプ (gemini, vertex, ollama)")
 	parser.StringVar(&aiType, "at", aiType, "AIタイプの短縮形")
 	parser.StringVar(&apiKey, "api-key", apiKey, "Gemini API キー")
 	parser.StringVar(&apiKey, "ak", apiKey, "APIキーの短縮形")
@@ -189,6 +207,9 @@ func PrintUsage() {
   Vertex AI使用:
     %s -path /path/to/image.webp -ai-type vertex -project "your-project-id"
 
+  Ollama使用:
+    %s -path /path/to/image.webp -ai-type ollama -model qwen2.5vl
+
   ディレクトリ内の画像（再帰）:
     %s -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
 
@@ -204,11 +225,11 @@ func PrintUsage() {
 オプション:
   -path, -p              画像ファイルまたはディレクトリのパス (必須)
   -recursive, -r         ディレクトリを再帰的に検索 (デフォルト: false)
-  -ai-type, -at          AIタイプ (gemini, vertex) (デフォルト: %s)
+  -ai-type, -at          AIタイプ (gemini, vertex, ollama) (デフォルト: %s)
   -api-key, -ak          Gemini API キー (Gemini使用時必須)
   -project, -pj          Google Cloud プロジェクトID (Vertex AI使用時必須)
   -location, -loc        Google Cloud ロケーション (デフォルト: %s)
-  -model, -m             使用するGeminiモデル (デフォルト: %s)
+  -model, -m             使用するモデル (デフォルト: %s)
   -prompt, -pr           OCR用プロンプト (-generates-markdown-tableと併用不可)
   -system-instruction, -si システム指示
   -generates-markdown-table, -gmt Markdownテーブル形式でOCRを実行
@@ -222,6 +243,7 @@ func PrintUsage() {
 認証について:
   - Gemini API使用時: -api-key が必要
   - Vertex AI使用時: -project が必要、-location はオプション
+  - Ollama使用時: ローカルのOllamaサーバーが必要
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], DefaultAiType, DefaultLocation, DefaultModel, DefaultTemperature, DefaultMaxTokens)
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], DefaultAiType, DefaultLocation, DefaultModel, DefaultTemperature, DefaultMaxTokens)
 }

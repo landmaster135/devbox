@@ -9,32 +9,68 @@ import (
 	"time"
 )
 
-// Logger はロギング機能を提供するインターフェース
-type Logger interface {
+// #==============================================================#
+// ##       Interfaces for Logger                                ##
+// #==============================================================#
+// LoggerRepository はロギング機能を提供するインターフェース
+type LoggerRepository interface {
 	Info(msg string, keysAndValues ...interface{})
 	Error(msg string, err error, keysAndValues ...interface{})
 }
 
-// NoopLogger はログ出力を行わないロガー実装
-type NoopLogger struct{}
+// #==============================================================#
+// ##       Implementations for Logger                           ##
+// #==============================================================#
+// Logger はログ出力を行わないロガー実装
+type Logger struct{}
 
 // Info は情報ログを出力します（何も行いません）
-func (l *NoopLogger) Info(msg string, keysAndValues ...interface{}) {}
+func (l *Logger) Info(msg string, keysAndValues ...interface{}) {}
 
 // Error はエラーログを出力します（何も行いません）
-func (l *NoopLogger) Error(msg string, err error, keysAndValues ...interface{}) {}
+func (l *Logger) Error(msg string, err error, keysAndValues ...interface{}) {}
 
+// #==============================================================#
+// ##       Interfaces for DiscordClient                         ##
+// #==============================================================#
+// DiscordClientRepository はDiscord通知のリポジトリインターフェース
+type DiscordClientRepository interface {
+	// SendWebhook はDiscordのwebhookにメッセージを送信します
+	SendWebhook(ctx context.Context, webhookURL string, payload *Payload) error
+
+	// ConvertColorToDecimal は文字列の色名を10進数の色コードに変換します
+	ConvertColorToDecimal(color string) (int, error)
+
+	// CreateEmbeds はDiscord通知用のembedsを作成します
+	CreateEmbeds(title string, colorInDecimal int, linkOnTitle string, footerText string, footerIconURL string, displaysTimestamp bool) ([]*Embed, error)
+
+	// CreatePayload はDiscord通知用のペイロードを作成します
+	CreatePayload(botName string, content string, embeds []*Embed, isTTS bool) (*Payload, error)
+
+	// CreateEmbed は天気予報専用のDiscord Embedを作成します
+	CreateEmbed(title, description, linkOnTitle string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*Embed, error)
+
+	// CreateWeatherEmbeds は天気予報専用のDiscord Embedsを作成します
+	CreateWeatherEmbeds(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) ([]*Embed, error)
+
+	// GetAvailableColors は使用可能な色のリストを取得します
+	GetAvailableColors() []string
+}
+
+// #==============================================================#
+// ##       Implementations for DiscordClient                    ##
+// #==============================================================#
 // DiscordClient はHTTPを使用してDiscord APIと通信するクライアント
 type DiscordClient struct {
 	client *http.Client
-	logger Logger
+	logger LoggerRepository
 }
 
 // NewDiscordClient は新しいDiscordClientを作成します
-func NewDiscordClient(logger Logger) *DiscordClient {
+func NewDiscordClient(logger LoggerRepository) *DiscordClient {
 	// ロガーが指定されていない場合はNoopLoggerを使用
 	if logger == nil {
-		logger = &NoopLogger{}
+		logger = &Logger{}
 	}
 
 	client := &http.Client{
@@ -166,46 +202,9 @@ func (c *DiscordClient) ConvertColorToDecimal(color string) (int, error) {
 	return 0, fmt.Errorf("'color' is an unexpected value: %s", color)
 }
 
-// CreateEmbed は単一のDiscord Embedを作成します
-func (c *DiscordClient) CreateEmbed(title string, colorInDecimal int, linkOnTitle string, footerText string, footerIconURL string, displaysTimestamp bool) (*Embed, error) {
-	// 入力値の検証
-	if title == "" {
-		return nil, fmt.Errorf("'title' must not be empty")
-	}
-	if footerText == "" {
-		return nil, fmt.Errorf("'footerText' must not be empty")
-	}
-	if footerIconURL == "" {
-		return nil, fmt.Errorf("'footerIconURL' must not be empty")
-	}
-
-	// embedを作成
-	embed := &Embed{
-		Title: title,
-		Color: colorInDecimal,
-		Footer: &EmbedFooter{
-			Text:    footerText,
-			IconURL: footerIconURL,
-		},
-	}
-
-	// リンクが指定されている場合は追加
-	if linkOnTitle != "" {
-		embed.URL = linkOnTitle
-	}
-
-	// タイムスタンプを表示する場合は追加
-	if displaysTimestamp {
-		// ISO 8601形式のタイムスタンプを生成
-		embed.Timestamp = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	return embed, nil
-}
-
 // CreateEmbeds はDiscord通知用のembedsを作成します
 func (c *DiscordClient) CreateEmbeds(title string, colorInDecimal int, linkOnTitle string, footerText string, footerIconURL string, displaysTimestamp bool) ([]*Embed, error) {
-	embed, err := c.CreateEmbed(title, colorInDecimal, linkOnTitle, footerText, footerIconURL, displaysTimestamp)
+	embed, err := c.CreateEmbed(title, "", linkOnTitle, colorInDecimal, nil, footerText, footerIconURL, displaysTimestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create embed: %v", err)
 	}
@@ -248,8 +247,8 @@ func (c *DiscordClient) CreatePayload(botName string, content string, embeds []*
 	return payload, nil
 }
 
-// CreateWeatherEmbed は天気予報専用のDiscord Embedを作成します
-func (c *DiscordClient) CreateWeatherEmbed(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*Embed, error) {
+// CreateWeatherEmbed はDiscord Embedを作成します
+func (c *DiscordClient) CreateEmbed(title, description, linkOnTitle string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) (*Embed, error) {
 	// 入力値の検証
 	if title == "" {
 		return nil, fmt.Errorf("'title' must not be empty")
@@ -266,14 +265,27 @@ func (c *DiscordClient) CreateWeatherEmbed(title, description string, colorInDec
 
 	// embedを作成
 	embed := &Embed{
-		Title:       title,
-		Description: description,
-		Color:       colorInDecimal,
-		Fields:      fields,
+		Title: title,
+		Color: colorInDecimal,
 		Footer: &EmbedFooter{
 			Text:    footerText,
 			IconURL: footerIconURL,
 		},
+	}
+
+	// 説明文が指定されている場合は追加
+	if description != "" {
+		embed.Description = description
+	}
+
+	// フィールドの要素が存在する場合は追加
+	if len(fields) > 0 {
+		embed.Fields = fields
+	}
+
+	// リンクが指定されている場合は追加
+	if linkOnTitle != "" {
+		embed.URL = linkOnTitle
 	}
 
 	// タイムスタンプを表示する場合は追加
@@ -287,7 +299,7 @@ func (c *DiscordClient) CreateWeatherEmbed(title, description string, colorInDec
 
 // CreateWeatherEmbeds は天気予報専用のDiscord Embedsを作成します
 func (c *DiscordClient) CreateWeatherEmbeds(title, description string, colorInDecimal int, fields []*EmbedField, footerText, footerIconURL string, displaysTimestamp bool) ([]*Embed, error) {
-	embed, err := c.CreateWeatherEmbed(title, description, colorInDecimal, fields, footerText, footerIconURL, displaysTimestamp)
+	embed, err := c.CreateEmbed(title, description, "", colorInDecimal, fields, footerText, footerIconURL, displaysTimestamp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create weather embed: %v", err)
 	}

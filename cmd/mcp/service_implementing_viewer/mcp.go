@@ -30,7 +30,7 @@ func handleGetServiceImplementingStatus(ctx context.Context, request mcp.CallToo
 
 	// ServiceImplementingViewerServiceを初期化
 	service := usecases.NewServiceImplementingViewerService(rootDir, targetDirs)
-	result, err := service.GetServiceImplementingStatus()
+	result, _, err := service.GetServiceImplementingStatus()
 	if err != nil {
 		return nil, fmt.Errorf("サービス実装状況の取得に失敗しました: %v", err)
 	}

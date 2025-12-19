@@ -42,27 +42,27 @@ go build
 
 ### 単一ファイルの解析
 ```bash
-depends-visualizer -file main.go
+go run ./cmd/cli/depends-visualizer -file main.go
 ```
 
 ### ディレクトリ内のファイルを解析
 ```bash
-depends-visualizer -dir ./src
+go run ./cmd/cli/depends-visualizer -dir ./src
 ```
 
 ### 出力形式を指定
 ```bash
-depends-visualizer -file main.go -format plantuml
+go run ./cmd/cli/depends-visualizer -file main.go -format plantuml
 ```
 
 ### 出力ファイルを指定
 ```bash
-depends-visualizer -file main.go -out dependencies.md
+go run ./cmd/cli/depends-visualizer -file main.go -out dependencies.md
 ```
 
 ### 再帰的にディレクトリを処理
 ```bash
-depends-visualizer -dir ./src -r
+go run ./cmd/cli/depends-visualizer -dir ./src -r
 ```
 
 ## 出力形式
@@ -146,7 +146,7 @@ digraph G {
 ### Webアプリケーションのバックエンドコードの解析
 
 ```bash
-depends-visualizer -dir ./backend -r -format mermaid -out backend-deps.md
+go run ./cmd/cli/depends-visualizer -dir ./backend -r -format mermaid -out backend-deps.md
 ```
 
 これにより、バックエンドディレクトリ内のすべてのコードファイルを再帰的に解析し、関数間の依存関係をMermaid形式で`backend-deps.md`ファイルに出力します。
@@ -154,7 +154,7 @@ depends-visualizer -dir ./backend -r -format mermaid -out backend-deps.md
 ### 特定の言語ファイルのみを解析
 
 ```bash
-depends-visualizer -dir ./src -ext .py -format dot -out python-deps.dot
+go run ./cmd/cli/depends-visualizer -dir ./src -ext .py -format dot -out python-deps.dot
 ```
 
 これにより、`src`ディレクトリ内のPythonファイルのみを解析し、DOT形式で出力します。
