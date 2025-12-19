@@ -143,6 +143,6 @@ func (h *WeatherNotificationHandler) HandleWeatherNotification(w http.ResponseWr
 
 	// 成功レスポンスの送信
 	successMessage := fmt.Sprintf("✅ %sの%d日間天気予報をDiscordに送信しました", req.City, req.MaxDays)
-	log.Printf(successMessage)
+	log.Printf("%s", successMessage)
 	h.sendSuccessResponse(w, successMessage)
 }
