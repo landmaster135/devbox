@@ -42,6 +42,7 @@
 | filesystem                                  | ❌️  | ✅  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-container                     | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-deployment                    | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-dns                           | ✅  | ❌️  | ❌️  | ❌️ |
