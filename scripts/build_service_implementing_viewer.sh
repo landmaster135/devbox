@@ -38,5 +38,5 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp"
-echo "  go run cmd/cli/service-implementing-viewer/main.go -root-dir=/path/to/project -target-dirs="cli,mcp,powershell""
+echo "  go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp -operation=output"
+echo "  go run cmd/cli/service-implementing-viewer/main.go -root-dir=/path/to/project -target-dirs="cli,mcp,powershell" -operation=output"

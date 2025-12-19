@@ -37,27 +37,27 @@
 
 ```mermaid
 graph TD
-    A[cmd Layer] --> B[internal/usecases]
-    A --> C[internal/interfaces]
-    A --> D[internal/domain]
-    
-    B --> D
-    C --> D
-    
-    E[scripts] --> F[pkg/bin]
-    E --> A
-    
-    F --> H[Cross-platform Binaries]
+  A[cmd Layer] --> B[internal/usecases]
+  A --> C[internal/interfaces]
+  A --> D[internal/domain]
+  
+  B --> D
+  C --> D
+  
+  E[scripts] --> F[pkg/bin]
+  E --> A
+  
+  F --> H[Cross-platform Binaries]
 
-    classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
-    classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
-    classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
-    classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
+  classDef cmd fill:#f96,stroke:#333,stroke-width:2px;
+  classDef internal fill:#bbf,stroke:#333,stroke-width:1px;
+  classDef scripts fill:#bfb,stroke:#333,stroke-width:1px;
+  classDef pkg fill:#fbf,stroke:#333,stroke-width:1px;
 
-    class A cmd;
-    class B,C,D internal;
-    class E scripts;
-    class F,H pkg;
+  class A cmd;
+  class B,C,D internal;
+  class E scripts;
+  class F,H pkg;
 ```
 
 ## 3. ディレクトリ構造詳細

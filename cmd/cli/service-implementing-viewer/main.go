@@ -17,20 +17,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// サービスを作成
+	switch cfg.Operation {
+	case "output":
+		handleOutputOperation(cfg)
+	default:
+		fmt.Fprintf(os.Stderr, "エラー: 未対応のoperationです: %s\n", cfg.Operation)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+}
+
+func handleOutputOperation(cfg *config.Config) {
 	service := usecases.NewServiceImplementingViewerService(cfg.RootDir, cfg.TargetDirs)
 
-	// サービス実装状況を取得
 	result, statistics, err := service.GetServiceImplementingStatus()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 結果を出力
 	fmt.Print(result)
 
-	// 統計情報を出力
 	fmt.Printf("\n## 統計情報\n\n")
 	fmt.Printf("- **総サービス数**: %d\n", statistics.TotalServices)
 	fmt.Printf("- **CLIツール実装数**: %d\n", statistics.CLICount)
