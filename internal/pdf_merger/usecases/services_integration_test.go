@@ -1,9 +1,12 @@
 package usecases
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -145,24 +148,40 @@ func TestImageExtractionService_ExtractToImages(t *testing.T) {
 			t.Fatalf("ExtractToImages()でエラーが発生: %v", err)
 		}
 
-		// 出力ディレクトリが作成されたことを確認
-		if _, err := os.Stat(outputDir); os.IsNotExist(err) {
-			t.Error("出力ディレクトリが作成されませんでした")
+		pageCount, err := service.GetPageCount(pdfPath)
+		if err != nil {
+			t.Fatalf("GetPageCount()でエラーが発生: %v", err)
 		}
 
-		// 抽出された画像ファイルの存在確認
-		files, err := os.ReadDir(outputDir)
+		digits := len(strconv.Itoa(pageCount))
+		if digits < 4 {
+			digits = 4
+		}
+
+		base := strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath))
+		expected := make(map[string]struct{}, pageCount)
+		for i := 1; i <= pageCount; i++ {
+			expected[fmt.Sprintf("%s_%0*d.jpg", base, digits, i)] = struct{}{}
+		}
+
+		entries, err := os.ReadDir(outputDir)
 		if err != nil {
 			t.Fatalf("出力ディレクトリの読み取りに失敗: %v", err)
 		}
 
-		if len(files) == 0 {
-			t.Error("画像ファイルが抽出されませんでした")
+		actual := make(map[string]struct{}, len(entries))
+		for _, entry := range entries {
+			actual[entry.Name()] = struct{}{}
 		}
 
-		t.Logf("抽出された画像ファイル数: %d", len(files))
-		for _, file := range files {
-			t.Logf("抽出されたファイル: %s", file.Name())
+		if len(actual) != len(expected) {
+			t.Fatalf("期待ファイル数と一致しません。期待: %d, 実際: %d", len(expected), len(actual))
+		}
+
+		for name := range expected {
+			if _, ok := actual[name]; !ok {
+				t.Errorf("期待されるファイルが生成されていません: %s", name)
+			}
 		}
 	})
 
@@ -173,15 +192,34 @@ func TestImageExtractionService_ExtractToImages(t *testing.T) {
 		pdfPath := filepath.Join(tmpDir, sampleFileOfPDF0101)
 		outputDir := filepath.Join(tmpDir, "extracted_images_range")
 
+		pageCount, err := service.GetPageCount(pdfPath)
+		if err != nil {
+			t.Fatalf("GetPageCount()でエラーが発生: %v", err)
+		}
+		digits := len(strconv.Itoa(pageCount))
+		if digits < 4 {
+			digits = 4
+		}
+
 		// 最初のページのみ抽出
-		err := service.ExtractToImages(pdfPath, outputDir, "png", 1, 1)
+		err = service.ExtractToImages(pdfPath, outputDir, "png", 1, 1)
 		if err != nil {
 			t.Fatalf("ExtractToImages()でエラーが発生: %v", err)
 		}
 
-		// 出力ディレクトリが作成されたことを確認
-		if _, err := os.Stat(outputDir); os.IsNotExist(err) {
-			t.Error("出力ディレクトリが作成されませんでした")
+		expectedName := fmt.Sprintf("%s_%0*d.png", strings.TrimSuffix(filepath.Base(pdfPath), filepath.Ext(pdfPath)), digits, 1)
+
+		entries, err := os.ReadDir(outputDir)
+		if err != nil {
+			t.Fatalf("出力ディレクトリの読み取りに失敗: %v", err)
+		}
+
+		if len(entries) != 1 {
+			t.Fatalf("生成されたファイル数が想定と異なります。期待: 1, 実際: %d", len(entries))
+		}
+
+		if entries[0].Name() != expectedName {
+			t.Errorf("生成されたファイル名が期待と異なります。期待: %s, 実際: %s", expectedName, entries[0].Name())
 		}
 	})
 
@@ -307,11 +345,11 @@ func TestPDFCreationService_AddImagesToExistingPDF(t *testing.T) {
 	})
 }
 
-// TestPDFCreationService_getNameOfTemporaryPDF_Integration は統合テストでgetNameOfTemporaryPDFが実際に呼ばれることを確認
-func TestPDFCreationService_getNameOfTemporaryPDF_Integration(t *testing.T) {
+// TestPDFCreationService_createTemporaryPDF_Integration は AddImagesToExistingPDF 内で一時ファイルが適切に扱われることを検証
+func TestPDFCreationService_createTemporaryPDF_Integration(t *testing.T) {
 	service := NewPDFCreationService()
 
-	t.Run("AddImagesToExistingPDF内でgetNameOfTemporaryPDFが呼ばれる", func(t *testing.T) {
+	t.Run("一時ファイルが出力ディレクトリ内で生成され後始末される", func(t *testing.T) {
 		tmpDir, cleanup := setupTestData(t)
 		defer cleanup()
 
@@ -319,15 +357,25 @@ func TestPDFCreationService_getNameOfTemporaryPDF_Integration(t *testing.T) {
 		images := []string{filepath.Join(tmpDir, sampleFileOfJPG0101)}
 		outputPDF := filepath.Join(tmpDir, "output.pdf")
 
-		// この呼び出しによってgetNameOfTemporaryPDFが内部で実行される
 		err := service.AddImagesToExistingPDF(existingPDF, images, outputPDF)
 		if err != nil {
 			t.Fatalf("AddImagesToExistingPDF()でエラーが発生: %v", err)
 		}
 
-		// 出力ファイルが作成されていることを確認（間接的にgetNameOfTemporaryPDFが動作したことを確認）
+		// 出力ファイルが作成されていることを確認（間接的に一時ファイルが利用されたことを確認）
 		if _, err := os.Stat(outputPDF); os.IsNotExist(err) {
 			t.Error("出力PDFファイルが作成されませんでした")
+		}
+
+		entries, err := os.ReadDir(tmpDir)
+		if err != nil {
+			t.Fatalf("ディレクトリ一覧の取得に失敗: %v", err)
+		}
+
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), "pdfmerge_temp_") {
+				t.Errorf("一時PDFファイルが削除されていません: %s", entry.Name())
+			}
 		}
 	})
 }
@@ -413,38 +461,6 @@ func TestImageExtractionService_isSupportedFormat_Integration(t *testing.T) {
 			err := service.ExtractToImages(pdfPath, outputDir+"_"+format, format, 0, 0)
 			if err == nil {
 				t.Errorf("サポートされていない形式 %s でエラーが期待されます", format)
-			}
-		}
-	})
-}
-
-// TestImageExtractionService_renameExtractedImagesWithFourDigits_Integration はrenameExtractedImagesWithFourDigitsの統合テスト
-func TestImageExtractionService_renameExtractedImagesWithFourDigits_Integration(t *testing.T) {
-	service := NewImageExtractionService()
-
-	t.Run("ExtractToImages内でrenameExtractedImagesWithFourDigitsが呼ばれる", func(t *testing.T) {
-		tmpDir, cleanup := setupTestData(t)
-		defer cleanup()
-
-		pdfPath := filepath.Join(tmpDir, sampleFileOfPDF0101)
-		outputDir := filepath.Join(tmpDir, "extracted_with_rename")
-
-		err := service.ExtractToImages(pdfPath, outputDir, "jpg", 0, 0)
-		if err != nil {
-			t.Fatalf("ExtractToImages()でエラーが発生: %v", err)
-		}
-
-		// 抽出された画像ファイルの名前形式を確認
-		files, err := os.ReadDir(outputDir)
-		if err != nil {
-			t.Fatalf("出力ディレクトリの読み取りに失敗: %v", err)
-		}
-
-		for _, file := range files {
-			t.Logf("リネーム後のファイル名: %s", file.Name())
-			// 4桁連番形式かどうかの簡単なチェック
-			if len(file.Name()) > 4 && containsString(file.Name(), "_") {
-				t.Logf("4桁連番形式のファイル名が確認されました: %s", file.Name())
 			}
 		}
 	})

@@ -1,12 +1,12 @@
 # devbox
-![Go](https://img.shields.io/badge/Go-1.23-%2300ADD8?logo=go)
-![Coverage](https://img.shields.io/badge/Coverage-54.2%25-yellow)
+![Go](https://img.shields.io/badge/Go-1.25-%2300ADD8?logo=go)
+![Coverage](https://img.shields.io/badge/Coverage-58.9%25-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 Provides utilities for development.
 
 # Usage
-- Go 1.23.5 or later
+- Go 1.25.5 or later
 
 # Development
 
@@ -23,7 +23,7 @@ cd devbox
 
 # Build
 
-## Common tools
+## Common Tools
 ```bash
 ./scripts/build.sh
 ```
@@ -33,9 +33,25 @@ Confirm compilable distributions.
 go tool dist list
 ```
 
-## MCP tools
+## MCP Tools
 ```bash
 ./scripts/build_mcp_tools.sh
+```
+
+## Git Hooks
+Set Git hooks with built binary files
+```bash
+./pkg/bash/setup-git-pre-commit-hooks.sh
+```
+
+## RESTful API
+```bash
+go run ./cmd/http/main.go
+```
+
+## gRPC API
+```bash
+go run ./cmd/grpc/main.go
 ```
 
 # Project Structure
@@ -102,6 +118,10 @@ graph TD
 - **scripts/**: ビルドとデプロイメント自動化スクリプト群。各ツールの個別ビルドスクリプトと統合ビルドスクリプトを提供します。
 
 - **util/**: 全ツール共通のユーティリティ機能。ロギング、共通処理、ヘルパー関数を提供します。
+
+# Service Implementing Status
+
+[Here](./docs/service_implementation_status.md)
 
 # License
 MIT License

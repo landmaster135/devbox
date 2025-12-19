@@ -3,14 +3,15 @@ package usecases
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/context7/domain/models"
-	"github.com/landmaster135/devbox/internal/context7/interfaces"
+	models "github.com/landmaster135/devbox/internal/context7/domain/models"
+	interfaces "github.com/landmaster135/devbox/internal/context7/interfaces"
 )
 
 // Context7Service はContext7 APIとの通信を担当するサービスです
@@ -60,12 +61,6 @@ func (s *Context7Service) ResolveLibraryID(libraryName string) (*models.SearchRe
 	}
 	defer resp.Body.Close()
 
-	// レスポンスボディを読み取り
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %w", err)
-	}
-
 	// エラーレスポンスの処理
 	if resp.StatusCode != http.StatusOK {
 		errorMsg := fmt.Sprintf("API呼び出しが失敗しました (ステータス: %d)", resp.StatusCode)
@@ -80,8 +75,21 @@ func (s *Context7Service) ResolveLibraryID(libraryName string) (*models.SearchRe
 
 	// JSONレスポンスをパース
 	var searchResponse models.SearchResponse
-	if err := json.Unmarshal(body, &searchResponse); err != nil {
-		return nil, fmt.Errorf("JSONレスポンスのパースに失敗しました: %w", err)
+	if err := json.NewDecoder(resp.Body).Decode(&searchResponse); err != nil {
+		var syntaxErr *json.SyntaxError
+		var typeErr *json.UnmarshalTypeError
+		switch {
+		case errors.Is(err, io.EOF):
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %w", err)
+		case errors.Is(err, io.ErrUnexpectedEOF):
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %w", err)
+		case errors.As(err, &syntaxErr):
+			return nil, fmt.Errorf("JSONレスポンスのパースに失敗しました: %w", err)
+		case errors.As(err, &typeErr):
+			return nil, fmt.Errorf("JSONレスポンスのパースに失敗しました: %w", err)
+		default:
+			return nil, fmt.Errorf("レスポンスボディの読み取りに失敗しました: %w", err)
+		}
 	}
 	return &searchResponse, nil
 }

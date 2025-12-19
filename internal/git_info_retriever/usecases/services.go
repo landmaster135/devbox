@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	security "github.com/landmaster135/devbox/internal/git_info_retriever/security"
 )
 
 // #==============================================================#
@@ -40,10 +42,18 @@ type GitInfoService interface {
 	ArchiveRepositories(service, token, outputFilePath, archiveDir, srcFile string) (string, error)
 }
 
+// PathValidator はサービス内で利用するバリデーターのインターフェース
+type PathValidator interface {
+	ValidateArchiveDirectory(path string) (string, error)
+	ValidatePathComponent(component string) (string, error)
+	ValidateURLString(rawURL string) (string, error)
+}
+
 // Service はGitInfoServiceの実装
 type Service struct {
 	githubService GitHubService
 	fileWriter    FileWriter
+	pathValidator PathValidator
 }
 
 // NewServiceWithDependencies は依存関係を注入してServiceインスタンスを作成する
@@ -51,6 +61,7 @@ func NewServiceWithDependencies(githubService GitHubService, fileWriter FileWrit
 	return &Service{
 		githubService: githubService,
 		fileWriter:    fileWriter,
+		pathValidator: security.NewDefaultPathValidator(),
 	}
 }
 
@@ -62,6 +73,13 @@ func NewService() GitInfoService {
 	)
 }
 
+func (s *Service) getPathValidator() PathValidator {
+	if s.pathValidator == nil {
+		s.pathValidator = security.NewDefaultPathValidator()
+	}
+	return s.pathValidator
+}
+
 // getRepositoryInfo は指定されたサービスからリポジトリ情報を取得する
 func (s *Service) getRepositoryInfo(service, token string) (string, error) {
 	if service != "github" {
@@ -70,7 +88,6 @@ func (s *Service) getRepositoryInfo(service, token string) (string, error) {
 
 	ctx := context.Background()
 	client := s.githubService.CreateGitHubClient(ctx, token)
-
 
 	// プライベートリポジトリも含めて取得するため、空文字列を渡す
 	username := ""
@@ -144,45 +161,71 @@ func extractRepoName(httpUrl string) string {
 }
 
 // generateBashFunctions はBash関数を生成する
-func (s *Service) generateBashFunctions(repos []RepoInfo, archiveDir string) string {
+func (s *Service) generateBashFunctions(repos []RepoInfo, archiveDir string) (string, error) {
+	validator := s.getPathValidator()
+
+	sanitizedArchiveDir, err := validator.ValidateArchiveDirectory(archiveDir)
+	if err != nil {
+		return "", fmt.Errorf("アーカイブディレクトリの検証に失敗しました: %w", err)
+	}
+
+	type sanitizedRepo struct {
+		name string
+		url  string
+	}
+
+	sanitizedRepos := make([]sanitizedRepo, 0, len(repos))
+	for _, repo := range repos {
+		validatedURL, err := validator.ValidateURLString(repo.HttpUrl)
+		if err != nil {
+			return "", fmt.Errorf("リポジトリURLの検証に失敗しました (%s): %w", repo.HttpUrl, err)
+		}
+
+		repoName := extractRepoName(validatedURL)
+		if repoName == "" {
+			continue
+		}
+
+		sanitizedName, err := validator.ValidatePathComponent(repoName)
+		if err != nil {
+			return "", fmt.Errorf("リポジトリ名の検証に失敗しました (%s): %w", repoName, err)
+		}
+
+		sanitizedRepos = append(sanitizedRepos, sanitizedRepo{
+			name: sanitizedName,
+			url:  validatedURL,
+		})
+	}
+
 	var result strings.Builder
 
 	// archive_repos関数
 	result.WriteString("function archive_repos() {\n")
-	result.WriteString(fmt.Sprintf("\tmkdir -p %s\n", archiveDir))
-	for _, repo := range repos {
-		repoName := extractRepoName(repo.HttpUrl)
-		if repoName == "" {
-			continue
-		}
-		result.WriteString(fmt.Sprintf("\tgit clone %s\n", repo.HttpUrl))
-		result.WriteString(fmt.Sprintf("\tzip -rq %s/%s.zip ./%s\n", archiveDir, repoName, repoName))
+	result.WriteString(fmt.Sprintf("\tmkdir -p %s\n", singleQuote(sanitizedArchiveDir)))
+	for _, repo := range sanitizedRepos {
+		archiveZip := fmt.Sprintf("%s/%s.zip", sanitizedArchiveDir, repo.name)
+		result.WriteString(fmt.Sprintf("\tgit clone %s\n", singleQuote(repo.url)))
+		result.WriteString(fmt.Sprintf("\tzip -rq %s %s\n", singleQuote(archiveZip), singleQuote("./"+repo.name)))
 	}
 	result.WriteString("}\n\n")
 
 	// display_zipinfo関数
 	result.WriteString("function display_zipinfo() {\n")
-	for _, repo := range repos {
-		repoName := extractRepoName(repo.HttpUrl)
-		if repoName == "" {
-			continue
-		}
-		result.WriteString(fmt.Sprintf("\tzipinfo %s/%s.zip\n", archiveDir, repoName))
+	for _, repo := range sanitizedRepos {
+		archiveZip := fmt.Sprintf("%s/%s.zip", sanitizedArchiveDir, repo.name)
+		result.WriteString(fmt.Sprintf("\tzipinfo %s\n", singleQuote(archiveZip)))
 	}
 	result.WriteString("}\n\n")
 
 	// unzip_repos関数
 	result.WriteString("function unzip_repos() {\n")
-	for _, repo := range repos {
-		repoName := extractRepoName(repo.HttpUrl)
-		if repoName == "" {
-			continue
-		}
-		result.WriteString(fmt.Sprintf("\tunzip %s/%s.zip -d ./unarchived\n", archiveDir, repoName))
+	for _, repo := range sanitizedRepos {
+		archiveZip := fmt.Sprintf("%s/%s.zip", sanitizedArchiveDir, repo.name)
+		result.WriteString(fmt.Sprintf("\tunzip %s -d %s\n", singleQuote(archiveZip), singleQuote("./unarchived")))
 	}
 	result.WriteString("}\n")
 
-	return result.String()
+	return result.String(), nil
 }
 
 // ArchiveRepositories はリポジトリアーカイブ用のBash関数を生成する
@@ -206,7 +249,7 @@ func (s *Service) ArchiveRepositories(service, token, outputFilePath, archiveDir
 		ctx := context.Background()
 		client := s.githubService.CreateGitHubClient(ctx, token)
 
-	// プライベートリポジトリも含めて取得するため、空文字列を渡す
+		// プライベートリポジトリも含めて取得するため、空文字列を渡す
 		username := ""
 		repos, err = s.githubService.GetRepoInfo(ctx, client, true, username)
 		if err != nil {
@@ -218,7 +261,10 @@ func (s *Service) ArchiveRepositories(service, token, outputFilePath, archiveDir
 	archiveDir = filepath.Clean(archiveDir)
 
 	// Bash関数を生成
-	bashFunctions := s.generateBashFunctions(repos, archiveDir)
+	bashFunctions, err := s.generateBashFunctions(repos, archiveDir)
+	if err != nil {
+		return "", err
+	}
 
 	// ファイル出力が指定されている場合
 	if outputFilePath != "" {
@@ -253,4 +299,9 @@ func (s *Service) RetrieveRepositoryInfo(service, token, filePath string) (strin
 	}
 
 	return result, nil
+}
+
+func singleQuote(value string) string {
+	escaped := strings.ReplaceAll(value, "'", "'\\''")
+	return "'" + escaped + "'"
 }

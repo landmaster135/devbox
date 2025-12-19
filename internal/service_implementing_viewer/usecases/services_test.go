@@ -35,17 +35,37 @@ func (t *TestServiceImplementingViewerService) setupTestEnvironment() error {
 		return err
 	}
 
+	// grpc/handlers ディレクトリ
+	grpcHandlersDir := filepath.Join(tempDir, "grpc", "handlers")
+	if err := os.MkdirAll(grpcHandlersDir, 0755); err != nil {
+		return err
+	}
+
+	// http/handlers ディレクトリ
+	httpHandlersDir := filepath.Join(tempDir, "http", "handlers")
+	if err := os.MkdirAll(httpHandlersDir, 0755); err != nil {
+		return err
+	}
+
 	// テスト用サービスディレクトリを作成
 	testServices := []struct {
 		dir  string
 		name string
 	}{
+		// 既存のサービス
 		{"cli", "arithmetic_calculator"},
 		{"cli", "base64-extractor"},
 		{"cli", "git-commit-history-retriever"},
+		{"cli", "weather-notificator"},
 		{"mcp", "arithmetic-calculator"},
 		{"mcp", "git_commit_history_retriever"},
 		{"mcp", "github"},
+		{"mcp", "weather-notificator"},
+		{"grpc/handlers", "weather-notificator"},
+		{"grpc/handlers", "user-management"},
+		{"grpc/handlers", "notification-service"},
+		{"http/handlers", "weather-notificator"},
+		{"http/handlers", "api-gateway"},
 	}
 
 	for _, service := range testServices {
@@ -69,7 +89,7 @@ func (t *TestServiceImplementingViewerService) cleanupTestEnvironment() {
 func TestNewServiceImplementingViewerService_Normal(t *testing.T) {
 	// Arrange
 	rootDir := "/test/root"
-	targetDirs := []string{"cli", "mcp"}
+	targetDirs := []string{"cli", "mcp", "grpc/handlers", "http/handlers"}
 
 	// Act
 	service := NewServiceImplementingViewerService(rootDir, targetDirs)
@@ -100,18 +120,41 @@ func TestGetServiceImplementingStatus_Normal(t *testing.T) {
 	}
 	defer testService.cleanupTestEnvironment()
 
-	targetDirs := []string{"cli", "mcp"}
+	targetDirs := []string{"cli", "mcp", "grpc/handlers", "http/handlers"}
 	service := NewServiceImplementingViewerService(testService.tempDir, targetDirs)
 
 	// Act
-	result, err := service.GetServiceImplementingStatus()
+	result, statistics, err := service.GetServiceImplementingStatus()
 
 	// Assert
 	if err != nil {
 		t.Fatalf("エラーが発生しました: %v", err)
 	}
+	if statistics == nil {
+		t.Fatal("統計情報がnilです")
+	}
 	if result == "" {
 		t.Fatal("結果が空です")
+	}
+
+	// 統計情報の検証
+	if statistics.TotalServices != 8 {
+		t.Errorf("総サービス数が期待値と異なります。期待値: 8, 実際: %d", statistics.TotalServices)
+	}
+	if statistics.CLICount != 4 {
+		t.Errorf("CLICount が期待値と異なります。期待値: 4, 実際: %d", statistics.CLICount)
+	}
+	if statistics.MCPCount != 4 {
+		t.Errorf("MCPCount が期待値と異なります。期待値: 4, 実際: %d", statistics.MCPCount)
+	}
+	if statistics.GRPCCount != 3 {
+		t.Errorf("GRPCCount が期待値と異なります。期待値: 3, 実際: %d", statistics.GRPCCount)
+	}
+	if statistics.HTTPCount != 2 {
+		t.Errorf("HTTPCount が期待値と異なります。期待値: 2, 実際: %d", statistics.HTTPCount)
+	}
+	if statistics.AllImplementedCount != 1 {
+		t.Errorf("AllImplementedCount が期待値と異なります。期待値: 1, 実際: %d", statistics.AllImplementedCount)
 	}
 
 	// 結果の内容を検証
@@ -121,7 +164,7 @@ func TestGetServiceImplementingStatus_Normal(t *testing.T) {
 	}
 
 	// ヘッダー行の検証
-	if !strings.Contains(lines[0], "service") || !strings.Contains(lines[0], "cli") || !strings.Contains(lines[0], "mcp") {
+	if !strings.Contains(lines[0], "service") || !strings.Contains(lines[0], "cli") || !strings.Contains(lines[0], "mcp") || !strings.Contains(lines[0], "grpc/handlers") || !strings.Contains(lines[0], "http/handlers") {
 		t.Errorf("ヘッダー行が正しくありません: %s", lines[0])
 	}
 
@@ -130,19 +173,21 @@ func TestGetServiceImplementingStatus_Normal(t *testing.T) {
 		t.Errorf("セパレーター行が正しくありません: %s", lines[1])
 	}
 
-	// データ行の検証（arithmetic-calculatorが含まれているかチェック）
+	// データ行の検証（weather-notificatorが全ディレクトリに存在することをチェック）
 	found := false
 	for _, line := range lines[2:] {
-		if strings.Contains(line, "arithmetic-calculator") {
+		if strings.Contains(line, "weather-notificator") {
 			found = true
-			if !strings.Contains(line, "✅") {
-				t.Errorf("arithmetic-calculatorの行に✅が含まれていません: %s", line)
+			// weather-notificatorは全ディレクトリに存在するので4つの✅があるはず
+			checkCount := strings.Count(line, "✅")
+			if checkCount != 4 {
+				t.Errorf("weather-notificatorの行の✅の数が期待値と異なります。期待値: 4, 実際: %d, 行: %s", checkCount, line)
 			}
 			break
 		}
 	}
 	if !found {
-		t.Error("arithmetic-calculatorの行が見つかりません")
+		t.Error("weather-notificatorの行が見つかりません")
 	}
 }
 
@@ -169,7 +214,7 @@ func TestGetServicesInDirectory_Normal(t *testing.T) {
 		t.Fatal("サービスが見つかりません")
 	}
 
-	expectedServices := []string{"arithmetic_calculator", "base64-extractor", "git-commit-history-retriever"}
+	expectedServices := []string{"arithmetic_calculator", "base64-extractor", "git-commit-history-retriever", "weather-notificator"}
 	if len(services) != len(expectedServices) {
 		t.Errorf("サービス数が期待値と異なります。期待値: %d, 実際: %d", len(expectedServices), len(services))
 	}
@@ -263,15 +308,19 @@ func TestIsServiceImplementedInDirectory_Normal(t *testing.T) {
 // TestFormatAsTable_Normal はformatAsTableの正常系テスト
 func TestFormatAsTable_Normal(t *testing.T) {
 	// Arrange
-	service := NewServiceImplementingViewerService("/test", []string{"cli", "mcp"})
+	service := NewServiceImplementingViewerService("/test", []string{"cli", "mcp", "grpc/handlers", "http/handlers"})
 	serviceStatuses := []ServiceStatus{
 		{
-			ServiceName: "arithmetic-calculator",
-			Directories: map[string]bool{"cli": false, "mcp": true},
+			ServiceName: "weather-notificator",
+			Directories: map[string]bool{"cli": true, "mcp": true, "grpc/handlers": true, "http/handlers": true},
 		},
 		{
-			ServiceName: "base64-extractor",
-			Directories: map[string]bool{"cli": true, "mcp": false},
+			ServiceName: "arithmetic-calculator",
+			Directories: map[string]bool{"cli": true, "mcp": true, "grpc/handlers": false, "http/handlers": false},
+		},
+		{
+			ServiceName: "user-management",
+			Directories: map[string]bool{"cli": false, "mcp": false, "grpc/handlers": true, "http/handlers": false},
 		},
 	}
 
@@ -284,21 +333,53 @@ func TestFormatAsTable_Normal(t *testing.T) {
 	}
 
 	lines := strings.Split(result, "\n")
-	if len(lines) < 4 {
-		t.Fatalf("結果の行数が不足しています。期待値: 4行以上, 実際: %d行", len(lines))
+	if len(lines) < 5 {
+		t.Fatalf("結果の行数が不足しています。期待値: 5行以上, 実際: %d行", len(lines))
 	}
 
 	// ヘッダー行の検証
-	if !strings.Contains(lines[0], "service") || !strings.Contains(lines[0], "cli") || !strings.Contains(lines[0], "mcp") {
+	if !strings.Contains(lines[0], "service") || !strings.Contains(lines[0], "cli") || !strings.Contains(lines[0], "mcp") || !strings.Contains(lines[0], "grpc/handlers") || !strings.Contains(lines[0], "http/handlers") {
 		t.Errorf("ヘッダー行が正しくありません: %s", lines[0])
 	}
 
 	// データ行の検証
-	if !strings.Contains(lines[2], "arithmetic-calculator") {
-		t.Errorf("arithmetic-calculatorの行が見つかりません: %s", lines[2])
+	weatherNotificatorFound := false
+	arithmeticCalculatorFound := false
+	userManagementFound := false
+
+	for _, line := range lines[2:] {
+		if strings.Contains(line, "weather-notificator") {
+			weatherNotificatorFound = true
+			// weather-notificatorは全ディレクトリに存在するので4つの✅があるはず
+			checkCount := strings.Count(line, "✅")
+			if checkCount != 4 {
+				t.Errorf("weather-notificatorの行の✅の数が期待値と異なります。期待値: 4, 実際: %d, 行: %s", checkCount, line)
+			}
+		} else if strings.Contains(line, "arithmetic-calculator") {
+			arithmeticCalculatorFound = true
+			// arithmetic-calculatorはcliとmcpのみに存在するので2つの✅があるはず
+			checkCount := strings.Count(line, "✅")
+			if checkCount != 2 {
+				t.Errorf("arithmetic-calculatorの行の✅の数が期待値と異なります。期待値: 2, 実際: %d, 行: %s", checkCount, line)
+			}
+		} else if strings.Contains(line, "user-management") {
+			userManagementFound = true
+			// user-managementはgrpc/handlersのみに存在するので1つの✅があるはず
+			checkCount := strings.Count(line, "✅")
+			if checkCount != 1 {
+				t.Errorf("user-managementの行の✅の数が期待値と異なります。期待値: 1, 実際: %d, 行: %s", checkCount, line)
+			}
+		}
 	}
-	if !strings.Contains(lines[3], "base64-extractor") {
-		t.Errorf("base64-extractorの行が見つかりません: %s", lines[3])
+
+	if !weatherNotificatorFound {
+		t.Error("weather-notificatorの行が見つかりません")
+	}
+	if !arithmeticCalculatorFound {
+		t.Error("arithmetic-calculatorの行が見つかりません")
+	}
+	if !userManagementFound {
+		t.Error("user-managementの行が見つかりません")
 	}
 
 	// 絵文字の検証

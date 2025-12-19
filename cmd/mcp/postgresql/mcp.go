@@ -64,6 +64,25 @@ func setPostgreSQLQueryServer(databaseURL string, s *server.MCPServer) *server.M
 	)
 	s.AddTool(listTablesTool, handler.HandleToListTables)
 
+	// ツール6: テーブルダンプ
+	dumpTableTool := mcp.NewTool("dump_table",
+		mcp.WithDescription("Dump all records from a specified table to a file"),
+		mcp.WithString("table_name",
+			mcp.Required(),
+			mcp.Description("Name of the table to dump"),
+		),
+		mcp.WithString("output_path",
+			mcp.Description("Absolute directory path to save the dump file (default: current directory)"),
+		),
+		mcp.WithString("format",
+			mcp.Description("Output format: json, csv, or sql (default: json)"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Maximum number of records to dump (optional)"),
+		),
+	)
+	s.AddTool(dumpTableTool, handler.HandleToDumpTable)
+
 	return s
 }
 

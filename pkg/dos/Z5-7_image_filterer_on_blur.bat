@@ -1,6 +1,7 @@
 @echo off
 
 set /p coordinates="Input 4 coordinates linked on each parameter to trim images (-x1, -y1, -x2, -y2): "
+set /p radius="Input radius for blurring strength (default: 50, recommended -> 1920x1080px: 50, 4080x3072px: 300): "
 choice /c yn /n /m "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : "
 if %errorlevel% == 1 (
   set "moves=-move"
@@ -10,7 +11,7 @@ if %errorlevel% == 1 (
 echo %moves%
 
 echo --- プログラムを実行します ---
-.\pkg\bin\cli\win_amd64\image-filterer.exe -src . -suffix blurred %coordinates% %moves% -mode blur -radius 50
+.\pkg\bin\cli\win_amd64\image-filterer.exe -src . -suffix blurred %coordinates% %moves% -mode blur -radius %radius%
 echo.
 echo --- プログラムの実行が完了しました ---
 echo --- 何かキーを押すと終了します ---

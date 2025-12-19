@@ -14,7 +14,7 @@ import (
 func TestApp_selectPackage_InvalidInput(t *testing.T) {
 	t.Run("selectPackage_InvalidInput", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 		mockReader := NewMockInputReader([]string{"invalid", "0", "999", "2"}) // 無効な入力の後に有効な入力
 
@@ -28,7 +28,7 @@ func TestApp_selectPackage_InvalidInput(t *testing.T) {
 			return mockEntries, nil
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, mockReader, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, mockReader, nil, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -52,7 +52,7 @@ func TestApp_selectPackage_InvalidInput(t *testing.T) {
 func TestApp_parseREADMEFile_ReadError(t *testing.T) {
 	t.Run("parseREADMEFile_ReadError", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.StatFunc = func(name string) (os.FileInfo, error) {
@@ -69,7 +69,7 @@ func TestApp_parseREADMEFile_ReadError(t *testing.T) {
 			return nil, os.ErrNotExist
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -92,7 +92,7 @@ func TestApp_parseREADMEFile_ReadError(t *testing.T) {
 func TestApp_parseREADMEFile_ParseError(t *testing.T) {
 	t.Run("parseREADMEFile_ParseError", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 		mockParser := &MockREADMEParser{}
 
@@ -114,7 +114,7 @@ func TestApp_parseREADMEFile_ParseError(t *testing.T) {
 			return nil, fmt.Errorf("parse error")
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, mockParser, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, mockParser, nil)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -137,14 +137,14 @@ func TestApp_parseREADMEFile_ParseError(t *testing.T) {
 func TestApp_writeScriptFile_MkdirError(t *testing.T) {
 	t.Run("writeScriptFile_MkdirError", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.MkdirAllFunc = func(path string, perm os.FileMode) error {
 			return fmt.Errorf("mkdir error")
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 		w := &bytes.Buffer{}
 		content := "#!/bin/bash\necho \"test script\""
 
@@ -165,7 +165,7 @@ func TestApp_writeScriptFile_MkdirError(t *testing.T) {
 func TestApp_writeScriptFile_WriteError(t *testing.T) {
 	t.Run("writeScriptFile_WriteError", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		mockFS.MkdirAllFunc = func(path string, perm os.FileMode) error {
@@ -176,7 +176,7 @@ func TestApp_writeScriptFile_WriteError(t *testing.T) {
 			return fmt.Errorf("write error")
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 		w := &bytes.Buffer{}
 		content := "#!/bin/bash\necho \"test script\""
 
@@ -197,7 +197,7 @@ func TestApp_writeScriptFile_WriteError(t *testing.T) {
 func TestApp_generateBuildScript_Integration(t *testing.T) {
 	t.Run("generateBuildScript_Integration", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 		mockParser := &MockREADMEParser{}
 		mockGenerator := &MockScriptGenerator{}
@@ -238,7 +238,7 @@ func TestApp_generateBuildScript_Integration(t *testing.T) {
 			return fmt.Sprintf("#!/bin/bash\necho \"Building %s...\"\n%s", packageName, strings.Join(usageExamples, "\n"))
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, mockParser, mockGenerator)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, mockParser, mockGenerator)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -272,8 +272,8 @@ func TestApp_generateBuildScript_Integration(t *testing.T) {
 func TestApp_showHelp_Content(t *testing.T) {
 	t.Run("showHelp_Content", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
-		app := NewApp(cfg)
+		cfg := &config.ServiceConfig{}
+		app := NewService(cfg)
 		w := &bytes.Buffer{}
 
 		// Act
@@ -301,7 +301,7 @@ func TestApp_showHelp_Content(t *testing.T) {
 func TestApp_getAvailablePackages_OnlyDirectories(t *testing.T) {
 	t.Run("getAvailablePackages_OnlyDirectories", func(t *testing.T) {
 		// Arrange
-		cfg := &config.AppConfig{}
+		cfg := &config.ServiceConfig{}
 		mockFS := &MockFileSystem{}
 
 		// ディレクトリとファイルが混在するエントリを作成
@@ -317,7 +317,7 @@ func TestApp_getAvailablePackages_OnlyDirectories(t *testing.T) {
 			return mockEntries, nil
 		}
 
-		app := NewAppWithDependencies(cfg, mockFS, nil, nil, nil)
+		app := NewServiceWithDependencies(cfg, mockFS, nil, nil, nil)
 
 		// Act
 		result, err := app.getAvailablePackages()

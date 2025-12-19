@@ -11,6 +11,7 @@
 - **ディレクトリスキャン**: 指定されたルートディレクトリ配下の対象ディレクトリを再帰的にスキャン
 - **サービス名正規化**: 「_」と「-」を同じものとして扱い、統一された形式で表示
 - **表形式出力**: Markdown形式の表でサービス実装状況を視覚的に表示
+- **統計情報表示**: 各ディレクトリの実装数、組み合わせパターンなどの詳細な統計情報を表示
 - **ソート機能**: サービス名を昇順でソート
 - **存在チェック**: 各サービスが各対象ディレクトリに存在するかを✅/❌で表示
 
@@ -39,22 +40,45 @@ go run cmd/cli/service-implementing-viewer/main.go -root-dir=<ルートディレ
 ```bash
 # cliとmcpディレクトリをスキャン
 go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp
+
+# 全ディレクトリをスキャン
+go run cmd/cli/service-implementing-viewer/main.go -root-dir=/home/user/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers
+
 # 複数のディレクトリをスキャン
 go run cmd/cli/service-implementing-viewer/main.go -root-dir=/path/to/project -target-dirs="cli,mcp,powershell"
 ```
 
 ## 出力例
 
+### 表形式出力
 ```
-| service                              | cli | mcp |
-| :-----------------------------------: | :-:  | :-: |
-| arithmetic-calculator                | ❌️  | ✅ |
-| base64-extractor                     | ✅  | ❌️ |
-| brave-search                         | ❌️  | ✅ |
-| context7                             | ✅  | ✅ |
-| git-commit-history-retriever         | ✅  | ✅ |
-| github                               | ❌️  | ✅ |
-| http-request                         | ✅  | ✅ |
+| service                        | cli | mcp | grpc/handlers | http/handlers |
+| :----------------------------: | :-: | :-: | :-----------: | :-----------: |
+| arithmetic-calculator          | ✅  | ✅  | ❌️           | ❌️           |
+| base64-extractor               | ✅  | ❌️  | ❌️           | ❌️           |
+| brave-search                   | ❌️  | ✅  | ❌️           | ❌️           |
+| context7                       | ✅  | ✅  | ❌️           | ❌️           |
+| git-commit-history-retriever   | ✅  | ✅  | ❌️           | ❌️           |
+| github                         | ❌️  | ✅  | ❌️           | ❌️           |
+| http-request                   | ✅  | ✅  | ❌️           | ❌️           |
+| weather-notificator            | ✅  | ✅  | ✅           | ✅           |
+```
+
+### 統計情報
+```
+## 統計情報
+
+- **総サービス数**: 8
+- **CLIツール実装数**: 5
+- **MCPツール実装数**: 6
+- **gRPCハンドラ実装数**: 1
+- **HTTPハンドラ実装数**: 1
+- **CLIのみ実装**: 1
+- **MCPのみ実装**: 2
+- **gRPCハンドラのみ実装**: 0
+- **HTTPハンドラのみ実装**: 0
+- **CLI+MCP両方実装**: 4
+- **全て実装済み**: 1
 ```
 
 ## アーキテクチャ
@@ -84,15 +108,17 @@ internal/service_implementing_viewer/
 ### Usecases パッケージ
 - **ServiceImplementingViewerService**: メインのサービスクラス
 - **ServiceStatus**: サービスの実装状況を表す構造体
+- **ServiceStatistics**: サービス実装の統計情報を表す構造体
 
 ## 主要メソッド
 
 ### ServiceImplementingViewerService
-- `GetServiceImplementingStatus()`: サービス実装状況を取得し、表形式で返す
+- `GetServiceImplementingStatus()`: サービス実装状況を取得し、表形式と統計情報で返す
 - `getServicesInDirectory()`: 指定されたディレクトリ内のサービス名を取得
 - `normalizeServiceName()`: サービス名を正規化（「_」→「-」）
 - `isServiceImplementedInDirectory()`: サービスがディレクトリに実装されているかチェック
 - `formatAsTable()`: 結果をMarkdown表形式でフォーマット
+- `calculateStatistics()`: 統計情報を計算（各ディレクトリの実装数、組み合わせパターンなど）
 
 ## テスト
 
@@ -175,6 +201,13 @@ Usecases パッケージ
 このプロジェクトのライセンスに従います。
 
 ## 更新履歴
+
+### v1.1.0 (2025-09-15)
+- 統計情報表示機能を追加
+- gRPC/HTTPハンドラ対応を追加
+- 4つのディレクトリ（cli, mcp, grpc/handlers, http/handlers）に対応
+- 詳細な統計情報（実装数、組み合わせパターンなど）を表示
+- テストケースを拡張して4つのディレクトリに対応
 
 ### v1.0.0 (2025-07-28)
 - 初回リリース

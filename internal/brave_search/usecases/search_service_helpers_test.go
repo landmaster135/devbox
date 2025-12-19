@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-
-	"github.com/stretchr/testify/mock"
 )
 
 // #==============================================================#
@@ -14,32 +12,29 @@ import (
 // #==============================================================#
 // MockHTTPClient はHTTPクライアントのモック実装
 type MockHTTPClient struct {
-	mock.Mock
+	DoFunc func(req *http.Request) (*http.Response, error)
 }
 
 func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	args := m.Called(req)
-	return args.Get(0).(*http.Response), args.Error(1)
+	return m.DoFunc(req)
 }
 
 // MockEnvironmentReader は環境変数読み取りのモック実装
 type MockEnvironmentReader struct {
-	mock.Mock
+	GetenvFunc func(key string) string
 }
 
 func (m *MockEnvironmentReader) Getenv(key string) string {
-	args := m.Called(key)
-	return args.String(0)
+	return m.GetenvFunc(key)
 }
 
 // MockRateLimiter はレート制限のモック実装
 type MockRateLimiter struct {
-	mock.Mock
+	CheckLimitFunc func() error
 }
 
 func (m *MockRateLimiter) CheckLimit() error {
-	args := m.Called()
-	return args.Error(0)
+	return m.CheckLimitFunc()
 }
 
 // #==============================================================#

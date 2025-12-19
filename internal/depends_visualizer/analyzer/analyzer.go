@@ -42,8 +42,9 @@ func AnalyzeDependencies(lines []string, functions []string, extension string) (
 		return nil, fmt.Errorf("サポートされていない拡張子: %s", extension)
 	}
 
-	// 結果を格納するマップ
+	// 結果と重複チェック用のマップ
 	result := make(map[string][]string)
+	referenceSets := make(map[string]map[string]struct{})
 
 	// 現在解析中の関数
 	var currentFunction string
@@ -64,6 +65,7 @@ func AnalyzeDependencies(lines []string, functions []string, extension string) (
 				funcName := cleanLine[len(lang.FunctionHeader):tailIdx]
 				currentFunction = funcName
 				result[currentFunction] = []string{}
+				referenceSets[currentFunction] = make(map[string]struct{})
 				continue
 			}
 		}
@@ -79,31 +81,22 @@ func AnalyzeDependencies(lines []string, functions []string, extension string) (
 		}
 
 		// 行内の関数参照を検出
+		references := referenceSets[currentFunction]
 		refs := findFunctionReferences(line, functions)
 		for _, ref := range refs {
-			// 自分自身への参照はスキップ
 			if ref == currentFunction {
 				continue
 			}
 
-			// 重複を避けて追加
-			if !contains(result[currentFunction], ref) {
-				result[currentFunction] = append(result[currentFunction], ref)
+			if _, exists := references[ref]; exists {
+				continue
 			}
+			references[ref] = struct{}{}
+			result[currentFunction] = append(result[currentFunction], ref)
 		}
 	}
 
 	return result, nil
-}
-
-// スライスに要素が含まれているか確認
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
 }
 
 // 解析結果を表す構造体

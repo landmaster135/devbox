@@ -1,6 +1,11 @@
 package config
 
 import (
+	"bytes"
+	"flag"
+	"io"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -285,4 +290,147 @@ type MockError struct {
 // Error はエラーメッセージを返す
 func (e *MockError) Error() string {
 	return e.message
+}
+
+// captureStdout はPrintUsageなどの出力を捕捉するテストヘルパー
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	originalStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("標準出力のパイプ作成に失敗しました: %v", err)
+	}
+	os.Stdout = w
+	fn()
+	if err := w.Close(); err != nil {
+		t.Fatalf("標準出力のクローズに失敗しました: %v", err)
+	}
+	os.Stdout = originalStdout
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("標準出力の読み取りに失敗しました: %v", err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatalf("パイプのクローズに失敗しました: %v", err)
+	}
+	return buf.String()
+}
+
+// TestStandardFlagParser_StringAndBoolVar はStandardFlagParserの各メソッドを検証する
+func TestStandardFlagParser_StringAndBoolVar(t *testing.T) {
+	originalArgs := os.Args
+	originalFlagSet := flag.CommandLine
+	defer func() {
+		os.Args = originalArgs
+		flag.CommandLine = originalFlagSet
+	}()
+
+	os.Args = []string{"service-viewer", "-root-dir=/tmp/project", "-target-dirs=cli,mcp", "-dry-run=true", "extra"}
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	flagSet.SetOutput(io.Discard)
+	flag.CommandLine = flagSet
+
+	parser := NewStandardFlagParser()
+
+	var rootDir, targetDirs string
+	var dryRun bool
+	parser.StringVar(&rootDir, "root-dir", "", "test root")
+	parser.StringVar(&targetDirs, "target-dirs", "", "test target")
+	parser.BoolVar(&dryRun, "dry-run", false, "test bool")
+
+	if err := parser.Parse(); err != nil {
+		t.Fatalf("フラグの解析に失敗しました: %v", err)
+	}
+
+	if rootDir != "/tmp/project" {
+		t.Errorf("rootDirの値が期待値と異なります: %s", rootDir)
+	}
+	if targetDirs != "cli,mcp" {
+		t.Errorf("targetDirsの値が期待値と異なります: %s", targetDirs)
+	}
+	if !dryRun {
+		t.Errorf("dryRunの値が期待値と異なります: %v", dryRun)
+	}
+
+	args := parser.Args()
+	if len(args) != 1 || args[0] != "extra" {
+		t.Errorf("Argsの解析結果が期待値と異なります: %v", args)
+	}
+}
+
+// TestNewStandardOSArgs は標準実装が現在のos.Argsを返すことを確認する
+func TestNewStandardOSArgs(t *testing.T) {
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+	}()
+
+	expected := []string{"viewer", "-flag"}
+	os.Args = expected
+
+	osArgs := NewStandardOSArgs()
+	result := osArgs.Args()
+
+	if len(result) != len(expected) {
+		t.Fatalf("Argsの要素数が期待値と異なります: %d", len(result))
+	}
+	for i, v := range expected {
+		if result[i] != v {
+			t.Errorf("Args[%d]が期待値と異なります。期待値: %s, 実際: %s", i, v, result[i])
+		}
+	}
+}
+
+// TestParseFlags はグローバル関数ParseFlagsの動作を確認する
+func TestParseFlags(t *testing.T) {
+	originalArgs := os.Args
+	originalFlagSet := flag.CommandLine
+	defer func() {
+		os.Args = originalArgs
+		flag.CommandLine = originalFlagSet
+	}()
+
+	os.Args = []string{"service-implementing-viewer", "-root-dir=/workspace", "-target-dirs=cli,mcp"}
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	flagSet.SetOutput(io.Discard)
+	flag.CommandLine = flagSet
+
+	config, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlagsがエラーを返しました: %v", err)
+	}
+
+	if config.RootDir != "/workspace" {
+		t.Errorf("RootDirが期待値と異なります: %s", config.RootDir)
+	}
+	if len(config.TargetDirs) != 2 || config.TargetDirs[0] != "cli" || config.TargetDirs[1] != "mcp" {
+		t.Errorf("TargetDirsが期待値と異なります: %v", config.TargetDirs)
+	}
+}
+
+// TestPrintUsage は使用方法メッセージを検証する
+func TestPrintUsage(t *testing.T) {
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+	}()
+
+	os.Args = []string{"service-implementing-viewer"}
+
+	output := captureStdout(t, PrintUsage)
+
+	expectedFragments := []string{
+		"使用方法: service-implementing-viewer [オプション]",
+		"-root-dir string",
+		"ルートディレクトリ（必須）",
+		"-target-dirs string",
+		"対象ディレクトリ（必須、カンマ区切り）",
+		"使用例:",
+	}
+
+	for _, fragment := range expectedFragments {
+		if !strings.Contains(output, fragment) {
+			t.Errorf("PrintUsageの出力に期待する文字列が含まれていません: %s", fragment)
+		}
+	}
 }

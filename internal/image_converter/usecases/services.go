@@ -20,17 +20,17 @@ import (
 )
 
 type codec struct {
-	Decode func([]byte) (image.Image, error)
+	Decode func(io.Reader) (image.Image, error)
 	Encode func(image.Image) ([]byte, error)
 }
 
 // Individual decoder helpers …
-func decodeJPEG(b []byte) (image.Image, error) { return jpeg.Decode(bytes.NewReader(b)) }
-func decodePNG(b []byte) (image.Image, error)  { return png.Decode(bytes.NewReader(b)) }
-func decodeWebP(b []byte) (image.Image, error) { return xwebp.Decode(bytes.NewReader(b)) }
-func decodeAVIF(b []byte) (image.Image, error) { return avif.Decode(bytes.NewReader(b)) }
-func decodeSVG(b []byte) (image.Image, error) {
-	icon, err := oksvg.ReadIconStream(bytes.NewReader(b))
+func decodeJPEG(r io.Reader) (image.Image, error) { return jpeg.Decode(r) }
+func decodePNG(r io.Reader) (image.Image, error)  { return png.Decode(r) }
+func decodeWebP(r io.Reader) (image.Image, error) { return xwebp.Decode(r) }
+func decodeAVIF(r io.Reader) (image.Image, error) { return avif.Decode(r) }
+func decodeSVG(r io.Reader) (image.Image, error) {
+	icon, err := oksvg.ReadIconStream(r)
 	if err != nil {
 		return nil, err
 	}
@@ -95,34 +95,40 @@ func ConvertFile(path, srcDir, outDir, outExt string, table map[string]codec) er
 	}
 
 	// --- read original ---
-	origBytes, err := os.ReadFile(path)
+	inFile, err := os.Open(path)
 	if err != nil {
 		return err
 	}
+	defer func() { _ = inFile.Close() }()
+
+	info, err := inFile.Stat()
+	if err != nil {
+		return err
+	}
+	origSize := info.Size()
 
 	// --- decode & encode ---
-	img, err := cIn.Decode(origBytes)
+	img, err := cIn.Decode(inFile)
 	if err != nil {
 		return err
 	}
+	_ = inFile.Close() // Windowsの排他制御を避けるため明示的にクローズ
 	encBytes, err := cOut.Encode(img)
 	if err != nil {
 		return err
 	}
 
 	// --- decide which bytes to save ---
-	saveBytes := encBytes
 	dstExt := outExt
 	note := "converted"
 
-	// ◎ サイズ比較は「SVG → 非SVG」、「Avif → Webp」、「any → Jpg」以外にのみ適用
+	// サイズ比較は「SVG → 非SVG」、「Avif → Webp」、「any → Jpg」以外にのみ適用
 	requiresForcedConvert := (inExt == "svg" && outExt != "svg") || (inExt == "avif" && outExt == "webp") || (outExt == "jpg")
 
-	if !requiresForcedConvert && len(encBytes) >= len(origBytes) {
-		saveBytes = origBytes
+	if !requiresForcedConvert && origSize > 0 && int64(len(encBytes)) >= origSize {
 		dstExt = inExt
 		note = "kept original"
-		log.Printf("  kept original (%s): %d → %d bytes", path, len(origBytes), len(encBytes))
+		log.Printf("  kept original (%s): %d → %d bytes", path, origSize, len(encBytes))
 	}
 
 	// --- write ---
@@ -133,13 +139,26 @@ func ConvertFile(path, srcDir, outDir, outExt string, table map[string]codec) er
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(outPath, saveBytes, 0o644); err != nil {
-		return err
+
+	var savedSize int64
+	if note == "kept original" {
+		if err := copyFile(path, outPath); err != nil {
+			return err
+		}
+		savedSize = origSize
+	} else {
+		if err := os.WriteFile(outPath, encBytes, 0o644); err != nil {
+			return err
+		}
+		savedSize = int64(len(encBytes))
 	}
 
-	ratio := float64(len(saveBytes)) / float64(len(origBytes)) * 100
+	var ratio float64
+	if origSize > 0 {
+		ratio = float64(savedSize) / float64(origSize) * 100
+	}
 	log.Printf("%s → %s (%s): %d → %d bytes | compressed to %.1f%%",
-		path, outPath, note, len(origBytes), len(saveBytes), ratio)
+		path, outPath, note, origSize, savedSize, ratio)
 
 	return nil
 }

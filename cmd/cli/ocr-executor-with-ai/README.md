@@ -1,10 +1,10 @@
 # OCR Executor with AI
 
-AI（Gemini API）を使用して画像からテキストを抽出するCLIツールです。
+AI（Gemini API / Vertex AI / Ollama）を使用して画像からテキストを抽出するCLIツールです。
 
 ## 概要
 
-このツールは、Google Gemini APIを使用して画像に対してOCR（光学文字認識）を実行します。単一の画像ファイルまたはディレクトリ内の複数の画像を処理できます。
+このツールは、Google Gemini APIやVertex AIに加えて、ローカルのOllamaモデルを利用して画像に対してOCR（光学文字認識）を実行します。単一の画像ファイルまたはディレクトリ内の複数の画像を処理できます。
 
 ## 機能
 
@@ -19,7 +19,6 @@ AI（Gemini API）を使用して画像からテキストを抽出するCLIツ�
 
 ```bash
 # プロジェクトルートから
-cd /home/nov/devbox
 go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 ```
 
@@ -29,20 +28,23 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
 
 ```bash
 # Gemini API使用（単一画像ファイル）
-./bin/ocr-executor-with-ai -path /path/to/image.webp -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/image.webp -ai-type gemini -api-key "your-api-key"
 
 # Vertex AI使用（単一画像ファイル）
-./bin/ocr-executor-with-ai -path /path/to/image.webp -ai-type vertex -project "your-project-id"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/image.webp -ai-type vertex -project "your-project-id"
+
+# Ollama使用（単一画像ファイル）
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/image.webp -ai-type ollama
 
 # ディレクトリ内の画像（再帰）
-./bin/ocr-executor-with-ai -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/directory -recursive -ai-type gemini -api-key "your-api-key"
 ```
 
 ### 詳細設定
 
 ```bash
 # Gemini APIでカスタムプロンプトとモデル指定
-./bin/ocr-executor-with-ai \
+go run ./cmd/cli/ocr-executor-with-ai \
   -path /path/to/screenshots \
   -recursive \
   -ai-type gemini \
@@ -54,7 +56,7 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
   -max-tokens 4096
 
 # Vertex AIで詳細設定
-./bin/ocr-executor-with-ai \
+go run ./cmd/cli/ocr-executor-with-ai \
   -path /path/to/screenshots \
   -recursive \
   -ai-type vertex \
@@ -63,48 +65,83 @@ go build -o bin/ocr-executor-with-ai ./cmd/cli/ocr-executor-with-ai
   -model gemini-1.5-pro-002 \
   -temperature 0.5 \
   -max-tokens 2048
+
+# Ollamaで詳細設定
+go run ./cmd/cli/ocr-executor-with-ai \
+  -path /path/to/screenshots \
+  -recursive \
+  -ai-type ollama \
+  -model qwen2.5vl \
+  -prompt "表をOCRして" \
+  -temperature 0.8 \
+  -max-tokens 2048
 ```
 
 ### 短縮形オプション
 
 ```bash
 # Gemini API使用（短縮形）
-./bin/ocr-executor-with-ai -p /path/to/image.webp -at gemini -ak "your-api-key" -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/image.webp -at gemini -ak "your-api-key" -m gemini-1.5-pro-002 -pr "テキストを抽出" -t 0.5 -mt 2048
 
 # Vertex AI使用（短縮形）
-./bin/ocr-executor-with-ai -p /path/to/image.webp -at vertex -pj "your-project-id" -loc "us-central1"
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/image.webp -at vertex -pj "your-project-id" -loc "us-central1"
+
+# Ollama使用（短縮形）
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/image.webp -at ollama -m qwen2.5vl
 ```
 
 ### Markdownテーブル生成
 
 ```bash
 # Markdownテーブル形式でOCRを実行
-./bin/ocr-executor-with-ai -path /path/to/table-image.webp -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/table-image.webp -generates-markdown-table -ai-type gemini -api-key "your-api-key"
 
 # 短縮形
-./bin/ocr-executor-with-ai -p /path/to/table-image.webp -gmt -at gemini -ak "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -p /path/to/table-image.webp -gmt -at gemini -ak "your-api-key"
 
 # ディレクトリ内の複数画像をMarkdownテーブル形式で処理
-./bin/ocr-executor-with-ai -path /path/to/table-images -recursive -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/table-images -recursive -generates-markdown-table -ai-type gemini -api-key "your-api-key"
+
+# OllamaでMarkdownテーブル形式を生成
+go run ./cmd/cli/ocr-executor-with-ai -path /path/to/table-image.webp -generates-markdown-table -ai-type ollama -m qwen2.5vl
 ```
 
 ## オプション
+
+### 共通オプション
 
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |-----------|--------|------|-------------|
 | `-path` | `-p` | 画像ファイルまたはディレクトリのパス（必須） | - |
 | `-recursive` | `-r` | ディレクトリを再帰的に検索 | false |
-| `-ai-type` | `-at` | AIタイプ（gemini, vertex） | gemini |
-| `-api-key` | `-ak` | Gemini API キー（Gemini使用時必須） | - |
-| `-project` | `-pj` | Google Cloud プロジェクトID（Vertex AI使用時必須） | - |
-| `-location` | `-loc` | Google Cloud ロケーション | us-central1 |
-| `-model` | `-m` | 使用するGeminiモデル | gemini-2.5-flash-lite |
-| `-prompt` | `-pr` | OCR用プロンプト（-generates-markdown-tableと併用不可） | "OCRして。補足や説明は不要です。" |
+| `-ai-type` | `-at` | 利用するAIタイプ（`gemini` / `vertex` / `ollama`） | gemini |
+| `-prompt` | `-pr` | OCR用プロンプト（`-generates-markdown-table`と併用不可） | "OCRして。補足や説明は不要です。" |
 | `-system-instruction` | `-si` | システム指示 | "OCRして。" |
 | `-generates-markdown-table` | `-gmt` | Markdownテーブル形式でOCRを実行 | false |
 | `-temperature` | `-t` | 生成パラメータ（0.0-2.0） | 1.0 |
 | `-max-tokens` | `-mt` | 最大トークン数 | 8192 |
 | `-help` | `-h` | ヘルプを表示 | - |
+
+### Gemini（`-ai-type gemini`）専用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|-----------|--------|------|-------------|
+| `-model` | `-m` | 利用するGeminiモデル名 | `gemini-2.5-flash-lite` |
+| `-api-key` | `-ak` | Gemini API キー（必須） | - |
+
+### Vertex AI（`-ai-type vertex`）専用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|-----------|--------|------|-------------|
+| `-model` | `-m` | 利用するVertex AIモデル名 | `gemini-1.5-pro-002` |
+| `-project` | `-pj` | Google Cloud プロジェクトID（必須） | - |
+| `-location` | `-loc` | Google Cloud ロケーション | us-central1 |
+
+### Ollama（`-ai-type ollama`）専用オプション
+
+| オプション | 短縮形 | 説明 | デフォルト値 |
+|-----------|--------|------|-------------|
+| `-model` | `-m` | 利用するOllamaモデル名 | `qwen2.5vl` |
 
 ## サポートされる画像形式
 

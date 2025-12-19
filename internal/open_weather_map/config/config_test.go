@@ -1,6 +1,10 @@
 package config
 
 import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -122,5 +126,88 @@ func TestNewConfig_Error(t *testing.T) {
 				t.Errorf("NewConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+// TestParseFlags_FlagInputs は標準パーサー経由の解析をテストする
+func TestParseFlags_FlagInputs(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{
+		"cmd",
+		"-api-key", "abc123",
+		"-city", "Osaka,JP",
+		"-max-days", "4",
+	}
+
+	config, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() error = %v, want nil", err)
+	}
+
+	if config.APIKey != "abc123" || config.City != "Osaka,JP" || config.MaxDays != 4 {
+		t.Errorf("ParseFlags() returned unexpected config: %+v", config)
+	}
+}
+
+// TestParseFlags_Help はヘルプフラグ指定時の挙動をテストする
+func TestParseFlags_Help(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{"cmd", "-help"}
+
+	config, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() error = %v, want nil", err)
+	}
+
+	if !config.Help {
+		t.Error("Help flag should set Config.Help to true")
+	}
+}
+
+// TestParseFlags_MissingRequiredArgs は必須値不足時のエラーをテストする
+func TestParseFlags_MissingRequiredArgs(t *testing.T) {
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{"cmd"}
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() error = nil, want error")
+	}
+
+	if !strings.Contains(err.Error(), "APIキーが指定されていません") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+// TestPrintUsage はPrintUsageの出力をテストする
+func TestPrintUsage(t *testing.T) {
+	origStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	PrintUsage()
+	w.Close()
+	os.Stderr = origStderr
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("failed to read stderr: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "OpenWeather API CLIツール") {
+		t.Errorf("PrintUsage() output missing header: %s", output)
+	}
+	if !strings.Contains(output, "-api-key") {
+		t.Errorf("PrintUsage() output missing flag description: %s", output)
 	}
 }

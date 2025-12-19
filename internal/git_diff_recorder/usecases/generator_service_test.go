@@ -13,7 +13,7 @@ func TestGitDiffGeneratorService_NewGitDiffGeneratorService_Normal(t *testing.T)
 	// Arrange
 	gitDir := "/tmp/test-git"
 	cfg := &config.Config{
-		GenMode:    true,
+		OutputMode: true,
 		GitDir:     gitDir,
 		StagedOnly: false,
 	}
@@ -43,7 +43,7 @@ func TestGitDiffGeneratorService_GetCurrentDetailedDiff_Normal(t *testing.T) {
 	// devboxディレクトリに移動してテスト
 	devboxDir := filepath.Join(workingDir, "../../../..")
 	cfg := &config.Config{
-		GenMode:    true,
+		OutputMode: true,
 		GitDir:     devboxDir,
 		StagedOnly: false,
 	}
@@ -75,7 +75,7 @@ func TestGitDiffGeneratorService_GetCurrentDetailedDiff_StagedOnly(t *testing.T)
 	// devboxディレクトリに移動してテスト
 	devboxDir := filepath.Join(workingDir, "../../../..")
 	cfg := &config.Config{
-		GenMode:    true,
+		OutputMode: true,
 		GitDir:     devboxDir,
 		StagedOnly: true, // ステージング済みのみ
 	}
@@ -101,7 +101,7 @@ func TestGitDiffGeneratorService_GetCurrentDetailedDiff_InvalidGitDir(t *testing
 	// 存在しないディレクトリを指定
 	invalidDir := "/tmp/non-existent-git-repo"
 	cfg := &config.Config{
-		GenMode:    true,
+		OutputMode: true,
 		GitDir:     invalidDir,
 		StagedOnly: false,
 	}

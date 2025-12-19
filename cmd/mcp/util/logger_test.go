@@ -280,7 +280,7 @@ func TestDefaultLoggerProvider_Methods(t *testing.T) {
 		provider.logger = log.New(&printfBuf, "", 0)
 
 		testMessage := "test printf message"
-		provider.Printf(testMessage)
+		provider.Printf("%s", testMessage)
 
 		if !strings.Contains(printfBuf.String(), testMessage) {
 			t.Errorf("Printf() did not output correct message, got %q", printfBuf.String())
@@ -305,7 +305,7 @@ func TestDefaultLoggerProvider_Methods(t *testing.T) {
 			}
 		}()
 
-		provider.Panicf(testPanicMessage)
+		provider.Panicf("%s", testPanicMessage)
 	})
 }
 
@@ -341,11 +341,11 @@ func TestSetupOutput_Default(t *testing.T) {
 
 	// 未定義の出力先を持つロガーを作成
 	logger := &BuiltinLogger{
-		logger:         mockLoggerProvider,
-		output:         999, // 未定義の出力先
-		timeProvider:   &MockTimeProvider{},
+		logger:          mockLoggerProvider,
+		output:          999, // 未定義の出力先
+		timeProvider:    &MockTimeProvider{},
 		runtimeProvider: &MockRuntimeProvider{},
-		fileProvider:   mockFileProvider,
+		fileProvider:    mockFileProvider,
 	}
 
 	// setupOutputを呼び出す
@@ -384,12 +384,12 @@ func TestLogWithLevel_WithCallerInfo(t *testing.T) {
 
 	// ロガーを作成
 	logger := &BuiltinLogger{
-		logger:         mockLoggerProvider,
-		output:         STDOUT,
-		step:           1,
-		timeProvider:   &MockTimeProvider{},
+		logger:          mockLoggerProvider,
+		output:          STDOUT,
+		step:            1,
+		timeProvider:    &MockTimeProvider{},
 		runtimeProvider: mockRuntimeProvider,
-		fileProvider:   &MockFileProvider{},
+		fileProvider:    &MockFileProvider{},
 	}
 
 	// logWithLevelを呼び出す
@@ -445,12 +445,12 @@ func TestFatal_WithFileOutput(t *testing.T) {
 
 	// ロガーを作成
 	logger := &BuiltinLogger{
-		logger:         mockLoggerProvider,
-		output:         FILE,
-		step:           1,
-		timeProvider:   &MockTimeProvider{},
+		logger:          mockLoggerProvider,
+		output:          FILE,
+		step:            1,
+		timeProvider:    &MockTimeProvider{},
 		runtimeProvider: &MockRuntimeProvider{},
-		fileProvider:   mockFileProvider,
+		fileProvider:    mockFileProvider,
 	}
 
 	// Fatalメソッドを呼び出す（パニックをキャッチ）
@@ -480,12 +480,12 @@ func TestFatal_WithFileError(t *testing.T) {
 
 	// ロガーを作成
 	logger := &BuiltinLogger{
-		logger:         mockLoggerProvider,
-		output:         FILE,
-		step:           1,
-		timeProvider:   &MockTimeProvider{},
+		logger:          mockLoggerProvider,
+		output:          FILE,
+		step:            1,
+		timeProvider:    &MockTimeProvider{},
 		runtimeProvider: &MockRuntimeProvider{},
-		fileProvider:   mockFileProvider,
+		fileProvider:    mockFileProvider,
 	}
 
 	// Fatalメソッドを呼び出す（パニックをキャッチ）
@@ -530,12 +530,12 @@ func TestFatal_WithCallerInfo(t *testing.T) {
 
 	// ロガーを作成
 	logger := &BuiltinLogger{
-		logger:         mockLoggerProvider,
-		output:         STDOUT,
-		step:           1,
-		timeProvider:   &MockTimeProvider{},
+		logger:          mockLoggerProvider,
+		output:          STDOUT,
+		step:            1,
+		timeProvider:    &MockTimeProvider{},
 		runtimeProvider: mockRuntimeProvider,
-		fileProvider:   &MockFileProvider{},
+		fileProvider:    &MockFileProvider{},
 	}
 
 	// Fatalメソッドを呼び出す
@@ -669,14 +669,14 @@ type MockLoggerProvider struct {
 	PanicfFunc    func(format string, v ...interface{})
 
 	// 呼び出し記録
-	OutputWriter  io.Writer
-	Prefix        string
-	Flags         int
-	LastMessage   string
-	LastFormat    string
-	LastArgs      []interface{}
-	PrintfCalled  bool
-	PanicfCalled  bool
+	OutputWriter io.Writer
+	Prefix       string
+	Flags        int
+	LastMessage  string
+	LastFormat   string
+	LastArgs     []interface{}
+	PrintfCalled bool
+	PanicfCalled bool
 }
 
 // Default はデフォルトのロガーを返します

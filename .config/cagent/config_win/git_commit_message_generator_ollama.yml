@@ -1,0 +1,29 @@
+#!/usr/bin/env cagent run
+version: "2"
+
+agents:
+  root:
+    model: ollama
+    description: "General coding assistant"
+    instruction: !include ../prompts/git-commit-message.md
+    commands:
+      git-commit-message: git_dir=""
+      git-commit-message-staged: git_dir="" staged_only=true
+      git-commit-message-pwd: git_dir="."
+      git-commit-message-staged-pwd: git_dir="." staged_only=true
+    toolsets:
+      - type: mcp
+        command: "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe"
+        args:
+          - git_diff_recorder
+        tools:
+          - get_git_diff
+
+models:
+  ollama:
+    provider: openai
+    model: llama3.1:8b-instruct
+    base_url: http://127.0.0.1:11434/v1
+    token_key: OLLAMA_API_KEY
+    max_tokens: 2000
+    temperature: 0.2

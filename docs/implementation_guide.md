@@ -10,15 +10,15 @@ CLIツール
 ```go
 // ✅ 正しい実装: 結果を標準出力に表示
 func handleOperation(cfg *config.Config) {
-    service := usecases.NewService()
-    result, err := service.HandleOperation(cfg.Param)
-    if err != nil {
-        fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-        os.Exit(1)
-    }
-    
-    // 必須: 結果を標準出力に表示
-    fmt.Print(result)
+  service := usecases.NewService()
+  result, err := service.HandleOperation(cfg.Param)
+  if err != nil {
+    fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+    os.Exit(1)
+  }
+  
+  // 必須: 結果を標準出力に表示
+  fmt.Print(result)
 }
 ```
 
@@ -26,14 +26,14 @@ MCPツール
 ```go
 // ✅ 正しい実装: MCPクライアントに結果を返却
 func handleOperation(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-    service := usecases.NewService()
-    result, err := service.HandleOperation(param)
-    if err != nil {
-        return nil, fmt.Errorf("処理に失敗しました: %v", err)
-    }
-    
-    // 必須: MCPクライアントに結果を返却（標準出力は使用しない）
-    return mcp.NewToolResultText(result), nil
+  service := usecases.NewService()
+  result, err := service.HandleOperation(param)
+  if err != nil {
+    return nil, fmt.Errorf("処理に失敗しました: %v", err)
+  }
+  
+  // 必須: MCPクライアントに結果を返却（標準出力は使用しない）
+  return mcp.NewToolResultText(result), nil
 }
 ```
 
@@ -59,30 +59,30 @@ fmt.Printf("実行コマンド: %s\n", cmd)
 ```go
 // ✅ 正しい実装: ExecuteInDirメソッドでcmd.Dirを設定
 func (e *DefaultCommandExecutor) ExecuteInDir(dir, name string, args ...string) ([]byte, error) {
-    cmd := exec.Command(name, args...)
-    cmd.Dir = dir  // 重要: 実行ディレクトリを設定
-    return cmd.CombinedOutput()
+  cmd := exec.Command(name, args...)
+  cmd.Dir = dir  // 重要: 実行ディレクトリを設定
+  return cmd.CombinedOutput()
 }
 
 // ✅ 正しい実装: 絶対パス変換とディレクトリ確認
 func (s *Service) ExecuteOperation(directory string) (string, error) {
-    // ディレクトリの存在確認
-    if !s.directoryChecker.Exists(directory) {
-        return "", fmt.Errorf("指定されたディレクトリが存在しません: %s", directory)
-    }
-    if !s.directoryChecker.IsDirectory(directory) {
-        return "", fmt.Errorf("指定されたパスはディレクトリではありません: %s", directory)
-    }
+  // ディレクトリの存在確認
+  if !s.directoryChecker.Exists(directory) {
+    return "", fmt.Errorf("指定されたディレクトリが存在しません: %s", directory)
+  }
+  if !s.directoryChecker.IsDirectory(directory) {
+    return "", fmt.Errorf("指定されたパスはディレクトリではありません: %s", directory)
+  }
 
-    // 絶対パスに変換（重要）
-    absDir, err := filepath.Abs(directory)
-    if err != nil {
-        return "", fmt.Errorf("ディレクトリパスの変換に失敗しました: %v", err)
-    }
+  // 絶対パスに変換（重要）
+  absDir, err := filepath.Abs(directory)
+  if err != nil {
+    return "", fmt.Errorf("ディレクトリパスの変換に失敗しました: %v", err)
+  }
 
-    // 指定されたディレクトリでコマンド実行
-    output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "./...")
-    // ...
+  // 指定されたディレクトリでコマンド実行
+  output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "./...")
+  // ...
 }
 ```
 
@@ -96,20 +96,20 @@ func (s *Service) ExecuteOperation(directory string) (string, error) {
 // ✅ 正しい実装: ExitErrorの型アサーションと終了コード判定
 output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
 if err != nil {
-    // エラーの種類を判定
-    if exitError, ok := err.(*exec.ExitError); ok {
-        // exec.ExitErrorの場合は終了コードを確認
-        if exitError.ExitCode() == 1 {
-            // exit status 1: テスト失敗（正常な動作として扱う）
-            // 何もしない - 出力を返却する
-        } else {
-            // exit status 1以外: 実際のエラー
-            return "", fmt.Errorf("コマンド実行でエラーが発生しました: %v\n出力: %s", err, string(output))
-        }
+  // エラーの種類を判定
+  if exitError, ok := err.(*exec.ExitError); ok {
+    // exec.ExitErrorの場合は終了コードを確認
+    if exitError.ExitCode() == 1 {
+      // exit status 1: テスト失敗（正常な動作として扱う）
+      // 何もしない - 出力を返却する
     } else {
-        // exec.ExitError以外のエラー（コマンドが見つからない等）
-        return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
+      // exit status 1以外: 実際のエラー
+      return "", fmt.Errorf("コマンド実行でエラーが発生しました: %v\n出力: %s", err, string(output))
     }
+  } else {
+    // exec.ExitError以外のエラー（コマンドが見つからない等）
+    return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
+  }
 }
 ```
 
@@ -124,28 +124,28 @@ if err != nil {
 ```go
 // ✅ 正しい実装: テスト失敗を正常な動作として扱う
 func (s *GolangOpsService) ExecuteTestCoverage(directory, grepPattern string) (string, error) {
-    // ... ディレクトリ確認等の処理 ...
+  // ... ディレクトリ確認等の処理 ...
 
-    // go test -cover ./... を実行
-    output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
-    if err != nil {
-        if exitError, ok := err.(*exec.ExitError); ok {
-            if exitError.ExitCode() == 1 {
-                // テスト失敗は正常な動作として扱う
-                // エラーを返さず、出力をそのまま処理する
-            } else {
-                // exit code が1以外の場合は実際のエラー
-                return "", fmt.Errorf("テストカバレッジの実行でエラーが発生しました: %v\n出力: %s", err, string(output))
-            }
-        } else {
-            // exec.ExitError以外のエラー
-            return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
-        }
+  // go test -cover ./... を実行
+  output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
+  if err != nil {
+    if exitError, ok := err.(*exec.ExitError); ok {
+      if exitError.ExitCode() == 1 {
+        // テスト失敗は正常な動作として扱う
+        // エラーを返さず、出力をそのまま処理する
+      } else {
+        // exit code が1以外の場合は実際のエラー
+        return "", fmt.Errorf("テストカバレッジの実行でエラーが発生しました: %v\n出力: %s", err, string(output))
+      }
+    } else {
+      // exec.ExitError以外のエラー
+      return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
     }
+  }
 
-    // テスト失敗の場合でも出力を処理して返却
-    result.Write(output)
-    return result.String(), nil
+  // テスト失敗の場合でも出力を処理して返却
+  result.Write(output)
+  return result.String(), nil
 }
 ```
 
@@ -295,6 +295,38 @@ func (s *Service) HandleOperation1(param1, param2 string) (string, error) {
 }
 ```
 
+### 4. コマンド実行ラッパーによる非シェル化
+
+外部入力を伴う処理で OS コマンドを実行する場合、`exec.Command` を直接 `name` と `args` に分割して呼び出すことで、シェル展開を回避しコマンドインジェクション対策を実装しなくても安全な構造を保てます。
+
+```go
+// usecases/command_executor.go
+type CommandExecutor struct{}
+
+func (e *CommandExecutor) Execute(name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	return cmd.CombinedOutput()
+}
+
+func (e *CommandExecutor) ExecuteInDir(dir, name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = dir
+	return cmd.CombinedOutput()
+}
+
+// 呼び出し側（例）
+args := []string{"run", executionFile}
+args = append(args, strings.Fields(parameters)...)
+output, err := executor.ExecuteInDir(absRootDir, "go", args...)
+
+// ポイント
+// - シェル (`sh -c` / `bash -c`) を介さないので、`;` や `&&` を含む入力でも追加コマンド化されない
+// - 入力は引数スライスとして渡され、Go ランタイムがエスケープを扱う
+// - 出力は呼び出し元で検査・加工し、副作用が必要な場合のみ実施
+```
+
+このパターンを守れば、追加のエスケープ処理を実装せずにコマンドインジェクションを防げます。必要に応じて、許可するコマンド名や引数のホワイトリスト検証を組み合わせるとより堅牢になります。
+
 ## 実装時のチェックリスト
 
 ### CLIツール実装チェックリスト
@@ -341,25 +373,25 @@ func (s *Service) HandleOperation1(param1, param2 string) (string, error) {
 
 ```go
 func TestCreateDashboardForCloudRun_WithMock(t *testing.T) {
-    // テスト固有の定数を関数内で定義
-    const (
-        testProject     = "test-project"
-        testLocation    = "us-central1"
-        testServiceName = "test-service"
-        expectedResult  = "ダッシュボードが正常に作成されました: projects/test-project/dashboards/test-dashboard-123"
-    )
-    
-    tests := []struct {
-        name               string
-        setupCloudRunMock  func(*MockCloudRunClient)
-        setupDashboardMock func(*MockDashboardClient)
-        expectError        bool
-        errorMessage       string
-        expectedResult     string
-    }{
-        // テストケース定義
-    }
-    // ...
+  // テスト固有の定数を関数内で定義
+  const (
+    testProject     = "test-project"
+    testLocation    = "us-central1"
+    testServiceName = "test-service"
+    expectedResult  = "ダッシュボードが正常に作成されました: projects/test-project/dashboards/test-dashboard-123"
+  )
+  
+  tests := []struct {
+    name               string
+    setupCloudRunMock  func(*MockCloudRunClient)
+    setupDashboardMock func(*MockDashboardClient)
+    expectError        bool
+    errorMessage       string
+    expectedResult     string
+  }{
+    // テストケース定義
+  }
+  // ...
 }
 ```
 
@@ -369,42 +401,42 @@ func TestCreateDashboardForCloudRun_WithMock(t *testing.T) {
 
 ```go
 func TestVerifyCloudRunService_WithMock(t *testing.T) {
-    tests := []struct {
-        name           string
-        setupMock      func(*MockCloudRunClient)
-        expectedExists bool
-        expectError    bool
-        errorMessage   string
-    }{
-        {
-            name: "ServiceExists_Normal",
-            setupMock: func(mock *MockCloudRunClient) {
-                mock.GetServiceFunc = func(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error) {
-                    return &runpb.Service{Name: "projects/test-project/locations/us-central1/services/test-service"}, nil
-                }
-            },
-            expectedExists: true,
-            expectError:    false,
-        },
-        {
-            name: "ServiceNotFound_Normal",
-            setupMock: func(mock *MockCloudRunClient) {
-                mock.GetServiceFunc = func(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error) {
-                    return nil, status.Error(codes.NotFound, "service not found")
-                }
-            },
-            expectedExists: false,
-            expectError:    false,
-        },
-    }
+  tests := []struct {
+    name           string
+    setupMock      func(*MockCloudRunClient)
+    expectedExists bool
+    expectError    bool
+    errorMessage   string
+  }{
+    {
+      name: "ServiceExists_Normal",
+      setupMock: func(mock *MockCloudRunClient) {
+        mock.GetServiceFunc = func(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error) {
+          return &runpb.Service{Name: "projects/test-project/locations/us-central1/services/test-service"}, nil
+        }
+      },
+      expectedExists: true,
+      expectError:    false,
+    },
+    {
+      name: "ServiceNotFound_Normal",
+      setupMock: func(mock *MockCloudRunClient) {
+        mock.GetServiceFunc = func(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error) {
+          return nil, status.Error(codes.NotFound, "service not found")
+        }
+      },
+      expectedExists: false,
+      expectError:    false,
+    },
+  }
 
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            mockCloudRunClient := &MockCloudRunClient{}
-            tt.setupMock(mockCloudRunClient)
-            // テスト実行
-        })
-    }
+  for _, tt := range tests {
+    t.Run(tt.name, func(t *testing.T) {
+      mockCloudRunClient := &MockCloudRunClient{}
+      tt.setupMock(mockCloudRunClient)
+      // テスト実行
+    })
+  }
 }
 ```
 
@@ -420,11 +452,11 @@ func setupTestService(t *testing.T, cloudRunClient CloudRunClient, dashboardClie
 
 // モック生成ヘルパー関数
 func createSuccessfulCloudRunMock() *MockCloudRunClient {
-    mock := &MockCloudRunClient{}
-    mock.GetServiceFunc = func(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error) {
-        return &runpb.Service{Name: req.Name}, nil
-    }
-    return mock
+  mock := &MockCloudRunClient{}
+  mock.GetServiceFunc = func(ctx context.Context, req *runpb.GetServiceRequest, opts ...gax.CallOption) (*runpb.Service, error) {
+    return &runpb.Service{Name: req.Name}, nil
+  }
+  return mock
 }
 ```
 
@@ -434,22 +466,22 @@ func createSuccessfulCloudRunMock() *MockCloudRunClient {
 
 ```go
 type testCase struct {
-    name           string
-    input          inputData
-    expected       expectedData
-    expectError    bool
-    errorMessage   string
+  name           string
+  input          inputData
+  expected       expectedData
+  expectError    bool
+  errorMessage   string
 }
 
 type inputData struct {
-    project     string
-    location    string
-    serviceName string
+  project     string
+  location    string
+  serviceName string
 }
 
 type expectedData struct {
-    dashboardName string
-    resultMessage string
+  dashboardName string
+  resultMessage string
 }
 ```
 
@@ -494,8 +526,8 @@ service.HandleOperation(param)
 // ✅ 正しい: 結果を標準出力に表示
 result, err := service.HandleOperation(param)
 if err != nil {
-    fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-    os.Exit(1)
+  fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+  os.Exit(1)
 }
 fmt.Print(result)
 ```
@@ -508,7 +540,7 @@ param := request.GetString("required_param", "")
 // ✅ 正しい: 必須パラメータはRequireStringを使用
 param, err := request.RequireString("required_param")
 if err != nil {
-    return nil, err
+  return nil, err
 }
 ```
 
@@ -525,17 +557,17 @@ param := request.GetString("required_param", "")
 ```go
 // ❌ 間違い: フラグ定義後に値を設定しても反映されない
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-    *p = value // デフォルト値のみ
+  *p = value // デフォルト値のみ
 }
 
 // ✅ 正しい: 事前設定値をチェックして適用
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-    if presetValue, exists := m.stringValues[name]; exists {
-        *p = presetValue // 事前設定値を優先
-    } else {
-        *p = value // デフォルト値
-    }
-    m.stringVars[name] = p
+  if presetValue, exists := m.stringValues[name]; exists {
+    *p = presetValue // 事前設定値を優先
+  } else {
+    *p = value // デフォルト値
+  }
+  m.stringVars[name] = p
 }
 ```
 

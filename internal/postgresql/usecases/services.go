@@ -86,8 +86,8 @@ type ListTablesData struct {
 
 // DatabaseExecutor はデータベース操作のインターフェースです
 type DatabaseExecutor interface {
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 	Ping() error
 	Close() error
@@ -101,7 +101,7 @@ type TemplateRenderer interface {
 
 // JSONMarshaler はJSON変換のインターフェースです
 type JSONMarshaler interface {
-	MarshalIndent(v interface{}, prefix, indent string) ([]byte, error)
+	MarshalIndent(v any, prefix, indent string) ([]byte, error)
 }
 
 // #==============================================================#
@@ -113,11 +113,11 @@ type DefaultDatabaseExecutor struct {
 	db *sql.DB
 }
 
-func (d *DefaultDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+func (d *DefaultDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	return d.db.QueryContext(ctx, query, args...)
 }
 
-func (d *DefaultDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row {
+func (d *DefaultDatabaseExecutor) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
 	return d.db.QueryRowContext(ctx, query, args...)
 }
 
@@ -133,10 +133,59 @@ func (d *DefaultDatabaseExecutor) Close() error {
 	return d.db.Close()
 }
 
+// QueryContextRows は新しいインターフェース用のメソッド
+func (d *DefaultDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	rows, err := d.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &SQLRowsWrapper{rows: rows}, nil
+}
+
+// QueryRowContextRow は新しいインターフェース用のメソッド
+func (d *DefaultDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
+	row := d.db.QueryRowContext(ctx, query, args...)
+	return &SQLRowWrapper{row: row}
+}
+
+// SQLRowsWrapper は *sql.Rows を RowsInterface として扱うためのラッパー
+type SQLRowsWrapper struct {
+	rows *sql.Rows
+}
+
+func (w *SQLRowsWrapper) Columns() ([]string, error) {
+	return w.rows.Columns()
+}
+
+func (w *SQLRowsWrapper) Next() bool {
+	return w.rows.Next()
+}
+
+func (w *SQLRowsWrapper) Scan(dest ...any) error {
+	return w.rows.Scan(dest...)
+}
+
+func (w *SQLRowsWrapper) Close() error {
+	return w.rows.Close()
+}
+
+func (w *SQLRowsWrapper) Err() error {
+	return w.rows.Err()
+}
+
+// SQLRowWrapper は *sql.Row を RowInterface として扱うためのラッパー
+type SQLRowWrapper struct {
+	row *sql.Row
+}
+
+func (w *SQLRowWrapper) Scan(dest ...any) error {
+	return w.row.Scan(dest...)
+}
+
 // DefaultJSONMarshaler は標準のjson.MarshalIndentを使用する実装
 type DefaultJSONMarshaler struct{}
 
-func (m *DefaultJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) ([]byte, error) {
+func (m *DefaultJSONMarshaler) MarshalIndent(v any, prefix, indent string) ([]byte, error) {
 	return json.MarshalIndent(v, prefix, indent)
 }
 
@@ -149,6 +198,7 @@ type PostgreSQLService struct {
 	executor         DatabaseExecutor
 	templateRenderer TemplateRenderer
 	jsonMarshaler    JSONMarshaler
+	tableDumper      *TableDumper
 	databaseURL      string
 	resourceBase     string
 }
@@ -171,21 +221,25 @@ func NewPostgreSQLService(databaseURL string) (*PostgreSQLService, error) {
 		return nil, err
 	}
 
+	executor := &DefaultDatabaseExecutor{db: db}
+
 	return &PostgreSQLService{
-		executor:         &DefaultDatabaseExecutor{db: db},
+		executor:         executor,
 		templateRenderer: &DefaultTemplateRenderer{},
 		jsonMarshaler:    &DefaultJSONMarshaler{},
+		tableDumper:      NewTableDumper(executor),
 		databaseURL:      databaseURL,
 		resourceBase:     resourceBase,
 	}, nil
 }
 
 // NewPostgreSQLServiceWithDependencies はテスト用に依存性を注入できるPostgreSQLServiceを作成します
-func NewPostgreSQLServiceWithDependencies(executor DatabaseExecutor, templateRenderer TemplateRenderer, jsonMarshaler JSONMarshaler, databaseURL, resourceBase string) *PostgreSQLService {
+func NewPostgreSQLServiceWithDependencies(executor DatabaseExecutor, templateRenderer TemplateRenderer, jsonMarshaler JSONMarshaler, tableDumper *TableDumper, databaseURL, resourceBase string) *PostgreSQLService {
 	return &PostgreSQLService{
 		executor:         executor,
 		templateRenderer: templateRenderer,
 		jsonMarshaler:    jsonMarshaler,
+		tableDumper:      tableDumper,
 		databaseURL:      databaseURL,
 		resourceBase:     resourceBase,
 	}
@@ -222,7 +276,7 @@ func createResourceBaseURL(databaseURL string) (string, error) {
 // #==============================================================#
 
 // ExecuteQuery はSQL読み取り専用クエリを実行します
-func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
+func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) ([]map[string]any, error) {
 	// トランザクションを開始（読み取り専用）
 	tx, err := s.executor.BeginTx(ctx, &sql.TxOptions{
 		ReadOnly: true,
@@ -246,13 +300,13 @@ func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) (
 	}
 
 	// 結果を格納するスライス
-	var result []map[string]interface{}
+	var result []map[string]any
 
 	// 各行を処理
 	for rows.Next() {
 		// スキャン用のインターフェースのスライスを作成
-		values := make([]interface{}, len(columns))
-		valuePtrs := make([]interface{}, len(columns))
+		values := make([]any, len(columns))
+		valuePtrs := make([]any, len(columns))
 		for i := range columns {
 			valuePtrs[i] = &values[i]
 		}
@@ -263,7 +317,7 @@ func (s *PostgreSQLService) ExecuteQuery(ctx context.Context, sqlQuery string) (
 		}
 
 		// 行データをマップに変換
-		row := make(map[string]interface{})
+		row := make(map[string]any)
 		for i, col := range columns {
 			val := values[i]
 			// バイト配列の場合は文字列に変換
@@ -320,13 +374,19 @@ func (s *PostgreSQLService) GetTablesMinimum(ctx context.Context) ([]Table, erro
 
 // GetTableSchemaMinimum はテーブルの最小限のスキーマ情報を取得します
 func (s *PostgreSQLService) GetTableSchemaMinimum(ctx context.Context, tableName string) ([]Column, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT column_name, data_type
 		FROM information_schema.columns
-		WHERE table_name = $1
+		WHERE table_schema = $1
+		  AND table_name = $2
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, schema, name)
 	if err != nil {
 		return nil, err
 	}
@@ -350,16 +410,24 @@ func (s *PostgreSQLService) GetTableSchemaMinimum(ctx context.Context, tableName
 
 // fetchTableWithComments はテーブル名とコメントを取得します
 func (s *PostgreSQLService) fetchTableWithComments(ctx context.Context, tableName string) (TableSummary, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return TableSummary{}, err
+	}
+
 	query := `
 		SELECT t.table_name,
-		       COALESCE(pg_catalog.obj_description(pg_catalog.pg_class.oid), '') AS table_comment
+		       COALESCE(pg_catalog.obj_description(c.oid), '') AS table_comment
 		FROM information_schema.tables t
-		JOIN pg_catalog.pg_class ON pg_catalog.pg_class.relname = t.table_name
-		WHERE t.table_schema = 'public' AND t.table_name = $1
+		JOIN pg_catalog.pg_class c ON c.relname = t.table_name
+		JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+		WHERE t.table_schema = $1
+		  AND t.table_name = $2
+		  AND n.nspname = $1
 	`
 
 	var table TableSummary
-	err := s.executor.QueryRowContext(ctx, query, tableName).Scan(&table.Name, &table.Comment)
+	err = s.executor.QueryRowContext(ctx, query, schema, name).Scan(&table.Name, &table.Comment)
 	if err != nil {
 		return TableSummary{}, err
 	}
@@ -369,6 +437,11 @@ func (s *PostgreSQLService) fetchTableWithComments(ctx context.Context, tableNam
 
 // fetchPrimaryKeys はテーブルの主キーカラムを取得します
 func (s *PostgreSQLService) fetchPrimaryKeys(ctx context.Context, tableName string) ([]string, error) {
+	qualified, _, _, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT a.attname
 		FROM pg_index i
@@ -378,7 +451,7 @@ func (s *PostgreSQLService) fetchPrimaryKeys(ctx context.Context, tableName stri
 		ORDER BY a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, qualified)
 	if err != nil {
 		return nil, err
 	}
@@ -417,7 +490,12 @@ func (s *PostgreSQLService) fetchUniqueKeys(ctx context.Context, tableName strin
 			c.conname, a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	qualified, _, _, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.executor.QueryContext(ctx, query, qualified)
 	if err != nil {
 		return nil, err
 	}
@@ -472,7 +550,12 @@ func (s *PostgreSQLService) fetchForeignKeys(ctx context.Context, tableName stri
 			c.conname, a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	qualified, _, _, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.executor.QueryContext(ctx, query, qualified)
 	if err != nil {
 		return nil, err
 	}
@@ -509,6 +592,11 @@ func (s *PostgreSQLService) fetchForeignKeys(ctx context.Context, tableName stri
 
 // fetchTableColumns はテーブルのカラム情報を取得します
 func (s *PostgreSQLService) fetchTableColumns(ctx context.Context, tableName string) ([]ColumnInfo, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			c.column_name,
@@ -524,13 +612,13 @@ func (s *PostgreSQLService) fetchTableColumns(ctx context.Context, tableName str
 		JOIN
 			pg_catalog.pg_class ON pg_catalog.pg_class.relname = c.table_name
 		WHERE
-			c.table_schema = 'public'
-			AND c.table_name = $1
+			c.table_schema = $1
+			AND c.table_name = $2
 		ORDER BY
 			c.ordinal_position
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, schema, name)
 	if err != nil {
 		return nil, err
 	}
@@ -554,6 +642,11 @@ func (s *PostgreSQLService) fetchTableColumns(ctx context.Context, tableName str
 
 // fetchTableIndexes はテーブルのインデックス情報を取得します
 func (s *PostgreSQLService) fetchTableIndexes(ctx context.Context, tableName string) ([]IndexInfo, error) {
+	_, schema, name, err := qualifyTableIdentifier(tableName)
+	if err != nil {
+		return nil, err
+	}
+
 	query := `
 		SELECT
 			i.relname AS index_name,
@@ -567,17 +660,20 @@ func (s *PostgreSQLService) fetchTableIndexes(ctx context.Context, tableName str
 			pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = ANY(ix.indkey)
 		JOIN
 			pg_class t ON t.oid = ix.indrelid
+	JOIN
+		pg_namespace n ON n.oid = t.relnamespace
 		LEFT JOIN
 			pg_constraint c ON c.conindid = ix.indexrelid
 		WHERE
 			t.relname = $1
+			AND n.nspname = $2
 			AND c.contype IS NULL
 			AND NOT ix.indisprimary
 		ORDER BY
 			i.relname, a.attnum
 	`
 
-	rows, err := s.executor.QueryContext(ctx, query, tableName)
+	rows, err := s.executor.QueryContext(ctx, query, name, schema)
 	if err != nil {
 		return nil, err
 	}
@@ -727,7 +823,7 @@ func (s *PostgreSQLService) GetAllTableSummaries(ctx context.Context) ([]TableSu
 // #==============================================================#
 
 // HandleToQuery はSQL読み取り専用クエリを実行して、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToQuery(ctx context.Context, sqlQuery string) ([]map[string]interface{}, error) {
+func (s *PostgreSQLService) HandleToQuery(ctx context.Context, sqlQuery string) ([]map[string]any, error) {
 	return s.ExecuteQuery(ctx, sqlQuery)
 }
 
@@ -770,4 +866,40 @@ func (s *PostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, t
 // HandleToListTablesMinimum はデータベース内のテーブル一覧を取得して、結果をJSON形式で返します
 func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) ([]Table, error) {
 	return s.GetTablesMinimum(ctx)
+}
+
+// HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
+func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, outputPath, format string, limit *int) (*DumpResult, error) {
+	// デフォルト値を設定
+	if outputPath == "" {
+		outputPath = "."
+	}
+	if format == "" {
+		format = "json"
+	}
+
+	// ダンプオプションを作成
+	options := &DumpOptions{
+		TableName:  tableName,
+		OutputPath: outputPath,
+		Format:     format,
+		Limit:      limit,
+	}
+
+	// ダンプを実行
+	return s.tableDumper.DumpTable(ctx, options)
+}
+
+// HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
+func (s *PostgreSQLService) HandleToDumpAllTables(ctx context.Context, outputPath, format string, limit *int, concurrency *int) (*DumpAllTablesResult, error) {
+	// デフォルト値を設定
+	if outputPath == "" {
+		outputPath = "."
+	}
+	if format == "" {
+		format = "json"
+	}
+
+	// 全テーブルダンプを実行
+	return s.tableDumper.DumpAllTables(ctx, outputPath, format, limit, concurrency)
 }

@@ -128,9 +128,26 @@ func TestNewConfig_Normal(t *testing.T) {
 			contentText: "テストメッセージ",
 			expectError: false,
 		},
+		{
+			name:        "OpenWeatherMap embed",
+			embedType:   "open-weather-map",
+			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
+			contentText: "テストメッセージ",
+			embedText:   "本日の天気予報",
+			embedColor:  "orange",
+			expectError: false,
+		},
+		{
+			name:        "Google Compute Engine success embed",
+			embedType:   "google-compute-engine-success",
+			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
+			contentText: "テストメッセージ",
+			expectError: false,
+		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			config, err := NewConfig(tt.embedType, tt.webhookURL, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
 
@@ -206,7 +223,7 @@ func TestNewConfig_Error(t *testing.T) {
 			embedType:     "invalid",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
 			contentText:   "テストメッセージ",
-			expectedError: "無効なembed-typeです: invalid (有効な値: none, vscode)",
+			expectedError: "無効なembed-typeです: invalid (有効な値: google-cloud-iam-failed, google-cloud-iam-success, google-cloud-run-failed, google-cloud-run-function-failed, google-cloud-run-function-success, google-cloud-run-success, google-cloud-scheduler-failed, google-cloud-scheduler-success, google-cloud-storage-failed, google-cloud-storage-success, google-compute-engine-failed, google-compute-engine-success, google-secret-manager-failed, google-secret-manager-success, none, open-weather-map, vscode)",
 		},
 		{
 			name:          "無効なwebhook-URL（httpスキーム）",
@@ -240,6 +257,7 @@ func TestNewConfig_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := NewConfig(tt.embedType, tt.webhookURL, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
 
@@ -338,6 +356,25 @@ func TestParseFlagsWithParser_Normal(t *testing.T) {
 		}
 	})
 
+	t.Run("Google Cloud成功Embed", func(t *testing.T) {
+		mockParser := NewMockFlagParser()
+
+		mockParser.SetStringFlag("embed-type", "google-cloud-run-success")
+		mockParser.SetStringFlag("webhook-url", "https://discord.com/api/webhooks/123456789/abcdefg")
+		mockParser.SetStringFlag("content-text", "テストメッセージ")
+
+		config, err := ParseFlagsWithParser(mockParser)
+
+		if err != nil {
+			t.Errorf("予期しないエラーが発生しました: %v", err)
+			return
+		}
+
+		if config.EmbedType != "google-cloud-run-success" {
+			t.Errorf("EmbedType = %v, want %v", config.EmbedType, "google-cloud-run-success")
+		}
+	})
+
 	t.Run("短縮形フラグ", func(t *testing.T) {
 		mockParser := NewMockFlagParser()
 
@@ -401,6 +438,7 @@ func TestParseFlagsWithParser_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mockParser := NewMockFlagParser()
 

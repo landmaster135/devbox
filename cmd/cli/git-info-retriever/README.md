@@ -19,6 +19,7 @@ GitHubからリポジトリ情報を取得し、Bash関数を生成してリポ�
 
 ### アーカイブ機能 (`archive`)
 - リポジトリ情報からBash関数を生成
+- **実際のリポジトリのアーカイブ処理は実行されません**
 - `archive_repos()`: git cloneとzip圧縮を実行
 - `display_zipinfo()`: zipファイルの情報を表示
 - `unzip_repos()`: zipファイルを展開
@@ -43,8 +44,8 @@ go run ./cmd/cli/git-info-retriever/main.go -operation archive -service github -
 
 | パラメータ | 必須 | 説明 |
 |-----------|------|------|
-| `-operation` | ✓ | 操作タイプ（`retrieve`: リポジトリ情報取得、`archive`: Bash関数生成） |
-| `-service` | ✓ | サービスタイプ（現在は`github`のみサポート） |
+| `-operation` | * | 操作タイプ（`retrieve`: リポジトリ情報取得、`archive`: Bash関数生成） |
+| `-service` | * | サービスタイプ（現在は`github`のみサポート） |
 | `-token` | 条件付き | GitHubアクセストークン（`retrieve`操作では必須、`archive`操作で`src-file`未指定の場合は必須） |
 | `-save-file-path` | - | 結果を保存するファイルパス（指定しない場合は標準出力） |
 | `-output-command-file-path` | - | Bash関数出力ファイルパス（`archive`操作で使用、指定しない場合は標準出力） |
@@ -235,7 +236,7 @@ go build -o bin/git-info-retriever ./cmd/cli/git-info-retriever
 
 ## 技術仕様
 
-- **言語**: Go 1.23.5
+- **言語**: Go
 - **依存関係**:
   - `github.com/google/go-github`: GitHub API クライアント
   - `golang.org/x/oauth2`: OAuth2 認証

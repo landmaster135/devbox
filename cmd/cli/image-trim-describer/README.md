@@ -27,20 +27,20 @@ image-trim-describer [オプション]
 - `-suffix <サフィックス>`: 出力ファイル名に付加するサフィックス（デフォルト: trimmed）
 - `-move`: 元ファイルを移動する（コピーではなく）
 
-### 使用例
+## 使用例
 
 ```bash
 # カレントディレクトリの画像ファイルを処理
-image-trim-describer
+go run ./cmd/cli/image-trim-describer
 
 # 指定したディレクトリの画像ファイルを処理
-image-trim-describer -src ./images
+go run ./cmd/cli/image-trim-describer -src ./images
 
 # 出力先ディレクトリを指定
-image-trim-describer -src ./images -out ./output
+go run ./cmd/cli/image-trim-describer -src ./images -out ./output
 
 # アーカイブ先ディレクトリを指定し、元ファイルを移動
-image-trim-describer -src ./images -arc ./archive -move
+go run ./cmd/cli/image-trim-describer -src ./images -arc ./archive -move
 ```
 
 ## 動作の流れ

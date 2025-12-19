@@ -1,0 +1,300 @@
+package config
+
+import (
+	"bytes"
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
+
+type MockFlagParser struct {
+	stringVars   map[string]*string
+	intVars      map[string]*int
+	boolVars     map[string]*bool
+	stringValues map[string]string
+	intValues    map[string]int
+	boolValues   map[string]bool
+	parseError   error
+	args         []string
+}
+
+func NewMockFlagParser() *MockFlagParser {
+	return &MockFlagParser{
+		stringVars:   make(map[string]*string),
+		intVars:      make(map[string]*int),
+		boolVars:     make(map[string]*bool),
+		stringValues: make(map[string]string),
+		intValues:    make(map[string]int),
+		boolValues:   make(map[string]bool),
+	}
+}
+
+func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
+	if preset, ok := m.stringValues[name]; ok {
+		*p = preset
+	} else {
+		*p = value
+	}
+	m.stringVars[name] = p
+}
+
+func (m *MockFlagParser) IntVar(p *int, name string, value int, usage string) {
+	if preset, ok := m.intValues[name]; ok {
+		*p = preset
+	} else {
+		*p = value
+	}
+	m.intVars[name] = p
+}
+
+func (m *MockFlagParser) BoolVar(p *bool, name string, value bool, usage string) {
+	if preset, ok := m.boolValues[name]; ok {
+		*p = preset
+	} else {
+		*p = value
+	}
+	m.boolVars[name] = p
+}
+
+func (m *MockFlagParser) Parse() error {
+	return m.parseError
+}
+
+func (m *MockFlagParser) Args() []string {
+	return m.args
+}
+
+func (m *MockFlagParser) SetStringFlag(name, value string) {
+	m.stringValues[name] = value
+	if ptr, ok := m.stringVars[name]; ok {
+		*ptr = value
+	}
+}
+
+func (m *MockFlagParser) SetIntFlag(name string, value int) {
+	m.intValues[name] = value
+	if ptr, ok := m.intVars[name]; ok {
+		*ptr = value
+	}
+}
+
+func (m *MockFlagParser) SetBoolFlag(name string, value bool) {
+	m.boolValues[name] = value
+	if ptr, ok := m.boolVars[name]; ok {
+		*ptr = value
+	}
+}
+
+func (m *MockFlagParser) SetArgs(args []string) {
+	m.args = args
+}
+
+func TestParseFlagsWithParser_ManagedZonesList(t *testing.T) {
+	parser := NewMockFlagParser()
+	parser.SetStringFlag("operation", OperationManagedZonesList)
+	parser.SetStringFlag("project", "my-project")
+	parser.SetStringFlag("format", "json")
+	parser.SetStringFlag("filter", "name=example")
+	parser.SetIntFlag("limit", 20)
+	parser.SetIntFlag("page-size", 10)
+	parser.SetStringFlag("sort-by", "name")
+	parser.SetStringFlag("verbosity", "debug")
+	parser.SetBoolFlag("uri", true)
+	parser.SetStringFlag("additional-args", "--account=my-account")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Operation != OperationManagedZonesList {
+		t.Errorf("operation mismatch: got %s", cfg.Operation)
+	}
+	if cfg.Project != "my-project" {
+		t.Errorf("project mismatch: got %s", cfg.Project)
+	}
+	if cfg.Format != "json" {
+		t.Errorf("format mismatch: got %s", cfg.Format)
+	}
+	if cfg.Filter != "name=example" {
+		t.Errorf("filter mismatch: got %s", cfg.Filter)
+	}
+	if cfg.Limit != 20 {
+		t.Errorf("limit mismatch: got %d", cfg.Limit)
+	}
+	if cfg.PageSize != 10 {
+		t.Errorf("page size mismatch: got %d", cfg.PageSize)
+	}
+	if cfg.SortBy != "name" {
+		t.Errorf("sort-by mismatch: got %s", cfg.SortBy)
+	}
+	if cfg.Verbosity != "debug" {
+		t.Errorf("verbosity mismatch: got %s", cfg.Verbosity)
+	}
+	if !cfg.URI {
+		t.Errorf("expected uri flag to be true")
+	}
+	if cfg.AdditionalArgs != "--account=my-account" {
+		t.Errorf("additional args mismatch: got %s", cfg.AdditionalArgs)
+	}
+}
+
+func TestParseFlagsWithParser_Errors(t *testing.T) {
+	t.Run("missing operation", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error when operation is missing")
+		}
+	})
+
+	t.Run("negative limit", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetStringFlag("operation", OperationManagedZonesList)
+		parser.SetIntFlag("limit", -1)
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error for negative limit")
+		}
+	})
+
+	t.Run("negative page size", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetStringFlag("operation", OperationManagedZonesList)
+		parser.SetIntFlag("page-size", -5)
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error for negative page size")
+		}
+	})
+
+	t.Run("unsupported operation", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetStringFlag("operation", "unknown")
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error for unsupported operation")
+		}
+	})
+
+	t.Run("unexpected args", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetStringFlag("operation", OperationManagedZonesList)
+		parser.SetArgs([]string{"extra"})
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected error for unexpected positional arguments")
+		}
+	})
+}
+
+func TestParseFlagsWithParser_Help(t *testing.T) {
+	parser := NewMockFlagParser()
+	parser.SetBoolFlag("help", true)
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.Help {
+		t.Fatalf("expected help to be true")
+	}
+}
+
+func TestParseFlags_StandardParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{
+		"cmd",
+		"-operation=managed-zones-list",
+		"-project=my-project",
+		"-format=json",
+		"-filter=name=example",
+		"-limit=5",
+		"-page-size=3",
+		"-sort-by=name",
+		"-verbosity=debug",
+		"-uri",
+		"-additional-args=--account=my-account",
+	}
+	defer func() { os.Args = originalArgs }()
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Project != "my-project" || cfg.Format != "json" || cfg.Filter != "name=example" {
+		t.Fatalf("unexpected config values: %+v", cfg)
+	}
+	if cfg.Limit != 5 || cfg.PageSize != 3 {
+		t.Fatalf("unexpected numeric values: limit=%d pageSize=%d", cfg.Limit, cfg.PageSize)
+	}
+	if cfg.SortBy != "name" || cfg.Verbosity != "debug" {
+		t.Fatalf("unexpected sort or verbosity: sort=%s verbosity=%s", cfg.SortBy, cfg.Verbosity)
+	}
+	if !cfg.URI {
+		t.Fatalf("expected uri flag to be true")
+	}
+	if cfg.AdditionalArgs != "--account=my-account" {
+		t.Fatalf("unexpected additional args: %s", cfg.AdditionalArgs)
+	}
+}
+
+func TestStandardFlagParser(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"cmd", "-string=value", "-int=7", "-bool", "extra"}
+	defer func() { os.Args = originalArgs }()
+
+	parser := NewStandardFlagParser()
+
+	var str string
+	var num int
+	var flag bool
+
+	parser.StringVar(&str, "string", "default", "")
+	parser.IntVar(&num, "int", 0, "")
+	parser.BoolVar(&flag, "bool", false, "")
+
+	if err := parser.Parse(); err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if str != "value" {
+		t.Fatalf("unexpected string value: %s", str)
+	}
+	if num != 7 {
+		t.Fatalf("unexpected int value: %d", num)
+	}
+	if !flag {
+		t.Fatalf("expected bool flag to be true")
+	}
+
+	args := parser.Args()
+	if len(args) != 1 || args[0] != "extra" {
+		t.Fatalf("unexpected remaining args: %v", args)
+	}
+}
+
+func TestPrintUsage(t *testing.T) {
+	originalArgs := os.Args
+	os.Args = []string{"gcloud-genset-dns"}
+	defer func() { os.Args = originalArgs }()
+
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w
+
+	PrintUsage()
+
+	w.Close()
+	os.Stderr = oldStderr
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("failed to read usage output: %v", err)
+	}
+
+	output := buf.String()
+	if !strings.Contains(output, "Google Cloud DNS") {
+		t.Fatalf("usage output missing expected content: %s", output)
+	}
+}

@@ -38,33 +38,33 @@
 
 ```bash
 # カレントディレクトリの画像ファイルを日付順に並べ替えてリネーム
-./image-renamer -prefix "20250507" -time
+go run ./cmd/cli/image-renamer -prefix "20250507" -time
 
 # 指定したディレクトリの画像ファイルをファイル名順に並べ替えてリネーム
-./image-renamer -src ./photos -prefix "article01" -name
+go run ./cmd/cli/image-renamer -src ./photos -prefix "article01" -name
 
 # 3桁のシリアル番号を使用（例: article01_001.jpg）
-./image-renamer -prefix "article01" -digits 3 -time
+go run ./cmd/cli/image-renamer -prefix "article01" -digits 3 -time
 
 # 開始番号を10から始める
-./image-renamer -prefix "article01" -start 10 -time
+go run ./cmd/cli/image-renamer -prefix "article01" -start 10 -time
 
 # カスタム区切り文字を使用（例: article01-001.jpg）
-./image-renamer -prefix "article01" -delimiter "-" -time
+go run ./cmd/cli/image-renamer -prefix "article01" -delimiter "-" -time
 ```
 
 ### 再帰的なスキャン
 
 ```bash
 # サブディレクトリも含めて画像ファイルをリネーム
-./image-renamer -src ./photos -prefix "article01" -time -r
+go run ./cmd/cli/image-renamer -src ./photos -prefix "article01" -time -r
 ```
 
 ### 並行処理の調整
 
 ```bash
 # ワーカー数を8に設定
-./image-renamer -prefix "article01" -time -workers 8
+go run ./cmd/cli/image-renamer -prefix "article01" -time -workers 8
 ```
 
 ## ビルド方法
