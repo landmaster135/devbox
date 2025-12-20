@@ -6,19 +6,19 @@
 ### Gitコミットメッセージ生成 (外部API 利用)
 非ステージング差分を解析:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "/git-commit-message"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "/git-commit-message" --yolo
 ```
 ステージング済み差分のみ:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged" --yolo
 ```
 カレントディレクトリを `git_dir` に指定 (非ステージング):
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-pwd"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-pwd" --yolo
 ```
 カレントディレクトリ + ステージングのみ:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged-pwd"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged-pwd" --yolo
 ```
 
 ### 逆張り応答エージェント
