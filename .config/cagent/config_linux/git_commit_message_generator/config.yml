@@ -11,6 +11,8 @@ agents:
       git-commit-message-staged: "Create Git commit message with tag. Don't use parentheses. git_dir='' staged_only=true"
       git-commit-message-pwd: "Create Git commit message with tag. Don't use parentheses. git_dir='.'"
       git-commit-message-staged-pwd: "Create Git commit message with tag. Don't use parentheses. git_dir='.' staged_only=true"
+      dont-use-parentheses: "Don't use parentheses."
+      do-again: "Do again."
     toolsets:
       - type: mcp
         command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools

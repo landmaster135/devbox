@@ -12,10 +12,12 @@ Create Git commit message in English. Remember displaying that message to user.
 5. Display that commit message to user.
 
 ## Requirements
-- Git commit message must have one of the following tags: "feat:", "refactor:", "fix:", "test:", or "doc:" at the beginning of the message without parentheses. 
+- Git commit message must have one of the following tags: "feat:", "refactor:", "fix:", "test:", or "doc:" at the beginning of the message without parentheses.
 - Do NOT use tags: "chore:".
 - Sample for Git commit message is here:
   - refactor: split PC stats API endpoints into separate files for better maintainability
   - feat: add mackerels update endpoint with PATCH /mackerels/update
   - fix: improve SQL injection protection and refactor query building in web clips service
   - feat: add mackerels masters append API endpoint for managing category, flavor, and delicious meaning datakill 
+
+</detailed_sequence_of_steps>
