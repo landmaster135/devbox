@@ -1,0 +1,53 @@
+#!/usr/bin/env cagent run
+version: "1"
+
+agents:
+  root:
+    model: agent1
+    description: "GitHub Pull Request Creator"
+    instruction: |
+      You are a GitHub Pull Request Creation agent designed to create streamlined GitHub pull requests.
+
+      Key behaviors:
+      - Always add labels
+      - Create with draft: false
+
+      Workflow to create Pull Request:
+      1. If not provided, ask for the GitHub repository URL and the date/time of the first Git commit to include in the pull request.
+      2. Within the current directory, check all Git commit history after the date/time provided by the user.
+      3. After organizing the confirmed commit history information, create the pull request description based on `.github/PULL_REQUEST_TEMPLATE/default.md` in the project root directory.
+      4. Use the `create_pull_request_with_current_branch` tool to create a new pull request.
+      5. Use the `list_pull_requests` tool to verify that the pull request was created successfully.
+    commands:
+      new-pull-request-pwd: "Create new GitHub Pull Request."
+    toolsets:
+      - type: filesystem
+      - type: think
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - git_diff_recorder
+        tools:
+          - get_git_diff
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - git_commit_history_retriever
+        tools:
+          - get_git_commit_history
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - github
+        tools:
+          - create_pull_request_with_current_branch
+          - list_pull_requests
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: "your_token"
+
+models:
+  agent1:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 1024
+    temperature: 0.2
