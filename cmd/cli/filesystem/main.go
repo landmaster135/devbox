@@ -17,7 +17,6 @@ type cliConfig struct {
 	content        string
 	pattern        string
 	excludePattern string
-	allowedDirs    []string
 }
 
 func main() {
@@ -32,7 +31,6 @@ func main() {
 
 func parseFlags() *cliConfig {
 	var cfg cliConfig
-	var allowedDirsRaw string
 
 	flag.StringVar(&cfg.operation, "operation", "", "実行する操作 (read_file, write_file, create_directory など)")
 	flag.StringVar(&cfg.path, "path", "", "対象のファイルまたはディレクトリのパス")
@@ -41,10 +39,7 @@ func parseFlags() *cliConfig {
 	flag.StringVar(&cfg.content, "content", "", "ファイルに書き込む内容 (write_file操作用)")
 	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する文字列 (search_files操作用)")
 	flag.StringVar(&cfg.excludePattern, "exclude-pattern", "", "除外するパターン (search_files操作用)")
-	flag.StringVar(&allowedDirsRaw, "allowed-dirs", "", "カンマ区切りで追加の許可ディレクトリを指定")
 	flag.Parse()
-
-	cfg.allowedDirs = parseAllowedDirectories(allowedDirsRaw)
 
 	if cfg.operation == "" {
 		printUsage()
@@ -85,7 +80,7 @@ func runReadFile(cfg *cliConfig) error {
 		return fmt.Errorf("read_file操作では-pathが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	content, err := service.ReadFile(cfg.path)
 	if err != nil {
 		return err
@@ -100,7 +95,7 @@ func runWriteFile(cfg *cliConfig) error {
 		return fmt.Errorf("write_file操作では-pathが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	if err := service.WriteFile(cfg.path, cfg.content); err != nil {
 		return err
 	}
@@ -114,7 +109,7 @@ func runCreateDirectory(cfg *cliConfig) error {
 		return fmt.Errorf("create_directory操作では-pathが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	if err := service.CreateDirectory(cfg.path); err != nil {
 		return err
 	}
@@ -128,7 +123,7 @@ func runListDirectory(cfg *cliConfig) error {
 		return fmt.Errorf("list_directory操作では-pathが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	entries, err := service.ListDirectory(cfg.path)
 	if err != nil {
 		return err
@@ -148,7 +143,7 @@ func runDirectoryTree(cfg *cliConfig) error {
 		return fmt.Errorf("directory_tree操作では-pathが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	result, err := service.GetDirectoryTreeAsJSON(cfg.path)
 	if err != nil {
 		return err
@@ -163,7 +158,7 @@ func runMoveFile(cfg *cliConfig) error {
 		return fmt.Errorf("move_file操作では-sourceと-destinationが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.source, cfg.destination)
+	service := newFileSystemService(cfg.source, cfg.destination)
 	if err := service.MoveFile(cfg.source, cfg.destination); err != nil {
 		return err
 	}
@@ -180,7 +175,7 @@ func runSearchFiles(cfg *cliConfig) error {
 		return fmt.Errorf("search_files操作では-patternが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	var exclude []string
 	if cfg.excludePattern != "" {
 		exclude = []string{cfg.excludePattern}
@@ -205,7 +200,7 @@ func runGetFileInfo(cfg *cliConfig) error {
 		return fmt.Errorf("get_file_info操作では-pathが必要です")
 	}
 
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	info, err := service.GetFileInfoAsText(cfg.path)
 	if err != nil {
 		return err
@@ -216,29 +211,13 @@ func runGetFileInfo(cfg *cliConfig) error {
 }
 
 func runListAllowedDirectories(cfg *cliConfig) error {
-	service := newFileSystemService(cfg.allowedDirs, cfg.path)
+	service := newFileSystemService(cfg.path)
 	fmt.Print(service.GetAllowedDirectoriesAsText())
 	return nil
 }
 
-func parseAllowedDirectories(raw string) []string {
-	if raw == "" {
-		return nil
-	}
-
-	parts := strings.Split(raw, ",")
-	var dirs []string
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			dirs = append(dirs, trimmed)
-		}
-	}
-	return dirs
-}
-
-func newFileSystemService(base []string, extras ...string) *usecases.FileSystemService {
-	dirs := mergeAllowedDirectories(base, extras...)
+func newFileSystemService(paths ...string) *usecases.FileSystemService {
+	dirs := uniquePaths(paths...)
 	if len(dirs) == 0 {
 		// フォールバックとしてカレントディレクトリを許可
 		cwd, err := os.Getwd()
@@ -250,13 +229,10 @@ func newFileSystemService(base []string, extras ...string) *usecases.FileSystemS
 	return usecases.NewFileSystemService(dirs)
 }
 
-func mergeAllowedDirectories(base []string, extras ...string) []string {
-	combined := append([]string{}, base...)
-	combined = append(combined, extras...)
-
+func uniquePaths(paths ...string) []string {
 	seen := make(map[string]struct{})
-	result := make([]string, 0, len(combined))
-	for _, dir := range combined {
+	result := make([]string, 0, len(paths))
+	for _, dir := range paths {
 		trimmed := strings.TrimSpace(dir)
 		if trimmed == "" {
 			continue
@@ -267,7 +243,6 @@ func mergeAllowedDirectories(base []string, extras ...string) []string {
 		seen[trimmed] = struct{}{}
 		result = append(result, trimmed)
 	}
-
 	return result
 }
 

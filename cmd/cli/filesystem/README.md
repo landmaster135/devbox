@@ -27,7 +27,7 @@ go build -o bin/filesystem ./cmd/cli/filesystem
 go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 ```
 
-必要に応じて `-allowed-dirs=/workspace,/tmp` のようにカンマ区切りで許可ディレクトリを追加できます。`move_file` のように複数パスを扱う操作では、指定した `source`/`destination` も自動的に許可対象へ追加されます。
+指定した `-path` や `-source`/`-destination` は自動的に許可ディレクトリとして扱われます。明示的に追加で許可する設定は不要です。
 
 ## フラグ
 
@@ -40,7 +40,6 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `-content` | 書き込む内容 (`write_file`) | `-content="hello"` |
 | `-pattern` | 検索パターン (`search_files`) | `-pattern=config` |
 | `-exclude-pattern` | 除外パターン (`search_files`) | `-exclude-pattern="*.git"` |
-| `-allowed-dirs` | カンマ区切りの追加許可ディレクトリ | `-allowed-dirs=$HOME/projects` |
 
 ## 利用可能なoperation
 
@@ -54,7 +53,7 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `move_file` | ファイル/ディレクトリを移動 | `-source`, `-destination` |
 | `search_files` | パターンに一致する項目を検索 | `-path`, `-pattern` |
 | `get_file_info` | ファイル/ディレクトリの詳細を表示 | `-path` |
-| `list_allowed_directories` | 許可済みディレクトリを表示 | `-path` または `-allowed-dirs` |
+| `list_allowed_directories` | 許可済みディレクトリを表示 | `-path` (省略時はカレントディレクトリを許可) |
 
 ## 使用例
 
@@ -65,18 +64,18 @@ go run ./cmd/cli/filesystem -operation=read_file -path=./README.md
 # ファイルの作成
 go run ./cmd/cli/filesystem -operation=write_file -path=./notes/todo.txt -content="- [ ] task"
 
-# ディレクトリ検索（tmp配下を許可）
-go run ./cmd/cli/filesystem -operation=search_files -path=/tmp -pattern=log -allowed-dirs=/tmp
+# ディレクトリ検索
+go run ./cmd/cli/filesystem -operation=search_files -path=./notes -pattern=todo
 
 # ファイルの移動
 go run ./cmd/cli/filesystem -operation=move_file -source=./notes/todo.txt -destination=./notes/archive/todo.txt
 
-# 許可ディレクトリの確認
-go run ./cmd/cli/filesystem -operation=list_allowed_directories -allowed-dirs=/workspace/projects
+# 許可ディレクトリの確認（path省略時は作業ディレクトリ）
+go run ./cmd/cli/filesystem -operation=list_allowed_directories
 ```
 
 ## 補足
 
 - すべての操作は `internal/filesystem/usecases.FileSystemService` を経由しており、許可ディレクトリ外のパスにはアクセスできません。
-- 大量出力になる `directory_tree` や `search_files` では `allowed-dirs` を絞って利用すると意図しない探索を防げます。
+- 大量出力になりそうな場合は `-path` を最小限のディレクトリに指定して探索範囲を絞ってください。
 - エラーは標準エラー出力に表示され、失敗時は終了コード1で終了します。
