@@ -74,6 +74,28 @@ go run ./cmd/cli/filesystem -operation=move_file -source=./notes/todo.txt -desti
 go run ./cmd/cli/filesystem -operation=list_allowed_directories
 ```
 
+## 出力仕様
+
+### read_file
+
+`read_file` は内部サービスと同一フォーマットで結果を整形します。
+
+- 各行を `L{行番号}: {内容}` で表示（1始まりの行番号）
+- 改行コードはLFへ正規化し、CRLF末尾の `\r` は除去
+- 1行あたり500文字を上限にサロゲートを壊さない形でトリム
+- 末尾の空行も同じ形式で表示されるため、ファイル終端の空行確認が容易
+
+```bash
+$ go run ./cmd/cli/filesystem -operation=read_file -path=./examples/sample.txt
+L1: package main
+L2: import "fmt"
+L3: func main() {
+...
+L9: }
+```
+
+長文の場合も先頭500文字だけを返すため、MCPツールと同じく過度な出力でタイムアウトするリスクを抑えられます。
+
 ## 補足
 
 - すべての操作は `internal/filesystem/usecases.FileSystemService` を経由しており、許可ディレクトリ外のパスにはアクセスできません。
