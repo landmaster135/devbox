@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -263,7 +264,62 @@ func (fs *FileSystemService) ReadFile(path string) (string, error) {
 		return "", fmt.Errorf("ファイルの読み取りに失敗しました: %w", err)
 	}
 
-	return string(content), nil
+	return formatReadFileContent(string(content)), nil
+}
+
+const readFileLineMaxLength = 500
+
+func formatReadFileContent(content string) string {
+	lines := splitLinesForReadFile(content)
+	if len(lines) == 0 {
+		return ""
+	}
+
+	var builder strings.Builder
+	for i, line := range lines {
+		if i > 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteByte('L')
+		builder.WriteString(strconv.Itoa(i + 1))
+		builder.WriteString(": ")
+		builder.WriteString(truncateReadFileLine(line, readFileLineMaxLength))
+	}
+
+	return builder.String()
+}
+
+func splitLinesForReadFile(content string) []string {
+	if content == "" {
+		return nil
+	}
+
+	lines := strings.Split(content, "\n")
+	if strings.HasSuffix(content, "\n") && len(lines) > 0 {
+		lines = lines[:len(lines)-1]
+	}
+
+	for i, line := range lines {
+		lines[i] = strings.TrimSuffix(line, "\r")
+	}
+
+	return lines
+}
+
+func truncateReadFileLine(line string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+
+	runeCount := 0
+	for i := range line {
+		if runeCount == limit {
+			return line[:i]
+		}
+		runeCount++
+	}
+
+	return line
 }
 
 // WriteFile はファイルに内容を書き込みます
