@@ -77,6 +77,34 @@ func TestHandleReadFile_Normal(t *testing.T) {
 	}
 }
 
+func TestHandleReadFile_WithOffsetLimit(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	content := "line1\nline2\nline3\n"
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	ctx := context.Background()
+	request := createCallToolRequest("read_file", map[string]interface{}{
+		"path":   testFile,
+		"offset": 2,
+		"limit":  1,
+	})
+
+	// Act
+	result, err := handleReadFile(ctx, request)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if text := getTextFromResult(result); text != "L2: line2" {
+		t.Errorf("offset/limitが反映されていません。実際: %s", text)
+	}
+}
+
 // TestHandleReadFile_MissingPath はパスパラメータが欠如している場合のテストです
 func TestHandleReadFile_MissingPath(t *testing.T) {
 	// Arrange
@@ -617,7 +645,7 @@ func TestHandleSearchFiles_ErrorHandling(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	request := createCallToolRequest("search_files", map[string]interface{}{
-		"path": "/invalid/path",
+		"path":    "/invalid/path",
 		"pattern": "test",
 	})
 

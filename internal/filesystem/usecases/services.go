@@ -247,10 +247,16 @@ func (fs *FileSystemService) ValidatePath(requestedPath string) (string, error) 
 }
 
 // ReadFile はファイルの内容を読み取ります
-func (fs *FileSystemService) ReadFile(path string) (string, error) {
+func (fs *FileSystemService) ReadFile(path string, offset, limit int) (string, error) {
 	validPath, err := fs.ValidatePath(path)
 	if err != nil {
 		return "", err
+	}
+	if offset <= 0 {
+		return "", fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if limit <= 0 {
+		return "", fmt.Errorf("limitは1以上で指定してください")
 	}
 
 	file, err := fs.fileOpener.Open(validPath)
@@ -264,29 +270,42 @@ func (fs *FileSystemService) ReadFile(path string) (string, error) {
 		return "", fmt.Errorf("ファイルの読み取りに失敗しました: %w", err)
 	}
 
-	return formatReadFileContent(string(content)), nil
+	return formatReadFileContent(string(content), offset, limit)
 }
 
 const readFileLineMaxLength = 500
 
-func formatReadFileContent(content string) string {
+func formatReadFileContent(content string, offset, limit int) (string, error) {
 	lines := splitLinesForReadFile(content)
 	if len(lines) == 0 {
-		return ""
+		if offset <= 1 {
+			return "", nil
+		}
+		return "", fmt.Errorf("offsetがファイルの総行数を超えています")
+	}
+
+	startIndex := offset - 1
+	if startIndex < 0 || startIndex >= len(lines) {
+		return "", fmt.Errorf("offsetがファイルの総行数を超えています")
+	}
+
+	endIndex := startIndex + limit
+	if endIndex > len(lines) {
+		endIndex = len(lines)
 	}
 
 	var builder strings.Builder
-	for i, line := range lines {
-		if i > 0 {
+	for i := startIndex; i < endIndex; i++ {
+		if builder.Len() > 0 {
 			builder.WriteByte('\n')
 		}
 		builder.WriteByte('L')
 		builder.WriteString(strconv.Itoa(i + 1))
 		builder.WriteString(": ")
-		builder.WriteString(truncateReadFileLine(line, readFileLineMaxLength))
+		builder.WriteString(truncateReadFileLine(lines[i], readFileLineMaxLength))
 	}
 
-	return builder.String()
+	return builder.String(), nil
 }
 
 func splitLinesForReadFile(content string) []string {

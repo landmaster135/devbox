@@ -40,6 +40,8 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `-content` | 書き込む内容 (`write_file`) | `-content="hello"` |
 | `-pattern` | 検索パターン (`search_files`) | `-pattern=config` |
 | `-exclude-pattern` | 除外パターン (`search_files`) | `-exclude-pattern="*.git"` |
+| `-offset` | `read_file`で読み取る開始行（1始まり、既定値1） | `-offset=120` |
+| `-limit` | `read_file`で返す最大行数（既定値2000） | `-limit=200` |
 
 ## 利用可能なoperation
 
@@ -60,6 +62,9 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 ```bash
 # ファイルの読み取り
 go run ./cmd/cli/filesystem -operation=read_file -path=./README.md
+
+# 任意範囲のみ読み取り（offset/limit）
+go run ./cmd/cli/filesystem -operation=read_file -path=./README.md -offset=34 -limit=20
 
 # ファイルの作成
 go run ./cmd/cli/filesystem -operation=write_file -path=./notes/todo.txt -content="- [ ] task"
@@ -84,6 +89,7 @@ go run ./cmd/cli/filesystem -operation=list_allowed_directories
 - 改行コードはLFへ正規化し、CRLF末尾の `\r` は除去
 - 1行あたり500文字を上限にサロゲートを壊さない形でトリム
 - 末尾の空行も同じ形式で表示されるため、ファイル終端の空行確認が容易
+- `-offset`/`-limit` フラグで開始行と取得行数を制御（既定値は1行目/最大2000行）
 
 ```bash
 $ go run ./cmd/cli/filesystem -operation=read_file -path=./examples/sample.txt

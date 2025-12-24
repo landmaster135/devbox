@@ -17,6 +17,8 @@ type cliConfig struct {
 	content        string
 	pattern        string
 	excludePattern string
+	offset         int
+	limit          int
 }
 
 func main() {
@@ -39,6 +41,8 @@ func parseFlags() *cliConfig {
 	flag.StringVar(&cfg.content, "content", "", "ファイルに書き込む内容 (write_file操作用)")
 	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する文字列 (search_files操作用)")
 	flag.StringVar(&cfg.excludePattern, "exclude-pattern", "", "除外するパターン (search_files操作用)")
+	flag.IntVar(&cfg.offset, "offset", 1, "read_fileで読み取りを開始する1始まりの行番号")
+	flag.IntVar(&cfg.limit, "limit", 2000, "read_fileで返す最大行数")
 	flag.Parse()
 
 	if cfg.operation == "" {
@@ -79,9 +83,15 @@ func runReadFile(cfg *cliConfig) error {
 	if cfg.path == "" {
 		return fmt.Errorf("read_file操作では-pathが必要です")
 	}
+	if cfg.offset <= 0 {
+		return fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if cfg.limit <= 0 {
+		return fmt.Errorf("limitは1以上で指定してください")
+	}
 
 	service := newFileSystemService(cfg.path)
-	content, err := service.ReadFile(cfg.path)
+	content, err := service.ReadFile(cfg.path, cfg.offset, cfg.limit)
 	if err != nil {
 		return err
 	}

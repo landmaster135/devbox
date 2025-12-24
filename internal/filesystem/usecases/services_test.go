@@ -238,7 +238,7 @@ func TestFileSystemService_ReadFile_Normal(t *testing.T) {
 	service := NewFileSystemService(allowedDirs)
 
 	// Act
-	content, err := service.ReadFile(testFile)
+	content, err := service.ReadFile(testFile, 1, 2000)
 
 	// Assert
 	if err != nil {
@@ -259,7 +259,7 @@ func TestFileSystemService_ReadFile_AddsLineNumbersAndHandlesCRLF(t *testing.T) 
 	}
 
 	service := NewFileSystemService([]string{tempDir})
-	got, err := service.ReadFile(testFile)
+	got, err := service.ReadFile(testFile, 1, 2000)
 	if err != nil {
 		t.Fatalf("read_fileでエラー: %v", err)
 	}
@@ -280,7 +280,7 @@ func TestFileSystemService_ReadFile_TruncatesLongLines(t *testing.T) {
 	}
 
 	service := NewFileSystemService([]string{tempDir})
-	got, err := service.ReadFile(testFile)
+	got, err := service.ReadFile(testFile, 1, 2000)
 	if err != nil {
 		t.Fatalf("read_fileでエラー: %v", err)
 	}
@@ -288,6 +288,53 @@ func TestFileSystemService_ReadFile_TruncatesLongLines(t *testing.T) {
 	expected := "L1: " + strings.Repeat("あ", readFileLineMaxLength)
 	if got != expected {
 		t.Errorf("500文字制限が期待通りに働いていません。期待値: %d文字, 実際: %d文字", len(expected), len(got))
+	}
+}
+
+func TestFileSystemService_ReadFile_RespectsOffsetAndLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	content := "line1\nline2\nline3\n"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	got, err := service.ReadFile(testFile, 2, 1)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+	if got != "L2: line2" {
+		t.Errorf("offsetの結果が期待値と異なります。実際: %s", got)
+	}
+
+	got, err = service.ReadFile(testFile, 3, 5)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+	if got != "L3: line3" {
+		t.Errorf("limitが末尾で正しく丸められていません。実際: %s", got)
+	}
+}
+
+func TestFileSystemService_ReadFile_InvalidOffsetOrLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("only-one-line"), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+
+	if _, err := service.ReadFile(testFile, 0, 10); err == nil {
+		t.Fatal("offset=0でエラーが発生しませんでした")
+	}
+	if _, err := service.ReadFile(testFile, 1, 0); err == nil {
+		t.Fatal("limit=0でエラーが発生しませんでした")
+	}
+	if _, err := service.ReadFile(testFile, 5, 10); err == nil {
+		t.Fatal("存在しない行を指定してもエラーになりませんでした")
 	}
 }
 

@@ -22,7 +22,9 @@ func handleReadFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	content, err := fsService.ReadFile(path)
+	offset := request.GetInt("offset", 1)
+	limit := request.GetInt("limit", 2000)
+	content, err := fsService.ReadFile(path, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("ファイルの読み取りに失敗しました: %v", err)
 	}
@@ -215,6 +217,12 @@ func BuildFileSystemServer() {
 		mcp.WithString("path",
 			mcp.Required(),
 			mcp.Description("読み取るファイルのパス"),
+		),
+		mcp.WithNumber("offset",
+			mcp.Description("開始行番号。省略時は1"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("始まりから返す最大行数。省略時は2000"),
 		),
 	)
 
