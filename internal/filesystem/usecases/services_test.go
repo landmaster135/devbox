@@ -127,10 +127,10 @@ func (m *MockFileInfo) Sys() interface{} {
 
 // MockDirEntry はテスト用のos.DirEntryモックです
 type MockDirEntry struct {
-	NameFunc    func() string
-	IsDirFunc   func() bool
-	TypeFunc    func() os.FileMode
-	InfoFunc    func() (os.FileInfo, error)
+	NameFunc  func() string
+	IsDirFunc func() bool
+	TypeFunc  func() os.FileMode
+	InfoFunc  func() (os.FileInfo, error)
 }
 
 func (m *MockDirEntry) Name() string {
@@ -244,8 +244,50 @@ func TestFileSystemService_ReadFile_Normal(t *testing.T) {
 	if err != nil {
 		t.Errorf("エラーが発生しました: %v", err)
 	}
-	if content != testContent {
-		t.Errorf("内容が期待値と異なります。期待値: %s, 実際: %s", testContent, content)
+	if content != "L1: "+testContent {
+		t.Errorf("内容が期待値と異なります。期待値: %s, 実際: %s", "L1: "+testContent, content)
+	}
+}
+
+func TestFileSystemService_ReadFile_AddsLineNumbersAndHandlesCRLF(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	content := "foo\r\nbar\r\n\r\n"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	got, err := service.ReadFile(testFile)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+
+	expected := "L1: foo\nL2: bar\nL3: "
+	if got != expected {
+		t.Errorf("内容が期待値と異なります。期待値: %s, 実際: %s", expected, got)
+	}
+}
+
+func TestFileSystemService_ReadFile_TruncatesLongLines(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	line := strings.Repeat("あ", 600)
+
+	if err := os.WriteFile(testFile, []byte(line), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	got, err := service.ReadFile(testFile)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+
+	expected := "L1: " + strings.Repeat("あ", readFileLineMaxLength)
+	if got != expected {
+		t.Errorf("500文字制限が期待通りに働いていません。期待値: %d文字, 実際: %d文字", len(expected), len(got))
 	}
 }
 
@@ -493,7 +535,7 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		ReadDirFunc: func(name string) ([]os.DirEntry, error) {
 			return []os.DirEntry{
 				&MockDirEntry{
-					NameFunc: func() string { return "test.txt" },
+					NameFunc:  func() string { return "test.txt" },
 					IsDirFunc: func() bool { return false },
 				},
 			}, nil
@@ -503,7 +545,7 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 	mockFileStat := &MockFileStat{
 		StatFunc: func(name string) (os.FileInfo, error) {
 			return &MockFileInfo{
-				SizeFunc: func() int64 { return 100 },
+				SizeFunc:  func() int64 { return 100 },
 				IsDirFunc: func() bool { return false },
 			}, nil
 		},
