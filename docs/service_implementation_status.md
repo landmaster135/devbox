@@ -39,7 +39,7 @@
 | file-character-replacer                     | ✅  | ❌️  | ❌️  | ❌️ |
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
 | file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
-| filesystem                                  | ❌️  | ✅  | ❌️  | ❌️ |
+| filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
@@ -114,15 +114,15 @@
 ### 統計情報
 
 - **総サービス数**: 96
-- **CLIツール実装数**: 85
+- **CLIツール実装数**: 86
 - **MCPツール実装数**: 24
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
 - **CLIのみ実装**: 72
-- **MCPのみ実装**: 11
+- **MCPのみ実装**: 10
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
-- **CLI+MCP両方実装**: 13
+- **CLI+MCP両方実装**: 14
 - **全て実装済み**: 1
 
 ## 注意事項
