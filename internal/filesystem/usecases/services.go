@@ -474,25 +474,26 @@ func (fs *FileSystemService) ListDirectoryWithOptions(path string, opts ListDire
 
 // GetDirectoryTree はディレクトリの階層構造を取得します
 func (fs *FileSystemService) GetDirectoryTree(path string) ([]FileTreeEntry, error) {
-	return fs.GetDirectoryTreeWithOptions(path, DirectoryTreeOptions{
+	entries, _, _, err := fs.GetDirectoryTreeWithOptions(path, DirectoryTreeOptions{
 		Offset: 1,
 		Limit:  0,
 		Depth:  0,
 	})
+	return entries, err
 }
 
 // GetDirectoryTreeWithOptions はoffset/limit/depthを考慮してツリーを取得します
-func (fs *FileSystemService) GetDirectoryTreeWithOptions(path string, opts DirectoryTreeOptions) ([]FileTreeEntry, error) {
+func (fs *FileSystemService) GetDirectoryTreeWithOptions(path string, opts DirectoryTreeOptions) ([]FileTreeEntry, bool, int, error) {
 	normalized := normalizeDirectoryTreeOptions(opts)
 
 	validPath, err := fs.ValidatePath(path)
 	if err != nil {
-		return nil, err
+		return nil, false, 0, err
 	}
 
 	entries, err := fs.buildDirectoryTreeEntries(validPath, normalized.Depth)
 	if err != nil {
-		return nil, err
+		return nil, false, 0, err
 	}
 
 	return sliceFileTreeEntries(entries, normalized.Offset, normalized.Limit)
@@ -579,14 +580,14 @@ func normalizeDirectoryTreeOptions(opts DirectoryTreeOptions) DirectoryTreeOptio
 	return normalized
 }
 
-func sliceFileTreeEntries(entries []FileTreeEntry, offset, limit int) ([]FileTreeEntry, error) {
+func sliceFileTreeEntries(entries []FileTreeEntry, offset, limit int) ([]FileTreeEntry, bool, int, error) {
 	if len(entries) == 0 {
-		return []FileTreeEntry{}, nil
+		return []FileTreeEntry{}, false, offset, nil
 	}
 
 	startIndex := offset - 1
 	if startIndex >= len(entries) {
-		return nil, fmt.Errorf("offset exceeds directory entry count")
+		return nil, false, 0, fmt.Errorf("offset exceeds directory entry count")
 	}
 
 	endIndex := len(entries)
@@ -599,7 +600,9 @@ func sliceFileTreeEntries(entries []FileTreeEntry, offset, limit int) ([]FileTre
 
 	sliced := make([]FileTreeEntry, endIndex-startIndex)
 	copy(sliced, entries[startIndex:endIndex])
-	return sliced, nil
+	hasMore := limit > 0 && endIndex < len(entries)
+	nextOffset := offset + (endIndex - startIndex)
+	return sliced, hasMore, nextOffset, nil
 }
 
 func normalizeListDirectoryOptions(opts ListDirectoryOptions) ListDirectoryOptions {
@@ -630,7 +633,7 @@ func (fs *FileSystemService) GetDirectoryTreeAsJSON(path string) (string, error)
 
 // GetDirectoryTreeAsJSONWithOptions はJSON出力に対してoffset/limit/depthを適用します
 func (fs *FileSystemService) GetDirectoryTreeAsJSONWithOptions(path string, opts DirectoryTreeOptions) (string, error) {
-	tree, err := fs.GetDirectoryTreeWithOptions(path, opts)
+	tree, _, _, err := fs.GetDirectoryTreeWithOptions(path, opts)
 	if err != nil {
 		return "", err
 	}
@@ -654,7 +657,7 @@ func (fs *FileSystemService) GetDirectoryTreeAsYAML(path string) (string, error)
 
 // GetDirectoryTreeAsYAMLWithOptions はYAML出力に対してoffset/limit/depthを適用します
 func (fs *FileSystemService) GetDirectoryTreeAsYAMLWithOptions(path string, opts DirectoryTreeOptions) (string, error) {
-	tree, err := fs.GetDirectoryTreeWithOptions(path, opts)
+	tree, hasMore, nextOffset, err := fs.GetDirectoryTreeWithOptions(path, opts)
 	if err != nil {
 		return "", err
 	}
@@ -664,7 +667,15 @@ func (fs *FileSystemService) GetDirectoryTreeAsYAMLWithOptions(path string, opts
 		return "", fmt.Errorf("YAMLの生成に失敗しました: %w", err)
 	}
 
-	return string(yamlBytes), nil
+	result := string(yamlBytes)
+	if opts.Limit > 0 && hasMore {
+		if !strings.HasSuffix(result, "\n") {
+			result += "\n"
+		}
+		result += fmt.Sprintf("More than %d entries found (try -offset=%d)", opts.Limit, nextOffset)
+	}
+
+	return result, nil
 }
 
 // MoveFile はファイルを移動します

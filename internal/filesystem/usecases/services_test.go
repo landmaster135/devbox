@@ -523,6 +523,28 @@ func TestFileSystemService_ListDirectory_NoSummaryWhenUnlimited(t *testing.T) {
 	}
 }
 
+func TestGetDirectoryTreeAsYAMLWithOptions_AppendsSummary(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha", "beta", "gamma"}
+	for _, name := range entries {
+		if err := os.MkdirAll(filepath.Join(tempDir, name), 0o755); err != nil {
+			t.Fatalf("ディレクトリ%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	result, err := service.GetDirectoryTreeAsYAMLWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 2, Depth: 1})
+	if err != nil {
+		t.Fatalf("GetDirectoryTreeAsYAMLWithOptionsの実行に失敗しました: %v", err)
+	}
+	if !strings.Contains(result, "More than 2 entries found") {
+		t.Fatalf("limitによるサマリ行が出力されていません: %s", result)
+	}
+	if !strings.Contains(result, "-offset=3") {
+		t.Fatalf("次ページのoffset案内が含まれていません: %s", result)
+	}
+}
+
 // TestFileSystemService_GetFileInfo_Normal は正常系のテストです
 func TestFileSystemService_GetFileInfo_Normal(t *testing.T) {
 	// Arrange
@@ -773,9 +795,12 @@ func TestGetDirectoryTreeWithOptionsDepthAndPagination(t *testing.T) {
 
 	service := NewFileSystemService([]string{tempDir})
 
-	shallow, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 1})
+	shallow, hasMore, _, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 1})
 	if err != nil {
 		t.Fatalf("深さ1でのツリー取得に失敗しました: %v", err)
+	}
+	if hasMore {
+		t.Fatalf("limit=0の場合は全件返るためhasMoreはfalseのはずです")
 	}
 	if len(shallow) != 3 {
 		t.Fatalf("期待するエントリ数3に対して%v件でした", len(shallow))
@@ -794,9 +819,12 @@ func TestGetDirectoryTreeWithOptionsDepthAndPagination(t *testing.T) {
 		}
 	}
 
-	deeper, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 2})
+	deeper, hasMoreDeeper, _, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 2})
 	if err != nil {
 		t.Fatalf("深さ2でのツリー取得に失敗しました: %v", err)
+	}
+	if hasMoreDeeper {
+		t.Fatalf("limit=0の場合はhasMoreはfalseのはずです")
 	}
 	var alphaHasChildren bool
 	for _, entry := range deeper {
@@ -813,7 +841,7 @@ func TestGetDirectoryTreeWithOptionsDepthAndPagination(t *testing.T) {
 		t.Fatalf("depth=2ではalphaの子要素を含む必要があります")
 	}
 
-	paged, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 2, Limit: 1, Depth: 0})
+	paged, hasMorePaged, nextOffset, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 2, Limit: 1, Depth: 0})
 	if err != nil {
 		t.Fatalf("ページングされたツリー取得に失敗しました: %v", err)
 	}
@@ -822,6 +850,12 @@ func TestGetDirectoryTreeWithOptionsDepthAndPagination(t *testing.T) {
 	}
 	if paged[0].Name != "beta" {
 		t.Fatalf("offset=2の場合はbetaが返るはずですが%qでした", paged[0].Name)
+	}
+	if !hasMorePaged {
+		t.Fatalf("残りエントリがあるためhasMoreはtrueのはずです")
+	}
+	if nextOffset != 3 {
+		t.Fatalf("次のoffsetは3のはずですが%vでした", nextOffset)
 	}
 }
 
@@ -832,7 +866,7 @@ func TestGetDirectoryTreeWithOptionsOffsetError(t *testing.T) {
 	}
 
 	service := NewFileSystemService([]string{tempDir})
-	_, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 5, Limit: 1, Depth: 1})
+	_, _, _, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 5, Limit: 1, Depth: 1})
 	if err == nil {
 		t.Fatalf("存在しないoffsetに対してエラーが発生しませんでした")
 	}
