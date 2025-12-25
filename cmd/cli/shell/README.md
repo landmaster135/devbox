@@ -96,11 +96,5 @@ go run ./cmd/cli/shell -operation=list_denied
 
 ## 注意事項
 
-- `-workdir`が`-base-dir`外を指すとエラーになります。
 - タイムアウトを超えると`exit_code=-1`, `timed_out=true`でJSONが返り、CLIの終了コードは1になります。
 - コマンド終了コードが非0の場合、CLIも同じ終了コードを返すので、他のスクリプトから容易に検出できます。
-
-## 参考資料
-
-- `cmd/cli/arithmetic-calculator/README.md` & `cmd/cli/service-implementing-viewer/README.md` をベースにしたCLIドキュメント構成
-- Codex `shell` 実装 (`/home/user/package_references/codex/codex-rs`)の`SandboxPermissions`仕様
