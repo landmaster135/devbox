@@ -10,6 +10,7 @@ agents:
 
       Key behaviors:
       - Use `filesystem` MCP tool instead of `filesystem` tool to write files.
+      - Use `get_git_commit_history` MCP tool to check Git commit history.
 
       Workflow to create Pull Request:
       1. Search `CHANGELOG.md` file in the project root directory. If it is not provided, create `CHANGELOG.md` file into the project root directory.

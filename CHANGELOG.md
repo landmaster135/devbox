@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.06 — 2025-12-25
+
+PR: #19
+
+### Features
+- **filesystem (CLI/MCP)**: `cmd/cli/filesystem`と`internal/filesystem`を新設し、read/write/move/get_file_info/list_allowed_directories/grep_filesなどの操作を安全な許可ディレクトリ推論付きでCLI・MCPの両面から提供。
+- **filesystem-v2 / shell**: codex-rs版ツールを参照した`shell`と`filesystem-v2`のCLI・config・usecaseスタブ、implメモ、テスト雛形を用意し、今後のサンドボックス制御や高度なファイル操作を受け止める土台を構築。
+- **エージェント自動化**: `.config/cagent`にCHANGELOGレダクターとGitHub PR作成者の設定を追加し、`cagent`バイナリ、agent2モデル、`--yolo`オプション、括弧ショートカットなどのスニペットを揃えてローカルワークフローだけで文書更新〜PR作成まで回せるようにした。
+
+### Improvements
+- **read_file**: 行番号付き500文字トリム、CRLF除去、`-offset`/`-limit`指定の部分読みを実装し、CLI・MCP・READMEで同一オプションを案内することで長大ファイルでも任意区間だけ安全に閲覧可能に。
+- **list_directory / directory_tree**: YAML整形、`hasMore`案内、深さ制限、offset/limitページングをCLI/MCPの双方に実装し、大規模ディレクトリを段階的に巡回できるようにした。
+- **ファイル権限制御**: `-allowed-dirs`フラグを廃止して操作対象パスから許可ディレクトリを自動推論し、型定数化したファイル種別判定とシンボリックリンク検知も強化して`get_file_info`レスポンスの信頼性を高めた。
+
+### Refactor
+- **grep_files**: `search_files`操作を`grep_files`へ改称し、glob中心だった探索をGo正規表現ベースへ統一して実装意図と名称を揃えた。
+
+### Bug Fixes
+- `.config/cagent/config_linux/git_commit_message_generator*`の設定から外部`prompt.md`依存と間違った`doc`タグを除去し、YAML内に手順とタグ`docs`を内包させて再読込エラーを防止。
+
+### Documentation
+- `cmd/cli/filesystem/README.md`に部分読みやページングの手順を追記し、`README.md`と`docs/service_implementation_status.md`のカバレッジバッジをCIの最新値へ更新。
+- `cmd/cli/filesystem-v2/impl_memo.md`と`shell/impl_memo.md`にcodex-rsを出典とする参照情報を明記し、後続実装が仕様元を辿れるようにした。
+
 ## v0.05 — 2025-12-19
 
 PR: #18
