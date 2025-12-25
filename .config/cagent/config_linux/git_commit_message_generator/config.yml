@@ -3,7 +3,7 @@ version: "2"
 
 agents:
   root:
-    model: agent2
+    model: agent1
     description: "General coding assistant. Create Git commit message with tag."
     instruction: |
       Create Git commit message in English. Remember displaying that message to user.
@@ -32,7 +32,7 @@ agents:
       git-commit-message-staged-pwd: "Create Git commit message with tag. Don't use parentheses. git_dir='.' staged_only=true"
       dont-use-parentheses: "Don't use parentheses."
       do-again: "Do again."
-      add-tag: "Add one of the following prefixes to the beginning of Git commit messages: 'feat:', 'refactor:', 'fix:', 'test:', or 'doc:'"
+      add-tag: "Add one of the following prefixes to the beginning of Git commit messages: 'feat:', 'refactor:', 'fix:', 'test:', or 'docs:'"
     toolsets:
       - type: mcp
         command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
