@@ -149,7 +149,7 @@ func handleMoveFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	return mcp.NewToolResultText(fmt.Sprintf("%s から %s への移動に成功しました", source, destination)), nil
 }
 
-func handleSearchFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGrepFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	path, err := request.RequireString("path")
 	if err != nil {
 		return nil, err
@@ -328,7 +328,7 @@ func BuildFileSystemServer() {
 	s.AddTool(moveFileTool, handleMoveFile)
 
 	// ファイル検索ツール
-	searchFilesTool := mcp.NewTool("search_files",
+	grepFilesTool := mcp.NewTool("grep_files",
 		mcp.WithDescription("指定した正規表現に一致するファイルとディレクトリ名を再帰的に検索します。開始パスからサブディレクトリを辿り、一致したエントリの絶対パスを返します。許可されたディレクトリ内でのみ検索します。"),
 		mcp.WithString("path",
 			mcp.Required(),
@@ -340,7 +340,7 @@ func BuildFileSystemServer() {
 		),
 	)
 
-	s.AddTool(searchFilesTool, handleSearchFiles)
+	s.AddTool(grepFilesTool, handleGrepFiles)
 
 	// ファイル情報取得ツール
 	fileInfoTool := mcp.NewTool("get_file_info",

@@ -456,8 +456,8 @@ func TestHandleMoveFile_Normal(t *testing.T) {
 	}
 }
 
-// TestHandleSearchFiles_Normal は正常系のテストです
-func TestHandleSearchFiles_Normal(t *testing.T) {
+// TestHandleGrepFiles_Normal は正常系のテストです
+func TestHandleGrepFiles_Normal(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 
@@ -474,13 +474,13 @@ func TestHandleSearchFiles_Normal(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	request := createCallToolRequest("search_files", map[string]interface{}{
+	request := createCallToolRequest("grep_files", map[string]interface{}{
 		"path":    tempDir,
 		"pattern": "test",
 	})
 
 	// Act
-	result, err := handleSearchFiles(ctx, request)
+	result, err := handleGrepFiles(ctx, request)
 
 	// Assert
 	if err != nil {
@@ -502,8 +502,8 @@ func TestHandleSearchFiles_Normal(t *testing.T) {
 	}
 }
 
-// TestHandleSearchFiles_RegexFiltering は正規表現での絞り込みテストです
-func TestHandleSearchFiles_RegexFiltering(t *testing.T) {
+// TestHandleGrepFiles_RegexFiltering は正規表現での絞り込みテストです
+func TestHandleGrepFiles_RegexFiltering(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 
@@ -519,13 +519,13 @@ func TestHandleSearchFiles_RegexFiltering(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	request := createCallToolRequest("search_files", map[string]interface{}{
+	request := createCallToolRequest("grep_files", map[string]interface{}{
 		"path":    tempDir,
 		"pattern": "^test.+\\.txt$",
 	})
 
 	// Act
-	result, err := handleSearchFiles(ctx, request)
+	result, err := handleGrepFiles(ctx, request)
 
 	// Assert
 	if err != nil {
@@ -703,17 +703,17 @@ func TestHandlers_ErrorHandling(t *testing.T) {
 	}
 }
 
-// TestHandleSearchFiles_ErrorHandling は検索ファイルのエラーハンドリングを個別にテストします
-func TestHandleSearchFiles_ErrorHandling(t *testing.T) {
+// TestHandleGrepFiles_ErrorHandling はgrep_filesのエラーハンドリングをテストします
+func TestHandleGrepFiles_ErrorHandling(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
-	request := createCallToolRequest("search_files", map[string]interface{}{
+	request := createCallToolRequest("grep_files", map[string]interface{}{
 		"path":    "/invalid/path",
 		"pattern": "test",
 	})
 
 	// Act
-	result, err := handleSearchFiles(ctx, request)
+	result, err := handleGrepFiles(ctx, request)
 
 	// Assert
 	// SearchFilesは無効なパスでもエラーを返さず、空の結果を返す可能性がある
@@ -739,8 +739,8 @@ func TestHandleSearchFiles_ErrorHandling(t *testing.T) {
 // ##          Edge Case Tests                                  ##
 // #==============================================================#
 
-// TestHandleSearchFiles_NoResults は検索結果が0件の場合のテストです
-func TestHandleSearchFiles_NoResults(t *testing.T) {
+// TestHandleGrepFiles_NoResults は検索結果が0件の場合のテストです
+func TestHandleGrepFiles_NoResults(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 
@@ -752,13 +752,13 @@ func TestHandleSearchFiles_NoResults(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	request := createCallToolRequest("search_files", map[string]interface{}{
+	request := createCallToolRequest("grep_files", map[string]interface{}{
 		"path":    tempDir,
 		"pattern": "nonexistent",
 	})
 
 	// Act
-	result, err := handleSearchFiles(ctx, request)
+	result, err := handleGrepFiles(ctx, request)
 
 	// Assert
 	if err != nil {
@@ -872,8 +872,8 @@ func TestParameterValidation(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "handleSearchFiles - patternパラメータなし",
-			handler: handleSearchFiles,
+			name:    "handleGrepFiles - patternパラメータなし",
+			handler: handleGrepFiles,
 			params:  map[string]interface{}{"path": "/tmp"},
 			wantErr: true,
 		},
