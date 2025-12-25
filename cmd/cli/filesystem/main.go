@@ -10,16 +10,15 @@ import (
 )
 
 type cliConfig struct {
-	operation      string
-	path           string
-	source         string
-	destination    string
-	content        string
-	pattern        string
-	excludePattern string
-	offset         int
-	limit          int
-	depth          int
+	operation   string
+	path        string
+	source      string
+	destination string
+	content     string
+	pattern     string
+	offset      int
+	limit       int
+	depth       int
 }
 
 func main() {
@@ -40,8 +39,7 @@ func parseFlags() *cliConfig {
 	flag.StringVar(&cfg.source, "source", "", "移動元のパス (move_file操作用)")
 	flag.StringVar(&cfg.destination, "destination", "", "移動先のパス (move_file操作用)")
 	flag.StringVar(&cfg.content, "content", "", "ファイルに書き込む内容 (write_file操作用)")
-	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する文字列 (search_files操作用)")
-	flag.StringVar(&cfg.excludePattern, "exclude-pattern", "", "除外するパターン (search_files操作用)")
+	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する正規表現 (search_files操作用)")
 	flag.IntVar(&cfg.offset, "offset", 1, "read_file/list_directory/directory_treeでの開始位置 (1始まり)")
 	flag.IntVar(&cfg.limit, "limit", 2000, "read_file/list_directory/directory_treeで返す最大件数")
 	flag.IntVar(&cfg.depth, "depth", 0, "directory_treeで辿る最大深さ (0は無制限)")
@@ -212,12 +210,7 @@ func runSearchFiles(cfg *cliConfig) error {
 	}
 
 	service := newFileSystemService(cfg.path)
-	var exclude []string
-	if cfg.excludePattern != "" {
-		exclude = []string{cfg.excludePattern}
-	}
-
-	results, err := service.SearchFiles(cfg.path, cfg.pattern, exclude)
+	results, err := service.SearchFiles(cfg.path, cfg.pattern)
 	if err != nil {
 		return err
 	}

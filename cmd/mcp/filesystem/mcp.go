@@ -160,15 +160,9 @@ func handleSearchFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		return nil, err
 	}
 
-	var excludePatterns []string
-	excludePattern := request.GetString("exclude_pattern", "")
-	if excludePattern != "" {
-		excludePatterns = append(excludePatterns, excludePattern)
-	}
-
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	results, err := fsService.SearchFiles(path, pattern, excludePatterns)
+	results, err := fsService.SearchFiles(path, pattern)
 	if err != nil {
 		return nil, fmt.Errorf("ファイルの検索に失敗しました: %v", err)
 	}
@@ -335,17 +329,14 @@ func BuildFileSystemServer() {
 
 	// ファイル検索ツール
 	searchFilesTool := mcp.NewTool("search_files",
-		mcp.WithDescription("パターンに一致するファイルとディレクトリを再帰的に検索します。開始パスからすべてのサブディレクトリを検索します。検索は大文字と小文字を区別せず、部分的な名前に一致します。一致するすべての項目への完全なパスを返します。正確な場所がわからないファイルを見つけるのに最適です。許可されたディレクトリ内でのみ検索します。"),
+		mcp.WithDescription("指定した正規表現に一致するファイルとディレクトリ名を再帰的に検索します。開始パスからサブディレクトリを辿り、一致したエントリの絶対パスを返します。許可されたディレクトリ内でのみ検索します。"),
 		mcp.WithString("path",
 			mcp.Required(),
 			mcp.Description("検索を開始するディレクトリのパス"),
 		),
 		mcp.WithString("pattern",
 			mcp.Required(),
-			mcp.Description("検索パターン"),
-		),
-		mcp.WithString("exclude_pattern",
-			mcp.Description("除外するパターン（オプション）"),
+			mcp.Description("Go互換の正規表現"),
 		),
 	)
 

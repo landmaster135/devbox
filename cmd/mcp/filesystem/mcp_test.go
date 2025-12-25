@@ -502,8 +502,8 @@ func TestHandleSearchFiles_Normal(t *testing.T) {
 	}
 }
 
-// TestHandleSearchFiles_WithExcludePattern は除外パターンのテストです
-func TestHandleSearchFiles_WithExcludePattern(t *testing.T) {
+// TestHandleSearchFiles_RegexFiltering は正規表現での絞り込みテストです
+func TestHandleSearchFiles_RegexFiltering(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 
@@ -520,9 +520,8 @@ func TestHandleSearchFiles_WithExcludePattern(t *testing.T) {
 
 	ctx := context.Background()
 	request := createCallToolRequest("search_files", map[string]interface{}{
-		"path":            tempDir,
-		"pattern":         "test",
-		"exclude_pattern": "*.go",
+		"path":    tempDir,
+		"pattern": "^test.+\\.txt$",
 	})
 
 	// Act

@@ -640,7 +640,7 @@ func TestFileSystemService_SearchFiles_Normal(t *testing.T) {
 	service := NewFileSystemService(allowedDirs)
 
 	// Act
-	results, err := service.SearchFiles(tempDir, "test", []string{})
+	results, err := service.SearchFiles(tempDir, "test")
 
 	// Assert
 	if err != nil {
@@ -648,6 +648,54 @@ func TestFileSystemService_SearchFiles_Normal(t *testing.T) {
 	}
 	if len(results) != 2 {
 		t.Errorf("検索結果数が期待値と異なります。期待値: 2, 実際: %d", len(results))
+	}
+}
+
+func TestFileSystemService_SearchFiles_WithRegex(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	testFile1 := filepath.Join(tempDir, "service_test.go")
+	testFile2 := filepath.Join(tempDir, "service_impl.go")
+	testFile3 := filepath.Join(tempDir, "README.md")
+
+	for _, file := range []string{testFile1, testFile2, testFile3} {
+		err := os.WriteFile(file, []byte("dummy"), 0644)
+		if err != nil {
+			t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+		}
+	}
+
+	allowedDirs := []string{tempDir}
+	service := NewFileSystemService(allowedDirs)
+
+	// Act
+	results, err := service.SearchFiles(tempDir, "^service_.*\\.go$")
+
+	// Assert
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("検索結果数が期待値と異なります。期待値: 2, 実際: %d", len(results))
+	}
+	for _, path := range results {
+		if strings.HasSuffix(path, "README.md") {
+			t.Error("README.md が結果に含まれています (除外されるべきです)")
+		}
+	}
+}
+
+func TestFileSystemService_SearchFiles_InvalidRegex(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	service := NewFileSystemService([]string{tempDir})
+
+	// Act
+	_, err := service.SearchFiles(tempDir, "[invalid")
+
+	// Assert
+	if err == nil {
+		t.Fatal("不正な正規表現がエラーになりませんでした")
 	}
 }
 

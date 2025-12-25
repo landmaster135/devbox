@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -726,10 +727,15 @@ func (fs *FileSystemService) MoveFile(source, destination string) error {
 }
 
 // SearchFiles はファイルを検索します
-func (fs *FileSystemService) SearchFiles(rootPath, pattern string, excludePatterns []string) ([]string, error) {
+func (fs *FileSystemService) SearchFiles(rootPath, pattern string) ([]string, error) {
 	validPath, err := fs.ValidatePath(rootPath)
 	if err != nil {
 		return nil, err
+	}
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("正規表現のコンパイルに失敗しました: %w", err)
 	}
 
 	var results []string
@@ -738,19 +744,9 @@ func (fs *FileSystemService) SearchFiles(rootPath, pattern string, excludePatter
 			return nil // エラーがあっても続行
 		}
 
-		// 除外パターンに一致するかチェック
-		for _, excludePattern := range excludePatterns {
-			matched, err := filepath.Match(excludePattern, filepath.Base(path))
-			if err == nil && matched {
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-		}
-
+		name := filepath.Base(path)
 		// パターンに一致するかチェック
-		if strings.Contains(strings.ToLower(filepath.Base(path)), strings.ToLower(pattern)) {
+		if re.MatchString(name) {
 			results = append(results, path)
 		}
 

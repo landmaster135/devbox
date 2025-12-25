@@ -10,7 +10,7 @@
 - **list_directory**: ディレクトリのフラット一覧を表示
 - **directory_tree**: もしくはYAML形式のツリー構造を表示
 - **move_file**: ファイル／ディレクトリの移動やリネーム
-- **search_files**: 名前に特定のパターンを含む項目の再帰検索（除外パターン対応）
+- **search_files**: 正規表現に一致する項目を再帰検索
 - **get_file_info**: サイズや権限などのメタ情報を整形表示
 - **list_allowed_directories**: 現在許可されているディレクトリを確認
 
@@ -39,8 +39,7 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `-source` | 移動元パス (`move_file`) | `-source=./old.txt` |
 | `-destination` | 移動先パス (`move_file`) | `-destination=./archive/old.txt` |
 | `-content` | 書き込む内容 (`write_file`) | `-content="hello"` |
-| `-pattern` | 検索パターン (`search_files`) | `-pattern=config` |
-| `-exclude-pattern` | 除外パターン (`search_files`) | `-exclude-pattern="*.git"` |
+| `-pattern` | 検索パターン (`search_files`, Go正規表現) | `-pattern="(?i)config"` |
 | `-offset` | `read_file`/`list_directory`/`directory_tree`での開始位置（1始まり、既定値1） | `-offset=120` |
 | `-limit` | `read_file`/`list_directory`/`directory_tree`で返す最大件数（既定値2000） | `-limit=200` |
 | `-depth` | `directory_tree`で辿る最大階層（0で無制限、既定値0） | `-depth=2` |
@@ -79,6 +78,9 @@ go run ./cmd/cli/filesystem -operation=write_file -path=./notes/todo.txt -conten
 
 # ディレクトリ検索
 go run ./cmd/cli/filesystem -operation=search_files -path=./notes -pattern=todo
+
+# 正規表現でのディレクトリ検索（例: cmd以下のGoファイル）
+go run ./cmd/cli/filesystem -operation=search_files -path=. -pattern='^cmd/.+\\.go$'
 
 # ファイルの移動
 go run ./cmd/cli/filesystem -operation=move_file -source=./notes/todo.txt -destination=./notes/archive/todo.txt
@@ -124,4 +126,6 @@ L9: }
 
 - すべての操作は `internal/filesystem/usecases.FileSystemService` を経由しており、許可ディレクトリ外のパスにはアクセスできません。
 - 大量出力になりそうな場合は `-path` を最小限のディレクトリに指定して探索範囲を絞ってください。
+- `pattern` は常にGoの正規表現として解釈されます。大文字小文字を区別しない検索が必要な場合は `(?i)` プレフィックスを付けるなど、正規表現の機能を利用してください。
+- Goの正規表現エンジン（RE2）は後方参照や先読みなど一部構文をサポートしていません。複雑な条件は文字クラスやアンカーを組み合わせて表現してください。
 - エラーは標準エラー出力に表示され、失敗時は終了コード1で終了します。
