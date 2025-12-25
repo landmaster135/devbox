@@ -154,7 +154,7 @@ func runDirectoryTree(cfg *cliConfig) error {
 	}
 
 	service := newFileSystemService(cfg.path)
-	result, err := service.GetDirectoryTreeAsJSON(cfg.path)
+	result, err := service.GetDirectoryTreeAsYAML(cfg.path)
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func printUsage() {
   write_file               ファイルへ内容を書き込みます
   create_directory         ディレクトリを作成します
   list_directory           ディレクトリ配下の一覧を表示します
-  directory_tree           ディレクトリ構造をJSONで表示します
+  directory_tree           ディレクトリ構造をYAMLで表示します
   move_file                ファイルまたはディレクトリを移動・リネームします
   search_files             パターンに一致するファイルやディレクトリを検索します
   get_file_info            ファイルやディレクトリのメタ情報を表示します

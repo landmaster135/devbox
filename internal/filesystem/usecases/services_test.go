@@ -73,6 +73,18 @@ func (m *MockJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) 
 	return nil, errors.New("mock error")
 }
 
+// MockYAMLMarshaler はテスト用のYAMLMarshalerモックです
+type MockYAMLMarshaler struct {
+	MarshalFunc func(v interface{}) ([]byte, error)
+}
+
+func (m *MockYAMLMarshaler) Marshal(v interface{}) ([]byte, error) {
+	if m.MarshalFunc != nil {
+		return m.MarshalFunc(v)
+	}
+	return nil, errors.New("mock error")
+}
+
 // MockFileInfo はテスト用のos.FileInfoモックです
 type MockFileInfo struct {
 	NameFunc    func() string
@@ -604,6 +616,12 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		},
 	}
 
+	mockYAMLMarshaler := &MockYAMLMarshaler{
+		MarshalFunc: func(v interface{}) ([]byte, error) {
+			return []byte("- name: test.txt\n  type: file\n"), nil
+		},
+	}
+
 	service := NewFileSystemServiceWithDependencies(
 		allowedDirs,
 		mockFileOpener,
@@ -611,6 +629,7 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		mockDirectoryReader,
 		mockFileStat,
 		mockJSONMarshaler,
+		mockYAMLMarshaler,
 	)
 
 	// Act & Assert
@@ -649,5 +668,14 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 	}
 	if !strings.Contains(jsonStr, "test.txt") {
 		t.Error("JSONにtest.txtが含まれていません")
+	}
+
+	// GetDirectoryTreeAsYAMLのテスト
+	yamlStr, err := service.GetDirectoryTreeAsYAML("/tmp")
+	if err != nil {
+		t.Errorf("GetDirectoryTreeAsYAMLでエラーが発生しました: %v", err)
+	}
+	if !strings.Contains(yamlStr, "test.txt") {
+		t.Error("YAMLにtest.txtが含まれていません")
 	}
 }
