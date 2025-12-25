@@ -1,3 +1,6 @@
+`openai/codex`のリポジトリ内の`codex-rs`ディレクトリ内で実装されているツールを参考に作るためのメモである。
+**`read_file`, `list_dir`, `grep_files`ツールの機能は`filesystem`の方に既に実装済み。**
+
 場所と構成
 
 - ファイルシステム系のツールは実装（handler）が core/src/tools/handlers に、LLM へ公開する JSON Schema は core/src/tools/spec.rs にまとまっています。例えば read_file/list_dir/grep_files/apply_patch の登録や JSON 定義は core/src/tools/spec.rs:481-672、実体のロジックは各 handlers 配下にあります。さらに、該当ツールを有効化するかどうかは experimental_supported_tools フラグ経由で制御され（core/src/tools/spec.rs:1059-1084）、test-gpt-5 など一部モデルでのみオンになるよう core/src/models_manager/model_family.rs:239-254 に記載されています。
