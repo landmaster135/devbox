@@ -93,12 +93,12 @@ func handleDirectoryTree(ctx context.Context, request mcp.CallToolRequest) (*mcp
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	jsonStr, err := fsService.GetDirectoryTreeAsJSON(path)
+	yamlStr, err := fsService.GetDirectoryTreeAsYAML(path)
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリツリーの取得に失敗しました: %v", err)
 	}
 
-	return mcp.NewToolResultText(jsonStr), nil
+	return mcp.NewToolResultText(yamlStr), nil
 }
 
 func handleMoveFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
