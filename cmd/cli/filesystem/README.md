@@ -112,7 +112,7 @@ L9: }
 
 ### directory_tree
 
-`directory_tree` はYAML形式でツリーを表示します。`-depth`で探索を途中で打ち切ったノードには、残りの直下要素数を示す`truncated_children`フィールドが自動で追加され、0のときはフィールド自体が出力されません。
+`directory_tree` はYAML形式でツリーを表示します。`-depth`で探索を途中で打ち切ったノードには、残りの直下要素数を示す`truncated_children`フィールドが自動で追加され、0のときはフィールド自体が出力されません。`-limit`を設定し結果が途中で切れる場合は、`list_directory`と同様に末尾へ「More than ...」メッセージを付けて次の`-offset`値を案内します。
 
 ```yaml
 - name: tmp
