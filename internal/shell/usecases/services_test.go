@@ -160,9 +160,23 @@ func TestShellServiceExecuteCommandHandlesTimeout(t *testing.T) {
 	}
 }
 
-func TestShellServiceListAllowedCommandsSorted(t *testing.T) {
+func TestShellServiceExecuteCommandDeniedCommand(t *testing.T) {
+	service := NewShellServiceWithExecutor(&mockCommandExecutor{})
+	baseDir := t.TempDir()
+	input := &ExecuteCommandInput{
+		Command:            []string{"rm", "-rf", "."},
+		BaseDir:            baseDir,
+		SandboxPermissions: domain.SandboxPermissionsUseDefault,
+	}
+
+	if _, err := service.ExecuteCommand(input); err == nil {
+		t.Fatalf("expected error for denied command")
+	}
+}
+
+func TestShellServiceListDeniedCommandsSorted(t *testing.T) {
 	service := NewShellService()
-	commands := service.ListAllowedCommands()
+	commands := service.ListDeniedCommands()
 
 	if len(commands) == 0 {
 		t.Fatalf("commands should not be empty")

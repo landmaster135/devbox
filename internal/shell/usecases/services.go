@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -146,6 +147,10 @@ func (s *ShellService) ExecuteCommand(input *ExecuteCommandInput) (*CommandResul
 		return nil, fmt.Errorf("require_escalatedを利用する場合はjustificationが必須です")
 	}
 
+	if isDeniedCommand(input.Command[0]) {
+		return nil, fmt.Errorf("コマンド %s は禁止されています", filepath.Base(input.Command[0]))
+	}
+
 	baseDir := input.BaseDir
 	if baseDir == "" {
 		baseDir = "."
@@ -213,50 +218,29 @@ func (s *ShellService) ExecuteCommand(input *ExecuteCommandInput) (*CommandResul
 	return result, nil
 }
 
-// ListAllowedCommands は許可済みコマンド一覧を返す
-func (s *ShellService) ListAllowedCommands() []string {
-	commands := make([]string, len(defaultAllowedCommands))
-	copy(commands, defaultAllowedCommands)
+// ListDeniedCommands は禁止コマンド一覧を返す
+func (s *ShellService) ListDeniedCommands() []string {
+	commands := make([]string, len(defaultDeniedCommands))
+	copy(commands, defaultDeniedCommands)
 	sort.Strings(commands)
 	return commands
 }
 
-// defaultAllowedCommands はMCP実装と共有される許可コマンド
-var defaultAllowedCommands = []string{
-	"npm",
-	"yarn",
-	"pnpm",
-	"bun",
-	"git",
-	"ls",
-	"dir",
-	"find",
-	"mkdir",
-	"rmdir",
-	"cp",
-	"mv",
+// defaultDeniedCommands は安全性のために拒否するコマンド
+var defaultDeniedCommands = []string{
 	"rm",
-	"cat",
-	"awk",
-	"wc",
-	"node",
-	"python",
-	"python3",
-	"tsc",
-	"eslint",
-	"prettier",
-	"make",
-	"cargo",
-	"go",
-	"docker",
-	"docker-compose",
-	"echo",
-	"touch",
-	"grep",
-	"bash",
-	"sh",
-	"powershell.exe",
-	"pwsh",
+	"rmdir",
+}
+
+func isDeniedCommand(command string) bool {
+	if command == "" {
+		return false
+	}
+	name := strings.ToLower(filepath.Base(command))
+	if slices.Contains(defaultDeniedCommands, name) {
+		return true
+	}
+	return false
 }
 
 func resolveWorkDir(baseDir, subDir string) (string, error) {
