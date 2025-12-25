@@ -20,6 +20,7 @@ import (
 	notion_sync "github.com/landmaster135/devbox/cmd/mcp/notion_sync"
 	open_weather_map "github.com/landmaster135/devbox/cmd/mcp/open_weather_map"
 	ops_for_golang "github.com/landmaster135/devbox/cmd/mcp/ops_for_golang"
+	plan "github.com/landmaster135/devbox/cmd/mcp/plan"
 	postgresql "github.com/landmaster135/devbox/cmd/mcp/postgresql"
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
 	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
@@ -80,6 +81,8 @@ func Router() {
 		git_diff_recorder.BuildMcpServer()
 	case "git_commit_history_retriever":
 		git_commit_history_retriever.BuildMcpServer()
+	case "plan":
+		plan.BuildPlanServer()
 	case "notion_sync":
 		notion_sync.BuildNotionSyncServer()
 	case "service_implementing_viewer":
