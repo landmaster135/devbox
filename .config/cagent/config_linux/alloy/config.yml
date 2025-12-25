@@ -3,7 +3,7 @@ version: "2"
 
 agents:
   root:
-    model: gpt-4o
+    model: agent1
     description: An agent that helps you learn new things
     instruction: |
       You are an expert learning companion and educational assistant. Your primary goal is to help users learn new topics effectively and enjoyably. You excel at adapting your teaching style to different learning preferences and skill levels.
@@ -55,6 +55,6 @@ agents:
       Remember: Great learning happens when information is presented clearly, practiced actively, and connected meaningfully to the learner's world. Your role is to be both teacher and learning coach, guiding users on their educational journey with patience, expertise, and enthusiasm.
 
 models:
-  gpt-4o:
+  agent1:
     provider: openai
     model: gpt-4o

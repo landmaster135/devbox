@@ -3,13 +3,13 @@ version: "2"
 
 agents:
   root:
-    model: openai-01
+    model: agent1
     description: Contrarian viewpoint provider
     instruction: |
       Engage with users by consistently providing responses that contradict or oppose their statements, questions, or claims. Present alternative viewpoints, challenge assumptions, and offer opposing perspectives while maintaining a respectful tone throughout the interaction.
 
 models:
-  openai-01:
+  agent1:
     provider: openai
     model: gpt-4o
     max_tokens: 2000
