@@ -455,6 +455,74 @@ func TestFileSystemService_ListDirectory_Normal(t *testing.T) {
 	}
 }
 
+func TestFileSystemService_ListDirectory_WithOffsetLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha.txt", "beta.txt", "gamma.txt"}
+	for _, name := range entries {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0o644); err != nil {
+			t.Fatalf("%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	result, err := service.ListDirectoryWithOptions(tempDir, ListDirectoryOptions{Offset: 2, Limit: 1})
+	if err != nil {
+		t.Fatalf("ListDirectoryWithOptionsの実行に失敗しました: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("取得行数が期待値と異なります。entries1件+サマリ1件の想定です: %d", len(result))
+	}
+	if !strings.Contains(result[0], "beta.txt") {
+		t.Fatalf("2件目のエントリ(beta.txt)のみが返ってくる想定です: %v", result)
+	}
+	if !strings.Contains(result[1], "More than 1 entries found") {
+		t.Fatalf("limitによるサマリ行が付与されていません: %v", result)
+	}
+	if !strings.Contains(result[1], "-offset=3") {
+		t.Fatalf("次ページのoffset案内が含まれていません: %v", result[1])
+	}
+}
+
+func TestFileSystemService_ListDirectory_WithOffsetBeyondRange(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "alpha.txt"), []byte("alpha"), 0o644); err != nil {
+		t.Fatalf("alpha.txtの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	_, err := service.ListDirectoryWithOptions(tempDir, ListDirectoryOptions{Offset: 5, Limit: 1})
+	if err == nil {
+		t.Fatal("存在しないoffsetを指定した場合はエラーになるべきです")
+	}
+	if !strings.Contains(err.Error(), "offset exceeds directory entry count") {
+		t.Fatalf("offsetエラーのメッセージが期待と異なります: %v", err)
+	}
+}
+
+func TestFileSystemService_ListDirectory_NoSummaryWhenUnlimited(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha.txt", "beta.txt"}
+	for _, name := range entries {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0o644); err != nil {
+			t.Fatalf("%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	result, err := service.ListDirectoryWithOptions(tempDir, ListDirectoryOptions{Offset: 1, Limit: 0})
+	if err != nil {
+		t.Fatalf("ListDirectoryWithOptionsの実行に失敗しました: %v", err)
+	}
+	if len(result) != len(entries) {
+		t.Fatalf("limit=0の場合は全件のみが返る想定です: %v", result)
+	}
+	for _, line := range result {
+		if strings.Contains(line, "More than") {
+			t.Fatalf("limit=0ではサマリ行が出力されない想定です: %v", result)
+		}
+	}
+}
+
 // TestFileSystemService_GetFileInfo_Normal は正常系のテストです
 func TestFileSystemService_GetFileInfo_Normal(t *testing.T) {
 	// Arrange
