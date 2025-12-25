@@ -523,6 +523,44 @@ func TestFileSystemService_ListDirectory_NoSummaryWhenUnlimited(t *testing.T) {
 	}
 }
 
+func TestDetermineEntryType_Symlink(t *testing.T) {
+	entry := &MockDirEntry{
+		IsDirFunc: func() bool { return false },
+		TypeFunc:  func() os.FileMode { return os.ModeSymlink },
+	}
+
+	if got := determineEntryType(entry); got != FileTreeEntryTypeSymlink {
+		t.Fatalf("シンボリックリンクはsymlinkとして返されるべきです: %s", got)
+	}
+}
+
+func TestDetermineEntryType_Unknown(t *testing.T) {
+	entry := &MockDirEntry{
+		IsDirFunc: func() bool { return false },
+		TypeFunc:  func() os.FileMode { return os.ModeNamedPipe },
+	}
+
+	if got := determineEntryType(entry); got != FileTreeEntryTypeUnknown {
+		t.Fatalf("未知タイプはunknownとして返されるべきです: %s", got)
+	}
+}
+
+func TestDetermineEntryType_FallsBackToInfo(t *testing.T) {
+	entry := &MockDirEntry{
+		IsDirFunc: func() bool { return false },
+		TypeFunc:  func() os.FileMode { return os.ModeIrregular },
+		InfoFunc: func() (os.FileInfo, error) {
+			return &MockFileInfo{
+				ModeFunc: func() os.FileMode { return os.ModeSymlink },
+			}, nil
+		},
+	}
+
+	if got := determineEntryType(entry); got != FileTreeEntryTypeSymlink {
+		t.Fatalf("ModeIrregular時はInfoからタイプを推定するべきです: %s", got)
+	}
+}
+
 func TestGetDirectoryTreeAsYAMLWithOptions_AppendsSummary(t *testing.T) {
 	tempDir := t.TempDir()
 	entries := []string{"alpha", "beta", "gamma"}
