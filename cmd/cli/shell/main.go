@@ -28,8 +28,8 @@ func main() {
 	case shellconfig.OperationExecute:
 		exitCode := runExecute(service, cfg)
 		os.Exit(exitCode)
-	case shellconfig.OperationListAllowed:
-		if err := runListAllowed(service); err != nil {
+	case shellconfig.OperationListDenied:
+		if err := runListDenied(service); err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 			os.Exit(1)
 		}
@@ -82,8 +82,8 @@ func runExecute(service *shellusecases.ShellService, cfg *shellconfig.Config) in
 	return exitCode
 }
 
-func runListAllowed(service *shellusecases.ShellService) error {
-	commands := service.ListAllowedCommands()
+func runListDenied(service *shellusecases.ShellService) error {
+	commands := service.ListDeniedCommands()
 	payload := map[string][]string{
 		"commands": commands,
 	}

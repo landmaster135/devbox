@@ -15,8 +15,8 @@ import (
 const (
 	// OperationExecute はコマンド実行モード
 	OperationExecute = "execute"
-	// OperationListAllowed は許可コマンド一覧取得モード
-	OperationListAllowed = "list_allowed"
+	// OperationListDenied は禁止コマンド一覧取得モード
+	OperationListDenied = "list_denied"
 )
 
 // Config はshell CLIの入力設定を保持する
@@ -53,7 +53,7 @@ func ParseFlagsWithArgs(args []string) (*Config, error) {
 		sandboxValue string
 	)
 
-	flagSet.StringVar(&cfg.Operation, "operation", OperationExecute, "実行する操作 (execute, list_allowed)")
+	flagSet.StringVar(&cfg.Operation, "operation", OperationExecute, "実行する操作 (execute, list_denied)")
 	flagSet.StringVar(&cfg.WorkDir, "workdir", "", "作業ディレクトリ (ベースディレクトリからの相対パス可)")
 	flagSet.StringVar(&cfg.WorkDir, "cwd", "", "作業ディレクトリのエイリアス")
 	flagSet.StringVar(&cfg.BaseDir, "base-dir", cfg.BaseDir, "許可されたベースディレクトリ (デフォルト: カレントディレクトリ)")
@@ -123,10 +123,10 @@ func PrintUsage() {
 
 使用方法:
   %[1]s -operation=execute [フラグ] -- <command> [args...]
-  %[1]s -operation=list_allowed
+  %[1]s -operation=list_denied
 
 主なフラグ:
-  -operation              実行する操作 (execute, list_allowed)
+  -operation              実行する操作 (execute, list_denied)
   -command                コマンド要素。複数回指定してVec<String>を構成
   -workdir,-cwd           作業ディレクトリ (ベースディレクトリからの相対パス可)
   -base-dir               許可されるベースディレクトリのルート
@@ -139,13 +139,13 @@ func PrintUsage() {
 例:
   %[1]s -operation=execute -workdir=project -- bash -lc "npm test"
   %[1]s -operation=execute -command bash -command -lc -command "ls -a"
-  %[1]s -operation=list_allowed
+  %[1]s -operation=list_denied
 `, program)
 }
 
 func validateOperation(op string) error {
 	switch op {
-	case OperationExecute, OperationListAllowed:
+	case OperationExecute, OperationListDenied:
 		return nil
 	default:
 		return fmt.Errorf("無効なoperationです: %s (有効値: %s)", op, strings.Join(allowedOperations(), ", "))
@@ -153,7 +153,7 @@ func validateOperation(op string) error {
 }
 
 func allowedOperations() []string {
-	ops := []string{OperationExecute, OperationListAllowed}
+	ops := []string{OperationExecute, OperationListDenied}
 	sort.Strings(ops)
 	return ops
 }

@@ -8,13 +8,13 @@ Codexの`shell`ツール互換でコマンドを安全に実行するCLIです�
 - `--base-dir`と`--workdir`で実行ディレクトリを制限し、ベース外のアクセスを拒否
 - `--env KEY=VALUE`を複数指定して環境変数を補完
 - 実行結果はJSONで出力（stdout/stderr/exit_code/timed_outなどを含む）
-- Codex MCP版と同じ許可コマンド一覧を`list_allowed`操作で取得可能
+- 禁止コマンドの一覧を`list_denied`操作で即座に確認可能
 
 ## 主要フラグ
 
 | フラグ | 説明 | 必須 |
 | ------ | ---- | ---- |
-| `-operation` | 実行する操作。`execute`（コマンド実行）か`list_allowed`（許可コマンド一覧）を指定 | mandatory |
+| `-operation` | 実行する操作。`execute`（実行）か`list_denied`（禁止コマンド一覧）を指定 | mandatory |
 | `-command` (複数指定可) | `command: Vec<String>`の各要素を追加。`--`以降の位置引数も同様に扱われる | `execute`時のみ必須 |
 | `-workdir`, `-cwd` | 実行ディレクトリ。`-base-dir`配下に限定され、相対・絶対どちらも可 | optional |
 | `-base-dir`, `-basedir` | 許可されたルートディレクトリ。未指定時は現在の作業ディレクトリが適用 | optional |
@@ -82,15 +82,15 @@ go run ./cmd/cli/shell -operation=execute \
 }
 ```
 
-### list_allowed操作
+### list_denied操作
 
 ```bash
-go run ./cmd/cli/shell -operation=list_allowed
+go run ./cmd/cli/shell -operation=list_denied
 ```
 
 ```json
 {
-  "commands": ["awk", "bash", "bun", "cargo", ... ]
+  "commands": ["rm", "rmdir"]
 }
 ```
 
