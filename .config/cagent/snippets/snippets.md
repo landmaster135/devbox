@@ -21,6 +21,12 @@ cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_gene
 cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged-pwd" --yolo
 ```
 
+### ペルソナ抽出エージェント
+単発プロンプトで実行:
+```bash
+cagent run /home/user/devbox/.config/cagent/config_linux/persona_extractor/config_prod.yml 'extract-from-file'
+```
+
 ### タスク計画エージェント
 単発プロンプトで実行:
 ```bash
