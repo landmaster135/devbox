@@ -94,11 +94,21 @@ func (m *DefaultYAMLMarshaler) Marshal(v interface{}) ([]byte, error) {
 
 // FileTreeEntry はディレクトリツリーのエントリを表す構造体です
 type FileTreeEntry struct {
-	Name                string          `json:"name" yaml:"name"`
-	Type                string          `json:"type" yaml:"type"`
-	Children            []FileTreeEntry `json:"children,omitempty" yaml:"children,omitempty"`
-	TruncatedChildCount int             `json:"truncatedChildren,omitempty" yaml:"truncated_children,omitempty"`
+	Name                string            `json:"name" yaml:"name"`
+	Type                FileTreeEntryType `json:"type" yaml:"type"`
+	Children            []FileTreeEntry   `json:"children,omitempty" yaml:"children,omitempty"`
+	TruncatedChildCount int               `json:"truncatedChildren,omitempty" yaml:"truncated_children,omitempty"`
 }
+
+// FileTreeEntryType はディレクトリエントリの種類を表します
+type FileTreeEntryType string
+
+const (
+	FileTreeEntryTypeDirectory FileTreeEntryType = "directory"
+	FileTreeEntryTypeFile      FileTreeEntryType = "file"
+	FileTreeEntryTypeSymlink   FileTreeEntryType = "symlink"
+	FileTreeEntryTypeUnknown   FileTreeEntryType = "unknown"
+)
 
 // DirectoryTreeOptions はdirectory_tree操作のスライス条件を表します
 type DirectoryTreeOptions struct {
@@ -543,11 +553,28 @@ func shouldDescend(remainingDepth int) bool {
 	return remainingDepth == 0 || remainingDepth > 1
 }
 
-func determineEntryType(entry os.DirEntry) string {
+func determineEntryType(entry os.DirEntry) FileTreeEntryType {
 	if entry.IsDir() {
-		return "directory"
+		return FileTreeEntryTypeDirectory
 	}
-	return "file"
+
+	mode := entry.Type()
+	if mode == os.ModeIrregular {
+		info, err := entry.Info()
+		if err != nil {
+			return FileTreeEntryTypeUnknown
+		}
+		mode = info.Mode().Type()
+	}
+
+	switch {
+	case mode&os.ModeSymlink != 0:
+		return FileTreeEntryTypeSymlink
+	case mode == 0:
+		return FileTreeEntryTypeFile
+	default:
+		return FileTreeEntryTypeUnknown
+	}
 }
 
 func (fs *FileSystemService) countDirectoryEntries(path string) (int, error) {
