@@ -24,7 +24,7 @@ import (
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
 	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
 
-	// shell "github.com/landmaster135/devbox/cmd/mcp/shell" // TODO: unapplicable for WSL...
+	shell "github.com/landmaster135/devbox/cmd/mcp/shell"
 	timezone "github.com/landmaster135/devbox/cmd/mcp/timezone"
 	util "github.com/landmaster135/devbox/cmd/mcp/util"
 	weather_notificator "github.com/landmaster135/devbox/cmd/mcp/weather_notificator"
@@ -90,6 +90,8 @@ func Router() {
 		weather_notificator.BuildWeatherNotificatorServer()
 	case "ops_for_golang":
 		ops_for_golang.BuildGolangOpsServer()
+	case "shell":
+		shell.BuildShellServer()
 	default:
 		fmt.Fprintln(os.Stderr, "argument is invalid")
 		os.Exit(1)
