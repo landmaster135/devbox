@@ -679,3 +679,96 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		t.Error("YAMLにtest.txtが含まれていません")
 	}
 }
+func TestGetDirectoryTreeWithOptionsDepthAndPagination(t *testing.T) {
+	tempDir := t.TempDir()
+
+	alpha := filepath.Join(tempDir, "alpha", "nested")
+	if err := os.MkdirAll(alpha, 0o755); err != nil {
+		t.Fatalf("nestedディレクトリの作成に失敗しました: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(alpha), "child.txt"), []byte("child"), 0o644); err != nil {
+		t.Fatalf("child.txtの作成に失敗しました: %v", err)
+	}
+
+	beta := filepath.Join(tempDir, "beta")
+	if err := os.MkdirAll(beta, 0o755); err != nil {
+		t.Fatalf("betaディレクトリの作成に失敗しました: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(beta, "beta.txt"), []byte("beta"), 0o644); err != nil {
+		t.Fatalf("beta.txtの作成に失敗しました: %v", err)
+	}
+
+	rootFile := filepath.Join(tempDir, "root.txt")
+	if err := os.WriteFile(rootFile, []byte("root"), 0o644); err != nil {
+		t.Fatalf("root.txtの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+
+	shallow, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 1})
+	if err != nil {
+		t.Fatalf("深さ1でのツリー取得に失敗しました: %v", err)
+	}
+	if len(shallow) != 3 {
+		t.Fatalf("期待するエントリ数3に対して%v件でした", len(shallow))
+	}
+	for _, entry := range shallow {
+		if entry.Name == "alpha" {
+			if len(entry.Children) != 0 {
+				t.Fatalf("depth=1では子要素が含まれないはずです")
+			}
+			if entry.TruncatedChildCount != 2 {
+				t.Fatalf("alphaには2件の子があるはずですが%v件でした", entry.TruncatedChildCount)
+			}
+		}
+		if entry.Name == "beta" && entry.TruncatedChildCount != 1 {
+			t.Fatalf("betaには1件の子があるはずですが%v件でした", entry.TruncatedChildCount)
+		}
+	}
+
+	deeper, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 2})
+	if err != nil {
+		t.Fatalf("深さ2でのツリー取得に失敗しました: %v", err)
+	}
+	var alphaHasChildren bool
+	for _, entry := range deeper {
+		if entry.Name == "alpha" {
+			if len(entry.Children) > 0 {
+				alphaHasChildren = true
+			}
+			if entry.TruncatedChildCount != 0 {
+				t.Fatalf("depth=2でalphaを展開した場合はTruncatedChildCountは0のはずです")
+			}
+		}
+	}
+	if !alphaHasChildren {
+		t.Fatalf("depth=2ではalphaの子要素を含む必要があります")
+	}
+
+	paged, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 2, Limit: 1, Depth: 0})
+	if err != nil {
+		t.Fatalf("ページングされたツリー取得に失敗しました: %v", err)
+	}
+	if len(paged) != 1 {
+		t.Fatalf("limit=1なので1件のみ返るはずですが%v件返りました", len(paged))
+	}
+	if paged[0].Name != "beta" {
+		t.Fatalf("offset=2の場合はbetaが返るはずですが%qでした", paged[0].Name)
+	}
+}
+
+func TestGetDirectoryTreeWithOptionsOffsetError(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "only.txt"), []byte("data"), 0o644); err != nil {
+		t.Fatalf("only.txtの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	_, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 5, Limit: 1, Depth: 1})
+	if err == nil {
+		t.Fatalf("存在しないoffsetに対してエラーが発生しませんでした")
+	}
+	if !strings.Contains(err.Error(), "offset exceeds directory entry count") {
+		t.Fatalf("予期しないエラーメッセージ: %v", err)
+	}
+}

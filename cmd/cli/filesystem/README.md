@@ -41,8 +41,9 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `-content` | 書き込む内容 (`write_file`) | `-content="hello"` |
 | `-pattern` | 検索パターン (`search_files`) | `-pattern=config` |
 | `-exclude-pattern` | 除外パターン (`search_files`) | `-exclude-pattern="*.git"` |
-| `-offset` | `read_file`で読み取る開始行（1始まり、既定値1） | `-offset=120` |
-| `-limit` | `read_file`で返す最大行数（既定値2000） | `-limit=200` |
+| `-offset` | `read_file`と`directory_tree`での開始位置（1始まり、既定値1） | `-offset=120` |
+| `-limit` | `read_file`と`directory_tree`で返す最大件数（既定値2000） | `-limit=200` |
+| `-depth` | `directory_tree`で辿る最大階層（0で無制限、既定値0） | `-depth=2` |
 
 ## 利用可能なoperation
 
@@ -66,6 +67,9 @@ go run ./cmd/cli/filesystem -operation=read_file -path=./README.md
 
 # 任意範囲のみ読み取り（offset/limit）
 go run ./cmd/cli/filesystem -operation=read_file -path=./README.md -offset=34 -limit=20
+
+# ディレクトリツリーをページング表示
+go run ./cmd/cli/filesystem -operation=directory_tree -path=. -offset=1 -limit=10 -depth=2
 
 # ファイルの作成
 go run ./cmd/cli/filesystem -operation=write_file -path=./notes/todo.txt -content="- [ ] task"
@@ -102,6 +106,16 @@ L9: }
 ```
 
 長文の場合も先頭500文字だけを返すため、MCPツールと同じく過度な出力でタイムアウトするリスクを抑えられます。
+
+### directory_tree
+
+`directory_tree` はYAML形式でツリーを表示します。`-depth`で探索を途中で打ち切ったノードには、残りの直下要素数を示す`truncated_children`フィールドが自動で追加され、0のときはフィールド自体が出力されません。
+
+```yaml
+- name: tmp
+  type: directory
+  truncated_children: 5   # depth制限の先に5件存在する
+```
 
 ## 補足
 
