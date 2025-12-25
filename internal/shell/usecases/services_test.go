@@ -174,6 +174,20 @@ func TestShellServiceExecuteCommandDeniedCommand(t *testing.T) {
 	}
 }
 
+func TestShellServiceExecuteCommandDeniedCommandInScript(t *testing.T) {
+	service := NewShellServiceWithExecutor(&mockCommandExecutor{})
+	baseDir := t.TempDir()
+	input := &ExecuteCommandInput{
+		Command:            []string{"bash", "-lc", "rm /tmp/file"},
+		BaseDir:            baseDir,
+		SandboxPermissions: domain.SandboxPermissionsUseDefault,
+	}
+
+	if _, err := service.ExecuteCommand(input); err == nil {
+		t.Fatalf("expected error for denied command in script")
+	}
+}
+
 func TestShellServiceListDeniedCommandsSorted(t *testing.T) {
 	service := NewShellService()
 	commands := service.ListDeniedCommands()
