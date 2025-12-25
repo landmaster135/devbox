@@ -20,6 +20,8 @@ const (
 	defaultCommandTimeout = 60 * time.Second
 )
 
+var commandSplitReplacer = strings.NewReplacer("&&", " ", "||", " ", ";", " ", "&", " ", "\n", " ", "\r", " ")
+
 // CommandExecutor はexec.CommandContextを抽象化する
 type CommandExecutor interface {
 	Execute(ctx context.Context, command []string, workDir string, env map[string]string) (*ExecutionOutput, error)
@@ -147,8 +149,8 @@ func (s *ShellService) ExecuteCommand(input *ExecuteCommandInput) (*CommandResul
 		return nil, fmt.Errorf("require_escalatedを利用する場合はjustificationが必須です")
 	}
 
-	if isDeniedCommand(input.Command[0]) {
-		return nil, fmt.Errorf("コマンド %s は禁止されています", filepath.Base(input.Command[0]))
+	if token, denied := findDeniedCommandToken(input.Command); denied {
+		return nil, fmt.Errorf("コマンド %s は禁止されています", token)
 	}
 
 	baseDir := input.BaseDir
@@ -232,11 +234,39 @@ var defaultDeniedCommands = []string{
 	"rmdir",
 }
 
-func isDeniedCommand(command string) bool {
-	if command == "" {
+func findDeniedCommandToken(command []string) (string, bool) {
+	for _, arg := range command {
+		tokens := tokenizeCommand(arg)
+		for _, token := range tokens {
+			if isDeniedToken(token) {
+				return token, true
+			}
+		}
+	}
+	return "", false
+}
+
+func tokenizeCommand(arg string) []string {
+	if strings.TrimSpace(arg) == "" {
+		return nil
+	}
+	normalized := commandSplitReplacer.Replace(arg)
+	fields := strings.Fields(normalized)
+	tokens := make([]string, 0, len(fields))
+	for _, field := range fields {
+		trimmed := strings.Trim(field, "\"'")
+		if trimmed != "" {
+			tokens = append(tokens, trimmed)
+		}
+	}
+	return tokens
+}
+
+func isDeniedToken(token string) bool {
+	if token == "" {
 		return false
 	}
-	name := strings.ToLower(filepath.Base(command))
+	name := strings.ToLower(filepath.Base(token))
 	if slices.Contains(defaultDeniedCommands, name) {
 		return true
 	}
