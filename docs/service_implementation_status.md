@@ -40,6 +40,7 @@
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
 | file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
+| filesystem-v2                               | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
@@ -98,7 +99,7 @@
 | script-generator-to-build                   | ✅  | ❌️  | ❌️  | ❌️ |
 | sequentialthinking                          | ❌️  | ✅  | ❌️  | ❌️ |
 | service-implementing-viewer                 | ✅  | ✅  | ❌️  | ❌️ |
-| shell                                       | ❌️  | ✅  | ❌️  | ❌️ |
+| shell                                       | ✅  | ✅  | ❌️  | ❌️ |
 | steam                                       | ✅  | ❌️  | ❌️  | ❌️ |
 | timezone                                    | ❌️  | ✅  | ❌️  | ❌️ |
 | unit-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
@@ -113,16 +114,16 @@
 
 ### 統計情報
 
-- **総サービス数**: 96
-- **CLIツール実装数**: 86
+- **総サービス数**: 97
+- **CLIツール実装数**: 88
 - **MCPツール実装数**: 24
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 72
-- **MCPのみ実装**: 10
+- **CLIのみ実装**: 73
+- **MCPのみ実装**: 9
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
-- **CLI+MCP両方実装**: 14
+- **CLI+MCP両方実装**: 15
 - **全て実装済み**: 1
 
 ## 注意事項
