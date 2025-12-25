@@ -42,8 +42,8 @@ func parseFlags() *cliConfig {
 	flag.StringVar(&cfg.content, "content", "", "ファイルに書き込む内容 (write_file操作用)")
 	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する文字列 (search_files操作用)")
 	flag.StringVar(&cfg.excludePattern, "exclude-pattern", "", "除外するパターン (search_files操作用)")
-	flag.IntVar(&cfg.offset, "offset", 1, "read_fileで読み取りを開始する1始まりの行番号")
-	flag.IntVar(&cfg.limit, "limit", 2000, "read_fileで返す最大行数")
+	flag.IntVar(&cfg.offset, "offset", 1, "read_file/list_directory/directory_treeでの開始位置 (1始まり)")
+	flag.IntVar(&cfg.limit, "limit", 2000, "read_file/list_directory/directory_treeで返す最大件数")
 	flag.IntVar(&cfg.depth, "depth", 0, "directory_treeで辿る最大深さ (0は無制限)")
 	flag.Parse()
 
@@ -134,9 +134,19 @@ func runListDirectory(cfg *cliConfig) error {
 	if cfg.path == "" {
 		return fmt.Errorf("list_directory操作では-pathが必要です")
 	}
+	if cfg.offset <= 0 {
+		return fmt.Errorf("list_directory操作では-offsetを1以上にしてください")
+	}
+	if cfg.limit <= 0 {
+		return fmt.Errorf("list_directory操作では-limitを1以上にしてください")
+	}
 
 	service := newFileSystemService(cfg.path)
-	entries, err := service.ListDirectory(cfg.path)
+	options := usecases.ListDirectoryOptions{
+		Offset: cfg.offset,
+		Limit:  cfg.limit,
+	}
+	entries, err := service.ListDirectoryWithOptions(cfg.path, options)
 	if err != nil {
 		return err
 	}

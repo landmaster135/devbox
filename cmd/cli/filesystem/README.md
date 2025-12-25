@@ -41,8 +41,8 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `-content` | 書き込む内容 (`write_file`) | `-content="hello"` |
 | `-pattern` | 検索パターン (`search_files`) | `-pattern=config` |
 | `-exclude-pattern` | 除外パターン (`search_files`) | `-exclude-pattern="*.git"` |
-| `-offset` | `read_file`と`directory_tree`での開始位置（1始まり、既定値1） | `-offset=120` |
-| `-limit` | `read_file`と`directory_tree`で返す最大件数（既定値2000） | `-limit=200` |
+| `-offset` | `read_file`/`list_directory`/`directory_tree`での開始位置（1始まり、既定値1） | `-offset=120` |
+| `-limit` | `read_file`/`list_directory`/`directory_tree`で返す最大件数（既定値2000） | `-limit=200` |
 | `-depth` | `directory_tree`で辿る最大階層（0で無制限、既定値0） | `-depth=2` |
 
 ## 利用可能なoperation
@@ -52,7 +52,7 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `read_file` | ファイル内容を表示 | `-path` |
 | `write_file` | ファイルへ書き込み | `-path`, `-content` (空文字を書き込む場合は `-content=""`) |
 | `create_directory` | ディレクトリを作成 | `-path` |
-| `list_directory` | 指定フォルダ直下を一覧表示 | `-path` |
+| `list_directory` | 指定フォルダ直下を一覧表示 | `-path` (`-offset`/`-limit`でページング可能) |
 | `directory_tree` | YAML形式のツリーを表示 | `-path` |
 | `move_file` | ファイル/ディレクトリを移動 | `-source`, `-destination` |
 | `search_files` | パターンに一致する項目を検索 | `-path`, `-pattern` |
@@ -70,6 +70,9 @@ go run ./cmd/cli/filesystem -operation=read_file -path=./README.md -offset=34 -l
 
 # ディレクトリツリーをページング表示
 go run ./cmd/cli/filesystem -operation=directory_tree -path=. -offset=1 -limit=10 -depth=2
+
+# ディレクトリ一覧をページング表示
+go run ./cmd/cli/filesystem -operation=list_directory -path=. -offset=26 -limit=10
 
 # ファイルの作成
 go run ./cmd/cli/filesystem -operation=write_file -path=./notes/todo.txt -content="- [ ] task"

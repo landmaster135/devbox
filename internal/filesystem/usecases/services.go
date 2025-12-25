@@ -107,6 +107,12 @@ type DirectoryTreeOptions struct {
 	Depth  int
 }
 
+// ListDirectoryOptions はlist_directory操作のスライス条件を表します
+type ListDirectoryOptions struct {
+	Offset int
+	Limit  int
+}
+
 // FileInfo はファイル情報を表す構造体です
 type FileInfo struct {
 	Size        int64     `json:"size"`
@@ -407,6 +413,16 @@ func (fs *FileSystemService) CreateDirectory(path string) error {
 
 // ListDirectory はディレクトリの内容を一覧表示します
 func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
+	return fs.ListDirectoryWithOptions(path, ListDirectoryOptions{
+		Offset: 1,
+		Limit:  0,
+	})
+}
+
+// ListDirectoryWithOptions はoffset/limitを考慮してディレクトリを一覧表示します
+func (fs *FileSystemService) ListDirectoryWithOptions(path string, opts ListDirectoryOptions) ([]string, error) {
+	normalized := normalizeListDirectoryOptions(opts)
+
 	validPath, err := fs.ValidatePath(path)
 	if err != nil {
 		return nil, err
@@ -416,14 +432,41 @@ func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %w", err)
 	}
+	totalEntries := len(entries)
 
-	var result []string
-	for _, entry := range entries {
+	if totalEntries == 0 {
+		if normalized.Offset == 1 {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("offset exceeds directory entry count")
+	}
+
+	startIndex := normalized.Offset - 1
+	if startIndex < 0 || startIndex >= totalEntries {
+		return nil, fmt.Errorf("offset exceeds directory entry count")
+	}
+
+	endIndex := totalEntries
+	if normalized.Limit > 0 {
+		endIndex = startIndex + normalized.Limit
+		if endIndex > totalEntries {
+			endIndex = totalEntries
+		}
+	}
+
+	slicedEntries := entries[startIndex:endIndex]
+	result := make([]string, 0, len(slicedEntries)+1)
+	for _, entry := range slicedEntries {
 		prefix := "[FILE]"
 		if entry.IsDir() {
 			prefix = "[DIR]"
 		}
 		result = append(result, fmt.Sprintf("%s %s", prefix, entry.Name()))
+	}
+
+	if normalized.Limit > 0 && endIndex < totalEntries {
+		nextOffset := normalized.Offset + len(slicedEntries)
+		result = append(result, fmt.Sprintf("More than %d entries found (try -offset=%d)", normalized.Limit, nextOffset))
 	}
 
 	return result, nil
@@ -557,6 +600,23 @@ func sliceFileTreeEntries(entries []FileTreeEntry, offset, limit int) ([]FileTre
 	sliced := make([]FileTreeEntry, endIndex-startIndex)
 	copy(sliced, entries[startIndex:endIndex])
 	return sliced, nil
+}
+
+func normalizeListDirectoryOptions(opts ListDirectoryOptions) ListDirectoryOptions {
+	normalized := ListDirectoryOptions{
+		Offset: opts.Offset,
+		Limit:  opts.Limit,
+	}
+
+	if normalized.Offset < 1 {
+		normalized.Offset = 1
+	}
+
+	if normalized.Limit < 0 {
+		normalized.Limit = 0
+	}
+
+	return normalized
 }
 
 // GetDirectoryTreeAsJSON はディレクトリの階層構造をJSON文字列として取得します
