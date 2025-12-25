@@ -2,7 +2,6 @@ package plan
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -18,33 +17,14 @@ const (
 
 func handlePlanUpdate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args := request.GetArguments()
-	payload, err := decodePlanArguments(args)
-	if err != nil {
-		return nil, fmt.Errorf("引数の解析に失敗しました: %w", err)
-	}
 
 	service := usecases.NewPlanService()
-	summary, err := service.HandleUpdatePlan(payload)
+	summary, err := service.HandleUpdatePlan(args)
 	if err != nil {
 		return nil, fmt.Errorf("プランの処理に失敗しました: %w", err)
 	}
 
 	return mcp.NewToolResultText(summary), nil
-}
-
-func decodePlanArguments(args map[string]interface{}) (usecases.UpdatePlanRequest, error) {
-	var payload usecases.UpdatePlanRequest
-	raw, err := json.Marshal(args)
-	if err != nil {
-		return payload, fmt.Errorf("引数のシリアライズに失敗しました: %w", err)
-	}
-	if len(raw) == 0 || string(raw) == "null" {
-		return payload, fmt.Errorf("plan引数が指定されていません")
-	}
-	if err := json.Unmarshal(raw, &payload); err != nil {
-		return payload, fmt.Errorf("引数のデシリアライズに失敗しました: %w", err)
-	}
-	return payload, nil
 }
 
 func createPlanTool() mcp.Tool {

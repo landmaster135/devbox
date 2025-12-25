@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -58,6 +59,21 @@ func PlanItemJSONSchema() map[string]any {
 	}
 }
 
+func decodePlanArguments(args map[string]any) (UpdatePlanRequest, error) {
+	var payload UpdatePlanRequest
+	raw, err := json.Marshal(args)
+	if err != nil {
+		return payload, fmt.Errorf("引数のシリアライズに失敗しました: %w", err)
+	}
+	if len(raw) == 0 || string(raw) == "null" {
+		return payload, fmt.Errorf("plan引数が指定されていません")
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return payload, fmt.Errorf("引数のデシリアライズに失敗しました: %w", err)
+	}
+	return payload, nil
+}
+
 // PlanService validates and renders incoming plan updates.
 type PlanService struct{}
 
@@ -66,8 +82,21 @@ func NewPlanService() *PlanService {
 	return &PlanService{}
 }
 
-// HandleUpdatePlan validates the request and returns a formatted summary string.
-func (s *PlanService) HandleUpdatePlan(request UpdatePlanRequest) (string, error) {
+func (s *PlanService) HandleUpdatePlan(args map[string]any) (string, error) {
+	payload, err := decodePlanArguments(args)
+	if err != nil {
+		return "", fmt.Errorf("引数の解析に失敗しました: %w", err)
+	}
+	summary, err := s.UpdatePlan(payload)
+	if err != nil {
+		return "", fmt.Errorf("プランの作成に失敗しました: %w", err)
+	}
+
+	return summary, nil
+}
+
+// UpdatePlan validates the request and returns a formatted summary string.
+func (s *PlanService) UpdatePlan(request UpdatePlanRequest) (string, error) {
 	if err := validatePlanRequest(request); err != nil {
 		return "", err
 	}
