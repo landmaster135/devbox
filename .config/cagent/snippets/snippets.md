@@ -31,6 +31,12 @@ cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict.yml "I 
 echo "Rust is difficult." | cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict.yml -
 ```
 
+### タスク計画エージェント
+単発プロンプトで実行:
+```bash
+cagent run /home/user/devbox/.config/cagent/config_linux/task_planner/config_prod.yml 'plan-from-consult'
+```
+
 ### 学習支援エージェント Alloy
 学習テーマを指定して実行:
 ```bash

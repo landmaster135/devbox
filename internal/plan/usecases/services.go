@@ -32,6 +32,32 @@ type UpdatePlanRequest struct {
 	Plan        []PlanItem `json:"plan"`
 }
 
+// PlanItemJSONSchema returns a JSON Schema map describing PlanItem based on its struct definition.
+func PlanItemJSONSchema() map[string]any {
+	statusEnum := []string{
+		string(StepStatusPending),
+		string(StepStatusInProgress),
+		string(StepStatusCompleted),
+	}
+
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"step": map[string]any{
+				"type":        "string",
+				"description": "Human-readable action description",
+			},
+			"status": map[string]any{
+				"type":        "string",
+				"description": "Progress state for the step",
+				"enum":        statusEnum,
+			},
+		},
+		"required":             []string{"step", "status"},
+		"additionalProperties": false,
+	}
+}
+
 // PlanService validates and renders incoming plan updates.
 type PlanService struct{}
 

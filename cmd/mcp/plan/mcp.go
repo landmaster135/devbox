@@ -48,23 +48,6 @@ func decodePlanArguments(args map[string]interface{}) (usecases.UpdatePlanReques
 }
 
 func createPlanTool() mcp.Tool {
-	planItemSchema := map[string]any{
-		"type": "object",
-		"properties": map[string]any{
-			"step": map[string]any{
-				"type":        "string",
-				"description": "Human-readable action description",
-			},
-			"status": map[string]any{
-				"type":        "string",
-				"description": "Progress state (pending, in_progress, completed)",
-				"enum":        []string{"pending", "in_progress", "completed"},
-			},
-		},
-		"required":             []string{"step", "status"},
-		"additionalProperties": false,
-	}
-
 	return mcp.NewTool("update_plan",
 		mcp.WithDescription(`Structured planning helper. Use this to send your current multi-step plan to the client UI so the user can track progress.`),
 		mcp.WithString("explanation",
@@ -73,7 +56,7 @@ func createPlanTool() mcp.Tool {
 		mcp.WithArray("plan",
 			mcp.Required(),
 			mcp.Description("List of plan items (objects with step + status fields). Allowed statuses: pending, in_progress, completed. At most one item may be in_progress."),
-			mcp.Items(planItemSchema),
+			mcp.Items(usecases.PlanItemJSONSchema()),
 		),
 		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithIdempotentHintAnnotation(true),
