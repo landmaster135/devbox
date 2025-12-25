@@ -10,7 +10,7 @@
 - **list_directory**: ディレクトリのフラット一覧を表示
 - **directory_tree**: もしくはYAML形式のツリー構造を表示
 - **move_file**: ファイル／ディレクトリの移動やリネーム
-- **search_files**: 正規表現に一致する項目を再帰検索
+- **grep_files**: 正規表現に一致する項目を再帰検索
 - **get_file_info**: サイズや権限などのメタ情報を整形表示
 - **list_allowed_directories**: 現在許可されているディレクトリを確認
 
@@ -39,7 +39,7 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `-source` | 移動元パス (`move_file`) | `-source=./old.txt` |
 | `-destination` | 移動先パス (`move_file`) | `-destination=./archive/old.txt` |
 | `-content` | 書き込む内容 (`write_file`) | `-content="hello"` |
-| `-pattern` | 検索パターン (`search_files`, Go正規表現) | `-pattern="(?i)config"` |
+| `-pattern` | 検索パターン (`grep_files`, Go正規表現) | `-pattern="(?i)config"` |
 | `-offset` | `read_file`/`list_directory`/`directory_tree`での開始位置（1始まり、既定値1） | `-offset=120` |
 | `-limit` | `read_file`/`list_directory`/`directory_tree`で返す最大件数（既定値2000） | `-limit=200` |
 | `-depth` | `directory_tree`で辿る最大階層（0で無制限、既定値0） | `-depth=2` |
@@ -54,7 +54,7 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `list_directory` | 指定フォルダ直下を一覧表示 | `-path` (`-offset`/`-limit`でページング可能) |
 | `directory_tree` | YAML形式のツリーを表示 | `-path` |
 | `move_file` | ファイル/ディレクトリを移動 | `-source`, `-destination` |
-| `search_files` | パターンに一致する項目を検索 | `-path`, `-pattern` |
+| `grep_files` | パターンに一致する項目を検索 | `-path`, `-pattern` |
 | `get_file_info` | ファイル/ディレクトリの詳細を表示 | `-path` |
 | `list_allowed_directories` | 許可済みディレクトリを表示 | `-path` (省略時はカレントディレクトリを許可) |
 
@@ -77,10 +77,10 @@ go run ./cmd/cli/filesystem -operation=list_directory -path=. -offset=26 -limit=
 go run ./cmd/cli/filesystem -operation=write_file -path=./notes/todo.txt -content="- [ ] task"
 
 # ディレクトリ検索
-go run ./cmd/cli/filesystem -operation=search_files -path=./notes -pattern=todo
+go run ./cmd/cli/filesystem -operation=grep_files -path=./notes -pattern=todo
 
 # 正規表現でのディレクトリ検索（例: cmd以下のGoファイル）
-go run ./cmd/cli/filesystem -operation=search_files -path=. -pattern='^cmd/.+\\.go$'
+go run ./cmd/cli/filesystem -operation=grep_files -path=. -pattern='^cmd/.+\\.go$'
 
 # ファイルの移動
 go run ./cmd/cli/filesystem -operation=move_file -source=./notes/todo.txt -destination=./notes/archive/todo.txt

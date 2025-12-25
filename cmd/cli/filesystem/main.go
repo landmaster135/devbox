@@ -39,7 +39,7 @@ func parseFlags() *cliConfig {
 	flag.StringVar(&cfg.source, "source", "", "移動元のパス (move_file操作用)")
 	flag.StringVar(&cfg.destination, "destination", "", "移動先のパス (move_file操作用)")
 	flag.StringVar(&cfg.content, "content", "", "ファイルに書き込む内容 (write_file操作用)")
-	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する正規表現 (search_files操作用)")
+	flag.StringVar(&cfg.pattern, "pattern", "", "検索に使用する正規表現 (grep_files操作用)")
 	flag.IntVar(&cfg.offset, "offset", 1, "read_file/list_directory/directory_treeでの開始位置 (1始まり)")
 	flag.IntVar(&cfg.limit, "limit", 2000, "read_file/list_directory/directory_treeで返す最大件数")
 	flag.IntVar(&cfg.depth, "depth", 0, "directory_treeで辿る最大深さ (0は無制限)")
@@ -67,8 +67,8 @@ func run(cfg *cliConfig) error {
 		return runDirectoryTree(cfg)
 	case "move_file":
 		return runMoveFile(cfg)
-	case "search_files":
-		return runSearchFiles(cfg)
+	case "grep_files":
+		return runGrepFiles(cfg)
 	case "get_file_info":
 		return runGetFileInfo(cfg)
 	case "list_allowed_directories":
@@ -201,12 +201,12 @@ func runMoveFile(cfg *cliConfig) error {
 	return nil
 }
 
-func runSearchFiles(cfg *cliConfig) error {
+func runGrepFiles(cfg *cliConfig) error {
 	if cfg.path == "" {
-		return fmt.Errorf("search_files操作では-pathが必要です")
+		return fmt.Errorf("grep_files操作では-pathが必要です")
 	}
 	if cfg.pattern == "" {
-		return fmt.Errorf("search_files操作では-patternが必要です")
+		return fmt.Errorf("grep_files操作では-patternが必要です")
 	}
 
 	service := newFileSystemService(cfg.path)
@@ -281,7 +281,7 @@ func printUsage() {
 使用例:
   go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
   go run ./cmd/cli/filesystem -operation=write_file -path=./memo.txt -content="hello"
-  go run ./cmd/cli/filesystem -operation=search_files -path=. -pattern=main
+  go run ./cmd/cli/filesystem -operation=grep_files -path=. -pattern=main
 
 利用可能なoperation:
   read_file                指定したファイルを読み取ります
@@ -290,7 +290,7 @@ func printUsage() {
   list_directory           ディレクトリ配下の一覧を表示します
   directory_tree           ディレクトリ構造をYAMLで表示します
   move_file                ファイルまたはディレクトリを移動・リネームします
-  search_files             パターンに一致するファイルやディレクトリを検索します
+  grep_files               正規表現に一致するファイルやディレクトリを検索します
   get_file_info            ファイルやディレクトリのメタ情報を表示します
   list_allowed_directories 現在許可されているディレクトリ一覧を表示します
 
