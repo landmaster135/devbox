@@ -18,7 +18,7 @@ agents:
       5. Display that commit message to user.
 
       ## Requirements
-      - Add one of the following prefixes to the beginning of Git commit messages: "feat:", "refactor:", "fix:", "test:", or "doc:"
+      - Add one of the following prefixes to the beginning of Git commit messages: "feat:", "refactor:", "fix:", "test:", or "docs:"
       - Do NOT use tags: "chore:".
       - Sample for Git commit message is here:
         - refactor: split PC stats API endpoints into separate files for better maintainability
