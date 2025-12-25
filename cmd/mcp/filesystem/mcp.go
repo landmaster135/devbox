@@ -74,10 +74,21 @@ func handleListDirectory(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	if err != nil {
 		return nil, err
 	}
+	offset := request.GetInt("offset", 1)
+	limit := request.GetInt("limit", 25)
+	if offset <= 0 {
+		return nil, fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("limitは1以上で指定してください")
+	}
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	entries, err := fsService.ListDirectory(path)
+	entries, err := fsService.ListDirectoryWithOptions(path, usecases.ListDirectoryOptions{
+		Offset: offset,
+		Limit:  limit,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリの一覧取得に失敗しました: %v", err)
 	}
@@ -90,10 +101,26 @@ func handleDirectoryTree(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	if err != nil {
 		return nil, err
 	}
+	offset := request.GetInt("offset", 1)
+	limit := request.GetInt("limit", 25)
+	depth := request.GetInt("depth", 0)
+	if offset <= 0 {
+		return nil, fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("limitは1以上で指定してください")
+	}
+	if depth < 0 {
+		return nil, fmt.Errorf("depthは0以上で指定してください")
+	}
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	yamlStr, err := fsService.GetDirectoryTreeAsYAML(path)
+	yamlStr, err := fsService.GetDirectoryTreeAsYAMLWithOptions(path, usecases.DirectoryTreeOptions{
+		Offset: offset,
+		Limit:  limit,
+		Depth:  depth,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリツリーの取得に失敗しました: %v", err)
 	}
@@ -261,6 +288,12 @@ func BuildFileSystemServer() {
 			mcp.Required(),
 			mcp.Description("一覧表示するディレクトリのパス"),
 		),
+		mcp.WithNumber("offset",
+			mcp.Description("結果の開始ディレクトリの位置。省略時は1"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("返す最大件数。省略時は25"),
+		),
 	)
 
 	s.AddTool(listDirTool, handleListDirectory)
@@ -271,6 +304,15 @@ func BuildFileSystemServer() {
 		mcp.WithString("path",
 			mcp.Required(),
 			mcp.Description("ツリーを取得するディレクトリのパス"),
+		),
+		mcp.WithNumber("offset",
+			mcp.Description("開始するディレクトリの位置。省略時は1"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("返す最大件数。省略時は25"),
+		),
+		mcp.WithNumber("depth",
+			mcp.Description("辿る最大深さ。0は無制限"),
 		),
 	)
 
