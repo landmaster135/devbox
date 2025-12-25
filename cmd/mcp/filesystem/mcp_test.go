@@ -306,6 +306,35 @@ func TestHandleListDirectory_Normal(t *testing.T) {
 	}
 }
 
+func TestHandleListDirectory_WithOffsetLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha.txt", "beta.txt", "gamma.txt"}
+	for _, name := range entries {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0o644); err != nil {
+			t.Fatalf("%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	ctx := context.Background()
+	request := createCallToolRequest("list_directory", map[string]interface{}{
+		"path":   tempDir,
+		"offset": 2,
+		"limit":  1,
+	})
+
+	result, err := handleListDirectory(ctx, request)
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	text := getTextFromResult(result)
+	if !strings.Contains(text, "[FILE] beta.txt") {
+		t.Fatalf("offset/limitが反映されていません: %s", text)
+	}
+	if !strings.Contains(text, "More than 1 entries found (try -offset=3)") {
+		t.Fatalf("サマリ行が出力されていません: %s", text)
+	}
+}
+
 // TestHandleDirectoryTree_Normal は正常系のテストです
 func TestHandleDirectoryTree_Normal(t *testing.T) {
 	// Arrange
@@ -340,6 +369,41 @@ func TestHandleDirectoryTree_Normal(t *testing.T) {
 	}
 	if !strings.Contains(text, "type: file") {
 		t.Error("ファイルタイプが正しく設定されていません")
+	}
+}
+
+func TestHandleDirectoryTree_WithOptions(t *testing.T) {
+	tempDir := t.TempDir()
+	alpha := filepath.Join(tempDir, "alpha")
+	beta := filepath.Join(tempDir, "beta")
+	if err := os.MkdirAll(alpha, 0o755); err != nil {
+		t.Fatalf("alphaの作成に失敗しました: %v", err)
+	}
+	if err := os.MkdirAll(beta, 0o755); err != nil {
+		t.Fatalf("betaの作成に失敗しました: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(alpha, "child.txt"), []byte("child"), 0o644); err != nil {
+		t.Fatalf("child.txtの作成に失敗しました: %v", err)
+	}
+
+	ctx := context.Background()
+	request := createCallToolRequest("directory_tree", map[string]interface{}{
+		"path":   tempDir,
+		"offset": 1,
+		"limit":  1,
+		"depth":  1,
+	})
+
+	result, err := handleDirectoryTree(ctx, request)
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	text := getTextFromResult(result)
+	if !strings.Contains(text, "More than 1 entries found (try -offset=2)") {
+		t.Fatalf("サマリ行が出力されていません: %s", text)
+	}
+	if !strings.Contains(text, "truncated_children") {
+		t.Fatalf("depthオプションが反映されていません: %s", text)
 	}
 }
 
