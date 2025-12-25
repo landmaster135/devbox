@@ -7,7 +7,8 @@
 - **read_file**: テキストファイルを読み取り内容を標準出力に表示
 - **write_file**: ファイルの作成または上書き
 - **create_directory**: ネストしたディレクトリの作成
-- **list_directory / directory_tree**: ディレクトリのフラット一覧またはツリー構造を表示
+- **list_directory**: ディレクトリのフラット一覧を表示
+- **directory_tree**: もしくはYAML形式のツリー構造を表示
 - **move_file**: ファイル／ディレクトリの移動やリネーム
 - **search_files**: 名前に特定のパターンを含む項目の再帰検索（除外パターン対応）
 - **get_file_info**: サイズや権限などのメタ情報を整形表示
@@ -51,7 +52,7 @@ go run ./cmd/cli/filesystem -operation=read_file -path=/path/to/file
 | `write_file` | ファイルへ書き込み | `-path`, `-content` (空文字を書き込む場合は `-content=""`) |
 | `create_directory` | ディレクトリを作成 | `-path` |
 | `list_directory` | 指定フォルダ直下を一覧表示 | `-path` |
-| `directory_tree` | JSON形式のツリーを表示 | `-path` |
+| `directory_tree` | YAML形式のツリーを表示 | `-path` |
 | `move_file` | ファイル/ディレクトリを移動 | `-source`, `-destination` |
 | `search_files` | パターンに一致する項目を検索 | `-path`, `-pattern` |
 | `get_file_info` | ファイル/ディレクトリの詳細を表示 | `-path` |

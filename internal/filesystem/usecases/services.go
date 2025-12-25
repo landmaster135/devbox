@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // #==============================================================#
@@ -74,6 +76,18 @@ func (m *DefaultJSONMarshaler) MarshalIndent(v interface{}, prefix, indent strin
 	return json.MarshalIndent(v, prefix, indent)
 }
 
+// YAMLMarshaler はYAML変換操作のインターフェースです
+type YAMLMarshaler interface {
+	Marshal(v interface{}) ([]byte, error)
+}
+
+// DefaultYAMLMarshaler は標準のyaml.Marshalを使用する実装です
+type DefaultYAMLMarshaler struct{}
+
+func (m *DefaultYAMLMarshaler) Marshal(v interface{}) ([]byte, error) {
+	return yaml.Marshal(v)
+}
+
 // #==============================================================#
 // ##          Data Structures                                   ##
 // #==============================================================#
@@ -108,6 +122,7 @@ type FileSystemService struct {
 	directoryReader    DirectoryReader
 	fileStat           FileStat
 	jsonMarshaler      JSONMarshaler
+	yamlMarshaler      YAMLMarshaler
 }
 
 // NewFileSystemService は新しいFileSystemServiceを作成します
@@ -137,6 +152,7 @@ func NewFileSystemService(allowedDirs []string) *FileSystemService {
 		directoryReader:    &DefaultDirectoryReader{},
 		fileStat:           &DefaultFileStat{},
 		jsonMarshaler:      &DefaultJSONMarshaler{},
+		yamlMarshaler:      &DefaultYAMLMarshaler{},
 	}
 }
 
@@ -148,6 +164,7 @@ func NewFileSystemServiceWithDependencies(
 	directoryReader DirectoryReader,
 	fileStat FileStat,
 	jsonMarshaler JSONMarshaler,
+	yamlMarshaler YAMLMarshaler,
 ) *FileSystemService {
 	normalizedDirs := make([]string, len(allowedDirs))
 	for i, dir := range allowedDirs {
@@ -172,6 +189,7 @@ func NewFileSystemServiceWithDependencies(
 		directoryReader:    directoryReader,
 		fileStat:           fileStat,
 		jsonMarshaler:      jsonMarshaler,
+		yamlMarshaler:      yamlMarshaler,
 	}
 }
 
@@ -450,6 +468,21 @@ func (fs *FileSystemService) GetDirectoryTreeAsJSON(path string) (string, error)
 	}
 
 	return string(jsonBytes), nil
+}
+
+// GetDirectoryTreeAsYAML はディレクトリの階層構造をYAML文字列として取得します
+func (fs *FileSystemService) GetDirectoryTreeAsYAML(path string) (string, error) {
+	tree, err := fs.GetDirectoryTree(path)
+	if err != nil {
+		return "", err
+	}
+
+	yamlBytes, err := fs.yamlMarshaler.Marshal(tree)
+	if err != nil {
+		return "", fmt.Errorf("YAMLの生成に失敗しました: %w", err)
+	}
+
+	return string(yamlBytes), nil
 }
 
 // MoveFile はファイルを移動します
