@@ -19,6 +19,7 @@ type cliConfig struct {
 	excludePattern string
 	offset         int
 	limit          int
+	depth          int
 }
 
 func main() {
@@ -43,6 +44,7 @@ func parseFlags() *cliConfig {
 	flag.StringVar(&cfg.excludePattern, "exclude-pattern", "", "除外するパターン (search_files操作用)")
 	flag.IntVar(&cfg.offset, "offset", 1, "read_fileで読み取りを開始する1始まりの行番号")
 	flag.IntVar(&cfg.limit, "limit", 2000, "read_fileで返す最大行数")
+	flag.IntVar(&cfg.depth, "depth", 0, "directory_treeで辿る最大深さ (0は無制限)")
 	flag.Parse()
 
 	if cfg.operation == "" {
@@ -152,9 +154,23 @@ func runDirectoryTree(cfg *cliConfig) error {
 	if cfg.path == "" {
 		return fmt.Errorf("directory_tree操作では-pathが必要です")
 	}
+	if cfg.offset <= 0 {
+		return fmt.Errorf("directory_tree操作では-offsetを1以上にしてください")
+	}
+	if cfg.limit <= 0 {
+		return fmt.Errorf("directory_tree操作では-limitを1以上にしてください")
+	}
+	if cfg.depth < 0 {
+		return fmt.Errorf("directory_tree操作では-depthを0以上にしてください")
+	}
 
 	service := newFileSystemService(cfg.path)
-	result, err := service.GetDirectoryTreeAsYAML(cfg.path)
+	options := usecases.DirectoryTreeOptions{
+		Offset: cfg.offset,
+		Limit:  cfg.limit,
+		Depth:  cfg.depth,
+	}
+	result, err := service.GetDirectoryTreeAsYAMLWithOptions(cfg.path, options)
 	if err != nil {
 		return err
 	}
