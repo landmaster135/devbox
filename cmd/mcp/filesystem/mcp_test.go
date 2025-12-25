@@ -336,9 +336,9 @@ func TestHandleDirectoryTree_Normal(t *testing.T) {
 
 	text := getTextFromResult(result)
 	if !strings.Contains(text, "test.txt") {
-		t.Error("ファイルがJSONに含まれていません")
+		t.Error("ファイルがYAMLに含まれていません")
 	}
-	if !strings.Contains(text, `"type": "file"`) {
+	if !strings.Contains(text, "type: file") {
 		t.Error("ファイルタイプが正しく設定されていません")
 	}
 }
