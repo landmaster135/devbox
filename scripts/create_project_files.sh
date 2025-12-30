@@ -6,14 +6,15 @@ function show_help() {
   cat <<EOF
 [INFO] [$FUNC] プロジェクト用のGoファイル構成を自動生成します。
 
-使用方法:
+Usage:
   ./scripts/create_project_files.sh <project-name>
 
-例:
+Example:
   ./scripts/create_project_files.sh image-renamer-for-screenshot
   ./scripts/create_project_files.sh kana-converter
 
---help を指定するとこのメッセージを表示します。
+Options:
+  -h, --help を指定するとこのメッセージを表示します。
 EOF
 }
 
