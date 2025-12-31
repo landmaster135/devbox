@@ -9,7 +9,7 @@ import (
 
 // DOMFetcher は指定したURLのDOMツリーを取得するためのインターフェースです。
 type DOMFetcher interface {
-	FetchDOM(ctx context.Context, url string, wait time.Duration) (string, error)
+	FetchDOM(ctx context.Context, url string, wait time.Duration, denySelectors []string) (string, error)
 }
 
 // DOMService はDOM取得ユースケースを提供します。
@@ -23,7 +23,7 @@ func NewDOMService(fetcher DOMFetcher) *DOMService {
 }
 
 // GetDOMTree は対象URLのDOMツリーを取得します。
-func (s *DOMService) GetDOMTree(ctx context.Context, url string, wait time.Duration) (string, error) {
+func (s *DOMService) GetDOMTree(ctx context.Context, url string, wait time.Duration, denySelectors []string) (string, error) {
 	if s == nil || s.fetcher == nil {
 		return "", fmt.Errorf("DOMFetcherが初期化されていません")
 	}
@@ -31,7 +31,7 @@ func (s *DOMService) GetDOMTree(ctx context.Context, url string, wait time.Durat
 		return "", fmt.Errorf("urlを指定してください")
 	}
 
-	html, err := s.fetcher.FetchDOM(ctx, url, wait)
+	html, err := s.fetcher.FetchDOM(ctx, url, wait, denySelectors)
 	if err != nil {
 		return "", fmt.Errorf("DOMツリーの取得に失敗しました: %w", err)
 	}

@@ -49,7 +49,7 @@ func NewRodDOMFetcher(opts ...Option) *RodDOMFetcher {
 }
 
 // FetchDOM は対象URLのDOMツリーを取得します。
-func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration) (string, error) {
+func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration, denySelectors []string) (string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -117,5 +117,40 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 		return "", fmt.Errorf("main要素の抽出に失敗しました: %w", err)
 	}
 
-	return mainHTML, nil
+	sanitized := mainHTML
+	if len(denySelectors) == 0 {
+		return sanitized, nil
+	}
+
+	err = rod.Try(func() {
+		doc, parseErr := goquery.NewDocumentFromReader(strings.NewReader(mainHTML))
+		if parseErr != nil {
+			panic(parseErr)
+		}
+
+		selection := doc.Find("main").First()
+		if selection.Length() == 0 {
+			panic(&mainNotFoundError{})
+		}
+
+		for _, selector := range denySelectors {
+			trimmed := strings.TrimSpace(selector)
+			if trimmed == "" {
+				continue
+			}
+			selection.Find(trimmed).Remove()
+		}
+
+		var outer string
+		outer, parseErr = goquery.OuterHtml(selection)
+		if parseErr != nil {
+			panic(parseErr)
+		}
+		sanitized = outer
+	})
+	if err != nil {
+		return "", fmt.Errorf("denyElementsの適用に失敗しました: %w", err)
+	}
+
+	return sanitized, nil
 }
