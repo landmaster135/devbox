@@ -1,9 +1,9 @@
 # Web Scraper
 
-`github.com/go-rod/rod` を利用してブラウザを自動操作し、WebページのDOMツリーを取得するCLIツールです。
+`github.com/go-rod/rod` を利用してブラウザを自動操作し、WebページのDOMツリーのうち`<main>`要素のみを取得するCLIツールです。
 
 ## 機能
-- `get_dom_tree`: 指定したURLを開いてDOMツリー（`document.documentElement.innerHTML`相当）を取得します。
+- `get_dom_tree`: 指定したURLを開き、DOMツリーから`<main>`要素のみ（外側のタグを含む）を抽出して出力します。
 - リダイレクトを想定し、ページを開いてからDOMを取得するまでの待機秒数を指定できます。
 
 ## ビルド
@@ -40,4 +40,4 @@ go run ./cmd/cli/web-scraper -operation=get_dom_tree -url=https://news.ycombinat
 ```
 
 ## 出力
-標準出力へHTML文字列をそのまま書き出します。エラーは標準エラー出力へ表示され、終了コード `1` を返します。
+標準出力へ`<main>`要素のHTML文字列をそのまま書き出します。対象ページに`<main>`が存在しない場合はエラーを表示して終了コード `1` を返します。
