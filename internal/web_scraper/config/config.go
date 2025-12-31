@@ -16,6 +16,7 @@ type Config struct {
 	Operation   string
 	URL         string
 	WaitSeconds int
+	OutputPath  string
 }
 
 // Validate は設定内容を検証し、不正な場合はエラーを返します。
@@ -32,6 +33,9 @@ func (c Config) Validate() error {
 		}
 		if c.WaitSeconds < 0 {
 			return fmt.Errorf("wait-secondsは0以上を指定してください")
+		}
+		if c.OutputPath != "" && strings.TrimSpace(c.OutputPath) == "" {
+			return fmt.Errorf("output-fileは空文字では指定できません")
 		}
 	default:
 		return fmt.Errorf("未対応のoperationです: %s", c.Operation)
@@ -51,6 +55,11 @@ func (c Config) WaitDuration() time.Duration {
 		return 0
 	}
 	return time.Duration(c.WaitSeconds) * time.Second
+}
+
+// OutputFilePath は整形済みの出力ファイルパスを返します。
+func (c Config) OutputFilePath() string {
+	return strings.TrimSpace(c.OutputPath)
 }
 
 func normalizeOperation(op string) string {

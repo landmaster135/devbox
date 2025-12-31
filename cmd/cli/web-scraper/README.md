@@ -29,6 +29,7 @@ go run ./cmd/cli/web-scraper \
 | `-operation` | ✅ | 実行する操作。現在は `get_dom_tree` のみ対応。 |
 | `-url` | ✅ (`get_dom_tree`) | DOMを取得したいページのURL。 |
 | `-wait-seconds` | 任意 | ページロード完了後にDOM抽出を行うまでの待機時間(秒)。リダイレクトや動的描画待ちに使用。 |
+| `-output-file` | 任意 | 取得したDOMを新規ファイルとして保存するパス。既存ファイルがある場合はエラー。 |
 
 ## 実行例
 ```bash
@@ -40,4 +41,4 @@ go run ./cmd/cli/web-scraper -operation=get_dom_tree -url=https://news.ycombinat
 ```
 
 ## 出力
-標準出力へ`<main>`要素のHTML文字列をそのまま書き出します（`<faceplate-tracker>`除去・`class`/`style`属性除去済み、連続空行は1行に圧縮）。対象ページに`<main>`が存在しない場合や内部処理での解析に失敗した場合はエラーを表示して終了コード `1` を返します。
+標準出力へ`<main>`要素のHTML文字列をそのまま書き出します（`<faceplate-tracker>`除去・`class`/`style`属性除去済み、連続空行は1行に圧縮）。`-output-file`を指定した場合はファイルへ保存し、成功メッセージのみ標準出力に表示します。対象ページに`<main>`が存在しない場合や内部処理での解析・ファイル出力に失敗した場合はエラーを表示して終了コード `1` を返します。
