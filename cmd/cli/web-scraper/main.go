@@ -48,10 +48,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		"faceplate-loader",
 		"faceplate-tracker",
 		"faceplate-perfmark",
+		"faceplate-number",
+		"faceplate-dropdown-menu",
 		"shreddit-comments-page-ad",
 		"shreddit-async-loader",
 	}
-	denySelectors := []string{}
+	denySelectors := []string{
+		"svg",
+	}
 	denySelectors = append(denySelectors, denySelectorsForReddit...)
 
 	ctx := context.Background()
