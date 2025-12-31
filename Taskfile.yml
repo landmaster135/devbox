@@ -18,6 +18,8 @@ tasks:
     cmd: go run {{ .DIR }} | tee
     vars:
       DIR: ./cmd/cli/{{ .CLI_ARGS }}
+  check:
+    cmd: go vet ./...
   test:cov:
     cmd: go test -cover
   test:all:cov:
