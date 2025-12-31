@@ -1,0 +1,85 @@
+package fetchers
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
+)
+
+const defaultLaunchTimeout = 90 * time.Second
+
+// RodDOMFetcher はgithub.com/go-rod/rodを利用したDOM取得実装です。
+type RodDOMFetcher struct {
+	launchTimeout time.Duration
+}
+
+// Option はRodDOMFetcherのオプションです。
+type Option func(*RodDOMFetcher)
+
+// WithLaunchTimeout はブラウザ起動のタイムアウトを設定します。
+func WithLaunchTimeout(d time.Duration) Option {
+	return func(f *RodDOMFetcher) {
+		if d > 0 {
+			f.launchTimeout = d
+		}
+	}
+}
+
+// NewRodDOMFetcher はRodDOMFetcherのインスタンスを生成します。
+func NewRodDOMFetcher(opts ...Option) *RodDOMFetcher {
+	fetcher := &RodDOMFetcher{launchTimeout: defaultLaunchTimeout}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(fetcher)
+		}
+	}
+	return fetcher
+}
+
+// FetchDOM は対象URLのDOMツリーを取得します。
+func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var dom string
+	err := rod.Try(func() {
+		launchCtx := ctx
+		var cancel context.CancelFunc
+		if f.launchTimeout > 0 {
+			launchCtx, cancel = context.WithTimeout(ctx, f.launchTimeout)
+			defer cancel()
+		}
+
+		l := launcher.New().Context(launchCtx)
+		controlURL := l.MustLaunch()
+		defer l.Cleanup()
+
+		browser := rod.New().ControlURL(controlURL).Context(ctx).MustConnect()
+		defer browser.MustClose()
+
+		page := browser.MustPage(targetURL)
+		page.MustWaitLoad()
+
+		if wait > 0 {
+			timer := time.NewTimer(wait)
+			defer timer.Stop()
+
+			select {
+			case <-ctx.Done():
+				panic(ctx.Err())
+			case <-timer.C:
+			}
+		}
+
+		dom = page.MustEval(`() => document.documentElement.outerHTML`).Str()
+	})
+	if err != nil {
+		return "", fmt.Errorf("RodでDOMツリー取得に失敗しました: %w", err)
+	}
+
+	return dom, nil
+}
