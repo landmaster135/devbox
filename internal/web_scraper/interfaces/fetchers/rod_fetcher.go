@@ -184,5 +184,34 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 		return "", fmt.Errorf("CSS属性の除去に失敗しました: %w", err)
 	}
 
-	return cleaned, nil
+	return collapseBlankLines(cleaned), nil
+}
+
+func collapseBlankLines(src string) string {
+	lines := strings.Split(src, "\n")
+	if len(lines) == 1 {
+		return src
+	}
+
+	var builder strings.Builder
+	consecutiveBlank := 0
+
+	for _, line := range lines {
+		isBlank := strings.TrimSpace(line) == ""
+		if isBlank {
+			if consecutiveBlank > 0 {
+				continue
+			}
+			consecutiveBlank = 1
+		} else {
+			consecutiveBlank = 0
+		}
+
+		if builder.Len() > 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteString(line)
+	}
+
+	return builder.String()
 }

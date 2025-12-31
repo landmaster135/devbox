@@ -52,6 +52,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		"faceplate-dropdown-menu",
 		"shreddit-comments-page-ad",
 		"shreddit-async-loader",
+		"shreddit-comment-tree-ad",
 	}
 	denySelectors := []string{
 		"svg",
