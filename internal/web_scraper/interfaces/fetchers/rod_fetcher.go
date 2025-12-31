@@ -2,9 +2,12 @@ package fetchers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 )
@@ -14,6 +17,12 @@ const defaultLaunchTimeout = 90 * time.Second
 // RodDOMFetcher はgithub.com/go-rod/rodを利用したDOM取得実装です。
 type RodDOMFetcher struct {
 	launchTimeout time.Duration
+}
+
+type mainNotFoundError struct{}
+
+func (e *mainNotFoundError) Error() string {
+	return "main要素が見つかりません"
 }
 
 // Option はRodDOMFetcherのオプションです。
@@ -45,7 +54,7 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 		ctx = context.Background()
 	}
 
-	var dom string
+	var html string
 	err := rod.Try(func() {
 		launchCtx := ctx
 		var cancel context.CancelFunc
@@ -75,11 +84,38 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 			}
 		}
 
-		dom = page.MustEval(`() => document.documentElement.outerHTML`).Str()
+		html = page.MustEval(`() => document.documentElement.outerHTML`).Str()
 	})
 	if err != nil {
-		return "", fmt.Errorf("RodでDOMツリー取得に失敗しました: %w", err)
+		return "", fmt.Errorf("DOMツリーの取得に失敗しました: %w", err)
 	}
 
-	return dom, nil
+	var mainHTML string
+	err = rod.Try(func() {
+		doc, parseErr := goquery.NewDocumentFromReader(strings.NewReader(html))
+		if parseErr != nil {
+			panic(parseErr)
+		}
+
+		selection := doc.Find("main").First()
+		if selection.Length() == 0 {
+			panic(&mainNotFoundError{})
+		}
+
+		var outer string
+		outer, parseErr = goquery.OuterHtml(selection)
+		if parseErr != nil {
+			panic(parseErr)
+		}
+		mainHTML = outer
+	})
+	if err != nil {
+		var notFoundErr *mainNotFoundError
+		if errors.As(err, &notFoundErr) {
+			return "", fmt.Errorf("main要素が見つかりません: %w", err)
+		}
+		return "", fmt.Errorf("main要素の抽出に失敗しました: %w", err)
+	}
+
+	return mainHTML, nil
 }
