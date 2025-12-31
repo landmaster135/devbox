@@ -13,14 +13,16 @@ import (
 
 // Config はfile-maneuverツールの設定を保持する構造体です
 type Config struct {
-	SrcDirs       []string // ソースディレクトリのリスト
-	Extensions    []string // 対象拡張子のリスト
-	DestDir       string   // 宛先ディレクトリ
-	Recursive     bool     // 再帰的検索フラグ
-	Workers       int      // ワーカー数
-	DryRun        bool     // ドライランフラグ
-	CopyMode      bool     // コピーモードフラグ
-	OverwriteMode bool     // 上書きモードフラグ
+	SrcDirs                []string // ソースディレクトリのリスト
+	Extensions             []string // 対象拡張子のリスト
+	DestDir                string   // 宛先ディレクトリ
+	Recursive              bool     // 再帰的検索フラグ
+	Workers                int      // ワーカー数
+	DryRun                 bool     // ドライランフラグ
+	CopyMode               bool     // コピーモードフラグ
+	OverwriteMode          bool     // 上書きモードフラグ
+	FilenameSubstring      string   // ファイル名部分一致用の文字列
+	filenameSubstringLower string
 }
 
 // FileManeuverService はファイル移動サービスを提供する構造体です
@@ -29,16 +31,17 @@ type FileManeuverService struct {
 }
 
 // NewConfig は設定を作成し、全てのバリデーションを実行します
-func NewConfig(srcDirs []string, extensions []string, destDir string, recursive bool, workers int, dryRun bool, copyMode bool, overwriteMode bool) (*Config, error) {
+func NewConfig(srcDirs []string, extensions []string, filenameSubstring string, destDir string, recursive bool, workers int, dryRun bool, copyMode bool, overwriteMode bool) (*Config, error) {
 	config := &Config{
-		SrcDirs:       srcDirs,
-		Extensions:    extensions,
-		DestDir:       destDir,
-		Recursive:     recursive,
-		Workers:       workers,
-		DryRun:        dryRun,
-		CopyMode:      copyMode,
-		OverwriteMode: overwriteMode,
+		SrcDirs:           srcDirs,
+		Extensions:        extensions,
+		FilenameSubstring: filenameSubstring,
+		DestDir:           destDir,
+		Recursive:         recursive,
+		Workers:           workers,
+		DryRun:            dryRun,
+		CopyMode:          copyMode,
+		OverwriteMode:     overwriteMode,
 	}
 
 	// 構造体作成時に全てのバリデーションを実行
@@ -64,9 +67,9 @@ func (c *Config) validate() error {
 		return fmt.Errorf("ソースディレクトリの検証エラー: %w", err)
 	}
 
-	// 2. 拡張子の検証と正規化
-	if err := c.validateAndNormalizeExtensions(); err != nil {
-		return fmt.Errorf("拡張子の検証エラー: %w", err)
+	// 2. フィルター条件の検証
+	if err := c.validateFilters(); err != nil {
+		return fmt.Errorf("フィルター条件の検証エラー: %w", err)
 	}
 
 	// 3. 宛先ディレクトリの検証
@@ -101,6 +104,25 @@ func (c *Config) validateSrcDirs() error {
 		}
 	}
 
+	return nil
+}
+
+// validateFilters は拡張子・ファイル名フィルターの組み合わせを検証します
+func (c *Config) validateFilters() error {
+	trimmedSubstring := strings.TrimSpace(c.FilenameSubstring)
+	c.FilenameSubstring = trimmedSubstring
+
+	if len(c.Extensions) == 0 && trimmedSubstring == "" {
+		return fmt.Errorf("拡張子またはファイル名部分一致文字列が指定されていません")
+	}
+
+	if len(c.Extensions) > 0 {
+		if err := c.validateAndNormalizeExtensions(); err != nil {
+			return err
+		}
+	}
+
+	c.filenameSubstringLower = strings.ToLower(trimmedSubstring)
 	return nil
 }
 
@@ -224,13 +246,8 @@ func (s *FileManeuverService) findFilesInDirectory(dir string) ([]string, error)
 			return nil
 		}
 
-		// 拡張子チェック
-		ext := strings.ToLower(filepath.Ext(path))
-		for _, targetExt := range s.config.Extensions {
-			if ext == targetExt {
-				files = append(files, path)
-				break
-			}
+		if s.shouldIncludeFile(path) {
+			files = append(files, path)
 		}
 
 		return nil
@@ -242,6 +259,32 @@ func (s *FileManeuverService) findFilesInDirectory(dir string) ([]string, error)
 	}
 
 	return files, nil
+}
+
+// shouldIncludeFile は拡張子・ファイル名フィルターを同時に判定します
+func (s *FileManeuverService) shouldIncludeFile(path string) bool {
+	if len(s.config.Extensions) > 0 {
+		ext := strings.ToLower(filepath.Ext(path))
+		matchedExt := false
+		for _, targetExt := range s.config.Extensions {
+			if ext == targetExt {
+				matchedExt = true
+				break
+			}
+		}
+		if !matchedExt {
+			return false
+		}
+	}
+
+	if s.config.filenameSubstringLower != "" {
+		filename := strings.ToLower(filepath.Base(path))
+		if !strings.Contains(filename, s.config.filenameSubstringLower) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // ProcessFiles はファイルを移動またはコピーします

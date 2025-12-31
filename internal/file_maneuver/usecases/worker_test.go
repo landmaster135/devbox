@@ -23,7 +23,7 @@ func (tc *TestWorkerNormalization) TestWorkerNormalization_ZeroWorkers(t *testin
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 0, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 0, false, false, false)
 
 	// Assert
 	if err != nil {
@@ -53,7 +53,7 @@ func (tc *TestWorkerNormalization) TestWorkerNormalization_ExcessiveWorkers(t *t
 	excessiveWorkers := runtime.NumCPU()*2 + 10
 
 	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, excessiveWorkers, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, excessiveWorkers, false, false, false)
 
 	// Assert
 	if err != nil {
