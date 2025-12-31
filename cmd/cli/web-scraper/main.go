@@ -44,7 +44,16 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	denySelectors := []string{"faceplate-tracker"}
+	denySelectorsForReddit := []string{
+		"faceplate-loader",
+		"faceplate-tracker",
+		"faceplate-perfmark",
+		"shreddit-comments-page-ad",
+		"shreddit-async-loader",
+	}
+	denySelectors := []string{}
+	denySelectors = append(denySelectors, denySelectorsForReddit...)
+
 	ctx := context.Background()
 	domFetcher := fetchers.NewRodDOMFetcher()
 	service := usecases.NewDOMService(domFetcher)
