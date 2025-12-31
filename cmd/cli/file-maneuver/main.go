@@ -28,6 +28,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// コマンドライン引数の定義
 	srcDirsStr := flagSet.String("src-dirs", "", "source directories to scan (comma-separated)")
 	extensionsStr := flagSet.String("extensions", "", "target file extensions (comma-separated)")
+	nameContains := flagSet.String("name-contains", "", "substring to match within filenames")
 	destDir := flagSet.String("dest-dir", "", "destination directory")
 	recursive := flagSet.Bool("recursive", false, "recursively scan sub-directories")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
@@ -48,12 +49,6 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	if *extensionsStr == "" {
-		fmt.Fprintln(stderr, "エラー: --extensions パラメータが必要です")
-		flagSet.Usage()
-		return exitCodeError
-	}
-
 	if *destDir == "" {
 		fmt.Fprintln(stderr, "エラー: --dest-dir パラメータが必要です")
 		flagSet.Usage()
@@ -63,11 +58,19 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// カンマ区切り文字列を配列に変換
 	srcDirs := parseCommaSeparatedString(*srcDirsStr)
 	extensions := parseCommaSeparatedString(*extensionsStr)
+	filenameSubstring := strings.TrimSpace(*nameContains)
+
+	if len(extensions) == 0 && filenameSubstring == "" {
+		fmt.Fprintln(stderr, "エラー: --extensions または --name-contains のいずれかを指定してください")
+		flagSet.Usage()
+		return exitCodeError
+	}
 
 	// 設定の作成（この時点で全バリデーション完了）
 	config, err := usecases.NewConfig(
 		srcDirs,
 		extensions,
+		filenameSubstring,
 		*destDir,
 		*recursive,
 		*workers,
@@ -85,7 +88,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// 処理開始の通知
 	fmt.Fprintf(stdout, "  ソースディレクトリ: %s\n", strings.Join(srcDirs, ", "))
-	fmt.Fprintf(stdout, "  対象拡張子: %s\n", strings.Join(extensions, ", "))
+	if len(extensions) > 0 {
+		fmt.Fprintf(stdout, "  対象拡張子: %s\n", strings.Join(extensions, ", "))
+	} else {
+		fmt.Fprintf(stdout, "  対象拡張子: なし\n")
+	}
+	if filenameSubstring != "" {
+		fmt.Fprintf(stdout, "  ファイル名部分一致: %s\n", filenameSubstring)
+	}
 	fmt.Fprintf(stdout, "  宛先ディレクトリ: %s\n", *destDir)
 	fmt.Fprintf(stdout, "  再帰的検索: %t\n", *recursive)
 	fmt.Fprintf(stdout, "  ワーカー数: %d\n", *workers)

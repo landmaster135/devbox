@@ -30,7 +30,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFiles(t *te
 		os.WriteFile(filePath, []byte("test content"), 0644)
 	}
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, destDir, false, 1, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, "", destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -72,6 +72,103 @@ func TestFileManeuverService_FindTargetFiles(t *testing.T) {
 	tc.TestFileManeuverService_FindTargetFiles(t)
 }
 
+// TestFileManeuverService_FindTargetFiles_ByNameContains はファイル名部分一致のみで対象を検索できることをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFiles_ByNameContains(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	testFiles := []string{"report-alpha.jpg", "monthly_report.txt", "notes.doc"}
+	for _, file := range testFiles {
+		os.WriteFile(filepath.Join(srcDir, file), []byte("test"), 0644)
+	}
+
+	config, err := NewConfig([]string{srcDir}, []string{}, "REPORT", destDir, false, 1, false, false, false)
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	files, err := service.FindTargetFiles(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル検索に失敗しました: %v", err)
+	}
+
+	if len(files) != 2 {
+		t.Fatalf("ファイル名フィルターのみで想定外のファイル数です。期待値: 2, 実際: %d", len(files))
+	}
+
+	found := map[string]bool{}
+	for _, file := range files {
+		found[filepath.Base(file)] = true
+	}
+
+	if !found["report-alpha.jpg"] || !found["monthly_report.txt"] {
+		t.Errorf("期待されるファイルが見つかりませんでした。found=%v", found)
+	}
+
+	if found["notes.doc"] {
+		t.Error("除外されるべきファイルが検索結果に含まれています: notes.doc")
+	}
+}
+
+func TestFileManeuverService_FindTargetFiles_ByNameContains(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_FindTargetFiles_ByNameContains(t)
+}
+
+// TestFileManeuverService_FindTargetFiles_NameContainsWithExtensions は拡張子とファイル名フィルターを同時に適用できることをテストします
+func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFiles_NameContainsWithExtensions(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	testFiles := []string{"report.jpg", "report.txt", "photo.jpg"}
+	for _, file := range testFiles {
+		os.WriteFile(filepath.Join(srcDir, file), []byte("test"), 0644)
+	}
+
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "report", destDir, false, 1, false, false, false)
+	if err != nil {
+		t.Fatalf("設定作成に失敗しました: %v", err)
+	}
+
+	service := NewFileManeuverService(config)
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	files, err := service.FindTargetFiles(&stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル検索に失敗しました: %v", err)
+	}
+
+	if len(files) != 1 {
+		t.Fatalf("フィルターの掛け合わせ結果が期待値と異なります。期待値: 1, 実際: %d", len(files))
+	}
+
+	if filepath.Base(files[0]) != "report.jpg" {
+		t.Errorf("期待されるファイルが見つかりませんでした。found=%v", files)
+	}
+}
+
+func TestFileManeuverService_FindTargetFiles_NameContainsWithExtensions(t *testing.T) {
+	tc := &TestFileManeuverService{}
+	tc.TestFileManeuverService_FindTargetFiles_NameContainsWithExtensions(t)
+}
+
 // TestFileManeuverService_FindTargetFilesRecursive は再帰的ファイル検索をテストします
 func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFilesRecursive(t *testing.T) {
 	// Arrange
@@ -87,7 +184,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FindTargetFilesRecurs
 	// サブディレクトリにファイル作成
 	os.WriteFile(filepath.Join(subDir, "sub.jpg"), []byte("test"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, true, 1, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, true, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -128,7 +225,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_DryRun(t *testing.T) 
 	testFile := filepath.Join(srcDir, "test.jpg")
 	os.WriteFile(testFile, []byte("test content"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, true, false, false) // ドライランモード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, true, false, false) // ドライランモード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -192,7 +289,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_FileConflict(t *testi
 	destFile := filepath.Join(destDir, "test.jpg")
 	os.WriteFile(destFile, []byte("existing content"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -260,7 +357,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_ExecuteFileManeuver(t
 		os.WriteFile(filePath, []byte("test content"), 0644)
 	}
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, destDir, false, 1, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg", "png"}, "", destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -320,7 +417,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_CopyMode(t *testing.T
 	testContent := "test content for copy"
 	os.WriteFile(testFile, []byte(testContent), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, true, false) // コピーモード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, false, true, false) // コピーモード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -396,7 +493,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_OverwriteMode(t *test
 	oldContent := "old content"
 	os.WriteFile(destFile, []byte(oldContent), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, true) // 上書きモード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, false, false, true) // 上書きモード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -466,7 +563,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_CopyModeWithOverwrite
 	oldContent := "old content"
 	os.WriteFile(destFile, []byte(oldContent), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, true, true) // コピー＋上書きモード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, false, true, true) // コピー＋上書きモード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -536,7 +633,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_MultipleWorkers(t *te
 		os.WriteFile(filePath, []byte("test content"), 0644)
 	}
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 3, false, false, false) // 3ワーカー
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 3, false, false, false) // 3ワーカー
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -604,7 +701,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_WorkersMoreThanFiles(
 		os.WriteFile(filePath, []byte("test content"), 0644)
 	}
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 10, false, false, false) // 10ワーカー（ファイル数より多い）
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 10, false, false, false) // 10ワーカー（ファイル数より多い）
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -657,7 +754,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_MultipleSrcDirs(t *te
 	os.WriteFile(filepath.Join(srcDir2, "file3.jpg"), []byte("content3"), 0644)
 	os.WriteFile(filepath.Join(srcDir2, "file4.png"), []byte("content4"), 0644)
 
-	config, err := NewConfig([]string{srcDir1, srcDir2}, []string{"jpg", "png"}, destDir, false, 2, false, false, false)
+	config, err := NewConfig([]string{srcDir1, srcDir2}, []string{"jpg", "png"}, "", destDir, false, 2, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -717,7 +814,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_NonRecursiveMode(t *t
 	// サブディレクトリにファイル作成（非再帰モードでは無視される）
 	os.WriteFile(filepath.Join(subDir, "sub.jpg"), []byte("sub content"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, false) // 非再帰モード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, false, false, false) // 非再帰モード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -770,7 +867,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_EmptyDirectory(t *tes
 
 	// 空のディレクトリ（対象ファイルなし）
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, false, false, false)
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
@@ -819,7 +916,7 @@ func (tc *TestFileManeuverService) TestFileManeuverService_DryRunCopyMode(t *tes
 	testFile := filepath.Join(srcDir, "test.jpg")
 	os.WriteFile(testFile, []byte("test content"), 0644)
 
-	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, destDir, false, 1, true, true, false) // ドライラン＋コピーモード
+	config, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", destDir, false, 1, true, true, false) // ドライラン＋コピーモード
 	if err != nil {
 		t.Fatalf("設定作成に失敗しました: %v", err)
 	}
