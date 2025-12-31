@@ -118,12 +118,41 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 	}
 
 	sanitized := mainHTML
-	if len(denySelectors) == 0 {
-		return sanitized, nil
+	if len(denySelectors) > 0 {
+		err = rod.Try(func() {
+			doc, parseErr := goquery.NewDocumentFromReader(strings.NewReader(mainHTML))
+			if parseErr != nil {
+				panic(parseErr)
+			}
+
+			selection := doc.Find("main").First()
+			if selection.Length() == 0 {
+				panic(&mainNotFoundError{})
+			}
+
+			for _, selector := range denySelectors {
+				trimmed := strings.TrimSpace(selector)
+				if trimmed == "" {
+					continue
+				}
+				selection.Find(trimmed).Remove()
+			}
+
+			var outer string
+			outer, parseErr = goquery.OuterHtml(selection)
+			if parseErr != nil {
+				panic(parseErr)
+			}
+			sanitized = outer
+		})
+		if err != nil {
+			return "", fmt.Errorf("denyElementsの適用に失敗しました: %w", err)
+		}
 	}
 
+	cleaned := sanitized
 	err = rod.Try(func() {
-		doc, parseErr := goquery.NewDocumentFromReader(strings.NewReader(mainHTML))
+		doc, parseErr := goquery.NewDocumentFromReader(strings.NewReader(sanitized))
 		if parseErr != nil {
 			panic(parseErr)
 		}
@@ -133,24 +162,27 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 			panic(&mainNotFoundError{})
 		}
 
-		for _, selector := range denySelectors {
-			trimmed := strings.TrimSpace(selector)
-			if trimmed == "" {
-				continue
-			}
-			selection.Find(trimmed).Remove()
+		removeAttrs := func(sel *goquery.Selection) {
+			sel.RemoveAttr("class")
+			sel.RemoveAttr("style")
+			sel.Find("*").Each(func(_ int, child *goquery.Selection) {
+				child.RemoveAttr("class")
+				child.RemoveAttr("style")
+			})
 		}
+
+		removeAttrs(selection)
 
 		var outer string
 		outer, parseErr = goquery.OuterHtml(selection)
 		if parseErr != nil {
 			panic(parseErr)
 		}
-		sanitized = outer
+		cleaned = outer
 	})
 	if err != nil {
-		return "", fmt.Errorf("denyElementsの適用に失敗しました: %w", err)
+		return "", fmt.Errorf("CSS属性の除去に失敗しました: %w", err)
 	}
 
-	return sanitized, nil
+	return cleaned, nil
 }
