@@ -44,13 +44,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
+	denySelectors := []string{"faceplate-tracker"}
 	ctx := context.Background()
 	domFetcher := fetchers.NewRodDOMFetcher()
 	service := usecases.NewDOMService(domFetcher)
 
 	switch cfg.OperationName() {
 	case config.OperationGetDOMTree:
-		html, err := service.GetDOMTree(ctx, cfg.URL, cfg.WaitDuration())
+		html, err := service.GetDOMTree(ctx, cfg.URL, cfg.WaitDuration(), denySelectors)
 		if err != nil {
 			fmt.Fprintf(stderr, "DOM取得に失敗しました: %v\n", err)
 			return exitCodeError
