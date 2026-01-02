@@ -110,21 +110,28 @@ func (s *HTTPService) FormatResponse(response *models.HTTPResponse) (string, err
 		}
 	}
 
+	warnings := append([]string{}, response.Warnings...)
+
+	body := prettyJSON.String()
+	if !isJSONBody {
+		sanitizedBody, mainFound := sanitizeHTMLBody(body)
+		body = sanitizedBody
+		containsTags := strings.Contains(body, "<") && strings.Contains(body, ">")
+		if containsTags && !mainFound {
+			warnings = append(warnings, "main要素が見つからないため、HTMLボディをそのまま表示しました")
+		}
+	}
+
 	result := fmt.Sprintf("Status: %d\n", response.StatusCode)
-	if len(response.Warnings) > 0 {
+	if len(warnings) > 0 {
 		result += "\nWarnings:\n"
-		for _, warning := range response.Warnings {
+		for _, warning := range warnings {
 			result += fmt.Sprintf("- %s\n", warning)
 		}
 	}
 	result += "\nHeaders:\n"
 	for key, value := range response.Headers {
 		result += fmt.Sprintf("%s: %s\n", key, value)
-	}
-
-	body := prettyJSON.String()
-	if !isJSONBody {
-		body = sanitizeHTMLBody(body)
 	}
 
 	result += fmt.Sprintf("\nBody:\n%s", body)
@@ -157,18 +164,33 @@ func getDefaultHTMLDenySelectors() []string {
 	return items
 }
 
-func sanitizeHTMLBody(body string) string {
+func sanitizeHTMLBody(body string) (string, bool) {
 	trimmed := strings.TrimSpace(body)
 	if trimmed == "" {
-		return body
+		return body, false
 	}
 	if !strings.Contains(trimmed, "<") || !strings.Contains(trimmed, ">") {
-		return body
+		return body, false
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
 	if err != nil {
-		return body
+		return body, false
+	}
+
+	mainSelection := doc.Find("main").First()
+	if mainSelection.Length() == 0 {
+		return body, false
+	}
+
+	mainHTML, err := goquery.OuterHtml(mainSelection)
+	if err != nil {
+		return body, false
+	}
+
+	doc, err = goquery.NewDocumentFromReader(strings.NewReader(mainHTML))
+	if err != nil {
+		return body, false
 	}
 
 	for _, node := range doc.Selection.Nodes {
@@ -221,10 +243,10 @@ func sanitizeHTMLBody(body string) string {
 	}
 
 	if builder.Len() == 0 {
-		return body
+		return body, false
 	}
 
-	return collapseBlankLines(builder.String())
+	return collapseBlankLines(builder.String()), true
 }
 
 func removeHTMLComments(node *html.Node) {
