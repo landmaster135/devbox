@@ -61,7 +61,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	var err error
 
 	// ヘッダーの準備
-	headers := map[string]string{"Accept": "application/json"}
+	headers := make(map[string]string)
 
 	// トークンが指定されている場合は、Authorizationヘッダーを追加
 	if *token != "" {

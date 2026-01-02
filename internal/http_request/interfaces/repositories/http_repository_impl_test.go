@@ -2,13 +2,17 @@ package repositories
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/andybalholm/brotli"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
 
@@ -30,6 +34,12 @@ func TestNewHTTPRepository(t *testing.T) {
 	if repo.userAgent == "" {
 		t.Error("Expected User-Agent to be initialized")
 	}
+	if len(repo.defaultHeaders) == 0 {
+		t.Error("Expected default headers to be initialized")
+	}
+	if repo.retryPolicy.maxAttempts < 1 {
+		t.Error("Expected retry policy to be configured")
+	}
 }
 
 // TestBuildDefaultUserAgent はデフォルトUser-Agent構築のテストです
@@ -43,17 +53,17 @@ func TestBuildDefaultUserAgent(t *testing.T) {
 	}
 
 	// User-Agentに必要な情報が含まれていることを確認
-	if !strings.Contains(userAgent, "HTTP-Request-CLI/1.0") {
-		t.Error("Expected User-Agent to contain application name and version")
+	if !strings.Contains(userAgent, "Mozilla/5.0") {
+		t.Error("Expected User-Agent to contain browser prefix")
 	}
-	if !strings.Contains(userAgent, runtime.GOOS) {
+	if !strings.Contains(userAgent, "Chrome/") {
+		t.Error("Expected User-Agent to contain Chrome token")
+	}
+	if !strings.Contains(userAgent, "Safari/537.36") {
+		t.Error("Expected User-Agent to contain Safari token")
+	}
+	if !strings.Contains(userAgent, getOSVersion()) {
 		t.Error("Expected User-Agent to contain OS information")
-	}
-	if !strings.Contains(userAgent, runtime.GOARCH) {
-		t.Error("Expected User-Agent to contain architecture information")
-	}
-	if !strings.Contains(userAgent, "Go/") {
-		t.Error("Expected User-Agent to contain Go version")
 	}
 }
 
@@ -100,10 +110,13 @@ func TestSendRequest_UserAgentSet(t *testing.T) {
 		}
 
 		// User-Agentに必要な情報が含まれていることを確認
-		if !strings.Contains(userAgent, "HTTP-Request-CLI/1.0") {
-			t.Errorf("Expected User-Agent to contain application name, got: %s", userAgent)
+		if !strings.Contains(userAgent, "Mozilla/5.0") {
+			t.Errorf("Expected User-Agent to contain browser prefix, got: %s", userAgent)
 		}
-		if !strings.Contains(userAgent, runtime.GOOS) {
+		if !strings.Contains(userAgent, "Chrome/") {
+			t.Errorf("Expected User-Agent to contain Chrome token, got: %s", userAgent)
+		}
+		if !strings.Contains(userAgent, getOSVersion()) {
 			t.Errorf("Expected User-Agent to contain OS info, got: %s", userAgent)
 		}
 
@@ -161,6 +174,165 @@ func TestSendRequest_CustomUserAgent(t *testing.T) {
 	// Assert
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestSendRequest_DefaultBrowserHeaders(t *testing.T) {
+	var acceptHeader, languageHeader string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		acceptHeader = r.Header.Get("Accept")
+		languageHeader = r.Header.Get("Accept-Language")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	}))
+	defer server.Close()
+
+	repo := NewHTTPRepository()
+	request := &models.HTTPRequest{
+		URL:     server.URL,
+		Method:  "GET",
+		Headers: map[string]string{},
+	}
+
+	if _, err := repo.SendRequest(request); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(acceptHeader, "text/html") {
+		t.Errorf("expected Accept header to include text/html, got %s", acceptHeader)
+	}
+	if !strings.Contains(languageHeader, "ja") {
+		t.Errorf("expected Accept-Language header to prioritize ja, got %s", languageHeader)
+	}
+}
+
+func TestSendRequest_CustomAcceptOverridesDefault(t *testing.T) {
+	const customAccept = "application/json"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if header := r.Header.Get("Accept"); header != customAccept {
+			t.Fatalf("expected Accept=%s, got %s", customAccept, header)
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	}))
+	defer server.Close()
+
+	repo := NewHTTPRepository()
+	request := &models.HTTPRequest{
+		URL:    server.URL,
+		Method: "GET",
+		Headers: map[string]string{
+			"Accept": customAccept,
+		},
+	}
+
+	if _, err := repo.SendRequest(request); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSendRequest_DecodesGzipResponses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		gz.Write([]byte("hello gzip"))
+	}))
+	defer server.Close()
+
+	repo := NewHTTPRepository()
+	request := &models.HTTPRequest{URL: server.URL, Method: "GET", Headers: map[string]string{}}
+
+	resp, err := repo.SendRequest(request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if string(resp.Body) != "hello gzip" {
+		t.Errorf("expected body to be decoded, got %s", string(resp.Body))
+	}
+}
+
+func TestSendRequest_DecodesBrotliResponses(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Encoding", "br")
+		writer := brotli.NewWriter(w)
+		defer writer.Close()
+		writer.Write([]byte("hello brotli"))
+	}))
+	defer server.Close()
+
+	repo := NewHTTPRepository()
+	request := &models.HTTPRequest{URL: server.URL, Method: "GET", Headers: map[string]string{}}
+
+	resp, err := repo.SendRequest(request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if string(resp.Body) != "hello brotli" {
+		t.Errorf("expected brotli body to be decoded, got %s", string(resp.Body))
+	}
+}
+
+func TestSendRequest_AddsCloudflareWarning(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "cloudflare")
+		w.Header().Set("Cf-Mitigated", "challenge")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Just a moment"))
+	}))
+	defer server.Close()
+
+	repo := NewHTTPRepository()
+	repo.retryPolicy.maxAttempts = 1
+	request := &models.HTTPRequest{URL: server.URL, Method: "GET", Headers: map[string]string{}}
+
+	resp, err := repo.SendRequest(request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.Warnings) == 0 {
+		t.Fatalf("expected warning to be populated")
+	}
+	if !strings.Contains(resp.Warnings[0], "Cloudflare") {
+		t.Errorf("expected warning to mention Cloudflare, got %s", resp.Warnings[0])
+	}
+}
+
+func TestSendRequest_RetriesOnCloudflareForbidden(t *testing.T) {
+	var callCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		current := atomic.AddInt32(&callCount, 1)
+		if current == 1 {
+			w.Header().Set("Server", "cloudflare")
+			w.Header().Set("Cf-Mitigated", "challenge")
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("Just a moment"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status": "ok"}`))
+	}))
+	defer server.Close()
+
+	repo := NewHTTPRepository()
+	repo.retryPolicy.initialBackoff = time.Millisecond
+	repo.retryPolicy.maxBackoff = 2 * time.Millisecond
+	request := &models.HTTPRequest{URL: server.URL, Method: "GET", Headers: map[string]string{}}
+
+	resp, err := repo.SendRequest(request)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected final status 200, got %d", resp.StatusCode)
+	}
+	attempts := atomic.LoadInt32(&callCount)
+	if attempts < 2 {
+		t.Fatalf("expected at least two attempts, got %d", attempts)
 	}
 }
 

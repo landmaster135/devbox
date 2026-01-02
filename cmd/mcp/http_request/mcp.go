@@ -34,7 +34,7 @@ func handleHttpRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	apiService := services.NewHTTPService(apiRepo)
 
 	// ヘッダーの準備
-	headers := map[string]string{"Accept": "application/json"}
+	headers := make(map[string]string)
 
 	var response *models.HTTPResponse
 	if body != "" {
