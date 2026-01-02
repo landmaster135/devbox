@@ -513,11 +513,11 @@ func TestSendRequestWithoutJSONFile(t *testing.T) {
 
 // MockJSONEncoder はJSONエンコーダーをモックするための構造体です
 type MockJSONEncoder struct {
-	EncodeFunc func(v interface{}) error
+	EncodeFunc func(v any) error
 }
 
 // Encode はJSONエンコードをモックするメソッドです
-func (m *MockJSONEncoder) Encode(v interface{}) error {
+func (m *MockJSONEncoder) Encode(v any) error {
 	return m.EncodeFunc(v)
 }
 
