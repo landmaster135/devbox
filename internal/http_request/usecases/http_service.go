@@ -221,6 +221,8 @@ func sanitizeHTMLBody(body string) (string, bool) {
 		}
 	})
 
+	removeEmptyDivs(doc)
+
 	var builder strings.Builder
 	if bodyNode := doc.Find("body").First(); bodyNode.Length() > 0 {
 		if outer, err := goquery.OuterHtml(bodyNode); err == nil {
@@ -262,6 +264,24 @@ func removeHTMLComments(node *html.Node) {
 			removeHTMLComments(child)
 		}
 		child = next
+	}
+}
+
+func removeEmptyDivs(doc *goquery.Document) {
+	if doc == nil {
+		return
+	}
+	for {
+		removed := false
+		doc.Find("div").Each(func(_ int, s *goquery.Selection) {
+			if s.Children().Length() == 0 && strings.TrimSpace(s.Text()) == "" {
+				s.Remove()
+				removed = true
+			}
+		})
+		if !removed {
+			break
+		}
 	}
 }
 
