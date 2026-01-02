@@ -183,6 +183,10 @@ func sanitizeHTMLBody(body string) string {
 	doc.Find("*").Each(func(_ int, s *goquery.Selection) {
 		s.RemoveAttr("class")
 		s.RemoveAttr("style")
+		s.RemoveAttr("data-testid")
+		if strings.EqualFold(goquery.NodeName(s), "span") {
+			s.RemoveAttr("data-allow-missmatch")
+		}
 	})
 
 	var builder strings.Builder
