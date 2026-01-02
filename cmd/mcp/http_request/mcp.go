@@ -8,8 +8,8 @@ import (
 	server "github.com/mark3labs/mcp-go/server"
 
 	"github.com/landmaster135/devbox/internal/http_request/domain/models"
-	"github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/http_request/usecases/services"
+	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
+	usecases "github.com/landmaster135/devbox/internal/http_request/usecases"
 )
 
 // #==============================================================#
@@ -30,8 +30,8 @@ func handleHttpRequest(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 	encoding := request.GetString("encoding", "auto")
 
 	// 依存関係の注入
-	apiRepo := repositories.NewHTTPRepository()
-	apiService := services.NewHTTPService(apiRepo)
+	apiRepo := interfaces.NewHTTPRepository()
+	apiService := usecases.NewHTTPService(apiRepo)
 
 	// ヘッダーの準備
 	headers := make(map[string]string)

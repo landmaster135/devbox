@@ -6,16 +6,16 @@ import (
 	"fmt"
 
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
-	repo "github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
+	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
 )
 
 // HTTPService はHTTPリクエストを処理するサービスです
 type HTTPService struct {
-	httpRepo repo.HTTPRepository
+	httpRepo interfaces.HTTPRepository
 }
 
 // NewHTTPService は新しいHTTPServiceインスタンスを作成します
-func NewHTTPService(httpRepo repo.HTTPRepository) *HTTPService {
+func NewHTTPService(httpRepo interfaces.HTTPRepository) *HTTPService {
 	return &HTTPService{
 		httpRepo: httpRepo,
 	}

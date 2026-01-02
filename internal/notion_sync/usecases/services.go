@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/http_request/usecases/services"
+	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
+	usecases "github.com/landmaster135/devbox/internal/http_request/usecases"
 
 	config "github.com/landmaster135/devbox/internal/notion_sync/config"
 )
@@ -60,13 +60,13 @@ func NewWebClipPatchRequest(token, markdownContent, date, title, url string, tog
 
 // NotionSyncService はNotion同期を行うサービス
 type NotionSyncService struct {
-	httpService *services.HTTPService
+	httpService *usecases.HTTPService
 }
 
 // NewNotionSyncService は新しいNotionSyncServiceを作成する
 func NewNotionSyncService() *NotionSyncService {
-	httpRepo := repositories.NewHTTPRepository()
-	httpService := services.NewHTTPService(httpRepo)
+	httpRepo := interfaces.NewHTTPRepository()
+	httpService := usecases.NewHTTPService(httpRepo)
 
 	return &NotionSyncService{
 		httpService: httpService,
@@ -74,7 +74,7 @@ func NewNotionSyncService() *NotionSyncService {
 }
 
 // NewNotionSyncServiceWithDependencies はテスト用に依存性を注入できるNotionSyncServiceを作成する
-func NewNotionSyncServiceWithDependencies(httpService *services.HTTPService) *NotionSyncService {
+func NewNotionSyncServiceWithDependencies(httpService *usecases.HTTPService) *NotionSyncService {
 	return &NotionSyncService{
 		httpService: httpService,
 	}
