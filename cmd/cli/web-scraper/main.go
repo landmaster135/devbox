@@ -46,27 +46,6 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	denySelectorsForReddit := []string{
-		"pdp-back-button",
-		"faceplate-loader",
-		"faceplate-tracker",
-		"faceplate-perfmark",
-		"faceplate-number",
-		"faceplate-dropdown-menu",
-		"faceplate-partial",
-		"shreddit-comments-page-ad",
-		"shreddit-async-loader",
-		"shreddit-comment-tree-ad",
-		"button",
-	}
-	denySelectors := []string{
-		"svg",
-		"script",
-		"header",
-		"footer",
-	}
-	denySelectors = append(denySelectors, denySelectorsForReddit...)
-
 	ctx := context.Background()
 	domFetcher := fetchers.NewRodDOMFetcher()
 	domWriter := writers.NewFileWriter()
@@ -74,7 +53,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	switch cfg.OperationName() {
 	case config.OperationGetDOMTree:
-		html, written, err := service.GetDOMTree(ctx, cfg.URL, cfg.WaitDuration(), denySelectors, cfg.OutputFilePath())
+		html, written, err := service.GetDOMTree(ctx, cfg.URL, cfg.WaitDuration(), cfg.OutputFilePath())
 		if err != nil {
 			fmt.Fprintf(stderr, "DOM取得に失敗しました: %v\n", err)
 			return exitCodeError

@@ -11,29 +11,18 @@ type mockDOMFetcher struct {
 	t         *testing.T
 	wantURL   string
 	wantWait  time.Duration
-	wantDeny  []string
 	result    string
 	err       error
 	callCount int
 }
 
-func (m *mockDOMFetcher) FetchDOM(ctx context.Context, url string, wait time.Duration, denySelectors []string) (string, error) {
+func (m *mockDOMFetcher) FetchDOM(ctx context.Context, url string, wait time.Duration) (string, error) {
 	m.callCount++
 	if m.wantURL != "" && url != m.wantURL {
 		m.t.Fatalf("expected url %s, got %s", m.wantURL, url)
 	}
 	if m.wantWait != wait {
 		m.t.Fatalf("expected wait %s, got %s", m.wantWait, wait)
-	}
-	if m.wantDeny != nil {
-		if len(m.wantDeny) != len(denySelectors) {
-			m.t.Fatalf("expected denySelectors %v, got %v", m.wantDeny, denySelectors)
-		}
-		for i, sel := range m.wantDeny {
-			if sel != denySelectors[i] {
-				m.t.Fatalf("expected denySelectors[%d]=%s, got %s", i, sel, denySelectors[i])
-			}
-		}
 	}
 	if ctx == nil {
 		m.t.Fatalf("context is nil")
@@ -67,12 +56,11 @@ func TestDOMService_GetDOMTree_Success(t *testing.T) {
 		t:        t,
 		wantURL:  "https://example.com",
 		wantWait: 2 * time.Second,
-		wantDeny: []string{".ad", "script"},
 		result:   "<html></html>",
 	}
 
 	service := NewDOMService(fetcher, nil)
-	got, written, err := service.GetDOMTree(context.Background(), "https://example.com", 2*time.Second, []string{".ad", "script"}, "")
+	got, written, err := service.GetDOMTree(context.Background(), "https://example.com", 2*time.Second, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -102,7 +90,7 @@ func TestDOMService_GetDOMTree_WriteSuccess(t *testing.T) {
 	}
 
 	service := NewDOMService(fetcher, writer)
-	_, written, err := service.GetDOMTree(context.Background(), "https://example.io", 0, nil, "out.html")
+	_, written, err := service.GetDOMTree(context.Background(), "https://example.io", 0, "out.html")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,7 +109,7 @@ func TestDOMService_GetDOMTree_WriteError(t *testing.T) {
 	writer := &mockDOMWriter{t: t, err: errors.New("fail")}
 	service := NewDOMService(fetcher, writer)
 
-	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, nil, "out.html"); err == nil {
+	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, "out.html"); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 }
@@ -131,7 +119,7 @@ func TestDOMService_GetDOMTree_WriterMissing(t *testing.T) {
 
 	fetcher := &mockDOMFetcher{t: t, result: "<main></main>"}
 	service := NewDOMService(fetcher, nil)
-	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, nil, "out.html"); err == nil {
+	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, "out.html"); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 }
@@ -146,7 +134,7 @@ func TestDOMService_GetDOMTree_FetcherError(t *testing.T) {
 	}
 
 	service := NewDOMService(fetcher, nil)
-	if _, _, err := service.GetDOMTree(context.Background(), "https://example.org", 0, nil, ""); err == nil {
+	if _, _, err := service.GetDOMTree(context.Background(), "https://example.org", 0, ""); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 }
@@ -155,7 +143,7 @@ func TestDOMService_GetDOMTree_EmptyURL(t *testing.T) {
 	t.Parallel()
 
 	service := NewDOMService(&mockDOMFetcher{t: t}, nil)
-	if _, _, err := service.GetDOMTree(context.Background(), " ", 0, nil, ""); err == nil {
+	if _, _, err := service.GetDOMTree(context.Background(), " ", 0, ""); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 }
@@ -164,12 +152,12 @@ func TestDOMService_GetDOMTree_FetcherMissing(t *testing.T) {
 	t.Parallel()
 
 	var service *DOMService
-	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, nil, ""); err == nil {
+	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, ""); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 
 	service = &DOMService{}
-	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, nil, ""); err == nil {
+	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, ""); err == nil {
 		t.Fatalf("expected error, got nil")
 	}
 }

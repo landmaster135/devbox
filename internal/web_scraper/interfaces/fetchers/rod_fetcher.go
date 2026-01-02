@@ -50,7 +50,7 @@ func NewRodDOMFetcher(opts ...Option) *RodDOMFetcher {
 }
 
 // FetchDOM は対象URLのDOMツリーを取得します。
-func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration, denySelectors []string) (string, error) {
+func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration) (string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -91,7 +91,7 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 		return "", fmt.Errorf("DOMツリーの取得に失敗しました: %w", err)
 	}
 
-	sanitized, err := sanitizeHTMLBody(html, denySelectors)
+	sanitized, err := sanitizeHTMLBody(html)
 	if err != nil {
 		var notFoundErr *mainNotFoundError
 		if errors.As(err, &notFoundErr) {
@@ -103,7 +103,7 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 	return sanitized, nil
 }
 
-func sanitizeHTMLBody(body string, denySelectors []string) (string, error) {
+func sanitizeHTMLBody(body string) (string, error) {
 	trimmed := strings.TrimSpace(body)
 	if trimmed == "" {
 		return "", fmt.Errorf("HTMLが空です")
@@ -133,7 +133,7 @@ func sanitizeHTMLBody(body string, denySelectors []string) (string, error) {
 		removeHTMLComments(node)
 	}
 
-	for _, selector := range denySelectors {
+	for _, selector := range getDefaultHTMLDenySelectors() {
 		trimmedSelector := strings.TrimSpace(selector)
 		if trimmedSelector == "" {
 			continue
@@ -221,6 +221,29 @@ func removeEmptyDivs(doc *goquery.Document) {
 			break
 		}
 	}
+}
+
+func getDefaultHTMLDenySelectors() []string {
+	itemsForReddit := []string{
+		"pdp-back-button",
+		"faceplate-loader",
+		"faceplate-tracker",
+		"faceplate-perfmark",
+		"faceplate-number",
+		"faceplate-dropdown-menu",
+		"faceplate-partial",
+		"shreddit-comments-page-ad",
+		"shreddit-async-loader",
+		"shreddit-comment-tree-ad",
+		"button",
+	}
+	items := []string{
+		"svg",
+		"script",
+		"header",
+		"footer",
+	}
+	return append(items, itemsForReddit...)
 }
 
 func collapseBlankLines(src string) string {
