@@ -631,12 +631,12 @@ func TestFormatResponse(t *testing.T) {
 				StatusCode: 200,
 				Headers:    map[string]string{"Content-Type": "text/html"},
 				Body: []byte(
-					`<html><body><!-- comment --><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><span data-allow-missmatch="true" data-testid="main-span">keep</span></main></div></body></html>`),
+					`<html><body><!-- comment --><header>brand</header><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><span data-allow-mismatch="true" data-allow-missmatch="true" data-testid="main-span">keep</span></main></div><footer>copyright</footer></body></html>`),
 			},
 			expectedPrefix: "Status: 200",
 			expectError:    false,
 			notContains: []string{
-				"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-testid",
+				"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-allow-mismatch", "data-testid", "<header", "brand", "<footer", "copyright",
 			},
 		},
 	}
@@ -706,9 +706,9 @@ func TestFormatResponse(t *testing.T) {
 }
 
 func TestSanitizeHTMLBody(t *testing.T) {
-	input := `<html><body><!--comment--><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><span data-allow-missmatch="true" data-testid="main-span">keep</span></main></div></body></html>`
+	input := `<html><body><!--comment--><header>brand</header><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><span data-allow-mismatch="true" data-allow-missmatch="true" data-testid="main-span">keep</span></main></div><footer>copyright</footer></body></html>`
 	got := sanitizeHTMLBody(input)
-	for _, fragment := range []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-testid"} {
+	for _, fragment := range []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-allow-mismatch", "data-testid", "<header", "brand", "<footer", "copyright"} {
 		if strings.Contains(got, fragment) {
 			t.Fatalf("sanitizeHTMLBody should remove %q but result was %s", fragment, got)
 		}

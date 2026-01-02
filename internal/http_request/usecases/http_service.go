@@ -149,6 +149,8 @@ func getDefaultHTMLDenySelectors() []string {
 	items := []string{
 		"svg",
 		"script",
+		"header",
+		"footer",
 	}
 	items = append(items, itemsForReddit...)
 
@@ -186,6 +188,7 @@ func sanitizeHTMLBody(body string) string {
 		s.RemoveAttr("data-testid")
 		if strings.EqualFold(goquery.NodeName(s), "span") {
 			s.RemoveAttr("data-allow-missmatch")
+			s.RemoveAttr("data-allow-mismatch")
 		}
 	})
 
