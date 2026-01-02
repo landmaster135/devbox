@@ -1,4 +1,4 @@
-package repositories
+package interfaces
 
 import (
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
