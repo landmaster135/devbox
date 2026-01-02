@@ -186,9 +186,16 @@ func sanitizeHTMLBody(body string) string {
 		s.RemoveAttr("class")
 		s.RemoveAttr("style")
 		s.RemoveAttr("data-testid")
-		if strings.EqualFold(goquery.NodeName(s), "span") {
+
+		switch strings.ToLower(goquery.NodeName(s)) {
+		case "span":
 			s.RemoveAttr("data-allow-missmatch")
 			s.RemoveAttr("data-allow-mismatch")
+		case "img":
+			s.RemoveAttr("onerror")
+			s.RemoveAttr("data-nuxt-img")
+			s.RemoveAttr("sizes")
+			s.RemoveAttr("srcset")
 		}
 	})
 
