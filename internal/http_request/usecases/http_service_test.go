@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
@@ -528,6 +529,7 @@ func TestFormatResponse(t *testing.T) {
 		response       *models.HTTPResponse
 		expectedPrefix string
 		expectError    bool
+		notContains    []string
 	}{
 		{
 			name: "正常系 - JSONレスポンス",
@@ -623,6 +625,18 @@ func TestFormatResponse(t *testing.T) {
 			expectedPrefix: "Status: 403",
 			expectError:    false,
 		},
+		{
+			name: "HTMLボディから不要なタグを除去",
+			response: &models.HTTPResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "text/html"},
+				Body: []byte(
+					`<html><body><!-- comment --><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button></main></body></html>`),
+			},
+			expectedPrefix: "Status: 200",
+			expectError:    false,
+			notContains:    []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -678,8 +692,24 @@ func TestFormatResponse(t *testing.T) {
 						}
 					}
 				}
+
+				for _, fragment := range tc.notContains {
+					if bytes.Contains([]byte(result), []byte(fragment)) {
+						t.Errorf("Expected result not to contain %q, but it was present. result: %s", fragment, result)
+					}
+				}
 			}
 		})
+	}
+}
+
+func TestSanitizeHTMLBody(t *testing.T) {
+	input := `<html><body><!--comment--><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button></main></body></html>`
+	got := sanitizeHTMLBody(input)
+	for _, fragment := range []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret"} {
+		if strings.Contains(got, fragment) {
+			t.Fatalf("sanitizeHTMLBody should remove %q but result was %s", fragment, got)
+		}
 	}
 }
 
