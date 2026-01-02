@@ -94,6 +94,8 @@
 | ops-for-golang                              | ✅  | ✅  | ❌️  | ❌️ |
 | pdf-encrypter                               | ✅  | ❌️  | ❌️  | ❌️ |
 | pdf-merger                                  | ✅  | ❌️  | ❌️  | ❌️ |
+| persona-extraction                          | ❌️  | ✅  | ❌️  | ❌️ |
+| plan                                        | ❌️  | ✅  | ❌️  | ❌️ |
 | postgresql                                  | ✅  | ✅  | ❌️  | ❌️ |
 | qdrant                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | script-generator-to-build                   | ✅  | ❌️  | ❌️  | ❌️ |
@@ -106,6 +108,7 @@
 | util                                        | ❌️  | ✅  | ❌️  | ❌️ |
 | valkey                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | weather-notificator                         | ✅  | ✅  | ✅  | ✅ |
+| web-scraper                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | withings                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | yaml-parser                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | youtube-downloader                          | ✅  | ❌️  | ❌️  | ❌️ |
@@ -114,13 +117,13 @@
 
 ### 統計情報
 
-- **総サービス数**: 97
-- **CLIツール実装数**: 88
-- **MCPツール実装数**: 24
+- **総サービス数**: 100
+- **CLIツール実装数**: 89
+- **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 73
-- **MCPのみ実装**: 9
+- **CLIのみ実装**: 74
+- **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
 - **CLI+MCP両方実装**: 15
