@@ -530,6 +530,7 @@ func TestFormatResponse(t *testing.T) {
 		expectedPrefix string
 		expectError    bool
 		notContains    []string
+		contains       []string
 	}{
 		{
 			name: "正常系 - JSONレスポンス",
@@ -639,6 +640,17 @@ func TestFormatResponse(t *testing.T) {
 				"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-allow-mismatch", "data-testid", "<header", "brand", "<footer", "copyright", "onerror=", "data-nuxt-img", "sizes=", "srcset=",
 			},
 		},
+		{
+			name: "main要素なしHTMLに警告付与",
+			response: &models.HTTPResponse{
+				StatusCode: 200,
+				Headers:    map[string]string{"Content-Type": "text/html"},
+				Body:       []byte(`<html><body><div>content without main</div></body></html>`),
+			},
+			expectedPrefix: "Status: 200",
+			expectError:    false,
+			contains:       []string{"main要素が見つからないため、HTMLボディをそのまま表示しました"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -695,6 +707,12 @@ func TestFormatResponse(t *testing.T) {
 					}
 				}
 
+				for _, fragment := range tc.contains {
+					if !bytes.Contains([]byte(result), []byte(fragment)) {
+						t.Errorf("Expected result to contain %q, but it was absent", fragment)
+					}
+				}
+
 				for _, fragment := range tc.notContains {
 					if bytes.Contains([]byte(result), []byte(fragment)) {
 						t.Errorf("Expected result not to contain %q, but it was present. result: %s", fragment, result)
@@ -707,7 +725,10 @@ func TestFormatResponse(t *testing.T) {
 
 func TestSanitizeHTMLBody(t *testing.T) {
 	input := `<html><body><!--comment--><header>brand</header><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><span data-allow-mismatch="true" data-allow-missmatch="true" data-testid="main-span">keep</span><img src="/img.png" alt="logo" onerror="alert(1)" data-nuxt-img="true" sizes="100vw" srcset="/img.png 1x, /img@2x.png 2x"></main></div><footer>copyright</footer></body></html>`
-	got := sanitizeHTMLBody(input)
+	got, found := sanitizeHTMLBody(input)
+	if !found {
+		t.Fatalf("expected to find main element in sanitizeHTMLBody test")
+	}
 	for _, fragment := range []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-allow-mismatch", "data-testid", "<header", "brand", "<footer", "copyright", "onerror=", "data-nuxt-img", "sizes=", "srcset="} {
 		if strings.Contains(got, fragment) {
 			t.Fatalf("sanitizeHTMLBody should remove %q but result was %s", fragment, got)
