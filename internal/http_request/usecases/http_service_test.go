@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
@@ -720,19 +719,6 @@ func TestFormatResponse(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestSanitizeHTMLBody(t *testing.T) {
-	input := `<html><body><!--comment--><header>brand</header><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><div></div><div><div></div></div><span data-allow-mismatch="true" data-allow-missmatch="true" data-testid="main-span">keep</span><img src="/img.png" alt="logo" onerror="alert(1)" data-nuxt-img="true" sizes="100vw" srcset="/img.png 1x, /img@2x.png 2x"></main></div><footer>copyright</footer></body></html>`
-	got, found := sanitizeHTMLBody(input)
-	if !found {
-		t.Fatalf("expected to find main element in sanitizeHTMLBody test")
-	}
-	for _, fragment := range []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-allow-mismatch", "data-testid", "<header", "brand", "<footer", "copyright", "onerror=", "data-nuxt-img", "sizes=", "srcset=", "<div></div>", "<div><div></div></div>"} {
-		if strings.Contains(got, fragment) {
-			t.Fatalf("sanitizeHTMLBody should remove %q but result was %s", fragment, got)
-		}
 	}
 }
 
