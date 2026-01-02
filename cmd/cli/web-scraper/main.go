@@ -62,6 +62,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	denySelectors := []string{
 		"svg",
 		"script",
+		"header",
+		"footer",
 	}
 	denySelectors = append(denySelectors, denySelectorsForReddit...)
 
