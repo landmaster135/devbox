@@ -10,6 +10,9 @@
 - JSONレスポンスを自動的に整形して表示
 - 文字エンコーディング対応（Shift_JIS、UTF-8、EUC-JP、自動検出）
 - HTMLレスポンスの文字化け解消
+- 主要ブラウザに近いUser-Agent/HTTPヘッダーを自動付与し、CloudflareなどのBot検出を回避しやすい
+- gzip/deflate/brotli圧縮レスポンスを自動展開
+- Cloudflareチャレンジを検出すると自動リトライと警告表示を行い、問題の切り分けを支援
 
 ## ビルド方法
 
@@ -23,25 +26,25 @@
 ### GETリクエスト
 
 ```bash
-./bin/http-request -url https://example.com/api
+go run ./cmd/cli//http-request -url https://example.com/api
 ```
 
 ### POSTリクエスト（JSONファイル使用）
 
 ```bash
-./bin/http-request -url https://example.com/api -method POST -json path/to/data.json
+go run ./cmd/cli//http-request -url https://example.com/api -method POST -json path/to/data.json
 ```
 
 ### PUTリクエスト（JSONファイル使用）
 
 ```bash
-./bin/http-request -url https://example.com/api -method PUT -json path/to/data.json
+go run ./cmd/cli//http-request -url https://example.com/api -method PUT -json path/to/data.json
 ```
 
 ### DELETEリクエスト
 
 ```bash
-./bin/http-request -url https://example.com/api -method DELETE
+go run ./cmd/cli//http-request -url https://example.com/api -method DELETE
 ```
 
 ## オプション
@@ -58,22 +61,23 @@
 
 ```bash
 # ユーザー情報の取得（GET）
-./bin/http-request -url https://jsonplaceholder.typicode.com/users/1
+go run ./cmd/cli//http-request -url https://jsonplaceholder.typicode.com/users/1
 
 # 新しい投稿の作成（POST）
-./bin/http-request -url https://jsonplaceholder.typicode.com/posts -method POST -json testdata/sample_request.json
+go run ./cmd/cli//http-request -url https://jsonplaceholder.typicode.com/posts -method POST -json testdata/sample_request.json
 
 # 認証トークンを使用したリクエスト
-./bin/http-request -url https://api.example.com/secured-endpoint -token your-api-token
+go run ./cmd/cli//http-request -url https://api.example.com/secured-endpoint -token your-api-token
 
 # 認証トークンとJSONファイルを使用したPOSTリクエスト
-./bin/http-request -url https://api.example.com/secured-endpoint -method POST -json testdata/sample_request.json -token your-api-token
+go run ./cmd/cli//http-request -url https://api.example.com/secured-endpoint -method POST -json testdata/sample_request.json -token your-api-token
 
 # Shift_JISエンコーディングのHTMLページを取得
-./bin/http-request -url http://abehiroshi.la.coocan.jp/ -encoding shift_jis
+go run ./cmd/cli//http-request -url http://abehiroshi.la.coocan.jp/ -encoding shift_jis
 
 # エンコーディング自動検出でHTMLページを取得
-./bin/http-request -url http://example.com -encoding auto
+go run ./cmd/cli//http-request -url http://example.com -encoding auto
+
 ```
 
 ## エンコーディング機能
@@ -105,3 +109,9 @@
 - POST/PUT/PATCHメソッドでJSONファイルが指定されていない場合はエラーメッセージを表示
 - JSONファイルが存在しない、または無効なJSON形式の場合はエラーメッセージを表示
 - APIリクエストが失敗した場合はエラーメッセージを表示
+
+## Cloudflare対策と警告表示
+
+- `GET/HEAD/OPTIONS`リクエストでは、403/429/503/520-524などのレスポンスを検知すると指数バックオフ付きで自動リトライします。
+- Cloudflare固有のヘッダーや「Just a moment...」ページを検出した場合は、警告メッセージを`Warnings`欄に表示します。
+- 警告が出力された場合は、一時的なブロックである可能性が高いため、時間を空けるかブラウザでクッキーを取得してから再度実行してください。

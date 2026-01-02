@@ -33,7 +33,6 @@ func (s *HTTPService) SendRequestWithJSONFile(url, method, jsonFilePath string) 
 	return s.SendRequestWithJSONFileAndHeaders(url, method, jsonFilePath, headers, "auto")
 }
 
-
 // SendRequestWithJSONBody はメモリ上のJSONバイト配列をボディとしてHTTPリクエストを送信します
 func (s *HTTPService) SendRequestWithJSONBody(url, method string, jsonBody []byte, headers map[string]string, encoding string) (*models.HTTPResponse, error) {
 	// Content-Typeが設定されていない場合は追加
@@ -91,26 +90,28 @@ func (s *HTTPService) SendRequestWithoutJSONFile(url, method string, headers map
 
 // FormatResponse はHTTPレスポンスを整形して文字列として返します
 func (s *HTTPService) FormatResponse(response *models.HTTPResponse) (string, error) {
-	// レスポンスボディがJSONの場合は整形する
 	var prettyJSON bytes.Buffer
 	if len(response.Body) > 0 {
-		// JSONとして解析を試みる
 		var jsonObj any
 		if err := json.Unmarshal(response.Body, &jsonObj); err == nil {
-			// 整形したJSONを作成
 			encoder := json.NewEncoder(&prettyJSON)
 			encoder.SetIndent("", "  ")
 			if err := encoder.Encode(jsonObj); err != nil {
 				return "", fmt.Errorf("JSONの整形に失敗しました: %w", err)
 			}
 		} else {
-			// JSONでない場合はそのまま返す
 			prettyJSON.Write(response.Body)
 		}
 	}
 
-	// レスポンス情報を整形
-	result := fmt.Sprintf("Status: %d\n\nHeaders:\n", response.StatusCode)
+	result := fmt.Sprintf("Status: %d\n", response.StatusCode)
+	if len(response.Warnings) > 0 {
+		result += "\nWarnings:\n"
+		for _, warning := range response.Warnings {
+			result += fmt.Sprintf("- %s\n", warning)
+		}
+	}
+	result += "\nHeaders:\n"
 	for key, value := range response.Headers {
 		result += fmt.Sprintf("%s: %s\n", key, value)
 	}

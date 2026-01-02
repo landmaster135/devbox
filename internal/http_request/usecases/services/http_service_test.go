@@ -612,6 +612,17 @@ func TestFormatResponse(t *testing.T) {
 			expectedPrefix: "Status: 200",
 			expectError:    false,
 		},
+		{
+			name: "警告付きレスポンス",
+			response: &models.HTTPResponse{
+				StatusCode: 403,
+				Headers:    map[string]string{"Content-Type": "text/html"},
+				Body:       []byte("<html></html>"),
+				Warnings:   []string{"Cloudflare warning detected"},
+			},
+			expectedPrefix: "Status: 403",
+			expectError:    false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -657,6 +668,14 @@ func TestFormatResponse(t *testing.T) {
 				if len(tc.response.Body) > 0 {
 					if !bytes.Contains([]byte(result), []byte("Body:")) {
 						t.Errorf("Expected result to contain body section, got %s", result)
+					}
+				}
+
+				if len(tc.response.Warnings) > 0 {
+					for _, warning := range tc.response.Warnings {
+						if !bytes.Contains([]byte(result), []byte(warning)) {
+							t.Errorf("Expected warning %s to be present, got %s", warning, result)
+						}
 					}
 				}
 			}

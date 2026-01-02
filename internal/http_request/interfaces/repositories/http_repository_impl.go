@@ -3,6 +3,8 @@ package repositories
 import (
 	"bufio"
 	"bytes"
+	"compress/flate"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,18 +12,30 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/andybalholm/brotli"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
 
+	"github.com/landmaster135/devbox/internal/http_request/domain/detectors"
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 )
 
 // HTTPRepositoryImpl はHTTPRepositoryインターフェースの実装です
 type HTTPRepositoryImpl struct {
-	client    *http.Client
-	userAgent string
+	client         *http.Client
+	userAgent      string
+	defaultHeaders map[string]string
+	retryPolicy    retryPolicy
+}
+
+type retryPolicy struct {
+	maxAttempts    int
+	initialBackoff time.Duration
+	maxBackoff     time.Duration
 }
 
 const (
@@ -39,19 +53,39 @@ var (
 // NewHTTPRepository は新しいHTTPRepositoryインスタンスを作成します
 func NewHTTPRepository() *HTTPRepositoryImpl {
 	return &HTTPRepositoryImpl{
-		client:    &http.Client{},
-		userAgent: buildDefaultUserAgent(),
+		client:         &http.Client{},
+		userAgent:      buildDefaultUserAgent(),
+		defaultHeaders: buildDefaultHeaders(),
+		retryPolicy: retryPolicy{
+			maxAttempts:    3,
+			initialBackoff: 500 * time.Millisecond,
+			maxBackoff:     5 * time.Second,
+		},
 	}
 }
 
-// buildDefaultUserAgent はデフォルトのUser-Agentを構築します
+func buildDefaultHeaders() map[string]string {
+	return map[string]string{
+		"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+		"Accept-Language":           "ja,en-US;q=0.9,en;q=0.8",
+		"Accept-Encoding":           "gzip, deflate, br",
+		"Cache-Control":             "no-cache",
+		"Pragma":                    "no-cache",
+		"Sec-Fetch-Dest":            "document",
+		"Sec-Fetch-Mode":            "navigate",
+		"Sec-Fetch-Site":            "none",
+		"Sec-Fetch-User":            "?1",
+		"Upgrade-Insecure-Requests": "1",
+		"Connection":                "keep-alive",
+	}
+}
+
+// buildDefaultUserAgent はブラウザ風のUser-Agentを返します
 func buildDefaultUserAgent() string {
 	return fmt.Sprintf(
-		"HTTP-Request-CLI/1.0 (%s %s; %s) Go/%s",
-		runtime.GOOS,
-		runtime.GOARCH,
+		"Mozilla/5.0 (%s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
 		getOSVersion(),
-		runtime.Version())
+	)
 }
 
 // getOSVersion はOS情報を取得します
@@ -70,41 +104,75 @@ func getOSVersion() string {
 
 // SendRequest はHTTPリクエストを送信し、レスポンスを返します
 func (r *HTTPRepositoryImpl) SendRequest(request *models.HTTPRequest) (*models.HTTPResponse, error) {
-	// HTTPリクエストを作成
-	req, err := http.NewRequest(request.Method, request.URL, bytes.NewBuffer(request.Body))
+	retryable := isRetryableMethod(request.Method)
+	attempts := 1
+	if retryable {
+		attempts = r.retryPolicy.maxAttempts
+	}
+
+	var (
+		response   *models.HTTPResponse
+		cfDetected bool
+		err        error
+	)
+
+	for attempt := 0; attempt < attempts; attempt++ {
+		response, cfDetected, err = r.executeRequest(request)
+		if err != nil {
+			if !retryable || attempt == attempts-1 {
+				return nil, err
+			}
+		} else {
+			if !retryable || !r.shouldRetryResponse(response, cfDetected) || attempt == attempts-1 {
+				return response, nil
+			}
+		}
+
+		if retryable {
+			time.Sleep(r.calculateBackoffDuration(response, attempt))
+		}
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("HTTPリクエストの作成に失敗しました: %w", err)
+		return nil, err
+	}
+	return response, nil
+}
+
+func (r *HTTPRepositoryImpl) executeRequest(request *models.HTTPRequest) (*models.HTTPResponse, bool, error) {
+	req, err := http.NewRequest(request.Method, request.URL, bytes.NewReader(request.Body))
+	if err != nil {
+		return nil, false, fmt.Errorf("HTTPリクエストの作成に失敗しました: %w", err)
 	}
 
-	// デフォルトのUser-Agentを設定（Windows Defender誤検知対策）
-	req.Header.Set("User-Agent", r.userAgent)
+	r.applyHeaders(req, request.Headers)
 
-	// ヘッダーを設定（User-Agentが明示的に指定されている場合は上書き）
-	for key, value := range request.Headers {
-		req.Header.Set(key, value)
-	}
-
-	// リクエストを送信
 	resp, err := r.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("HTTPリクエストの送信に失敗しました: %w", err)
+		return nil, false, fmt.Errorf("HTTPリクエストの送信に失敗しました: %w", err)
 	}
 	defer resp.Body.Close()
 
+	bodyReader, decompressor, err := r.buildBodyReader(resp)
+	if err != nil {
+		return nil, false, err
+	}
+	if decompressor != nil {
+		defer decompressor.Close()
+	}
+
 	contentType := resp.Header.Get("Content-Type")
-	limited := &io.LimitedReader{R: resp.Body, N: maxResponseBodySize + 1}
+	limited := &io.LimitedReader{R: bodyReader, N: maxResponseBodySize + 1}
 	reader := bufio.NewReader(limited)
 
 	body, convErr := r.readResponseBody(reader, contentType, request.Encoding)
 	if limited.N <= 0 {
-		return nil, fmt.Errorf("レスポンスボディが最大サイズ(%dバイト)を超えました", maxResponseBodySize)
+		return nil, false, fmt.Errorf("レスポンスボディが最大サイズ(%dバイト)を超えました", maxResponseBodySize)
 	}
 	if convErr != nil {
-		// 変換に失敗した場合は元のボディをそのまま使用し、エラーは無視する
-		// convErrはデバッグ用途にのみ意味を持つため、ここではハンドリングしない
+		// 文字コード変換に失敗した場合はエラーを無視して未変換のボディを返す
 	}
 
-	// レスポンスヘッダーをマップに変換
 	headers := make(map[string]string)
 	for key, values := range resp.Header {
 		if len(values) > 0 {
@@ -112,35 +180,146 @@ func (r *HTTPRepositoryImpl) SendRequest(request *models.HTTPRequest) (*models.H
 		}
 	}
 
-	// HTTPResponseを作成して返す
+	cfDetected := detectors.IsCloudflareChallenge(resp.StatusCode, headers, body)
+	warnings := make([]string, 0)
+	if cfDetected {
+		warnings = append(warnings, detectors.BuildCloudflareWarning(resp.StatusCode, headers))
+	}
+
 	return &models.HTTPResponse{
 		StatusCode: resp.StatusCode,
 		Headers:    headers,
 		Body:       body,
-	}, nil
+		Warnings:   warnings,
+	}, cfDetected, nil
+}
+
+func (r *HTTPRepositoryImpl) applyHeaders(req *http.Request, custom map[string]string) {
+	req.Header.Set("User-Agent", r.userAgent)
+	for key, value := range r.defaultHeaders {
+		if req.Header.Get(key) == "" {
+			req.Header.Set(key, value)
+		}
+	}
+	for key, value := range custom {
+		req.Header.Set(key, value)
+	}
+}
+
+func (r *HTTPRepositoryImpl) buildBodyReader(resp *http.Response) (io.Reader, io.Closer, error) {
+	encoding := normalizeEncoding(resp.Header.Get("Content-Encoding"))
+	switch encoding {
+	case "gzip":
+		gz, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, nil, fmt.Errorf("gzip圧縮の展開に失敗しました: %w", err)
+		}
+		return gz, gz, nil
+	case "deflate":
+		flateReader := flate.NewReader(resp.Body)
+		return flateReader, flateReader, nil
+	case "br":
+		return brotli.NewReader(resp.Body), nil, nil
+	default:
+		return resp.Body, nil, nil
+	}
+}
+
+func normalizeEncoding(value string) string {
+	if value == "" {
+		return ""
+	}
+	parts := strings.Split(value, ",")
+	if len(parts) == 0 {
+		return strings.ToLower(strings.TrimSpace(value))
+	}
+	return strings.ToLower(strings.TrimSpace(parts[0]))
+}
+
+func (r *HTTPRepositoryImpl) shouldRetryResponse(response *models.HTTPResponse, cfDetected bool) bool {
+	if response == nil {
+		return false
+	}
+
+	if cfDetected && response.StatusCode == http.StatusForbidden {
+		return true
+	}
+
+	switch response.StatusCode {
+	case http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusGatewayTimeout, http.StatusBadGateway:
+		return true
+	}
+
+	if response.StatusCode >= 520 && response.StatusCode <= 524 {
+		return true
+	}
+
+	return false
+}
+
+func (r *HTTPRepositoryImpl) calculateBackoffDuration(response *models.HTTPResponse, attempt int) time.Duration {
+	if response != nil {
+		if retryAfter, ok := parseRetryAfter(response.Headers); ok {
+			if retryAfter <= 0 {
+				return r.retryPolicy.initialBackoff
+			}
+			if retryAfter > r.retryPolicy.maxBackoff {
+				return r.retryPolicy.maxBackoff
+			}
+			return retryAfter
+		}
+	}
+
+	backoff := r.retryPolicy.initialBackoff * time.Duration(1<<attempt)
+	if backoff > r.retryPolicy.maxBackoff {
+		return r.retryPolicy.maxBackoff
+	}
+	if backoff <= 0 {
+		return r.retryPolicy.initialBackoff
+	}
+	return backoff
+}
+
+func parseRetryAfter(headers map[string]string) (time.Duration, bool) {
+	for key, value := range headers {
+		if strings.EqualFold(key, "Retry-After") {
+			if seconds, err := strconv.Atoi(strings.TrimSpace(value)); err == nil {
+				return time.Duration(seconds) * time.Second, true
+			}
+			if when, err := http.ParseTime(value); err == nil {
+				return time.Until(when), true
+			}
+		}
+	}
+	return 0, false
+}
+
+func isRetryableMethod(method string) bool {
+	switch strings.ToUpper(method) {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
+	}
 }
 
 // LoadJSONFile はJSONファイルを読み込み、バイト配列として返します
 func (r *HTTPRepositoryImpl) LoadJSONFile(filePath string) ([]byte, error) {
-	// ファイルを開く
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("JSONファイルを開けませんでした: %w", err)
 	}
 	defer file.Close()
 
-	// ファイルの内容を読み込む
 	content, err := io.ReadAll(file)
 	if err != nil {
 		return nil, fmt.Errorf("JSONファイルの読み込みに失敗しました: %w", err)
 	}
 
-	// BOM（Byte Order Mark）を削除
 	if len(content) >= 3 && content[0] == 0xEF && content[1] == 0xBB && content[2] == 0xBF {
 		content = content[3:]
 	}
 
-	// JSONとして有効かチェック
 	var js interface{}
 	if err := json.Unmarshal(content, &js); err != nil {
 		return nil, fmt.Errorf("無効なJSON形式です: %w", err)
@@ -227,29 +406,23 @@ func (r *HTTPRepositoryImpl) extractCharsetFromContentType(contentType string) s
 
 // extractCharsetFromHTML はHTMLのmetaタグからcharsetを抽出します
 func (r *HTTPRepositoryImpl) extractCharsetFromHTML(html string) string {
-	// 大文字小文字を区別しない検索のため、小文字に変換
 	lowerHTML := strings.ToLower(html)
 
-	// <meta charset="..."> パターン
 	matches := metaCharsetRegex.FindStringSubmatch(lowerHTML)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
 
-	// <meta http-equiv="Content-Type" content="text/html; charset=..."> パターン
 	matches = metaHTTPEquivRegex.FindStringSubmatch(lowerHTML)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
 
-	// content属性が先に来るパターンも対応
 	matches = metaContentFirstRegex.FindStringSubmatch(lowerHTML)
 	if len(matches) > 1 {
 		return strings.TrimSpace(matches[1])
 	}
 
-	// 日本語サイトでよく使われるShift_JISを推測
-	// 文字化けパターンが見つかった場合、Shift_JISと推測
 	if strings.Contains(html, "�") {
 		return "shift_jis"
 	}
