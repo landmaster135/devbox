@@ -18,15 +18,6 @@
         "http_request"
       ]
     },
-    "brave_web_search": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
-      "args": [
-        "brave_web_search"
-      ],
-      "env": {
-        "BRAVE_API_KEY": "YOUR_KEY"
-      }
-    },
     "get-current-timezone": {
       "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
       "args": [
@@ -113,14 +104,6 @@
       "args": [
         "context7"
       ]
-    },
-    "service_implementing_viewer": {
-      "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",
-      "args": [
-        "service_implementing_viewer"
-      ],
-      "disabled": false,
-      "autoApprove": []
     },
     "notion_sync": {
       "command": "%HOMEPATH%\\Documents\\mcp_server\\devbox-mcp-tools.exe",

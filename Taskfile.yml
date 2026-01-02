@@ -1,6 +1,11 @@
 version: "3"
 
 tasks:
+  default:
+    cmds:
+      - task: test:all:cov
+      - task: build
+      - task: build:mcp
   alias:
     cmds:
       - task --list-all
@@ -18,6 +23,8 @@ tasks:
     cmd: go run {{ .DIR }} | tee
     vars:
       DIR: ./cmd/cli/{{ .CLI_ARGS }}
+  run:backend:
+    cmd: echo 'No registered command...'
   check:
     cmd: go vet ./...
   test:cov:
