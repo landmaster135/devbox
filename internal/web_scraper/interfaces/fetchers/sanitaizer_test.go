@@ -75,12 +75,38 @@ func TestSanitizeHTMLBody_RemovesNestedStructures(t *testing.T) {
 	}
 }
 
-func TestSanitizeHTMLBody_MainMissing(t *testing.T) {
+func TestSanitizeHTMLBody_FallbacksToArticle(t *testing.T) {
+	t.Parallel()
+
+	input := `
+<html>
+  <body>
+    <article>short</article>
+    <article>
+      <p>this is the longest article content available for selection</p>
+    </article>
+  </body>
+</html>`
+
+	got, err := sanitizeHTMLBody(input)
+	if err != nil {
+		t.Fatalf("unexpected error when falling back to article: %v", err)
+	}
+
+	if !strings.Contains(got, "longest article content") {
+		t.Fatalf("expected fallback article content in sanitized HTML, got: %s", got)
+	}
+	if strings.Contains(got, "short") {
+		t.Fatalf("expected only the longest article to be kept, got: %s", got)
+	}
+}
+
+func TestSanitizeHTMLBody_MainAndArticleMissing(t *testing.T) {
 	t.Parallel()
 
 	_, err := sanitizeHTMLBody("<html><body><div>No main</div></body></html>")
 	if err == nil {
-		t.Fatalf("expected error when main element is absent")
+		t.Fatalf("expected error when no main or article elements are present")
 	}
 
 	var notFound *mainNotFoundError

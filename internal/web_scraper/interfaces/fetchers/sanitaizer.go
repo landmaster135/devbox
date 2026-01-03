@@ -3,6 +3,7 @@ package fetchers
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
@@ -19,9 +20,9 @@ func sanitizeHTMLBody(body string) (string, error) {
 		return "", fmt.Errorf("HTMLの解析に失敗しました: %w", err)
 	}
 
-	mainSelection := doc.Find("main").First()
-	if mainSelection.Length() == 0 {
-		return "", &mainNotFoundError{}
+	mainSelection, err := extractMainSelection(doc)
+	if err != nil {
+		return "", err
 	}
 
 	mainHTML, err := goquery.OuterHtml(mainSelection)
@@ -91,6 +92,43 @@ func sanitizeHTMLBody(body string) (string, error) {
 	}
 
 	return collapseBlankLines(builder.String()), nil
+}
+
+func extractMainSelection(doc *goquery.Document) (*goquery.Selection, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("HTMLドキュメントが初期化されていません")
+	}
+
+	if mainSelection := doc.Find("main").First(); mainSelection.Length() > 0 {
+		return mainSelection, nil
+	}
+
+	if articleSelection := findLongestArticle(doc); articleSelection != nil {
+		return articleSelection, nil
+	}
+
+	return nil, &mainNotFoundError{}
+}
+
+func findLongestArticle(doc *goquery.Document) *goquery.Selection {
+	if doc == nil {
+		return nil
+	}
+
+	var (
+		longest *goquery.Selection
+		maxLen  = -1
+	)
+
+	doc.Find("article").Each(func(_ int, s *goquery.Selection) {
+		length := utf8.RuneCountInString(strings.TrimSpace(s.Text()))
+		if length > maxLen {
+			longest = s.Clone()
+			maxLen = length
+		}
+	})
+
+	return longest
 }
 
 func removeHTMLComments(node *html.Node) {
