@@ -19,6 +19,9 @@ func TestSanitizeHTMLBody_RemovesUnwantedContent(t *testing.T) {
         <script>alert('x')</script>
         <!-- comment -->
         <img class="img" onerror="alert(1)" sizes="100vw" src="image.png" srcset="large">
+        <picture>
+          <source sizes="50vw" srcset="small.jpg 1x, medium.jpg 2x">
+        </picture>
       </div>
       <button>click</button>
     </main>
@@ -34,7 +37,7 @@ func TestSanitizeHTMLBody_RemovesUnwantedContent(t *testing.T) {
 	if !strings.Contains(got, "Hello") {
 		t.Fatalf("expected sanitized HTML to contain text content, got: %s", got)
 	}
-	for _, forbidden := range []string{"<script", "class=", "style=", "data-testid", "button", "<!--"} {
+	for _, forbidden := range []string{"<script", "class=", "style=", "data-testid", "button", "<!--", "sizes=", "srcset="} {
 		if strings.Contains(got, forbidden) {
 			t.Fatalf("sanitized HTML still contains %q: %s", forbidden, got)
 		}
