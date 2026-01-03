@@ -61,6 +61,9 @@ func sanitizeHTMLBody(body string) (string, error) {
 			s.RemoveAttr("data-nuxt-img")
 			s.RemoveAttr("sizes")
 			s.RemoveAttr("srcset")
+		case "source":
+			s.RemoveAttr("sizes")
+			s.RemoveAttr("srcset")
 		}
 	})
 
