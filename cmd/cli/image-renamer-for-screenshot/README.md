@@ -8,6 +8,7 @@
   - 対応形式2: `vlcsnap-YYYY-MM-DD-HHhMMmSSsNNN.png`（例: `vlcsnap-2025-05-06-23h59m44s239.png`）
 - Windowsスクリーンショットファイル (`スクリーンショット YYYY-MM-DD HHMMSS.png`) を `Screenshot_YYYYMMDD-HHMMSS.png` 形式にリネーム
 - Pixelスクリーンショット/録画ファイル (`screen-YYYYMMDD-HHMMSS.png/mp4`) を `Screenshot_YYYYMMDD-HHMMSS.png/mp4` 形式にリネーム
+- Xiaomi端末のスクリーンショットファイル (`Screenshot_YYYY-MM-DD-HH-MM-SS-SSS_package.name.png/jpg` など) を `Screenshot_YYYYMMDD-HHMMSS.png/jpg` 形式にリネーム
 - **新機能**: 全てのスクリーンショットファイルを `YYYYMMDDHHMMSS.png/mp4` 形式（日時のみ）にリネーム
 - 複数のファイルを並行処理
 - 再帰的なディレクトリスキャン
@@ -20,12 +21,12 @@
 ### オプション
 
 - `-src <ディレクトリ>`: スキャンするソースディレクトリ（デフォルト: カレントディレクトリ）
-- `-operation <文字列>`: リネーム対象を指定します。指定できる値は `vlc`、`win`、`pixel` のいずれかです（例: `-operation=vlc`）
+- `-operation <文字列>`: リネーム対象を指定します。指定できる値は `vlc`、`win`、`pixel`、`xiaomi` のいずれかです（例: `-operation=vlc`）
 - `-to-datetime`: 全てのスクリーンショットファイルをYYYYMMDDHHMMSS形式にリネーム
 - `-r`: サブディレクトリを再帰的にスキャン
 - `-workers <数値>`: 並行ワーカー数（デフォルト: CPUコア数）
 
-**注意**: `-operation` で指定できる値は一つだけです。複数の値を同時に指定することはできません。`-operation` を省略した場合は `-to-datetime` との組み合わせを除き、処理対象がないためエラーになります。値は `vlc` / `win` / `pixel` のいずれかを文字列で指定してください（例: `-operation=vlc`）。
+**注意**: `-operation` で指定できる値は一つだけです。複数の値を同時に指定することはできません。`-operation` を省略した場合は `-to-datetime` との組み合わせを除き、処理対象がないためエラーになります。値は `vlc` / `win` / `pixel` / `xiaomi` のいずれかを文字列で指定してください（例: `-operation=vlc`）。
 
 ### 使用例
 
@@ -42,6 +43,11 @@ go run ./cmd/cli/image-renamer-for-screenshot -operation=win -src ./screenshots
 Pixelスクリーンショット/録画ファイルのリネーム
 ```bash
 go run ./cmd/cli/image-renamer-for-screenshot -operation=pixel -src ./pixel/media
+```
+
+Xiaomiスクリーンショットファイルのリネーム
+```bash
+go run ./cmd/cli/image-renamer-for-screenshot -operation=xiaomi -src ./miui/screenshots
 ```
 
 再帰的にスキャン
