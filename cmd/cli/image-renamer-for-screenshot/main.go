@@ -28,7 +28,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
 	vlcPattern := flagSet.Bool("vlc", false, "VLCスナップショットファイル (vlcsnap-*.png) をリネーム")
 	winPattern := flagSet.Bool("win", false, "Windowsスクリーンショットファイル (スクリーンショット *.png) をリネーム")
-	androidPattern := flagSet.Bool("android", false, "Androidスクリーンレコードファイル (screen-*.mp4) をリネーム")
+	pixelPattern := flagSet.Bool("pixel", false, "Pixelスクリーンレコードファイル (screen-*.mp4) をリネーム")
 	toDateTime := flagSet.Bool("to-datetime", false, "ファイル名をYYYYMMDDHHMMSS形式にリネーム")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
@@ -40,13 +40,13 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	}
 
 	return usecases.Config{
-		SrcDir:         *srcDir,
-		Recursive:      *recursive,
-		Workers:        *workers,
-		VlcPattern:     *vlcPattern,
-		WinPattern:     *winPattern,
-		AndroidPattern: *androidPattern,
-		ToDateTime:     *toDateTime,
+		SrcDir:       *srcDir,
+		Recursive:    *recursive,
+		Workers:      *workers,
+		VlcPattern:   *vlcPattern,
+		WinPattern:   *winPattern,
+		PixelPattern: *pixelPattern,
+		ToDateTime:   *toDateTime,
 	}, nil
 }
 
