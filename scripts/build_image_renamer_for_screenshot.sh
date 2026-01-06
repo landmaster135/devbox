@@ -38,5 +38,5 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./image-renamer-for-screenshot -src ./screenshots -vlc"
-echo "  ./image-renamer-for-screenshot -src ./screenshots -win -r"
+echo "  ./image-renamer-for-screenshot -src ./screenshots -operation=vlc"
+echo "  ./image-renamer-for-screenshot -src ./screenshots -operation=win -r"

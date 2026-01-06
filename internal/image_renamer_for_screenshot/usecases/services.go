@@ -43,8 +43,8 @@ func validateConfig(config Config, stderr io.Writer) error {
 
 	// パターンのチェック：すべてfalseならエラー
 	if !config.VlcPattern && !config.WinPattern && !config.PixelPattern {
-		fmt.Fprintln(stderr, "エラー: -vlc、-win、-pixel、または -to-datetime のいずれかのパターンを指定する必要があります。")
-		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -vlc")
+		fmt.Fprintln(stderr, "エラー: -operation に 'vlc'、'win'、'pixel' のいずれか、または -to-datetime を指定する必要があります。")
+		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -to-datetime")
 		return fmt.Errorf("パターンが指定されていません")
 	}
@@ -62,8 +62,8 @@ func validateConfig(config Config, stderr io.Writer) error {
 	}
 
 	if patternCount > 1 {
-		fmt.Fprintln(stderr, "エラー: -vlc、-win、-pixel のフラグは同時に設定できません。")
-		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -vlc")
+		fmt.Fprintln(stderr, "エラー: -operation で指定できる値は一つだけです。")
+		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
 		return fmt.Errorf("複数のパターンが指定されています")
 	}
 
