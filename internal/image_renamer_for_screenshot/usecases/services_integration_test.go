@@ -265,18 +265,18 @@ func TestProcessScreenshotRename_MultiplePatterns(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	// Androidスクリーンレコードファイルを作成
-	androidFile := filepath.Join(tempDir, "screen-20250507-123456.mp4")
-	if err := os.WriteFile(androidFile, []byte("test"), 0644); err != nil {
+	// Pixelスクリーンレコードファイルを作成
+	pixelFile := filepath.Join(tempDir, "screen-20250507-123456.mp4")
+	if err := os.WriteFile(pixelFile, []byte("test"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
 	config := Config{
-		SrcDir:         tempDir,
-		VlcPattern:     true,
-		WinPattern:     true,
-		AndroidPattern: false,
-		Workers:        3,
+		SrcDir:       tempDir,
+		VlcPattern:   true,
+		WinPattern:   true,
+		PixelPattern: false,
+		Workers:      3,
 	}
 
 	stdout := &bytes.Buffer{}

@@ -19,13 +19,13 @@ type FileInfo struct {
 
 // Config はプログラムの設定を保持する構造体です
 type Config struct {
-	SrcDir         string
-	Recursive      bool
-	Workers        int
-	VlcPattern     bool
-	WinPattern     bool
-	AndroidPattern bool
-	ToDateTime     bool
+	SrcDir       string
+	Recursive    bool
+	Workers      int
+	VlcPattern   bool
+	WinPattern   bool
+	PixelPattern bool
+	ToDateTime   bool
 }
 
 // validateConfig は設定の妥当性を検証します
@@ -42,8 +42,8 @@ func validateConfig(config Config, stderr io.Writer) error {
 	}
 
 	// パターンのチェック：すべてfalseならエラー
-	if !config.VlcPattern && !config.WinPattern && !config.AndroidPattern {
-		fmt.Fprintln(stderr, "エラー: -vlc、-win、-android、または -to-datetime のいずれかのパターンを指定する必要があります。")
+	if !config.VlcPattern && !config.WinPattern && !config.PixelPattern {
+		fmt.Fprintln(stderr, "エラー: -vlc、-win、-pixel、または -to-datetime のいずれかのパターンを指定する必要があります。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -vlc")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -to-datetime")
 		return fmt.Errorf("パターンが指定されていません")
@@ -57,12 +57,12 @@ func validateConfig(config Config, stderr io.Writer) error {
 	if config.WinPattern {
 		patternCount++
 	}
-	if config.AndroidPattern {
+	if config.PixelPattern {
 		patternCount++
 	}
 
 	if patternCount > 1 {
-		fmt.Fprintln(stderr, "エラー: -vlc、-win、-android のフラグは同時に設定できません。")
+		fmt.Fprintln(stderr, "エラー: -vlc、-win、-pixel のフラグは同時に設定できません。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -vlc")
 		return fmt.Errorf("複数のパターンが指定されています")
 	}
@@ -141,7 +141,7 @@ func findScreenshotFilesForDateTime(srcDir string, recursive bool, stdout, stder
 }
 
 // findScreenshotFiles は指定されたディレクトリからスクリーンショットファイルを検索します
-func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, androidPattern bool, stdout, stderr io.Writer) ([]string, error) {
+func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, pixelPattern bool, stdout, stderr io.Writer) ([]string, error) {
 	var files []string
 
 	walkFunc := func(path string, d fs.DirEntry, err error) error {
@@ -154,7 +154,7 @@ func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, 
 				name := d.Name()
 				if (vlcPattern && strings.HasPrefix(name, "vlcsnap-")) ||
 					(winPattern && strings.HasPrefix(name, "スクリーンショット ")) ||
-					(androidPattern && strings.HasPrefix(name, "screen-")) {
+					(pixelPattern && strings.HasPrefix(name, "screen-")) {
 					files = append(files, path)
 				}
 			}
@@ -182,7 +182,7 @@ func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, 
 					name := entry.Name()
 					if (vlcPattern && strings.HasPrefix(name, "vlcsnap-")) ||
 						(winPattern && strings.HasPrefix(name, "スクリーンショット ")) ||
-						(androidPattern && strings.HasPrefix(name, "screen-")) {
+						(pixelPattern && strings.HasPrefix(name, "screen-")) {
 						files = append(files, filepath.Join(srcDir, name))
 					}
 				}
@@ -255,20 +255,20 @@ func renameWindowsToDateTime(baseName, ext string) (string, error) {
 	return fmt.Sprintf("%s%s%s%s%s%s%s", year, month, day, hour, minute, second, ext), nil
 }
 
-// renameAndroidToDateTime はAndroidスクリーンレコードファイルをYYYYMMDDHHMMSS形式にリネームします
-func renameAndroidToDateTime(baseName, ext string) (string, error) {
+// renamePixelToDateTime はPixelスクリーンレコードファイルをYYYYMMDDHHMMSS形式にリネームします
+func renamePixelToDateTime(baseName, ext string) (string, error) {
 	// screen-YYYYMMDD-HHMMSS
 	re := regexp.MustCompile(`screen-(\d{8})-(\d{6})`)
 	matches := re.FindStringSubmatch(baseName)
 	if len(matches) != 3 {
-		return "", fmt.Errorf("androidスクリーンレコードのパターンに一致しません: %s", baseName)
+		return "", fmt.Errorf("Pixelスクリーンレコードのパターンに一致しません: %s", baseName)
 	}
 
 	dateStr := matches[1]
 	timeStr := matches[2]
 
 	if len(dateStr) != 8 || len(timeStr) != 6 {
-		return "", fmt.Errorf("androidスクリーンレコードの日時形式が不正です: %s", baseName)
+		return "", fmt.Errorf("Pixelスクリーンレコードの日時形式が不正です: %s", baseName)
 	}
 
 	return fmt.Sprintf("%s%s%s", dateStr, timeStr, ext), nil
@@ -310,7 +310,7 @@ func processScreenshotRenameToDateTime(file FileInfo, mu *sync.Mutex, successCou
 	} else if strings.HasPrefix(baseName, "スクリーンショット ") {
 		newName, err = renameWindowsToDateTime(baseName, ext)
 	} else if strings.HasPrefix(baseName, "screen-") {
-		newName, err = renameAndroidToDateTime(baseName, ext)
+		newName, err = renamePixelToDateTime(baseName, ext)
 	} else if strings.HasPrefix(baseName, "Screenshot_") {
 		newName, err = renameScreenshotToDateTime(baseName, ext)
 	} else {
@@ -380,20 +380,20 @@ func renameWindowsScreenshot(baseName, ext string) (string, error) {
 	return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
 }
 
-// renameAndroidScreenshot はAndroidスクリーンレコードファイルをリネームします
-func renameAndroidScreenshot(baseName, ext string) (string, error) {
+// renamePixelScreenshot はPixelスクリーンレコードファイルをリネームします
+func renamePixelScreenshot(baseName, ext string) (string, error) {
 	// screen-YYYYMMDD-HHMMSS
 	re := regexp.MustCompile(`screen-(\d{8})-(\d{6})`)
 	matches := re.FindStringSubmatch(baseName)
 	if len(matches) != 3 {
-		return "", fmt.Errorf("[Error] Androidスクリーンレコードのパターンに一致しません: %s", baseName)
+		return "", fmt.Errorf("[Error] Pixelスクリーンレコードのパターンに一致しません: %s", baseName)
 	}
 
 	dateStr := matches[1]
 	timeStr := matches[2]
 
 	if len(dateStr) != 8 || len(timeStr) != 6 {
-		return "", fmt.Errorf("[Error] Androidスクリーンレコードの日時形式が不正です: %s", baseName)
+		return "", fmt.Errorf("[Error] Pixelスクリーンレコードの日時形式が不正です: %s", baseName)
 	}
 
 	year := dateStr[0:4]
@@ -408,7 +408,7 @@ func renameAndroidScreenshot(baseName, ext string) (string, error) {
 }
 
 // processScreenshotRename は1つのスクリーンショットファイルをリネームします
-func processScreenshotRename(file FileInfo, vlcPattern, winPattern, androidPattern bool, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
+func processScreenshotRename(file FileInfo, vlcPattern, winPattern, pixelPattern bool, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
 	oldPath := file.Path
 	dir := filepath.Dir(oldPath)
 	oldName := filepath.Base(oldPath)
@@ -422,8 +422,8 @@ func processScreenshotRename(file FileInfo, vlcPattern, winPattern, androidPatte
 		newName, err = renameVlcScreenshot(baseName, ext)
 	} else if winPattern && strings.HasPrefix(baseName, "スクリーンショット ") {
 		newName, err = renameWindowsScreenshot(baseName, ext)
-	} else if androidPattern && strings.HasPrefix(baseName, "screen-") {
-		newName, err = renameAndroidScreenshot(baseName, ext)
+	} else if pixelPattern && strings.HasPrefix(baseName, "screen-") {
+		newName, err = renamePixelScreenshot(baseName, ext)
 	} else {
 		// パターンに一致しないファイルはスキップ
 		return
@@ -484,7 +484,7 @@ func renameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 				if config.ToDateTime {
 					processScreenshotRenameToDateTime(file, &mu, &successCount, &errorCount, stdout, stderr)
 				} else {
-					processScreenshotRename(file, config.VlcPattern, config.WinPattern, config.AndroidPattern, &mu, &successCount, &errorCount, stdout, stderr)
+					processScreenshotRename(file, config.VlcPattern, config.WinPattern, config.PixelPattern, &mu, &successCount, &errorCount, stdout, stderr)
 				}
 			}
 		}()
@@ -515,7 +515,7 @@ func ProcessScreenshotRename(config Config, stdout, stderr io.Writer) (int, int,
 	if config.ToDateTime {
 		files, err = findScreenshotFilesForDateTime(config.SrcDir, config.Recursive, stdout, stderr)
 	} else {
-		files, err = findScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.AndroidPattern, stdout, stderr)
+		files, err = findScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.PixelPattern, stdout, stderr)
 	}
 	if err != nil {
 		return 0, 0, err
@@ -534,8 +534,8 @@ func ProcessScreenshotRename(config Config, stdout, stderr io.Writer) (int, int,
 		fmt.Fprintln(stdout, "VLCスナップショットパターンを使用します。")
 	} else if config.WinPattern {
 		fmt.Fprintln(stdout, "Windowsスクリーンショットパターンを使用します。")
-	} else if config.AndroidPattern {
-		fmt.Fprintln(stdout, "Androidスクリーンレコードパターンを使用します。")
+	} else if config.PixelPattern {
+		fmt.Fprintln(stdout, "Pixelスクリーンレコードパターンを使用します。")
 	}
 
 	// ファイル情報の取得

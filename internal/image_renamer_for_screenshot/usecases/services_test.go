@@ -145,59 +145,59 @@ func TestRenameWindowsScreenshot_InvalidFormat(t *testing.T) {
 	}
 }
 
-func TestRenameAndroidScreenshot_Normal(t *testing.T) {
+func TestRenamePixelScreenshot_Normal(t *testing.T) {
 	// Arrange
 	baseName := "screen-20250215-064735"
 	ext := ".png"
 
 	// Act
-	newName, err := renameAndroidScreenshot(baseName, ext)
+	newName, err := renamePixelScreenshot(baseName, ext)
 
 	// Assert
 	if err != nil {
-		t.Errorf("renameAndroidScreenshot() returned error: %v", err)
+		t.Errorf("renamePixelScreenshot() returned error: %v", err)
 	}
 	expected := "Screenshot_20250215-064735.png"
 	if newName != expected {
-		t.Errorf("renameAndroidScreenshot() = %v, want %v", newName, expected)
+		t.Errorf("renamePixelScreenshot() = %v, want %v", newName, expected)
 	}
 }
 
-func TestRenameAndroidScreenshot_MP4(t *testing.T) {
+func TestRenamePixelScreenshot_MP4(t *testing.T) {
 	// Arrange
 	baseName := "screen-20250215-064735"
 	ext := ".mp4"
 
 	// Act
-	newName, err := renameAndroidScreenshot(baseName, ext)
+	newName, err := renamePixelScreenshot(baseName, ext)
 
 	// Assert
 	if err != nil {
-		t.Errorf("renameAndroidScreenshot() returned error: %v", err)
+		t.Errorf("renamePixelScreenshot() returned error: %v", err)
 	}
 	expected := "Screenshot_20250215-064735.mp4"
 	if newName != expected {
-		t.Errorf("renameAndroidScreenshot() = %v, want %v", newName, expected)
+		t.Errorf("renamePixelScreenshot() = %v, want %v", newName, expected)
 	}
 }
 
-func TestRenameAndroidScreenshot_InvalidFormat(t *testing.T) {
+func TestRenamePixelScreenshot_InvalidFormat(t *testing.T) {
 	// Arrange
 	baseName := "screen-invalid-format"
 	ext := ".png"
 
 	// Act
-	_, err := renameAndroidScreenshot(baseName, ext)
+	_, err := renamePixelScreenshot(baseName, ext)
 
 	// Assert
 	if err == nil {
-		t.Error("renameAndroidScreenshot() should return error for invalid format")
+		t.Error("renamePixelScreenshot() should return error for invalid format")
 	}
 }
 
-func TestProcessScreenshotRename_AndroidPattern(t *testing.T) {
+func TestProcessScreenshotRename_PixelPattern(t *testing.T) {
 	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-android-screenshot")
+	tempDir, err := os.MkdirTemp("", "test-pixel-screenshot")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -236,9 +236,9 @@ func TestProcessScreenshotRename_AndroidPattern(t *testing.T) {
 	}
 }
 
-func TestProcessScreenshotRename_AndroidPatternMP4(t *testing.T) {
+func TestProcessScreenshotRename_PixelPatternMP4(t *testing.T) {
 	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-android-screenshot-mp4")
+	tempDir, err := os.MkdirTemp("", "test-pixel-screenshot-mp4")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
