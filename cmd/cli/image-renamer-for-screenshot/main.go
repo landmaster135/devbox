@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 
 	usecases "github.com/landmaster135/devbox/internal/image_renamer_for_screenshot/usecases"
 )
@@ -26,9 +27,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 
 	// コマンドラインフラグの定義
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
-	vlcPattern := flagSet.Bool("vlc", false, "VLCスナップショットファイル (vlcsnap-*.png) をリネーム")
-	winPattern := flagSet.Bool("win", false, "Windowsスクリーンショットファイル (スクリーンショット *.png) をリネーム")
-	pixelPattern := flagSet.Bool("pixel", false, "Pixelスクリーンレコードファイル (screen-*.mp4) をリネーム")
+	operation := flagSet.String("operation", "", "リネーム対象を指定 (vlc|win|pixel)")
 	toDateTime := flagSet.Bool("to-datetime", false, "ファイル名をYYYYMMDDHHMMSS形式にリネーム")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
@@ -39,13 +38,37 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 		return usecases.Config{}, err
 	}
 
+	var (
+		vlcPattern   bool
+		winPattern   bool
+		pixelPattern bool
+	)
+
+	trimmedOperation := strings.TrimSpace(*operation)
+	trimmedOperation = strings.TrimPrefix(trimmedOperation, "-")
+
+	switch trimmedOperation {
+	case "":
+		// operationを指定しない場合は既存の挙動と同様に全てfalseのまま
+	case "vlc":
+		vlcPattern = true
+	case "win":
+		winPattern = true
+	case "pixel":
+		pixelPattern = true
+	default:
+		fmt.Fprintln(stderr, "エラー: -operation には 'vlc'、'win'、または 'pixel' のいずれかを指定してください。")
+		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
+		return usecases.Config{}, fmt.Errorf("invalid operation: %s", *operation)
+	}
+
 	return usecases.Config{
 		SrcDir:       *srcDir,
 		Recursive:    *recursive,
 		Workers:      *workers,
-		VlcPattern:   *vlcPattern,
-		WinPattern:   *winPattern,
-		PixelPattern: *pixelPattern,
+		VlcPattern:   vlcPattern,
+		WinPattern:   winPattern,
+		PixelPattern: pixelPattern,
 		ToDateTime:   *toDateTime,
 	}, nil
 }

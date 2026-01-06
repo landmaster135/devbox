@@ -1,12 +1,12 @@
 @echo off
 
-choice /c vwa /n /m "Select how to rename image files  [v]='--vlc'  [w]='--win'  [a]='--android (screen_record)' : "
+choice /c vwa /n /m "Select how to rename image files  [v]='vlc'  [w]='win'  [a]='pixel (screen_record)' : "
 if %errorlevel% == 1 (
-  set "method=-vlc"
+  set "method=-operation=vlc"
 ) else if %errorlevel% == 2 (
-  set "method=-win"
+  set "method=-operation=win"
 ) else (
-  set "method=-android"
+  set "method=-operation=pixel"
 )
 echo %method%
 

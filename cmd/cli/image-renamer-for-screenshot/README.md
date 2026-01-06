@@ -3,7 +3,6 @@
 このツールは、VLCスナップショットファイル、Windowsスクリーンショットファイル、およびPixel端末で取得したスクリーンショット/録画ファイルを統一された命名規則でリネームするためのコマンドラインユーティリティです。
 
 ## 機能
-
 - VLCスナップショットファイルを `Screenshot_YYYYMMDD-HHMMSS.png` 形式にリネーム
   - 対応形式1: `vlcsnap-YYYY-MM-DD-HH-MM-SS.png`
   - 対応形式2: `vlcsnap-YYYY-MM-DD-HHhMMmSSsNNN.png`（例: `vlcsnap-2025-05-06-23h59m44s239.png`）
@@ -14,7 +13,6 @@
 - 再帰的なディレクトリスキャン
 
 ## 使用方法
-
 ```bash
 ./image-renamer-for-screenshot [オプション]
 ```
@@ -22,43 +20,36 @@
 ### オプション
 
 - `-src <ディレクトリ>`: スキャンするソースディレクトリ（デフォルト: カレントディレクトリ）
-- `-vlc`: VLCスナップショットファイル (vlcsnap-*.png) をリネーム
-- `-win`: Windowsスクリーンショットファイル (スクリーンショット *.png) をリネーム
-- `-pixel`: Pixelスクリーンショット/録画ファイル (screen-*.png/mp4) をリネーム
+- `-operation <文字列>`: リネーム対象を指定します。指定できる値は `vlc`、`win`、`pixel` のいずれかです（例: `-operation=vlc`）
 - `-to-datetime`: 全てのスクリーンショットファイルをYYYYMMDDHHMMSS形式にリネーム
 - `-r`: サブディレクトリを再帰的にスキャン
 - `-workers <数値>`: 並行ワーカー数（デフォルト: CPUコア数）
 
-**注意**: `-vlc`、`-win`、`-pixel` のフラグは同時に設定できません。いずれか一つのみを指定してください。`-to-datetime` フラグは単独で使用できます。
+**注意**: `-operation` で指定できる値は一つだけです。複数の値を同時に指定することはできません。`-operation` を省略した場合は `-to-datetime` との組み合わせを除き、処理対象がないためエラーになります。値は `vlc` / `win` / `pixel` のいずれかを文字列で指定してください（例: `-operation=vlc`）。
 
 ### 使用例
 
-#### VLCスナップショットファイルのリネーム
-
+VLCスナップショットファイルのリネーム
 ```bash
-go run ./cmd/cli/image-renamer-for-screenshot -vlc -src ./videos/screenshots
+go run ./cmd/cli/image-renamer-for-screenshot -operation=vlc -src ./videos/screenshots
 ```
 
-#### Windowsスクリーンショットファイルのリネーム
-
+Windowsスクリーンショットファイルのリネーム
 ```bash
-go run ./cmd/cli/image-renamer-for-screenshot -win -src ./screenshots
+go run ./cmd/cli/image-renamer-for-screenshot -operation=win -src ./screenshots
 ```
 
-#### Pixelスクリーンショット/録画ファイルのリネーム
-
+Pixelスクリーンショット/録画ファイルのリネーム
 ```bash
-go run ./cmd/cli/image-renamer-for-screenshot -pixel -src ./pixel/media
+go run ./cmd/cli/image-renamer-for-screenshot -operation=pixel -src ./pixel/media
 ```
 
-#### 再帰的にスキャン
-
+再帰的にスキャン
 ```bash
-go run ./cmd/cli/image-renamer-for-screenshot -vlc -r -src ./media
+go run ./cmd/cli/image-renamer-for-screenshot -operation=vlc -r -src ./media
 ```
 
-#### 全てのスクリーンショットファイルをYYYYMMDDHHMMSS形式にリネーム
-
+全てのスクリーンショットファイルをYYYYMMDDHHMMSS形式にリネーム
 ```bash
 go run ./cmd/cli/image-renamer-for-screenshot -to-datetime -src ./screenshots
 ```
