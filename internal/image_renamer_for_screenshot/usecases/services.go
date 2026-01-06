@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+var xiaomiScreenshotRegexp = regexp.MustCompile(`^Screenshot_(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d+)_([A-Za-z0-9._-]+)$`)
+
 // FileInfo はファイル情報を保持する構造体です
 type FileInfo struct {
 	Path string
@@ -19,13 +21,14 @@ type FileInfo struct {
 
 // Config はプログラムの設定を保持する構造体です
 type Config struct {
-	SrcDir       string
-	Recursive    bool
-	Workers      int
-	VlcPattern   bool
-	WinPattern   bool
-	PixelPattern bool
-	ToDateTime   bool
+	SrcDir        string
+	Recursive     bool
+	Workers       int
+	VlcPattern    bool
+	WinPattern    bool
+	PixelPattern  bool
+	XiaomiPattern bool
+	ToDateTime    bool
 }
 
 // validateConfig は設定の妥当性を検証します
@@ -42,8 +45,8 @@ func validateConfig(config Config, stderr io.Writer) error {
 	}
 
 	// パターンのチェック：すべてfalseならエラー
-	if !config.VlcPattern && !config.WinPattern && !config.PixelPattern {
-		fmt.Fprintln(stderr, "エラー: -operation に 'vlc'、'win'、'pixel' のいずれか、または -to-datetime を指定する必要があります。")
+	if !config.VlcPattern && !config.WinPattern && !config.PixelPattern && !config.XiaomiPattern {
+		fmt.Fprintln(stderr, "エラー: -operation に 'vlc'、'win'、'pixel'、'xiaomi' のいずれか、または -to-datetime を指定する必要があります。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -to-datetime")
 		return fmt.Errorf("パターンが指定されていません")
@@ -58,6 +61,9 @@ func validateConfig(config Config, stderr io.Writer) error {
 		patternCount++
 	}
 	if config.PixelPattern {
+		patternCount++
+	}
+	if config.XiaomiPattern {
 		patternCount++
 	}
 
@@ -89,7 +95,7 @@ func isImageExt(ext string) bool {
 // findScreenshotFilesForDateTime は--to-datetimeフラグ用にスクリーンショットファイルを検索します
 func findScreenshotFilesForDateTime(srcDir string, recursive bool, stdout, stderr io.Writer) ([]string, error) {
 	// 既存の関数を使って基本パターンを検索
-	files, err := findScreenshotFiles(srcDir, recursive, true, true, true, stdout, stderr)
+	files, err := findScreenshotFiles(srcDir, recursive, true, true, true, true, stdout, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +147,7 @@ func findScreenshotFilesForDateTime(srcDir string, recursive bool, stdout, stder
 }
 
 // findScreenshotFiles は指定されたディレクトリからスクリーンショットファイルを検索します
-func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, pixelPattern bool, stdout, stderr io.Writer) ([]string, error) {
+func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, pixelPattern, xiaomiPattern bool, stdout, stderr io.Writer) ([]string, error) {
 	var files []string
 
 	walkFunc := func(path string, d fs.DirEntry, err error) error {
@@ -149,12 +155,19 @@ func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, 
 			return err
 		}
 		if !d.IsDir() {
-			ext := strings.ToLower(filepath.Ext(d.Name()))
+			name := d.Name()
+			origExt := filepath.Ext(name)
+			ext := strings.ToLower(origExt)
 			if isImageExt(ext) {
-				name := d.Name()
+				matchesXiaomi := false
+				if xiaomiPattern {
+					baseName := strings.TrimSuffix(name, origExt)
+					matchesXiaomi = xiaomiScreenshotRegexp.MatchString(baseName)
+				}
 				if (vlcPattern && strings.HasPrefix(name, "vlcsnap-")) ||
 					(winPattern && strings.HasPrefix(name, "スクリーンショット ")) ||
-					(pixelPattern && strings.HasPrefix(name, "screen-")) {
+					(pixelPattern && strings.HasPrefix(name, "screen-")) ||
+					(xiaomiPattern && matchesXiaomi) {
 					files = append(files, path)
 				}
 			}
@@ -177,12 +190,19 @@ func findScreenshotFiles(srcDir string, recursive bool, vlcPattern, winPattern, 
 
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				ext := strings.ToLower(filepath.Ext(entry.Name()))
+				name := entry.Name()
+				origExt := filepath.Ext(name)
+				ext := strings.ToLower(origExt)
 				if isImageExt(ext) {
-					name := entry.Name()
+					matchesXiaomi := false
+					if xiaomiPattern {
+						baseName := strings.TrimSuffix(name, origExt)
+						matchesXiaomi = xiaomiScreenshotRegexp.MatchString(baseName)
+					}
 					if (vlcPattern && strings.HasPrefix(name, "vlcsnap-")) ||
 						(winPattern && strings.HasPrefix(name, "スクリーンショット ")) ||
-						(pixelPattern && strings.HasPrefix(name, "screen-")) {
+						(pixelPattern && strings.HasPrefix(name, "screen-")) ||
+						(xiaomiPattern && matchesXiaomi) {
 						files = append(files, filepath.Join(srcDir, name))
 					}
 				}
@@ -311,6 +331,8 @@ func processScreenshotRenameToDateTime(file FileInfo, mu *sync.Mutex, successCou
 		newName, err = renameWindowsToDateTime(baseName, ext)
 	} else if strings.HasPrefix(baseName, "screen-") {
 		newName, err = renamePixelToDateTime(baseName, ext)
+	} else if xiaomiScreenshotRegexp.MatchString(baseName) {
+		newName, err = renameXiaomiToDateTime(baseName, ext)
 	} else if strings.HasPrefix(baseName, "Screenshot_") {
 		newName, err = renameScreenshotToDateTime(baseName, ext)
 	} else {
@@ -407,8 +429,38 @@ func renamePixelScreenshot(baseName, ext string) (string, error) {
 	return fmt.Sprintf("Screenshot_%s%s%s-%s%s%s%s", year, month, day, hour, minute, second, ext), nil
 }
 
+func parseXiaomiDateTime(baseName string) (string, string, error) {
+	matches := xiaomiScreenshotRegexp.FindStringSubmatch(baseName)
+	if len(matches) != 9 {
+		return "", "", fmt.Errorf("Xiaomiスクリーンショットのパターンに一致しません: %s", baseName)
+	}
+
+	dateStr := matches[1] + matches[2] + matches[3]
+	timeStr := matches[4] + matches[5] + matches[6]
+	return dateStr, timeStr, nil
+}
+
+// renameXiaomiScreenshot はXiaomi端末のスクリーンショットファイルをリネームします
+func renameXiaomiScreenshot(baseName, ext string) (string, error) {
+	dateStr, timeStr, err := parseXiaomiDateTime(baseName)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Screenshot_%s-%s%s", dateStr, timeStr, ext), nil
+}
+
+func renameXiaomiToDateTime(baseName, ext string) (string, error) {
+	dateStr, timeStr, err := parseXiaomiDateTime(baseName)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s%s%s", dateStr, timeStr, ext), nil
+}
+
 // processScreenshotRename は1つのスクリーンショットファイルをリネームします
-func processScreenshotRename(file FileInfo, vlcPattern, winPattern, pixelPattern bool, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
+func processScreenshotRename(file FileInfo, vlcPattern, winPattern, pixelPattern, xiaomiPattern bool, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
 	oldPath := file.Path
 	dir := filepath.Dir(oldPath)
 	oldName := filepath.Base(oldPath)
@@ -424,6 +476,8 @@ func processScreenshotRename(file FileInfo, vlcPattern, winPattern, pixelPattern
 		newName, err = renameWindowsScreenshot(baseName, ext)
 	} else if pixelPattern && strings.HasPrefix(baseName, "screen-") {
 		newName, err = renamePixelScreenshot(baseName, ext)
+	} else if xiaomiPattern && xiaomiScreenshotRegexp.MatchString(baseName) {
+		newName, err = renameXiaomiScreenshot(baseName, ext)
 	} else {
 		// パターンに一致しないファイルはスキップ
 		return
@@ -484,7 +538,7 @@ func renameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 				if config.ToDateTime {
 					processScreenshotRenameToDateTime(file, &mu, &successCount, &errorCount, stdout, stderr)
 				} else {
-					processScreenshotRename(file, config.VlcPattern, config.WinPattern, config.PixelPattern, &mu, &successCount, &errorCount, stdout, stderr)
+					processScreenshotRename(file, config.VlcPattern, config.WinPattern, config.PixelPattern, config.XiaomiPattern, &mu, &successCount, &errorCount, stdout, stderr)
 				}
 			}
 		}()
@@ -515,7 +569,7 @@ func ProcessScreenshotRename(config Config, stdout, stderr io.Writer) (int, int,
 	if config.ToDateTime {
 		files, err = findScreenshotFilesForDateTime(config.SrcDir, config.Recursive, stdout, stderr)
 	} else {
-		files, err = findScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.PixelPattern, stdout, stderr)
+		files, err = findScreenshotFiles(config.SrcDir, config.Recursive, config.VlcPattern, config.WinPattern, config.PixelPattern, config.XiaomiPattern, stdout, stderr)
 	}
 	if err != nil {
 		return 0, 0, err
@@ -536,6 +590,8 @@ func ProcessScreenshotRename(config Config, stdout, stderr io.Writer) (int, int,
 		fmt.Fprintln(stdout, "Windowsスクリーンショットパターンを使用します。")
 	} else if config.PixelPattern {
 		fmt.Fprintln(stdout, "Pixelスクリーンレコードパターンを使用します。")
+	} else if config.XiaomiPattern {
+		fmt.Fprintln(stdout, "Xiaomiスクリーンショットパターンを使用します。")
 	}
 
 	// ファイル情報の取得

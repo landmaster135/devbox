@@ -27,7 +27,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 
 	// コマンドラインフラグの定義
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
-	operation := flagSet.String("operation", "", "リネーム対象を指定 (vlc|win|pixel)")
+	operation := flagSet.String("operation", "", "リネーム対象を指定 (vlc|win|pixel|xiaomi)")
 	toDateTime := flagSet.Bool("to-datetime", false, "ファイル名をYYYYMMDDHHMMSS形式にリネーム")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
@@ -39,9 +39,10 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	}
 
 	var (
-		vlcPattern   bool
-		winPattern   bool
-		pixelPattern bool
+		vlcPattern    bool
+		winPattern    bool
+		pixelPattern  bool
+		xiaomiPattern bool
 	)
 
 	trimmedOperation := strings.TrimSpace(*operation)
@@ -56,20 +57,23 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 		winPattern = true
 	case "pixel":
 		pixelPattern = true
+	case "xiaomi":
+		xiaomiPattern = true
 	default:
-		fmt.Fprintln(stderr, "エラー: -operation には 'vlc'、'win'、または 'pixel' のいずれかを指定してください。")
+		fmt.Fprintln(stderr, "エラー: -operation には 'vlc'、'win'、'pixel'、または 'xiaomi' のいずれかを指定してください。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
 		return usecases.Config{}, fmt.Errorf("invalid operation: %s", *operation)
 	}
 
 	return usecases.Config{
-		SrcDir:       *srcDir,
-		Recursive:    *recursive,
-		Workers:      *workers,
-		VlcPattern:   vlcPattern,
-		WinPattern:   winPattern,
-		PixelPattern: pixelPattern,
-		ToDateTime:   *toDateTime,
+		SrcDir:        *srcDir,
+		Recursive:     *recursive,
+		Workers:       *workers,
+		VlcPattern:    vlcPattern,
+		WinPattern:    winPattern,
+		PixelPattern:  pixelPattern,
+		XiaomiPattern: xiaomiPattern,
+		ToDateTime:    *toDateTime,
 	}, nil
 }
 
