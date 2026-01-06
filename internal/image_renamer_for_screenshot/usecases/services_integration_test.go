@@ -29,10 +29,9 @@ func TestProcessScreenshotRename_Normal(t *testing.T) {
 	}
 
 	config := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    2,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   2,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -135,9 +134,9 @@ func TestProcessScreenshotRename_NoFiles(t *testing.T) {
 	}
 
 	config := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		Workers:    1,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   1,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -167,9 +166,9 @@ func TestProcessScreenshotRename_NoFiles(t *testing.T) {
 func TestProcessScreenshotRename_InvalidConfig(t *testing.T) {
 	// Arrange
 	config := Config{
-		SrcDir:     "/non/existent/directory",
-		VlcPattern: true,
-		Workers:    1,
+		SrcDir:    "/non/existent/directory",
+		Operation: OperationVLC,
+		Workers:   1,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -211,9 +210,9 @@ func TestProcessScreenshotRename_WithErrors(t *testing.T) {
 	}
 
 	config := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		Workers:    2,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   2,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -245,7 +244,7 @@ func TestProcessScreenshotRename_WithErrors(t *testing.T) {
 	}
 }
 
-func TestProcessScreenshotRename_MultiplePatterns(t *testing.T) {
+func TestProcessScreenshotRename_InvalidOperationSelection(t *testing.T) {
 	// Arrange
 	tempDir, err := os.MkdirTemp("", "test-process-screenshot-rename-multiple")
 	if err != nil {
@@ -272,17 +271,15 @@ func TestProcessScreenshotRename_MultiplePatterns(t *testing.T) {
 	}
 
 	config := Config{
-		SrcDir:       tempDir,
-		VlcPattern:   true,
-		WinPattern:   true,
-		PixelPattern: false,
-		Workers:      3,
+		SrcDir:    tempDir,
+		Operation: Operation("invalid"),
+		Workers:   3,
 	}
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	// Act - 複数パターンが指定されているため設定エラーになるはず
+	// Act - 無効なoperationが設定されているため設定エラーになるはず
 	successCount, errorCount, err := ProcessScreenshotRename(config, stdout, stderr)
 
 	// Assert

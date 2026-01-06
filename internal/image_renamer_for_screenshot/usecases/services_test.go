@@ -13,9 +13,8 @@ func TestValidateConfig_Normal(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     ".",
-		VlcPattern: true,
-		WinPattern: false,
+		SrcDir:    ".",
+		Operation: OperationVLC,
 	}
 
 	// Act
@@ -31,9 +30,8 @@ func TestValidateConfig_NoPattern(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     ".",
-		VlcPattern: false,
-		WinPattern: false,
+		SrcDir:    ".",
+		Operation: OperationUnknown,
 	}
 
 	// Act
@@ -45,13 +43,12 @@ func TestValidateConfig_NoPattern(t *testing.T) {
 	}
 }
 
-func TestValidateConfig_BothPatterns(t *testing.T) {
+func TestValidateConfig_InvalidOperation(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     ".",
-		VlcPattern: true,
-		WinPattern: true,
+		SrcDir:    ".",
+		Operation: Operation("invalid"),
 	}
 
 	// Act
@@ -257,7 +254,7 @@ func TestProcessScreenshotRename_PixelPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, false, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationPixel, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -298,7 +295,7 @@ func TestProcessScreenshotRename_PixelPatternMP4(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, false, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationPixel, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -339,7 +336,7 @@ func TestProcessScreenshotRename_VlcPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -380,7 +377,7 @@ func TestProcessScreenshotRename_WinPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationWin, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -416,7 +413,7 @@ func TestProcessScreenshotRename_XiaomiPattern(t *testing.T) {
 	successCount := 0
 	errorCount := 0
 
-	processScreenshotRename(file, false, false, false, true, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationXiaomi, &mu, &successCount, &errorCount, stdout, stderr)
 
 	if successCount != 1 {
 		t.Fatalf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
@@ -470,9 +467,8 @@ func TestValidateConfig_InvalidDirectory(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     "/non/existent/directory",
-		VlcPattern: true,
-		WinPattern: false,
+		SrcDir:    "/non/existent/directory",
+		Operation: OperationVLC,
 	}
 
 	// Act
@@ -514,7 +510,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - VLCパターンのみ
-	filesVlc, err := findScreenshotFiles(tempDir, false, true, false, false, false, stdout, stderr)
+	filesVlc, err := findScreenshotFiles(tempDir, false, OperationVLC, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -528,7 +524,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	}
 
 	// Act - Windowsパターンのみ
-	filesWin, err := findScreenshotFiles(tempDir, false, false, true, false, false, stdout, stderr)
+	filesWin, err := findScreenshotFiles(tempDir, false, OperationWin, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -557,7 +553,7 @@ func TestFindScreenshotFiles_XiaomiPattern(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	files, err := findScreenshotFiles(tempDir, false, false, false, false, true, stdout, stderr)
+	files, err := findScreenshotFiles(tempDir, false, OperationXiaomi, stdout, stderr)
 	if err != nil {
 		t.Fatalf("findScreenshotFiles() returned error: %v", err)
 	}
@@ -599,7 +595,7 @@ func TestFindScreenshotFiles_Recursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索
-	files, err := findScreenshotFiles(tempDir, true, true, false, false, false, stdout, stderr)
+	files, err := findScreenshotFiles(tempDir, true, OperationVLC, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -616,7 +612,7 @@ func TestFindScreenshotFiles_InvalidDirectory(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	_, err := findScreenshotFiles("/non/existent/directory", false, true, false, false, false, stdout, stderr)
+	_, err := findScreenshotFiles("/non/existent/directory", false, OperationVLC, stdout, stderr)
 
 	// Assert
 	if err == nil {
@@ -708,10 +704,9 @@ func TestRenameScreenshotFiles_Normal(t *testing.T) {
 	}
 
 	config := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    2,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   2,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -763,10 +758,9 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 
 	// ケース1: ワーカー数が0の場合（1に調整される）
 	config1 := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    0,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   0,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -799,10 +793,9 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 
 	// ケース2: ワーカー数がファイル数より多い場合（ファイル数に調整される）
 	config2 := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    10,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   10,
 	}
 
 	stdout = &bytes.Buffer{}
@@ -848,7 +841,7 @@ func TestFindScreenshotFiles_WalkDirError(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索でエラーが発生するケース
-	_, err = findScreenshotFiles(tempDir, true, true, false, false, false, stdout, stderr)
+	_, err = findScreenshotFiles(tempDir, true, OperationVLC, stdout, stderr)
 
 	// Assert
 	// 権限の問題でエラーが発生する可能性があるが、OSによって動作が異なるため
@@ -888,7 +881,7 @@ func TestProcessScreenshotRename_ParseError(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -924,7 +917,7 @@ func TestProcessScreenshotRename_InvalidPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -983,7 +976,7 @@ func TestProcessScreenshotRename_RenameError(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {

@@ -38,27 +38,22 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 		return usecases.Config{}, err
 	}
 
-	var (
-		vlcPattern    bool
-		winPattern    bool
-		pixelPattern  bool
-		xiaomiPattern bool
-	)
-
 	trimmedOperation := strings.TrimSpace(*operation)
 	trimmedOperation = strings.TrimPrefix(trimmedOperation, "-")
 
+	var op usecases.Operation
+
 	switch trimmedOperation {
 	case "":
-		// operationを指定しない場合は既存の挙動と同様に全てfalseのまま
+		// -operation未指定
 	case "vlc":
-		vlcPattern = true
+		op = usecases.OperationVLC
 	case "win":
-		winPattern = true
+		op = usecases.OperationWin
 	case "pixel":
-		pixelPattern = true
+		op = usecases.OperationPixel
 	case "xiaomi":
-		xiaomiPattern = true
+		op = usecases.OperationXiaomi
 	default:
 		fmt.Fprintln(stderr, "エラー: -operation には 'vlc'、'win'、'pixel'、または 'xiaomi' のいずれかを指定してください。")
 		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
@@ -66,14 +61,11 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	}
 
 	return usecases.Config{
-		SrcDir:        *srcDir,
-		Recursive:     *recursive,
-		Workers:       *workers,
-		VlcPattern:    vlcPattern,
-		WinPattern:    winPattern,
-		PixelPattern:  pixelPattern,
-		XiaomiPattern: xiaomiPattern,
-		ToDateTime:    *toDateTime,
+		SrcDir:     *srcDir,
+		Recursive:  *recursive,
+		Workers:    *workers,
+		Operation:  op,
+		ToDateTime: *toDateTime,
 	}, nil
 }
 
