@@ -114,10 +114,10 @@ function show_help() {
 [INFO] [$FUNC] Git pre-commit hook用の処理を行います。
 
 使用方法:
-  ./pkg/bash/setup-git-pre-commit-hooks.sh <HOOK_TOOL_DIR>
+  ./scripts/initialize/setup-git-pre-commit-hooks.sh <HOOK_TOOL_DIR>
 
 例:
-  ./pkg/bash/setup-git-pre-commit-hooks.sh '/home/user/my_project'
+  ./scripts/initialize/setup-git-pre-commit-hooks.sh '/home/user/my_project'
 
 --help を指定するとこのメッセージを表示します。
 EOF
