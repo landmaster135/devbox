@@ -9,11 +9,17 @@ import (
 type ServiceConfig struct {
 	PackageName string
 	ShowHelp    bool
-	BaseDir    string
-	CLIDir     string
-	ScriptsDir string
-	OutputDir  string
+	BaseDir     string
+	CLIDir      string
+	ScriptsDir  string
+	OutputDir   string
 }
+
+const (
+	defaultCLIDir     = "cmd/cli"
+	defaultScriptsDir = "scripts/build"
+	defaultOutputDir  = "./pkg/bin/cli"
+)
 
 // SetDefaults はデフォルト値を設定します
 func (c *ServiceConfig) SetDefaults() {
@@ -27,13 +33,13 @@ func (c *ServiceConfig) SetDefaults() {
 		}
 	}
 	if c.CLIDir == "" {
-		c.CLIDir = "cmd/cli"
+		c.CLIDir = defaultCLIDir
 	}
 	if c.ScriptsDir == "" {
-		c.ScriptsDir = "scripts/build"
+		c.ScriptsDir = defaultScriptsDir
 	}
 	if c.OutputDir == "" {
-		c.OutputDir = "./pkg/bin/cli"
+		c.OutputDir = defaultOutputDir
 	}
 }
 
