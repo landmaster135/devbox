@@ -26,10 +26,10 @@ EOF
   local tool_name="$1"
 
   # 実行するコマンドを表示
-  echo "Executing: ./pkg/bin/cli/linux_amd64/script-generator-to-build \"$tool_name\""
+  echo "Executing: ./pkg/bin/cli/linux_amd64/script-generator-to-build --package_name \"$tool_name\""
 
   # コマンド実行
-  ./pkg/bin/cli/linux_amd64/script-generator-to-build "$tool_name"
+  ./pkg/bin/cli/linux_amd64/script-generator-to-build --package_name "$tool_name"
 }
 
 main "$@"
