@@ -21,8 +21,18 @@ agents:
     commands:
       new-pull-request-pwd: "Create new GitHub Pull Request."
     toolsets:
-      - type: filesystem
       - type: think
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - filesystem
+        tools:
+          - read_file
+          - write_file
+          - list_directory
+          - directory_tree
+          - grep_files
+          - get_file_info
       - type: mcp
         command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
         args:
