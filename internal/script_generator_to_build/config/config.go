@@ -9,12 +9,10 @@ import (
 type ServiceConfig struct {
 	PackageName string
 	ShowHelp    bool
-
-	// 新しいフィールド（デフォルト値で後方互換性を保つ）
-	BaseDir    string // デフォルト: ワーキングディレクトリ
-	CLIDir     string // デフォルト: "cmd/cli"
-	ScriptsDir string // デフォルト: "scripts"
-	OutputDir  string // デフォルト: "./pkg/bin/cli"
+	BaseDir    string
+	CLIDir     string
+	ScriptsDir string
+	OutputDir  string
 }
 
 // SetDefaults はデフォルト値を設定します

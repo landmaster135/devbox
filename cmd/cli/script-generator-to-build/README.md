@@ -30,6 +30,11 @@ script-generator-to-build [パッケージ名]
 ### オプション
 
 - `-h`, `--help`: ヘルプメッセージを表示
+- `--base_dir <path>`: CLIやスクリプトの探索元となるベースディレクトリを指定（省略時はカレントディレクトリ）
+- `--cli_dir <path>`: ベースディレクトリからの相対パスでCLIディレクトリを指定（デフォルト: `cmd/cli`）
+- `--scripts_dir <path>`: ベースディレクトリからの相対パスでスクリプトディレクトリを指定（デフォルト: `scripts`）
+- `--output_dir <path>`: 生成したビルドスクリプトの出力先ディレクトリを指定（デフォルト: `./pkg/bin/cli`）
+- `--package_name <name>`: 対象パッケージ名をフラグで直接指定
 
 ## 出力
 
@@ -39,8 +44,11 @@ script-generator-to-build [パッケージ名]
 
 ```bash
 # code-analyzerパッケージのビルドスクリプトを生成
-script-generator-to-build code-analyzer
+go run ./cmd/cli/script-generator-to-build --package_name code-analyzer
 
 # 対話的にパッケージを選択してビルドスクリプトを生成
-script-generator-to-build
+go run ./cmd/cli/script-generator-to-build
+
+# CLIや出力ディレクトリをカスタマイズ
+go run ./cmd/cli/script-generator-to-build --base_dir /path/to/project --cli_dir custom/cmd --output_dir ./artifacts code-analyzer
 ```
