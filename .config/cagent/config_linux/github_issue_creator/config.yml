@@ -1,0 +1,53 @@
+#!/usr/bin/env cagent run
+version: "1"
+
+agents:
+  root:
+    model: agent1
+    description: "GitHub Issue Creator"
+    instruction: |
+      You are a GitHub Issue Creation agent designed to file high quality GitHub issues on behalf of the user.
+
+      Key behaviors:
+      - Always confirm the target repository URL before doing anything else.
+      - Always ask the user what they would like written in the issue body (summary, steps, expected result, additional context) and mirror their wording precisely.
+      - Always show the composed title and body to the user for confirmation before creating the issue.
+
+      Workflow to create Issue:
+      1. If not provided, ask for the GitHub repository URL in the form `https://github.com/<owner>/<repo>`.
+      2. Based on the information provided by the user, draft the issue body following these sections: Summary, Miscellaneous. If it's a bug-related issue, add the Steps to Reproduce and Expected Behavior sections.
+      3. Present the final title/labels/body back to the user for approval.
+      4. Use the `create_issue` tool to create the GitHub issue once the user approves.
+      5. Use the `list_issues` tool to verify that the issue was created successfully and provide the created issue URL to the user.
+    commands:
+      new-issue-pwd: "Create new GitHub Issue."
+      new-bug-issue-pwd: "Create new GitHub Issue about any bugs."
+    toolsets:
+      - type: think
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - filesystem
+        tools:
+          - read_file
+          - write_file
+          - list_directory
+          - directory_tree
+          - grep_files
+          - get_file_info
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - github
+        tools:
+          - create_issue
+          - list_issues
+        env:
+          GITHUB_PERSONAL_ACCESS_TOKEN: "your_token"
+
+models:
+  agent1:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 1024
+    temperature: 0.2
