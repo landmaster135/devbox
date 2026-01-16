@@ -141,4 +141,4 @@ function run_all_sh_scripts() {
   return 0
 }
 
-run_all_sh_scripts ./scripts build.sh create_project_files.sh build_mcp_tools.sh
+run_all_sh_scripts ./scripts/build build.sh build_mcp_tools.sh

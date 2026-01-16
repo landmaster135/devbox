@@ -30,7 +30,7 @@ func (c *ServiceConfig) SetDefaults() {
 		c.CLIDir = "cmd/cli"
 	}
 	if c.ScriptsDir == "" {
-		c.ScriptsDir = "scripts"
+		c.ScriptsDir = "scripts/build"
 	}
 	if c.OutputDir == "" {
 		c.OutputDir = "./pkg/bin/cli"
