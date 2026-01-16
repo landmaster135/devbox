@@ -161,7 +161,7 @@ go run cmd/cli/service-implementing-viewer/main.go \
 
 シェルファイルからも確認可能
 ```bash
-./pkg/bash/generate_service_implementing_table.sh
+./scripts/ops/generate_service_implementing_table.sh
 ```
 
 ### 2. MCPツールを使用した更新

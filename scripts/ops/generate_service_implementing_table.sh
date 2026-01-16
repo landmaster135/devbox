@@ -9,10 +9,10 @@ function show_help() {
 [INFO] [$FUNC] 各サービスが実装されているツールの種別の早見表をMarkdownテーブル形式で自動生成します。
 
 使用方法:
-  ./pkg/bash/generate_service_implementing_table.sh
+  ./scripts/ops/generate_service_implementing_table.sh
 
 例:
-  ./pkg/bash/generate_service_implementing_table.sh
+  ./scripts/ops/generate_service_implementing_table.sh
 
 --help を指定するとこのメッセージを表示します。
 EOF

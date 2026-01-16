@@ -273,7 +273,7 @@ internal/secret_detector/
 ### 自動セットアップ（元のスクリプト使用）
 
 ```bash
-./scripts/setup-git-pre-commit-hooks.sh
+./scripts/initialize/setup-git-pre-commit-hooks.sh
 ```
 
 ### 手動セットアップ

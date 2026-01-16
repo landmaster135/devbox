@@ -36,14 +36,14 @@ tasks:
   test:all:out:
     cmd: go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
   build:
-    cmd: ./scripts/build.sh
+    cmd: ./scripts/build/build.sh
   build:dev:
     cmd: echo 'No registered command...'
   build:pre:
-    cmd: ./scripts/script_generator_to_build.sh {{ .CLI_ARGS }}
+    cmd: ./scripts/initialize/script_generator_to_build.sh {{ .CLI_ARGS }}
   build:mcp:
-    cmd: ./scripts/build_mcp_tools.sh
+    cmd: ./scripts/build/build_mcp_tools.sh
   domain:mig:new:
-    cmd: ./scripts/create_project_files.sh {{ .CLI_ARGS }}
+    cmd: ./scripts/initialize/create_project_files.sh {{ .CLI_ARGS }}
   domain:mig:run:
     cmd: echo 'No registered command...'
