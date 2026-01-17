@@ -173,9 +173,7 @@ func (s *Service) readLine() (string, error) {
 }
 
 func (s *Service) printPreface(cfg Config) {
-	if cfg.InputType == domain.InputTypeConfirm {
-		fmt.Fprintln(s.errWriter, "[y] Yes / [n] No")
-	}
+	// None
 }
 
 func (s *Service) printPrompt(prompt string) {
