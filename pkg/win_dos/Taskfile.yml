@@ -26,12 +26,12 @@ tasks:
             exit 1
           fi
 
-          echo "--- 画像リネームプログラムを実行します ---"
+          echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
             --src . --operation habit \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
-          echo $'\n--- 画像リネームプログラムの実行が完了しました ---'
+          echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
@@ -56,16 +56,16 @@ tasks:
             --prompt "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " \
             --input-type confirm --key move)" || exit 1
 
-          echo "--- 画像リネームプログラムを実行します ---"
+          echo $'\n[Step 01: START]--- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"
-          echo $'\n--- 画像リネームプログラムの実行が完了しました ---'
+          echo $'\n[Step 01: END]--- 画像リネームプログラムの実行が完了しました ---'
 
-          echo "--- Webp変換プログラムを実行します ---"
+          echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter.exe" \
             --src . --ext webp \
             --q 80  --archive .{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
-          echo $'\n--- Webp変換プログラムの実行が完了しました ---'
+          echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
