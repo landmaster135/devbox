@@ -28,11 +28,10 @@ tasks:
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
-            -src . -operation habit \
-            -delimiter "" -suffix "" \
+            --src . --operation habit \
+            --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
-          echo
-          echo "--- 画像リネームプログラムの実行が完了しました ---"
+          echo $'\n--- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
 
@@ -58,15 +57,13 @@ tasks:
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"
-          echo
-          echo "--- 画像リネームプログラムの実行が完了しました ---"
+          echo $'\n--- 画像リネームプログラムの実行が完了しました ---'
 
           echo "--- Webp変換プログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter.exe" \
-            -src . -ext webp \
-            -q 80  -archive .{{.DIR_SEP}}5_original_files \
+            --src . --ext webp \
+            --q 80  --archive .{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
-          echo
-          echo "--- Webp変換プログラムの実行が完了しました ---"
+          echo $'\n--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
