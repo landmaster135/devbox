@@ -20,13 +20,11 @@ EOF
 
 # === ベースディレクトリ取得 ===
 function get_base_dir() {
-  local FUNC="${FUNCNAME[0]}"
-  echo "$(dirname "$(realpath "$0")")/.."
+  echo "$(pwd)"
 }
 
 # === スネークケースに変換 ===
 function to_snake_case() {
-  local FUNC="${FUNCNAME[0]}"
   echo "$1" | tr '-' '_'
 }
 
