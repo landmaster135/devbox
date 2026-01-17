@@ -75,6 +75,7 @@
 | image-rotator                               | ✅  | ❌️  | ❌️  | ❌️ |
 | image-trim-describer                        | ✅  | ❌️  | ❌️  | ❌️ |
 | image-trimmer                               | ✅  | ❌️  | ❌️  | ❌️ |
+| interactive-input                           | ✅  | ❌️  | ❌️  | ❌️ |
 | iso8601-converter                           | ✅  | ❌️  | ❌️  | ❌️ |
 | json-file-merger                            | ✅  | ❌️  | ❌️  | ❌️ |
 | json-formatter-for-agent-interaction        | ✅  | ❌️  | ❌️  | ❌️ |
@@ -117,12 +118,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 100
-- **CLIツール実装数**: 89
+- **総サービス数**: 101
+- **CLIツール実装数**: 90
 - **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 74
+- **CLIのみ実装**: 75
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
