@@ -11,36 +11,29 @@ tasks:
       - cmd: |
           set -eu
 
-          START=""
-          while [ -z "${START:-}" ]; do
-            printf "Input start of number for content of habit (HBxxxxxxxxx_01.webp): "
-            read -r START
-            START=${START%$'\r'}
-            if [ -z "${START:-}" ]; then
-              echo "開始番号を入力してください。"
-            fi
-          done
+          INTERACTIVE_BIN="{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
 
-          SORT_FLAG=""
-          while [ -z "$SORT_FLAG" ]; do
-            printf "Select how to sort image files to rename  [n]='--name'  [t]='--time' : "
-            read -r SORT_CHOICE
-            SORT_CHOICE=${SORT_CHOICE%$'\r'}
-            case "${SORT_CHOICE:-}" in
-              n|N) SORT_FLAG="-name" ;;
-              t|T) SORT_FLAG="-time" ;;
-              *) echo "n または t を入力してください。" ;;
-            esac
-          done
+          START_ARG="$($INTERACTIVE_BIN \
+            --prompt "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " \
+            --input-type text --key start)" || exit 1
+
+          SORT_SELECTION="$($INTERACTIVE_BIN \
+            --prompt "Select how to sort image files to rename  [n]='--name'  [t]='--time' : " \
+            --input-type choice --key sort-flag \
+            --choice-option "n|--name" --choice-option "t|--time")" || exit 1
+
+          if [ -z "$START_ARG" ] || [ -z "$SORT_SELECTION" ]; then
+            echo "interactive-input から値を取得できませんでした。" >&2
+            exit 1
+          fi
+
+          SORT_FLAG="${SORT_SELECTION#*=}"
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
-            -src . \
-            -operation habit \
-            -delimiter "" \
-            -suffix "" \
-            -start "${START}" \
-            ${SORT_FLAG}
+            -src . -operation habit \
+            -delimiter "" -suffix "" \
+            "$START_ARG" "$SORT_FLAG"
           echo
           echo "--- 画像リネームプログラムの実行が完了しました ---"
         dir: "{{.TASKFILE_DIR}}"
@@ -52,31 +45,21 @@ tasks:
       - cmd: |
           set -eu
 
-          METHOD_FLAG=""
-          while [ -z "$METHOD_FLAG" ]; do
-            printf "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [a]='pixel (screen_record)' : "
-            read -r METHOD_CHOICE
-            METHOD_CHOICE=${METHOD_CHOICE%$'\r'}
-            case "${METHOD_CHOICE:-}" in
-              v|V) METHOD_FLAG="-operation=vlc" ;;
-              w|W) METHOD_FLAG="-operation=win" ;;
-              x|X) METHOD_FLAG="-operation=xiaomi" ;;
-              a|A) METHOD_FLAG="-operation=pixel" ;;
-              *) echo "v / w / x / a のいずれかを入力してください。" ;;
-            esac
-          done
+          INTERACTIVE_BIN="{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
 
-          MOVE_FLAG=""
-          while :; do
-            printf "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : "
-            read -r MOVE_CHOICE
-            MOVE_CHOICE=${MOVE_CHOICE%$'\r'}
-            case "${MOVE_CHOICE:-}" in
-              y|Y) MOVE_FLAG="-move"; break ;;
-              n|N|"") MOVE_FLAG=""; break ;;
-              *) echo "y か n を入力してください。" ;;
-            esac
-          done
+          METHOD_FLAG="$($INTERACTIVE_BIN \
+            --prompt "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " \
+            --input-type choice --key operation \
+            --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
+
+          if [ -z "$METHOD_FLAG" ]; then
+            echo "interactive-input からリネーム方法を取得できませんでした。" >&2
+            exit 1
+          fi
+
+          MOVE_FLAG="$($INTERACTIVE_BIN \
+            --prompt "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " \
+            --input-type confirm --key move)" || exit 1
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"
@@ -85,11 +68,9 @@ tasks:
 
           echo "--- Webp変換プログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter.exe" \
-            -src . \
-            -ext webp \
-            -q 80 \
-            -archive .{{.DIR_SEP}}5_original_files \
-            ${MOVE_FLAG:+$MOVE_FLAG}
+            -src . -ext webp \
+            -q 80  -archive .{{.DIR_SEP}}5_original_files \
+            $MOVE_FLAG
           echo
           echo "--- Webp変換プログラムの実行が完了しました ---"
         dir: "{{.TASKFILE_DIR}}"
