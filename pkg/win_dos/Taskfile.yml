@@ -34,6 +34,7 @@ tasks:
           echo $'\n--- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
+        silent: true
 
   screenshot:rename-convert:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot.exe + image-converter.exe)"
@@ -67,3 +68,4 @@ tasks:
           echo $'\n--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
+        silent: true
