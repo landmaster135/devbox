@@ -1,0 +1,96 @@
+version: "3"
+
+vars:
+  CLI_BIN_DIR: "{{.TASKFILE_DIR}}\\pkg\\bin\\cli\\win_amd64"
+  DIR_SEP: '{{if eq OS "windows"}}\{{else}}/{{end}}'
+
+tasks:
+  image-renamer:habit:
+    desc: "image-renamer-for-content.exeでHB画像をリネーム"
+    cmds:
+      - cmd: |
+          set -eu
+
+          START=""
+          while [ -z "${START:-}" ]; do
+            printf "Input start of number for content of habit (HBxxxxxxxxx_01.webp): "
+            read -r START
+            START=${START%$'\r'}
+            if [ -z "${START:-}" ]; then
+              echo "開始番号を入力してください。"
+            fi
+          done
+
+          SORT_FLAG=""
+          while [ -z "$SORT_FLAG" ]; do
+            printf "Select how to sort image files to rename  [n]='--name'  [t]='--time' : "
+            read -r SORT_CHOICE
+            SORT_CHOICE=${SORT_CHOICE%$'\r'}
+            case "${SORT_CHOICE:-}" in
+              n|N) SORT_FLAG="-name" ;;
+              t|T) SORT_FLAG="-time" ;;
+              *) echo "n または t を入力してください。" ;;
+            esac
+          done
+
+          echo "--- 画像リネームプログラムを実行します ---"
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+            -src . \
+            -operation habit \
+            -delimiter "" \
+            -suffix "" \
+            -start "${START}" \
+            ${SORT_FLAG}
+          echo
+          echo "--- 画像リネームプログラムの実行が完了しました ---"
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+
+  screenshot:rename-convert:
+    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot.exe + image-converter.exe)"
+    cmds:
+      - cmd: |
+          set -eu
+
+          METHOD_FLAG=""
+          while [ -z "$METHOD_FLAG" ]; do
+            printf "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [a]='pixel (screen_record)' : "
+            read -r METHOD_CHOICE
+            METHOD_CHOICE=${METHOD_CHOICE%$'\r'}
+            case "${METHOD_CHOICE:-}" in
+              v|V) METHOD_FLAG="-operation=vlc" ;;
+              w|W) METHOD_FLAG="-operation=win" ;;
+              x|X) METHOD_FLAG="-operation=xiaomi" ;;
+              a|A) METHOD_FLAG="-operation=pixel" ;;
+              *) echo "v / w / x / a のいずれかを入力してください。" ;;
+            esac
+          done
+
+          MOVE_FLAG=""
+          while :; do
+            printf "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : "
+            read -r MOVE_CHOICE
+            MOVE_CHOICE=${MOVE_CHOICE%$'\r'}
+            case "${MOVE_CHOICE:-}" in
+              y|Y) MOVE_FLAG="-move"; break ;;
+              n|N|"") MOVE_FLAG=""; break ;;
+              *) echo "y か n を入力してください。" ;;
+            esac
+          done
+
+          echo "--- 画像リネームプログラムを実行します ---"
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"
+          echo
+          echo "--- 画像リネームプログラムの実行が完了しました ---"
+
+          echo "--- Webp変換プログラムを実行します ---"
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter.exe" \
+            -src . \
+            -ext webp \
+            -q 80 \
+            -archive .{{.DIR_SEP}}5_original_files \
+            ${MOVE_FLAG:+$MOVE_FLAG}
+          echo
+          echo "--- Webp変換プログラムの実行が完了しました ---"
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
