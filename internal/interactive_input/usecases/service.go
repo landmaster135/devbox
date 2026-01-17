@@ -51,7 +51,9 @@ func (s *Service) Run(cfg Config) (string, error) {
 	case domain.InputTypeText:
 		return s.handleTextInput(cfg)
 	case domain.InputTypeChoice:
-		return s.handleChoiceInput(cfg)
+		return s.handleChoiceInput(cfg, true)
+	case domain.InputTypeChoiceFlag:
+		return s.handleChoiceInput(cfg, false)
 	case domain.InputTypeConfirm:
 		return s.handleConfirmInput(cfg)
 	default:
@@ -91,7 +93,7 @@ func (s *Service) handleTextInput(cfg Config) (string, error) {
 	}
 }
 
-func (s *Service) handleChoiceInput(cfg Config) (string, error) {
+func (s *Service) handleChoiceInput(cfg Config, includeKey bool) (string, error) {
 	failed := 0
 	prompt := s.render(cfg.Prompt)
 	options := make(map[string]string, len(cfg.ChoiceOptions))
@@ -109,7 +111,7 @@ func (s *Service) handleChoiceInput(cfg Config) (string, error) {
 
 		normalized := strings.ToLower(strings.TrimSpace(value))
 		if output, ok := options[normalized]; ok {
-			return formatKeyValue(cfg.Key, output), nil
+			return formatChoiceValue(cfg.Key, output, includeKey), nil
 		}
 
 		failed++
@@ -199,4 +201,12 @@ func formatKeyValue(key, value string) string {
 
 func formatKeyOnly(key string) string {
 	return fmt.Sprintf("--%s", key)
+}
+
+func formatChoiceValue(key, value string, includeKey bool) string {
+	if includeKey {
+		return formatKeyValue(key, value)
+	}
+
+	return value
 }

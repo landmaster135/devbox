@@ -16,17 +16,15 @@ tasks:
             --prompt "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " \
             --input-type text --key start)" || exit 1
 
-          SORT_SELECTION="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Select how to sort image files to rename  [n]='--name'  [t]='--time' : " \
-            --input-type choice --key sort-flag \
-            --choice-option "n|--name" --choice-option "t|--time")" || exit 1
+          SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
+            --input-type choice-flag \
+            --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          if [ -z "$START_ARG" ] || [ -z "$SORT_SELECTION" ]; then
+          if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
             echo "interactive-input から値を取得できませんでした。" >&2
             exit 1
           fi
-
-          SORT_FLAG="${SORT_SELECTION#*=}"
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
@@ -46,8 +44,9 @@ tasks:
 
           METHOD_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " \
-            --input-type choice --key operation \
-            --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
+            --input-type choice-flag \
+            --choice-option "v|-operation=vlc" --choice-option "w|-operation=win" \
+            --choice-option "x|-operation=xiaomi" --choice-option "p|-operation=pixel")" || exit 1
 
           if [ -z "$METHOD_FLAG" ]; then
             echo "interactive-input からリネーム方法を取得できませんでした。" >&2

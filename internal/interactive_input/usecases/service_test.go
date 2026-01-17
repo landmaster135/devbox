@@ -77,6 +77,30 @@ func TestService_ChoiceInput(t *testing.T) {
 	}
 }
 
+func TestService_ChoiceFlagInput(t *testing.T) {
+	stdin := bytes.NewBufferString("v\n")
+	var stderr bytes.Buffer
+
+	svc := NewService(stdin, &stderr)
+	output, err := svc.Run(Config{
+		Prompt:    "Select flag: ",
+		InputType: domain.InputTypeChoiceFlag,
+		Key:       "ignored",
+		ChoiceOptions: []domain.ChoiceOption{
+			{Shortcut: "v", NormalizedShortcut: "v", Output: "-operation=vlc"},
+		},
+		MaxAttempts: 2,
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if output != "-operation=vlc" {
+		t.Fatalf("unexpected output: %s", output)
+	}
+}
+
 func TestService_ConfirmNegative(t *testing.T) {
 	stdin := bytes.NewBufferString("n\n")
 	var stderr bytes.Buffer
