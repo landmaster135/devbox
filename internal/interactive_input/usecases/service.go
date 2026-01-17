@@ -138,6 +138,9 @@ func (s *Service) handleConfirmInput(cfg Config) (string, error) {
 		normalized := strings.ToLower(strings.TrimSpace(value))
 		switch normalized {
 		case "y", "yes":
+			if cfg.Key == "" {
+				return "", nil
+			}
 			return formatKeyOnly(cfg.Key), nil
 		case "n", "no":
 			return "", nil
