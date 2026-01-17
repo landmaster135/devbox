@@ -1,8 +1,9 @@
 version: "3"
 
 vars:
-  CLI_BIN_DIR: "{{.TASKFILE_DIR}}\\pkg\\bin\\cli\\win_amd64"
-  DIR_SEP: '{{if eq OS "windows"}}\{{else}}/{{end}}'
+  DIR_SEP: '{{if eq OS "windows"}}\\{{else}}/{{end}}'
+  CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}win_amd64"
+  INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
 
 tasks:
   image-renamer:habit:
@@ -11,13 +12,11 @@ tasks:
       - cmd: |
           set -eu
 
-          INTERACTIVE_BIN="{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
-
-          START_ARG="$($INTERACTIVE_BIN \
+          START_ARG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " \
             --input-type text --key start)" || exit 1
 
-          SORT_SELECTION="$($INTERACTIVE_BIN \
+          SORT_SELECTION="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to sort image files to rename  [n]='--name'  [t]='--time' : " \
             --input-type choice --key sort-flag \
             --choice-option "n|--name" --choice-option "t|--time")" || exit 1
@@ -45,9 +44,7 @@ tasks:
       - cmd: |
           set -eu
 
-          INTERACTIVE_BIN="{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
-
-          METHOD_FLAG="$($INTERACTIVE_BIN \
+          METHOD_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " \
             --input-type choice --key operation \
             --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
@@ -57,7 +54,7 @@ tasks:
             exit 1
           fi
 
-          MOVE_FLAG="$($INTERACTIVE_BIN \
+          MOVE_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " \
             --input-type confirm --key move)" || exit 1
 
