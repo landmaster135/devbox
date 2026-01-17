@@ -54,7 +54,7 @@ tasks:
 
           MOVE_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " \
-            --input-type confirm)" || exit 1
+            --input-type confirm --key move)" || exit 1
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"

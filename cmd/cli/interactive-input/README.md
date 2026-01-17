@@ -23,7 +23,7 @@
 | ------ | ---- | ---- |
 | `--prompt` | * | 質問文。`\n` で改行可 |
 | `--input-type` | * | `text` / `choice` / `choice-flag` / `confirm` |
-| `--key` | * (text/choice) | 出力に使うキー（英数字・`-`・`_`） |
+| `--key` | * (choice-flag以外) | 出力に使うキー（英数字・`-`・`_`） |
 | `--default` | text | Enterのみ時に採用する既定値（空文字可） |
 | `--choice-option` | choice/choice-flag | `shortcut|output` 形式。複数指定で選択肢追加 |
 | `--max-attempts` | 任意 | バリデーション失敗時の再入力回数。0で無制限（既定3） |
@@ -79,7 +79,6 @@ interactive-input \
   --key move
 ```
 `y` なら `--move` が返り、`n` なら何も出力されません。
-`--key` を省略した場合、肯定でも標準出力は空のままなので、終了コードのみで判定したいときに利用できます。
 
 ## スクリプトでの利用例
 ```bash
