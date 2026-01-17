@@ -8,6 +8,8 @@ const (
 	InputTypeText InputType = "text"
 	// InputTypeChoice accepts one-character shortcut selections.
 	InputTypeChoice InputType = "choice"
+	// InputTypeChoiceFlag outputs the option value directly without prepending a key.
+	InputTypeChoiceFlag InputType = "choice-flag"
 	// InputTypeConfirm accepts Y/N confirmation responses.
 	InputTypeConfirm InputType = "confirm"
 )

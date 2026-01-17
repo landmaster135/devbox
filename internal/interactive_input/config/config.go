@@ -53,14 +53,6 @@ func ParseFlags(args []string) (*Config, error) {
 		return nil, errors.New("--prompt は必須です")
 	}
 
-	if strings.TrimSpace(*key) == "" {
-		return nil, errors.New("--key は必須です")
-	}
-
-	if err := validateKey(*key); err != nil {
-		return nil, err
-	}
-
 	inputTypeValue := strings.ToLower(strings.TrimSpace(*inputType))
 	var parsedType domain.InputType
 
@@ -69,10 +61,28 @@ func ParseFlags(args []string) (*Config, error) {
 		parsedType = domain.InputTypeText
 	case string(domain.InputTypeChoice):
 		parsedType = domain.InputTypeChoice
+	case string(domain.InputTypeChoiceFlag):
+		parsedType = domain.InputTypeChoiceFlag
 	case string(domain.InputTypeConfirm):
 		parsedType = domain.InputTypeConfirm
 	default:
-		return nil, fmt.Errorf("--input-type には text / choice / confirm のいずれかを指定してください: %s", *inputType)
+		return nil, fmt.Errorf("--input-type には text / choice / choice-flag / confirm のいずれかを指定してください: %s", *inputType)
+	}
+
+	requiresKey := parsedType != domain.InputTypeChoiceFlag
+	trimmedKey := strings.TrimSpace(*key)
+
+	if requiresKey {
+		if trimmedKey == "" {
+			return nil, errors.New("--key はこの入力タイプで必須です")
+		}
+		if err := validateKey(trimmedKey); err != nil {
+			return nil, err
+		}
+	} else if trimmedKey != "" {
+		if err := validateKey(trimmedKey); err != nil {
+			return nil, err
+		}
 	}
 
 	if *maxAttempts < 0 {
@@ -91,7 +101,7 @@ func ParseFlags(args []string) (*Config, error) {
 	cfg := &Config{
 		Prompt:          *prompt,
 		InputType:       parsedType,
-		Key:             *key,
+		Key:             trimmedKey,
 		DefaultValue:    defaultValue.value,
 		DefaultProvided: defaultValue.set,
 		ChoiceOptions:   parsedChoices,
@@ -104,7 +114,7 @@ func ParseFlags(args []string) (*Config, error) {
 
 // PrintUsage prints help text for the CLI.
 func PrintUsage() {
-	usage := `interactive-input はプロンプトごとに1回起動し、ユーザー入力をキー付き文字列で標準出力へ返すCLIです。
+	usage := `interactive-input はプロンプトごとに1回起動し、ユーザー入力をキー付き文字列または指定のフラグとして標準出力へ返すCLIです。
 
 使用例:
   # 任意テキスト入力（Enterのみならデフォルト"."）
@@ -122,6 +132,13 @@ func PrintUsage() {
     --choice-option "v|vlc" \
     --choice-option "w|win"
 
+  # フラグ選択肢（--choice-option の output をそのまま出力）
+  interactive-input \
+    --prompt "Select rename flag: " \
+    --input-type choice-flag \
+    --choice-option "v|-operation=vlc" \
+    --choice-option "w|-operation=win"
+
   # 確認
   interactive-input \
     --prompt "Move originals? " \
@@ -130,10 +147,10 @@ func PrintUsage() {
 
 主要フラグ:
   --prompt string           質問文（必須）
-  --input-type string       text / choice / confirm から選択（必須）
-  --key string              出力のキー名（必須。空白・=は不可）
+  --input-type string       text / choice / choice-flag / confirm から選択（必須）
+  --key string              出力のキー名（choice-flag以外は必須。空白・=は不可）
   --default string          text入力で空行時に採用する値
-  --choice-option string    choice専用。"shortcut|output" 形式。複数指定可
+  --choice-option string    choice/choice-flag専用。"shortcut|output" 形式。複数指定可
   --max-attempts int        バリデーション失敗時の再入力回数。0で無制限（既定:3）
   --help (-h)               このヘルプを表示
 `
