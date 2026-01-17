@@ -122,6 +122,27 @@ func TestService_ConfirmNegative(t *testing.T) {
 	}
 }
 
+func TestService_ConfirmPositiveWithoutKey(t *testing.T) {
+	stdin := bytes.NewBufferString("y\n")
+	var stderr bytes.Buffer
+
+	svc := NewService(stdin, &stderr)
+	output, err := svc.Run(Config{
+		Prompt:      "Proceed? ",
+		InputType:   domain.InputTypeConfirm,
+		Key:         "",
+		MaxAttempts: 2,
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if output != "" {
+		t.Fatalf("expected empty output, got %q", output)
+	}
+}
+
 func TestService_ConfirmExceededAttempts(t *testing.T) {
 	stdin := bytes.NewBufferString("maybe\n")
 	var stderr bytes.Buffer

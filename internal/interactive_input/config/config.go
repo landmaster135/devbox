@@ -69,7 +69,7 @@ func ParseFlags(args []string) (*Config, error) {
 		return nil, fmt.Errorf("--input-type には text / choice / choice-flag / confirm のいずれかを指定してください: %s", *inputType)
 	}
 
-	requiresKey := parsedType != domain.InputTypeChoiceFlag
+	requiresKey := !(parsedType == domain.InputTypeChoiceFlag || parsedType == domain.InputTypeConfirm)
 	trimmedKey := strings.TrimSpace(*key)
 
 	if requiresKey {
@@ -148,7 +148,7 @@ func PrintUsage() {
 主要フラグ:
   --prompt string           質問文（必須）
   --input-type string       text / choice / choice-flag / confirm から選択（必須）
-  --key string              出力のキー名（choice-flag以外は必須。空白・=は不可）
+  --key string              出力のキー名（text/choiceで必須。空白・=は不可）
   --default string          text入力で空行時に採用する値
   --choice-option string    choice/choice-flag専用。"shortcut|output" 形式。複数指定可
   --max-attempts int        バリデーション失敗時の再入力回数。0で無制限（既定:3）

@@ -44,9 +44,8 @@ tasks:
 
           METHOD_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " \
-            --input-type choice-flag \
-            --choice-option "v|-operation=vlc" --choice-option "w|-operation=win" \
-            --choice-option "x|-operation=xiaomi" --choice-option "p|-operation=pixel")" || exit 1
+            --input-type choice --key operation \
+            --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
 
           if [ -z "$METHOD_FLAG" ]; then
             echo "interactive-input からリネーム方法を取得できませんでした。" >&2
@@ -55,7 +54,7 @@ tasks:
 
           MOVE_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " \
-            --input-type confirm --key move)" || exit 1
+            --input-type confirm)" || exit 1
 
           echo "--- 画像リネームプログラムを実行します ---"
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"
