@@ -35,8 +35,9 @@ vars:
         return 1;
       fi; printf '%s\n' "$value";
     }
-  INTERACTIVE_CHOICE_FLAG_INPUT: |
-    function input_choice_flag_interactively() {
+  INTERACTIVE_CHOICE_FLAG_INPUT_NAME: input_choice_flag_interactively
+  INTERACTIVE_CHOICE_FLAG_INPUT_FUNC: |
+    function {{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}}() {
       local prompt="$1"; shift 1 || return 1;
       local value;
       if ! value="$("{{.INTERACTIVE_BIN}}" \
