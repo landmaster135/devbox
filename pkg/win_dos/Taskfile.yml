@@ -12,6 +12,10 @@ includes:
     taskfile: ./Taskfile.image_rename.yml
     flatten: false
     internal: true
+  synthetic:
+    taskfile: ./Taskfile.synthetic.yml
+    flatten: false
+    internal: true
 
 tasks:
   arithmetic-calculator:extract-api-cost:
@@ -82,29 +86,4 @@ tasks:
   screenshot:rename-convert:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
     cmds:
-      - cmd: |
-          set -eu
-          {{.INTERACTIVE_CHOICE_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}} {{.METHOD_FLAG_GUARD}}
-
-          METHOD_FLAG="$(input_choice_interactively \
-            "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " operation \
-            --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
-
-          ensure_method_flag "interactive-input からリネーム方法を取得できませんでした。" "$METHOD_FLAG"
-
-          MOVE_FLAG="$(input_confirm_interactively \
-            "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
-
-          echo $'\n[Step 01: START]--- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot{{.EXE}}" -src . "${METHOD_FLAG}"
-          echo $'\n[Step 01: END]--- 画像リネームプログラムの実行が完了しました ---'
-
-          echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp \
-            --q 80  --archive .{{.DIR_SEP}}5_original_files \
-            $MOVE_FLAG
-          echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
-        dir: "{{.TASKFILE_DIR}}"
-        interactive: true
-        silent: true
+      - task: synthetic:screenshot:rename-convert
