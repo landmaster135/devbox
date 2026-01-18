@@ -13,26 +13,6 @@ vars:
         return 1;
       fi; printf '%s\n' "$value";
     }
-  INTERACTIVE_CHOICE_INPUT: |
-    function input_choice_interactively() {
-      local prompt="$1"; local key="$2";
-      shift 2 || return 1;
-      local value;
-      if ! value="$("{{.INTERACTIVE_BIN}}" \
-        --prompt "$prompt" --input-type choice --key "$key" "$@")"; then
-        return 1;
-      fi; printf '%s\n' "$value";
-    }
-  INTERACTIVE_CHOICE_FLAG_INPUT: |
-    function input_choice_flag_interactively() {
-      local prompt="$1";
-      shift 1 || return 1;
-      local value;
-      if ! value="$("{{.INTERACTIVE_BIN}}" \
-        --prompt "$prompt" --input-type choice-flag "$@")"; then
-        return 1;
-      fi; printf '%s\n' "$value";
-    }
   INTERACTIVE_CONFIRM_INPUT: |
     function input_confirm_interactively() {
       local prompt="$1"; local key="$2";
@@ -42,6 +22,36 @@ vars:
         return 1;
       fi; printf '%s\n' "$value";
     }
+  INTERACTIVE_CHOICE_INPUT: |
+    function input_choice_interactively() {
+      local prompt="$1"; local key="$2"; shift 2 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice --key "$key" "$@")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_FLAG_INPUT: |
+    function input_choice_flag_interactively() {
+      local prompt="$1"; shift 1 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice-flag "$@")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  METHOD_FLAG_GUARD: |
+    function ensure_method_flag() {
+      local error_message="$1"; shift 1 || true;
+      if [ "$#" -eq 0 ]; then
+        echo "${error_message}" >&2; exit 1;
+      fi; local flag;
+      for flag in "$@"; do
+        if [ -z "$flag" ]; then
+          echo "${error_message}" >&2; exit 1;
+        fi
+      done
+    }
 
 tasks:
   image-renamer:habit:
@@ -49,9 +59,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-
-          {{.INTERACTIVE_TEXT_INPUT}}
-          {{.INTERACTIVE_CHOICE_FLAG_INPUT}}
+          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
 
@@ -59,10 +67,7 @@ tasks:
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
-            echo "interactive-input から値を取得できませんでした。" >&2
-            exit 1
-          fi
+          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
@@ -79,9 +84,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-
-          {{.INTERACTIVE_TEXT_INPUT}}
-          {{.INTERACTIVE_CHOICE_FLAG_INPUT}}
+          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
 
@@ -89,10 +92,7 @@ tasks:
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
-            echo "interactive-input から値を取得できませんでした。" >&2
-            exit 1
-          fi
+          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
@@ -109,9 +109,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-
-          {{.INTERACTIVE_TEXT_INPUT}}
-          {{.INTERACTIVE_CHOICE_FLAG_INPUT}}
+          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
 
@@ -119,10 +117,7 @@ tasks:
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
-            echo "interactive-input から値を取得できませんでした。" >&2
-            exit 1
-          fi
+          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
@@ -139,18 +134,13 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-
-          {{.INTERACTIVE_CHOICE_INPUT}}
-          {{.INTERACTIVE_CONFIRM_INPUT}}
+          {{.INTERACTIVE_CHOICE_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           METHOD_FLAG="$(input_choice_interactively \
             "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " operation \
             --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
 
-          if [ -z "$METHOD_FLAG" ]; then
-            echo "interactive-input からリネーム方法を取得できませんでした。" >&2
-            exit 1
-          fi
+          ensure_method_flag "interactive-input からリネーム方法を取得できませんでした。" "$METHOD_FLAG"
 
           MOVE_FLAG="$(input_confirm_interactively \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
