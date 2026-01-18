@@ -173,11 +173,11 @@ tasks:
       - task: image-synthesize:image-rename:by-4-digits:convert
 
   image:rename:convert:screenshot:
-    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
+    desc: "スクショの命名＋WebP変換"
     cmds:
       - task: image-synthesize:screenshot:rename-convert
 
   image:rename:convert:screenshot:keeping-saturation:
-    desc: "スクショの命名＋WebP(lossless)変換 (image-renamer-for-screenshot + image-converter)"
+    desc: "スクショの命名＋WebP(lossless)変換"
     cmds:
       - task: image-synthesize:screenshot:rename-convert:keeping-saturation

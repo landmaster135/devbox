@@ -7,7 +7,7 @@ includes:
 
 tasks:
   screenshot:rename-convert:
-    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
+    desc: "スクショの命名＋WebP変換"
     cmds:
       - cmd: |
           set -eu
@@ -37,7 +37,7 @@ tasks:
         silent: true
 
   screenshot:rename-convert:keeping-saturation:
-    desc: "スクショの命名＋WebP(lossless)変換 (image-renamer-for-screenshot + image-converter)"
+    desc: "スクショの命名＋WebP(lossless)変換"
     cmds:
       - cmd: |
           set -eu
