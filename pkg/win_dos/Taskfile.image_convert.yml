@@ -88,3 +88,104 @@ tasks:
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
+
+  image-rotator:rotate:
+    desc: "image-rotatorで画像を回転"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          ANGLE_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select which to rotate image files to rotate  [a]='right-90'  [b]='left-90'  [c]='180' : " \
+            --choice-option "a|-angle=90" --choice-option "b|-angle=270" --choice-option "c|-angle=180")" || exit 1
+
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+
+          echo $'\n[Step 01: START]--- 画像回転プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-rotator{{.EXE}}" \
+            --src . --suffix rotated \
+            "$ANGLE_FLAG" $MOVE_FLAG
+          echo $'\n[Step 01: END]--- 画像回転プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-trim-describer:describe:
+    desc: "image-trim-describerで座標確認"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- image-trim-describerを起動します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trim-describer{{.EXE}}"
+          echo $'\n[Step 01: END]--- image-trim-describerの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  image-trimmer:trim-by-coordinates:
+    desc: "image-trimmerで座標指定トリミング"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_MAP_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          COORDINATE_ARGS="$({{.INTERACTIVE_MAP_INPUT_NAME}} \
+            "Input coordinates (e.g. -x1 244 -y1 269 -x2 2140 -y2 1090): " coords)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からトリミング座標を取得できませんでした。" "$COORDINATE_ARGS"
+
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+
+          echo $'\n[Step 01: START]--- 座標指定トリミングを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trimmer{{.EXE}}" \
+            --src . --suffix cropped \
+            $COORDINATE_ARGS $MOVE_FLAG
+          echo $'\n[Step 01: END]--- 座標指定トリミングの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-trimmer:trim-by-purpose:
+    desc: "image-trimmerで用途別プリセットトリミング"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}}
+
+          PURPOSE="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select how to trim images by purpose taking screenshots  [g]='General'  [c]='Comic' : " \
+            --choice-option "g|general" --choice-option "c|comic")" || exit 1
+
+          case "$PURPOSE" in
+            general)
+              X1_ARG="--x1=0"
+              Y1_ARG="--y1=131"
+              X2_ARG="--x2=1080"
+              Y2_ARG="--y2=2293"
+              ;;
+            comic)
+              X1_ARG="--x1=0"
+              Y1_ARG="--y1=341"
+              X2_ARG="--x2=1080"
+              Y2_ARG="--y2=2056"
+              ;;
+            *)
+              echo "Invalid purpose is selected." >&2
+              exit 1
+              ;;
+          esac
+
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+
+          echo $'\n[Step 01: START]--- 用途別プリセットトリミングを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trimmer{{.EXE}}" \
+            --src . --suffix cropped \
+            "$X1_ARG" "$Y1_ARG" "$X2_ARG" "$Y2_ARG" $MOVE_FLAG
+          echo $'\n[Step 01: END]--- 用途別プリセットトリミングの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true

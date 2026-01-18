@@ -15,6 +15,16 @@ vars:
         return 1;
       fi; printf '%s\n' "$value";
     }
+  INTERACTIVE_MAP_INPUT_NAME: input_map_interactively
+  INTERACTIVE_MAP_INPUT_FUNC: |
+    function {{.INTERACTIVE_MAP_INPUT_NAME}}() {
+      local prompt="$1"; local _key="$2";
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type map)"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
   INTERACTIVE_CONFIRM_INPUT_NAME: input_confirm_interactively
   INTERACTIVE_CONFIRM_INPUT_FUNC: |
     function {{.INTERACTIVE_CONFIRM_INPUT_NAME}}() {
