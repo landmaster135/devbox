@@ -11,9 +11,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_CONFIRM_INPUT}}
+          {{.INTERACTIVE_CONFIRM_INPUT_FUNC}}
 
-          MOVE_FLAG="$(input_confirm_interactively \
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
@@ -31,9 +31,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_CONFIRM_INPUT}}
+          {{.INTERACTIVE_CONFIRM_INPUT_FUNC}}
 
-          MOVE_FLAG="$(input_confirm_interactively \
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
@@ -51,9 +51,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_CONFIRM_INPUT}}
+          {{.INTERACTIVE_CONFIRM_INPUT_FUNC}}
 
-          MOVE_FLAG="$(input_confirm_interactively \
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
 
           echo $'\n[Step 01: START]--- Webp(lossless)変換プログラムを実行します ---'
@@ -71,12 +71,12 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}}
 
           QUALITY_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input integer (75 as default) for quality of output jpg (1-100): " q)" || exit 1
 
-          MOVE_FLAG="$(input_confirm_interactively \
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
 
           echo $'\n[Step 01: START]--- JPG変換プログラムを実行します ---'

@@ -11,7 +11,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_CHOICE_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_CHOICE_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
           METHOD_FLAG="$(input_choice_interactively \
             "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " operation \
@@ -19,7 +19,7 @@ tasks:
 
           ensure_method_flag "interactive-input からリネーム方法を取得できませんでした。" "$METHOD_FLAG"
 
-          MOVE_FLAG="$(input_confirm_interactively \
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
 
           echo $'\n[Step 01: START]--- 画像リネームプログラムを実行します ---'

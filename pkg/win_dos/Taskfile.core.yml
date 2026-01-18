@@ -15,8 +15,9 @@ vars:
         return 1;
       fi; printf '%s\n' "$value";
     }
-  INTERACTIVE_CONFIRM_INPUT: |
-    function input_confirm_interactively() {
+  INTERACTIVE_CONFIRM_INPUT_NAME: input_confirm_interactively
+  INTERACTIVE_CONFIRM_INPUT_FUNC: |
+    function {{.INTERACTIVE_CONFIRM_INPUT_NAME}}() {
       local prompt="$1"; local key="$2";
       local value;
       if ! value="$("{{.INTERACTIVE_BIN}}" \

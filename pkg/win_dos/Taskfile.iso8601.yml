@@ -11,7 +11,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
           TO_FLAG="$(input_choice_flag_interactively \
             "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " \
@@ -20,7 +20,7 @@ tasks:
           INPUT_VALUE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input datetime in ISO-8601 format or UNIX timestamp: " input)" || exit 1
 
-          IS_JST_FLAG="$(input_confirm_interactively \
+          IS_JST_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to enable the --is-jst option or not  [y]='--is-jst'  [n]='' : " is-jst)" || exit 1
 
           ensure_method_flag "interactive-input から変換パラメータを取得できませんでした。" "$TO_FLAG" "$INPUT_VALUE"
