@@ -1,0 +1,46 @@
+version: "3"
+
+includes:
+  env:
+    taskfile: ./Taskfile.env.yml
+    internal: true
+  core:
+    taskfile: ./Taskfile.core.yml
+    internal: true
+
+tasks:
+  file-maneuver:sync-executables:
+    desc: "file-maneuverでwin_amd64向けexeを同期"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- file-maneuverでexeを同期します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}file-maneuver{{.EXE}}" \
+            --src-dirs "\{{.FILE_MANEUVERS_EXE_SRC_DIRS}}" \
+            --dest-dir "{{.CLI_BIN_DIR}}" \
+            --extensions exe --copy --overwrite
+          echo $'\n[Step 01: END]--- file-maneuverでexeの同期が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  file-maneuver:filter-thumbnail-webp:
+    desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          SRC_DIR="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input src-dir: " src-dirs)" || exit 1
+          DEST_DIR="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input dest-dir: " dest-dir)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からディレクトリを取得できませんでした。" "$SRC_DIR" "$DEST_DIR"
+
+          echo $'\n[Step 01: START]--- file-maneuverでWebPファイルを移動します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}file-maneuver{{.EXE}}" \
+            --extensions webp --name-contains thumbnail_of_game \
+            "$SRC_DIR" "$DEST_DIR"
+          echo $'\n[Step 01: END]--- file-maneuverでWebPファイルの移動が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
