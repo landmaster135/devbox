@@ -9,6 +9,10 @@ includes:
     taskfile: ./Taskfile.image_convert.yml
     flatten: false
     internal: true
+  file-maneuver:
+    taskfile: ./Taskfile.file_maneuve.yml
+    flatten: false
+    internal: true
   image-rename:
     taskfile: ./Taskfile.image_rename.yml
     flatten: false
@@ -152,3 +156,13 @@ tasks:
     desc: "iso8601-converterで現在日時を出力"
     cmds:
       - task: iso8601:iso8601-converter:now
+
+  file-maneuver:sync-executables:
+    desc: "file-maneuverでwin_amd64のexeを同期"
+    cmds:
+      - task: file-maneuver:file-maneuver:sync-executables
+
+  file-maneuver:filter-thumbnail-webp:
+    desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
+    cmds:
+      - task: file-maneuver:file-maneuver:filter-thumbnail-webp

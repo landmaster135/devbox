@@ -3,7 +3,7 @@
 setlocal enabledelayedexpansion
 
 echo --- ƒvƒƒOƒ‰ƒ€‚ğÀs‚µ‚Ü‚· ---
-.\pkg\bin\cli\win_amd64\file-maneuver.exe --src-dirs \\wsl.localhost\Ubuntu-24.04\home\nov\devbox\pkg\bin\cli\win_amd64 --dest-dir .\pkg\bin\cli\win_amd64 --extensions "exe" --copy --overwrite
+.\pkg\bin\cli\win_amd64\file-maneuver.exe --src-dirs \\wsl.localhost\Ubuntu-24.04\home\user\devbox\pkg\bin\cli\win_amd64 --dest-dir .\pkg\bin\cli\win_amd64 --extensions "exe" --copy --overwrite
 endlocal
 
 echo.
