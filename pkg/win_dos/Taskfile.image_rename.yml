@@ -11,14 +11,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -35,14 +35,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -59,14 +59,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -83,14 +83,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of anime (ANxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -107,14 +107,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of comic (CMxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -131,14 +131,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of web_clip (WCxxxxxxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -155,14 +155,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of wine (WIxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
@@ -179,7 +179,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input prefix to rename image files (e.g. yyyymmdd_00.jpg): " prefix)" || exit 1
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input number to renumber the images  (e.g. prefix_xx.jpg): " start)" || exit 1
@@ -187,7 +187,7 @@ tasks:
             "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" \
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
@@ -204,7 +204,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input prefix to rename image files (e.g. yyyymmdd_0000.jpg): " prefix)" || exit 1
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input number to renumber the images  (e.g. prefix_xxxx.jpg): " start)" || exit 1
@@ -212,7 +212,7 @@ tasks:
             "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" \
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
@@ -229,14 +229,14 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input prefix of pictures (yyyyMMddHH): " prefix)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1
 
-          ensure_method_flag "interactive-input から値を取得できませんでした。" \
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
             "$PREFIX_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'

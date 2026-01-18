@@ -11,7 +11,7 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           TO_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " \
@@ -23,7 +23,7 @@ tasks:
           IS_JST_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to enable the --is-jst option or not  [y]='--is-jst'  [n]='' : " is-jst)" || exit 1
 
-          ensure_method_flag "interactive-input から変換パラメータを取得できませんでした。" "$TO_FLAG" "$INPUT_VALUE"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から変換パラメータを取得できませんでした。" "$TO_FLAG" "$INPUT_VALUE"
 
           echo $'\n[Step 01: START]--- iso8601-converterを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" \

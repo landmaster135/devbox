@@ -11,13 +11,13 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
           METHOD_FLAG="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
             "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " operation \
             --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
 
-          ensure_method_flag "interactive-input からリネーム方法を取得できませんでした。" "$METHOD_FLAG"
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からリネーム方法を取得できませんでした。" "$METHOD_FLAG"
 
           MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
