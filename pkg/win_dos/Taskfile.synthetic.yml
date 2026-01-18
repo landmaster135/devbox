@@ -11,9 +11,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_CHOICE_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
-          METHOD_FLAG="$(input_choice_interactively \
+          METHOD_FLAG="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
             "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " operation \
             --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
 
