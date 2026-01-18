@@ -13,6 +13,10 @@ includes:
     taskfile: ./Taskfile.image_rename.yml
     flatten: false
     internal: true
+  iso8601:
+    taskfile: ./Taskfile.iso8601.yml
+    flatten: false
+    internal: true
   synthetic:
     taskfile: ./Taskfile.synthetic.yml
     flatten: false
@@ -108,3 +112,13 @@ tasks:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
     cmds:
       - task: synthetic:screenshot:rename-convert
+
+  iso8601-converter:convert:
+    desc: "iso8601-converterでISO-8601とUNIXの相互変換"
+    cmds:
+      - task: iso8601:iso8601-converter:convert
+
+  iso8601-converter:now:
+    desc: "iso8601-converterで現在日時を出力"
+    cmds:
+      - task: iso8601:iso8601-converter:now
