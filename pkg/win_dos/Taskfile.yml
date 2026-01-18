@@ -62,7 +62,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -87,7 +86,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -112,7 +110,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -137,7 +134,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of anime (ANxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -162,7 +158,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of comic (CMxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -187,7 +182,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of web_clip (WCxxxxxxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -212,7 +206,6 @@ tasks:
           {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of wine (WIxxxx_01.webp): " start)" || exit 1
-
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -224,6 +217,81 @@ tasks:
             --src . --operation wine \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
+          echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-renamer:by-2-digits:
+    desc: "image-renamer.exeで2桁連番リネーム"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+
+          PREFIX_ARG="$(input_text_interactively "Input prefix to rename image files (e.g. yyyymmdd_00.jpg): " prefix)" || exit 1
+          START_ARG="$(input_text_interactively "Input number to renumber the images  (e.g. prefix_xx.jpg): " start)" || exit 1
+          SORT_FLAG="$(input_choice_flag_interactively \
+            "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
+            --choice-option "n|-name" --choice-option "d|-time")" || exit 1
+
+          ensure_method_flag "interactive-input から値を取得できませんでした。" \
+            "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
+
+          echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer.exe" \
+            --src . -digits 2 --delimiter "_" \
+            "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
+          echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-renamer:by-4-digits:
+    desc: "image-renamer.exeで4桁連番リネーム"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+
+          PREFIX_ARG="$(input_text_interactively "Input prefix to rename image files (e.g. yyyymmdd_0000.jpg): " prefix)" || exit 1
+          START_ARG="$(input_text_interactively "Input number to renumber the images  (e.g. prefix_xxxx.jpg): " start)" || exit 1
+          SORT_FLAG="$(input_choice_flag_interactively \
+            "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
+            --choice-option "n|-name" --choice-option "d|-time")" || exit 1
+
+          ensure_method_flag "interactive-input から値を取得できませんでした。" \
+            "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
+
+          echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer.exe" \
+            --src . -digits 4 --delimiter "_" \
+            "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
+          echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-renamer:by-prefix:
+    desc: "image-renamer.exeで特定のディレクトリ内で接頭辞を使ったリネーム"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+
+          PREFIX_ARG="$(input_text_interactively "Input prefix of pictures (yyyyMMddHH): " prefix)" || exit 1
+          SORT_FLAG="$(input_choice_flag_interactively \
+            "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
+            --choice-option "n|-name" --choice-option "d|-time")" || exit 1
+
+          ensure_method_flag "interactive-input から値を取得できませんでした。" \
+            "$PREFIX_ARG" "$SORT_FLAG"
+
+          echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer.exe" \
+            -src ".{{.DIR_SEP}}1-3_image_renamer_with_prefix_input" \
+            --digits 4 --delimiter "" --start 1 \
+            "$PREFIX_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
