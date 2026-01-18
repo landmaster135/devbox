@@ -1,0 +1,117 @@
+version: "3"
+
+vars:
+  DIR_SEP: '{{if eq OS "windows"}}\\{{else}}/{{end}}'
+  EXE: '{{if eq OS "windows"}}.exe{{else}}{{end}}'
+  CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}win_amd64"
+  INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
+  INTERACTIVE_TEXT_INPUT: |
+    function input_text_interactively() {
+      local prompt="$1"; local key="$2";
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type text --key "$key")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CONFIRM_INPUT: |
+    function input_confirm_interactively() {
+      local prompt="$1"; local key="$2";
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type confirm --key "$key")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_INPUT: |
+    function input_choice_interactively() {
+      local prompt="$1"; local key="$2"; shift 2 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice --key "$key" "$@")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_FLAG_INPUT: |
+    function input_choice_flag_interactively() {
+      local prompt="$1"; shift 1 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice-flag "$@")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  METHOD_FLAG_GUARD: |
+    function ensure_method_flag() {
+      local error_message="$1"; shift 1 || true;
+      if [ "$#" -eq 0 ]; then
+        echo "${error_message}" >&2; exit 1;
+      fi; local flag;
+      for flag in "$@"; do
+        if [ -z "$flag" ]; then
+          echo "${error_message}" >&2; exit 1;
+        fi
+      done
+    }
+
+tasks:
+  arithmetic-calculator:extract-api-cost:origin:
+    desc: "arithmetic-calculatorでAPIコストを抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT}} {{.METHOD_FLAG_GUARD}}
+
+          FILE_PATH="$(input_text_interactively "Input .txt or .md file path to extract API cost: " file)" || exit 1
+
+          ensure_method_flag "interactive-input から値を取得できませんでした。" "$FILE_PATH"
+
+          echo $'\n[Step 01: START]: --- APIコスト抽出処理を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}arithmetic-calculator{{.EXE}}" \
+            -operation parse-api-cost \
+            "$FILE_PATH"
+          echo $'\n[Step 01: END]: --- APIコスト抽出処理が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  datetime-calculator:extract-working-time:origin:
+    desc: "datetime-calculatorで作業時間を抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT}} {{.METHOD_FLAG_GUARD}}
+
+          FILE_PATH="$(input_text_interactively "Input .txt or .md file path to extract working time: " file-path)" || exit 1
+
+          ensure_method_flag "interactive-input から値を取得できませんでした。" "$FILE_PATH"
+
+          echo $'\n[Step 01: START]: --- 作業時間抽出処理を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}datetime-calculator{{.EXE}}" \
+            -operation parse-time \
+            -output-unit minute \
+            "$FILE_PATH"
+          echo $'\n[Step 01: END]: --- 作業時間抽出処理が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  datetime-calculator:generate-daily-heading:origin:
+    desc: "datetime-calculatorで日次見出しを出力"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT}} {{.METHOD_FLAG_GUARD}}
+
+          DAY_OFFSET="$(input_text_interactively "Input offset days in int type (negative int applicable): " day-offset)" || exit 1
+
+          ensure_method_flag "interactive-input から値を取得できませんでした。" "$DAY_OFFSET"
+
+          echo $'\n[Step 01: START]: --- 日次見出し生成処理を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}datetime-calculator{{.EXE}}" \
+            -operation generate-daily-heading \
+            "$DAY_OFFSET"
+          echo $'\n[Step 01: END]: --- 日次見出し生成処理が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
