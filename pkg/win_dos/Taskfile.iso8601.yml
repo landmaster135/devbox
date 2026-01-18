@@ -11,9 +11,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
-          TO_FLAG="$(input_choice_flag_interactively \
+          TO_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
             "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " \
             --choice-option "u|--to-unix" --choice-option "i|--to-iso")" || exit 1
 
