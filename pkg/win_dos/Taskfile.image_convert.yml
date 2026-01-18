@@ -189,3 +189,53 @@ tasks:
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
+
+  image-filterer:blur:
+    desc: "image-filtererで任意座標のぼかし処理"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_MAP_INPUT_FUNC}} {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          COORDINATE_ARGS="$({{.INTERACTIVE_MAP_INPUT_NAME}} \
+            "Input 4 coordinates linked on each parameter to trim images (-x1, -y1, -x2, -y2): " coordinates)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からぼかし対象座標を取得できませんでした。" "$COORDINATE_ARGS"
+
+          RADIUS_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input radius for blurring strength (default: 50, recommended -> 1920x1080px: 50, 4080x3072px: 300): " radius)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からぼかし半径を取得できませんでした。" "$RADIUS_ARG"
+
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+
+          echo $'\n[Step 01: START]--- 画像フィルタリング(blur)を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-filterer{{.EXE}}" \
+            --src . --suffix blurred --mode=blur \
+            $COORDINATE_ARGS $MOVE_FLAG $RADIUS_ARG
+          echo $'\n[Step 01: END]--- 画像フィルタリング(blur)の実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-filterer:blur-for-genshin-captures:
+    desc: "image-filtererで原神スクショ向けぼかし処理"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_CONFIRM_INPUT_FUNC}}
+
+          MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+
+          echo $'\n[Step 01: START]--- 原神スクショ向けのぼかしプリセットを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-filterer{{.EXE}}" \
+            --src . --suffix blurred \
+            --mode=blur --radius=50 \
+            --x1=2246 --y1=1398 --x2=2487 --y2=1440 \
+            $MOVE_FLAG
+          echo $'\n[Step 01: END]--- 原神スクショ向けのぼかしプリセットの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
