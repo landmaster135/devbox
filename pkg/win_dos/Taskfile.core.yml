@@ -5,8 +5,9 @@ vars:
   EXE: '{{if eq OS "windows"}}.exe{{else}}{{end}}'
   CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}win_amd64"
   INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
-  INTERACTIVE_TEXT_INPUT: |
-    function input_text_interactively() {
+  INTERACTIVE_TEXT_INPUT_NAME: input_text_interactively
+  INTERACTIVE_TEXT_INPUT_FUNC: |
+    function {{.INTERACTIVE_TEXT_INPUT_NAME}}() {
       local prompt="$1"; local key="$2";
       local value;
       if ! value="$("{{.INTERACTIVE_BIN}}" \

@@ -11,9 +11,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -35,9 +35,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -59,9 +59,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -83,9 +83,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of anime (ANxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of anime (ANxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -107,9 +107,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of comic (CMxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of comic (CMxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -131,9 +131,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of web_clip (WCxxxxxxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of web_clip (WCxxxxxxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -155,9 +155,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          START_ARG="$(input_text_interactively "Input start of number for content of wine (WIxxxx_01.webp): " start)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input start of number for content of wine (WIxxxx_01.webp): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
@@ -179,10 +179,10 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          PREFIX_ARG="$(input_text_interactively "Input prefix to rename image files (e.g. yyyymmdd_00.jpg): " prefix)" || exit 1
-          START_ARG="$(input_text_interactively "Input number to renumber the images  (e.g. prefix_xx.jpg): " start)" || exit 1
+          PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input prefix to rename image files (e.g. yyyymmdd_00.jpg): " prefix)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input number to renumber the images  (e.g. prefix_xx.jpg): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1
@@ -204,10 +204,10 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          PREFIX_ARG="$(input_text_interactively "Input prefix to rename image files (e.g. yyyymmdd_0000.jpg): " prefix)" || exit 1
-          START_ARG="$(input_text_interactively "Input number to renumber the images  (e.g. prefix_xxxx.jpg): " start)" || exit 1
+          PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input prefix to rename image files (e.g. yyyymmdd_0000.jpg): " prefix)" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input number to renumber the images  (e.g. prefix_xxxx.jpg): " start)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1
@@ -229,9 +229,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.METHOD_FLAG_GUARD}}
 
-          PREFIX_ARG="$(input_text_interactively "Input prefix of pictures (yyyyMMddHH): " prefix)" || exit 1
+          PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input prefix of pictures (yyyyMMddHH): " prefix)" || exit 1
           SORT_FLAG="$(input_choice_flag_interactively \
             "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1

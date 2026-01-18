@@ -11,13 +11,13 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}} {{.METHOD_FLAG_GUARD}}
 
           TO_FLAG="$(input_choice_flag_interactively \
             "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " \
             --choice-option "u|--to-unix" --choice-option "i|--to-iso")" || exit 1
 
-          INPUT_VALUE="$(input_text_interactively \
+          INPUT_VALUE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input datetime in ISO-8601 format or UNIX timestamp: " input)" || exit 1
 
           IS_JST_FLAG="$(input_confirm_interactively \
