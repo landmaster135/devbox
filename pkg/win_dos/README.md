@@ -1,5 +1,46 @@
 # Batch files for DOS
 
-## Notice
+## Taskfile
 
-- Create batch files in ANSI character code.
+### Directory Structure
+Use `Taskfile.yml` with the following structure.
+```
+your_tool_directory/
+|--1-1_image_renamer_with_exif/
+|--
+|--  ...
+|--
+|--999_converted_images/
+|--Taskfile.yml
+|--pkg
+| |--bin
+| | |--cli
+| | | |--darwin_arm64
+| | | | |--anilist
+| | | | |--arithmetic-calculator
+| | | | |--
+| | | | |--  ...
+| | | | |--
+| | | |--linux_amd64
+| | | | |--anilist
+| | | | |--arithmetic-calculator
+| | | | |--
+| | | | |--  ...
+| | | | |--
+| | | |--win_amd64
+| | | | |--anilist.exe
+| | | | |--arithmetic-calculator.exe
+| | | | |--
+| | | | |--  ...
+| | | | |--
+|--taskfiles
+| |--calculate_for_text.yml
+| |--core.yml
+| |--env.sample.yml
+| |--env.yml
+| |--file_maneuver.yml
+| |--image_convert.yml
+| |--image_rename.yml
+| |--image_synthesize.yml
+| |--iso8601.yml
+```
