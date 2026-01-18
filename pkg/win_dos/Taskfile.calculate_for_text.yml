@@ -11,9 +11,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
-          FILE_PATH="$(input_text_interactively "Input .txt or .md file path to extract API cost: " file)" || exit 1
+          FILE_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input .txt or .md file path to extract API cost: " file)" || exit 1
 
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$FILE_PATH"
 
@@ -31,9 +31,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
-          FILE_PATH="$(input_text_interactively "Input .txt or .md file path to extract working time: " file-path)" || exit 1
+          FILE_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input .txt or .md file path to extract working time: " file-path)" || exit 1
 
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$FILE_PATH"
 
@@ -52,9 +52,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.METHOD_FLAG_GUARD}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD}}
 
-          DAY_OFFSET="$(input_text_interactively "Input offset days in int type (negative int applicable): " day-offset)" || exit 1
+          DAY_OFFSET="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input offset days in int type (negative int applicable): " day-offset)" || exit 1
 
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$DAY_OFFSET"
 

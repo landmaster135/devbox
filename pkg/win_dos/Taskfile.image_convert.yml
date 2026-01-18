@@ -71,9 +71,9 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT}} {{.INTERACTIVE_CONFIRM_INPUT}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT}}
 
-          QUALITY_ARG="$(input_text_interactively \
+          QUALITY_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input integer (75 as default) for quality of output jpg (1-100): " q)" || exit 1
 
           MOVE_FLAG="$(input_confirm_interactively \
