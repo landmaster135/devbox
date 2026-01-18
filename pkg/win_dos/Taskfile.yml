@@ -11,8 +11,16 @@ vars:
       if ! value="$("{{.INTERACTIVE_BIN}}" \
         --prompt "$prompt" --input-type text --key "$key")"; then
         return 1
-      fi
-      printf '%s\n' "$value"
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_FLAG_INPUT: |
+    function input_choice_flag_interactively() {
+      local prompt="$1"; shift;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice-flag "$@")"; then
+        return 1
+      fi; printf '%s\n' "$value";
     }
 
 tasks:
@@ -23,12 +31,12 @@ tasks:
           set -eu
 
           {{.INTERACTIVE_TEXT_INPUT}}
+          {{.INTERACTIVE_CHOICE_FLAG_INPUT}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
 
-          SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
-            --input-type choice-flag \
+          SORT_FLAG="$(input_choice_flag_interactively \
+            "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
           if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
@@ -53,12 +61,12 @@ tasks:
           set -eu
 
           {{.INTERACTIVE_TEXT_INPUT}}
+          {{.INTERACTIVE_CHOICE_FLAG_INPUT}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
 
-          SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
-            --input-type choice-flag \
+          SORT_FLAG="$(input_choice_flag_interactively \
+            "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
           if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
@@ -83,12 +91,12 @@ tasks:
           set -eu
 
           {{.INTERACTIVE_TEXT_INPUT}}
+          {{.INTERACTIVE_CHOICE_FLAG_INPUT}}
 
           START_ARG="$(input_text_interactively "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
 
-          SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
-            --input-type choice-flag \
+          SORT_FLAG="$(input_choice_flag_interactively \
+            "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
             --choice-option "n|-name" --choice-option "t|-time")" || exit 1
 
           if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
