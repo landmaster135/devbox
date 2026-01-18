@@ -88,22 +88,22 @@ tasks:
     cmds:
       - task: image-rename:image-renamer:by-prefix
 
-  image-convert:jpg-to-webp:
+  image-convert:convert:jpg-to-webp:
     desc: "image-converterでJPGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:jpg-to-webp
 
-  image-convert:png-to-webp:
+  image-convert:convert:png-to-webp:
     desc: "image-converterでPNGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp
 
-  image-convert:png-to-webp-keeping-saturation:
+  image-convert:convert:png-to-webp-keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp-keeping-saturation
 
-  image-convert:to-jpg:
+  image-convert:convert:to-jpg:
     desc: "image-converterでJPGへ変換"
     cmds:
       - task: image-convert:image-converter:to-jpg
@@ -113,20 +113,30 @@ tasks:
     cmds:
       - task: image-convert:image-rotator:rotate
 
-  image-convert:trim-by-coordinates:
+  image-convert:trim:by-coordinates:
     desc: "image-trimmerで座標指定トリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-coordinates
 
-  image-convert:trim-by-purpose:
+  image-convert:trim:by-purpose:
     desc: "image-trimmerで用途別プリセットトリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-purpose
 
-  image-convert:trim-describe:
+  image-convert:trim:describe:
     desc: "image-trim-describerで座標確認"
     cmds:
       - task: image-convert:image-trim-describer:describe
+
+  image-convert:filter:blur:
+    desc: "image-filtererで座標指定ぼかし"
+    cmds:
+      - task: image-convert:image-filterer:blur
+
+  image-convert:filter:blur-for-genshin-captures:
+    desc: "image-filtererで原神スクショ向けぼかし"
+    cmds:
+      - task: image-convert:image-filterer:blur-for-genshin-captures
 
   screenshot:rename-convert:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
