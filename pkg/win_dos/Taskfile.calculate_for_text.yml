@@ -55,7 +55,7 @@ vars:
     }
 
 tasks:
-  arithmetic-calculator:extract-api-cost:origin:
+  arithmetic-calculator:extract-api-cost:
     desc: "arithmetic-calculatorでAPIコストを抽出"
     cmds:
       - cmd: |
@@ -75,7 +75,7 @@ tasks:
         interactive: true
         silent: true
 
-  datetime-calculator:extract-working-time:origin:
+  datetime-calculator:extract-working-time:
     desc: "datetime-calculatorで作業時間を抽出"
     cmds:
       - cmd: |
@@ -96,7 +96,7 @@ tasks:
         interactive: true
         silent: true
 
-  datetime-calculator:generate-daily-heading:origin:
+  datetime-calculator:generate-daily-heading:
     desc: "datetime-calculatorで日次見出しを出力"
     cmds:
       - cmd: |
