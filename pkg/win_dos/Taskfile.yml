@@ -2,11 +2,11 @@ version: "3"
 
 includes:
   calc:
-    taskfile: ./Taskfile.calculate_for_text.yml
+    taskfile: ./taskfiles/calculate_for_text.yml
     flatten: false
     internal: true
   image-convert:
-    taskfile: ./Taskfile.image_convert.yml
+    taskfile: ./taskfiles/image_convert.yml
     flatten: false
     internal: true
   file-maneuver:
@@ -14,15 +14,15 @@ includes:
     flatten: false
     internal: true
   image-rename:
-    taskfile: ./Taskfile.image_rename.yml
+    taskfile: ./taskfiles/image_rename.yml
     flatten: false
     internal: true
   iso8601:
-    taskfile: ./Taskfile.iso8601.yml
+    taskfile: ./taskfiles/iso8601.yml
     flatten: false
     internal: true
   synthetic:
-    taskfile: ./Taskfile.synthetic.yml
+    taskfile: ./taskfiles/synthetic.yml
     flatten: false
     internal: true
 
