@@ -7,7 +7,7 @@ vars:
 
 tasks:
   image-renamer:habit:
-    desc: "image-renamer-for-content.exeでHB画像をリネーム"
+    desc: "image-renamer-for-content.exeでHB画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -29,6 +29,66 @@ tasks:
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
             --src . --operation habit \
+            --delimiter "" --suffix "" \
+            "$START_ARG" "$SORT_FLAG"
+          echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-renamer:date:
+    desc: "image-renamer-for-content.exeでDA画像にリネーム"
+    cmds:
+      - cmd: |
+          set -eu
+
+          START_ARG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Input start of number for content of date (DAxxxxx_01.webp): " \
+            --input-type text --key start)" || exit 1
+
+          SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
+            --input-type choice-flag \
+            --choice-option "n|-name" --choice-option "t|-time")" || exit 1
+
+          if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
+            echo "interactive-input から値を取得できませんでした。" >&2
+            exit 1
+          fi
+
+          echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+            --src . --operation date \
+            --delimiter "" --suffix "" \
+            "$START_ARG" "$SORT_FLAG"
+          echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  image-renamer:mackerel:
+    desc: "image-renamer-for-content.exeでMA画像にリネーム"
+    cmds:
+      - cmd: |
+          set -eu
+
+          START_ARG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Input start of number for content of mackerel (MAxxxx_01.webp): " \
+            --input-type text --key start)" || exit 1
+
+          SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
+            --input-type choice-flag \
+            --choice-option "n|-name" --choice-option "t|-time")" || exit 1
+
+          if [ -z "$START_ARG" ] || [ -z "$SORT_FLAG" ]; then
+            echo "interactive-input から値を取得できませんでした。" >&2
+            exit 1
+          fi
+
+          echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+            --src . --operation mackerel \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
