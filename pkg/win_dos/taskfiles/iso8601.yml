@@ -2,7 +2,7 @@ version: "3"
 
 includes:
   core:
-    taskfile: ./Taskfile.core.yml
+    taskfile: ./core.yml
     internal: true
 
 tasks:
