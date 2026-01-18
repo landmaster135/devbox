@@ -11,3 +11,8 @@
 /home/user/devbox/pkg/win_dos/Taskfile.ymlで、下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして。
 - /home/user/devbox/pkg/win_dos/batch_files/Z2-3_image_renamer_for_content_of_date.bat
 - /home/user/devbox/pkg/win_dos/batch_files/Z2-3_image_renamer_for_content_of_mackerel.bat
+
+## Taskfileへのタスクの追加（分割パターン）
+/home/user/devbox/pkg/win_dos/Taskfile.image_convert.ymlに下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして、/home/user/devbox/pkg/win_dos/Taskfile.ymlから呼び出すようにして。
+- /home/user/devbox/pkg/win_dos/batch_files/Z3-1_image_converter_jpg_to_webp.bat
+- 

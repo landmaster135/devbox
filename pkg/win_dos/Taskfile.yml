@@ -5,6 +5,10 @@ includes:
     taskfile: ./Taskfile.calculate_for_text.yml
     flatten: false
     internal: true
+  image-convert:
+    taskfile: ./Taskfile.image_convert.yml
+    flatten: false
+    internal: true
   image-rename:
     taskfile: ./Taskfile.image_rename.yml
     flatten: false
@@ -79,6 +83,26 @@ tasks:
     desc: "image-renamerで特定のディレクトリ内で接頭辞を使ったリネーム"
     cmds:
       - task: image-rename:image-renamer:by-prefix
+
+  image-converter:jpg-to-webp:
+    desc: "image-converterでJPGからWebPに変換"
+    cmds:
+      - task: image-convert:image-converter:jpg-to-webp
+
+  image-converter:png-to-webp:
+    desc: "image-converterでPNGからWebPに変換"
+    cmds:
+      - task: image-convert:image-converter:png-to-webp
+
+  image-converter:png-to-webp-keeping-saturation:
+    desc: "image-converterでPNGからWebP(lossless)に変換"
+    cmds:
+      - task: image-convert:image-converter:png-to-webp-keeping-saturation
+
+  image-converter:to-jpg:
+    desc: "image-converterでJPGへ変換"
+    cmds:
+      - task: image-convert:image-converter:to-jpg
 
   screenshot:rename-convert:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
