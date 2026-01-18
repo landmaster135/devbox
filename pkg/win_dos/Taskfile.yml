@@ -5,24 +5,24 @@ includes:
     taskfile: ./taskfiles/calculate_for_text.yml
     flatten: false
     internal: true
-  image-convert:
-    taskfile: ./taskfiles/image_convert.yml
-    flatten: false
-    internal: true
-  file-maneuver:
-    taskfile: ./taskfiles/file_maneuver.yml
-    flatten: false
-    internal: true
   image-rename:
     taskfile: ./taskfiles/image_rename.yml
+    flatten: false
+    internal: true
+  image-convert:
+    taskfile: ./taskfiles/image_convert.yml
     flatten: false
     internal: true
   iso8601:
     taskfile: ./taskfiles/iso8601.yml
     flatten: false
     internal: true
-  synthetic:
-    taskfile: ./taskfiles/synthetic.yml
+  file-maneuver:
+    taskfile: ./taskfiles/file_maneuver.yml
+    flatten: false
+    internal: true
+  image-synthesize:
+    taskfile: ./taskfiles/image_synthesize.yml
     flatten: false
     internal: true
 
@@ -142,26 +142,6 @@ tasks:
     cmds:
       - task: image-convert:image-filterer:blur-for-genshin-captures
 
-  image:rename:convert:screenshot:by-3-digits:
-    desc: "image-renamerで3桁連番リネーム後にWebP変換 (Content向け)"
-    cmds:
-      - task: synthetic:image-rename:by-3-digits:convert
-
-  image:rename:convert:screenshot:by-4-digits:
-    desc: "image-renamerで4桁連番リネーム後にWebP変換"
-    cmds:
-      - task: synthetic:image-rename:by-4-digits:convert
-
-  image:rename:convert:screenshot:
-    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
-    cmds:
-      - task: synthetic:screenshot:rename-convert
-
-  image:rename:convert:screenshot:keeping-saturation:
-    desc: "スクショの命名＋WebP(lossless)変換 (image-renamer-for-screenshot + image-converter)"
-    cmds:
-      - task: synthetic:screenshot:rename-convert:keeping-saturation
-
   iso8601:convert:
     desc: "iso8601-converterでISO-8601とUNIXの相互変換"
     cmds:
@@ -181,3 +161,23 @@ tasks:
     desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
     cmds:
       - task: file-maneuver:file-maneuver:filter-thumbnail-webp
+
+  image:rename:convert:screenshot:by-3-digits:
+    desc: "image-renamerで3桁連番リネーム後にWebP変換 (Content向け)"
+    cmds:
+      - task: image-synthesize:image-rename:by-3-digits:convert
+
+  image:rename:convert:screenshot:by-4-digits:
+    desc: "image-renamerで4桁連番リネーム後にWebP変換"
+    cmds:
+      - task: image-synthesize:image-rename:by-4-digits:convert
+
+  image:rename:convert:screenshot:
+    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
+    cmds:
+      - task: image-synthesize:screenshot:rename-convert
+
+  image:rename:convert:screenshot:keeping-saturation:
+    desc: "スクショの命名＋WebP(lossless)変換 (image-renamer-for-screenshot + image-converter)"
+    cmds:
+      - task: image-synthesize:screenshot:rename-convert:keeping-saturation
