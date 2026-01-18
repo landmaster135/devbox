@@ -27,117 +27,117 @@ includes:
     internal: true
 
 tasks:
-  calculate_for_text:extract-api-cost:
+  calculate:for_text:extract-api-cost:
     desc: "arithmetic-calculatorでAPIコストを抽出"
     cmds:
       - task: calc:arithmetic-calculator:extract-api-cost
 
-  calculate_for_text:extract-working-time:
+  calculate:for_text:extract-working-time:
     desc: "datetime-calculatorで作業時間を抽出"
     cmds:
       - task: calc:datetime-calculator:extract-working-time
 
-  calculate_for_text:generate-daily-heading:
+  calculate:for_text:generate-daily-heading:
     desc: "datetime-calculatorで日次見出しを出力"
     cmds:
       - task: calc:datetime-calculator:generate-daily-heading
 
-  image-rename:content:habit:
+  image:rename:content:habit:
     desc: "image-renamer-for-contentでHB画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:habit
 
-  image-rename:content:date:
+  image:rename:content:date:
     desc: "image-renamer-for-contentでDA画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:date
 
-  image-rename:content:mackerel:
+  image:rename:content:mackerel:
     desc: "image-renamer-for-contentでMA画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:mackerel
 
-  image-rename:content:anime:
+  image:rename:content:anime:
     desc: "image-renamer-for-contentでAN画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:anime
 
-  image-rename:content:comic:
+  image:rename:content:comic:
     desc: "image-renamer-for-contentでCM画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:comic
 
-  image-rename:content:web-clip:
+  image:rename:content:web-clip:
     desc: "image-renamer-for-contentでWC画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:web-clip
 
-  image-rename:content:wine:
+  image:rename:content:wine:
     desc: "image-renamer-for-contentでWI画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:wine
 
-  image-rename:by-2-digits:
+  image:rename:by-2-digits:
     desc: "image-renamerで2桁連番リネーム"
     cmds:
       - task: image-rename:image-renamer:by-2-digits
 
-  image-rename:by-4-digits:
+  image:rename:by-4-digits:
     desc: "image-renamerで4桁連番リネーム"
     cmds:
       - task: image-rename:image-renamer:by-4-digits
 
-  image-rename:by-prefix:
+  image:rename:by-prefix:
     desc: "image-renamerで特定のディレクトリ内で接頭辞を使ったリネーム"
     cmds:
       - task: image-rename:image-renamer:by-prefix
 
-  image-convert:convert:jpg-to-webp:
+  image:convert:jpg-to-webp:
     desc: "image-converterでJPGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:jpg-to-webp
 
-  image-convert:convert:png-to-webp:
+  image:convert:png-to-webp:
     desc: "image-converterでPNGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp
 
-  image-convert:convert:png-to-webp-keeping-saturation:
+  image:convert:png-to-webp-keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp-keeping-saturation
 
-  image-convert:convert:to-jpg:
+  image:convert:to-jpg:
     desc: "image-converterでJPGへ変換"
     cmds:
       - task: image-convert:image-converter:to-jpg
 
-  image-convert:rotate:
+  image:convert:rotate:
     desc: "image-rotatorで画像を回転"
     cmds:
       - task: image-convert:image-rotator:rotate
 
-  image-convert:trim:by-coordinates:
+  image:convert:trim:by-coordinates:
     desc: "image-trimmerで座標指定トリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-coordinates
 
-  image-convert:trim:by-purpose:
+  image:convert:trim:by-purpose:
     desc: "image-trimmerで用途別プリセットトリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-purpose
 
-  image-convert:trim:describe:
+  image:convert:trim:describe:
     desc: "image-trim-describerで座標確認"
     cmds:
       - task: image-convert:image-trim-describer:describe
 
-  image-convert:filter:blur:
+  image:convert:filter:blur:
     desc: "image-filtererで座標指定ぼかし"
     cmds:
       - task: image-convert:image-filterer:blur
 
-  image-convert:filter:blur-for-genshin-captures:
+  image:convert:filter:blur-for-genshin-captures:
     desc: "image-filtererで原神スクショ向けぼかし"
     cmds:
       - task: image-convert:image-filterer:blur-for-genshin-captures
@@ -152,12 +152,12 @@ tasks:
     cmds:
       - task: iso8601:iso8601-converter:now
 
-  file-maneuver:sync-executables:
+  file:maneuver:exe:
     desc: "file-maneuverでwin_amd64のexeを同期"
     cmds:
       - task: file-maneuver:file-maneuver:sync-executables
 
-  file-maneuver:filter-thumbnail-webp:
+  file:maneuver:webp:thumbnail_of_game:
     desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
     cmds:
       - task: file-maneuver:file-maneuver:filter-thumbnail-webp
