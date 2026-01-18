@@ -1,9 +1,6 @@
 version: "3"
 
 includes:
-  core:
-    taskfile: ./Taskfile.core.yml
-    internal: true
   calc:
     taskfile: ./Taskfile.calculate_for_text.yml
     flatten: false
