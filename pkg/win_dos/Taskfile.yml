@@ -2,6 +2,7 @@ version: "3"
 
 vars:
   DIR_SEP: '{{if eq OS "windows"}}\\{{else}}/{{end}}'
+  EXE: '{{if eq OS "windows"}}.exe{{else}}{{end}}'
   CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}win_amd64"
   INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
   INTERACTIVE_TEXT_INPUT: |
@@ -55,7 +56,7 @@ vars:
 
 tasks:
   image-renamer:habit:
-    desc: "image-renamer-for-content.exeでHB画像にリネーム"
+    desc: "image-renamer-for-contentでHB画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -69,7 +70,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation habit \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -79,7 +80,7 @@ tasks:
         silent: true
 
   image-renamer:date:
-    desc: "image-renamer-for-content.exeでDA画像にリネーム"
+    desc: "image-renamer-for-contentでDA画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -93,7 +94,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation date \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -103,7 +104,7 @@ tasks:
         silent: true
 
   image-renamer:mackerel:
-    desc: "image-renamer-for-content.exeでMA画像にリネーム"
+    desc: "image-renamer-for-contentでMA画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -117,7 +118,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation mackerel \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -127,7 +128,7 @@ tasks:
         silent: true
 
   image-renamer:anime:
-    desc: "image-renamer-for-content.exeでAN画像にリネーム"
+    desc: "image-renamer-for-contentでAN画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -141,7 +142,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation anime \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -151,7 +152,7 @@ tasks:
         silent: true
 
   image-renamer:comic:
-    desc: "image-renamer-for-content.exeでCM画像にリネーム"
+    desc: "image-renamer-for-contentでCM画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -165,7 +166,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation comic \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -175,7 +176,7 @@ tasks:
         silent: true
 
   image-renamer:web-clip:
-    desc: "image-renamer-for-content.exeでWC画像にリネーム"
+    desc: "image-renamer-for-contentでWC画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -189,7 +190,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation web_clip \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -199,7 +200,7 @@ tasks:
         silent: true
 
   image-renamer:wine:
-    desc: "image-renamer-for-content.exeでWI画像にリネーム"
+    desc: "image-renamer-for-contentでWI画像にリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -213,7 +214,7 @@ tasks:
           ensure_method_flag "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
             --src . --operation wine \
             --delimiter "" --suffix "" \
             "$START_ARG" "$SORT_FLAG"
@@ -223,7 +224,7 @@ tasks:
         silent: true
 
   image-renamer:by-2-digits:
-    desc: "image-renamer.exeで2桁連番リネーム"
+    desc: "image-renamerで2桁連番リネーム"
     cmds:
       - cmd: |
           set -eu
@@ -239,7 +240,7 @@ tasks:
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
             --src . -digits 2 --delimiter "_" \
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
@@ -248,7 +249,7 @@ tasks:
         silent: true
 
   image-renamer:by-4-digits:
-    desc: "image-renamer.exeで4桁連番リネーム"
+    desc: "image-renamerで4桁連番リネーム"
     cmds:
       - cmd: |
           set -eu
@@ -264,7 +265,7 @@ tasks:
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
             --src . -digits 4 --delimiter "_" \
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
@@ -273,7 +274,7 @@ tasks:
         silent: true
 
   image-renamer:by-prefix:
-    desc: "image-renamer.exeで特定のディレクトリ内で接頭辞を使ったリネーム"
+    desc: "image-renamerで特定のディレクトリ内で接頭辞を使ったリネーム"
     cmds:
       - cmd: |
           set -eu
@@ -288,7 +289,7 @@ tasks:
             "$PREFIX_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
             -src ".{{.DIR_SEP}}1-3_image_renamer_with_prefix_input" \
             --digits 4 --delimiter "" --start 1 \
             "$PREFIX_ARG" "$SORT_FLAG"
@@ -298,7 +299,7 @@ tasks:
         silent: true
 
   screenshot:rename-convert:
-    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot.exe + image-converter.exe)"
+    desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
     cmds:
       - cmd: |
           set -eu
@@ -314,11 +315,11 @@ tasks:
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
 
           echo $'\n[Step 01: START]--- 画像リネームプログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot.exe" -src . "${METHOD_FLAG}"
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-screenshot{{.EXE}}" -src . "${METHOD_FLAG}"
           echo $'\n[Step 01: END]--- 画像リネームプログラムの実行が完了しました ---'
 
           echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter.exe" \
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
             --src . --ext webp \
             --q 80  --archive .{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
