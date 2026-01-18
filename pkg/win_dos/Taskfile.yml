@@ -10,7 +10,7 @@ includes:
     flatten: false
     internal: true
   file-maneuver:
-    taskfile: ./Taskfile.file_maneuve.yml
+    taskfile: ./taskfiles/file_maneuver.yml
     flatten: false
     internal: true
   image-rename:
