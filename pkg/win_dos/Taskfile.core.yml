@@ -1,0 +1,55 @@
+version: "3"
+
+vars:
+  DIR_SEP: '{{if eq OS "windows"}}\\{{else}}/{{end}}'
+  EXE: '{{if eq OS "windows"}}.exe{{else}}{{end}}'
+  CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}win_amd64"
+  INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
+  INTERACTIVE_TEXT_INPUT: |
+    function input_text_interactively() {
+      local prompt="$1"; local key="$2";
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type text --key "$key")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CONFIRM_INPUT: |
+    function input_confirm_interactively() {
+      local prompt="$1"; local key="$2";
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type confirm --key "$key")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_INPUT: |
+    function input_choice_interactively() {
+      local prompt="$1"; local key="$2"; shift 2 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice --key "$key" "$@")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_FLAG_INPUT: |
+    function input_choice_flag_interactively() {
+      local prompt="$1"; shift 1 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice-flag "$@")"; then
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  METHOD_FLAG_GUARD: |
+    function ensure_method_flag() {
+      local error_message="$1"; shift 1 || true;
+      if [ "$#" -eq 0 ]; then
+        echo "${error_message}" >&2; exit 1;
+      fi; local flag;
+      for flag in "$@"; do
+        if [ -z "$flag" ]; then
+          echo "${error_message}" >&2; exit 1;
+        fi
+      done
+    }
