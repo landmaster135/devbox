@@ -29,7 +29,7 @@ func ParseFlags(args []string) (*Config, error) {
 	flagSet.SetOutput(os.Stderr)
 
 	prompt := flagSet.String("prompt", "", "ユーザーに表示する質問文（\\nで改行可）")
-	inputType := flagSet.String("input-type", "", "入力タイプ text|choice|confirm")
+	inputType := flagSet.String("input-type", "", "入力タイプ text|choice|choice-flag|map|confirm")
 	key := flagSet.String("key", "", "標準出力に使うキー名（--<key>=value）")
 	maxAttempts := flagSet.Int("max-attempts", 3, "バリデーション失敗時の再入力許可回数 (0で無制限)")
 	help := flagSet.Bool("help", false, "使い方を表示")
@@ -63,13 +63,15 @@ func ParseFlags(args []string) (*Config, error) {
 		parsedType = domain.InputTypeChoice
 	case string(domain.InputTypeChoiceFlag):
 		parsedType = domain.InputTypeChoiceFlag
+	case string(domain.InputTypeMap):
+		parsedType = domain.InputTypeMap
 	case string(domain.InputTypeConfirm):
 		parsedType = domain.InputTypeConfirm
 	default:
-		return nil, fmt.Errorf("--input-type には text / choice / choice-flag / confirm のいずれかを指定してください: %s", *inputType)
+		return nil, fmt.Errorf("--input-type には text / choice / choice-flag / map / confirm のいずれかを指定してください: %s", *inputType)
 	}
 
-	requiresKey := parsedType != domain.InputTypeChoiceFlag
+	requiresKey := parsedType != domain.InputTypeChoiceFlag && parsedType != domain.InputTypeMap
 	trimmedKey := strings.TrimSpace(*key)
 
 	if requiresKey {
@@ -145,10 +147,15 @@ func PrintUsage() {
     --input-type confirm \
     --key move
 
+  # map（複数のフラグと値を一括で入力）
+  interactive-input \
+    --prompt "Input coordinates (e.g. -x1 10 -y1 20 -x2 300 -y2 400): " \
+    --input-type map
+
 主要フラグ:
   --prompt string           質問文（必須）
-  --input-type string       text / choice / choice-flag / confirm から選択（必須）
-  --key string              出力のキー名（choice-flag以外で必須。空白・=は不可）
+  --input-type string       text / choice / choice-flag / map / confirm から選択（必須）
+  --key string              出力のキー名（choice-flag, map 以外で必須。空白・=は不可）
   --default string          text入力で空行時に採用する値
   --choice-option string    choice/choice-flag専用。"shortcut|output" 形式。複数指定可
   --max-attempts int        バリデーション失敗時の再入力回数。0で無制限（既定:3）

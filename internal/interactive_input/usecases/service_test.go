@@ -155,3 +155,59 @@ func TestService_UserCancelled(t *testing.T) {
 		t.Fatalf("expected ErrUserCancelled, got %v", err)
 	}
 }
+
+func TestService_MapInputPairs(t *testing.T) {
+	stdin := bytes.NewBufferString("-x1 10 -y1 20 -x2 30 -y2 40\n")
+	var stderr bytes.Buffer
+
+	svc := NewService(stdin, &stderr)
+	output, err := svc.Run(Config{
+		Prompt:      "Input coordinates: ",
+		InputType:   domain.InputTypeMap,
+		MaxAttempts: 1,
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if output != "--x1=10 --y1=20 --x2=30 --y2=40" {
+		t.Fatalf("unexpected output: %s", output)
+	}
+}
+
+func TestService_MapInputInline(t *testing.T) {
+	stdin := bytes.NewBufferString("--x1=10 --y1=20\n")
+	var stderr bytes.Buffer
+
+	svc := NewService(stdin, &stderr)
+	output, err := svc.Run(Config{
+		Prompt:      "Input coordinates: ",
+		InputType:   domain.InputTypeMap,
+		MaxAttempts: 1,
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if output != "--x1=10 --y1=20" {
+		t.Fatalf("unexpected output: %s", output)
+	}
+}
+
+func TestService_MapInputInvalid(t *testing.T) {
+	stdin := bytes.NewBufferString("x1 10\n")
+	var stderr bytes.Buffer
+
+	svc := NewService(stdin, &stderr)
+	_, err := svc.Run(Config{
+		Prompt:      "Input coordinates: ",
+		InputType:   domain.InputTypeMap,
+		MaxAttempts: 1,
+	})
+
+	if !errors.Is(err, ErrExceededAttempts) {
+		t.Fatalf("expected ErrExceededAttempts, got %v", err)
+	}
+}

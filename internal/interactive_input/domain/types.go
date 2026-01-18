@@ -10,6 +10,8 @@ const (
 	InputTypeChoice InputType = "choice"
 	// InputTypeChoiceFlag outputs the option value directly without prepending a key.
 	InputTypeChoiceFlag InputType = "choice-flag"
+	// InputTypeMap accepts repeated flag-value pairs and normalizes them into CLI flags.
+	InputTypeMap InputType = "map"
 	// InputTypeConfirm accepts Y/N confirmation responses.
 	InputTypeConfirm InputType = "confirm"
 )

@@ -3,7 +3,7 @@
 ユーザーに1つの質問を投げかけ、標準出力へ機械的に扱いやすいキー付きの値を返すCLIツールです。Windowsバッチの `set /p` や `choice` の代替として設計されており、案内文やリトライ通知は標準エラーに集約されます。
 
 ## 主な特徴
-- **4種類の入力モード**: `text`(任意文字列)、`choice`(ショートカット選択)、`choice-flag`(選択肢でフラグ選択)、`confirm`(Y/N)
+- **5種類の入力モード**: `text`(任意文字列)、`choice`(ショートカット選択)、`choice-flag`(選択肢でフラグ選択)、`map`(フラグと値を一括入力)、`confirm`(Y/N)
 - **キー付き／フラグ出力**: textとchoiceは `--<key>=<value>`、choice-flagは `--choice-option` の output をそのまま出力、confirmは肯定時のみ `--<key>`
 - **リトライ制御**: `--max-attempts` で再入力回数を制御（0で無制限）
 - **複数選択肢**: `--choice-option shortcut|output` を複数指定可能
@@ -22,8 +22,8 @@
 | フラグ | 必須 | 説明 |
 | ------ | ---- | ---- |
 | `--prompt` | * | 質問文。`\n` で改行可 |
-| `--input-type` | * | `text` / `choice` / `choice-flag` / `confirm` |
-| `--key` | * (choice-flag以外) | 出力に使うキー（英数字・`-`・`_`） |
+| `--input-type` | * | `text` / `choice` / `choice-flag` / `confirm` / `map` |
+| `--key` | * (`choice-flag`, `map` 以外) | 出力に使うキー（英数字・`-`・`_`） |
 | `--default` | text | Enterのみ時に採用する既定値（空文字可） |
 | `--choice-option` | choice/choice-flag | `shortcut|output` 形式。複数指定で選択肢追加 |
 | `--max-attempts` | 任意 | バリデーション失敗時の再入力回数。0で無制限（既定3） |
@@ -32,6 +32,7 @@
 ### 出力形式
 - text / choice: `--<key>=<value>`
 - choice-flag: `--choice-option` で指定した output がそのまま（例: `-operation=vlc`）
+- map: 入力された `-flag value` / `--flag=value` を正規化した `--flag=value` をスペース区切りで返却
 - confirm: YES → `--<key>` / NO → 空文字（標準出力なし）
 
 ## 使用例
@@ -79,6 +80,15 @@ interactive-input \
   --key move
 ```
 `y` なら `--move` が返り、`n` なら何も出力されません。
+
+### map入力（複数座標を一括で指定）
+```bash
+interactive-input \
+  --prompt "Input coordinates (e.g. -x1 10 -y1 20 -x2 300 -y2 400): " \
+  --input-type map \
+  --max-attempts 0
+```
+`-x1 10 -y1 20` のように入力すると `--x1=10 --y1=20` が返ります。`-x1=10` のような `=` 形式も同時に扱えます。
 
 ## スクリプトでの利用例
 ```bash

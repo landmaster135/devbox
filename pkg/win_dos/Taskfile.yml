@@ -108,6 +108,26 @@ tasks:
     cmds:
       - task: image-convert:image-converter:to-jpg
 
+  image-rotator:rotate:
+    desc: "image-rotatorで画像を回転"
+    cmds:
+      - task: image-convert:image-rotator:rotate
+
+  image-trimmer:trim-by-coordinates:
+    desc: "image-trimmerで座標指定トリミング"
+    cmds:
+      - task: image-convert:image-trimmer:trim-by-coordinates
+
+  image-trimmer:trim-by-purpose:
+    desc: "image-trimmerで用途別プリセットトリミング"
+    cmds:
+      - task: image-convert:image-trimmer:trim-by-purpose
+
+  image-trim-describer:describe:
+    desc: "image-trim-describerで座標確認"
+    cmds:
+      - task: image-convert:image-trim-describer:describe
+
   screenshot:rename-convert:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
     cmds:

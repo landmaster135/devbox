@@ -54,6 +54,8 @@ func (s *Service) Run(cfg Config) (string, error) {
 		return s.handleChoiceInput(cfg, true)
 	case domain.InputTypeChoiceFlag:
 		return s.handleChoiceInput(cfg, false)
+	case domain.InputTypeMap:
+		return s.handleMapInput(cfg)
 	case domain.InputTypeConfirm:
 		return s.handleConfirmInput(cfg)
 	default:
@@ -153,6 +155,43 @@ func (s *Service) handleConfirmInput(cfg Config) (string, error) {
 		}
 
 		fmt.Fprintln(s.errWriter, "y または n を入力してください。")
+	}
+}
+
+func (s *Service) handleMapInput(cfg Config) (string, error) {
+	failed := 0
+	prompt := s.render(cfg.Prompt)
+
+	for {
+		s.printPrompt(prompt)
+		value, err := s.readLine()
+		if err != nil {
+			return "", err
+		}
+
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			failed++
+			if !s.hasAttemptsRemaining(failed, cfg.MaxAttempts) {
+				fmt.Fprintln(s.errWriter, "値が入力されなかったため終了します。")
+				return "", ErrExceededAttempts
+			}
+			fmt.Fprintln(s.errWriter, "値を入力してください。")
+			continue
+		}
+
+		normalized, normalizeErr := normalizeMapInput(trimmed)
+		if normalizeErr != nil {
+			failed++
+			fmt.Fprintf(s.errWriter, "%v\n", normalizeErr)
+			if !s.hasAttemptsRemaining(failed, cfg.MaxAttempts) {
+				fmt.Fprintln(s.errWriter, "有効なフラグ形式が入力されなかったため終了します。")
+				return "", ErrExceededAttempts
+			}
+			continue
+		}
+
+		return normalized, nil
 	}
 }
 
