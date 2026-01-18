@@ -142,10 +142,25 @@ tasks:
     cmds:
       - task: image-convert:image-filterer:blur-for-genshin-captures
 
-  screenshot:rename-convert:
+  image:rename:convert:screenshot:by-3-digits:
+    desc: "image-renamerで3桁連番リネーム後にWebP変換 (Content向け)"
+    cmds:
+      - task: synthetic:image-rename:by-3-digits:convert
+
+  image:rename:convert:screenshot:by-4-digits:
+    desc: "image-renamerで4桁連番リネーム後にWebP変換"
+    cmds:
+      - task: synthetic:image-rename:by-4-digits:convert
+
+  image:rename:convert:screenshot:
     desc: "スクショの命名＋WebP変換 (image-renamer-for-screenshot + image-converter)"
     cmds:
       - task: synthetic:screenshot:rename-convert
+
+  image:rename:convert:screenshot:keeping-saturation:
+    desc: "スクショの命名＋WebP(lossless)変換 (image-renamer-for-screenshot + image-converter)"
+    cmds:
+      - task: synthetic:screenshot:rename-convert:keeping-saturation
 
   iso8601:convert:
     desc: "iso8601-converterでISO-8601とUNIXの相互変換"
