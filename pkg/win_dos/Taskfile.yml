@@ -55,26 +55,26 @@ vars:
     }
 
 includes:
-  lib:
+  calc:
     taskfile: ./Taskfile.calculate_for_text.yml
-    flatten: true
+    flatten: false
     internal: true
 
 tasks:
   arithmetic-calculator:extract-api-cost:
     desc: "arithmetic-calculatorでAPIコストを抽出"
     cmds:
-      - task: arithmetic-calculator:extract-api-cost:origin
+      - task: calc:arithmetic-calculator:extract-api-cost
 
   datetime-calculator:extract-working-time:
     desc: "datetime-calculatorで作業時間を抽出"
     cmds:
-      - task: datetime-calculator:extract-working-time:origin
+      - task: calc:datetime-calculator:extract-working-time
 
   datetime-calculator:generate-daily-heading:
     desc: "datetime-calculatorで日次見出しを出力"
     cmds:
-      - task: datetime-calculator:generate-daily-heading:origin
+      - task: calc:datetime-calculator:generate-daily-heading
 
   image-renamer:habit:
     desc: "image-renamer-for-contentでHB画像にリネーム"
