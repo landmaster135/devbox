@@ -4,6 +4,18 @@ vars:
   DIR_SEP: '{{if eq OS "windows"}}\\{{else}}/{{end}}'
   CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}win_amd64"
   INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
+  PROMPT_TEXT_FUNC: |
+    prompt_text_input() {
+      local prompt="$1"
+      local key="${2:-input}"
+      local value
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" \
+        --input-type text --key "$key")"; then
+        return 1
+      fi
+      printf '%s\n' "$value"
+    }
 
 tasks:
   image-renamer:habit:
@@ -12,9 +24,9 @@ tasks:
       - cmd: |
           set -eu
 
-          START_ARG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " \
-            --input-type text --key start)" || exit 1
+          {{.PROMPT_TEXT_FUNC}}
+
+          START_ARG="$(prompt_text_input "Input start of number for content of habit (HBxxxxxxxxx_01.webp): " start)" || exit 1
 
           SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
@@ -42,9 +54,9 @@ tasks:
       - cmd: |
           set -eu
 
-          START_ARG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Input start of number for content of date (DAxxxxx_01.webp): " \
-            --input-type text --key start)" || exit 1
+          {{.PROMPT_TEXT_FUNC}}
+
+          START_ARG="$(prompt_text_input "Input start of number for content of date (DAxxxxx_01.webp): " start)" || exit 1
 
           SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
@@ -72,9 +84,9 @@ tasks:
       - cmd: |
           set -eu
 
-          START_ARG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Input start of number for content of mackerel (MAxxxx_01.webp): " \
-            --input-type text --key start)" || exit 1
+          {{.PROMPT_TEXT_FUNC}}
+
+          START_ARG="$(prompt_text_input "Input start of number for content of mackerel (MAxxxx_01.webp): " start)" || exit 1
 
           SORT_FLAG="$("{{.INTERACTIVE_BIN}}" \
             --prompt "Select how to sort image files to rename  [n]='-name'  [t]='-time' : " \
