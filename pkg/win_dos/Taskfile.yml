@@ -23,107 +23,107 @@ includes:
     internal: true
 
 tasks:
-  arithmetic-calculator:extract-api-cost:
+  calculate_for_text:extract-api-cost:
     desc: "arithmetic-calculatorでAPIコストを抽出"
     cmds:
       - task: calc:arithmetic-calculator:extract-api-cost
 
-  datetime-calculator:extract-working-time:
+  calculate_for_text:extract-working-time:
     desc: "datetime-calculatorで作業時間を抽出"
     cmds:
       - task: calc:datetime-calculator:extract-working-time
 
-  datetime-calculator:generate-daily-heading:
+  calculate_for_text:generate-daily-heading:
     desc: "datetime-calculatorで日次見出しを出力"
     cmds:
       - task: calc:datetime-calculator:generate-daily-heading
 
-  image-renamer:habit:
+  image-rename:content:habit:
     desc: "image-renamer-for-contentでHB画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:habit
 
-  image-renamer:date:
+  image-rename:content:date:
     desc: "image-renamer-for-contentでDA画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:date
 
-  image-renamer:mackerel:
+  image-rename:content:mackerel:
     desc: "image-renamer-for-contentでMA画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:mackerel
 
-  image-renamer:anime:
+  image-rename:content:anime:
     desc: "image-renamer-for-contentでAN画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:anime
 
-  image-renamer:comic:
+  image-rename:content:comic:
     desc: "image-renamer-for-contentでCM画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:comic
 
-  image-renamer:web-clip:
+  image-rename:content:web-clip:
     desc: "image-renamer-for-contentでWC画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:web-clip
 
-  image-renamer:wine:
+  image-rename:content:wine:
     desc: "image-renamer-for-contentでWI画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:wine
 
-  image-renamer:by-2-digits:
+  image-rename:by-2-digits:
     desc: "image-renamerで2桁連番リネーム"
     cmds:
       - task: image-rename:image-renamer:by-2-digits
 
-  image-renamer:by-4-digits:
+  image-rename:by-4-digits:
     desc: "image-renamerで4桁連番リネーム"
     cmds:
       - task: image-rename:image-renamer:by-4-digits
 
-  image-renamer:by-prefix:
+  image-rename:by-prefix:
     desc: "image-renamerで特定のディレクトリ内で接頭辞を使ったリネーム"
     cmds:
       - task: image-rename:image-renamer:by-prefix
 
-  image-converter:jpg-to-webp:
+  image-convert:jpg-to-webp:
     desc: "image-converterでJPGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:jpg-to-webp
 
-  image-converter:png-to-webp:
+  image-convert:png-to-webp:
     desc: "image-converterでPNGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp
 
-  image-converter:png-to-webp-keeping-saturation:
+  image-convert:png-to-webp-keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp-keeping-saturation
 
-  image-converter:to-jpg:
+  image-convert:to-jpg:
     desc: "image-converterでJPGへ変換"
     cmds:
       - task: image-convert:image-converter:to-jpg
 
-  image-rotator:rotate:
+  image-convert:rotate:
     desc: "image-rotatorで画像を回転"
     cmds:
       - task: image-convert:image-rotator:rotate
 
-  image-trimmer:trim-by-coordinates:
+  image-convert:trim-by-coordinates:
     desc: "image-trimmerで座標指定トリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-coordinates
 
-  image-trimmer:trim-by-purpose:
+  image-convert:trim-by-purpose:
     desc: "image-trimmerで用途別プリセットトリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-purpose
 
-  image-trim-describer:describe:
+  image-convert:trim-describe:
     desc: "image-trim-describerで座標確認"
     cmds:
       - task: image-convert:image-trim-describer:describe
@@ -133,12 +133,12 @@ tasks:
     cmds:
       - task: synthetic:screenshot:rename-convert
 
-  iso8601-converter:convert:
+  iso8601:convert:
     desc: "iso8601-converterでISO-8601とUNIXの相互変換"
     cmds:
       - task: iso8601:iso8601-converter:convert
 
-  iso8601-converter:now:
+  iso8601:now:
     desc: "iso8601-converterで現在日時を出力"
     cmds:
       - task: iso8601:iso8601-converter:now
