@@ -6,20 +6,32 @@ vars:
   INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input.exe"
   INTERACTIVE_TEXT_INPUT: |
     function input_text_interactively() {
-      local prompt="$1"; local key="${2:-input}";
+      local prompt="$1"; local key="$2";
+      shift 2 || return 1;
       local value;
       if ! value="$("{{.INTERACTIVE_BIN}}" \
         --prompt "$prompt" --input-type text --key "$key")"; then
-        return 1
+        return 1;
+      fi; printf '%s\n' "$value";
+    }
+  INTERACTIVE_CHOICE_INPUT: |
+    function input_choice_interactively() {
+      local prompt="$1"; local key="$2";
+      shift 2 || return 1;
+      local value;
+      if ! value="$("{{.INTERACTIVE_BIN}}" \
+        --prompt "$prompt" --input-type choice --key "$key" "$@")"; then
+        return 1;
       fi; printf '%s\n' "$value";
     }
   INTERACTIVE_CHOICE_FLAG_INPUT: |
     function input_choice_flag_interactively() {
-      local prompt="$1"; shift;
+      local prompt="$1";
+      shift 1 || return 1;
       local value;
       if ! value="$("{{.INTERACTIVE_BIN}}" \
         --prompt "$prompt" --input-type choice-flag "$@")"; then
-        return 1
+        return 1;
       fi; printf '%s\n' "$value";
     }
 
@@ -120,9 +132,10 @@ tasks:
       - cmd: |
           set -eu
 
-          METHOD_FLAG="$("{{.INTERACTIVE_BIN}}" \
-            --prompt "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " \
-            --input-type choice --key operation \
+          {{.INTERACTIVE_CHOICE_INPUT}}
+
+          METHOD_FLAG="$(input_choice_interactively \
+            "Select how to rename image files  [v]='vlc'  [w]='win'  [x]='xiaomi'  [p]='pixel (screen_record)' : " operation \
             --choice-option "v|vlc" --choice-option "w|win" --choice-option "x|xiaomi" --choice-option "p|pixel")" || exit 1
 
           if [ -z "$METHOD_FLAG" ]; then
