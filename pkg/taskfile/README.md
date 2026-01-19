@@ -1,8 +1,6 @@
-# Batch files for DOS
+# Taskfile
 
-## Taskfile
-
-### Directory Structure
+## Directory Structure
 Use `Taskfile.yml` with the following structure.
 ```
 your_tool_directory/
