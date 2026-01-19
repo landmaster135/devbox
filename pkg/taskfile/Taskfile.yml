@@ -190,6 +190,21 @@ tasks:
     cmds:
       - task: movie-convert:movie-converter-for-gif:gif-to-mp4
 
+  movie:convert:mp4-to-webm:not-movie-material:
+    desc: "movie-converter-for-webmでMP4(素材)からWebM(Vorbis)に変換"
+    cmds:
+      - task: movie-convert:movie-converter-for-webm:mp4-to-webm-for-not-movie-material
+
+  movie:convert:mp4-to-webm:movie-material:
+    desc: "movie-converter-for-webmでMP4(映像素材)からWebM(Opus)に変換"
+    cmds:
+      - task: movie-convert:movie-converter-for-webm:mp4-to-webm-for-movie-material
+
+  movie:convert:webm-to-mp4:
+    desc: "movie-converter-for-webmでWebMからMP4に変換"
+    cmds:
+      - task: movie-convert:movie-converter-for-webm:webm-to-mp4
+
   iso8601:convert:
     desc: "iso8601-converterでISO-8601とUNIXの相互変換"
     cmds:
