@@ -33,6 +33,10 @@ includes:
     taskfile: ./taskfiles/exif.yml
     flatten: false
     internal: true
+  http-request:
+    taskfile: ./taskfiles/http_request.yml
+    flatten: false
+    internal: true
 
 tasks:
   calculate:for_text:extract-api-cost:
@@ -189,6 +193,17 @@ tasks:
     desc: "json-file-mergerでpc_stats向けJSONを統合"
     cmds:
       - task: json:json-file-merger:merge:pc-stats
+
+  http:request:login:db:
+    desc: "http-requestでDBにログイン"
+    cmds:
+      - task: http-request:http-request:login:db
+
+  http:request:pc-stats:append:
+    desc: "http-requestでPC統計エンティティのレコードを追加"
+    cmds:
+      - task: http-request:http-request:pc-stats:append
+      - task: iso8601:iso8601-converter:now
 
   file:maneuver:exe:
     desc: "file-maneuverでwin_amd64のexeを同期"
