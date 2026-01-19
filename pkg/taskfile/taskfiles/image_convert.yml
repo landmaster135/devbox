@@ -18,8 +18,8 @@ tasks:
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp --q 80 \
-            --archive .{{.DIR_SEP}}5_original_files \
+            --src=. --ext=webp --q=80 \
+            --archive=.{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -38,8 +38,8 @@ tasks:
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp --q 80 \
-            --archive .{{.DIR_SEP}}5_original_files \
+            --src=. --ext=webp --q=80 \
+            --archive=.{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -58,8 +58,8 @@ tasks:
 
           echo $'\n[Step 01: START]--- Webp(lossless)変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp --q 80 --lossless \
-            --archive .{{.DIR_SEP}}5_original_files \
+            --src=. --ext=webp --q=80 --lossless \
+            --archive=.{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp(lossless)変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -81,8 +81,8 @@ tasks:
 
           echo $'\n[Step 01: START]--- JPG変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext jpg \
-            --archive .{{.DIR_SEP}}5_original_files \
+            --src=. --ext=jpg \
+            --archive=.{{.DIR_SEP}}5_original_files \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- JPG変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -105,7 +105,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 画像回転プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-rotator{{.EXE}}" \
-            --src . --suffix rotated \
+            --src=. --suffix=rotated \
             "$ANGLE_FLAG" $MOVE_FLAG
           echo $'\n[Step 01: END]--- 画像回転プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -141,7 +141,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 座標指定トリミングを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trimmer{{.EXE}}" \
-            --src . --suffix cropped \
+            --src=. --suffix=cropped \
             $COORDINATE_ARGS $MOVE_FLAG
           echo $'\n[Step 01: END]--- 座標指定トリミングの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -183,7 +183,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 用途別プリセットトリミングを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trimmer{{.EXE}}" \
-            --src . --suffix cropped \
+            --src=. --suffix=cropped \
             "$X1_ARG" "$Y1_ARG" "$X2_ARG" "$Y2_ARG" $MOVE_FLAG
           echo $'\n[Step 01: END]--- 用途別プリセットトリミングの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -212,7 +212,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 画像フィルタリング(blur)を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-filterer{{.EXE}}" \
-            --src . --suffix blurred --mode=blur \
+            --src=. --suffix=blurred --mode=blur \
             $COORDINATE_ARGS $MOVE_FLAG $RADIUS_ARG
           echo $'\n[Step 01: END]--- 画像フィルタリング(blur)の実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -231,7 +231,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 原神スクショ向けのぼかしプリセットを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-filterer{{.EXE}}" \
-            --src . --suffix blurred \
+            --src=. --suffix=blurred \
             --mode=blur --radius=50 \
             --x1=2246 --y1=1398 --x2=2487 --y2=1440 \
             $MOVE_FLAG

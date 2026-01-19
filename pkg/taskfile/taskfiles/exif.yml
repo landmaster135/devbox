@@ -25,13 +25,13 @@ tasks:
 
           echo $'\n[Step 01: START]: --- exif-viewer (詳細表示)を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
-            -max=4 -v \
+            --max=4 --v \
             "$DIR_FLAG" "$EXT_FLAG"
           echo $'\n[Step 01: END]: --- exif-viewer (詳細表示)の実行が完了しました ---'
 
           echo $'\n[Step 02: START]: --- 利用可能なプロパティ一覧を取得します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
-            -list-props \
+            --list-props \
             "$DIR_FLAG" "$EXT_FLAG"
           echo $'\n[Step 02: END]: --- プロパティ一覧の取得が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -72,7 +72,7 @@ tasks:
 
           echo $'\n[Step 03: START]: --- プロパティ一覧を確認します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
-            -list-props \
+            --list-props \
             "$DIR_FLAG" "$EXT_FLAG"
           echo $'\n[Step 03: END]: --- プロパティ一覧の確認が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
