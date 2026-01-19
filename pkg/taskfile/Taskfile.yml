@@ -170,15 +170,25 @@ tasks:
     cmds:
       - task: json:json-timestamp-modifier:convert
 
-  json:modifier:get:
+  json:file-modify:get:
     desc: "json-modifierでJSONファイルから値を取得"
     cmds:
       - task: json:json-modifier:get
 
-  json:modifier:set:
+  json:file-modify:set:
     desc: "json-modifierでJSONファイルへ値を設定"
     cmds:
       - task: json:json-modifier:set
+
+  json:file-merge:
+    desc: "json-file-mergerでディレクトリ内JSONを統合"
+    cmds:
+      - task: json:json-file-merger:merge
+
+  json:file-merge:pc-stats:
+    desc: "json-file-mergerでpc_stats向けJSONを統合"
+    cmds:
+      - task: json:json-file-merger:merge:pc-stats
 
   file:maneuver:exe:
     desc: "file-maneuverでwin_amd64のexeを同期"
