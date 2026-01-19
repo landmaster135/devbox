@@ -10,51 +10,59 @@ UNIXタイムスタンプとISO-8601形式の相互変換を行うコマンド�
 
 ## 使用方法
 
+### 現在日時を表示
+
+```bash
+go run ./cmd/cli/iso8601-converter --operation now
+```
+
+ISO-8601（UTC/JST）とUNIXタイムスタンプをまとめて表示します。
+
 ### UNIXタイムスタンプからISO-8601形式への変換
 
 ```bash
-go run ./cmd/cli/iso8601-converter --to-iso --input <unix_timestamp>
+go run ./cmd/cli/iso8601-converter --operation to-iso --input <unix_timestamp>
 ```
 
 例:
 ```bash
-go run ./cmd/cli/iso8601-converter --to-iso --input 1619712000
+go run ./cmd/cli/iso8601-converter --operation to-iso --input 1619712000
 # 出力例: 2021-04-30T01:00:00+09:00
 ```
 
 ### ISO-8601形式からUNIXタイムスタンプへの変換
 
 ```bash
-go run ./cmd/cli/iso8601-converter --to-unix --input <iso8601_time>
+go run ./cmd/cli/iso8601-converter --operation to-unix --input <iso8601_time>
 ```
 
 例:
 ```bash
-go run ./cmd/cli/iso8601-converter --to-unix --input "2021-04-30T00:00:00Z"
+go run ./cmd/cli/iso8601-converter --operation to-unix --input "2021-04-30T00:00:00Z"
 # 出力例: 1619740800
 ```
 
 ### 日付からUNIXタイムスタンプへの変換（UTC）
 
 ```bash
-go run ./cmd/cli/iso8601-converter --to-unix --input <date>
+go run ./cmd/cli/iso8601-converter --operation to-unix --input <date>
 ```
 
 例:
 ```bash
-go run ./cmd/cli/iso8601-converter --to-unix --input "2021-04-30"
+go run ./cmd/cli/iso8601-converter --operation to-unix --input "2021-04-30"
 # 出力例: 1619740800
 ```
 
 ### 日付からUNIXタイムスタンプへの変換（JST）
 
 ```bash
-go run ./cmd/cli/iso8601-converter --to-unix --is-jst --input <date>
+go run ./cmd/cli/iso8601-converter --operation to-unix --is-jst --input <date>
 ```
 
 例:
 ```bash
-go run ./cmd/cli/iso8601-converter --to-unix --is-jst --input "2021-04-30"
+go run ./cmd/cli/iso8601-converter --operation to-unix --is-jst --input "2021-04-30"
 # 出力例: 1619708400
 ```
 
@@ -67,8 +75,7 @@ go run ./cmd/cli/iso8601-converter --to-unix --is-jst --input "2021-04-30"
 
 ## オプション
 
-- `--to-iso`: UNIXタイムスタンプからISO-8601形式への変換
-- `--to-unix`: ISO-8601形式またはシンプルな日付からUNIXタイムスタンプへの変換
+- `--operation`: 実行する操作。`to-iso`、`to-unix`、`now` のいずれかを指定
 - `--is-jst`: 日付をJSTタイムゾーンとして扱う（デフォルトはUTC）
 - `--input`: 変換する値
 - `--help`: ヘルプメッセージの表示
