@@ -21,6 +21,10 @@ includes:
     taskfile: ./taskfiles/file_maneuver.yml
     flatten: false
     internal: true
+  json:
+    taskfile: ./taskfiles/json.yml
+    flatten: false
+    internal: true
   image-synthesize:
     taskfile: ./taskfiles/image_synthesize.yml
     flatten: false
@@ -155,6 +159,16 @@ tasks:
     desc: "iso8601-converterで現在日時を出力"
     cmds:
       - task: iso8601:iso8601-converter:now
+
+  json:timestamp:add:now:
+    desc: "json-timestamp-modifierでディレクトリ内JSONへUNIXタイムスタンプを追加"
+    cmds:
+      - task: json:json-timestamp-modifier:add:now
+
+  json:timestamp:convert:
+    desc: "json-timestamp-modifierでディレクトリ内JSONのタイムスタンプを変換"
+    cmds:
+      - task: json:json-timestamp-modifier:convert
 
   file:maneuver:exe:
     desc: "file-maneuverでwin_amd64のexeを同期"
