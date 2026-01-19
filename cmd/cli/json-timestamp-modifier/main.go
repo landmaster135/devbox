@@ -32,9 +32,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	fs.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	filePath := fs.String("file", "", "操作するJSONファイルのパス")
-	dirPath := fs.String("dir", "", "操作するJSONファイルが含まれるディレクトリのパス")
-	recursive := fs.Bool("recursive", false, "ディレクトリを再帰的に処理する（-dirオプションと共に使用）")
+	path := fs.String("path", "", "操作するJSONファイルまたはディレクトリのパス")
+	recursive := fs.Bool("recursive", false, "ディレクトリを再帰的に処理する（-pathでディレクトリを指定した場合）")
 	key := fs.String("key", "timestamp", "操作するキー")
 	mode := fs.String("mode", modeAddTimestamp, "操作モード: add (タイムスタンプ追加), to-unix (ISO-8601→UNIX), to-iso (UNIX→ISO-8601)")
 	isJst := fs.Bool("is-jst", false, "日付のみの文字列をJSTとして扱う（to-unixモードのみ）")
@@ -45,19 +44,20 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	// ファイルパスとディレクトリパスの両方が指定されていない場合はエラー
-	if *filePath == "" && *dirPath == "" {
-		fmt.Fprintln(stderr, "エラー: JSONファイルのパス（-file）またはディレクトリのパス（-dir）を指定してください")
+	// パスが指定されていない場合はエラー
+	if *path == "" {
+		fmt.Fprintln(stderr, "エラー: JSONファイルまたはディレクトリのパス（-path）を指定してください")
 		fs.Usage()
 		return exitCodeError
 	}
 
-	// ファイルパスとディレクトリパスの両方が指定されている場合はエラー
-	if *filePath != "" && *dirPath != "" {
-		fmt.Fprintln(stderr, "エラー: -fileと-dirオプションは同時に指定できません")
-		fs.Usage()
+	// パスが示す対象の種類を確認
+	fileInfo, statErr := os.Stat(*path)
+	if statErr != nil && !os.IsNotExist(statErr) {
+		fmt.Fprintf(stderr, "エラー: パス '%s' にアクセスできません: %v\n", *path, statErr)
 		return exitCodeError
 	}
+	isDir := statErr == nil && fileInfo.IsDir()
 
 	// モードの検証
 	if *mode != modeAddTimestamp && *mode != modeToUnix && *mode != modeToISO8601 {
@@ -72,7 +72,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	timestampService := services.NewTimestampService(jsonService)
 
 	// 単一ファイルモードとディレクトリモードで処理を分岐
-	if *filePath != "" {
+	if !isDir {
 		// 単一ファイルモード
 		var err error
 
@@ -80,75 +80,65 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		switch *mode {
 		case modeAddTimestamp:
 			// タイムスタンプを追加
-			err = timestampService.AddTimestamp(*filePath, *key)
+			err = timestampService.AddTimestamp(*path, *key)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError
 			}
-			fmt.Fprintf(stdout, "JSONファイル '%s' にキー '%s' と現在の日時のタイムスタンプを追加しました\n", *filePath, *key)
+			fmt.Fprintf(stdout, "JSONファイル '%s' にキー '%s' と現在の日時のタイムスタンプを追加しました\n", *path, *key)
 
 		case modeToUnix:
 			// ISO-8601形式からUNIXタイムスタンプに変換
-			err = jsonService.ConvertISO8601ToUnix(*filePath, *key, *isJst)
+			err = jsonService.ConvertISO8601ToUnix(*path, *key, *isJst)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError
 			}
-			fmt.Fprintf(stdout, "JSONファイル '%s' のキー '%s' の値をISO-8601形式からUNIXタイムスタンプに変換しました\n", *filePath, *key)
+			fmt.Fprintf(stdout, "JSONファイル '%s' のキー '%s' の値をISO-8601形式からUNIXタイムスタンプに変換しました\n", *path, *key)
 
 		case modeToISO8601:
 			// UNIXタイムスタンプからISO-8601形式に変換
-			err = jsonService.ConvertUnixToISO8601(*filePath, *key)
+			err = jsonService.ConvertUnixToISO8601(*path, *key)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError
 			}
-			fmt.Fprintf(stdout, "JSONファイル '%s' のキー '%s' の値をUNIXタイムスタンプからISO-8601形式に変換しました\n", *filePath, *key)
+			fmt.Fprintf(stdout, "JSONファイル '%s' のキー '%s' の値をUNIXタイムスタンプからISO-8601形式に変換しました\n", *path, *key)
 		}
 	} else {
 		// ディレクトリモード
 		var count int
 		var err error
-
-		// ディレクトリが存在するか確認
-		fileInfo, err := os.Stat(*dirPath)
-		if err != nil {
-			fmt.Fprintf(stderr, "エラー: ディレクトリ '%s' にアクセスできません: %v\n", *dirPath, err)
-			return exitCodeError
-		}
-		if !fileInfo.IsDir() {
-			fmt.Fprintf(stderr, "エラー: '%s' はディレクトリではありません\n", *dirPath)
-			return exitCodeError
-		}
+		dirPath := *path
 
 		// モードに応じた処理を実行
 		switch *mode {
 		case modeAddTimestamp:
 			// ディレクトリ内の全てのJSONファイルにタイムスタンプを追加
-			count, err = timestampService.AddTimestampToAllFiles(*dirPath, *key, *recursive)
+			count, err = timestampService.AddTimestampToAllFiles(dirPath, *key, *recursive)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError
 			}
-			fmt.Fprintf(stdout, "ディレクトリ '%s' 内の %d 個のJSONファイルにキー '%s' と現在の日時のタイムスタンプを追加しました\n", *dirPath, count, *key)
+			fmt.Fprintf(stdout, "ディレクトリ '%s' 内の %d 個のJSONファイルにキー '%s' と現在の日時のタイムスタンプを追加しました\n", dirPath, count, *key)
 
 		case modeToUnix:
 			// ディレクトリ内の全てのJSONファイルのISO-8601形式をUNIXタイムスタンプに変換
-			count, err = jsonService.ConvertISO8601ToUnixInAllFiles(*dirPath, *key, *isJst, *recursive)
+			count, err = jsonService.ConvertISO8601ToUnixInAllFiles(dirPath, *key, *isJst, *recursive)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError
 			}
-			fmt.Fprintf(stdout, "ディレクトリ '%s' 内の %d 個のJSONファイルのキー '%s' の値をISO-8601形式からUNIXタイムスタンプに変換しました\n", *dirPath, count, *key)
+			fmt.Fprintf(stdout, "ディレクトリ '%s' 内の %d 個のJSONファイルのキー '%s' の値をISO-8601形式からUNIXタイムスタンプに変換しました\n", dirPath, count, *key)
 
 		case modeToISO8601:
 			// ディレクトリ内の全てのJSONファイルのUNIXタイムスタンプをISO-8601形式に変換
-			count, err = jsonService.ConvertUnixToISO8601InAllFiles(*dirPath, *key, *recursive)
+			count, err = jsonService.ConvertUnixToISO8601InAllFiles(dirPath, *key, *recursive)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: %v\n", err)
 				return exitCodeError
 			}
-			fmt.Fprintf(stdout, "ディレクトリ '%s' 内の %d 個のJSONファイルのキー '%s' の値をUNIXタイムスタンプからISO-8601形式に変換しました\n", *dirPath, count, *key)
+			fmt.Fprintf(stdout, "ディレクトリ '%s' 内の %d 個のJSONファイルのキー '%s' の値をUNIXタイムスタンプからISO-8601形式に変換しました\n", dirPath, count, *key)
 		}
 	}
 
