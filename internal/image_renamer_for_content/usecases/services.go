@@ -102,6 +102,12 @@ func ProcessContentImageRename(config cfg.Config, stdout, stderr io.Writer) (int
 
 func applyOperationPreset(config *cfg.Config, stderr io.Writer) error {
 	switch config.Operation {
+	case "anime":
+		config.ContentID = "AN"
+		config.Digits = 4
+	case "comic":
+		config.ContentID = "CM"
+		config.Digits = 4
 	case "mackerel":
 		config.ContentID = "MA"
 		config.Digits = 4
@@ -111,6 +117,9 @@ func applyOperationPreset(config *cfg.Config, stderr io.Writer) error {
 	case "date":
 		config.ContentID = "DA"
 		config.Digits = 5
+	case "habit":
+		config.ContentID = "HB"
+		config.Digits = 9
 	case "wine":
 		config.ContentID = "WI"
 		config.Digits = 4

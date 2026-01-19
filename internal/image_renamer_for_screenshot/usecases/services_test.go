@@ -13,9 +13,8 @@ func TestValidateConfig_Normal(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     ".",
-		VlcPattern: true,
-		WinPattern: false,
+		SrcDir:    ".",
+		Operation: OperationVLC,
 	}
 
 	// Act
@@ -31,9 +30,8 @@ func TestValidateConfig_NoPattern(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     ".",
-		VlcPattern: false,
-		WinPattern: false,
+		SrcDir:    ".",
+		Operation: OperationUnknown,
 	}
 
 	// Act
@@ -45,13 +43,12 @@ func TestValidateConfig_NoPattern(t *testing.T) {
 	}
 }
 
-func TestValidateConfig_BothPatterns(t *testing.T) {
+func TestValidateConfig_InvalidOperation(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     ".",
-		VlcPattern: true,
-		WinPattern: true,
+		SrcDir:    ".",
+		Operation: Operation("invalid"),
 	}
 
 	// Act
@@ -145,59 +142,96 @@ func TestRenameWindowsScreenshot_InvalidFormat(t *testing.T) {
 	}
 }
 
-func TestRenameAndroidScreenshot_Normal(t *testing.T) {
+func TestRenamePixelScreenshot_Normal(t *testing.T) {
 	// Arrange
 	baseName := "screen-20250215-064735"
 	ext := ".png"
 
 	// Act
-	newName, err := renameAndroidScreenshot(baseName, ext)
+	newName, err := renamePixelScreenshot(baseName, ext)
 
 	// Assert
 	if err != nil {
-		t.Errorf("renameAndroidScreenshot() returned error: %v", err)
+		t.Errorf("renamePixelScreenshot() returned error: %v", err)
 	}
 	expected := "Screenshot_20250215-064735.png"
 	if newName != expected {
-		t.Errorf("renameAndroidScreenshot() = %v, want %v", newName, expected)
+		t.Errorf("renamePixelScreenshot() = %v, want %v", newName, expected)
 	}
 }
 
-func TestRenameAndroidScreenshot_MP4(t *testing.T) {
+func TestRenamePixelScreenshot_MP4(t *testing.T) {
 	// Arrange
 	baseName := "screen-20250215-064735"
 	ext := ".mp4"
 
 	// Act
-	newName, err := renameAndroidScreenshot(baseName, ext)
+	newName, err := renamePixelScreenshot(baseName, ext)
 
 	// Assert
 	if err != nil {
-		t.Errorf("renameAndroidScreenshot() returned error: %v", err)
+		t.Errorf("renamePixelScreenshot() returned error: %v", err)
 	}
 	expected := "Screenshot_20250215-064735.mp4"
 	if newName != expected {
-		t.Errorf("renameAndroidScreenshot() = %v, want %v", newName, expected)
+		t.Errorf("renamePixelScreenshot() = %v, want %v", newName, expected)
 	}
 }
 
-func TestRenameAndroidScreenshot_InvalidFormat(t *testing.T) {
+func TestRenamePixelScreenshot_InvalidFormat(t *testing.T) {
 	// Arrange
 	baseName := "screen-invalid-format"
 	ext := ".png"
 
 	// Act
-	_, err := renameAndroidScreenshot(baseName, ext)
+	_, err := renamePixelScreenshot(baseName, ext)
 
 	// Assert
 	if err == nil {
-		t.Error("renameAndroidScreenshot() should return error for invalid format")
+		t.Error("renamePixelScreenshot() should return error for invalid format")
 	}
 }
 
-func TestProcessScreenshotRename_AndroidPattern(t *testing.T) {
+func TestRenameXiaomiScreenshot_Normal(t *testing.T) {
+	baseName := "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane"
+	ext := ".jpg"
+
+	newName, err := renameXiaomiScreenshot(baseName, ext)
+	if err != nil {
+		t.Fatalf("renameXiaomiScreenshot() returned error: %v", err)
+	}
+
+	expected := "Screenshot_20251227-120339.jpg"
+	if newName != expected {
+		t.Fatalf("renameXiaomiScreenshot() = %s, want %s", newName, expected)
+	}
+}
+
+func TestRenameXiaomiScreenshot_InvalidFormat(t *testing.T) {
+	_, err := renameXiaomiScreenshot("Screenshot_invalid", ".png")
+	if err == nil {
+		t.Fatal("renameXiaomiScreenshot() should return error for invalid names")
+	}
+}
+
+func TestRenameXiaomiToDateTime_Normal(t *testing.T) {
+	baseName := "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane"
+	ext := ".jpg"
+
+	newName, err := renameXiaomiToDateTime(baseName, ext)
+	if err != nil {
+		t.Fatalf("renameXiaomiToDateTime() returned error: %v", err)
+	}
+
+	expected := "20251227120339.jpg"
+	if newName != expected {
+		t.Fatalf("renameXiaomiToDateTime() = %s, want %s", newName, expected)
+	}
+}
+
+func TestProcessScreenshotRename_PixelPattern(t *testing.T) {
 	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-android-screenshot")
+	tempDir, err := os.MkdirTemp("", "test-pixel-screenshot")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -220,7 +254,7 @@ func TestProcessScreenshotRename_AndroidPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, false, true, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationPixel, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -236,9 +270,9 @@ func TestProcessScreenshotRename_AndroidPattern(t *testing.T) {
 	}
 }
 
-func TestProcessScreenshotRename_AndroidPatternMP4(t *testing.T) {
+func TestProcessScreenshotRename_PixelPatternMP4(t *testing.T) {
 	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-android-screenshot-mp4")
+	tempDir, err := os.MkdirTemp("", "test-pixel-screenshot-mp4")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
@@ -261,7 +295,7 @@ func TestProcessScreenshotRename_AndroidPatternMP4(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, false, true, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationPixel, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -302,7 +336,7 @@ func TestProcessScreenshotRename_VlcPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -343,7 +377,7 @@ func TestProcessScreenshotRename_WinPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, false, true, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationWin, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 1 {
@@ -359,13 +393,82 @@ func TestProcessScreenshotRename_WinPattern(t *testing.T) {
 	}
 }
 
+func TestProcessScreenshotRename_XiaomiPattern(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test-xiaomi-screenshot")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	oldName := "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg"
+	testFile := filepath.Join(tempDir, oldName)
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	file := FileInfo{Path: testFile, Name: oldName}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	var mu sync.Mutex
+	successCount := 0
+	errorCount := 0
+
+	processScreenshotRename(file, OperationXiaomi, &mu, &successCount, &errorCount, stdout, stderr)
+
+	if successCount != 1 {
+		t.Fatalf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
+	}
+	if errorCount != 0 {
+		t.Fatalf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
+	}
+
+	newPath := filepath.Join(tempDir, "Screenshot_20251227-120339.jpg")
+	if _, err := os.Stat(newPath); os.IsNotExist(err) {
+		t.Fatalf("File was not renamed to %s", newPath)
+	}
+}
+
+func TestProcessScreenshotRenameToDateTime_Xiaomi(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test-xiaomi-to-datetime")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	oldName := "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg"
+	testFile := filepath.Join(tempDir, oldName)
+	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	file := FileInfo{Path: testFile, Name: oldName}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	var mu sync.Mutex
+	successCount := 0
+	errorCount := 0
+
+	processScreenshotRenameToDateTime(file, &mu, &successCount, &errorCount, stdout, stderr)
+
+	if successCount != 1 {
+		t.Fatalf("processScreenshotRenameToDateTime() successCount = %v, want %v", successCount, 1)
+	}
+	if errorCount != 0 {
+		t.Fatalf("processScreenshotRenameToDateTime() errorCount = %v, want %v", errorCount, 0)
+	}
+
+	newPath := filepath.Join(tempDir, "20251227120339.jpg")
+	if _, err := os.Stat(newPath); os.IsNotExist(err) {
+		t.Fatalf("File was not renamed to %s", newPath)
+	}
+}
+
 func TestValidateConfig_InvalidDirectory(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
 	config := Config{
-		SrcDir:     "/non/existent/directory",
-		VlcPattern: true,
-		WinPattern: false,
+		SrcDir:    "/non/existent/directory",
+		Operation: OperationVLC,
 	}
 
 	// Act
@@ -407,7 +510,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - VLCパターンのみ
-	filesVlc, err := findScreenshotFiles(tempDir, false, true, false, false, stdout, stderr)
+	filesVlc, err := findScreenshotFiles(tempDir, false, OperationVLC, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -421,7 +524,7 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	}
 
 	// Act - Windowsパターンのみ
-	filesWin, err := findScreenshotFiles(tempDir, false, false, true, false, stdout, stderr)
+	filesWin, err := findScreenshotFiles(tempDir, false, OperationWin, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -432,6 +535,33 @@ func TestFindScreenshotFiles_NonRecursive(t *testing.T) {
 	}
 	if len(filesWin) > 0 && !strings.Contains(filesWin[0], "スクリーンショット") {
 		t.Errorf("FindScreenshotFiles() found wrong file: %v", filesWin[0])
+	}
+}
+
+func TestFindScreenshotFiles_XiaomiPattern(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test-find-xiaomi")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	xiaomiFile := filepath.Join(tempDir, "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg")
+	if err := os.WriteFile(xiaomiFile, []byte("test"), 0644); err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	files, err := findScreenshotFiles(tempDir, false, OperationXiaomi, stdout, stderr)
+	if err != nil {
+		t.Fatalf("findScreenshotFiles() returned error: %v", err)
+	}
+	if len(files) != 1 {
+		t.Fatalf("findScreenshotFiles() should find 1 Xiaomi file, got %d", len(files))
+	}
+	if files[0] != xiaomiFile {
+		t.Fatalf("findScreenshotFiles() returned unexpected file: %s", files[0])
 	}
 }
 
@@ -465,7 +595,7 @@ func TestFindScreenshotFiles_Recursive(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索
-	files, err := findScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
+	files, err := findScreenshotFiles(tempDir, true, OperationVLC, stdout, stderr)
 
 	// Assert
 	if err != nil {
@@ -482,7 +612,7 @@ func TestFindScreenshotFiles_InvalidDirectory(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act
-	_, err := findScreenshotFiles("/non/existent/directory", false, true, false, false, stdout, stderr)
+	_, err := findScreenshotFiles("/non/existent/directory", false, OperationVLC, stdout, stderr)
 
 	// Assert
 	if err == nil {
@@ -574,10 +704,9 @@ func TestRenameScreenshotFiles_Normal(t *testing.T) {
 	}
 
 	config := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    2,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   2,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -629,10 +758,9 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 
 	// ケース1: ワーカー数が0の場合（1に調整される）
 	config1 := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    0,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   0,
 	}
 
 	stdout := &bytes.Buffer{}
@@ -665,10 +793,9 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 
 	// ケース2: ワーカー数がファイル数より多い場合（ファイル数に調整される）
 	config2 := Config{
-		SrcDir:     tempDir,
-		VlcPattern: true,
-		WinPattern: false,
-		Workers:    10,
+		SrcDir:    tempDir,
+		Operation: OperationVLC,
+		Workers:   10,
 	}
 
 	stdout = &bytes.Buffer{}
@@ -714,7 +841,7 @@ func TestFindScreenshotFiles_WalkDirError(t *testing.T) {
 	stderr := &bytes.Buffer{}
 
 	// Act - 再帰的検索でエラーが発生するケース
-	_, err = findScreenshotFiles(tempDir, true, true, false, false, stdout, stderr)
+	_, err = findScreenshotFiles(tempDir, true, OperationVLC, stdout, stderr)
 
 	// Assert
 	// 権限の問題でエラーが発生する可能性があるが、OSによって動作が異なるため
@@ -754,7 +881,7 @@ func TestProcessScreenshotRename_ParseError(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -790,7 +917,7 @@ func TestProcessScreenshotRename_InvalidPattern(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {
@@ -849,7 +976,7 @@ func TestProcessScreenshotRename_RenameError(t *testing.T) {
 	errorCount := 0
 
 	// Act
-	processScreenshotRename(file, true, false, false, &mu, &successCount, &errorCount, stdout, stderr)
+	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
 
 	// Assert
 	if successCount != 0 {

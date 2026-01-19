@@ -21,7 +21,7 @@ Google Cloud Workload Identity FederationとGitHub Actions認証の設定を自�
 ## インストール
 
 ```bash
-cd /home/nov/devbox
+cd /home/user/devbox
 go build -o bin/gcloud-wrapper-workload-identity-federation ./cmd/cli/gcloud-wrapper-workload-identity-federation
 ```
 
@@ -226,7 +226,7 @@ jobs:
 ### よくある問題
 
 1. **Bash関数が見つからない**
-   - `/home/nov/dotfiles/iac/gcloud/iam.sh` をsourceしてください
+   - `/home/user/dotfiles/iac/gcloud/iam.sh` をsourceしてください
 
 2. **権限エラー**
    - Google Cloudプロジェクトに対する適切な権限があることを確認してください

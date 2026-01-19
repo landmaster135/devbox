@@ -6,39 +6,51 @@
 ### Gitコミットメッセージ生成 (外部API 利用)
 非ステージング差分を解析:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "/git-commit-message"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "/git-commit-message" --yolo
 ```
 ステージング済み差分のみ:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged" --yolo
 ```
 カレントディレクトリを `git_dir` に指定 (非ステージング):
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-pwd"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-pwd" --yolo
 ```
 カレントディレクトリ + ステージングのみ:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged-pwd"
+cagent run /home/user/devbox/.config/cagent/config_linux/git_commit_message_generator/config_prod.yml "git-commit-message-staged-pwd" --yolo
 ```
 
-### 逆張り応答エージェント
+### ペルソナ抽出エージェント
 単発プロンプトで実行:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict.yml "I think TypeScript is the best."
+cagent run /home/user/devbox/.config/cagent/config_linux/persona_extractor/config_prod.yml 'extract-from-file'
 ```
-標準入力を使った逐次実行:
+
+### タスク計画エージェント
+単発プロンプトで実行:
 ```bash
-echo "Rust is difficult." | cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict.yml -
+cagent run /home/user/devbox/.config/cagent/config_linux/task_planner/config_prod.yml 'plan-from-consult'
 ```
 
 ### 学習支援エージェント Alloy
 学習テーマを指定して実行:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux_prod/alloy.yml "Help me understand differential equations."
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/config_linux_prod/alloy/config.yml "Help me understand differential equations."
 ```
 既存セッションに追加メッセージを送る場合:
 ```bash
-cagent run /home/user/devbox/.config/cagent/config_linux_prod/alloy.yml "Can you give me practice problems?"
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/config_linux_prod/alloy/config.yml "Can you give me practice problems?"
+```
+
+### 逆張り応答エージェント
+単発プロンプトで実行:
+```bash
+cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict/config.yml "I think TypeScript is the best."
+```
+標準入力を使った逐次実行:
+```bash
+echo "Rust is difficult." | cagent run /home/user/devbox/.config/cagent/config_linux_prod/contradict/config.yml -
 ```
 
 ## Windows 用: `config_win`

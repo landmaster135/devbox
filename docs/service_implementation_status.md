@@ -39,7 +39,8 @@
 | file-character-replacer                     | ✅  | ❌️  | ❌️  | ❌️ |
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
 | file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
-| filesystem                                  | ❌️  | ✅  | ❌️  | ❌️ |
+| filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
+| filesystem-v2                               | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
@@ -74,6 +75,7 @@
 | image-rotator                               | ✅  | ❌️  | ❌️  | ❌️ |
 | image-trim-describer                        | ✅  | ❌️  | ❌️  | ❌️ |
 | image-trimmer                               | ✅  | ❌️  | ❌️  | ❌️ |
+| interactive-input                           | ✅  | ❌️  | ❌️  | ❌️ |
 | iso8601-converter                           | ✅  | ❌️  | ❌️  | ❌️ |
 | json-file-merger                            | ✅  | ❌️  | ❌️  | ❌️ |
 | json-formatter-for-agent-interaction        | ✅  | ❌️  | ❌️  | ❌️ |
@@ -93,18 +95,21 @@
 | ops-for-golang                              | ✅  | ✅  | ❌️  | ❌️ |
 | pdf-encrypter                               | ✅  | ❌️  | ❌️  | ❌️ |
 | pdf-merger                                  | ✅  | ❌️  | ❌️  | ❌️ |
+| persona-extraction                          | ❌️  | ✅  | ❌️  | ❌️ |
+| plan                                        | ❌️  | ✅  | ❌️  | ❌️ |
 | postgresql                                  | ✅  | ✅  | ❌️  | ❌️ |
 | qdrant                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | script-generator-to-build                   | ✅  | ❌️  | ❌️  | ❌️ |
 | sequentialthinking                          | ❌️  | ✅  | ❌️  | ❌️ |
 | service-implementing-viewer                 | ✅  | ✅  | ❌️  | ❌️ |
-| shell                                       | ❌️  | ✅  | ❌️  | ❌️ |
+| shell                                       | ✅  | ✅  | ❌️  | ❌️ |
 | steam                                       | ✅  | ❌️  | ❌️  | ❌️ |
 | timezone                                    | ❌️  | ✅  | ❌️  | ❌️ |
 | unit-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | util                                        | ❌️  | ✅  | ❌️  | ❌️ |
 | valkey                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | weather-notificator                         | ✅  | ✅  | ✅  | ✅ |
+| web-scraper                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | withings                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | yaml-parser                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | youtube-downloader                          | ✅  | ❌️  | ❌️  | ❌️ |
@@ -113,16 +118,16 @@
 
 ### 統計情報
 
-- **総サービス数**: 96
-- **CLIツール実装数**: 85
-- **MCPツール実装数**: 24
+- **総サービス数**: 101
+- **CLIツール実装数**: 90
+- **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 72
+- **CLIのみ実装**: 75
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
-- **CLI+MCP両方実装**: 13
+- **CLI+MCP両方実装**: 15
 - **全て実装済み**: 1
 
 ## 注意事項
@@ -157,7 +162,7 @@ go run cmd/cli/service-implementing-viewer/main.go \
 
 シェルファイルからも確認可能
 ```bash
-./pkg/bash/generate_service_implementing_table.sh
+./scripts/ops/generate_service_implementing_table.sh
 ```
 
 ### 2. MCPツールを使用した更新

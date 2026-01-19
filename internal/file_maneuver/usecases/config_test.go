@@ -30,7 +30,7 @@ func (tc *TestConfigCreation) TestConfigCreation_Normal(t *testing.T) {
 	extensions := []string{"jpg", "png"}
 
 	// Act
-	config, err := NewConfig(srcDirs, extensions, destDir, true, 4, false, false, false)
+	config, err := NewConfig(srcDirs, extensions, "", destDir, true, 4, false, false, false)
 
 	// Assert
 	if err != nil {
@@ -80,7 +80,7 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptySrcDirs(t *testing.T) 
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	_, err := NewConfig([]string{}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{}, []string{"jpg"}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -107,14 +107,14 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptyExtensions(t *testing.
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	_, err := NewConfig([]string{srcDir}, []string{}, destDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{srcDir}, []string{}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
 		t.Error("空の拡張子でエラーが発生しませんでした")
 	}
 
-	if !strings.Contains(err.Error(), "拡張子が指定されていません") {
+	if !strings.Contains(err.Error(), "拡張子またはファイル名部分一致文字列が指定されていません") {
 		t.Errorf("期待されるエラーメッセージが含まれていません。実際: %s", err.Error())
 	}
 }
@@ -122,6 +122,37 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptyExtensions(t *testing.
 func TestConfigValidation_EmptyExtensions(t *testing.T) {
 	tc := &TestConfigValidation{}
 	tc.TestConfigValidation_EmptyExtensions(t)
+}
+
+// TestConfigValidation_FilenameSubstringOnly はファイル名フィルターのみで成功することをテストします
+func (tc *TestConfigValidation) TestConfigValidation_FilenameSubstringOnly(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	srcDir := filepath.Join(tempDir, "src")
+	destDir := filepath.Join(tempDir, "dest")
+	os.MkdirAll(srcDir, 0755)
+	os.MkdirAll(destDir, 0755)
+
+	// Act
+	config, err := NewConfig([]string{srcDir}, []string{}, "  Report  ", destDir, false, 1, false, false, false)
+
+	// Assert
+	if err != nil {
+		t.Fatalf("ファイル名フィルターのみでの設定作成に失敗しました: %v", err)
+	}
+
+	if config.FilenameSubstring != "Report" {
+		t.Errorf("ファイル名フィルターがトリムされていません。実際: %q", config.FilenameSubstring)
+	}
+
+	if len(config.Extensions) != 0 {
+		t.Errorf("拡張子なしで設定した際に不要な拡張子が設定されています: %v", config.Extensions)
+	}
+}
+
+func TestConfigValidation_FilenameSubstringOnly(t *testing.T) {
+	tc := &TestConfigValidation{}
+	tc.TestConfigValidation_FilenameSubstringOnly(t)
 }
 
 // TestConfigValidation_NonExistentSrcDir は存在しないソースディレクトリでエラーになることをテストします
@@ -134,7 +165,7 @@ func (tc *TestConfigValidation) TestConfigValidation_NonExistentSrcDir(t *testin
 	nonExistentDir := filepath.Join(tempDir, "nonexistent")
 
 	// Act
-	_, err := NewConfig([]string{nonExistentDir}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{nonExistentDir}, []string{"jpg"}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -161,7 +192,7 @@ func (tc *TestConfigValidation) TestConfigValidation_NonExistentDestDir(t *testi
 	nonExistentDir := filepath.Join(tempDir, "nonexistent")
 
 	// Act
-	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, nonExistentDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", nonExistentDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -188,7 +219,7 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptyStringInSrcDirs(t *tes
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	_, err := NewConfig([]string{validDir, ""}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{validDir, ""}, []string{"jpg"}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -217,7 +248,7 @@ func (tc *TestConfigValidation) TestConfigValidation_FileAsDirectory(t *testing.
 	os.WriteFile(filePath, []byte("test"), 0644)
 
 	// Act
-	_, err := NewConfig([]string{filePath}, []string{"jpg"}, destDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{filePath}, []string{"jpg"}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -244,7 +275,7 @@ func (tc *TestConfigValidation) TestConfigValidation_EmptyStringInExtensions(t *
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	_, err := NewConfig([]string{srcDir}, []string{"jpg", ""}, destDir, false, 1, false, false, false)
+	_, err := NewConfig([]string{srcDir}, []string{"jpg", ""}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {
@@ -271,7 +302,7 @@ func (tc *TestConfigValidation) TestConfigValidation_ExtensionNormalization(t *t
 	os.MkdirAll(destDir, 0755)
 
 	// Act
-	config, err := NewConfig([]string{srcDir}, []string{"JPG", ".png", "GIF"}, destDir, false, 1, false, false, false)
+	config, err := NewConfig([]string{srcDir}, []string{"JPG", ".png", "GIF"}, "", destDir, false, 1, false, false, false)
 
 	// Assert
 	if err != nil {
@@ -307,7 +338,7 @@ func (tc *TestConfigValidation) TestConfigValidation_FileAsDestDir(t *testing.T)
 	os.WriteFile(filePath, []byte("test"), 0644)
 
 	// Act
-	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, filePath, false, 1, false, false, false)
+	_, err := NewConfig([]string{srcDir}, []string{"jpg"}, "", filePath, false, 1, false, false, false)
 
 	// Assert
 	if err == nil {

@@ -10,22 +10,31 @@ import (
 
 func main() {
 	// コマンドライン引数の解析
-	var showHelp bool
+	var (
+		showHelp        bool
+		baseDir         string
+		cliDir          string
+		scriptsDir      string
+		outputDir       string
+		packageName string
+	)
 	flag.BoolVar(&showHelp, "h", false, "ヘルプメッセージを表示")
 	flag.BoolVar(&showHelp, "help", false, "ヘルプメッセージを表示")
+	flag.StringVar(&baseDir, "base_dir", "", "ベースディレクトリを指定")
+	flag.StringVar(&cliDir, "cli_dir", "", "CLIディレクトリを指定")
+	flag.StringVar(&scriptsDir, "scripts_dir", "", "スクリプトディレクトリを指定")
+	flag.StringVar(&outputDir, "output_dir", "", "出力ディレクトリを指定")
+	flag.StringVar(&packageName, "package_name", "", "生成対象のパッケージ名を指定")
 	flag.Parse()
-
-	// 残りの引数があれば、最初の引数をパッケージ名として扱う
-	var packageName string
-	args := flag.Args()
-	if len(args) > 0 {
-		packageName = args[0]
-	}
 
 	// サービス設定
 	appConfig := &config.ServiceConfig{
 		PackageName: packageName,
 		ShowHelp:    showHelp,
+		BaseDir:     baseDir,
+		CLIDir:      cliDir,
+		ScriptsDir:  scriptsDir,
+		OutputDir:   outputDir,
 	}
 
 	// サービスを実行

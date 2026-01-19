@@ -1,0 +1,49 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - task: test:all:cov
+      - task: build
+      - task: build:mcp
+  alias:
+    cmds:
+      - task --list-all
+  find:docs:
+    cmd: find docs | sort -f
+  find:agents:
+    cmd: find .agents | sort -f
+  find:pjroot:
+    cmd: find . -maxdepth 1 -type f | sort -f
+  find:sql:
+    cmd: echo 'No registered command...'
+  run:dev:
+    cmd: go run {{ .DIR }}
+    vars:
+      DIR: ./cmd/cli/{{ .CLI_ARGS }}
+  run:tee:
+    cmd: go run {{ .DIR }} | tee
+    vars:
+      DIR: ./cmd/cli/{{ .CLI_ARGS }}
+  run:backend:
+    cmd: echo 'No registered command...'
+  check:
+    cmd: go vet ./...
+  test:cov:
+    cmd: go test -cover
+  test:all:cov:
+    cmd: go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
+  test:all:out:
+    cmd: go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
+  build:
+    cmd: ./scripts/build/build.sh
+  build:dev:
+    cmd: echo 'No registered command...'
+  build:pre:
+    cmd: ./scripts/initialize/script_generator_to_build.sh {{ .CLI_ARGS }}
+  build:mcp:
+    cmd: ./scripts/build/build_mcp_tools.sh
+  domain:mig:new:
+    cmd: ./scripts/initialize/create_project_files.sh {{ .CLI_ARGS }}
+  domain:mig:run:
+    cmd: echo 'No registered command...'

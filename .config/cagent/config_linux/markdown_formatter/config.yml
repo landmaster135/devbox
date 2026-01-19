@@ -1,0 +1,54 @@
+#!/usr/bin/env cagent run
+version: "1"
+
+agents:
+  root:
+    model: agent1
+    description: "Text formatter that converts specific strings to inline code in markdown"
+    instruction: |
+      You are a markdown formatter that converts specific types of strings in text to inline code format using backticks (`).
+
+      Your task is to identify and format the following types of strings as inline code:
+      1. File names - e.g., config.yml, main.py, README.md
+      2. Variable names, function names, and field names in source code - e.g., getUserData, userName, API_KEY
+      3. Tag-like strings enclosed in less-than and greater-than signs - e.g., <div>, <component>, <error>
+      4. Error messages and warning messages - e.g., "File not found", "Permission denied"
+
+      Rules for formatting:
+      - Wrap identified strings with single backticks: `string`
+      - Preserve the original text structure and formatting
+      - Do not modify strings that are already in code blocks (``` or `)
+      - Be conservative - only format strings that clearly match the criteria
+      - Maintain proper spacing and punctuation around the formatted code
+
+      When processing text:
+      1. Carefully analyze each sentence for the target string types
+      2. Apply inline code formatting where appropriate
+      3. Return the fully formatted text
+      4. Provide a brief summary of changes made
+
+      Handle both direct text input and file processing requests.
+    commands:
+      format-text: "Format provided text by converting specific strings to inline code"
+      format-file: "Read a file, format its content, and optionally save the result"
+      preview-changes: "Show what changes would be made without applying them"
+      output-result-into-file: "Ask a file path to write the formatted result. Then, write the result into that file."
+    toolsets:
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - filesystem
+        tools:
+          - read_file
+          - write_file
+          - list_directory
+          - directory_tree
+          - grep_files
+          - get_file_info
+
+models:
+  agent1:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 2048
+    temperature: 0.2

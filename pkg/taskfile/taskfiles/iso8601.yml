@@ -1,0 +1,46 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  iso8601-converter:convert:
+    desc: "iso8601-converterでISO-8601とUNIXの相互変換"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          TO_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " \
+            --choice-option "u|--to-unix" --choice-option "i|--to-iso")" || exit 1
+
+          INPUT_VALUE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input datetime in ISO-8601 format or UNIX timestamp: " input)" || exit 1
+
+          IS_JST_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to enable the --is-jst option or not  [y]='--is-jst'  [n]='' : " is-jst)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から変換パラメータを取得できませんでした。" "$TO_FLAG" "$INPUT_VALUE"
+
+          echo $'\n[Step 01: START]--- iso8601-converterを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" \
+            "$TO_FLAG" "$INPUT_VALUE" $IS_JST_FLAG
+          echo $'\n[Step 01: END]--- iso8601-converterの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  iso8601-converter:now:
+    desc: "iso8601-converterで現在日時を出力"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- iso8601-converterを --now で実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" --now
+          echo $'\n[Step 01: END]--- iso8601-converterの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true

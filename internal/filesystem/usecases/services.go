@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // #==============================================================#
@@ -73,15 +77,51 @@ func (m *DefaultJSONMarshaler) MarshalIndent(v interface{}, prefix, indent strin
 	return json.MarshalIndent(v, prefix, indent)
 }
 
+// YAMLMarshaler はYAML変換操作のインターフェースです
+type YAMLMarshaler interface {
+	Marshal(v interface{}) ([]byte, error)
+}
+
+// DefaultYAMLMarshaler は標準のyaml.Marshalを使用する実装です
+type DefaultYAMLMarshaler struct{}
+
+func (m *DefaultYAMLMarshaler) Marshal(v interface{}) ([]byte, error) {
+	return yaml.Marshal(v)
+}
+
 // #==============================================================#
 // ##          Data Structures                                   ##
 // #==============================================================#
 
 // FileTreeEntry はディレクトリツリーのエントリを表す構造体です
 type FileTreeEntry struct {
-	Name     string          `json:"name"`
-	Type     string          `json:"type"`
-	Children []FileTreeEntry `json:"children,omitempty"`
+	Name                string            `json:"name" yaml:"name"`
+	Type                FileTreeEntryType `json:"type" yaml:"type"`
+	Children            []FileTreeEntry   `json:"children,omitempty" yaml:"children,omitempty"`
+	TruncatedChildCount int               `json:"truncatedChildren,omitempty" yaml:"truncated_children,omitempty"`
+}
+
+// FileTreeEntryType はディレクトリエントリの種類を表します
+type FileTreeEntryType string
+
+const (
+	FileTreeEntryTypeDirectory FileTreeEntryType = "directory"
+	FileTreeEntryTypeFile      FileTreeEntryType = "file"
+	FileTreeEntryTypeSymlink   FileTreeEntryType = "symlink"
+	FileTreeEntryTypeUnknown   FileTreeEntryType = "unknown"
+)
+
+// DirectoryTreeOptions はdirectory_tree操作のスライス条件を表します
+type DirectoryTreeOptions struct {
+	Offset int
+	Limit  int
+	Depth  int
+}
+
+// ListDirectoryOptions はlist_directory操作のスライス条件を表します
+type ListDirectoryOptions struct {
+	Offset int
+	Limit  int
 }
 
 // FileInfo はファイル情報を表す構造体です
@@ -107,6 +147,7 @@ type FileSystemService struct {
 	directoryReader    DirectoryReader
 	fileStat           FileStat
 	jsonMarshaler      JSONMarshaler
+	yamlMarshaler      YAMLMarshaler
 }
 
 // NewFileSystemService は新しいFileSystemServiceを作成します
@@ -136,6 +177,7 @@ func NewFileSystemService(allowedDirs []string) *FileSystemService {
 		directoryReader:    &DefaultDirectoryReader{},
 		fileStat:           &DefaultFileStat{},
 		jsonMarshaler:      &DefaultJSONMarshaler{},
+		yamlMarshaler:      &DefaultYAMLMarshaler{},
 	}
 }
 
@@ -147,6 +189,7 @@ func NewFileSystemServiceWithDependencies(
 	directoryReader DirectoryReader,
 	fileStat FileStat,
 	jsonMarshaler JSONMarshaler,
+	yamlMarshaler YAMLMarshaler,
 ) *FileSystemService {
 	normalizedDirs := make([]string, len(allowedDirs))
 	for i, dir := range allowedDirs {
@@ -171,6 +214,7 @@ func NewFileSystemServiceWithDependencies(
 		directoryReader:    directoryReader,
 		fileStat:           fileStat,
 		jsonMarshaler:      jsonMarshaler,
+		yamlMarshaler:      yamlMarshaler,
 	}
 }
 
@@ -246,10 +290,16 @@ func (fs *FileSystemService) ValidatePath(requestedPath string) (string, error) 
 }
 
 // ReadFile はファイルの内容を読み取ります
-func (fs *FileSystemService) ReadFile(path string) (string, error) {
+func (fs *FileSystemService) ReadFile(path string, offset, limit int) (string, error) {
 	validPath, err := fs.ValidatePath(path)
 	if err != nil {
 		return "", err
+	}
+	if offset <= 0 {
+		return "", fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if limit <= 0 {
+		return "", fmt.Errorf("limitは1以上で指定してください")
 	}
 
 	file, err := fs.fileOpener.Open(validPath)
@@ -263,7 +313,75 @@ func (fs *FileSystemService) ReadFile(path string) (string, error) {
 		return "", fmt.Errorf("ファイルの読み取りに失敗しました: %w", err)
 	}
 
-	return string(content), nil
+	return formatReadFileContent(string(content), offset, limit)
+}
+
+const readFileLineMaxLength = 500
+
+func formatReadFileContent(content string, offset, limit int) (string, error) {
+	lines := splitLinesForReadFile(content)
+	if len(lines) == 0 {
+		if offset <= 1 {
+			return "", nil
+		}
+		return "", fmt.Errorf("offsetがファイルの総行数を超えています")
+	}
+
+	startIndex := offset - 1
+	if startIndex < 0 || startIndex >= len(lines) {
+		return "", fmt.Errorf("offsetがファイルの総行数を超えています")
+	}
+
+	endIndex := startIndex + limit
+	if endIndex > len(lines) {
+		endIndex = len(lines)
+	}
+
+	var builder strings.Builder
+	for i := startIndex; i < endIndex; i++ {
+		if builder.Len() > 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteByte('L')
+		builder.WriteString(strconv.Itoa(i + 1))
+		builder.WriteString(": ")
+		builder.WriteString(truncateReadFileLine(lines[i], readFileLineMaxLength))
+	}
+
+	return builder.String(), nil
+}
+
+func splitLinesForReadFile(content string) []string {
+	if content == "" {
+		return nil
+	}
+
+	lines := strings.Split(content, "\n")
+	if strings.HasSuffix(content, "\n") && len(lines) > 0 {
+		lines = lines[:len(lines)-1]
+	}
+
+	for i, line := range lines {
+		lines[i] = strings.TrimSuffix(line, "\r")
+	}
+
+	return lines
+}
+
+func truncateReadFileLine(line string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+
+	runeCount := 0
+	for i := range line {
+		if runeCount == limit {
+			return line[:i]
+		}
+		runeCount++
+	}
+
+	return line
 }
 
 // WriteFile はファイルに内容を書き込みます
@@ -306,6 +424,16 @@ func (fs *FileSystemService) CreateDirectory(path string) error {
 
 // ListDirectory はディレクトリの内容を一覧表示します
 func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
+	return fs.ListDirectoryWithOptions(path, ListDirectoryOptions{
+		Offset: 1,
+		Limit:  0,
+	})
+}
+
+// ListDirectoryWithOptions はoffset/limitを考慮してディレクトリを一覧表示します
+func (fs *FileSystemService) ListDirectoryWithOptions(path string, opts ListDirectoryOptions) ([]string, error) {
+	normalized := normalizeListDirectoryOptions(opts)
+
 	validPath, err := fs.ValidatePath(path)
 	if err != nil {
 		return nil, err
@@ -315,9 +443,31 @@ func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %w", err)
 	}
+	totalEntries := len(entries)
 
-	var result []string
-	for _, entry := range entries {
+	if totalEntries == 0 {
+		if normalized.Offset == 1 {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("offset exceeds directory entry count")
+	}
+
+	startIndex := normalized.Offset - 1
+	if startIndex < 0 || startIndex >= totalEntries {
+		return nil, fmt.Errorf("offset exceeds directory entry count")
+	}
+
+	endIndex := totalEntries
+	if normalized.Limit > 0 {
+		endIndex = startIndex + normalized.Limit
+		if endIndex > totalEntries {
+			endIndex = totalEntries
+		}
+	}
+
+	slicedEntries := entries[startIndex:endIndex]
+	result := make([]string, 0, len(slicedEntries)+1)
+	for _, entry := range slicedEntries {
 		prefix := "[FILE]"
 		if entry.IsDir() {
 			prefix = "[DIR]"
@@ -325,17 +475,43 @@ func (fs *FileSystemService) ListDirectory(path string) ([]string, error) {
 		result = append(result, fmt.Sprintf("%s %s", prefix, entry.Name()))
 	}
 
+	if normalized.Limit > 0 && endIndex < totalEntries {
+		nextOffset := normalized.Offset + len(slicedEntries)
+		result = append(result, fmt.Sprintf("More than %d entries found (try -offset=%d)", normalized.Limit, nextOffset))
+	}
+
 	return result, nil
 }
 
 // GetDirectoryTree はディレクトリの階層構造を取得します
 func (fs *FileSystemService) GetDirectoryTree(path string) ([]FileTreeEntry, error) {
+	entries, _, _, err := fs.GetDirectoryTreeWithOptions(path, DirectoryTreeOptions{
+		Offset: 1,
+		Limit:  0,
+		Depth:  0,
+	})
+	return entries, err
+}
+
+// GetDirectoryTreeWithOptions はoffset/limit/depthを考慮してツリーを取得します
+func (fs *FileSystemService) GetDirectoryTreeWithOptions(path string, opts DirectoryTreeOptions) ([]FileTreeEntry, bool, int, error) {
+	normalized := normalizeDirectoryTreeOptions(opts)
+
 	validPath, err := fs.ValidatePath(path)
 	if err != nil {
-		return nil, err
+		return nil, false, 0, err
 	}
 
-	entries, err := fs.directoryReader.ReadDir(validPath)
+	entries, err := fs.buildDirectoryTreeEntries(validPath, normalized.Depth)
+	if err != nil {
+		return nil, false, 0, err
+	}
+
+	return sliceFileTreeEntries(entries, normalized.Offset, normalized.Limit)
+}
+
+func (fs *FileSystemService) buildDirectoryTreeEntries(path string, remainingDepth int) ([]FileTreeEntry, error) {
+	entries, err := fs.directoryReader.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリの読み取りに失敗しました: %w", err)
 	}
@@ -344,15 +520,27 @@ func (fs *FileSystemService) GetDirectoryTree(path string) ([]FileTreeEntry, err
 	for _, entry := range entries {
 		fileEntry := FileTreeEntry{
 			Name: entry.Name(),
-			Type: "file",
+			Type: determineEntryType(entry),
 		}
 
 		if entry.IsDir() {
-			fileEntry.Type = "directory"
-			subPath := filepath.Join(validPath, entry.Name())
-			children, err := fs.GetDirectoryTree(subPath)
-			if err == nil {
+			subPath := filepath.Join(path, entry.Name())
+			if shouldDescend(remainingDepth) {
+				nextDepth := remainingDepth
+				if remainingDepth > 1 {
+					nextDepth--
+				}
+				children, err := fs.buildDirectoryTreeEntries(subPath, nextDepth)
+				if err != nil {
+					return nil, err
+				}
 				fileEntry.Children = children
+			} else {
+				count, err := fs.countDirectoryEntries(subPath)
+				if err != nil {
+					return nil, err
+				}
+				fileEntry.TruncatedChildCount = count
 			}
 		}
 
@@ -362,9 +550,118 @@ func (fs *FileSystemService) GetDirectoryTree(path string) ([]FileTreeEntry, err
 	return result, nil
 }
 
+func shouldDescend(remainingDepth int) bool {
+	return remainingDepth == 0 || remainingDepth > 1
+}
+
+func determineEntryType(entry os.DirEntry) FileTreeEntryType {
+	if entry.IsDir() {
+		return FileTreeEntryTypeDirectory
+	}
+
+	mode := entry.Type()
+	if mode == os.ModeIrregular {
+		info, err := entry.Info()
+		if err != nil {
+			return FileTreeEntryTypeUnknown
+		}
+		mode = info.Mode().Type()
+	}
+
+	switch {
+	case mode&os.ModeSymlink != 0:
+		return FileTreeEntryTypeSymlink
+	case mode == 0:
+		return FileTreeEntryTypeFile
+	default:
+		return FileTreeEntryTypeUnknown
+	}
+}
+
+func (fs *FileSystemService) countDirectoryEntries(path string) (int, error) {
+	entries, err := fs.directoryReader.ReadDir(path)
+	if err != nil {
+		return 0, fmt.Errorf("ディレクトリの読み取りに失敗しました: %w", err)
+	}
+	return len(entries), nil
+}
+
+func normalizeDirectoryTreeOptions(opts DirectoryTreeOptions) DirectoryTreeOptions {
+	normalized := DirectoryTreeOptions{
+		Offset: opts.Offset,
+		Limit:  opts.Limit,
+		Depth:  opts.Depth,
+	}
+
+	if normalized.Offset < 1 {
+		normalized.Offset = 1
+	}
+
+	if normalized.Limit < 0 {
+		normalized.Limit = 0
+	}
+
+	if normalized.Depth < 0 {
+		normalized.Depth = 0
+	}
+
+	return normalized
+}
+
+func sliceFileTreeEntries(entries []FileTreeEntry, offset, limit int) ([]FileTreeEntry, bool, int, error) {
+	if len(entries) == 0 {
+		return []FileTreeEntry{}, false, offset, nil
+	}
+
+	startIndex := offset - 1
+	if startIndex >= len(entries) {
+		return nil, false, 0, fmt.Errorf("offset exceeds directory entry count")
+	}
+
+	endIndex := len(entries)
+	if limit > 0 {
+		endIndex = startIndex + limit
+		if endIndex > len(entries) {
+			endIndex = len(entries)
+		}
+	}
+
+	sliced := make([]FileTreeEntry, endIndex-startIndex)
+	copy(sliced, entries[startIndex:endIndex])
+	hasMore := limit > 0 && endIndex < len(entries)
+	nextOffset := offset + (endIndex - startIndex)
+	return sliced, hasMore, nextOffset, nil
+}
+
+func normalizeListDirectoryOptions(opts ListDirectoryOptions) ListDirectoryOptions {
+	normalized := ListDirectoryOptions{
+		Offset: opts.Offset,
+		Limit:  opts.Limit,
+	}
+
+	if normalized.Offset < 1 {
+		normalized.Offset = 1
+	}
+
+	if normalized.Limit < 0 {
+		normalized.Limit = 0
+	}
+
+	return normalized
+}
+
 // GetDirectoryTreeAsJSON はディレクトリの階層構造をJSON文字列として取得します
 func (fs *FileSystemService) GetDirectoryTreeAsJSON(path string) (string, error) {
-	tree, err := fs.GetDirectoryTree(path)
+	return fs.GetDirectoryTreeAsJSONWithOptions(path, DirectoryTreeOptions{
+		Offset: 1,
+		Limit:  0,
+		Depth:  0,
+	})
+}
+
+// GetDirectoryTreeAsJSONWithOptions はJSON出力に対してoffset/limit/depthを適用します
+func (fs *FileSystemService) GetDirectoryTreeAsJSONWithOptions(path string, opts DirectoryTreeOptions) (string, error) {
+	tree, _, _, err := fs.GetDirectoryTreeWithOptions(path, opts)
 	if err != nil {
 		return "", err
 	}
@@ -375,6 +672,38 @@ func (fs *FileSystemService) GetDirectoryTreeAsJSON(path string) (string, error)
 	}
 
 	return string(jsonBytes), nil
+}
+
+// GetDirectoryTreeAsYAML はディレクトリの階層構造をYAML文字列として取得します
+func (fs *FileSystemService) GetDirectoryTreeAsYAML(path string) (string, error) {
+	return fs.GetDirectoryTreeAsYAMLWithOptions(path, DirectoryTreeOptions{
+		Offset: 1,
+		Limit:  0,
+		Depth:  0,
+	})
+}
+
+// GetDirectoryTreeAsYAMLWithOptions はYAML出力に対してoffset/limit/depthを適用します
+func (fs *FileSystemService) GetDirectoryTreeAsYAMLWithOptions(path string, opts DirectoryTreeOptions) (string, error) {
+	tree, hasMore, nextOffset, err := fs.GetDirectoryTreeWithOptions(path, opts)
+	if err != nil {
+		return "", err
+	}
+
+	yamlBytes, err := fs.yamlMarshaler.Marshal(tree)
+	if err != nil {
+		return "", fmt.Errorf("YAMLの生成に失敗しました: %w", err)
+	}
+
+	result := string(yamlBytes)
+	if opts.Limit > 0 && hasMore {
+		if !strings.HasSuffix(result, "\n") {
+			result += "\n"
+		}
+		result += fmt.Sprintf("More than %d entries found (try -offset=%d)", opts.Limit, nextOffset)
+	}
+
+	return result, nil
 }
 
 // MoveFile はファイルを移動します
@@ -398,10 +727,15 @@ func (fs *FileSystemService) MoveFile(source, destination string) error {
 }
 
 // SearchFiles はファイルを検索します
-func (fs *FileSystemService) SearchFiles(rootPath, pattern string, excludePatterns []string) ([]string, error) {
+func (fs *FileSystemService) SearchFiles(rootPath, pattern string) ([]string, error) {
 	validPath, err := fs.ValidatePath(rootPath)
 	if err != nil {
 		return nil, err
+	}
+
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("正規表現のコンパイルに失敗しました: %w", err)
 	}
 
 	var results []string
@@ -410,19 +744,9 @@ func (fs *FileSystemService) SearchFiles(rootPath, pattern string, excludePatter
 			return nil // エラーがあっても続行
 		}
 
-		// 除外パターンに一致するかチェック
-		for _, excludePattern := range excludePatterns {
-			matched, err := filepath.Match(excludePattern, filepath.Base(path))
-			if err == nil && matched {
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-		}
-
+		name := filepath.Base(path)
 		// パターンに一致するかチェック
-		if strings.Contains(strings.ToLower(filepath.Base(path)), strings.ToLower(pattern)) {
+		if re.MatchString(name) {
 			results = append(results, path)
 		}
 

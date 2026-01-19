@@ -73,6 +73,18 @@ func (m *MockJSONMarshaler) MarshalIndent(v interface{}, prefix, indent string) 
 	return nil, errors.New("mock error")
 }
 
+// MockYAMLMarshaler はテスト用のYAMLMarshalerモックです
+type MockYAMLMarshaler struct {
+	MarshalFunc func(v interface{}) ([]byte, error)
+}
+
+func (m *MockYAMLMarshaler) Marshal(v interface{}) ([]byte, error) {
+	if m.MarshalFunc != nil {
+		return m.MarshalFunc(v)
+	}
+	return nil, errors.New("mock error")
+}
+
 // MockFileInfo はテスト用のos.FileInfoモックです
 type MockFileInfo struct {
 	NameFunc    func() string
@@ -127,10 +139,10 @@ func (m *MockFileInfo) Sys() interface{} {
 
 // MockDirEntry はテスト用のos.DirEntryモックです
 type MockDirEntry struct {
-	NameFunc    func() string
-	IsDirFunc   func() bool
-	TypeFunc    func() os.FileMode
-	InfoFunc    func() (os.FileInfo, error)
+	NameFunc  func() string
+	IsDirFunc func() bool
+	TypeFunc  func() os.FileMode
+	InfoFunc  func() (os.FileInfo, error)
 }
 
 func (m *MockDirEntry) Name() string {
@@ -238,14 +250,103 @@ func TestFileSystemService_ReadFile_Normal(t *testing.T) {
 	service := NewFileSystemService(allowedDirs)
 
 	// Act
-	content, err := service.ReadFile(testFile)
+	content, err := service.ReadFile(testFile, 1, 2000)
 
 	// Assert
 	if err != nil {
 		t.Errorf("エラーが発生しました: %v", err)
 	}
-	if content != testContent {
-		t.Errorf("内容が期待値と異なります。期待値: %s, 実際: %s", testContent, content)
+	if content != "L1: "+testContent {
+		t.Errorf("内容が期待値と異なります。期待値: %s, 実際: %s", "L1: "+testContent, content)
+	}
+}
+
+func TestFileSystemService_ReadFile_AddsLineNumbersAndHandlesCRLF(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	content := "foo\r\nbar\r\n\r\n"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	got, err := service.ReadFile(testFile, 1, 2000)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+
+	expected := "L1: foo\nL2: bar\nL3: "
+	if got != expected {
+		t.Errorf("内容が期待値と異なります。期待値: %s, 実際: %s", expected, got)
+	}
+}
+
+func TestFileSystemService_ReadFile_TruncatesLongLines(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	line := strings.Repeat("あ", 600)
+
+	if err := os.WriteFile(testFile, []byte(line), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	got, err := service.ReadFile(testFile, 1, 2000)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+
+	expected := "L1: " + strings.Repeat("あ", readFileLineMaxLength)
+	if got != expected {
+		t.Errorf("500文字制限が期待通りに働いていません。期待値: %d文字, 実際: %d文字", len(expected), len(got))
+	}
+}
+
+func TestFileSystemService_ReadFile_RespectsOffsetAndLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	content := "line1\nline2\nline3\n"
+
+	if err := os.WriteFile(testFile, []byte(content), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	got, err := service.ReadFile(testFile, 2, 1)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+	if got != "L2: line2" {
+		t.Errorf("offsetの結果が期待値と異なります。実際: %s", got)
+	}
+
+	got, err = service.ReadFile(testFile, 3, 5)
+	if err != nil {
+		t.Fatalf("read_fileでエラー: %v", err)
+	}
+	if got != "L3: line3" {
+		t.Errorf("limitが末尾で正しく丸められていません。実際: %s", got)
+	}
+}
+
+func TestFileSystemService_ReadFile_InvalidOffsetOrLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("only-one-line"), 0644); err != nil {
+		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+
+	if _, err := service.ReadFile(testFile, 0, 10); err == nil {
+		t.Fatal("offset=0でエラーが発生しませんでした")
+	}
+	if _, err := service.ReadFile(testFile, 1, 0); err == nil {
+		t.Fatal("limit=0でエラーが発生しませんでした")
+	}
+	if _, err := service.ReadFile(testFile, 5, 10); err == nil {
+		t.Fatal("存在しない行を指定してもエラーになりませんでした")
 	}
 }
 
@@ -354,6 +455,134 @@ func TestFileSystemService_ListDirectory_Normal(t *testing.T) {
 	}
 }
 
+func TestFileSystemService_ListDirectory_WithOffsetLimit(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha.txt", "beta.txt", "gamma.txt"}
+	for _, name := range entries {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0o644); err != nil {
+			t.Fatalf("%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	result, err := service.ListDirectoryWithOptions(tempDir, ListDirectoryOptions{Offset: 2, Limit: 1})
+	if err != nil {
+		t.Fatalf("ListDirectoryWithOptionsの実行に失敗しました: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("取得行数が期待値と異なります。entries1件+サマリ1件の想定です: %d", len(result))
+	}
+	if !strings.Contains(result[0], "beta.txt") {
+		t.Fatalf("2件目のエントリ(beta.txt)のみが返ってくる想定です: %v", result)
+	}
+	if !strings.Contains(result[1], "More than 1 entries found") {
+		t.Fatalf("limitによるサマリ行が付与されていません: %v", result)
+	}
+	if !strings.Contains(result[1], "-offset=3") {
+		t.Fatalf("次ページのoffset案内が含まれていません: %v", result[1])
+	}
+}
+
+func TestFileSystemService_ListDirectory_WithOffsetBeyondRange(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "alpha.txt"), []byte("alpha"), 0o644); err != nil {
+		t.Fatalf("alpha.txtの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	_, err := service.ListDirectoryWithOptions(tempDir, ListDirectoryOptions{Offset: 5, Limit: 1})
+	if err == nil {
+		t.Fatal("存在しないoffsetを指定した場合はエラーになるべきです")
+	}
+	if !strings.Contains(err.Error(), "offset exceeds directory entry count") {
+		t.Fatalf("offsetエラーのメッセージが期待と異なります: %v", err)
+	}
+}
+
+func TestFileSystemService_ListDirectory_NoSummaryWhenUnlimited(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha.txt", "beta.txt"}
+	for _, name := range entries {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0o644); err != nil {
+			t.Fatalf("%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	result, err := service.ListDirectoryWithOptions(tempDir, ListDirectoryOptions{Offset: 1, Limit: 0})
+	if err != nil {
+		t.Fatalf("ListDirectoryWithOptionsの実行に失敗しました: %v", err)
+	}
+	if len(result) != len(entries) {
+		t.Fatalf("limit=0の場合は全件のみが返る想定です: %v", result)
+	}
+	for _, line := range result {
+		if strings.Contains(line, "More than") {
+			t.Fatalf("limit=0ではサマリ行が出力されない想定です: %v", result)
+		}
+	}
+}
+
+func TestDetermineEntryType_Symlink(t *testing.T) {
+	entry := &MockDirEntry{
+		IsDirFunc: func() bool { return false },
+		TypeFunc:  func() os.FileMode { return os.ModeSymlink },
+	}
+
+	if got := determineEntryType(entry); got != FileTreeEntryTypeSymlink {
+		t.Fatalf("シンボリックリンクはsymlinkとして返されるべきです: %s", got)
+	}
+}
+
+func TestDetermineEntryType_Unknown(t *testing.T) {
+	entry := &MockDirEntry{
+		IsDirFunc: func() bool { return false },
+		TypeFunc:  func() os.FileMode { return os.ModeNamedPipe },
+	}
+
+	if got := determineEntryType(entry); got != FileTreeEntryTypeUnknown {
+		t.Fatalf("未知タイプはunknownとして返されるべきです: %s", got)
+	}
+}
+
+func TestDetermineEntryType_FallsBackToInfo(t *testing.T) {
+	entry := &MockDirEntry{
+		IsDirFunc: func() bool { return false },
+		TypeFunc:  func() os.FileMode { return os.ModeIrregular },
+		InfoFunc: func() (os.FileInfo, error) {
+			return &MockFileInfo{
+				ModeFunc: func() os.FileMode { return os.ModeSymlink },
+			}, nil
+		},
+	}
+
+	if got := determineEntryType(entry); got != FileTreeEntryTypeSymlink {
+		t.Fatalf("ModeIrregular時はInfoからタイプを推定するべきです: %s", got)
+	}
+}
+
+func TestGetDirectoryTreeAsYAMLWithOptions_AppendsSummary(t *testing.T) {
+	tempDir := t.TempDir()
+	entries := []string{"alpha", "beta", "gamma"}
+	for _, name := range entries {
+		if err := os.MkdirAll(filepath.Join(tempDir, name), 0o755); err != nil {
+			t.Fatalf("ディレクトリ%sの作成に失敗しました: %v", name, err)
+		}
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	result, err := service.GetDirectoryTreeAsYAMLWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 2, Depth: 1})
+	if err != nil {
+		t.Fatalf("GetDirectoryTreeAsYAMLWithOptionsの実行に失敗しました: %v", err)
+	}
+	if !strings.Contains(result, "More than 2 entries found") {
+		t.Fatalf("limitによるサマリ行が出力されていません: %s", result)
+	}
+	if !strings.Contains(result, "-offset=3") {
+		t.Fatalf("次ページのoffset案内が含まれていません: %s", result)
+	}
+}
+
 // TestFileSystemService_GetFileInfo_Normal は正常系のテストです
 func TestFileSystemService_GetFileInfo_Normal(t *testing.T) {
 	// Arrange
@@ -411,7 +640,7 @@ func TestFileSystemService_SearchFiles_Normal(t *testing.T) {
 	service := NewFileSystemService(allowedDirs)
 
 	// Act
-	results, err := service.SearchFiles(tempDir, "test", []string{})
+	results, err := service.SearchFiles(tempDir, "test")
 
 	// Assert
 	if err != nil {
@@ -419,6 +648,54 @@ func TestFileSystemService_SearchFiles_Normal(t *testing.T) {
 	}
 	if len(results) != 2 {
 		t.Errorf("検索結果数が期待値と異なります。期待値: 2, 実際: %d", len(results))
+	}
+}
+
+func TestFileSystemService_SearchFiles_WithRegex(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	testFile1 := filepath.Join(tempDir, "service_test.go")
+	testFile2 := filepath.Join(tempDir, "service_impl.go")
+	testFile3 := filepath.Join(tempDir, "README.md")
+
+	for _, file := range []string{testFile1, testFile2, testFile3} {
+		err := os.WriteFile(file, []byte("dummy"), 0644)
+		if err != nil {
+			t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+		}
+	}
+
+	allowedDirs := []string{tempDir}
+	service := NewFileSystemService(allowedDirs)
+
+	// Act
+	results, err := service.SearchFiles(tempDir, "^service_.*\\.go$")
+
+	// Assert
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("検索結果数が期待値と異なります。期待値: 2, 実際: %d", len(results))
+	}
+	for _, path := range results {
+		if strings.HasSuffix(path, "README.md") {
+			t.Error("README.md が結果に含まれています (除外されるべきです)")
+		}
+	}
+}
+
+func TestFileSystemService_SearchFiles_InvalidRegex(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	service := NewFileSystemService([]string{tempDir})
+
+	// Act
+	_, err := service.SearchFiles(tempDir, "[invalid")
+
+	// Assert
+	if err == nil {
+		t.Fatal("不正な正規表現がエラーになりませんでした")
 	}
 }
 
@@ -493,7 +770,7 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		ReadDirFunc: func(name string) ([]os.DirEntry, error) {
 			return []os.DirEntry{
 				&MockDirEntry{
-					NameFunc: func() string { return "test.txt" },
+					NameFunc:  func() string { return "test.txt" },
 					IsDirFunc: func() bool { return false },
 				},
 			}, nil
@@ -503,7 +780,7 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 	mockFileStat := &MockFileStat{
 		StatFunc: func(name string) (os.FileInfo, error) {
 			return &MockFileInfo{
-				SizeFunc: func() int64 { return 100 },
+				SizeFunc:  func() int64 { return 100 },
 				IsDirFunc: func() bool { return false },
 			}, nil
 		},
@@ -515,6 +792,12 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		},
 	}
 
+	mockYAMLMarshaler := &MockYAMLMarshaler{
+		MarshalFunc: func(v interface{}) ([]byte, error) {
+			return []byte("- name: test.txt\n  type: file\n"), nil
+		},
+	}
+
 	service := NewFileSystemServiceWithDependencies(
 		allowedDirs,
 		mockFileOpener,
@@ -522,6 +805,7 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 		mockDirectoryReader,
 		mockFileStat,
 		mockJSONMarshaler,
+		mockYAMLMarshaler,
 	)
 
 	// Act & Assert
@@ -560,5 +844,119 @@ func TestFileSystemService_WithMockDependencies_Normal(t *testing.T) {
 	}
 	if !strings.Contains(jsonStr, "test.txt") {
 		t.Error("JSONにtest.txtが含まれていません")
+	}
+
+	// GetDirectoryTreeAsYAMLのテスト
+	yamlStr, err := service.GetDirectoryTreeAsYAML("/tmp")
+	if err != nil {
+		t.Errorf("GetDirectoryTreeAsYAMLでエラーが発生しました: %v", err)
+	}
+	if !strings.Contains(yamlStr, "test.txt") {
+		t.Error("YAMLにtest.txtが含まれていません")
+	}
+}
+func TestGetDirectoryTreeWithOptionsDepthAndPagination(t *testing.T) {
+	tempDir := t.TempDir()
+
+	alpha := filepath.Join(tempDir, "alpha", "nested")
+	if err := os.MkdirAll(alpha, 0o755); err != nil {
+		t.Fatalf("nestedディレクトリの作成に失敗しました: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(filepath.Dir(alpha), "child.txt"), []byte("child"), 0o644); err != nil {
+		t.Fatalf("child.txtの作成に失敗しました: %v", err)
+	}
+
+	beta := filepath.Join(tempDir, "beta")
+	if err := os.MkdirAll(beta, 0o755); err != nil {
+		t.Fatalf("betaディレクトリの作成に失敗しました: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(beta, "beta.txt"), []byte("beta"), 0o644); err != nil {
+		t.Fatalf("beta.txtの作成に失敗しました: %v", err)
+	}
+
+	rootFile := filepath.Join(tempDir, "root.txt")
+	if err := os.WriteFile(rootFile, []byte("root"), 0o644); err != nil {
+		t.Fatalf("root.txtの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+
+	shallow, hasMore, _, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 1})
+	if err != nil {
+		t.Fatalf("深さ1でのツリー取得に失敗しました: %v", err)
+	}
+	if hasMore {
+		t.Fatalf("limit=0の場合は全件返るためhasMoreはfalseのはずです")
+	}
+	if len(shallow) != 3 {
+		t.Fatalf("期待するエントリ数3に対して%v件でした", len(shallow))
+	}
+	for _, entry := range shallow {
+		if entry.Name == "alpha" {
+			if len(entry.Children) != 0 {
+				t.Fatalf("depth=1では子要素が含まれないはずです")
+			}
+			if entry.TruncatedChildCount != 2 {
+				t.Fatalf("alphaには2件の子があるはずですが%v件でした", entry.TruncatedChildCount)
+			}
+		}
+		if entry.Name == "beta" && entry.TruncatedChildCount != 1 {
+			t.Fatalf("betaには1件の子があるはずですが%v件でした", entry.TruncatedChildCount)
+		}
+	}
+
+	deeper, hasMoreDeeper, _, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 1, Limit: 0, Depth: 2})
+	if err != nil {
+		t.Fatalf("深さ2でのツリー取得に失敗しました: %v", err)
+	}
+	if hasMoreDeeper {
+		t.Fatalf("limit=0の場合はhasMoreはfalseのはずです")
+	}
+	var alphaHasChildren bool
+	for _, entry := range deeper {
+		if entry.Name == "alpha" {
+			if len(entry.Children) > 0 {
+				alphaHasChildren = true
+			}
+			if entry.TruncatedChildCount != 0 {
+				t.Fatalf("depth=2でalphaを展開した場合はTruncatedChildCountは0のはずです")
+			}
+		}
+	}
+	if !alphaHasChildren {
+		t.Fatalf("depth=2ではalphaの子要素を含む必要があります")
+	}
+
+	paged, hasMorePaged, nextOffset, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 2, Limit: 1, Depth: 0})
+	if err != nil {
+		t.Fatalf("ページングされたツリー取得に失敗しました: %v", err)
+	}
+	if len(paged) != 1 {
+		t.Fatalf("limit=1なので1件のみ返るはずですが%v件返りました", len(paged))
+	}
+	if paged[0].Name != "beta" {
+		t.Fatalf("offset=2の場合はbetaが返るはずですが%qでした", paged[0].Name)
+	}
+	if !hasMorePaged {
+		t.Fatalf("残りエントリがあるためhasMoreはtrueのはずです")
+	}
+	if nextOffset != 3 {
+		t.Fatalf("次のoffsetは3のはずですが%vでした", nextOffset)
+	}
+}
+
+func TestGetDirectoryTreeWithOptionsOffsetError(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "only.txt"), []byte("data"), 0o644); err != nil {
+		t.Fatalf("only.txtの作成に失敗しました: %v", err)
+	}
+
+	service := NewFileSystemService([]string{tempDir})
+	_, _, _, err := service.GetDirectoryTreeWithOptions(tempDir, DirectoryTreeOptions{Offset: 5, Limit: 1, Depth: 1})
+	if err == nil {
+		t.Fatalf("存在しないoffsetに対してエラーが発生しませんでした")
+	}
+	if !strings.Contains(err.Error(), "offset exceeds directory entry count") {
+		t.Fatalf("予期しないエラーメッセージ: %v", err)
 	}
 }
