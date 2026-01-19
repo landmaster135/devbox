@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 
 	usecases "github.com/landmaster135/devbox/internal/image_renamer_for_screenshot/usecases"
 )
@@ -26,9 +27,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 
 	// コマンドラインフラグの定義
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
-	vlcPattern := flagSet.Bool("vlc", false, "VLCスナップショットファイル (vlcsnap-*.png) をリネーム")
-	winPattern := flagSet.Bool("win", false, "Windowsスクリーンショットファイル (スクリーンショット *.png) をリネーム")
-	androidPattern := flagSet.Bool("android", false, "Androidスクリーンレコードファイル (screen-*.mp4) をリネーム")
+	operation := flagSet.String("operation", "", "リネーム対象を指定 (vlc|win|pixel|xiaomi)")
 	toDateTime := flagSet.Bool("to-datetime", false, "ファイル名をYYYYMMDDHHMMSS形式にリネーム")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
@@ -39,14 +38,34 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 		return usecases.Config{}, err
 	}
 
+	trimmedOperation := strings.TrimSpace(*operation)
+	trimmedOperation = strings.TrimPrefix(trimmedOperation, "-")
+
+	var op usecases.Operation
+
+	switch trimmedOperation {
+	case "":
+		// -operation未指定
+	case "vlc":
+		op = usecases.OperationVLC
+	case "win":
+		op = usecases.OperationWin
+	case "pixel":
+		op = usecases.OperationPixel
+	case "xiaomi":
+		op = usecases.OperationXiaomi
+	default:
+		fmt.Fprintln(stderr, "エラー: -operation には 'vlc'、'win'、'pixel'、または 'xiaomi' のいずれかを指定してください。")
+		fmt.Fprintln(stderr, "例: ./image-renamer-for-screenshot -operation=vlc")
+		return usecases.Config{}, fmt.Errorf("invalid operation: %s", *operation)
+	}
+
 	return usecases.Config{
-		SrcDir:         *srcDir,
-		Recursive:      *recursive,
-		Workers:        *workers,
-		VlcPattern:     *vlcPattern,
-		WinPattern:     *winPattern,
-		AndroidPattern: *androidPattern,
-		ToDateTime:     *toDateTime,
+		SrcDir:     *srcDir,
+		Recursive:  *recursive,
+		Workers:    *workers,
+		Operation:  op,
+		ToDateTime: *toDateTime,
 	}, nil
 }
 

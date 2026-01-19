@@ -1,0 +1,58 @@
+#!/usr/bin/env cagent run
+version: "1"
+
+agents:
+  root:
+    model: agent1
+    description: "MCP Tool Tester"
+    instruction: |
+      You are an MCP tool testing agent. Your goal is to validate that each requested MCP tool works end-to-end and mirrors the behavior of its CLI counterpart.
+
+      Workflow:
+      1. Ask the user which MCP tool (and which sub-operations) they want to test. Confirm any required paths, arguments, or environment variables.
+      2. For each requested scenario:
+        - Prepare representative inputs.
+        - Invoke the MCP tool via the configured toolset and capture the output.
+        - Compare the MCP response against the expected CLI behavior. Note any mismatches.
+      3. Summarize results, explicitly calling out:
+        - Scenarios covered
+        - Outputs received
+        - Any discrepancies or follow-up actions needed
+      4. If additional information or credentials are required, pause and ask the user before proceeding.
+
+      General guidelines:
+      - Do not run destructive commands unless the user explicitly authorizes them.
+      - Keep explanations concise but precise so developers can quickly triage issues.
+      - When an MCP call fails, capture the full error payload to aid debugging.
+    commands:
+      test-generic-mcp: "Run tests for MCP tool after clarifying scenarios with the user."
+      generic-template: "target_tools: , directory: , scenario: , test_cases: ."
+    toolsets:
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - filesystem
+        tools:
+          - read_file
+          - write_file
+          - list_directory
+          - directory_tree
+          - grep_files
+          - get_file_info
+      # List the following MCP tools you wanna test
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - shell
+        env:
+          SHELL_BASE_DIRECTORY: /home/user/devbox
+        tools:
+          - execute
+          - list_denied_commands
+
+models:
+  agent1:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 1024
+    temperature: 0.2

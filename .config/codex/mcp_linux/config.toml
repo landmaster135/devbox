@@ -8,7 +8,7 @@ show_raw_agent_reasoning = false
 notify = [
   "bash",
   "-lc",
-  "/home/user/devbox/pkg/bash/notification_about_agent_works_terminated.sh DISCORD_WEBHOOK_URL Codex完了！",
+  "/home/user/devbox/scripts/agent/notification_about_agent_works_terminated.sh DISCORD_WEBHOOK_URL Codex完了！",
 ]
 
 [shell_environment_policy]

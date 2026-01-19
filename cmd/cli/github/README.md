@@ -128,12 +128,12 @@ GitHubのイシューを取得するCLIツールです。
 ## ビルド方法
 
 ```bash
-cd /home/nov/devbox/cmd/cli/github
+cd /home/user/devbox/cmd/cli/github
 go build -o github main.go
 ```
 
 ## テスト実行
 
 ```bash
-cd /home/nov/devbox/internal/github
+cd /home/user/devbox/internal/github
 go test ./...

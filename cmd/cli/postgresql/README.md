@@ -14,7 +14,7 @@ PostgreSQLデータベースのテーブルダンプ機能を提供するCLIツ�
 ## ビルド方法
 
 ```bash
-cd /home/nov/devbox/cmd/cli/postgresql
+cd /home/user/devbox/cmd/cli/postgresql
 go build -o postgresql-cli .
 ```
 
@@ -297,9 +297,9 @@ list-tables操作
 
 ```bash
 # 設定のテスト
-cd /home/nov/devbox/internal/postgresql/config
+cd /home/user/devbox/internal/postgresql/config
 go test -v
 
 # 全体のテスト
-cd /home/nov/devbox
+cd /home/user/devbox
 go test ./internal/postgresql/... -v

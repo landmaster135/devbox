@@ -24,6 +24,9 @@ go.work.sum
 
 # env file
 .env
+env.yml
+env.yaml
+pkg/win_dos/Taskfile.env.yml
 
 ### macOS ###
 # General
@@ -47,8 +50,6 @@ go.work.sum
 ### setting files ###
 .editorconfig
 target*
-env.yml
-env.yaml
 # .clinerules
 .clinerules/*
 .agents/*
@@ -73,5 +74,8 @@ internal/exif_modifier/test_data/tmp/*
 !internal/exif_modifier/test_data/tmp/.gitkeep
 internal/exif_mirror/test_data/tmp/*
 !internal/exif_mirror/test_data/tmp/.gitkeep
-internal/git_diff_recorder/ai_model
+internal/git_diff_recorder/ai_model/*
 !internal/git_diff_recorder/ai_model/.gitkeep
+lib/personal/*
+!lib/personal/.gitkeep
+!lib/personal/README.md

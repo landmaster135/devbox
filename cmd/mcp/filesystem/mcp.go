@@ -22,7 +22,9 @@ func handleReadFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	content, err := fsService.ReadFile(path)
+	offset := request.GetInt("offset", 1)
+	limit := request.GetInt("limit", 2000)
+	content, err := fsService.ReadFile(path, offset, limit)
 	if err != nil {
 		return nil, fmt.Errorf("ファイルの読み取りに失敗しました: %v", err)
 	}
@@ -72,10 +74,21 @@ func handleListDirectory(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	if err != nil {
 		return nil, err
 	}
+	offset := request.GetInt("offset", 1)
+	limit := request.GetInt("limit", 25)
+	if offset <= 0 {
+		return nil, fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("limitは1以上で指定してください")
+	}
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	entries, err := fsService.ListDirectory(path)
+	entries, err := fsService.ListDirectoryWithOptions(path, usecases.ListDirectoryOptions{
+		Offset: offset,
+		Limit:  limit,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリの一覧取得に失敗しました: %v", err)
 	}
@@ -88,15 +101,31 @@ func handleDirectoryTree(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	if err != nil {
 		return nil, err
 	}
+	offset := request.GetInt("offset", 1)
+	limit := request.GetInt("limit", 25)
+	depth := request.GetInt("depth", 0)
+	if offset <= 0 {
+		return nil, fmt.Errorf("offsetは1以上で指定してください")
+	}
+	if limit <= 0 {
+		return nil, fmt.Errorf("limitは1以上で指定してください")
+	}
+	if depth < 0 {
+		return nil, fmt.Errorf("depthは0以上で指定してください")
+	}
 
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	jsonStr, err := fsService.GetDirectoryTreeAsJSON(path)
+	yamlStr, err := fsService.GetDirectoryTreeAsYAMLWithOptions(path, usecases.DirectoryTreeOptions{
+		Offset: offset,
+		Limit:  limit,
+		Depth:  depth,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("ディレクトリツリーの取得に失敗しました: %v", err)
 	}
 
-	return mcp.NewToolResultText(jsonStr), nil
+	return mcp.NewToolResultText(yamlStr), nil
 }
 
 func handleMoveFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -120,7 +149,7 @@ func handleMoveFile(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	return mcp.NewToolResultText(fmt.Sprintf("%s から %s への移動に成功しました", source, destination)), nil
 }
 
-func handleSearchFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleGrepFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	path, err := request.RequireString("path")
 	if err != nil {
 		return nil, err
@@ -131,15 +160,9 @@ func handleSearchFiles(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		return nil, err
 	}
 
-	var excludePatterns []string
-	excludePattern := request.GetString("exclude_pattern", "")
-	if excludePattern != "" {
-		excludePatterns = append(excludePatterns, excludePattern)
-	}
-
 	// サービスの初期化
 	fsService := usecases.NewFileSystemService([]string{path})
-	results, err := fsService.SearchFiles(path, pattern, excludePatterns)
+	results, err := fsService.SearchFiles(path, pattern)
 	if err != nil {
 		return nil, fmt.Errorf("ファイルの検索に失敗しました: %v", err)
 	}
@@ -216,6 +239,12 @@ func BuildFileSystemServer() {
 			mcp.Required(),
 			mcp.Description("読み取るファイルのパス"),
 		),
+		mcp.WithNumber("offset",
+			mcp.Description("開始行番号。省略時は1"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("始まりから返す最大行数。省略時は2000"),
+		),
 	)
 
 	s.AddTool(readFileTool, handleReadFile)
@@ -253,6 +282,12 @@ func BuildFileSystemServer() {
 			mcp.Required(),
 			mcp.Description("一覧表示するディレクトリのパス"),
 		),
+		mcp.WithNumber("offset",
+			mcp.Description("結果の開始ディレクトリの位置。省略時は1"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("返す最大件数。省略時は25"),
+		),
 	)
 
 	s.AddTool(listDirTool, handleListDirectory)
@@ -263,6 +298,15 @@ func BuildFileSystemServer() {
 		mcp.WithString("path",
 			mcp.Required(),
 			mcp.Description("ツリーを取得するディレクトリのパス"),
+		),
+		mcp.WithNumber("offset",
+			mcp.Description("開始するディレクトリの位置。省略時は1"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("返す最大件数。省略時は25"),
+		),
+		mcp.WithNumber("depth",
+			mcp.Description("辿る最大深さ。0は無制限"),
 		),
 	)
 
@@ -284,22 +328,19 @@ func BuildFileSystemServer() {
 	s.AddTool(moveFileTool, handleMoveFile)
 
 	// ファイル検索ツール
-	searchFilesTool := mcp.NewTool("search_files",
-		mcp.WithDescription("パターンに一致するファイルとディレクトリを再帰的に検索します。開始パスからすべてのサブディレクトリを検索します。検索は大文字と小文字を区別せず、部分的な名前に一致します。一致するすべての項目への完全なパスを返します。正確な場所がわからないファイルを見つけるのに最適です。許可されたディレクトリ内でのみ検索します。"),
+	grepFilesTool := mcp.NewTool("grep_files",
+		mcp.WithDescription("指定した正規表現に一致するファイルとディレクトリ名を再帰的に検索します。開始パスからサブディレクトリを辿り、一致したエントリの絶対パスを返します。許可されたディレクトリ内でのみ検索します。"),
 		mcp.WithString("path",
 			mcp.Required(),
 			mcp.Description("検索を開始するディレクトリのパス"),
 		),
 		mcp.WithString("pattern",
 			mcp.Required(),
-			mcp.Description("検索パターン"),
-		),
-		mcp.WithString("exclude_pattern",
-			mcp.Description("除外するパターン（オプション）"),
+			mcp.Description("Go互換の正規表現"),
 		),
 	)
 
-	s.AddTool(searchFilesTool, handleSearchFiles)
+	s.AddTool(grepFilesTool, handleGrepFiles)
 
 	// ファイル情報取得ツール
 	fileInfoTool := mcp.NewTool("get_file_info",

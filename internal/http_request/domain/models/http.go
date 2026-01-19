@@ -14,4 +14,5 @@ type HTTPResponse struct {
 	StatusCode int               // HTTPステータスコード
 	Headers    map[string]string // HTTPヘッダー
 	Body       []byte            // レスポンスボディ
+	Warnings   []string          // レスポンスに関する注意事項
 }

@@ -1,0 +1,53 @@
+#!/usr/bin/env cagent run
+version: "1"
+
+agents:
+  root:
+    model: agent1
+    description: "CHANGELOG redactor"
+    instruction: |
+      You are a redactor for CHANGELOG of code bases.
+
+      Key behaviors:
+      - Use `filesystem` MCP tool instead of `filesystem` tool to write files.
+      - Use `get_git_commit_history` MCP tool to check Git commit history.
+
+      Workflow to create Pull Request:
+      1. Search `CHANGELOG.md` file in the project root directory. If it is not provided, create `CHANGELOG.md` file into the project root directory.
+      2. If not provided, ask for the date/time of the first Git commit to update `CHANGELOG.md`.
+      3. Within the current directory, check all Git commit history after the date/time provided by the user.
+      4. After organizing the confirmed commit history information, insert new logs as the latest version into `CHANGELOG.md`.
+    commands:
+      update-changelog-pwd: "Update `CHANGELOG.md` file in the project root directory."
+    toolsets:
+      - type: think
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - filesystem
+        tools:
+          - read_file
+          - write_file
+          - list_directory
+          - directory_tree
+          - grep_files
+          - get_file_info
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - git_diff_recorder
+        tools:
+          - get_git_diff
+      - type: mcp
+        command: /home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools
+        args:
+          - git_commit_history_retriever
+        tools:
+          - get_git_commit_history
+
+models:
+  agent1:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    max_tokens: 1024
+    temperature: 0.2

@@ -1,0 +1,68 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  arithmetic-calculator:extract-api-cost:
+    desc: "arithmetic-calculatorでAPIコストを抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          FILE_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input .txt or .md file path to extract API cost: " file)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$FILE_PATH"
+
+          echo $'\n[Step 01: START]: --- APIコスト抽出処理を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}arithmetic-calculator{{.EXE}}" \
+            -operation parse-api-cost \
+            "$FILE_PATH"
+          echo $'\n[Step 01: END]: --- APIコスト抽出処理が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  datetime-calculator:extract-working-time:
+    desc: "datetime-calculatorで作業時間を抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          FILE_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input .txt or .md file path to extract working time: " file-path)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$FILE_PATH"
+
+          echo $'\n[Step 01: START]: --- 作業時間抽出処理を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}datetime-calculator{{.EXE}}" \
+            -operation parse-time \
+            -output-unit minute \
+            "$FILE_PATH"
+          echo $'\n[Step 01: END]: --- 作業時間抽出処理が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  datetime-calculator:generate-daily-heading:
+    desc: "datetime-calculatorで日次見出しを出力"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          DAY_OFFSET="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input offset days in int type (negative int applicable): " day-offset)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$DAY_OFFSET"
+
+          echo $'\n[Step 01: START]: --- 日次見出し生成処理を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}datetime-calculator{{.EXE}}" \
+            -operation generate-daily-heading \
+            "$DAY_OFFSET"
+          echo $'\n[Step 01: END]: --- 日次見出し生成処理が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true

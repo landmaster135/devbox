@@ -13,6 +13,9 @@ type TestAppConfig struct{}
 func (t *TestAppConfig) TestAppConfig_SetDefaults_Normal(test *testing.T) {
 	// Arrange
 	config := &ServiceConfig{}
+	c := defaultCLIDir
+	s := defaultScriptsDir
+	o := defaultOutputDir
 
 	// Act
 	config.SetDefaults()
@@ -21,14 +24,14 @@ func (t *TestAppConfig) TestAppConfig_SetDefaults_Normal(test *testing.T) {
 	if config.BaseDir == "" {
 		test.Error("BaseDir should not be empty after SetDefaults")
 	}
-	if config.CLIDir != "cmd/cli" {
-		test.Errorf("Expected CLIDir to be 'cmd/cli', got '%s'", config.CLIDir)
+	if config.CLIDir != c {
+		test.Errorf("Expected CLIDir to be '%s', got '%s'", c, config.CLIDir)
 	}
-	if config.ScriptsDir != "scripts" {
-		test.Errorf("Expected ScriptsDir to be 'scripts', got '%s'", config.ScriptsDir)
+	if config.ScriptsDir != s {
+		test.Errorf("Expected ScriptsDir to be '%s', got '%s'", s, config.ScriptsDir)
 	}
-	if config.OutputDir != "./pkg/bin/cli" {
-		test.Errorf("Expected OutputDir to be './pkg/bin/cli', got '%s'", config.OutputDir)
+	if config.OutputDir != o {
+		test.Errorf("Expected OutputDir to be '%s', got '%s'", o, config.OutputDir)
 	}
 }
 
@@ -98,11 +101,12 @@ func TestAppConfig_SetDefaults_BaseDirFallback(t *testing.T) {
 // TestAppConfig_GetCLIPath_Normal はGetCLIPathメソッドの正常系テストです
 func (t *TestAppConfig) TestAppConfig_GetCLIPath_Normal(test *testing.T) {
 	// Arrange
+	dir := defaultCLIDir
 	config := &ServiceConfig{
 		BaseDir: "/home/user/project",
-		CLIDir:  "cmd/cli",
+		CLIDir:  dir,
 	}
-	expected := filepath.Join("/home/user/project", "cmd/cli")
+	expected := filepath.Join("/home/user/project", dir)
 
 	// Act
 	result := config.GetCLIPath()
@@ -121,6 +125,9 @@ func TestAppConfig_GetCLIPath_Normal(t *testing.T) {
 // TestAppConfig_GetCLIPath_WithDifferentPaths は異なるパスでのGetCLIPathテストです
 func (t *TestAppConfig) TestAppConfig_GetCLIPath_WithDifferentPaths(test *testing.T) {
 	// Arrange
+	c := "bin/cli"
+	b := "bin/cli"
+	p := "/project"
 	testCases := []struct {
 		name     string
 		baseDir  string
@@ -130,20 +137,20 @@ func (t *TestAppConfig) TestAppConfig_GetCLIPath_WithDifferentPaths(test *testin
 		{
 			name:     "Unix style paths",
 			baseDir:  "/usr/local/project",
-			cliDir:   "bin/cli",
-			expected: filepath.Join("/usr/local/project", "bin/cli"),
+			cliDir:   b,
+			expected: filepath.Join("/usr/local/project", b),
 		},
 		{
 			name:     "Relative paths",
 			baseDir:  ".",
-			cliDir:   "cmd/cli",
-			expected: filepath.Join(".", "cmd/cli"),
+			cliDir:   c,
+			expected: filepath.Join(".", c),
 		},
 		{
 			name:     "Empty CLI dir",
-			baseDir:  "/project",
+			baseDir:  p,
 			cliDir:   "",
-			expected: filepath.Join("/project", ""),
+			expected: filepath.Join(p, ""),
 		},
 	}
 
@@ -174,11 +181,12 @@ func TestAppConfig_GetCLIPath_WithDifferentPaths(t *testing.T) {
 // TestAppConfig_GetScriptsPath_Normal はGetScriptsPathメソッドの正常系テストです
 func (t *TestAppConfig) TestAppConfig_GetScriptsPath_Normal(test *testing.T) {
 	// Arrange
+	s := defaultScriptsDir
 	config := &ServiceConfig{
 		BaseDir:    "/home/user/project",
-		ScriptsDir: "scripts",
+		ScriptsDir: s,
 	}
-	expected := filepath.Join("/home/user/project", "scripts")
+	expected := filepath.Join("/home/user/project", s)
 
 	// Act
 	result := config.GetScriptsPath()
@@ -286,6 +294,9 @@ func TestAppConfig_Integration(t *testing.T) {
 // TestAppConfig_SetDefaults_ErrorHandling はSetDefaultsのエラーハンドリングテストです
 func (t *TestAppConfig) TestAppConfig_SetDefaults_ErrorHandling(test *testing.T) {
 	// Arrange
+	c := defaultCLIDir
+	s := defaultScriptsDir
+	o := defaultOutputDir
 	config := &ServiceConfig{
 		BaseDir: "", // 空文字列でテスト
 	}
@@ -299,14 +310,14 @@ func (t *TestAppConfig) TestAppConfig_SetDefaults_ErrorHandling(test *testing.T)
 		test.Error("BaseDir should be set to fallback value even when os.Getwd() might fail")
 	}
 	// デフォルト値が正しく設定されることを確認
-	if config.CLIDir != "cmd/cli" {
-		test.Errorf("Expected CLIDir to be 'cmd/cli', got '%s'", config.CLIDir)
+	if config.CLIDir != c {
+		test.Errorf("Expected CLIDir to be '%s', got '%s'", c, config.CLIDir)
 	}
-	if config.ScriptsDir != "scripts" {
-		test.Errorf("Expected ScriptsDir to be 'scripts', got '%s'", config.ScriptsDir)
+	if config.ScriptsDir != s {
+		test.Errorf("Expected ScriptsDir to be '%s', got '%s'", s, config.ScriptsDir)
 	}
-	if config.OutputDir != "./pkg/bin/cli" {
-		test.Errorf("Expected OutputDir to be './pkg/bin/cli', got '%s'", config.OutputDir)
+	if config.OutputDir != o {
+		test.Errorf("Expected OutputDir to be '%s', got '%s'", o, config.OutputDir)
 	}
 }
 

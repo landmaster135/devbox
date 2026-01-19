@@ -6,9 +6,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/http_request/domain/models"
-	"github.com/landmaster135/devbox/internal/http_request/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/http_request/usecases/services"
+	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
+	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
+	usecases "github.com/landmaster135/devbox/internal/http_request/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します
@@ -53,15 +53,15 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	// 依存関係の注入
-	apiRepo := repositories.NewHTTPRepository()
-	apiService := services.NewHTTPService(apiRepo)
+	apiRepo := interfaces.NewHTTPRepository()
+	apiService := usecases.NewHTTPService(apiRepo)
 
 	// APIリクエストを送信
 	var response *models.HTTPResponse
 	var err error
 
 	// ヘッダーの準備
-	headers := map[string]string{"Accept": "application/json"}
+	headers := make(map[string]string)
 
 	// トークンが指定されている場合は、Authorizationヘッダーを追加
 	if *token != "" {

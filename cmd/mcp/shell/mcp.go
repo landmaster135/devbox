@@ -8,136 +8,140 @@ import (
 
 	mcp "github.com/mark3labs/mcp-go/mcp"
 	server "github.com/mark3labs/mcp-go/server"
+
+	"github.com/landmaster135/devbox/internal/shell/domain"
+	usecases "github.com/landmaster135/devbox/internal/shell/usecases"
 )
 
-// ShellClient はシェルコマンド実行クライアントの構造体です
-type ShellClient struct {
-	executor CommandExecutor
-}
+func handleShellExecute(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	command, err := requireStringSlice(request, "command")
+	if err != nil {
+		return nil, err
+	}
+	if len(command) == 0 {
+		return nil, fmt.Errorf("commandは1要素以上必要です")
+	}
 
-// NewShellClient は新しいShellClientを作成します
-func NewShellClient() *ShellClient {
-	// 環境変数からベースディレクトリを取得（指定されていない場合はカレントディレクトリ）
-	baseDir := os.Getenv("SHELL_BASE_DIRECTORY")
+	workdir := request.GetString("workdir", "")
+	if workdir == "" {
+		workdir = request.GetString("cwd", "")
+	}
+
+	baseDir := request.GetString("base_dir", "")
 	if baseDir == "" {
-		var err error
-		baseDir, err = os.Getwd()
-		if err != nil {
-			fmt.Printf("Error getting current directory: %v\n", err)
-			baseDir = "."
-		}
+		baseDir = request.GetString("basedir", "")
+	}
+	if baseDir == "" {
+		baseDir = os.Getenv("SHELL_BASE_DIRECTORY")
 	}
 
-	return &ShellClient{
-		executor: NewShellExecutor(baseDir),
+	timeout := request.GetInt("timeout_ms", request.GetInt("timeout", 0))
+	if timeout < 0 {
+		return nil, fmt.Errorf("timeout_msは0以上で指定してください")
 	}
-}
 
-// HandleShellExecute はシェルコマンド実行ツールのハンドラーです
-func (c *ShellClient) HandleShellExecute(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// 必須パラメータの取得
-	command, err := request.RequireString("command")
+	env, err := getEnvMap(request, "env")
 	if err != nil {
 		return nil, err
 	}
 
-	// オプションパラメータの取得
-	args := request.GetStringSlice("args", []string{})
-
-	cwd := request.GetString("cwd", "")
-
-	var env map[string]string
-	if envVal, ok := request.GetArguments()["env"]; ok {
-		if envMap, ok := envVal.(map[string]interface{}); ok {
-			env = make(map[string]string)
-			for k, v := range envMap {
-				env[k] = fmt.Sprintf("%v", v)
-			}
-		}
+	sandboxValue := request.GetString("sandbox_permissions", request.GetString("sandbox", string(domain.SandboxPermissionsUseDefault)))
+	if sandboxValue == "" {
+		sandboxValue = string(domain.SandboxPermissionsUseDefault)
 	}
-
-	timeout := request.GetInt("timeout", 0)
-
-	// コマンドを実行
-	result, err := c.executor.Execute(command, args, cwd, env, timeout)
+	sandbox, err := domain.ParseSandboxPermissions(sandboxValue)
 	if err != nil {
 		return nil, err
 	}
 
-	// 結果を返却
-	if !result.Success {
-		return createToolResult(result.Stderr, true)
+	justification := request.GetString("justification", request.GetString("reason", ""))
+
+	input := &usecases.ExecuteCommandInput{
+		Command:            command,
+		WorkDir:            workdir,
+		BaseDir:            baseDir,
+		TimeoutMs:          uint64(timeout),
+		Env:                env,
+		SandboxPermissions: sandbox,
+		Justification:      justification,
 	}
 
-	return createToolResult(result.Stdout, false)
+	service := usecases.NewShellService()
+	result, err := service.ExecuteCommand(input)
+	if err != nil {
+		return nil, err
+	}
+
+	payload, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("結果のシリアライズに失敗しました: %w", err)
+	}
+
+	return mcp.NewToolResultText(string(payload)), nil
 }
 
-// HandleGetAllowedCommands は許可されたコマンドのリストを取得するハンドラーです
-func (c *ShellClient) HandleGetAllowedCommands(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// 許可されたコマンドのリストを取得
-	commands := c.executor.(*ShellExecutor).GetAllowedCommands()
+func handleListDenied(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	service := usecases.NewShellService()
+	commands := service.ListDeniedCommands()
 
-	// 結果を作成
-	result := map[string]interface{}{
+	payload := map[string][]string{
 		"commands": commands,
 	}
-
-	// JSON形式で結果を返す
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return nil, err
 	}
 
-	return mcp.NewToolResultText(string(jsonResult)), nil
+	return mcp.NewToolResultText(string(data)), nil
 }
 
-// setShellCommandServer はシェルコマンド実行ツールを提供するMCPサーバを設定します
-func setShellCommandServer(s *server.MCPServer) *server.MCPServer {
-	// ShellClientを初期化
-	client := NewShellClient()
+func requireStringSlice(request mcp.CallToolRequest, key string) ([]string, error) {
+	raw, ok := request.GetArguments()[key]
+	if !ok {
+		return nil, fmt.Errorf("%sは必須です", key)
+	}
+	items, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("%sは文字列の配列で指定してください", key)
+	}
+	values := make([]string, 0, len(items))
+	for i, v := range items {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("%s[%d]は文字列である必要があります", key, i)
+		}
+		values = append(values, str)
+	}
+	return values, nil
+}
 
-	// ツール: シェルコマンド実行
-	shellExecuteTool := mcp.NewTool("shell_execute",
-		mcp.WithDescription("シェルコマンドを実行します"),
-		mcp.WithString("command",
-			mcp.Required(),
-			mcp.Description("実行するメインコマンド"),
-		),
-		mcp.WithArray("args",
-			mcp.Description("コマンド引数（サブコマンド以降：配列形式）"),
-		),
-		mcp.WithString("cwd",
-			mcp.Description("作業ディレクトリ"),
-		),
-		mcp.WithObject("env",
-			mcp.Description("環境変数"),
-		),
-		mcp.WithNumber("timeout",
-			mcp.Description("タイムアウト（ミリ秒）"),
-		),
-	)
-	s.AddTool(shellExecuteTool, client.HandleShellExecute)
-
-	// ツール: 許可されたコマンドのリストを取得
-	getAllowedCommandsTool := mcp.NewTool("shell_get_allowed_commands",
-		mcp.WithDescription("許可されたシェルコマンドのリストを取得します"),
-	)
-	s.AddTool(getAllowedCommandsTool, client.HandleGetAllowedCommands)
-
-	return s
+func getEnvMap(request mcp.CallToolRequest, key string) (map[string]string, error) {
+	raw, ok := request.GetArguments()[key]
+	if !ok {
+		return nil, nil
+	}
+	valueMap, ok := raw.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("%sはオブジェクトで指定してください", key)
+	}
+	result := make(map[string]string, len(valueMap))
+	for k, v := range valueMap {
+		result[k] = fmt.Sprintf("%v", v)
+	}
+	return result, nil
 }
 
 func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
-	prompt := mcp.NewPrompt("system_prompt_01",
-		mcp.WithPromptDescription("This is a prompt for the shell client."),
+	prompt := mcp.NewPrompt("shell_prompt",
+		mcp.WithPromptDescription("Guardrails for shell operations"),
 	)
 	s.AddPrompt(prompt, func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 		return &mcp.GetPromptResult{
-			Description: "System prompt for the shell client.",
+			Description: "System prompt for the shell executor.",
 			Messages: []mcp.PromptMessage{
 				{
 					Role:    mcp.RoleAssistant,
-					Content: mcp.NewTextContent("You use this great client for shell well."),
+					Content: mcp.NewTextContent("Use shell_execute responsibly. Favor read-only commands unless escalation is justified."),
 				},
 			},
 		}, nil
@@ -145,32 +149,58 @@ func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
 	return s
 }
 
-// createShellServer はシェル操作用のMCPサーバーを作成します
-func createShellServer() *server.MCPServer {
-	// MCPサーバーを作成
+func setShellTools(s *server.MCPServer) *server.MCPServer {
+	executeTool := mcp.NewTool("execute",
+		mcp.WithDescription("Codex CLIのshellツール互換エクゼキュータ。command配列をそのままexecvpに渡して実行します。"),
+		mcp.WithArray("command",
+			mcp.Required(),
+			mcp.Description("execvpに渡すコマンドの配列"),
+		),
+		mcp.WithString("workdir",
+			mcp.Description("作業ディレクトリ。未指定時はbase_dirもしくはカレントディレクトリ"),
+		),
+		mcp.WithString("base_dir",
+			mcp.Description("ベースディレクトリ。未指定時は環境変数SHELL_BASE_DIRECTORYまたはカレント"),
+		),
+		mcp.WithNumber("timeout_ms",
+			mcp.Description("ミリ秒単位のタイムアウト。0の場合は60秒"),
+		),
+		mcp.WithNumber("timeout",
+			mcp.Description("timeout_msのエイリアス"),
+		),
+		mcp.WithObject("env",
+			mcp.Description("KEY:VALUE形式の環境変数マップ"),
+		),
+		mcp.WithString("sandbox_permissions",
+			mcp.Description("use_defaultまたはrequire_escalated"),
+		),
+		mcp.WithString("justification",
+			mcp.Description("sandbox_permissions: require_escalated を設定した時の理由"),
+		),
+	)
+	s.AddTool(executeTool, handleShellExecute)
+
+	deniedTool := mcp.NewTool("list_denied_commands",
+		mcp.WithDescription("defaultDeniedCommandsに登録されている危険コマンド一覧を返します"),
+	)
+	s.AddTool(deniedTool, handleListDenied)
+
+	return s
+}
+
+func BuildShellServer() {
 	s := server.NewMCPServer(
-		"Shell Command Server",
+		"Shell CLI Server",
 		"1.0.0",
 		server.WithResourceCapabilities(true, true),
 		server.WithPromptCapabilities(true),
 		server.WithLogging(),
 	)
 
-	// シェルコマンド実行ツールを登録
-	s = setShellCommandServer(s)
-
-	// プロンプト
+	s = setShellTools(s)
 	s = addPromptIntoServer(s)
 
-	return s
-}
-
-// BuildShellServer はシェル操作用のMCPサーバーを構築します
-func BuildShellServer() {
-	s := createShellServer()
-
-	// サーバーを起動
 	if err := server.ServeStdio(s); err != nil {
-		fmt.Printf("Server error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
 	}
 }
