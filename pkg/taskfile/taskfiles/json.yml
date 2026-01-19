@@ -25,7 +25,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- json-timestamp-modifier (mode=add) を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-timestamp-modifier{{.EXE}}" \
-            -mode add \
+            --mode add \
             "$JSON_PATH" "$KEY_NAME" $RECURSIVE_FLAG
           echo $'\n[Step 01: END]--- json-timestamp-modifierの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -113,4 +113,51 @@ tasks:
           echo $'\n[Step 01: END]--- json-modifierの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
+        silent: true
+
+  json-file-merger:merge:
+    desc: "json-file-mergerでディレクトリ内のJSONをマージ"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          DIR_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input directory path having JSON files you wanna merge: " dir)" || exit 1
+          KEY_NAME="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to store JSON objects merged with this process: " key)" || exit 1
+          OUTPUT_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input name of new file merged all JSON files (Don't forget '.json'): " output)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$DIR_PATH" "$KEY_NAME" "$OUTPUT_PATH"
+
+          echo $'\n[Step 01: START]--- json-file-mergerでJSONファイルを統合します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-file-merger{{.EXE}}" \
+            "$DIR_PATH" "$KEY_NAME" "$OUTPUT_PATH"
+          echo $'\n[Step 01: END]--- json-file-mergerの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-file-merger:merge:pc-stats:
+    desc: "json-file-mergerでpc_stats用JSONをマージ"
+    cmds:
+      - cmd: |
+          set -eu
+
+          JSON_DIR="{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}9_json"
+          KEY="pc_stats"
+          
+          DATE=$({{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}} --operation now --format date)
+          OUTPUT_PATH="$JSON_DIR{{.DIR_SEP}}__merged_$DATE.json"
+
+          echo "[INFO] Merge source: ${JSON_DIR}"
+          echo "[INFO] Output file: ${OUTPUT_PATH}"
+          echo $'\n[Step 01: START]--- json-file-mergerでpc_stats用JSONを統合します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-file-merger{{.EXE}}" \
+            --dir "$JSON_DIR" --key "$KEY" \
+            --output "$OUTPUT_PATH"
+          echo $'\n[Step 01: END]--- json-file-mergerの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
         silent: true

@@ -228,6 +228,28 @@ func TestDateToUnix_Normal(t *testing.T) {
 	}
 }
 
+func TestNowOutputFormatting(t *testing.T) {
+	t.Cleanup(func() { timeNow = time.Now })
+	fixed := time.Unix(1704168245, 0).UTC() // 2024-01-02T04:04:05Z
+	timeNow = func() time.Time { return fixed }
+
+	if got := NowToUnix(); got != "1704168245" {
+		t.Fatalf("NowToUnix() = %s, want %s", got, "1704168245")
+	}
+
+	if got := NowToISO8601InUTC(); got != "2024-01-02T04:04:05Z" {
+		t.Fatalf("NowToISO8601InUTC() = %s", got)
+	}
+
+	if got := NowToISO8601InJST(); got != "2024-01-02T13:04:05+09:00" {
+		t.Fatalf("NowToISO8601InJST() = %s", got)
+	}
+
+	if got := NowToDateString(); got != "20240102" {
+		t.Fatalf("NowToDateString() = %s, want %s", got, "20240102")
+	}
+}
+
 func TestDateToUnix_Error(t *testing.T) {
 	// エラーケース
 	testCases := []struct {

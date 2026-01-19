@@ -27,11 +27,11 @@ func UnixToISO8601(unixTimestamp string) (string, error) {
 func ISO8601ToUnix(iso8601 string, isJST bool) (string, error) {
 	// Try multiple ISO-8601 formats
 	formats := []string{
-		time.RFC3339,                   // 2006-01-02T15:04:05Z07:00 (with timezone)
-		time.RFC3339Nano,               // 2006-01-02T15:04:05.999999999Z07:00 (with nanoseconds and timezone)
-		"2006-01-02T15:04:05",          // 2006-01-02T15:04:05 (without timezone)
-		"2006-01-02T15:04:05.000",      // 2006-01-02T15:04:05.000 (with milliseconds, without timezone)
-		"2006-01-02T15:04:05.000000",   // 2006-01-02T15:04:05.000000 (with microseconds, without timezone)
+		time.RFC3339,                    // 2006-01-02T15:04:05Z07:00 (with timezone)
+		time.RFC3339Nano,                // 2006-01-02T15:04:05.999999999Z07:00 (with nanoseconds and timezone)
+		"2006-01-02T15:04:05",           // 2006-01-02T15:04:05 (without timezone)
+		"2006-01-02T15:04:05.000",       // 2006-01-02T15:04:05.000 (with milliseconds, without timezone)
+		"2006-01-02T15:04:05.000000",    // 2006-01-02T15:04:05.000000 (with microseconds, without timezone)
 		"2006-01-02T15:04:05.000000000", // 2006-01-02T15:04:05.000000000 (with nanoseconds, without timezone)
 	}
 
@@ -114,20 +114,27 @@ func DateToUnix(dateStr string, isJST bool) (string, error) {
 	return strconv.FormatInt(unixTimestamp, 10), nil
 }
 
+var timeNow = time.Now
+
 func NowToUnix() string {
-	currentTime := time.Now()
+	currentTime := timeNow()
 	unixTimestamp := currentTime.Unix()
 	return strconv.FormatInt(unixTimestamp, 10)
 }
 
 func NowToISO8601InUTC() string {
-	currentTime := time.Now()
+	currentTime := timeNow()
 	t := currentTime.UTC().Format(time.RFC3339)
 	return t
 }
 
 func NowToISO8601InJST() string {
-	currentTime := time.Now()
+	currentTime := timeNow()
 	t := currentTime.In(time.FixedZone("JST", 9*60*60)).Format(time.RFC3339)
 	return t
+}
+
+func NowToDateString() string {
+	currentTime := timeNow()
+	return currentTime.Format("20060102")
 }
