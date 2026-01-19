@@ -5,6 +5,11 @@ includes:
     taskfile: ./core.yml
     internal: true
 
+vars:
+  HOME_DIR: "{{- if .HOME -}}{{ .HOME }}{{- else if .USERPROFILE -}}{{ .USERPROFILE }}{{- else -}}{{ .ROOT_TASKFILE_DIR }}{{- end -}}"
+  DEFAULT_PICTURE_BACKUP_DIR: "{{.HOME_DIR}}{{.DIR_SEP}}Downloads{{.DIR_SEP}}picture_backup"
+  DOWNLOADS_PICTURE_BACKUP_DIR: "{{ default .DEFAULT_PICTURE_BACKUP_DIR .PICTURE_BACKUP_DIR }}"
+
 tasks:
   pdf-encrypter:encrypt:
     desc: "pdf-encrypterでPDFへパスワードを設定"
@@ -76,7 +81,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
-            -output-dir="$OUTPUT_DIR" \
+            --output-dir="$OUTPUT_DIR" \
             $PDF_PATH
           echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -104,9 +109,44 @@ tasks:
 
           echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
-            -output-dir="$OUTPUT_DIR" \
+            --output-dir="$OUTPUT_DIR" \
             $PDF_PATH $START_PAGE $END_PAGE
           echo $'\n[Step 01: END]--- PDFからのページ範囲抽出が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-merger:merge:cwd:
+    desc: "pdf-mergerでDownloads/現在のディレクトリの画像からPDF作成"
+    cmds:
+      - cmd: |
+          set -eu
+          TARGET_DIR=.
+
+          echo "TARGET_DIR is $TARGET_DIR"
+
+          echo $'\n[Step 01: START]--- 現在のディレクトリの画像からPDFを生成します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --dir="$TARGET_DIR"
+          echo $'\n[Step 01: END]--- 現在のディレクトリのPDF生成が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  pdf-merger:merge:into-existing:
+    desc: "pdf-mergerでDownloads/現在のディレクトリの画像を既存PDFへ追加"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}}
+          TARGET_DIR=.
+          EXISTING_PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input PDF file you wanna add new pages (e.g.: '.'): " add)" || exit 1
+
+          echo $'\n[Step 01: START]--- 現在のディレクトリの画像を既存PDFへ追加します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --dir="$TARGET_DIR" \
+            "$EXISTING_PDF_PATH"
+          echo $'\n[Step 01: END]--- 既存PDFへの追加が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
