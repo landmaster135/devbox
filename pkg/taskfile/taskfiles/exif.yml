@@ -1,0 +1,80 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  exif-viewer:inspect:
+    desc: "exif-viewerで対象ディレクトリのEXIFを確認"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          DIR_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input directory you wanna view EXIF: " dir)" || exit 1
+          EXT_FLAG="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select extension of files you wanna view  [p]='png' [j]='jpg,jpeg' [w]='webp' [m]='mp4,webm' : " ext \
+            --choice-option "p|png" --choice-option "j|jpg,jpeg" --choice-option "w|webp" --choice-option "m|mp4,webm")" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" "$DIR_FLAG" "$EXT_FLAG"
+
+          echo "[INFO] Target directory: ${DIR_FLAG}"
+          echo "[INFO] Selected extension: ${EXT_FLAG}"
+
+          echo $'\n[Step 01: START]: --- exif-viewer (詳細表示)を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
+            -max=4 -v \
+            "$DIR_FLAG" "$EXT_FLAG"
+          echo $'\n[Step 01: END]: --- exif-viewer (詳細表示)の実行が完了しました ---'
+
+          echo $'\n[Step 02: START]: --- 利用可能なプロパティ一覧を取得します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
+            -list-props \
+            "$DIR_FLAG" "$EXT_FLAG"
+          echo $'\n[Step 02: END]: --- プロパティ一覧の取得が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  exif-modifier:from-filename:
+    desc: "exif-modifierでファイル名／スクショ由来のEXIF更新"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          DIR_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} "Input directory you wanna modify EXIF (e.g.: '.'): " dir)" || exit 1
+          EXT_FLAG="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select extension of files you wanna view  [p]='png' [j]='jpg,jpeg' [w]='webp' : " ext \
+            --choice-option "p|png" --choice-option "j|jpg,jpeg" --choice-option "w|webp")" || exit 1
+          METHOD_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select option to modify EXIF values  [f]='--from-filename' [s]='--from-screenshot' : " \
+            --choice-option "f|--from-filename" --choice-option "s|--from-screenshot")" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$DIR_FLAG" "$EXT_FLAG" "$METHOD_FLAG"
+
+          echo "[INFO] Target directory: ${DIR_FLAG}"
+          echo "[INFO] Selected extension: ${EXT_FLAG}"
+          echo "[INFO] Selected option: ${METHOD_FLAG}"
+
+          echo $'\n[Step 01: START]: --- exif-modifierを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-modifier{{.EXE}}" \
+            "$DIR_FLAG" "$EXT_FLAG" "$METHOD_FLAG" --verbose
+          echo $'\n[Step 01: END]: --- exif-modifierの実行が完了しました ---'
+
+          echo $'\n[Step 02: START]: --- File Modification Date/Time を確認します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
+            "$DIR_FLAG" "$EXT_FLAG" -props "File Modification Date/Time" -v
+          echo $'\n[Step 02: END]: --- File Modification Date/Time の確認が完了しました ---'
+
+          echo $'\n[Step 03: START]: --- プロパティ一覧を確認します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}exif-viewer{{.EXE}}" \
+            -list-props \
+            "$DIR_FLAG" "$EXT_FLAG"
+          echo $'\n[Step 03: END]: --- プロパティ一覧の確認が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
