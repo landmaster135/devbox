@@ -17,6 +17,10 @@ includes:
     taskfile: ./taskfiles/iso8601.yml
     flatten: false
     internal: true
+  kana:
+    taskfile: ./taskfiles/kana_converter.yml
+    flatten: false
+    internal: true
   file-maneuver:
     taskfile: ./taskfiles/file_maneuver.yml
     flatten: false
@@ -57,6 +61,11 @@ tasks:
     desc: "datetime-calculatorで日次見出しを出力"
     cmds:
       - task: calc:datetime-calculator:generate-daily-heading
+
+  text:kana:convert:
+    desc: "kana-converterで入力文字列を全角/半角/濁音ペア変換"
+    cmds:
+      - task: kana:kana-converter:convert
 
   image:rename:content:habit:
     desc: "image-renamer-for-contentでHB画像にリネーム"
