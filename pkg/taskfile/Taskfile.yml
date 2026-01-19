@@ -43,17 +43,17 @@ includes:
     internal: true
 
 tasks:
-  calculate:for_text:extract-api-cost:
+  text:calculate:extract-api-cost:
     desc: "arithmetic-calculatorでAPIコストを抽出"
     cmds:
       - task: calc:arithmetic-calculator:extract-api-cost
 
-  calculate:for_text:extract-working-time:
+  text:calculate:extract-working-time:
     desc: "datetime-calculatorで作業時間を抽出"
     cmds:
       - task: calc:datetime-calculator:extract-working-time
 
-  calculate:for_text:generate-daily-heading:
+  text:calculate:generate-daily-heading:
     desc: "datetime-calculatorで日次見出しを出力"
     cmds:
       - task: calc:datetime-calculator:generate-daily-heading
@@ -258,3 +258,13 @@ tasks:
     desc: "pdf-encrypterでPDFからパスワードを削除"
     cmds:
       - task: pdf:pdf-encrypter:decrypt
+
+  pdf:extract:all-pages:
+    desc: "pdf-mergerでPDF全ページをJPG抽出"
+    cmds:
+      - task: pdf:pdf-merger:extract:all-pages
+
+  pdf:extract:page-range:
+    desc: "pdf-mergerでPDFの一部ページをJPG抽出"
+    cmds:
+      - task: pdf:pdf-merger:extract:page-range
