@@ -15,7 +15,6 @@ tasks:
 
           INPUT_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input path of PDF file you wanna encrypt: " in)" || exit 1
-
           OWNER_PASSWORD_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input password to encrypt PDF: " opw)" || exit 1
 
@@ -45,7 +44,6 @@ tasks:
 
           INPUT_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input path of PDF file you wanna decrypt: " in)" || exit 1
-
           OWNER_PASSWORD_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input password to decrypt PDF: " opw)" || exit 1
 
@@ -57,6 +55,58 @@ tasks:
             --mode=decrypt \
             "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
           echo $'\n[Step 01: END]--- PDF復号化プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-merger:extract:all-pages:
+    desc: "pdf-mergerで全ページを画像抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
+            "$PDF_PATH"
+
+          OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
+
+          echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            -output-dir="$OUTPUT_DIR" \
+            $PDF_PATH
+          echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-merger:extract:page-range:
+    desc: "pdf-mergerで任意のページ範囲を画像抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+          START_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input start page number: " start)" || exit 1
+          END_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input end page number: " end)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
+            "$PDF_PATH"
+
+          OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
+
+          echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            -output-dir="$OUTPUT_DIR" \
+            $PDF_PATH $START_PAGE $END_PAGE
+          echo $'\n[Step 01: END]--- PDFからのページ範囲抽出が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
