@@ -268,3 +268,13 @@ tasks:
     desc: "pdf-mergerでPDFの一部ページをJPG抽出"
     cmds:
       - task: pdf:pdf-merger:extract:page-range
+
+  pdf:merge:cwd:
+    desc: "pdf-mergerでDownloads/picture_backupの画像からPDF作成"
+    cmds:
+      - task: pdf:pdf-merger:merge:cwd
+
+  pdf:merge:into-existing:
+    desc: "pdf-mergerでDownloads/picture_backupの画像を既存PDFへ追加"
+    cmds:
+      - task: pdf:pdf-merger:merge:into-existing
