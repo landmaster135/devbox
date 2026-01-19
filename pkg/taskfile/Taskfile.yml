@@ -37,6 +37,10 @@ includes:
     taskfile: ./taskfiles/http_request.yml
     flatten: false
     internal: true
+  pdf:
+    taskfile: ./taskfiles/pdf.yml
+    flatten: false
+    internal: true
 
 tasks:
   calculate:for_text:extract-api-cost:
@@ -244,3 +248,13 @@ tasks:
     desc: "exif-modifierでファイル名／スクショ由来のEXIF更新"
     cmds:
       - task: exif:exif-modifier:from-filename
+
+  pdf:crypt:encrypt:
+    desc: "pdf-encrypterでPDFへパスワードを設定"
+    cmds:
+      - task: pdf:pdf-encrypter:encrypt
+
+  pdf:crypt:decrypt:
+    desc: "pdf-encrypterでPDFからパスワードを削除"
+    cmds:
+      - task: pdf:pdf-encrypter:decrypt
