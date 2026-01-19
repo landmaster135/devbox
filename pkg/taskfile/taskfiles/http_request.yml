@@ -1,0 +1,59 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+  env:
+    taskfile: ./env.yml
+    internal: true
+
+tasks:
+  http-request:login:db:
+    desc: "http-requestでDBサーバーへログインリクエストを送信"
+    cmds:
+      - cmd: |
+          set -eu
+          BASE_URL="{{.DB_SERVER_URL_01}}"
+          PATH="{{.PATH_OF_DB_SERVER_ENDPOINT_01_FOR_LOGIN}}"
+          ENDPOINT="${BASE_URL}/${PATH}"
+
+          JSON_PATH="{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}9_json{{.DIR_SEP}}config{{.DIR_SEP}}login_from_windows_01.json"
+
+          echo "[INFO] Endpoint: ${ENDPOINT}"
+          echo "[INFO] JSON: ${JSON_PATH}"
+          echo $'\n[Step 01: START]--- http-requestでログインリクエストを送信します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}http-request{{.EXE}}" \
+            --url="$ENDPOINT" --method="POST" --json="$JSON_PATH"
+          echo $'\n[Step 01: END]--- http-requestの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  http-request:pc-stats:append:
+    desc: "http-requestでPC統計をDBサーバーへ送信"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+          BASE_URL="{{.DB_SERVER_URL_01}}"
+          PATH="{{.PATH_OF_DB_SERVER_ENDPOINT_01_FOR_PC_STATS_APPEND}}"
+          ENDPOINT="${BASE_URL}/${PATH}"
+
+          JSON_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input your json file path: " json)" || exit 1
+          TOKEN_VALUE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input your token: " token)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$JSON_PATH" "$TOKEN_VALUE"
+
+          echo "[INFO] Endpoint: ${ENDPOINT}"
+          echo "[INFO] JSON: ${JSON_PATH}"
+          echo $'\n[Step 01: START]--- http-requestでPC統計を送信します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}http-request{{.EXE}}" \
+            --url="$ENDPOINT" --method="POST" \
+            "$JSON_PATH" "$TOKEN_VALUE"
+          echo $'\n[Step 01: END]--- http-requestの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
