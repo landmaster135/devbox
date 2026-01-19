@@ -1,0 +1,35 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  movie-converter-for-gif:mp4-to-gif:
+    desc: "movie-converter-for-gifでMP4からGIFへ一括変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- MP4→GIF変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-gif{{.EXE}}" \
+            --input-dir=. -input-ext=mp4 -output-ext=gif \
+            --output-dir=.{{.DIR_SEP}}999_converted_images
+          echo $'\n[Step 01: END]--- MP4→GIF変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  movie-converter-for-gif:gif-to-mp4:
+    desc: "movie-converter-for-gifでGIFからMP4へ一括変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- GIF→MP4変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-gif{{.EXE}}" \
+            --input-dir=. -input-ext=gif -output-ext=mp4 \
+            --output-dir=.{{.DIR_SEP}}999_converted_images
+          echo $'\n[Step 01: END]--- GIF→MP4変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
