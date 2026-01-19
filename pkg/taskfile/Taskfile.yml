@@ -5,6 +5,10 @@ includes:
     taskfile: ./taskfiles/calculate_for_text.yml
     flatten: false
     internal: true
+  db:
+    taskfile: ./taskfiles/db_server.yml
+    flatten: false
+    internal: true
   diff-dreamer:
     taskfile: ./taskfiles/diff_dreamer.yml
     flatten: false
@@ -79,6 +83,16 @@ tasks:
     desc: "diff-dreamerを起動"
     cmds:
       - task: diff-dreamer:diff-dreamer:run
+
+  db:habits:bulk-insert:azurlane:
+    desc: "db-server CLIでアズールレーンの習慣データをバルク挿入"
+    cmds:
+      - task: db:db-server:bulk-insert:habits:azurlane
+
+  db:habits:bulk-insert:genshin-impact:
+    desc: "db-server CLIで原神の習慣データをバルク挿入"
+    cmds:
+      - task: db:db-server:bulk-insert:habits:genshin-impact
 
   image:rename:content:habit:
     desc: "image-renamer-for-contentでHB画像にリネーム"
@@ -191,12 +205,12 @@ tasks:
       - task: movie-convert:movie-converter-for-gif:gif-to-mp4
 
   movie:convert:mp4-to-webm:not-movie-material:
-    desc: "movie-converter-for-webmでMP4(素材)からWebM(Vorbis)に変換"
+    desc: "movie-converter-for-webmでMP4から非映像素材用のWebMに変換"
     cmds:
       - task: movie-convert:movie-converter-for-webm:mp4-to-webm-for-not-movie-material
 
   movie:convert:mp4-to-webm:movie-material:
-    desc: "movie-converter-for-webmでMP4(映像素材)からWebM(Opus)に変換"
+    desc: "movie-converter-for-webmでMP4から映像素材用のWebMに変換"
     cmds:
       - task: movie-convert:movie-converter-for-webm:mp4-to-webm-for-movie-material
 
@@ -216,7 +230,7 @@ tasks:
       - task: iso8601:iso8601-converter:now
 
   json:timestamp:add:now:
-    desc: "json-timestamp-modifierでディレクトリ内JSONへUNIXタイムスタンプを追加"
+    desc: "json-timestamp-modifierでディレクトリ内JSONへタイムスタンプを追加"
     cmds:
       - task: json:json-timestamp-modifier:add:now
 

@@ -38,7 +38,7 @@ tasks:
         silent: true
 
   movie-converter-for-webm:mp4-to-webm-for-not-movie-material:
-    desc: "movie-converter-for-webmでMP4(素材)からWebM(Vorbis)へ一括変換"
+    desc: "movie-converter-for-webmでMP4から非映像素材用のWebMに変換"
     cmds:
       - cmd: |
           set -eu
@@ -53,7 +53,7 @@ tasks:
         silent: true
 
   movie-converter-for-webm:mp4-to-webm-for-movie-material:
-    desc: "movie-converter-for-webmでMP4(映像素材)からWebM(Opus)へ一括変換"
+    desc: "movie-converter-for-webmでMP4から映像素材用のWebMに変換"
     cmds:
       - cmd: |
           set -eu

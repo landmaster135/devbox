@@ -1,0 +1,52 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+vars:
+  DB_SERVER_CLI_BIN: "{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}db-server{{.DIR_SEP}}cli{{.DIR_SEP}}{{.OS_ARCH}}{{.DIR_SEP}}all_cli_entry{{.EXE}}"
+
+tasks:
+  db-server:bulk-insert:habits:azurlane:
+    desc: "db-server CLIでアズールレーンの習慣データをバルク挿入"
+    cmds:
+      - cmd: |
+          set -eu
+
+          ENTITY="habits"
+          PROCESS="bulk-insert-by-category"
+          CATEGORY="playing_azurlane"
+          LIST_PATH="./0000_tmp_draft.txt"
+          OUTPUT_PATH="./0000_tmp_append_request.json"
+
+          echo $'\n[Step 01: START]--- DBサーバーCLIで習慣データ(アズールレーン)の挿入を実行します ---'
+          "{{.DB_SERVER_CLI_BIN}}" \
+            --entity="$ENTITY" --process="$PROCESS" \
+            -- \
+            --category="$CATEGORY" --list="$LIST_PATH" --output="$OUTPUT_PATH"
+          echo $'\n[Step 01: END]--- DBサーバーCLIで習慣データ(アズールレーン)の挿入が完了しました ---'
+        dir: "{{.ROOT_TASKFILE_DIR}}"
+        silent: true
+
+  db-server:bulk-insert:habits:genshin-impact:
+    desc: "db-server CLIで原神の習慣データをバルク挿入"
+    cmds:
+      - cmd: |
+          set -eu
+
+          ENTITY="habits"
+          PROCESS="bulk-insert-by-category"
+          CATEGORY="playing_genshin_impact"
+          LIST_PATH="./0000_tmp_draft.txt"
+          OUTPUT_PATH="./0000_tmp_append_request.json"
+
+          echo $'\n[Step 01: START]--- DBサーバーCLIで習慣データ(原神)の挿入を実行します ---'
+          "{{.DB_SERVER_CLI_BIN}}" \
+            --entity="$ENTITY" --process="$PROCESS" \
+            -- \
+            --category="$CATEGORY" --list="$LIST_PATH" --output="$OUTPUT_PATH"
+          echo $'\n[Step 01: END]--- DBサーバーCLIで習慣データ(原神)の挿入が完了しました ---'
+        dir: "{{.ROOT_TASKFILE_DIR}}"
+        silent: true
