@@ -5,6 +5,10 @@ includes:
     taskfile: ./taskfiles/calculate_for_text.yml
     flatten: false
     internal: true
+  diff-dreamer:
+    taskfile: ./taskfiles/diff_dreamer.yml
+    flatten: false
+    internal: true
   image-rename:
     taskfile: ./taskfiles/image_rename.yml
     flatten: false
@@ -66,6 +70,11 @@ tasks:
     desc: "kana-converterで入力文字列を全角/半角/濁音ペア変換"
     cmds:
       - task: kana:kana-converter:convert
+
+  text:diff:dream:
+    desc: "diff-dreamerを起動"
+    cmds:
+      - task: diff-dreamer:diff-dreamer:run
 
   image:rename:content:habit:
     desc: "image-renamer-for-contentでHB画像にリネーム"

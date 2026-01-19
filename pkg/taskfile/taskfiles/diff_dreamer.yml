@@ -1,0 +1,19 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  diff-dreamer:run:
+    desc: "diff-dreamerを起動"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- diff-dreamerを起動します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}diff-dreamer{{.EXE}}"
+          echo $'\n[Step 01: END]--- diff-dreamerの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
