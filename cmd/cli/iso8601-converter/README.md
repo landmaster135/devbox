@@ -18,6 +18,16 @@ go run ./cmd/cli/iso8601-converter --operation now
 
 ISO-8601（UTC/JST）とUNIXタイムスタンプをまとめて表示します。
 
+`--format`で出力内容を絞り込めます。
+
+```bash
+go run ./cmd/cli/iso8601-converter --operation now --format iso
+# ISO-8601形式のみ表示
+
+go run ./cmd/cli/iso8601-converter --operation now --format unix
+# UNIXタイムスタンプのみ表示
+```
+
 ### UNIXタイムスタンプからISO-8601形式への変換
 
 ```bash
@@ -76,6 +86,7 @@ go run ./cmd/cli/iso8601-converter --operation to-unix --is-jst --input "2021-04
 ## オプション
 
 - `--operation`: 実行する操作。`to-iso`、`to-unix`、`now` のいずれかを指定
+- `--format`: `--operation now`の時に有効。`all` (デフォルト)、`iso`、`unix` を指定
 - `--is-jst`: 日付をJSTタイムゾーンとして扱う（デフォルトはUTC）
 - `--input`: 変換する値
 - `--help`: ヘルプメッセージの表示

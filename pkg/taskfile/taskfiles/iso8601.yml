@@ -40,7 +40,7 @@ tasks:
           set -eu
 
           echo $'\n[Step 01: START]--- iso8601-converterを --now で実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" --operation now
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" --operation now --format all
           echo $'\n[Step 01: END]--- iso8601-converterの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         silent: true
