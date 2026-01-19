@@ -13,20 +13,20 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          DIR_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input dir path having JSON files you wanna edit: " dir)" || exit 1
+          JSON_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input directory or file path for JSON files you wanna edit: " path)" || exit 1
           KEY_NAME="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input key to add UNIX timestamp: " key)" || exit 1
           RECURSIVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to enable the --recursive option or not  [y]='--recursive'  [n]='' : " recursive)" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
-            "$DIR_PATH" "$KEY_NAME"
+            "$JSON_PATH" "$KEY_NAME"
 
           echo $'\n[Step 01: START]--- json-timestamp-modifier (mode=add) を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-timestamp-modifier{{.EXE}}" \
             -mode add \
-            "$DIR_PATH" "$KEY_NAME" $RECURSIVE_FLAG
+            "$JSON_PATH" "$KEY_NAME" $RECURSIVE_FLAG
           echo $'\n[Step 01: END]--- json-timestamp-modifierの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -39,8 +39,8 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          DIR_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input path of JSON directory you wanna edit: " dir)" || exit 1
+          JSON_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input directory or file path for JSON files you wanna edit: " path)" || exit 1
           MODE_VALUE="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
             "Select conversion format  [u]='to-unix'  [i]='to-iso' : " mode \
             --choice-option "u|to-unix" --choice-option "i|to-iso")" || exit 1
@@ -52,12 +52,12 @@ tasks:
             "Select whether to enable the --recursive option or not  [y]='--recursive'  [n]='' : " recursive)" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
-            "$DIR_PATH" "$MODE_VALUE" "$KEY_NAME"
+            "$JSON_PATH" "$MODE_VALUE" "$KEY_NAME"
 
           echo "[INFO] Selected mode: ${MODE_VALUE}"
           echo $'\n[Step 01: START]--- json-timestamp-modifier (dir convert) を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-timestamp-modifier{{.EXE}}" \
-            "$DIR_PATH" "$KEY_NAME" "$MODE_VALUE" \
+            "$JSON_PATH" "$KEY_NAME" "$MODE_VALUE" \
             $IS_JST_FLAG $RECURSIVE_FLAG
           echo $'\n[Step 01: END]--- json-timestamp-modifierの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
