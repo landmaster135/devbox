@@ -8,6 +8,6 @@
 /home/user/devbox/.config/cagent/config_linux/github_pull_request_creator/config.ymlを参考に、/home/user/devbox/.config/cagent/config_linux/github_issue_creator/config.ymlにGithubに新規イシューを起票するためのエージェント用のワークフローを作成して。イシュー本文に書く内容をユーザーに尋ねるようにして。
 
 ## Taskfileへのタスクの追加（分割パターン）
-/home/user/devbox/pkg/win_dos/taskfiles/image_convert.ymlに下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして、/home/user/devbox/pkg/win_dos/Taskfile.ymlから呼び出すようにして。
-- /home/user/devbox/pkg/win_dos/batch_files/Z3-1_image_converter_jpg_to_webp.bat
+/home/user/devbox/pkg/taskfile/taskfiles/exif.ymlに下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして、/home/user/devbox/pkg/taskfile/Taskfile.ymlから呼び出すようにして。
+- /home/user/devbox/pkg/win_dos/Z3-4_exif_modifier_from_filename.bat
 - 
