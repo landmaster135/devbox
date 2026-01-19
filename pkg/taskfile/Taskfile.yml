@@ -33,6 +33,10 @@ includes:
     taskfile: ./taskfiles/json.yml
     flatten: false
     internal: true
+  movie-convert:
+    taskfile: ./taskfiles/movie_convert.yml
+    flatten: false
+    internal: true
   image-synthesize:
     taskfile: ./taskfiles/image_synthesize.yml
     flatten: false
@@ -175,6 +179,16 @@ tasks:
     desc: "image-filtererで原神スクショ向けぼかし"
     cmds:
       - task: image-convert:image-filterer:blur-for-genshin-captures
+
+  movie:convert:mp4-to-gif:
+    desc: "movie-converter-for-gifでMP4からGIFに変換"
+    cmds:
+      - task: movie-convert:movie-converter-for-gif:mp4-to-gif
+
+  movie:convert:gif-to-mp4:
+    desc: "movie-converter-for-gifでGIFからMP4に変換"
+    cmds:
+      - task: movie-convert:movie-converter-for-gif:gif-to-mp4
 
   iso8601:convert:
     desc: "iso8601-converterでISO-8601とUNIXの相互変換"
