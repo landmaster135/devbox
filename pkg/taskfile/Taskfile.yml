@@ -170,6 +170,16 @@ tasks:
     cmds:
       - task: json:json-timestamp-modifier:convert
 
+  json:modifier:get:
+    desc: "json-modifierでJSONファイルから値を取得"
+    cmds:
+      - task: json:json-modifier:get
+
+  json:modifier:set:
+    desc: "json-modifierでJSONファイルへ値を設定"
+    cmds:
+      - task: json:json-modifier:set
+
   file:maneuver:exe:
     desc: "file-maneuverでwin_amd64のexeを同期"
     cmds:
