@@ -31,6 +31,14 @@ your_tool_directory/
 | | | | |--
 | | | | |--  ...
 | | | | |--
+| | |--db-server (external dependency)
+| | | |--cli
+| | | | |--darwin_arm64
+| | | | | |--all_cli_entry
+| | | | |--linux_amd64
+| | | | | |--all_cli_entry
+| | | | |--win_amd64
+| | | | | |--all_cli_entry.exe
 |--taskfiles
 | |--calculate_for_text.yml
 | |--core.yml
