@@ -1,0 +1,62 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  pdf-encrypter:encrypt:
+    desc: "pdf-encrypterでPDFへパスワードを設定"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          INPUT_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna encrypt: " in)" || exit 1
+
+          OWNER_PASSWORD_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input password to encrypt PDF: " opw)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
+
+          USER_PASSWORD_FLAG="${OWNER_PASSWORD_FLAG/--opw=/--upw=}"
+
+          {{.METHOD_FLAG_GUARD_NAME}} "パスワードの入力値が正しく取得できませんでした。" \
+            "$USER_PASSWORD_FLAG"
+
+          echo $'\n[Step 01: START]--- PDF暗号化プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-encrypter{{.EXE}}" \
+            --mode=encrypt \
+            "$INPUT_FILE_FLAG" "$USER_PASSWORD_FLAG" "$OWNER_PASSWORD_FLAG"
+          echo $'\n[Step 01: END]--- PDF暗号化プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-encrypter:decrypt:
+    desc: "pdf-encrypterでPDFからパスワードを削除"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          INPUT_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna decrypt: " in)" || exit 1
+
+          OWNER_PASSWORD_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input password to decrypt PDF: " opw)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
+
+          echo $'\n[Step 01: START]--- PDF復号化プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-encrypter{{.EXE}}" \
+            --mode=decrypt \
+            "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
+          echo $'\n[Step 01: END]--- PDF復号化プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
