@@ -22,8 +22,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation habit \
-            --delimiter "" --suffix "" \
+            --src=. --operation=habit \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -46,8 +46,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation date \
-            --delimiter "" --suffix "" \
+            --src=. --operation=date \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -70,8 +70,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation mackerel \
-            --delimiter "" --suffix "" \
+            --src=. --operation=mackerel \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -94,8 +94,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation anime \
-            --delimiter "" --suffix "" \
+            --src=. --operation=anime \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -118,8 +118,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation comic \
-            --delimiter "" --suffix "" \
+            --src=. --operation=comic \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -142,8 +142,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation web_clip \
-            --delimiter "" --suffix "" \
+            --src=. --operation=web_clip \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -166,8 +166,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer-for-content{{.EXE}}" \
-            --src . --operation wine \
-            --delimiter "" --suffix "" \
+            --src=. --operation=wine \
+            --delimiter="" --suffix="" \
             "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -192,7 +192,7 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
-            --src . -digits 2 --delimiter "_" \
+            --src=. -digits=2 --delimiter="_" \
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -217,7 +217,7 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
-            --src . -digits 4 --delimiter "_" \
+            --src=. -digits=4 --delimiter="_" \
             "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -241,8 +241,8 @@ tasks:
 
           echo $'\n[Step 01: START]: --- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
-            -src ".{{.DIR_SEP}}1-3_image_renamer_with_prefix_input" \
-            --digits 4 --delimiter "" --start 1 \
+            -src=".{{.DIR_SEP}}1-3_image_renamer_with_prefix_input" \
+            --digits=4 --delimiter="" --start=1 \
             "$PREFIX_ARG" "$SORT_FLAG"
           echo $'\n[Step 01: END]: --- 画像リネームプログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
