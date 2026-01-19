@@ -63,3 +63,54 @@ tasks:
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
+
+  json-modifier:get:
+    desc: "json-modifierでJSONファイルから値を取得"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of JSON file you wanna edit: " file)" || exit 1
+          KEY_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to get: " key)" || exit 1
+          GET_ALL_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select whether to get all keys and values or not  [y]='--get-all'  [n]='--get' : " \
+            --choice-option "y|--get-all" --choice-option "n|--get")" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$FILE_FLAG" "$KEY_FLAG" "$GET_ALL_FLAG"
+
+          echo $'\n[Step 01: START]--- json-modifier (mode=get) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-modifier{{.EXE}}" \
+            "$FILE_FLAG" "$KEY_FLAG" "$GET_ALL_FLAG"
+          echo $'\n[Step 01: END]--- json-modifierの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-modifier:set:
+    desc: "json-modifierでJSONファイルへキーと値を設定"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of JSON file you wanna edit: " file)" || exit 1
+          KEY_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to set: " key)" || exit 1
+          VALUE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input value to set: " set)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$FILE_FLAG" "$KEY_FLAG" "$VALUE_FLAG"
+
+          echo $'\n[Step 01: START]--- json-modifier (mode=set) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-modifier{{.EXE}}" \
+            "$FILE_FLAG" "$KEY_FLAG" "$VALUE_FLAG"
+          echo $'\n[Step 01: END]--- json-modifierの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
