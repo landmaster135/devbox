@@ -63,8 +63,12 @@ includes:
     internal: true
 
 tasks:
+  default:
+    desc: "Default task"
+    cmds:
+      - echo 'No registered command...'
   alias:
-    desc: "タスク一覧表示"
+    desc: "List tasks defined in the taskfile.yml"
     cmds:
       - task --list-all
   text:calculate:extract-api-cost:

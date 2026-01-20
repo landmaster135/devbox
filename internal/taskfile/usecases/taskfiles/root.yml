@@ -1,0 +1,81 @@
+version: "3"
+
+tasks:
+  default:
+    desc: "Default task"
+    cmds:
+      - task: test:all:cov
+      - task: build
+      - task: build:mcp
+  alias:
+    desc: "List tasks defined in the taskfile.yml"
+    cmds:
+      - task --list-all
+  find:docs:
+    desc: "List files in the docs directory at the project root."
+    cmds:
+      - find docs | sort -f
+  find:agents:
+    desc: "List files in the agent directory at the project root"
+    cmds:
+      - find .agents | sort -f
+  find:pjroot:
+    desc: "List files in the project root directory"
+    cmds:
+      - find . -maxdepth 1 -type f | sort -f
+  find:sql:
+    desc: "List files in the directory for SQL"
+    cmds:
+      - echo 'No registered command...'
+  run:dev:
+    desc: "Run an executable"
+    cmds:
+      - echo 'No registered command...'
+  run:tee:
+    desc: "Run an executable with the file recording log"
+    cmds:
+      - echo 'No registered command...'
+  run:backend:
+    desc: "Run an executable for backend"
+    cmds:
+      - echo 'No registered command...'
+  check:
+    desc: "Check on syntax and linting"
+    cmds:
+      - echo 'No registered command...'
+  test:cov:
+    desc: "Run tests and confirm the test coverage"
+    cmds:
+      - echo 'No registered command...'
+  test:all:cov:
+    desc: "Run all tests and confirm the test coverage"
+    cmds:
+      - echo 'No registered command...'
+  test:all:out:
+    desc: "Run all tests and output test coverage as files"
+    cmds:
+      - echo 'No registered command...'
+  build:
+    desc: "Build files at the project root directory"
+    cmds:
+      - echo 'No registered command...'
+  build:dev:
+    desc: "Build files for development"
+    cmds:
+      - echo 'No registered command...'
+  build:pre:
+    desc: "Run required pre-build processes"
+    cmds:
+      - echo 'No registered command...'
+  build:mcp:
+    desc: "Build MCP tools"
+    cmds:
+      - echo 'No registered command...'
+  domain:mig:new:
+    desc: "Initialize resources for a new domain"
+    cmds:
+      - echo 'No registered command...'
+  domain:mig:run:
+    desc: "Run process to migrate domain data"
+    cmds:
+      - echo 'No registered command...'
