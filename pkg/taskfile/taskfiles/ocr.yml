@@ -41,9 +41,8 @@ tasks:
 
           echo $'\n[Step 01: START]--- ocr-executor-with-ai (Ollama) を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}ocr-executor-with-ai{{.EXE}}" \
-            --ai-type=ollama --model="qwen2.5vl" \
-            --prompt="$PROMPT_MESSAGE"
-            "$TARGET_PATH" \
+            --ai-type=ollama --model="qwen2.5vl" --prompt="$PROMPT_MESSAGE" \
+            "$TARGET_PATH"
           echo $'\n[Step 01: END]--- ocr-executor-with-ai (Ollama) の実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -70,10 +69,35 @@ tasks:
 
           echo $'\n[Step 01: START]--- ocr-executor-with-ai (Gemini) を実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}ocr-executor-with-ai{{.EXE}}" \
-            --ai-type=gemini \
-            --prompt="$PROMPT_MESSAGE" \
+            --ai-type=gemini --prompt="$PROMPT_MESSAGE" \
             "$TARGET_PATH" "$GEMINI_API_KEY"
           echo $'\n[Step 01: END]--- ocr-executor-with-ai (Gemini) の実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  ocr-executor-with-ai:gemini:palworld-status:
+    desc: "ocr-executor-with-aiでPalworldステータスをGemini解析"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}}
+
+          TARGET_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input file or directory path for OCR (default: .) : " path)" || exit 1
+
+          GEMINI_API_KEY="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input token to request Gemini API: " api-key)" || exit 1
+
+          PROMPT_MESSAGE="この画像からキャラクターのステータスを読み取って、Markdownのテーブル形式にして。補足や説明は不要です。"
+          SYSTEM_INSTRUCTION=$'以下のカラムを持ったテーブル形式で出力して。\n---\nCharacter Name\nLevel\nHeart\nAttack\nDefense\nWork Speed\nPassive Skill 1\nPassive Skill 2\nPassive Skill 3\nPassive Skill 4\nPotential of Heart\nPotential of Attack'
+
+          echo $'\n[Step 01: START]--- ocr-executor-with-ai (Gemini / Palworldステータス) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}ocr-executor-with-ai{{.EXE}}" \
+            --ai-type=gemini --prompt="$PROMPT_MESSAGE" \
+            --system-instruction="$SYSTEM_INSTRUCTION" \
+            "$TARGET_PATH" "$GEMINI_API_KEY"
+          echo $'\n[Step 01: END]--- ocr-executor-with-ai (Gemini / Palworldステータス) の実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
