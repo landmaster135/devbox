@@ -170,6 +170,47 @@ func TestServiceFillNoChanges(t *testing.T) {
 	}
 }
 
+func TestServiceCreateNewTaskfile(t *testing.T) {
+	t.Parallel()
+
+	service := NewService()
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "generated", "Taskfile.yml")
+
+	if err := service.Create(taskTypeRoot, target); err != nil {
+		t.Fatalf("create returned error: %v", err)
+	}
+
+	generated, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("failed to read generated Taskfile: %v", err)
+	}
+
+	referencePath, err := resolveReferencePath(taskTypeRoot)
+	if err != nil {
+		t.Fatalf("failed to resolve reference path: %v", err)
+	}
+	reference, err := os.ReadFile(referencePath)
+	if err != nil {
+		t.Fatalf("failed to read reference Taskfile: %v", err)
+	}
+
+	if string(generated) != string(reference) {
+		t.Fatalf("generated Taskfile does not match reference")
+	}
+}
+
+func TestServiceCreateFailsIfFileExists(t *testing.T) {
+	t.Parallel()
+
+	path := writeTempTaskfile(t, "version: \"3\"\n")
+	service := NewService()
+
+	if err := service.Create(taskTypeRoot, path); err == nil {
+		t.Fatalf("expected error when target file already exists")
+	}
+}
+
 func writeTempTaskfile(t *testing.T, content string) string {
 	t.Helper()
 
