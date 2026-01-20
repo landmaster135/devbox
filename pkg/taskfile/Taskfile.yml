@@ -63,302 +63,247 @@ includes:
     internal: true
 
 tasks:
+  alias:
+    desc: "タスク一覧表示"
+    cmds:
+      - task --list-all
   text:calculate:extract-api-cost:
     desc: "<FAV> arithmetic-calculatorでAPIコストを抽出"
     cmds:
       - task: calc:arithmetic-calculator:extract-api-cost
-
   text:calculate:extract-working-time:
     desc: "<FAV> datetime-calculatorで作業時間を抽出"
     cmds:
       - task: calc:datetime-calculator:extract-working-time
-
   text:calculate:generate-daily-heading:
     desc: "<FAV> datetime-calculatorで日次見出しを出力"
     cmds:
       - task: calc:datetime-calculator:generate-daily-heading
-
   text:kana:convert:
     desc: "kana-converterで入力文字列を全角/半角/濁音ペア変換"
     cmds:
       - task: kana:kana-converter:convert
-
   text:diff:dream:
     desc: "diff-dreamerを起動"
     cmds:
       - task: diff-dreamer:diff-dreamer:run
-
   db:habits:bulk-insert:azurlane:
     desc: "<FAV> db-server CLIでアズールレーンの習慣データをバルク挿入"
     cmds:
       - task: db:db-server:bulk-insert:habits:azurlane
-
   db:habits:bulk-insert:genshin-impact:
     desc: "<FAV> db-server CLIで原神の習慣データをバルク挿入"
     cmds:
       - task: db:db-server:bulk-insert:habits:genshin-impact
-
   image:rename:content:habit:
     desc: "<FAV> image-renamer-for-contentでHB画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:habit
-
   image:rename:content:date:
     desc: "<FAV> image-renamer-for-contentでDA画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:date
-
   image:rename:content:mackerel:
     desc: "image-renamer-for-contentでMA画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:mackerel
-
   image:rename:content:anime:
     desc: "image-renamer-for-contentでAN画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:anime
-
   image:rename:content:comic:
     desc: "image-renamer-for-contentでCM画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:comic
-
   image:rename:content:web-clip:
     desc: "image-renamer-for-contentでWC画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:web-clip
-
   image:rename:content:wine:
     desc: "image-renamer-for-contentでWI画像にリネーム"
     cmds:
       - task: image-rename:image-renamer:wine
-
   image:rename:by-2-digits:
     desc: "image-renamerで2桁連番リネーム"
     cmds:
       - task: image-rename:image-renamer:by-2-digits
-
   image:rename:by-4-digits:
     desc: "image-renamerで4桁連番リネーム"
     cmds:
       - task: image-rename:image-renamer:by-4-digits
-
   image:rename:by-prefix:
     desc: "image-renamerで特定のディレクトリ内で接頭辞を使ったリネーム"
     cmds:
       - task: image-rename:image-renamer:by-prefix
-
   image:convert:jpg-to-webp:
     desc: "image-converterでJPGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:jpg-to-webp
-
   image:convert:png-to-webp:
     desc: "image-converterでPNGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp
-
   image:convert:png-to-webp-keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp-keeping-saturation
-
   image:convert:to-jpg:
     desc: "image-converterでJPGへ変換"
     cmds:
       - task: image-convert:image-converter:to-jpg
-
   image:convert:rotate:
     desc: "image-rotatorで画像を回転"
     cmds:
       - task: image-convert:image-rotator:rotate
-
   image:convert:trim:by-coordinates:
     desc: "image-trimmerで座標指定トリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-coordinates
-
   image:convert:trim:by-purpose:
     desc: "image-trimmerで用途別プリセットトリミング"
     cmds:
       - task: image-convert:image-trimmer:trim-by-purpose
-
   image:convert:trim:describe:
     desc: "image-trim-describerで座標確認"
     cmds:
       - task: image-convert:image-trim-describer:describe
-
   image:convert:filter:blur:
     desc: "image-filtererで座標指定ぼかし"
     cmds:
       - task: image-convert:image-filterer:blur
-
   image:convert:filter:blur-for-genshin-captures:
     desc: "image-filtererで原神スクショ向けぼかし"
     cmds:
       - task: image-convert:image-filterer:blur-for-genshin-captures
-
   movie:convert:mp4-to-gif:
     desc: "movie-converter-for-gifでMP4からGIFに変換"
     cmds:
       - task: movie-convert:movie-converter-for-gif:mp4-to-gif
-
   movie:convert:gif-to-mp4:
     desc: "movie-converter-for-gifでGIFからMP4に変換"
     cmds:
       - task: movie-convert:movie-converter-for-gif:gif-to-mp4
-
   movie:convert:mp4-to-webm:not-movie-material:
     desc: "movie-converter-for-webmでMP4から非映像素材用のWebMに変換"
     cmds:
       - task: movie-convert:movie-converter-for-webm:mp4-to-webm-for-not-movie-material
-
   movie:convert:mp4-to-webm:movie-material:
     desc: "movie-converter-for-webmでMP4から映像素材用のWebMに変換"
     cmds:
       - task: movie-convert:movie-converter-for-webm:mp4-to-webm-for-movie-material
-
   movie:convert:webm-to-mp4:
     desc: "movie-converter-for-webmでWebMからMP4に変換"
     cmds:
       - task: movie-convert:movie-converter-for-webm:webm-to-mp4
-
   iso8601:convert:
     desc: "iso8601-converterでISO-8601とUNIXの相互変換"
     cmds:
       - task: iso8601:iso8601-converter:convert
-
   iso8601:now:
     desc: "iso8601-converterで現在日時を出力"
     cmds:
       - task: iso8601:iso8601-converter:now
-
   json:timestamp:add:now:
     desc: "json-timestamp-modifierでディレクトリ内JSONへタイムスタンプを追加"
     cmds:
       - task: json:json-timestamp-modifier:add:now
-
   json:timestamp:convert:
     desc: "json-timestamp-modifierでディレクトリ内JSONのタイムスタンプを変換"
     cmds:
       - task: json:json-timestamp-modifier:convert
-
   json:file-modify:get:
     desc: "json-modifierでJSONファイルから値を取得"
     cmds:
       - task: json:json-modifier:get
-
   json:file-modify:set:
     desc: "json-modifierでJSONファイルへ値を設定"
     cmds:
       - task: json:json-modifier:set
-
   json:file-merge:
     desc: "json-file-mergerでディレクトリ内JSONを統合"
     cmds:
       - task: json:json-file-merger:merge
-
   json:file-merge:pc-stats:
     desc: "json-file-mergerでpc_stats向けJSONを統合"
     cmds:
       - task: json:json-file-merger:merge:pc-stats
-
   http:request:login:db:
     desc: "http-requestでDBにログイン"
     cmds:
       - task: http-request:http-request:login:db
-
   http:request:pc-stats:append:
     desc: "http-requestでPC統計エンティティのレコードを追加"
     cmds:
       - task: http-request:http-request:pc-stats:append
       - task: iso8601:iso8601-converter:now
-
   file:maneuver:exe:
     desc: "<FAV> file-maneuverでwin_amd64のexeを同期"
     cmds:
       - task: file-maneuver:file-maneuver:sync-executables
-
   file:maneuver:webp:thumbnail_of_game:
     desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
     cmds:
       - task: file-maneuver:file-maneuver:filter-thumbnail-webp
-
   image:rename:convert:screenshot:by-3-digits:
     desc: "image-renamerで3桁連番リネーム後にWebP変換 (Content向け)"
     cmds:
       - task: image-synthesize:image-rename:by-3-digits:convert
-
   image:rename:convert:screenshot:by-4-digits:
     desc: "<FAV> image-renamerで4桁連番リネーム後にWebP変換"
     cmds:
       - task: image-synthesize:image-rename:by-4-digits:convert
-
   image:rename:convert:screenshot:
     desc: "<FAV> スクショの命名＋WebP変換"
     cmds:
       - task: image-synthesize:screenshot:rename-convert
-
   image:rename:convert:screenshot:keeping-saturation:
     desc: "スクショの命名＋WebP(lossless)変換"
     cmds:
       - task: image-synthesize:screenshot:rename-convert:keeping-saturation
-
   image:exif:view:
     desc: "exif-viewerでディレクトリ内EXIFを確認"
     cmds:
       - task: exif:exif-viewer:inspect
-
   image:exif:modify:from-filename:
     desc: "exif-modifierでファイル名／スクショ由来のEXIF更新"
     cmds:
       - task: exif:exif-modifier:from-filename
-
   pdf:crypt:encrypt:
     desc: "pdf-encrypterでPDFへパスワードを設定"
     cmds:
       - task: pdf:pdf-encrypter:encrypt
-
   pdf:crypt:decrypt:
     desc: "pdf-encrypterでPDFからパスワードを削除"
     cmds:
       - task: pdf:pdf-encrypter:decrypt
-
   pdf:extract:all-pages:
     desc: "pdf-mergerでPDF全ページをJPG抽出"
     cmds:
       - task: pdf:pdf-merger:extract:all-pages
-
   pdf:extract:page-range:
     desc: "pdf-mergerでPDFの一部ページをJPG抽出"
     cmds:
       - task: pdf:pdf-merger:extract:page-range
-
   pdf:merge:cwd:
     desc: "pdf-mergerでDownloads/picture_backupの画像からPDF作成"
     cmds:
       - task: pdf:pdf-merger:merge:cwd
-
   pdf:merge:into-existing:
     desc: "pdf-mergerでDownloads/picture_backupの画像を既存PDFへ追加"
     cmds:
       - task: pdf:pdf-merger:merge:into-existing
-
   ocr:ollama:
     desc: "ocr-executor-with-aiでOllamaによる推論"
     cmds:
       - task: ocr:ocr-executor-with-ai:ollama
-
   ocr:gemini:
     desc: "ocr-executor-with-aiでGeminiによる推論"
     cmds:
       - task: ocr:ocr-executor-with-ai:gemini
-
   ocr:vertex:
     desc: "ocr-executor-with-aiでVertexAIによる推論"
     cmds:
       - task: ocr:ocr-executor-with-ai:vertex
-
   ocr:gemini:palworld-status:
     desc: "ocr-executor-with-aiでPalworldステータスをGemini解析"
     cmds:
