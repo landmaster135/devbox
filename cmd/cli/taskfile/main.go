@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -34,47 +35,143 @@ func main() {
 	}
 }
 
+type baseResponse struct {
+	Operation string `json:"operation"`
+	Status    string `json:"status"`
+	Code      int    `json:"code"`
+	Message   string `json:"message,omitempty"`
+}
+
+type inspectResponse struct {
+	baseResponse
+	MissingFields []string `json:"missing_fields,omitempty"`
+}
+
+type taskfileResponse struct {
+	baseResponse
+	TaskfilePath string `json:"taskfile_path"`
+}
+
+type errorResponse struct {
+	baseResponse
+	Error string `json:"error"`
+}
+
+const (
+	statusSuccess      = "success"
+	statusMissingField = "missing_fields"
+	statusRegistered   = "registered"
+	statusNoop         = "noop"
+	statusError        = "error"
+)
+
+const (
+	codeOK            = 200
+	codeBadRequest    = 400
+	codeInternalError = 500
+)
+
 func handleInspect(cfg *config.Config) {
 	service := usecases.NewService()
 	result, err := service.Inspect(cfg.TaskType, cfg.TaskfilePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
+		outputError(config.OperationInspect, err)
 	}
 
 	if result.HasMissingFields() {
-		fmt.Fprintf(os.Stderr, "不足しているフィールドが %d 個見つかりました:\n", len(result.MissingFields))
-		for _, field := range result.MissingFields {
-			fmt.Fprintf(os.Stderr, "  - %s\n", field)
-		}
-		os.Exit(1)
+		outputJSONAndExit(1, inspectResponse{
+			baseResponse: baseResponse{
+				Operation: config.OperationInspect,
+				Status:    statusMissingField,
+				Code:      codeOK,
+				Message:   fmt.Sprintf("不足しているフィールドが %d 個見つかりました", len(result.MissingFields)),
+			},
+			MissingFields: result.MissingFields,
+		})
+		return
 	}
 
-	fmt.Println("Taskfileには参照Taskfileのすべてのフィールドが含まれています。")
+	outputJSON(inspectResponse{
+		baseResponse: baseResponse{
+			Operation: config.OperationInspect,
+			Status:    statusSuccess,
+			Code:      codeOK,
+			Message:   "Taskfileには参照Taskfileのすべてのフィールドが含まれています。",
+		},
+	})
 }
 
 func handleFill(cfg *config.Config) {
 	service := usecases.NewService()
 	updated, err := service.Fill(cfg.TaskType, cfg.TaskfilePath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
+		outputError(config.OperationFill, err)
 	}
 
 	if updated {
-		fmt.Println("Taskfileの空欄フィールドをテンプレートの値で補完しました。")
+		outputJSON(taskfileResponse{
+			baseResponse: baseResponse{
+				Operation: config.OperationFill,
+				Status:    statusRegistered,
+				Code:      codeOK,
+				Message:   "Taskfileの空欄フィールドをテンプレートの値で補完しました。",
+			},
+			TaskfilePath: cfg.TaskfilePath,
+		})
 		return
 	}
 
-	fmt.Println("補完対象の空欄フィールドは見つかりませんでした。")
+	outputJSON(taskfileResponse{
+		baseResponse: baseResponse{
+			Operation: config.OperationFill,
+			Status:    statusNoop,
+			Code:      codeOK,
+			Message:   "補完対象の空欄フィールドは見つかりませんでした。",
+		},
+		TaskfilePath: cfg.TaskfilePath,
+	})
 }
 
 func handleNew(cfg *config.Config) {
 	service := usecases.NewService()
 	if err := service.Create(cfg.TaskType, cfg.TaskfilePath); err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
+		outputError(config.OperationNew, err)
 	}
 
-	fmt.Printf("Taskfileを新規作成しました: %s\n", cfg.TaskfilePath)
+	outputJSON(taskfileResponse{
+		baseResponse: baseResponse{
+			Operation: config.OperationNew,
+			Status:    statusRegistered,
+			Code:      codeOK,
+			Message:   fmt.Sprintf("Taskfileを新規作成しました: %s", cfg.TaskfilePath),
+		},
+		TaskfilePath: cfg.TaskfilePath,
+	})
+}
+
+func outputJSON(payload interface{}) {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(payload); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: JSON出力に失敗しました: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func outputJSONAndExit(code int, payload interface{}) {
+	outputJSON(payload)
+	if code != 0 {
+		os.Exit(code)
+	}
+}
+
+func outputError(operation string, err error) {
+	outputJSONAndExit(1, errorResponse{
+		baseResponse: baseResponse{
+			Operation: operation,
+			Status:    statusError,
+			Code:      codeInternalError,
+		},
+		Error: err.Error(),
+	})
 }
