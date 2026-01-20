@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -17,6 +15,7 @@ const (
 
 var rootReferenceCandidates = []string{
 	filepath.Join("internal", "taskfile", "usecases", "taskfiles", "root.yml"),
+	filepath.Join("taskfiles", "root.yml"),
 }
 
 // InspectionResult represents diff outcome between reference and target Taskfile
@@ -60,6 +59,41 @@ func (s *Service) Inspect(taskType, targetPath string) (*InspectionResult, error
 	return &InspectionResult{MissingFields: missing}, nil
 }
 
+// Fill writes reference Taskfile values into blank or missing target fields
+func (s *Service) Fill(taskType, targetPath string) (bool, error) {
+	referencePath, err := resolveReferencePath(taskType)
+	if err != nil {
+		return false, err
+	}
+
+	referenceDoc, err := readYAMLDocument(referencePath)
+	if err != nil {
+		return false, fmt.Errorf("参照Taskfileの読み込みに失敗しました: %w", err)
+	}
+
+	targetDoc, err := readYAMLDocument(targetPath)
+	if err != nil {
+		return false, fmt.Errorf("補完対象Taskfileの読み込みに失敗しました: %w", err)
+	}
+
+	referenceRoot := ensureDocumentRoot(referenceDoc)
+	targetRoot := ensureDocumentRoot(targetDoc)
+	if referenceRoot == nil || targetRoot == nil {
+		return false, fmt.Errorf("Taskfileの解析に失敗しました")
+	}
+
+	changed := fillMappingNode(referenceRoot, targetRoot)
+	if !changed {
+		return false, nil
+	}
+
+	if err := writeYAMLDocument(targetPath, targetRoot); err != nil {
+		return false, fmt.Errorf("Taskfileの書き込みに失敗しました: %w", err)
+	}
+
+	return true, nil
+}
+
 func resolveReferencePath(taskType string) (string, error) {
 	switch taskType {
 	case taskTypeRoot:
@@ -93,48 +127,6 @@ func readFieldSet(path string) (map[string]struct{}, error) {
 		return nil, err
 	}
 	return extractFieldPaths(data)
-}
-
-func extractFieldPaths(data []byte) (map[string]struct{}, error) {
-	var node yaml.Node
-	if err := yaml.Unmarshal(data, &node); err != nil {
-		return nil, err
-	}
-
-	if len(node.Content) == 0 {
-		return map[string]struct{}{}, nil
-	}
-
-	fields := make(map[string]struct{})
-	collectFieldPaths(node.Content[0], "", fields)
-	return fields, nil
-}
-
-func collectFieldPaths(node *yaml.Node, prefix string, fields map[string]struct{}) {
-	if node == nil {
-		return
-	}
-
-	switch node.Kind {
-	case yaml.MappingNode:
-		for i := 0; i+1 < len(node.Content); i += 2 {
-			keyNode := node.Content[i]
-			valueNode := node.Content[i+1]
-			key := keyNode.Value
-			var current string
-			if prefix == "" {
-				current = key
-			} else {
-				current = prefix + "." + key
-			}
-			fields[current] = struct{}{}
-			collectFieldPaths(valueNode, current, fields)
-		}
-	case yaml.SequenceNode:
-		for _, child := range node.Content {
-			collectFieldPaths(child, prefix, fields)
-		}
-	}
 }
 
 func diffFields(reference, target map[string]struct{}) []string {

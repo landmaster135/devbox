@@ -1,9 +1,10 @@
 # Taskfile CLI
 
-Taskfile を検証するための CLI ツールです。指定した Taskfile が、プロジェクト標準 (`internal/taskfile/usecases/taskfiles/root.yml`) に含まれるフィールドを欠けなく定義しているかを確認します。
+Taskfile を検証・補完するための CLI ツールです。指定した Taskfile が、プロジェクト標準 (`internal/taskfile/usecases/taskfiles/root.yml`) に含まれるフィールドを欠けなく定義しているかを確認し、空欄フィールドをテンプレートの値で埋められます。
 
 ## 主な機能
 - **inspect**: 参照 Taskfile と照合し、存在しないフィールドを一覧化
+- **fill**: 空欄または未定義のフィールドを参照 Taskfile の値で補完
 - **root Taskfile チェック**: プロジェクトルートの Taskfile を対象に、必要なタスク・desc・cmds が定義されているかを検証
 
 ## インストール
@@ -24,28 +25,47 @@ go run ./cmd/cli/taskfile \
   --taskfile-path ./Taskfile.yml
 ```
 
+### 空欄をテンプレートで補完
+
+```bash
+go run ./cmd/cli/taskfile \
+  --operation fill \
+  --task-type root \
+  --taskfile-path ./Taskfile.yml
+```
+
 ### オプション
 
 | オプション | 必須 | 説明 | 例 |
 |------------|------|------|----|
-| `--operation` | * | 実行する操作。現在は `inspect` のみ対応 | `--operation inspect` |
+| `--operation` | * | 実行する操作。`inspect` または `fill` | `--operation fill` |
 | `--task-type` | * | 参照 Taskfile の種類。現在は `root` のみ対応 | `--task-type root` |
-| `--taskfile-path` | * | 検証対象となる Taskfile のパス | `--taskfile-path ./Taskfile.yml` |
+| `--taskfile-path` | * | 検証/補完対象となる Taskfile のパス | `--taskfile-path ./Taskfile.yml` |
 | `--help` / `-h` | | ヘルプを表示 | `--help` |
 
 ## 出力例
 
-### すべてのフィールドがある場合
+### すべてのフィールドがある場合 (inspect)
 ```
 Taskfileには参照Taskfileのすべてのフィールドが含まれています。
 ```
 
-### フィールドが不足している場合
+### フィールドが不足している場合 (inspect)
 ```
 不足しているフィールドが 3 個見つかりました:
   - tasks.alias
   - tasks.alias.cmds
   - tasks.alias.desc
+```
+
+### 空欄フィールドが埋められた場合 (fill)
+```
+Taskfileの空欄フィールドをテンプレートの値で補完しました。
+```
+
+### 補完対象がない場合 (fill)
+```
+補完対象の空欄フィールドは見つかりませんでした。
 ```
 
 ## ワークフロー例

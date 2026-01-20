@@ -1,5 +1,4 @@
 version: "3"
-
 tasks:
   default:
     desc: "デフォルト実行タスク"
@@ -12,74 +11,74 @@ tasks:
     cmds:
       - task --list-all
   find:docs:
-    desc: ""
+    desc: "List files in the docs directory at the project root."
     cmds:
       - find docs | sort -f
   find:agents:
-    desc: ""
+    desc: "List files in the agent directory at the project root"
     cmds:
       - find .agents | sort -f
   find:pjroot:
-    desc: ""
+    desc: "List files in the project root directory"
     cmds:
       - find . -maxdepth 1 -type f | sort -f
   find:sql:
-    desc: ""
+    desc: "List files in the directory for SQL"
     cmds:
       - echo 'No registered command...'
   run:dev:
-    desc: ""
+    desc: "Run an executable"
     cmds:
       - go run {{ .DIR }}
     vars:
       DIR: ./cmd/cli/{{ .CLI_ARGS }}
   run:tee:
-    desc: ""
+    desc: "Run an executable with the file recording log"
     cmds:
       - go run {{ .DIR }} | tee
     vars:
       DIR: ./cmd/cli/{{ .CLI_ARGS }}
   run:backend:
-    desc: ""
+    desc: "Run an executable for backend"
     cmds:
       - echo 'No registered command...'
   check:
-    desc: ""
+    desc: "Check on syntax and linting"
     cmds:
       - go vet ./...
   test:cov:
-    desc: ""
+    desc: "Run tests and confirm the test coverage"
     cmds:
       - go test -cover
   test:all:cov:
-    desc: ""
+    desc: "Run all tests and confirm the test coverage"
     cmds:
       - go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
   test:all:out:
-    desc: ""
+    desc: "Run all tests and output test coverage as files"
     cmds:
       - go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
   build:
-    desc: ""
+    desc: "Build files at the project root directory"
     cmds:
       - ./scripts/build/build.sh
   build:dev:
-    desc: ""
+    desc: "Build files for development"
     cmds:
       - echo 'No registered command...'
   build:pre:
-    desc: ""
+    desc: "Run required pre-build processes"
     cmds:
       - ./scripts/initialize/script_generator_to_build.sh {{ .CLI_ARGS }}
   build:mcp:
-    desc: ""
+    desc: "Build MCP tools"
     cmds:
       - ./scripts/build/build_mcp_tools.sh
   domain:mig:new:
-    desc: ""
+    desc: "Initialize resources for a new domain"
     cmds:
       - ./scripts/initialize/create_project_files.sh {{ .CLI_ARGS }}
   domain:mig:run:
-    desc: ""
+    desc: "Run process to migrate domain data"
     cmds:
       - echo 'No registered command...'
