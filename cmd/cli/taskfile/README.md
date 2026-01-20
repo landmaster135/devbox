@@ -53,34 +53,89 @@ go run ./cmd/cli/taskfile \
 | `--taskfile-path` | * | 検証/補完/新規作成対象となる Taskfile のパス | `--taskfile-path ./Taskfile.yml` |
 | `--help` / `-h` | | ヘルプを表示 | `--help` |
 
+## 出力形式
+
+すべての operation は JSON 形式で結果を標準出力します。共通フィールドは以下の通りです。
+
+- `operation`: 実行された operation 名 (`inspect` / `fill` / `new`)
+- `status`: 結果を表すステータス (`success` / `missing_fields` / `registered` / `noop` / `error`)
+- `code`: HTTP ステータス風の数値。`200` (成功)、`400` (入力エラー)、`500` (内部エラー) のいずれか
+- `message`: ユーザー向けメッセージ
+
+operation に応じて追加フィールドが付きます。
+
+- `missing_fields`: `inspect` で不足していたフィールドのスライス
+- `taskfile_path`: `fill`/`new` で対象となった Taskfile のパス
+
+エラーが発生した場合は `status: "error"` と `error` フィールドを含む JSON が出力され、終了コード 1 になります。
+
+```json
+{
+  "operation": "fill",
+  "status": "error",
+  "code": 500,
+  "error": "参照Taskfileの読み込みに失敗しました: ..."
+}
+```
+
 ## 出力例
 
 ### すべてのフィールドがある場合 (inspect)
-```
-Taskfileには参照Taskfileのすべてのフィールドが含まれています。
+```json
+{
+  "operation": "inspect",
+  "status": "success",
+  "code": 200,
+  "message": "Taskfileには参照Taskfileのすべてのフィールドが含まれています。"
+}
 ```
 
 ### フィールドが不足している場合 (inspect)
-```
-不足しているフィールドが 3 個見つかりました:
-  - tasks.alias
-  - tasks.alias.cmds
-  - tasks.alias.desc
+```json
+{
+  "operation": "inspect",
+  "status": "missing_fields",
+  "code": 200,
+  "message": "不足しているフィールドが 3 個見つかりました",
+  "missing_fields": [
+    "tasks.alias",
+    "tasks.alias.cmds",
+    "tasks.alias.desc"
+  ]
+}
 ```
 
 ### 空欄フィールドが埋められた場合 (fill)
-```
-Taskfileの空欄フィールドをテンプレートの値で補完しました。
+```json
+{
+  "operation": "fill",
+  "status": "registered",
+  "code": 200,
+  "message": "Taskfileの空欄フィールドをテンプレートの値で補完しました。",
+  "taskfile_path": "./Taskfile.yml"
+}
 ```
 
 ### 補完対象がない場合 (fill)
-```
-補完対象の空欄フィールドは見つかりませんでした。
+```json
+{
+  "operation": "fill",
+  "status": "noop",
+  "code": 200,
+  "message": "補完対象の空欄フィールドは見つかりませんでした。",
+  "taskfile_path": "./Taskfile.yml"
+}
 ```
 
 ### 新規作成が完了した場合 (new)
-```
-Taskfileを新規作成しました: ./Taskfile.yml
+```json
+{
+  "operation": "new",
+  "status": "registered",
+  "code": 200,
+  "message": "Taskfileを新規作成しました: ./Taskfile.yml",
+  "taskfile_path": "./Taskfile.yml"
+}
 ```
 
 ## ワークフロー例
