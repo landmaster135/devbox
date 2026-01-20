@@ -353,3 +353,8 @@ tasks:
     desc: "ocr-executor-with-aiでGemini推論"
     cmds:
       - task: ocr:ocr-executor-with-ai:gemini
+
+  ocr:gemini:palworld-status:
+    desc: "ocr-executor-with-aiでPalworldステータスをGemini解析"
+    cmds:
+      - task: ocr:ocr-executor-with-ai:gemini:palworld-status
