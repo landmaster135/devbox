@@ -345,14 +345,19 @@ tasks:
       - task: pdf:pdf-merger:merge:into-existing
 
   ocr:ollama:
-    desc: "ocr-executor-with-aiでOllama推論"
+    desc: "ocr-executor-with-aiでOllamaによる推論"
     cmds:
       - task: ocr:ocr-executor-with-ai:ollama
 
   ocr:gemini:
-    desc: "ocr-executor-with-aiでGemini推論"
+    desc: "ocr-executor-with-aiでGeminiによる推論"
     cmds:
       - task: ocr:ocr-executor-with-ai:gemini
+
+  ocr:vertex:
+    desc: "ocr-executor-with-aiでVertexAIによる推論"
+    cmds:
+      - task: ocr:ocr-executor-with-ai:vertex
 
   ocr:gemini:palworld-status:
     desc: "ocr-executor-with-aiでPalworldステータスをGemini解析"

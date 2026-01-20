@@ -101,3 +101,31 @@ tasks:
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
         silent: true
+
+  ocr-executor-with-ai:vertex:
+    desc: "ocr-executor-with-aiでVertex推論"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}}
+          {{.PROMPT_MESSAGE_FROM_TYPE_FUNC}}
+
+          TARGET_PATH_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input file or directory path for OCR (default: .) : " path)" || exit 1
+          PROMPT_TYPE="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select prompt output style  [p]='Plain text'  [t]='Markdown Table' : " prompt \
+            --choice-option "p|plain" --choice-option "t|table")" || exit 1
+          PROJECT_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input Project ID to request Vertex AI API: " project)" || exit 1
+
+          PROMPT_MESSAGE="$(prompt_message_from_type "$PROMPT_TYPE")" || exit 1
+
+          echo "[Notice] Google Cloud OAuth Authentication is required."
+          echo $'\n[Step 01: START]--- ocr-executor-with-ai (Vertex AI) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}ocr-executor-with-ai{{.EXE}}" \
+            --ai-type=vertex --prompt="$PROMPT_MESSAGE" \
+            "$TARGET_PATH_FLAG" "$PROJECT_FLAG"
+          echo $'\n[Step 01: END]--- ocr-executor-with-ai (Vertex AI) の実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
