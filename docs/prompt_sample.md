@@ -11,3 +11,9 @@
 /home/user/devbox/pkg/taskfile/taskfiles/exif.ymlに下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして、/home/user/devbox/pkg/taskfile/Taskfile.ymlから呼び出すようにして。
 - /home/user/devbox/pkg/win_dos/Z3-4_exif_modifier_from_filename.bat
 - 
+
+## 新規のCLIツールの追加
+/home/user/devbox/cmd/cli/taskfile/main.goにTaskfileを管理するためのCLIツールを実装して。CLIフラグには"--operation"、"--task-type"、"--taskfile-path"を受け付けるようにして。
+- "--operation"には、"inspect"を受け付ける。
+- "--task-type"には、"root"を受け付ける。
+- --operation: inspect, --task-type: root の場合は、/home/user/devbox/internal/taskfile/usecases/taskfiles/root.ymlにあるフィールドが、"--taskfile-path"で渡されたTaskfileで不足していないかどうかを確認する。
