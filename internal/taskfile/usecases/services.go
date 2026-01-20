@@ -94,6 +94,41 @@ func (s *Service) Fill(taskType, targetPath string) (bool, error) {
 	return true, nil
 }
 
+// Create writes a brand-new Taskfile from the reference template
+func (s *Service) Create(taskType, targetPath string) error {
+	referencePath, err := resolveReferencePath(taskType)
+	if err != nil {
+		return err
+	}
+
+	templateData, err := os.ReadFile(referencePath)
+	if err != nil {
+		return fmt.Errorf("参照Taskfileの読み込みに失敗しました: %w", err)
+	}
+
+	dir := filepath.Dir(targetPath)
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("Taskfileのディレクトリ作成に失敗しました: %w", err)
+		}
+	}
+
+	if info, err := os.Stat(targetPath); err == nil {
+		if info.IsDir() {
+			return fmt.Errorf("指定されたパスはディレクトリです: %s", targetPath)
+		}
+		return fmt.Errorf("指定されたパスには既にファイルが存在します: %s", targetPath)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("Taskfileの存在確認に失敗しました: %w", err)
+	}
+
+	if err := os.WriteFile(targetPath, templateData, 0o644); err != nil {
+		return fmt.Errorf("Taskfileの書き込みに失敗しました: %w", err)
+	}
+
+	return nil
+}
+
 func resolveReferencePath(taskType string) (string, error) {
 	switch taskType {
 	case taskTypeRoot:

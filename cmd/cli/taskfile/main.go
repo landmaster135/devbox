@@ -26,6 +26,8 @@ func main() {
 		handleInspect(cfg)
 	case config.OperationFill:
 		handleFill(cfg)
+	case config.OperationNew:
+		handleNew(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未サポートのoperationです: %s\n", cfg.Operation)
 		os.Exit(1)
@@ -65,4 +67,14 @@ func handleFill(cfg *config.Config) {
 	}
 
 	fmt.Println("補完対象の空欄フィールドは見つかりませんでした。")
+}
+
+func handleNew(cfg *config.Config) {
+	service := usecases.NewService()
+	if err := service.Create(cfg.TaskType, cfg.TaskfilePath); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Taskfileを新規作成しました: %s\n", cfg.TaskfilePath)
 }
