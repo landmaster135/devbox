@@ -23,7 +23,9 @@ type Config struct {
 }
 
 // デフォルト値の定数
+
 const (
+	DefaultPath                = "."
 	DefaultModel               = "qwen2.5vl"
 	DefaultGeminiModel         = "gemini-2.5-flash-lite"
 	DefaultVertexModel         = "gemini-1.5-pro-002"
@@ -124,7 +126,7 @@ func NewConfig(path string, recursive bool, model, prompt, systemInstruction str
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析する
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
-		path                   = ""
+		path                   = DefaultPath
 		recursive              = false
 		model                  = DefaultModel
 		prompt                 = DefaultPrompt
@@ -223,7 +225,7 @@ func PrintUsage() {
     %s -path /path/to/image.webp -generates-markdown-table -ai-type gemini -api-key "your-api-key"
 
 オプション:
-  -path, -p              画像ファイルまたはディレクトリのパス (必須)
+  -path, -p              画像ファイルまたはディレクトリのパス (デフォルト: .)
   -recursive, -r         ディレクトリを再帰的に検索 (デフォルト: false)
   -ai-type, -at          AIタイプ (gemini, vertex, ollama) (デフォルト: %s)
   -api-key, -ak          Gemini API キー (Gemini使用時必須)

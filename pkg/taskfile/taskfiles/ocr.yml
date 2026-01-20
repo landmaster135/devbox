@@ -1,0 +1,79 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+vars:
+  PROMPT_MESSAGE_FROM_TYPE_FUNC: |
+    function prompt_message_from_type() {
+      case "$1" in
+        "--prompt=plain")
+          printf '%s' "OCRして。"
+          ;;
+        "--prompt=table")
+          printf '%s' "OCRして、Markdownのテーブル形式にして。"
+          ;;
+        *)
+          echo "Invalid prompt type is selected." >&2
+          return 1
+          ;;
+      esac
+    }
+
+tasks:
+  ocr-executor-with-ai:ollama:
+    desc: "ocr-executor-with-aiでOllama推論"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}}
+          {{.PROMPT_MESSAGE_FROM_TYPE_FUNC}}
+
+          TARGET_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input file or directory path for OCR (default: .) : " path)" || exit 1
+          PROMPT_TYPE="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select prompt output style  [p]='Plain text'  [t]='Markdown Table' : " prompt \
+            --choice-option "p|plain" --choice-option "t|table")" || exit 1
+
+          PROMPT_MESSAGE="$(prompt_message_from_type "$PROMPT_TYPE")" || exit 1
+
+          echo $'\n[Step 01: START]--- ocr-executor-with-ai (Ollama) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}ocr-executor-with-ai{{.EXE}}" \
+            --ai-type=ollama --model="qwen2.5vl" \
+            --prompt="$PROMPT_MESSAGE"
+            "$TARGET_PATH" \
+          echo $'\n[Step 01: END]--- ocr-executor-with-ai (Ollama) の実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  ocr-executor-with-ai:gemini:
+    desc: "ocr-executor-with-aiでGemini推論"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}}
+          {{.PROMPT_MESSAGE_FROM_TYPE_FUNC}}
+
+          TARGET_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input file or directory path for OCR (default: .) : " path)" || exit 1
+          PROMPT_TYPE="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select prompt output style  [p]='Plain text'  [t]='Markdown Table' : " prompt \
+            --choice-option "p|plain" --choice-option "t|table")" || exit 1
+
+          PROMPT_MESSAGE="$(prompt_message_from_type "$PROMPT_TYPE")" || exit 1
+
+          GEMINI_API_KEY="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input API key to request Gemini API: " api-key)" || exit 1
+
+          echo $'\n[Step 01: START]--- ocr-executor-with-ai (Gemini) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}ocr-executor-with-ai{{.EXE}}" \
+            --ai-type=gemini \
+            --prompt="$PROMPT_MESSAGE" \
+            "$TARGET_PATH" "$GEMINI_API_KEY"
+          echo $'\n[Step 01: END]--- ocr-executor-with-ai (Gemini) の実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true

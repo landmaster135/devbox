@@ -21,6 +21,10 @@ includes:
     taskfile: ./taskfiles/image_convert.yml
     flatten: false
     internal: true
+  ocr:
+    taskfile: ./taskfiles/ocr.yml
+    flatten: false
+    internal: true
   iso8601:
     taskfile: ./taskfiles/iso8601.yml
     flatten: false
@@ -339,3 +343,13 @@ tasks:
     desc: "pdf-mergerでDownloads/picture_backupの画像を既存PDFへ追加"
     cmds:
       - task: pdf:pdf-merger:merge:into-existing
+
+  ocr:ollama:
+    desc: "ocr-executor-with-aiでOllama推論"
+    cmds:
+      - task: ocr:ocr-executor-with-ai:ollama
+
+  ocr:gemini:
+    desc: "ocr-executor-with-aiでGemini推論"
+    cmds:
+      - task: ocr:ocr-executor-with-ai:gemini

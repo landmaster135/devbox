@@ -112,7 +112,7 @@ go run ./cmd/cli/ocr-executor-with-ai -path /path/to/table-image.webp -generates
 
 | オプション | 短縮形 | 説明 | デフォルト値 |
 |-----------|--------|------|-------------|
-| `-path` | `-p` | 画像ファイルまたはディレクトリのパス（必須） | - |
+| `-path` | `-p` | 画像ファイルまたはディレクトリのパス | `.` (カレントディレクトリ) |
 | `-recursive` | `-r` | ディレクトリを再帰的に検索 | false |
 | `-ai-type` | `-at` | 利用するAIタイプ（`gemini` / `vertex` / `ollama`） | gemini |
 | `-prompt` | `-pr` | OCR用プロンプト（`-generates-markdown-table`と併用不可） | "OCRして。補足や説明は不要です。" |
