@@ -8,14 +8,16 @@ import (
 )
 
 const (
-	// OperationInspect はサポートされている唯一の操作
+	// OperationInspect は Taskfile を検証する操作
 	OperationInspect = "inspect"
+	// OperationFill は Taskfile の空欄を参照Taskfileの値で補完する操作
+	OperationFill = "fill"
 	// TaskTypeRoot は root Taskfile の検証を指すタスクタイプ
 	TaskTypeRoot = "root"
 )
 
 var (
-	allowedOperations = []string{OperationInspect}
+	allowedOperations = []string{OperationInspect, OperationFill}
 	allowedTaskTypes  = []string{TaskTypeRoot}
 )
 
@@ -97,7 +99,7 @@ func ParseFlags() (*Config, error) {
 
 	flagSet.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作 (%s)", strings.Join(allowedOperations, ", ")))
 	flagSet.StringVar(&taskType, "task-type", "", fmt.Sprintf("Taskfileの種類 (%s)", strings.Join(allowedTaskTypes, ", ")))
-	flagSet.StringVar(&taskfilePath, "taskfile-path", "", "検証対象のTaskfileパス")
+	flagSet.StringVar(&taskfilePath, "taskfile-path", "", "検証/補完対象のTaskfileパス")
 	flagSet.BoolVar(&help, "help", false, "ヘルプを表示")
 	flagSet.BoolVar(&help, "h", false, "ヘルプを表示 (短縮形)")
 
@@ -113,10 +115,10 @@ func PrintUsage() {
 	exeName := os.Args[0]
 
 	fmt.Fprintf(os.Stderr, "Taskfile CLI ツール\n\n")
-	fmt.Fprintf(os.Stderr, "使用方法:\n  %s --operation inspect --task-type root --taskfile-path ./Taskfile.yml\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "使用方法:\n  %s --operation inspect --task-type root --taskfile-path ./Taskfile.yml\n  %s --operation fill --task-type root --taskfile-path ./Taskfile.yml\n\n", exeName, exeName)
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --operation string\n        実行する操作 (%s)\n", strings.Join(allowedOperations, ", "))
 	fmt.Fprintf(os.Stderr, "  --task-type string\n        Taskfileの種類 (%s)\n", strings.Join(allowedTaskTypes, ", "))
-	fmt.Fprintf(os.Stderr, "  --taskfile-path string\n        検証対象のTaskfileへのパス\n")
+	fmt.Fprintf(os.Stderr, "  --taskfile-path string\n        検証/補完対象のTaskfileへのパス\n")
 	fmt.Fprintf(os.Stderr, "  --help\n        このヘルプを表示\n")
 }

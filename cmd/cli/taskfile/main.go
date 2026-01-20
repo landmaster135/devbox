@@ -24,6 +24,8 @@ func main() {
 	switch cfg.Operation {
 	case config.OperationInspect:
 		handleInspect(cfg)
+	case config.OperationFill:
+		handleFill(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未サポートのoperationです: %s\n", cfg.Operation)
 		os.Exit(1)
@@ -47,4 +49,20 @@ func handleInspect(cfg *config.Config) {
 	}
 
 	fmt.Println("Taskfileには参照Taskfileのすべてのフィールドが含まれています。")
+}
+
+func handleFill(cfg *config.Config) {
+	service := usecases.NewService()
+	updated, err := service.Fill(cfg.TaskType, cfg.TaskfilePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	if updated {
+		fmt.Println("Taskfileの空欄フィールドをテンプレートの値で補完しました。")
+		return
+	}
+
+	fmt.Println("補完対象の空欄フィールドは見つかりませんでした。")
 }
