@@ -75,6 +75,11 @@ func (s *EnvSyncService) SyncEnvIntoCompose(envPath, composePath string) (int, e
 	return len(entries), nil
 }
 
+// SyncPortsIntoCompose は指定したport-keyの値をもとに、サービスのportsおよびtsdproxy.container_portを更新する
+func (s *EnvSyncService) SyncPortsIntoCompose(envPath, composePath, portKey, serviceName string) error {
+	return syncPortsIntoCompose(envPath, composePath, portKey, serviceName)
+}
+
 func parseEnvEntries(content string) ([]EnvEntry, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
@@ -179,10 +184,7 @@ func stripQuotes(value string) string {
 }
 
 func injectEnvironmentBlock(composeContent string, entries []EnvEntry) (string, error) {
-	lines := strings.Split(composeContent, "\n")
-	for i := range lines {
-		lines[i] = strings.TrimSuffix(lines[i], "\r")
-	}
+	lines := splitComposeLines(composeContent)
 
 	envLineIndex, endIndex, baseIndent, err := findEnvironmentBlock(lines)
 	if err != nil {
@@ -203,6 +205,14 @@ func injectEnvironmentBlock(composeContent string, entries []EnvEntry) (string, 
 	}
 
 	return result, nil
+}
+
+func splitComposeLines(content string) []string {
+	lines := strings.Split(content, "\n")
+	for i := range lines {
+		lines[i] = strings.TrimSuffix(lines[i], "\r")
+	}
+	return lines
 }
 
 func findEnvironmentBlock(lines []string) (int, int, string, error) {

@@ -8,6 +8,8 @@ ENV_PATH="${PROJECT_ROOT}/env.yml"
 BUILD_SCRIPT="${PROJECT_ROOT}/pkg/docker/build_frontend_image.sh"
 IMAGE_NAME="devbox-cron"
 IMAGE_TAG="${IMAGE_NAME}:latest"
+PORT_KEY="CRON_URL_PORT"
+SERVICE_NAME="devbox"
 
 log() {
   echo "[docker:pkg-dev] $1"
@@ -21,6 +23,19 @@ run_env_sync() {
       --operation=env-into-compose \
       --compose-path="$COMPOSE_PATH" \
       --env-yaml-path="$ENV_PATH"
+  )
+}
+
+run_port_sync() {
+  log "ports 情報を docker-compose.yml に反映"
+  (
+    cd "$PROJECT_ROOT"
+    go run ./cmd/cli/docker/main.go \
+      --operation=ports-into-compose \
+      --compose-path="$COMPOSE_PATH" \
+      --env-yaml-path="$ENV_PATH" \
+      --port-key="$PORT_KEY" \
+      --service="$SERVICE_NAME"
   )
 }
 
@@ -43,6 +58,7 @@ compose_up() {
 }
 
 run_env_sync
+run_port_sync
 build_frontend
 verify_image
 compose_up
