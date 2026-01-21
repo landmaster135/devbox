@@ -19,6 +19,8 @@ func main() {
 	switch cfg.Operation {
 	case config.OperationEnvIntoCompose:
 		handleEnvIntoCompose(cfg)
+	case config.OperationPortsIntoCompose:
+		handlePortsIntoCompose(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応のoperationです: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -34,4 +36,13 @@ func handleEnvIntoCompose(cfg *config.Config) {
 		os.Exit(1)
 	}
 	fmt.Printf("%d件の環境変数を %s に反映しました\n", count, cfg.ComposePath)
+}
+
+func handlePortsIntoCompose(cfg *config.Config) {
+	service := usecases.NewEnvSyncService()
+	if err := service.SyncPortsIntoCompose(cfg.EnvYAMLPath, cfg.ComposePath, cfg.PortKey, cfg.Service); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%s のポートを %s に更新しました\n", cfg.Service, cfg.PortKey)
 }
