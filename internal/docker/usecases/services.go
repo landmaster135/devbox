@@ -1,7 +1,6 @@
 package usecases
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"gopkg.in/yaml.v3"
 )
 
 // EnvEntry は単一の環境変数キーと値を表す
@@ -81,49 +82,43 @@ func (s *EnvSyncService) SyncPortsIntoCompose(envPath, composePath, portKey, ser
 }
 
 func parseEnvEntries(content string) ([]EnvEntry, error) {
-	scanner := bufio.NewScanner(strings.NewReader(content))
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-
-	var entries []EnvEntry
-	for scanner.Scan() {
-		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-		key, rawValue, ok := splitKeyValueLine(line)
-		if !ok {
-			continue
-		}
-		withoutComment := stripInlineComment(rawValue)
-		normalized := stripQuotes(strings.TrimSpace(withoutComment))
-		entries = append(entries, EnvEntry{Key: key, Value: normalized})
-	}
-
-	if err := scanner.Err(); err != nil {
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(content), &root); err != nil {
 		return nil, fmt.Errorf("envファイルの解析に失敗しました: %w", err)
 	}
 
+	if len(root.Content) == 0 {
+		return nil, nil
+	}
+
+	mapping := root.Content[0]
+	if mapping == nil {
+		return nil, nil
+	}
+	if mapping.Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("envファイルのルートはマッピングである必要があります")
+	}
+
+	entries := make([]EnvEntry, 0, len(mapping.Content)/2)
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		keyNode := mapping.Content[i]
+		if keyNode == nil || keyNode.Kind != yaml.ScalarNode {
+			continue
+		}
+		key := strings.TrimSpace(keyNode.Value)
+		if key == "" || !isValidKey(key) {
+			continue
+		}
+
+		valueNode := mapping.Content[i+1]
+		value, err := renderYAMLValue(valueNode)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, EnvEntry{Key: key, Value: value})
+	}
+
 	return entries, nil
-}
-
-func splitKeyValueLine(line string) (string, string, bool) {
-	idx := strings.Index(line, ":")
-	if idx == -1 {
-		return "", "", false
-	}
-
-	key := strings.TrimSpace(line[:idx])
-	if key == "" || !isValidKey(key) {
-		return "", "", false
-	}
-
-	value := ""
-	if idx+1 < len(line) {
-		value = line[idx+1:]
-	}
-
-	return key, value, true
 }
 
 func isValidKey(key string) bool {
@@ -135,52 +130,111 @@ func isValidKey(key string) bool {
 	return true
 }
 
-func stripInlineComment(value string) string {
-	inSingle := false
-	inDouble := false
-	var builder strings.Builder
-
-	for i := 0; i < len(value); i++ {
-		ch := value[i]
-		switch ch {
-		case '\'':
-			if !inDouble {
-				inSingle = !inSingle
-			}
-			builder.WriteByte(ch)
-		case '"':
-			if !inSingle {
-				escaped := i > 0 && value[i-1] == '\\'
-				if !escaped {
-					inDouble = !inDouble
-				}
-			}
-			builder.WriteByte(ch)
-		case '#':
-			if !inSingle && !inDouble {
-				return strings.TrimRightFunc(builder.String(), unicode.IsSpace)
-			}
-			builder.WriteByte(ch)
-		default:
-			builder.WriteByte(ch)
-		}
+func renderYAMLValue(node *yaml.Node) (string, error) {
+	if node == nil {
+		return "", nil
 	}
-
-	return strings.TrimRightFunc(builder.String(), unicode.IsSpace)
+	resolved := resolveAlias(node)
+	switch resolved.Kind {
+	case yaml.ScalarNode:
+		if resolved.Tag == "!!null" && resolved.Value == "" {
+			return "", nil
+		}
+		return resolved.Value, nil
+	case yaml.MappingNode, yaml.SequenceNode:
+		var builder strings.Builder
+		if err := encodeNodeAsJSON(&builder, resolved); err != nil {
+			return "", err
+		}
+		return builder.String(), nil
+	case yaml.DocumentNode:
+		if len(resolved.Content) == 0 {
+			return "", nil
+		}
+		return renderYAMLValue(resolved.Content[0])
+	default:
+		return "", fmt.Errorf("サポートされていないYAMLノードです: kind=%d", resolved.Kind)
+	}
 }
 
-func stripQuotes(value string) string {
-	trimmed := strings.TrimSpace(value)
-	if len(trimmed) < 2 {
-		return trimmed
+func resolveAlias(node *yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
 	}
+	if node.Kind == yaml.AliasNode && node.Alias != nil {
+		return node.Alias
+	}
+	return node
+}
 
-	first := trimmed[0]
-	last := trimmed[len(trimmed)-1]
-	if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
-		return trimmed[1 : len(trimmed)-1]
+func encodeNodeAsJSON(builder *strings.Builder, node *yaml.Node) error {
+	node = resolveAlias(node)
+	switch node.Kind {
+	case yaml.SequenceNode:
+		builder.WriteByte('[')
+		for idx, child := range node.Content {
+			if idx > 0 {
+				builder.WriteByte(',')
+			}
+			if err := encodeNodeAsJSON(builder, child); err != nil {
+				return err
+			}
+		}
+		builder.WriteByte(']')
+		return nil
+	case yaml.MappingNode:
+		builder.WriteByte('{')
+		pairIdx := 0
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			keyNode := resolveAlias(node.Content[i])
+			valueNode := node.Content[i+1]
+			if keyNode.Kind != yaml.ScalarNode {
+				continue
+			}
+			if pairIdx > 0 {
+				builder.WriteByte(',')
+			}
+			pairIdx++
+			builder.WriteString(strconv.Quote(keyNode.Value))
+			builder.WriteByte(':')
+			if err := encodeNodeAsJSON(builder, valueNode); err != nil {
+				return err
+			}
+		}
+		builder.WriteByte('}')
+		return nil
+	case yaml.ScalarNode:
+		builder.WriteString(jsonScalarLiteral(node))
+		return nil
+	case yaml.DocumentNode:
+		if len(node.Content) == 0 {
+			builder.WriteString("null")
+			return nil
+		}
+		return encodeNodeAsJSON(builder, node.Content[0])
+	default:
+		return fmt.Errorf("サポートされていないYAMLノードです: kind=%d", node.Kind)
 	}
-	return trimmed
+}
+
+func jsonScalarLiteral(node *yaml.Node) string {
+	if node == nil {
+		return "null"
+	}
+	switch node.Tag {
+	case "!!bool":
+		lower := strings.ToLower(node.Value)
+		if lower == "true" || lower == "false" {
+			return lower
+		}
+		return "false"
+	case "!!int", "!!float":
+		return node.Value
+	case "!!null":
+		return "null"
+	default:
+		return strconv.Quote(node.Value)
+	}
 }
 
 func injectEnvironmentBlock(composeContent string, entries []EnvEntry) (string, error) {

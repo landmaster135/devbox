@@ -75,7 +75,6 @@ services:
 	}
 }
 
-
 func TestParseEnvEntries(t *testing.T) {
 	t.Parallel()
 
@@ -86,6 +85,13 @@ BAR: "bar #ignored"
 BAZ: 'value with # hash'
 EMPTY:
 INVALID-LINE: should_skip
+MOUNT_VOLUME:
+  - type: bind
+    source: /home/user/cron_output
+    target: /app/volume
+STRUCT_VALUE:
+  foo: bar
+  baz: 1
 `) + "\n"
 
 	entries, err := parseEnvEntries(content)
@@ -93,8 +99,8 @@ INVALID-LINE: should_skip
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(entries) != 4 {
-		t.Fatalf("expected 4 entries, got %d", len(entries))
+	if len(entries) != 6 {
+		t.Fatalf("expected 6 entries, got %d", len(entries))
 	}
 
 	cases := []struct {
@@ -106,6 +112,8 @@ INVALID-LINE: should_skip
 		{1, "BAR", "bar #ignored"},
 		{2, "BAZ", "value with # hash"},
 		{3, "EMPTY", ""},
+		{4, "MOUNT_VOLUME", "[{\"type\":\"bind\",\"source\":\"/home/user/cron_output\",\"target\":\"/app/volume\"}]"},
+		{5, "STRUCT_VALUE", "{\"foo\":\"bar\",\"baz\":1}"},
 	}
 
 	for _, c := range cases {
@@ -146,5 +154,63 @@ services:
 
 	if strings.Count(updated, "KEY=VALUE") != 1 {
 		t.Fatalf("expected environment block to be updated only once, got:\n%s", updated)
+	}
+}
+
+func TestSyncEnvIntoComposeWithStructuredValues(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	envPath := filepath.Join(dir, "env.yml")
+	composePath := filepath.Join(dir, "docker-compose.yml")
+
+	envContent := strings.TrimSpace(`
+MOUNT_VOLUME:
+  - type: bind
+    source: /home/user/cron_output
+    target: /app/volume
+NESTED:
+  foo: bar
+`) + "\n"
+	composeContent := strings.TrimSpace(`
+services:
+  devbox:
+    image: devbox:latest
+    environment:
+      - PLACEHOLDER=value
+`) + "\n"
+
+	if err := os.WriteFile(envPath, []byte(envContent), 0o644); err != nil {
+		t.Fatalf("failed to write env file: %v", err)
+	}
+	if err := os.WriteFile(composePath, []byte(composeContent), 0o644); err != nil {
+		t.Fatalf("failed to write compose file: %v", err)
+	}
+
+	service := NewEnvSyncService()
+	count, err := service.SyncEnvIntoCompose(envPath, composePath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected 2 env entries, got %d", count)
+	}
+
+	updated, err := os.ReadFile(composePath)
+	if err != nil {
+		t.Fatalf("failed to read compose file: %v", err)
+	}
+
+	expected := strings.TrimSpace(`
+services:
+  devbox:
+    image: devbox:latest
+    environment:
+      - MOUNT_VOLUME=[{"type":"bind","source":"/home/user/cron_output","target":"/app/volume"}]
+      - NESTED={"foo":"bar"}
+`) + "\n"
+
+	if string(updated) != expected {
+		t.Fatalf("compose file mismatch\nexpected:\n%s\nactual:\n%s", expected, string(updated))
 	}
 }
