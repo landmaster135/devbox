@@ -10,6 +10,7 @@ env.yml に定義した情報を `docker-compose.yml` へ同期するユーテ�
 - 値に空白が含まれる場合は自動でダブルクォートを付与
 - `ports:` ブロックおよび `labels.tsdproxy.container_port` を任意のサービスに対して更新
 - `volumes:` ブロックを env.yml 内の構造化値（配列／マップ）で差し替え、bind mount などの設定を共有
+- `user:` フィールドを env.yml の UID/GID 定義から同期し、実行ユーザーを一括変更
 
 ## インストール
 
@@ -39,12 +40,13 @@ go run ./cmd/cli/docker \
 
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `-operation` | * | なし | `env-into-compose` / `ports-into-compose` / `volumes-into-compose` |
+| `-operation` | * | なし | `env-into-compose` / `ports-into-compose` / `volumes-into-compose` / `user-into-compose` |
 | `-compose-path` | | `docker-compose.yml` | 読み書き対象の docker-compose.yml パス |
 | `-env-yaml-path` | | `env.yml` | 参照する環境変数YAMLのパス |
 | `-port-key` | `ports-into-compose` 時 | なし | env.yml 内から参照するキー（例: `VITE_FRONT_URL_PORT`） |
 | `-volume-key` | `volumes-into-compose` 時 | なし | env.yml 内から参照するボリューム定義のキー（例: `MOUNT_VOLUME`） |
-| `-service` | `ports-into-compose` / `volumes-into-compose` 時 | なし | 更新対象サービス名（例: `devbox`） |
+| `-user-key` | `user-into-compose` 時 | なし | env.yml 内から参照するユーザー値のキー（例: `COMPOSE_USER`） |
+| `-service` | `ports-into-compose` / `volumes-into-compose` / `user-into-compose` 時 | なし | 更新対象サービス名（例: `devbox`） |
 
 ### 典型的なワークフロー
 
@@ -95,6 +97,19 @@ services:
         source: /home/user/cron_output
         target: /app/volume
 ```
+
+### user-into-compose の例
+
+```bash
+go run ./cmd/cli/docker \
+  -operation=user-into-compose \
+  -compose-path=./docker-compose.yml \
+  -env-yaml-path=./env.yml \
+  -user-key=COMPOSE_USER \
+  -service=devbox
+```
+
+`env.yml` の `COMPOSE_USER` に `"8888:8888"` のような UID:GID 文字列を記述しておけば、`services.devbox.user` に反映されます。Compose 実行ユーザーをステージング／本番で切り替える用途に便利です。
 
 ### YAML フォーマットについて
 
