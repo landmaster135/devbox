@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -16,18 +15,12 @@ import (
 
 const defaultTimezone = "Asia/Tokyo"
 
-var workflowVolumePath string
-
-func workflowVolumeDir() (string, error) {
-	if workflowVolumePath != "" {
-		return workflowVolumePath, nil
+func workflowVolumeDir(fs filesystem.Repository) (string, error) {
+	wd, err := fs.WorkingDir()
+	if err != nil {
+		return "", fmt.Errorf("determine workflow volume directory: %w", err)
 	}
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", fmt.Errorf("determine workflow volume directory: runtime.Caller failed")
-	}
-	workflowVolumePath = filepath.Join(filepath.Dir(file), "volume")
-	return workflowVolumePath, nil
+	return filepath.Join(wd, "volume"), nil
 }
 
 // ProcessFunc defines the signature each workflow task must satisfy.
@@ -80,7 +73,7 @@ func List() ([]Workflow, error) {
 	envRepo := workflowenv.NewRepository()
 	filesystemRepo := filesystem.NewRepository()
 
-	volumeDir, err := workflowVolumeDir()
+	volumeDir, err := workflowVolumeDir(filesystemRepo)
 	if err != nil {
 		return nil, fmt.Errorf("resolve workflow volume directory: %w", err)
 	}
@@ -115,6 +108,7 @@ func heartbeatWorkflow(owner string, fileRepo filesystem.Repository, volumeDir s
 
 			message := fmt.Sprintf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), owner)
 			log.Printf("%s", message)
+			log.Printf("[heartbeat] writing status file: %s", statusFile)
 			if err := fileRepo.Write(statusFile, true, message+"\n"); err != nil {
 				return fmt.Errorf("write heartbeat status file: %w", err)
 			}
