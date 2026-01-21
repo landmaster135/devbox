@@ -1,0 +1,12 @@
+services:
+  devbox:
+    image: "devbox-cron:latest"
+    restart: unless-stopped
+    ports:
+      - "9999:9999"
+    environment:
+      - GIN_MODE=staging
+    labels:
+      tsdproxy.enable: "true"
+      tsdproxy.name: "devbox"
+      tsdproxy.container_port: 9999
