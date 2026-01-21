@@ -32,7 +32,10 @@ func main() {
 }
 
 func run() error {
-	workflows := workflow.List()
+	workflows, err := workflow.List()
+	if err != nil {
+		return err
+	}
 	if len(workflows) == 0 {
 		return errors.New("no workflows configured")
 	}
