@@ -6,6 +6,8 @@ import (
 	"log"
 	"strings"
 	"time"
+
+	workflowenv "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow/infrastructure/env"
 )
 
 const defaultTimezone = "Asia/Tokyo"
@@ -56,19 +58,25 @@ func (w Workflow) timezoneOrDefault() string {
 }
 
 // List returns all configured workflows.
-func List() []Workflow {
-	return []Workflow{
-		heartbeatWorkflow(),
-		hourlyHealthSnapshotWorkflow(),
+func List() ([]Workflow, error) {
+	envRepo := workflowenv.NewRepository()
+	heartOwner, err := envRepo.GetEnv("HEART_OWNER")
+	if err != nil {
+		return nil, fmt.Errorf("resolve heart owner from %s: %w", "HEART_OWNER", err)
 	}
+
+	return []Workflow{
+		heartbeatWorkflow(heartOwner),
+		hourlyHealthSnapshotWorkflow(),
+	}, nil
 }
 
-func heartbeatWorkflow() Workflow {
+func heartbeatWorkflow(owner string) Workflow {
 	return Workflow{
 		Description: "Heartbeat monitor (every minute)",
 		Frequency:   "*/1 * * * *",
 		Process: func(ctx context.Context) error {
-			log.Printf("[heartbeat] alive: %s", time.Now().Format(time.RFC3339))
+			log.Printf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), owner)
 			return nil
 		},
 	}
