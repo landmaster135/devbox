@@ -87,6 +87,11 @@ func (s *EnvSyncService) SyncVolumesIntoCompose(envPath, composePath, volumeKey,
 	return syncVolumesIntoCompose(envPath, composePath, volumeKey, serviceName)
 }
 
+// SyncUserIntoCompose は指定したuser-keyの値をもとに、サービスのuserフィールドを書き換える
+func (s *EnvSyncService) SyncUserIntoCompose(envPath, composePath, userKey, serviceName string) error {
+	return syncUserIntoCompose(envPath, composePath, userKey, serviceName)
+}
+
 func parseEnvEntries(content string) ([]EnvEntry, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(content), &root); err != nil {

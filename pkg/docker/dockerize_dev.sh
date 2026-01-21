@@ -10,6 +10,7 @@ IMAGE_NAME="devbox-cron"
 IMAGE_TAG="${IMAGE_NAME}:latest"
 PORT_KEY="CRON_URL_PORT"
 VOLUME_KEY="MOUNT_VOLUME"
+USER_KEY="HOST_ID"
 SERVICE_NAME="devbox"
 
 log() {
@@ -53,6 +54,19 @@ run_volume_sync() {
   )
 }
 
+run_user_sync() {
+  log "user 情報を docker-compose.yml に反映"
+  (
+    cd "$PROJECT_ROOT"
+    go run ./cmd/cli/docker/main.go \
+      --operation=user-into-compose \
+      --compose-path="$COMPOSE_PATH" \
+      --env-yaml-path="$ENV_PATH" \
+      --user-key="$USER_KEY" \
+      --service="$SERVICE_NAME"
+  )
+}
+
 build_frontend() {
   log "フロントエンドイメージをビルド"
   "$BUILD_SCRIPT" "$ENV_PATH"
@@ -73,6 +87,7 @@ compose_up() {
 
 run_env_sync
 run_volume_sync
+run_user_sync
 run_port_sync
 build_frontend
 verify_image
