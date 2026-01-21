@@ -1,0 +1,22 @@
+# syntax=docker/dockerfile:1
+
+# ビルドステージ: cron-workflow CLI をビルド
+FROM golang:1.25-bookworm AS builder
+WORKDIR /workspace
+
+# 依存関係を先にダウンロードしてキャッシュ効率を高める
+COPY go.mod go.sum ./
+RUN go mod download
+
+# プロジェクト全体をコピーしてビルド
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o /workspace/bin/cron-workflow ./cmd/cli/cron-workflow
+
+# 実行ステージ: distroless で軽量実行
+FROM gcr.io/distroless/base-debian12:nonroot
+WORKDIR /app
+
+COPY --from=builder /workspace/bin/cron-workflow /app/cron-workflow
+
+ENTRYPOINT ["/app/cron-workflow"]
