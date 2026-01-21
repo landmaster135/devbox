@@ -66,16 +66,30 @@ func (r *osRepository) EnsureDir(path string) error {
 	return nil
 }
 
-var defaultRepository = NewRepository()
-
-// WriteFile is a convenience wrapper around the default Repository for callers
-// that do not need dependency injection.
-func WriteFile(path string, overwrites bool, content string) error {
-	return defaultRepository.Write(path, overwrites, content)
+func (r *osRepository) WorkingDir() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve working directory: %w", err)
+	}
+	return wd, nil
 }
 
-// EnsureDir ensures that the specified directory exists using the default
+var mockRepository = NewRepository()
+
+// writeFile is a convenience wrapper around the default Repository for callers
+// that do not need dependency injection.
+func writeFile(path string, overwrites bool, content string) error {
+	return mockRepository.Write(path, overwrites, content)
+}
+
+// ensureDir ensures that the specified directory exists using the default
 // repository implementation.
-func EnsureDir(path string) error {
-	return defaultRepository.EnsureDir(path)
+func ensureDir(path string) error {
+	return mockRepository.EnsureDir(path)
+}
+
+// workingDir returns the current working directory with additional context in
+// case of error so callers do not have to repeat boilerplate handling.
+func workingDir() (string, error) {
+	return mockRepository.WorkingDir()
 }

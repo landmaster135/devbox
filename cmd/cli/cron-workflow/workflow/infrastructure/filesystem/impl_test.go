@@ -99,8 +99,8 @@ func TestWriteFileWrapperUsesDefaultRepository(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "wrapper.txt")
 
-	defaultRepository = NewRepository()
-	if err := WriteFile(path, true, "wrapper"); err != nil {
+	mockRepository = NewRepository()
+	if err := writeFile(path, true, "wrapper"); err != nil {
 		t.Fatalf("write via wrapper: %v", err)
 	}
 
@@ -116,8 +116,8 @@ func TestWriteFileWrapperUsesDefaultRepository(t *testing.T) {
 
 func TestEnsureDirWrapperUsesDefaultRepository(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "wrapper", "dir")
-	defaultRepository = NewRepository()
-	if err := EnsureDir(dir); err != nil {
+	mockRepository = NewRepository()
+	if err := ensureDir(dir); err != nil {
 		t.Fatalf("ensure dir via wrapper: %v", err)
 	}
 
@@ -128,5 +128,27 @@ func TestEnsureDirWrapperUsesDefaultRepository(t *testing.T) {
 
 	if !info.IsDir() {
 		t.Fatalf("expected directory, got %v", info.Mode())
+	}
+}
+
+func TestWorkingDirReturnsCurrentDirectory(t *testing.T) {
+	original, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get original cwd: %v", err)
+	}
+
+	temp := t.TempDir()
+	if err := os.Chdir(temp); err != nil {
+		t.Fatalf("failed to change dir: %v", err)
+	}
+	defer os.Chdir(original)
+
+	wd, err := workingDir()
+	if err != nil {
+		t.Fatalf("WorkingDir error: %v", err)
+	}
+
+	if wd != temp {
+		t.Fatalf("expected %s, got %s", temp, wd)
 	}
 }
