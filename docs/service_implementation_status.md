@@ -23,12 +23,14 @@
 | code-analyzer                               | ✅  | ❌️  | ❌️  | ❌️ |
 | color-code-converter                        | ✅  | ❌️  | ❌️  | ❌️ |
 | context7                                    | ✅  | ✅  | ❌️  | ❌️ |
+| cron-workflow                               | ✅  | ❌️  | ❌️  | ❌️ |
 | data-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | datetime-calculator                         | ✅  | ✅  | ❌️  | ❌️ |
 | db-server-sync                              | ✅  | ❌️  | ❌️  | ❌️ |
 | depends-visualizer                          | ✅  | ❌️  | ❌️  | ❌️ |
 | diff-dreamer                                | ✅  | ❌️  | ❌️  | ❌️ |
 | discord-webhook                             | ✅  | ❌️  | ❌️  | ❌️ |
+| docker                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | duckduckgo-search                           | ❌️  | ✅  | ❌️  | ❌️ |
 | env-loader                                  | ✅  | ❌️  | ❌️  | ❌️ |
 | everart                                     | ❌️  | ✅  | ❌️  | ❌️ |
@@ -104,6 +106,7 @@
 | service-implementing-viewer                 | ✅  | ✅  | ❌️  | ❌️ |
 | shell                                       | ✅  | ✅  | ❌️  | ❌️ |
 | steam                                       | ✅  | ❌️  | ❌️  | ❌️ |
+| taskfile                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | timezone                                    | ❌️  | ✅  | ❌️  | ❌️ |
 | unit-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | util                                        | ❌️  | ✅  | ❌️  | ❌️ |
@@ -118,12 +121,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 101
-- **CLIツール実装数**: 90
+- **総サービス数**: 104
+- **CLIツール実装数**: 93
 - **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 75
+- **CLIのみ実装**: 78
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
