@@ -16,6 +16,7 @@ import (
 type EnvEntry struct {
 	Key   string
 	Value string
+	Node  *yaml.Node
 }
 
 // EnvSyncService はenv.ymlの内容をdocker-compose.ymlへ同期する
@@ -81,6 +82,11 @@ func (s *EnvSyncService) SyncPortsIntoCompose(envPath, composePath, portKey, ser
 	return syncPortsIntoCompose(envPath, composePath, portKey, serviceName)
 }
 
+// SyncVolumesIntoCompose は指定したvolume-keyの値をもとに、サービスのvolumesセクションを書き換える
+func (s *EnvSyncService) SyncVolumesIntoCompose(envPath, composePath, volumeKey, serviceName string) error {
+	return syncVolumesIntoCompose(envPath, composePath, volumeKey, serviceName)
+}
+
 func parseEnvEntries(content string) ([]EnvEntry, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal([]byte(content), &root); err != nil {
@@ -111,14 +117,24 @@ func parseEnvEntries(content string) ([]EnvEntry, error) {
 		}
 
 		valueNode := mapping.Content[i+1]
-		value, err := renderYAMLValue(valueNode)
+		resolvedNode := resolveAlias(valueNode)
+		value, err := renderYAMLValue(resolvedNode)
 		if err != nil {
 			return nil, err
 		}
-		entries = append(entries, EnvEntry{Key: key, Value: value})
+		entries = append(entries, EnvEntry{Key: key, Value: value, Node: resolvedNode})
 	}
 
 	return entries, nil
+}
+
+func findEnvEntry(entries []EnvEntry, key string) *EnvEntry {
+	for i := range entries {
+		if entries[i].Key == key {
+			return &entries[i]
+		}
+	}
+	return nil
 }
 
 func isValidKey(key string) bool {

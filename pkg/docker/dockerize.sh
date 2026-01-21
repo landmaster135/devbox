@@ -11,6 +11,7 @@ IMAGE_TAG="${IMAGE_NAME}:latest"
 TAR_PATH="${PROJECT_ROOT}/${IMAGE_NAME}-image.tar"
 ZIP_PATH="${PROJECT_ROOT}/${IMAGE_NAME}-image.zip"
 PORT_KEY="CRON_URL_PORT"
+VOLUME_KEY="MOUNT_VOLUME"
 SERVICE_NAME="devbox"
 
 log() {
@@ -37,6 +38,19 @@ run_port_sync() {
       --compose-path="$COMPOSE_PATH" \
       --env-yaml-path="$ENV_PATH" \
       --port-key="$PORT_KEY" \
+      --service="$SERVICE_NAME"
+  )
+}
+
+run_volume_sync() {
+  log "volumes 情報を docker-compose.yml に反映"
+  (
+    cd "$PROJECT_ROOT"
+    go run ./cmd/cli/docker/main.go \
+      --operation=volumes-into-compose \
+      --compose-path="$COMPOSE_PATH" \
+      --env-yaml-path="$ENV_PATH" \
+      --volume-key="$VOLUME_KEY" \
       --service="$SERVICE_NAME"
   )
 }
@@ -80,6 +94,7 @@ archive_image() {
 }
 
 run_env_sync
+run_volume_sync
 run_port_sync
 build_frontend
 verify_image

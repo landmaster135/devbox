@@ -1,6 +1,6 @@
 # Docker CLI
 
-env.yml に定義した情報を `docker-compose.yml` へ同期するユーティリティです。`npm run docker:env` 相当の環境変数反映に加え、指定サービスのポート番号を env.yml ベースで更新できます。
+env.yml に定義した情報を `docker-compose.yml` へ同期するユーティリティです。`npm run docker:env` 相当の環境変数反映に加え、指定サービスのポート番号やボリューム定義を env.yml ベースで更新できます。
 
 ## 主な機能
 
@@ -9,6 +9,7 @@ env.yml に定義した情報を `docker-compose.yml` へ同期するユーテ�
 - 既存のアンカー（`&foo`/`*foo`）構造を維持したままエントリのみ更新
 - 値に空白が含まれる場合は自動でダブルクォートを付与
 - `ports:` ブロックおよび `labels.tsdproxy.container_port` を任意のサービスに対して更新
+- `volumes:` ブロックを env.yml 内の構造化値（配列／マップ）で差し替え、bind mount などの設定を共有
 
 ## インストール
 
@@ -38,11 +39,12 @@ go run ./cmd/cli/docker \
 
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `-operation` | * | なし | `env-into-compose` または `ports-into-compose` |
+| `-operation` | * | なし | `env-into-compose` / `ports-into-compose` / `volumes-into-compose` |
 | `-compose-path` | | `docker-compose.yml` | 読み書き対象の docker-compose.yml パス |
 | `-env-yaml-path` | | `env.yml` | 参照する環境変数YAMLのパス |
 | `-port-key` | `ports-into-compose` 時 | なし | env.yml 内から参照するキー（例: `VITE_FRONT_URL_PORT`） |
-| `-service` | `ports-into-compose` 時 | なし | 更新対象サービス名（例: `dathub`） |
+| `-volume-key` | `volumes-into-compose` 時 | なし | env.yml 内から参照するボリューム定義のキー（例: `MOUNT_VOLUME`） |
+| `-service` | `ports-into-compose` / `volumes-into-compose` 時 | なし | 更新対象サービス名（例: `devbox`） |
 
 ### 典型的なワークフロー
 
@@ -62,6 +64,37 @@ go run ./cmd/cli/docker \
 ```
 
 `env.yml` の `CRON_URL_PORT` を読み取り、`services.devbox.ports` と `services.devbox.labels.tsdproxy.container_port` が同期されます。
+
+### volumes-into-compose の例
+
+```bash
+go run ./cmd/cli/docker \
+  -operation=volumes-into-compose \
+  -compose-path=./docker-compose.yml \
+  -env-yaml-path=./env.yml \
+  -volume-key=MOUNT_VOLUME \
+  -service=devbox
+```
+
+`env.yml` の `MOUNT_VOLUME` が次のように定義されていれば、その配列が `services.devbox.volumes` に展開されます。
+
+```yaml
+MOUNT_VOLUME:
+  - type: bind
+    source: /home/user/cron_output
+    target: /app/volume
+```
+
+結果例:
+
+```yaml
+services:
+  devbox:
+    volumes:
+      - type: bind
+        source: /home/user/cron_output
+        target: /app/volume
+```
 
 ### YAML フォーマットについて
 
