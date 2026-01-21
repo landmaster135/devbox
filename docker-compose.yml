@@ -6,6 +6,10 @@ services:
       - "9999:9999"
     environment:
       - GIN_MODE=staging
+    volumes:
+      - type: bind
+        source: ""
+        target: ""
     labels:
       tsdproxy.enable: "true"
       tsdproxy.name: "devbox"
