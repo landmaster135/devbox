@@ -4,13 +4,31 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	workflowenv "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow/infrastructure/env"
+	filesystem "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow/infrastructure/filesystem"
+	workflowtime "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow/infrastructure/time"
 )
 
 const defaultTimezone = "Asia/Tokyo"
+
+var workflowVolumePath string
+
+func workflowVolumeDir() (string, error) {
+	if workflowVolumePath != "" {
+		return workflowVolumePath, nil
+	}
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("determine workflow volume directory: runtime.Caller failed")
+	}
+	workflowVolumePath = filepath.Join(filepath.Dir(file), "volume")
+	return workflowVolumePath, nil
+}
 
 // ProcessFunc defines the signature each workflow task must satisfy.
 type ProcessFunc func(ctx context.Context) error
@@ -60,23 +78,46 @@ func (w Workflow) timezoneOrDefault() string {
 // List returns all configured workflows.
 func List() ([]Workflow, error) {
 	envRepo := workflowenv.NewRepository()
+	filesystemRepo := filesystem.NewRepository()
+
+	volumeDir, err := workflowVolumeDir()
+	if err != nil {
+		return nil, fmt.Errorf("resolve workflow volume directory: %w", err)
+	}
+	if err := filesystemRepo.EnsureDir(volumeDir); err != nil {
+		return nil, fmt.Errorf("prepare workflow volume directory: %w", err)
+	}
+
 	heartOwner, err := envRepo.GetEnv("HEART_OWNER")
 	if err != nil {
 		return nil, fmt.Errorf("resolve heart owner from %s: %w", "HEART_OWNER", err)
 	}
 
 	return []Workflow{
-		heartbeatWorkflow(heartOwner),
+		heartbeatWorkflow(heartOwner, filesystemRepo, volumeDir),
 		hourlyHealthSnapshotWorkflow(),
 	}, nil
 }
 
-func heartbeatWorkflow(owner string) Workflow {
+func heartbeatWorkflow(owner string, fileRepo filesystem.Repository, volumeDir string) Workflow {
 	return Workflow{
 		Description: "Heartbeat monitor (every minute)",
 		Frequency:   "*/1 * * * *",
 		Process: func(ctx context.Context) error {
-			log.Printf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), owner)
+			timeRepo := workflowtime.NewRepository()
+
+			now, err := timeRepo.Now(defaultTimezone)
+			if err != nil {
+				return fmt.Errorf("resolve current time: %w", err)
+			}
+			timestamp := now.Format("20060102150405")
+			statusFile := filepath.Join(volumeDir, fmt.Sprintf("heartbeat-%s.status", timestamp))
+
+			message := fmt.Sprintf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), owner)
+			log.Printf("%s", message)
+			if err := fileRepo.Write(statusFile, true, message+"\n"); err != nil {
+				return fmt.Errorf("write heartbeat status file: %w", err)
+			}
 			return nil
 		},
 	}
