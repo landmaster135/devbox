@@ -1,33 +1,33 @@
 # Cron Workflow
 
-Command line utility that keeps a predefined set of background jobs running with [github.com/go-co-op/gocron/v2](https://github.com/go-co-op/gocron). The binary launches a single scheduler, feeds it with the workflows declared in `workflow/core.go`, and blocks until the process receives `SIGINT` or `SIGTERM`.
+[github.com/go-co-op/gocron/v2](https://github.com/go-co-op/gocron) を使い、あらかじめ定義したバックグラウンドジョブを継続的に動かし続ける CLI ツールです。バイナリは単一のスケジューラを起動し、`workflow/core.go` に宣言されたワークフローを登録してから `SIGINT` もしくは `SIGTERM` を受け取るまで待機します。
 
-## Workflows included
+## 同梱ワークフロー
 
-| Description | Frequency | Timezone | Purpose |
-|-------------|-----------|----------|---------|
-| Heartbeat monitor (every minute) | `*/1 * * * *` | Asia/Tokyo (default) | Emits a short log entry so external monitors can confirm the service is alive. |
-| Hourly state snapshot | `0 * * * *` | UTC | Simulates a longer-running aggregation job, demonstrating how to respect cancellation through `context.Context`. |
+| 説明 | 実行間隔 | タイムゾーン | 目的 |
+|------|-----------|--------------|------|
+| ハートビート監視 (毎分) | `*/1 * * * *` | Asia/Tokyo (既定) | 外形監視が生存確認できるよう短いログを継続的に出力します。 |
+| 毎時の状態スナップショット | `0 * * * *` | UTC | `context.Context` を介したキャンセルを尊重する集計ジョブの例となります。 |
 
-Add or update workflows inside `workflow/core.go` and recompile the CLI to apply the changes.
+ワークフローを追加・更新する場合は `workflow/core.go` を変更し、CLI を再ビルドしてください。
 
-## Build
+## ビルド
 
 ```bash
-# From the repository root
+# リポジトリルートで実行
 go build -o bin/cron-workflow ./cmd/cli/cron-workflow
 ```
 
-## Run
+## 使用例
 
 ```bash
-# Runs the scheduler until Ctrl+C
+# Ctrl+C が押されるまでスケジューラが動作
 go run ./cmd/cli/cron-workflow
 ```
 
-No CLI flags are available other than `-h` / `--help`.
+利用可能な CLI フラグは `-h` / `--help` のみです。
 
-## Sample output
+## 出力例
 
 ```
 $ go run ./cmd/cli/cron-workflow
@@ -41,4 +41,4 @@ $ go run ./cmd/cli/cron-workflow
 2026/01/20 10:02:10.000400 scheduler stopped cleanly
 ```
 
-The scheduler keeps running indefinitely; terminate it with Ctrl+C or send a termination signal from your supervisor.
+スケジューラは無期限で稼働するため、Ctrl+C で停止するか管理プロセスから終了シグナルを送って終了させてください。
