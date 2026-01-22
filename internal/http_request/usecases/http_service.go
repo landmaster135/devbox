@@ -8,6 +8,7 @@ import (
 
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
+	sanitizer "github.com/landmaster135/devbox/internal/http_request/usecases/sanitizer"
 )
 
 // HTTPService はHTTPリクエストを処理するサービスです
@@ -111,7 +112,7 @@ func (s *HTTPService) FormatResponse(response *models.HTTPResponse) (string, err
 
 	body := prettyJSON.String()
 	if !isJSONBody {
-		sanitizedBody, mainFound := sanitizeHTMLBody(body, false)
+		sanitizedBody, mainFound := sanitizer.SanitizeHTMLBody(body, false)
 		body = sanitizedBody
 		containsTags := strings.Contains(body, "<") && strings.Contains(body, ">")
 		if containsTags && !mainFound {

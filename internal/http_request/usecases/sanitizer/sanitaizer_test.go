@@ -52,7 +52,7 @@ func TestSanitizeHTMLBody(t *testing.T) {
 		testCase := tc
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
-			got, found := sanitizeHTMLBody(testCase.input, false)
+			got, found := SanitizeHTMLBody(testCase.input, false)
 			if found != testCase.expectFound {
 				t.Fatalf("expectFound=%v but got %v", testCase.expectFound, found)
 			}
