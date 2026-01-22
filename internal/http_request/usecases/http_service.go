@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
@@ -112,10 +111,9 @@ func (s *HTTPService) FormatResponse(response *models.HTTPResponse) (string, err
 
 	body := prettyJSON.String()
 	if !isJSONBody {
-		sanitizedBody, mainFound := sanitizer.SanitizeHTMLBody(body, false)
+		sanitizedBody, err := sanitizer.SanitizeHTMLBody(body, false)
 		body = sanitizedBody
-		containsTags := strings.Contains(body, "<") && strings.Contains(body, ">")
-		if containsTags && !mainFound {
+		if err != nil {
 			warnings = append(warnings, "main要素が見つからないため、HTMLボディをそのまま表示しました")
 		}
 	}
