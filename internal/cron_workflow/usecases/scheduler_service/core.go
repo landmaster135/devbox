@@ -14,6 +14,8 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 )
 
+var schedulerShutdownTimeout = 15 * time.Second
+
 func Schedule(workflows []usecases.Workflow) error {
 	repo := gocronInfra.NewRepository()
 
@@ -82,7 +84,7 @@ func waitForShutdownSignal(cs gocronInfra.CronSchedulerRepository) error {
 			return fmt.Errorf("scheduler shutdown failed: %w", err)
 		}
 		return nil
-	case <-time.After(15 * time.Second):
+	case <-time.After(schedulerShutdownTimeout):
 		return errors.New("scheduler shutdown timed out")
 	}
 }
