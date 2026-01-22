@@ -147,10 +147,10 @@ tasks:
     desc: "image-converterでPNGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp
-  image:convert:png-to-webp-keeping-saturation:
+  image:convert:png-to-webp:keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
-      - task: image-convert:image-converter:png-to-webp-keeping-saturation
+      - task: image-convert:image-converter:png-to-webp:keeping-saturation
   image:convert:to-jpg:
     desc: "image-converterでJPGへ変換"
     cmds:
