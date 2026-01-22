@@ -78,6 +78,42 @@ func TestSanitizeHTMLBody_RemovesNestedStructures(t *testing.T) {
 	}
 }
 
+func TestSanitizeHTMLBody_RemovesFormNavAside(t *testing.T) {
+	t.Parallel()
+
+	input := `
+<html>
+  <body>
+    <main>
+      <nav>global navigation</nav>
+      <article>
+        <p>core content</p>
+      </article>
+      <form action="/submit">
+        <input type="text" value="secret">
+      </form>
+      <aside>related links</aside>
+    </main>
+  </body>
+</html>`
+
+	got, err := SanitizeHTMLBody(input, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(got, "core content") {
+		t.Fatalf("expected main content to remain, got: %s", got)
+	}
+
+	forbiddenFragments := []string{"<form", "<nav", "<aside", "global navigation", "secret", "related links"}
+	for _, fragment := range forbiddenFragments {
+		if strings.Contains(got, fragment) {
+			t.Fatalf("expected sanitized HTML to remove %q, got: %s", fragment, got)
+		}
+	}
+}
+
 func TestSanitizeHTMLBody_FallbacksToArticle(t *testing.T) {
 	t.Parallel()
 
