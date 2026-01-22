@@ -15,12 +15,14 @@ import (
 )
 
 func Schedule(workflows []usecases.Workflow) error {
-	scheduler, err := gocronInfra.NewCronScheduler()
+	repo := gocronInfra.NewRepository()
+
+	scheduler, err := repo.NewScheduler()
 	if err != nil {
 		return fmt.Errorf("failed to initialize CronScheduler: %w", err)
 	}
 
-	if err := registerWorkflows(scheduler, workflows); err != nil {
+	if err := registerWorkflows(repo, scheduler, workflows); err != nil {
 		return err
 	}
 
@@ -34,8 +36,8 @@ func Schedule(workflows []usecases.Workflow) error {
 	return nil
 }
 
-func newTask(wf *usecases.Workflow) *gocronInfra.Task {
-	task := gocronInfra.NewTask(func(ctx context.Context) {
+func newTask(repo gocronInfra.Repository, wf *usecases.Workflow) *gocronInfra.Task {
+	task := repo.NewTask(func(ctx context.Context) {
 		if err := wf.Process(ctx); err != nil {
 			log.Printf("workflow %q failed: %v", wf.Description, err)
 			return
@@ -45,9 +47,9 @@ func newTask(wf *usecases.Workflow) *gocronInfra.Task {
 	return task
 }
 
-func registerWorkflows(cs *gocronInfra.CronScheduler, workflows []usecases.Workflow) error {
+func registerWorkflows(repo gocronInfra.Repository, cs gocronInfra.CronSchedulerRepository, workflows []usecases.Workflow) error {
 	for _, wf := range workflows {
-		task := newTask(&wf)
+		task := newTask(repo, &wf)
 
 		expression, withSeconds, err := wf.GetCronDefinition()
 		if err != nil {
@@ -61,7 +63,7 @@ func registerWorkflows(cs *gocronInfra.CronScheduler, workflows []usecases.Workf
 	return nil
 }
 
-func waitForShutdownSignal(cs *gocronInfra.CronScheduler) error {
+func waitForShutdownSignal(cs gocronInfra.CronSchedulerRepository) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
@@ -71,7 +73,7 @@ func waitForShutdownSignal(cs *gocronInfra.CronScheduler) error {
 
 	shutdownDone := make(chan error, 1)
 	go func() {
-		shutdownDone <- cs.Scheduler.Shutdown()
+		shutdownDone <- cs.Shutdown()
 	}()
 
 	select {

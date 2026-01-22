@@ -1,14 +1,11 @@
 package gocron
 
 import (
-	"context"
 	"fmt"
 	"log"
 
 	"github.com/go-co-op/gocron/v2"
 )
-
-type ProcessFunc func(ctx context.Context)
 
 type Task struct {
 	Task gocron.Task
@@ -58,4 +55,8 @@ func (cs *CronScheduler) RegisterJob(name, expression string, withSeconds bool, 
 	return &Job{
 		Job: j,
 	}, nil
+}
+
+func (cs *CronScheduler) Shutdown() error {
+	return cs.Scheduler.Shutdown()
 }
