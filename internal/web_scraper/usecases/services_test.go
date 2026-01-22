@@ -5,24 +5,26 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/landmaster135/devbox/internal/web_scraper/domain"
 )
 
 type mockDOMFetcher struct {
 	t         *testing.T
 	wantURL   string
 	wantWait  time.Duration
-	result    DOMResult
+	result    domain.DOMResult
 	err       error
 	callCount int
 
 	metaWantURL  string
 	metaWantWait time.Duration
-	metaResult   *MetaProps
+	metaResult   *domain.MetaProps
 	metaErr      error
 	metaCalls    int
 }
 
-func (m *mockDOMFetcher) FetchDOM(ctx context.Context, url string, wait time.Duration) (DOMResult, error) {
+func (m *mockDOMFetcher) FetchDOM(ctx context.Context, url string, wait time.Duration) (domain.DOMResult, error) {
 	m.callCount++
 	if m.wantURL != "" && url != m.wantURL {
 		m.t.Fatalf("expected url %s, got %s", m.wantURL, url)
@@ -36,7 +38,7 @@ func (m *mockDOMFetcher) FetchDOM(ctx context.Context, url string, wait time.Dur
 	return m.result, m.err
 }
 
-func (m *mockDOMFetcher) FetchMetadata(ctx context.Context, url string, wait time.Duration) (*MetaProps, error) {
+func (m *mockDOMFetcher) FetchMetadata(ctx context.Context, url string, wait time.Duration) (*domain.MetaProps, error) {
 	m.metaCalls++
 	if m.metaWantURL != "" && url != m.metaWantURL {
 		m.t.Fatalf("expected meta url %s, got %s", m.metaWantURL, url)
@@ -76,7 +78,7 @@ func TestDOMService_GetDOMTree_Success(t *testing.T) {
 		t:        t,
 		wantURL:  "https://example.com",
 		wantWait: 2 * time.Second,
-		result:   DOMResult{HTML: "<html></html>"},
+		result:   domain.DOMResult{HTML: "<html></html>"},
 	}
 
 	service := NewDOMService(fetcher, nil)
@@ -101,7 +103,7 @@ func TestDOMService_GetDOMTree_WriteSuccess(t *testing.T) {
 	fetcher := &mockDOMFetcher{
 		t:       t,
 		wantURL: "https://example.io",
-		result:  DOMResult{HTML: "<main>ok</main>"},
+		result:  domain.DOMResult{HTML: "<main>ok</main>"},
 	}
 	writer := &mockDOMWriter{
 		t:         t,
@@ -125,7 +127,7 @@ func TestDOMService_GetDOMTree_WriteSuccess(t *testing.T) {
 func TestDOMService_GetDOMTree_WriteError(t *testing.T) {
 	t.Parallel()
 
-	fetcher := &mockDOMFetcher{t: t, result: DOMResult{HTML: "<main></main>"}}
+	fetcher := &mockDOMFetcher{t: t, result: domain.DOMResult{HTML: "<main></main>"}}
 	writer := &mockDOMWriter{t: t, err: errors.New("fail")}
 	service := NewDOMService(fetcher, writer)
 
@@ -137,7 +139,7 @@ func TestDOMService_GetDOMTree_WriteError(t *testing.T) {
 func TestDOMService_GetDOMTree_WriterMissing(t *testing.T) {
 	t.Parallel()
 
-	fetcher := &mockDOMFetcher{t: t, result: DOMResult{HTML: "<main></main>"}}
+	fetcher := &mockDOMFetcher{t: t, result: domain.DOMResult{HTML: "<main></main>"}}
 	service := NewDOMService(fetcher, nil)
 	if _, _, err := service.GetDOMTree(context.Background(), "https://example.com", 0, "out.html"); err == nil {
 		t.Fatalf("expected error, got nil")
@@ -189,7 +191,7 @@ func TestDOMService_GetMetaProps_Success(t *testing.T) {
 		t:            t,
 		metaWantURL:  "https://example.com",
 		metaWantWait: time.Second,
-		metaResult: &MetaProps{
+		metaResult: &domain.MetaProps{
 			URL:   "https://example.net/page",
 			Title: " Example Title ",
 		},
@@ -212,7 +214,7 @@ func TestDOMService_GetMetaProps_FallbackURL(t *testing.T) {
 
 	fetcher := &mockDOMFetcher{
 		t: t,
-		metaResult: &MetaProps{
+		metaResult: &domain.MetaProps{
 			URL:   "",
 			Title: "Sample",
 		},
