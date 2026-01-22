@@ -1,6 +1,7 @@
 package fetchers
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
@@ -9,30 +10,41 @@ import (
 	"golang.org/x/net/html"
 )
 
-func sanitizeHTMLBody(body string) (string, error) {
+type MainNotFoundError struct{}
+
+func (e *MainNotFoundError) Error() string {
+	return "main要素が見つかりません"
+}
+
+func sanitizeHTMLBody(body string, omitsFullBody bool) (string, error) {
+	omittedBody := outputFullBody(body, omitsFullBody)
+
 	trimmed := strings.TrimSpace(body)
 	if trimmed == "" {
-		return "", fmt.Errorf("HTMLが空です")
+		return omittedBody, errors.New("HTMLが空です")
+	}
+	if !strings.Contains(trimmed, "<") || !strings.Contains(trimmed, ">") {
+		return omittedBody, errors.New("HTMLタグが存在しません")
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
 	if err != nil {
-		return "", fmt.Errorf("HTMLの解析に失敗しました: %w", err)
+		return omittedBody, fmt.Errorf("HTMLの解析に失敗しました: %w", err)
 	}
 
 	mainSelection, err := extractMainSelection(doc)
 	if err != nil {
-		return "", err
+		return omittedBody, err
 	}
 
 	mainHTML, err := goquery.OuterHtml(mainSelection)
 	if err != nil {
-		return "", fmt.Errorf("main要素の抽出に失敗しました: %w", err)
+		return omittedBody, fmt.Errorf("main要素の抽出に失敗しました: %w", err)
 	}
 
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(mainHTML))
 	if err != nil {
-		return "", fmt.Errorf("main要素の再解析に失敗しました: %w", err)
+		return omittedBody, fmt.Errorf("main要素の再解析に失敗しました: %w", err)
 	}
 
 	for _, node := range doc.Selection.Nodes {
@@ -40,11 +52,9 @@ func sanitizeHTMLBody(body string) (string, error) {
 	}
 
 	for _, selector := range getDefaultHTMLDenySelectors() {
-		trimmedSelector := strings.TrimSpace(selector)
-		if trimmedSelector == "" {
-			continue
+		if sel := strings.TrimSpace(selector); sel != "" {
+			doc.Find(sel).Remove()
 		}
-		doc.Find(trimmedSelector).Remove()
 	}
 
 	doc.Find("*").Each(func(_ int, s *goquery.Selection) {
@@ -91,7 +101,7 @@ func sanitizeHTMLBody(body string) (string, error) {
 	}
 
 	if builder.Len() == 0 {
-		return "", fmt.Errorf("サニタイズ後のHTML生成に失敗しました")
+		return omittedBody, fmt.Errorf("サニタイズ後のHTML生成に失敗しました")
 	}
 
 	return collapseBlankLines(builder.String()), nil
@@ -110,7 +120,14 @@ func extractMainSelection(doc *goquery.Document) (*goquery.Selection, error) {
 		return articleSelection, nil
 	}
 
-	return nil, &mainNotFoundError{}
+	return nil, &MainNotFoundError{}
+}
+
+func outputFullBody(body string, omits bool) string {
+	if omits {
+		return ""
+	}
+	return body
 }
 
 func findLongestArticle(doc *goquery.Document) *goquery.Selection {
@@ -154,7 +171,6 @@ func removeEmptyDivs(doc *goquery.Document) {
 	if doc == nil {
 		return
 	}
-
 	for {
 		removed := false
 		doc.Find("div").Each(func(_ int, s *goquery.Selection) {

@@ -1,39 +1,49 @@
 package services
 
 import (
+	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
 )
 
-func sanitizeHTMLBody(body string) (string, bool) {
+type MainNotFoundError struct{}
+
+func (e *MainNotFoundError) Error() string {
+	return "main要素が見つかりません"
+}
+
+func sanitizeHTMLBody(body string, omitsFullBody bool) (string, bool) {
+	omittedBody := outputFullBody(body, omitsFullBody)
+
 	trimmed := strings.TrimSpace(body)
 	if trimmed == "" {
-		return body, false
+		return omittedBody, false
 	}
 	if !strings.Contains(trimmed, "<") || !strings.Contains(trimmed, ">") {
-		return body, false
+		return omittedBody, false
 	}
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
 	if err != nil {
-		return body, false
+		return omittedBody, false
 	}
 
-	mainSelection := doc.Find("main").First()
-	if mainSelection.Length() == 0 {
-		return body, false
+	mainSelection, err := extractMainSelection(doc)
+	if err != nil {
+		return omittedBody, false
 	}
 
 	mainHTML, err := goquery.OuterHtml(mainSelection)
 	if err != nil {
-		return body, false
+		return omittedBody, false
 	}
 
 	doc, err = goquery.NewDocumentFromReader(strings.NewReader(mainHTML))
 	if err != nil {
-		return body, false
+		return omittedBody, false
 	}
 
 	for _, node := range doc.Selection.Nodes {
@@ -60,6 +70,9 @@ func sanitizeHTMLBody(body string) (string, bool) {
 			s.RemoveAttr("data-nuxt-img")
 			s.RemoveAttr("sizes")
 			s.RemoveAttr("srcset")
+		case "source":
+			s.RemoveAttr("sizes")
+			s.RemoveAttr("srcset")
 		}
 	})
 
@@ -81,41 +94,60 @@ func sanitizeHTMLBody(body string) (string, bool) {
 	}
 
 	if builder.Len() == 0 {
-		if html, err := doc.Html(); err == nil {
-			builder.WriteString(html)
+		if htmlStr, err := doc.Html(); err == nil {
+			builder.WriteString(htmlStr)
 		}
 	}
 
 	if builder.Len() == 0 {
-		return body, false
+		return omittedBody, false
 	}
 
 	return collapseBlankLines(builder.String()), true
 }
 
-func getDefaultHTMLDenySelectors() []string {
-	itemsForReddit := []string{
-		"pdp-back-button",
-		"faceplate-loader",
-		"faceplate-tracker",
-		"faceplate-perfmark",
-		"faceplate-number",
-		"faceplate-dropdown-menu",
-		"faceplate-partial",
-		"shreddit-comments-page-ad",
-		"shreddit-async-loader",
-		"shreddit-comment-tree-ad",
-		"button",
+func extractMainSelection(doc *goquery.Document) (*goquery.Selection, error) {
+	if doc == nil {
+		return nil, fmt.Errorf("HTMLドキュメントが初期化されていません")
 	}
-	items := []string{
-		"svg",
-		"script",
-		"header",
-		"footer",
-	}
-	items = append(items, itemsForReddit...)
 
-	return items
+	if mainSelection := doc.Find("main").First(); mainSelection.Length() > 0 {
+		return mainSelection, nil
+	}
+
+	if articleSelection := findLongestArticle(doc); articleSelection != nil {
+		return articleSelection, nil
+	}
+
+	return nil, &MainNotFoundError{}
+}
+
+func outputFullBody(body string, omits bool) string {
+	if omits {
+		return ""
+	}
+	return body
+}
+
+func findLongestArticle(doc *goquery.Document) *goquery.Selection {
+	if doc == nil {
+		return nil
+	}
+
+	var (
+		longest *goquery.Selection
+		maxLen  = -1
+	)
+
+	doc.Find("article").Each(func(_ int, s *goquery.Selection) {
+		length := utf8.RuneCountInString(strings.TrimSpace(s.Text()))
+		if length > maxLen {
+			longest = s.Clone()
+			maxLen = length
+		}
+	})
+
+	return longest
 }
 
 func removeHTMLComments(node *html.Node) {
@@ -150,6 +182,29 @@ func removeEmptyDivs(doc *goquery.Document) {
 			break
 		}
 	}
+}
+
+func getDefaultHTMLDenySelectors() []string {
+	itemsForReddit := []string{
+		"pdp-back-button",
+		"faceplate-loader",
+		"faceplate-tracker",
+		"faceplate-perfmark",
+		"faceplate-number",
+		"faceplate-dropdown-menu",
+		"faceplate-partial",
+		"shreddit-comments-page-ad",
+		"shreddit-async-loader",
+		"shreddit-comment-tree-ad",
+		"button",
+	}
+	items := []string{
+		"svg",
+		"script",
+		"header",
+		"footer",
+	}
+	return append(items, itemsForReddit...)
 }
 
 func collapseBlankLines(src string) string {

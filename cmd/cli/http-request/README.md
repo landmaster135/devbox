@@ -21,32 +21,6 @@
 ./scripts/build_http_request.sh
 ```
 
-## 使用方法
-
-### GETリクエスト
-
-```bash
-go run ./cmd/cli//http-request -url https://example.com/api
-```
-
-### POSTリクエスト（JSONファイル使用）
-
-```bash
-go run ./cmd/cli//http-request -url https://example.com/api -method POST -json path/to/data.json
-```
-
-### PUTリクエスト（JSONファイル使用）
-
-```bash
-go run ./cmd/cli//http-request -url https://example.com/api -method PUT -json path/to/data.json
-```
-
-### DELETEリクエスト
-
-```bash
-go run ./cmd/cli//http-request -url https://example.com/api -method DELETE
-```
-
 ## オプション
 
 - `-url`: リクエスト先のURL（必須）
@@ -78,6 +52,11 @@ go run ./cmd/cli//http-request -url http://abehiroshi.la.coocan.jp/ -encoding sh
 # エンコーディング自動検出でHTMLページを取得
 go run ./cmd/cli//http-request -url http://example.com -encoding auto
 
+# リソースの追加もしくは更新（PUT）
+go run ./cmd/cli//http-request -url https://example.com/api -method PUT -json path/to/data.json
+
+# 既存の投稿の削除（DELETE）
+go run ./cmd/cli//http-request -url https://example.com/api -method DELETE
 ```
 
 ## エンコーディング機能
