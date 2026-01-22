@@ -17,9 +17,18 @@ type Workflow struct {
 	Process     ProcessFunc
 }
 
+func NewWorkflow(desc, freq, tz string, process ProcessFunc) *Workflow {
+	return &Workflow{
+		Description: desc,
+		Frequency:   freq,
+		Timezone:    tz,
+		Process:     process,
+	}
+}
+
 // GetCronDefinition returns the cron expression with timezone information and
 // indicates whether the schedule uses a seconds field.
-func (w Workflow) GetCronDefinition() (string, bool, error) {
+func (w *Workflow) GetCronDefinition() (string, bool, error) {
 	if strings.TrimSpace(w.Frequency) == "" {
 		return "", false, fmt.Errorf("frequency is not set: %s", w.Description)
 	}
