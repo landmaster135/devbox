@@ -14,6 +14,7 @@ import (
 	"github.com/go-co-op/gocron/v2"
 
 	"github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
+	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 )
 
 func main() {
@@ -60,10 +61,10 @@ func run() error {
 	return nil
 }
 
-func registerWorkflows(s gocron.Scheduler, workflows []workflow.Workflow) error {
+func registerWorkflows(s gocron.Scheduler, workflows []usecases.Workflow) error {
 	for i := range workflows {
 		wf := workflows[i]
-		expression, withSeconds, err := wf.CronDefinition()
+		expression, withSeconds, err := wf.GetCronDefinition()
 		if err != nil {
 			return err
 		}
