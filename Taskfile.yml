@@ -65,6 +65,14 @@ tasks:
   build:dev:
     desc: "Build files for development"
     cmds:
+      - pkg/docker/dockerize_dev.sh
+  build:staging:
+    desc: "Build files for development"
+    cmds:
+      - pkg/docker/dockerize.sh
+  build:prod:
+    desc: "Build files for development"
+    cmds:
       - echo 'No registered command...'
   build:pre:
     desc: "Run required pre-build processes"
