@@ -29,7 +29,7 @@ func TestSanitizeHTMLBody_RemovesUnwantedContent(t *testing.T) {
   </body>
 </html>`
 
-	got, err := sanitizeHTMLBody(input)
+	got, err := sanitizeHTMLBody(input, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestSanitizeHTMLBody_RemovesNestedStructures(t *testing.T) {
   </body>
 </html>`
 
-	got, err := sanitizeHTMLBody(input)
+	got, err := sanitizeHTMLBody(input, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestSanitizeHTMLBody_FallbacksToArticle(t *testing.T) {
   </body>
 </html>`
 
-	got, err := sanitizeHTMLBody(input)
+	got, err := sanitizeHTMLBody(input, true)
 	if err != nil {
 		t.Fatalf("unexpected error when falling back to article: %v", err)
 	}
@@ -107,12 +107,12 @@ func TestSanitizeHTMLBody_FallbacksToArticle(t *testing.T) {
 func TestSanitizeHTMLBody_MainAndArticleMissing(t *testing.T) {
 	t.Parallel()
 
-	_, err := sanitizeHTMLBody("<html><body><div>No main</div></body></html>")
+	_, err := sanitizeHTMLBody("<html><body><div>No main</div></body></html>", true)
 	if err == nil {
 		t.Fatalf("expected error when no main or article elements are present")
 	}
 
-	var notFound *mainNotFoundError
+	var notFound *MainNotFoundError
 	if !errors.As(err, &notFound) {
 		t.Fatalf("expected mainNotFoundError, got %T", err)
 	}
@@ -135,7 +135,7 @@ func TestCollapseBlankLines(t *testing.T) {
 func TestSanitizeHTMLBody_EmptyInput(t *testing.T) {
 	t.Parallel()
 
-	if _, err := sanitizeHTMLBody("   "); err == nil {
+	if _, err := sanitizeHTMLBody("   ", true); err == nil {
 		t.Fatalf("expected error for empty html")
 	}
 }

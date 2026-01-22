@@ -111,7 +111,7 @@ func (s *HTTPService) FormatResponse(response *models.HTTPResponse) (string, err
 
 	body := prettyJSON.String()
 	if !isJSONBody {
-		sanitizedBody, mainFound := sanitizeHTMLBody(body)
+		sanitizedBody, mainFound := sanitizeHTMLBody(body, false)
 		body = sanitizedBody
 		containsTags := strings.Contains(body, "<") && strings.Contains(body, ">")
 		if containsTags && !mainFound {

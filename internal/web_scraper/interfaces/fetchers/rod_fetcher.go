@@ -19,12 +19,6 @@ type RodDOMFetcher struct {
 	launchTimeout time.Duration
 }
 
-type mainNotFoundError struct{}
-
-func (e *mainNotFoundError) Error() string {
-	return "main要素が見つかりません"
-}
-
 // Option はRodDOMFetcherのオプションです。
 type Option func(*RodDOMFetcher)
 
@@ -55,11 +49,11 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 		return usecases.DOMResult{}, err
 	}
 
-	sanitized, err := sanitizeHTMLBody(html)
+	sanitized, err := sanitizeHTMLBody(html, true)
 	if err != nil {
-		var notFoundErr *mainNotFoundError
+		var notFoundErr *MainNotFoundError
 		if errors.As(err, &notFoundErr) {
-			return usecases.DOMResult{}, fmt.Errorf("main要素が見つかりません: %w", err)
+			return usecases.DOMResult{}, errors.New(notFoundErr.Error())
 		}
 		return usecases.DOMResult{}, fmt.Errorf("HTMLのサニタイズに失敗しました: %w", err)
 	}
