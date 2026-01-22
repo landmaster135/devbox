@@ -9,8 +9,10 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+
+	sanitizer "github.com/landmaster135/devbox/internal/html_sanitizer/usecases/sanitizer"
+
 	"github.com/landmaster135/devbox/internal/web_scraper/usecases"
-	sanitizer "github.com/landmaster135/devbox/internal/web_scraper/interfaces/sanitizer"
 )
 
 const defaultLaunchTimeout = 90 * time.Second

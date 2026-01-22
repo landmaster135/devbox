@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	sanitizer "github.com/landmaster135/devbox/internal/html_sanitizer/usecases/sanitizer"
+	
 	models "github.com/landmaster135/devbox/internal/http_request/domain/models"
 	interfaces "github.com/landmaster135/devbox/internal/http_request/interfaces"
-	sanitizer "github.com/landmaster135/devbox/internal/http_request/usecases/sanitizer"
 )
 
 // HTTPService はHTTPリクエストを処理するサービスです
