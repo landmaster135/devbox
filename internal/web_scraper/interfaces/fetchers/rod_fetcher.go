@@ -10,6 +10,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/landmaster135/devbox/internal/web_scraper/usecases"
+	sanitizer "github.com/landmaster135/devbox/internal/web_scraper/interfaces/sanitizer"
 )
 
 const defaultLaunchTimeout = 90 * time.Second
@@ -49,9 +50,9 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 		return usecases.DOMResult{}, err
 	}
 
-	sanitized, err := sanitizeHTMLBody(html, true)
+	sanitized, err := sanitizer.SanitizeHTMLBody(html, true)
 	if err != nil {
-		var notFoundErr *MainNotFoundError
+		var notFoundErr *sanitizer.MainNotFoundError
 		if errors.As(err, &notFoundErr) {
 			return usecases.DOMResult{}, errors.New(notFoundErr.Error())
 		}
