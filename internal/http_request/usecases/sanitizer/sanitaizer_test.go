@@ -11,7 +11,8 @@ func TestSanitizeHTMLBody(t *testing.T) {
 	testCases := []struct {
 		name        string
 		input       string
-		expectFound bool
+		omitFull    bool
+		expectErr   string
 		expectEqual bool
 		contains    []string
 		notContains []string
@@ -19,31 +20,30 @@ func TestSanitizeHTMLBody(t *testing.T) {
 		{
 			name:        "メイン要素あり・不要要素除去",
 			input:       `<html><body><!--comment--><header>brand</header><div data-testid="wrapper"><main class="content" style="color:red"><script>console.log('xss')</script><p>text</p><!--secret--><button>click</button><div></div><div><div></div></div><span data-allow-mismatch="true" data-allow-missmatch="true" data-testid="main-span">keep</span><img src="/img.png" alt="logo" onerror="alert(1)" data-nuxt-img="true" sizes="100vw" srcset="/img.png 1x, /img@2x.png 2x"></main></div><footer>copyright</footer></body></html>`,
-			expectFound: true,
+			contains:    []string{"<main", "<p>text</p>", "keep", "<img", "alt=\"logo\"", "src=\"/img.png\""},
 			notContains: []string{"<script", "console.log", "class=", "style=", "<button", "<!--", "secret", "data-allow-missmatch", "data-allow-mismatch", "data-testid", "<header", "brand", "<footer", "copyright", "onerror=", "data-nuxt-img", "sizes=", "srcset=", "<div></div>", "<div><div></div></div>"},
 		},
 		{
 			name:        "メイン要素なしは未加工で返す",
 			input:       `<html><body><div>no-main</div></body></html>`,
-			expectFound: false,
+			expectErr:   "main要素が見つかりません",
 			expectEqual: true,
 		},
 		{
 			name:        "空文字は未加工",
 			input:       "",
-			expectFound: false,
+			expectErr:   "HTMLが空です",
 			expectEqual: true,
 		},
 		{
 			name:        "プレーンテキストは未加工",
 			input:       "plain text only",
-			expectFound: false,
+			expectErr:   "HTMLタグが存在しません",
 			expectEqual: true,
 		},
 		{
 			name:        "余分な空行を圧縮",
 			input:       "<html><body><main><p>line1</p>\n\n\n<p>line2</p></main></body></html>",
-			expectFound: true,
 			notContains: []string{"\n\n\n"},
 		},
 	}
@@ -52,9 +52,16 @@ func TestSanitizeHTMLBody(t *testing.T) {
 		testCase := tc
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
-			got, found := SanitizeHTMLBody(testCase.input, false)
-			if found != testCase.expectFound {
-				t.Fatalf("expectFound=%v but got %v", testCase.expectFound, found)
+			got, err := SanitizeHTMLBody(testCase.input, testCase.omitFull)
+			if testCase.expectErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q but got nil", testCase.expectErr)
+				}
+				if err.Error() != testCase.expectErr {
+					t.Fatalf("unexpected error message: want %q but got %q", testCase.expectErr, err.Error())
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
 			}
 			if testCase.expectEqual && got != testCase.input {
 				t.Fatalf("expected sanitized result to equal input, diff: %q", got)
