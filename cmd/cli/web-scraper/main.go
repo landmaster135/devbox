@@ -9,8 +9,6 @@ import (
 	"os"
 
 	"github.com/landmaster135/devbox/internal/web_scraper/config"
-	"github.com/landmaster135/devbox/internal/web_scraper/interfaces/fetchers"
-	"github.com/landmaster135/devbox/internal/web_scraper/interfaces/writers"
 	"github.com/landmaster135/devbox/internal/web_scraper/usecases"
 )
 
@@ -48,9 +46,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	ctx := context.Background()
-	domFetcher := fetchers.NewRodDOMFetcher()
-	domWriter := writers.NewFileWriter()
-	service := usecases.NewDOMService(domFetcher, domWriter)
+	service := usecases.NewDefaultDOMService()
 
 	switch cfg.OperationName() {
 	case config.OperationGetDOMTree:

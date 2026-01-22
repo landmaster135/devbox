@@ -5,41 +5,29 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	
+	"github.com/landmaster135/devbox/internal/web_scraper/domain"
+	"github.com/landmaster135/devbox/internal/web_scraper/usecases/fetcher"
+	"github.com/landmaster135/devbox/internal/web_scraper/interfaces/writers"
 )
-
-// DOMResult はDOM取得時の結果を保持します。
-type DOMResult struct {
-	HTML     string
-	FinalURL string
-	Title    string
-}
-
-// MetaProps はget_meta_propsが返すメタ情報です。
-type MetaProps struct {
-	URL   string `json:"url"`
-	Title string `json:"title"`
-}
-
-// DOMFetcher は対象ページの取得とメタ情報取得を担います。
-type DOMFetcher interface {
-	FetchDOM(ctx context.Context, url string, wait time.Duration) (DOMResult, error)
-	FetchMetadata(ctx context.Context, url string, wait time.Duration) (*MetaProps, error)
-}
-
-// DOMWriter は取得したDOMを永続化するためのインターフェースです。
-type DOMWriter interface {
-	Write(path string, content string) error
-}
 
 // DOMService はDOM取得ユースケースを提供します。
 type DOMService struct {
-	fetcher DOMFetcher
-	writer  DOMWriter
+	fetcher domain.DOMFetcher
+	writer  domain.DOMWriter
 }
 
 // NewDOMService はDOMServiceを生成します。
-func NewDOMService(fetcher DOMFetcher, writer DOMWriter) *DOMService {
+func NewDOMService(fetcher domain.DOMFetcher, writer domain.DOMWriter) *DOMService {
 	return &DOMService{fetcher: fetcher, writer: writer}
+}
+
+// NewDefaultDOMService は標準実装のfetcher/writerを組み込んだDOMServiceを生成します。
+func NewDefaultDOMService() *DOMService {
+	return NewDOMService(
+		fetchers.NewRodDOMFetcher(),
+		writers.NewFileWriter(),
+	)
 }
 
 // GetDOMTree は対象URLのDOMツリーを取得します。
@@ -82,7 +70,7 @@ func (s *DOMService) GetMetaProps(
 	ctx context.Context,
 	url string,
 	wait time.Duration,
-) (*MetaProps, error) {
+) (*domain.MetaProps, error) {
 	if s == nil || s.fetcher == nil {
 		return nil, fmt.Errorf("DOMFetcherが初期化されていません")
 	}
@@ -104,7 +92,7 @@ func (s *DOMService) GetMetaProps(
 		finalURL = trimmedURL
 	}
 
-	return &MetaProps{
+	return &domain.MetaProps{
 		URL:   finalURL,
 		Title: strings.TrimSpace(result.Title),
 	}, nil

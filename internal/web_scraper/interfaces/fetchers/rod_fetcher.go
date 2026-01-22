@@ -2,17 +2,11 @@ package fetchers
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
-
-	sanitizer "github.com/landmaster135/devbox/internal/html_sanitizer/usecases/sanitizer"
-
-	"github.com/landmaster135/devbox/internal/web_scraper/usecases"
 )
 
 const defaultLaunchTimeout = 90 * time.Second
@@ -22,66 +16,17 @@ type RodDOMFetcher struct {
 	launchTimeout time.Duration
 }
 
-// Option はRodDOMFetcherのオプションです。
-type Option func(*RodDOMFetcher)
-
-// WithLaunchTimeout はブラウザ起動のタイムアウトを設定します。
-func WithLaunchTimeout(d time.Duration) Option {
-	return func(f *RodDOMFetcher) {
-		if d > 0 {
-			f.launchTimeout = d
-		}
-	}
-}
-
 // NewRodDOMFetcher はRodDOMFetcherのインスタンスを生成します。
-func NewRodDOMFetcher(opts ...Option) *RodDOMFetcher {
-	fetcher := &RodDOMFetcher{launchTimeout: defaultLaunchTimeout}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(fetcher)
-		}
+func NewRodDOMFetcher(timeout time.Duration) *RodDOMFetcher {
+	if timeout == 0 {
+		timeout = defaultLaunchTimeout
 	}
-	return fetcher
+	return &RodDOMFetcher{
+		launchTimeout: timeout,
+	}
 }
 
-// FetchDOM は対象URLのDOMツリーを取得します。
-func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration) (usecases.DOMResult, error) {
-	html, resolvedURL, pageTitle, err := f.fetchPage(ctx, targetURL, wait)
-	if err != nil {
-		return usecases.DOMResult{}, err
-	}
-
-	sanitized, err := sanitizer.SanitizeHTMLBody(html, true)
-	if err != nil {
-		var notFoundErr *sanitizer.MainNotFoundError
-		if errors.As(err, &notFoundErr) {
-			return usecases.DOMResult{}, errors.New(notFoundErr.Error())
-		}
-		return usecases.DOMResult{}, fmt.Errorf("HTMLのサニタイズに失敗しました: %w", err)
-	}
-
-	return usecases.DOMResult{
-		HTML:     sanitized,
-		FinalURL: strings.TrimSpace(resolvedURL),
-		Title:    strings.TrimSpace(pageTitle),
-	}, nil
-}
-
-// FetchMetadata は対象URLのメタ情報を取得します（DOMのサニタイズは行いません）。
-func (f *RodDOMFetcher) FetchMetadata(ctx context.Context, targetURL string, wait time.Duration) (*usecases.MetaProps, error) {
-	_, resolvedURL, pageTitle, err := f.fetchPage(ctx, targetURL, wait)
-	if err != nil {
-		return nil, err
-	}
-
-	return &usecases.MetaProps{
-		URL:   strings.TrimSpace(resolvedURL),
-		Title: strings.TrimSpace(pageTitle),
-	}, nil
-}
-
-func (f *RodDOMFetcher) fetchPage(ctx context.Context, targetURL string, wait time.Duration) (string, string, string, error) {
+func (f *RodDOMFetcher) FetchPage(ctx context.Context, targetURL string, wait time.Duration) (string, string, string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
