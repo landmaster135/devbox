@@ -204,6 +204,9 @@ func getDefaultHTMLDenySelectors() []string {
 		"script",
 		"header",
 		"footer",
+		"form",
+		"nav",
+		"aside",
 	}
 	return append(items, itemsForReddit...)
 }
