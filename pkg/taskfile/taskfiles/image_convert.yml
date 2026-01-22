@@ -46,7 +46,7 @@ tasks:
         interactive: true
         silent: true
 
-  image-converter:png-to-webp-keeping-saturation:
+  image-converter:png-to-webp:keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
       - cmd: |
