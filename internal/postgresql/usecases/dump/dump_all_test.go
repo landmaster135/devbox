@@ -83,29 +83,33 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	}
 
 	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
-		if query == `
+		switch query {
+		case `
 		SELECT table_name
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
 		ORDER BY table_name
-	` {
+	`:
 			return NewMockRows([]string{"table_name"}, [][]any{
 				{"users"},
 				{"products"},
 			}), nil
-		} else if query == "SELECT * FROM \"users\"" {
+		case "SELECT * FROM \"users\"":
 			return usersRows(), nil
-		} else if query == "SELECT * FROM \"products\"" {
+		case "SELECT * FROM \"products\"":
 			return productsRows(), nil
+		default:
+			return nil, errors.New("unexpected query")
 		}
-		return nil, errors.New("unexpected query")
 	}
 
 	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) model.RowInterface {
-		if query == "SELECT current_database()" {
+		switch query {
+		case "SELECT current_database()":
 			return dbRow
+		default:
+			return nil
 		}
-		return nil
 	}
 
 	// ファイル書き込みの成功レスポンス
