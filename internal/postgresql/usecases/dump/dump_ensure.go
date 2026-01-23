@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+
+	sql "github.com/landmaster135/devbox/internal/postgresql/domain/sql"
 )
 
 // validateOptions はオプションを検証します
@@ -16,7 +18,7 @@ func validateOptions(options *DumpOptions) error {
 		return errors.New("オプションが指定されていません")
 	}
 
-	if _, _, err := quoteQualifiedTableName(options.TableName); err != nil {
+	if _, _, err := sql.QuoteQualifiedTableName(options.TableName); err != nil {
 		return err
 	}
 
@@ -80,7 +82,7 @@ func (d *TableDumper) getAllTables(ctx context.Context) ([]model.Table, error) {
 
 // ensureAllowedTable はテーブルが存在し、ホワイトリストに一致することを確認します
 func (d *TableDumper) ensureAllowedTable(ctx context.Context, tableName string) error {
-	_, parts, err := quoteQualifiedTableName(tableName)
+	_, parts, err := sql.QuoteQualifiedTableName(tableName)
 	if err != nil {
 		return err
 	}

@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-type jsonStreamWriter struct {
+type JSONStreamWriter struct {
 	file     *os.File
 	rows     int
 	closed   bool
 	closeErr error
 }
 
-func newJSONStreamWriter(fileWriter FileWriter, filePath string) (*jsonStreamWriter, error) {
+func NewJSONStreamWriter(fileWriter FileWriter, filePath string) (*JSONStreamWriter, error) {
 	file, err := fileWriter.Create(filePath)
 	if err != nil {
 		return nil, err
@@ -25,10 +25,10 @@ func newJSONStreamWriter(fileWriter FileWriter, filePath string) (*jsonStreamWri
 		return nil, err
 	}
 
-	return &jsonStreamWriter{file: file}, nil
+	return &JSONStreamWriter{file: file}, nil
 }
 
-func (w *jsonStreamWriter) writeBatch(rows []map[string]any) error {
+func (w *JSONStreamWriter) WriteBatch(rows []map[string]any) error {
 	if w.closed {
 		return errors.New("既にクローズされたライターに書き込めません")
 	}
@@ -60,7 +60,7 @@ func (w *jsonStreamWriter) writeBatch(rows []map[string]any) error {
 	return nil
 }
 
-func (w *jsonStreamWriter) Close() error {
+func (w *JSONStreamWriter) Close() error {
 	if w.closed {
 		return w.closeErr
 	}
@@ -91,6 +91,6 @@ func (w *jsonStreamWriter) Close() error {
 	return err
 }
 
-func (w *jsonStreamWriter) RowsWritten() int {
+func (w *JSONStreamWriter) RowsWritten() int {
 	return w.rows
 }

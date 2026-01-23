@@ -10,6 +10,7 @@ import (
 	"time"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	writer "github.com/landmaster135/devbox/internal/postgresql/usecases/writer"
 )
 
 // #==============================================================#
@@ -72,7 +73,7 @@ type DatabaseQueryExecutor interface {
 }
 
 type tableDataWriter interface {
-	writeBatch(rows []map[string]any) error
+	WriteBatch(rows []map[string]any) error
 	Close() error
 	RowsWritten() int
 }
@@ -186,11 +187,11 @@ func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (resu
 func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sortedColumns []string) (tableDataWriter, error) {
 	switch format {
 	case "json":
-		return newJSONStreamWriter(d.fileWriter, filePath)
+		return writer.NewJSONStreamWriter(d.fileWriter, filePath)
 	case "csv":
-		return newCSVStreamWriter(d.fileWriter, filePath, sortedColumns)
+		return writer.NewCSVStreamWriter(d.fileWriter, filePath, sortedColumns)
 	case "sql":
-		return newSQLStreamWriter(d.fileWriter, filePath, tableName, sortedColumns)
+		return writer.NewSQLStreamWriter(d.fileWriter, filePath, tableName, sortedColumns)
 	default:
 		return nil, fmt.Errorf("サポートされていないフォーマット: %s", format)
 	}
@@ -248,7 +249,7 @@ func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string,
 
 		batch = append(batch, row)
 		if len(batch) == 1000 {
-			if err := writer.writeBatch(batch); err != nil {
+			if err := writer.WriteBatch(batch); err != nil {
 				return err
 			}
 			batch = batch[:0]
@@ -256,7 +257,7 @@ func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string,
 	}
 
 	if len(batch) > 0 {
-		if err := writer.writeBatch(batch); err != nil {
+		if err := writer.WriteBatch(batch); err != nil {
 			return err
 		}
 	}

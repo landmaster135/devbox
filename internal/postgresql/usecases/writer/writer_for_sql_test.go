@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
 type testStringer struct {
@@ -102,7 +103,7 @@ func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "dump.sql")
 
-	writer, err := newSQLStreamWriter(&MockFileWriter{
+	writer, err := NewSQLStreamWriter(&MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
@@ -122,7 +123,7 @@ func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, writer.writeBatch(rows))
+	assert.NoError(t, writer.WriteBatch(rows))
 	assert.Equal(t, 1, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -138,7 +139,7 @@ func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
 
 	assert.NoError(t, writer.Close())
 
-	err = writer.writeBatch(rows)
+	err = writer.WriteBatch(rows)
 	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
 }
 
@@ -146,7 +147,7 @@ func TestNewSQLStreamWriter_InvalidTable(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "invalid.sql")
 
-	writer, err := newSQLStreamWriter(&MockFileWriter{
+	writer, err := NewSQLStreamWriter(&MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
@@ -161,7 +162,7 @@ func TestSQLStreamWriter_WriteBatch(t *testing.T) {
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "users.sql")
 	columns := []string{"id", "name", "active", "created_at", "payload"}
-	writer, err := newSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
+	writer, err := NewSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
 	assert.NoError(t, err)
 
 	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 6000, time.UTC)
@@ -183,7 +184,7 @@ func TestSQLStreamWriter_WriteBatch(t *testing.T) {
 	}
 
 	// Act
-	assert.NoError(t, writer.writeBatch(rows))
+	assert.NoError(t, writer.WriteBatch(rows))
 	assert.NoError(t, writer.Close())
 
 	// Assert
@@ -206,7 +207,7 @@ func TestSQLStreamWriter_CloseWithoutRows(t *testing.T) {
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "empty.sql")
 	columns := []string{"id"}
-	writer, err := newSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
+	writer, err := NewSQLStreamWriter(&DefaultFileWriter{}, filePath, "users", columns)
 	assert.NoError(t, err)
 
 	// Act
