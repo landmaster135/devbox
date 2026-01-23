@@ -139,9 +139,9 @@ func NewDefaultDiscordWebhookService() *DiscordWebhookService {
 // ##       Webhook Process                                      ##
 // #==============================================================#
 // createSimplePayload はembedなしの簡単な通知を送信します
-func (s *DiscordWebhookService) createSimplePayload(contentText string) (*discord.Payload, error) {
+func (s *DiscordWebhookService) createSimplePayload(botName, contentText string) (*discord.Payload, error) {
 	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botNameForVSCODE, contentText, nil, false)
+	payload, err := s.repository.CreatePayload(botName, contentText, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
@@ -294,13 +294,13 @@ func (s *DiscordWebhookService) SendWebhook(ctx context.Context, webhookURL stri
 }
 
 // SendNotification はDiscordに通知を送信します
-func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL, contentText, embedType, embedText, embedColor, embedURLLinkedText string) error {
+func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL, botName, contentText, embedType, embedText, embedColor, embedURLLinkedText string) error {
 	// embed-typeに応じた処理
 	var payload *discord.Payload
 	var err error
 	switch {
 	case embedType == "none":
-		payload, err = s.createSimplePayload(contentText)
+		payload, err = s.createSimplePayload(botName, contentText)
 		if err != nil {
 			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 		}

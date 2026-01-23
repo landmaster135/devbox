@@ -61,6 +61,7 @@ func handleWorkloadIdentitySetup(cfg *config.Config) {
 		err = discordService.SendNotification(
 			ctx,
 			cfg.WebhookURL,
+			"",
 			message.Content,
 			"vscode",
 			message.Title,

@@ -132,6 +132,7 @@ func TestDiscordWebhookService_OpenWeather_Defaults(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
@@ -186,6 +187,7 @@ func TestDiscordWebhookService_OpenWeather_WithOptions(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"カスタムタイトル",
@@ -222,6 +224,7 @@ func TestDiscordWebhookService_OpenWeather_ColorConversionError(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
@@ -244,6 +247,7 @@ func TestDiscordWebhookService_OpenWeather_CreateEmbedsError(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
@@ -266,6 +270,7 @@ func TestDiscordWebhookService_OpenWeather_CreatePayloadError(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
