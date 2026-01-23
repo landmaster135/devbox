@@ -109,7 +109,7 @@ func TestDatetimeCalculatorService_GetCalculator_FunctionalTest(t *testing.T) {
 	// sumTimeFloat機能のテスト
 	figures := []float64{1.5, 2.5, 3.0}
 	expectedSum := 7.0
-	actualSum := calculator.sumTimeFloat(figures)
+	actualSum := calculator.SumTimeFloat(figures)
 	if actualSum != expectedSum {
 		t.Errorf("sumTimeFloat: expected %f, got %f", expectedSum, actualSum)
 	}
