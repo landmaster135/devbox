@@ -14,8 +14,6 @@ import (
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
-const defaultTableSchema = "public"
-
 var IdentifierPattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
 func qualifyTableIdentifier(tableName string) (qualified string, schema string, name string, err error) {
@@ -28,14 +26,14 @@ func qualifyTableIdentifier(tableName string) (qualified string, schema string, 
 		return "", "", "", fmt.Errorf("サポートされていないテーブル識別子です: %s", tableName)
 	}
 
-	schema = defaultTableSchema
+	schema = model.DefaultTableSchema
 	name = parts[len(parts)-1]
 	if len(parts) == 2 {
 		schema = parts[0]
 	}
 
 	if schema == "" {
-		schema = defaultTableSchema
+		schema = model.DefaultTableSchema
 	}
 
 	if !IdentifierPattern.MatchString(schema) {

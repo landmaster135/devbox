@@ -262,7 +262,7 @@ func (d *TableDumper) ensureAllowedTable(ctx context.Context, tableName string) 
 		return err
 	}
 
-	if len(parts) == 2 && parts[0] != "public" {
+	if len(parts) == 2 && parts[0] != model.DefaultTableSchema {
 		return fmt.Errorf("サポートされていないスキーマが指定されました: %s", parts[0])
 	}
 
