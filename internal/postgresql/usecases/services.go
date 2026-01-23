@@ -262,13 +262,35 @@ func (s *PostgreSQLService) HandleGetAllTableSummaries(ctx context.Context) (str
 }
 
 // HandleToGetTableSchemaMinimum はテーブルの最小限のスキーマ情報を取得して、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, tableName string) ([]model.Column, error) {
-	return dump.GetTableSchemaMinimum(ctx, s.executor, tableName)
+func (s *PostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, tableName string) (string, error) {
+	schema, err := dump.GetTableSchemaMinimum(ctx, s.executor, tableName)
+	if err != nil {
+		return "", fmt.Errorf("テーブルスキーマの取得に失敗しました: %v\n", err)
+	}
+
+	// 結果をJSON形式で標準出力に表示
+	jsonResult, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("結果のJSON変換に失敗しました: %v\n", err)
+	}
+
+	return string(jsonResult), nil
 }
 
 // HandleToListTablesMinimum はデータベース内のテーブル一覧を取得して、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) ([]model.Table, error) {
-	return dump.GetTablesMinimum(ctx, s.executor)
+func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) (string, error) {
+	tables, err := dump.GetTablesMinimum(ctx, s.executor)
+	if err != nil {
+		return "", fmt.Errorf("テーブル一覧の取得に失敗しました: %v\n", err)
+	}
+
+	// 結果をJSON形式で標準出力に表示
+	jsonResult, err := json.MarshalIndent(tables, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("結果のJSON変換に失敗しました: %v\n", err)
+	}
+
+	return string(jsonResult), nil
 }
 
 // HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
@@ -282,12 +304,7 @@ func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, ou
 	}
 
 	// ダンプオプションを作成
-	options := &dump.DumpOptions{
-		TableName:  tableName,
-		OutputPath: outputPath,
-		Format:     format,
-		Limit:      limit,
-	}
+	options := dump.NewDumpOptions(tableName, outputPath, format, limit)
 
 	// ダンプを実行
 	return s.tableDumper.DumpTable(ctx, options)

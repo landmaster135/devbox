@@ -3,6 +3,7 @@ package usecases
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	dump "github.com/landmaster135/devbox/internal/postgresql/usecases/dump"
 	templateRenderer "github.com/landmaster135/devbox/internal/postgresql/usecases/template_renderer"
 )
@@ -230,10 +232,14 @@ func TestHandleToListTablesMinimum_Normal(t *testing.T) {
 
 	// アサーション
 	assert.NoError(t, err)
-	assert.Len(t, result, 3)
-	assert.Equal(t, "users", result[0].Name)
-	assert.Equal(t, "products", result[1].Name)
-	assert.Equal(t, "orders", result[2].Name)
+
+	var tables []model.Table
+	err = json.Unmarshal([]byte(result), &tables)
+	assert.NoError(t, err)
+	assert.Len(t, tables, 3)
+	assert.Equal(t, "users", tables[0].Name)
+	assert.Equal(t, "products", tables[1].Name)
+	assert.Equal(t, "orders", tables[2].Name)
 
 	// モックの期待値が満たされたことを確認
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -257,7 +263,7 @@ func TestHandleToListTablesMinimum_Error(t *testing.T) {
 
 	// アサーション
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "データベースエラー")
 
 	// モックの期待値が満たされたことを確認
@@ -288,13 +294,17 @@ func TestHandleToGetTableSchemaMinimum_Normal(t *testing.T) {
 
 	// アサーション
 	assert.NoError(t, err)
-	assert.Len(t, result, 3)
-	assert.Equal(t, "id", result[0].Name)
-	assert.Equal(t, "integer", result[0].DataType)
-	assert.Equal(t, "name", result[1].Name)
-	assert.Equal(t, "character varying", result[1].DataType)
-	assert.Equal(t, "created_at", result[2].Name)
-	assert.Equal(t, "timestamp", result[2].DataType)
+
+	var schema []model.Column
+	err = json.Unmarshal([]byte(result), &schema)
+	assert.NoError(t, err)
+	assert.Len(t, schema, 3)
+	assert.Equal(t, "id", schema[0].Name)
+	assert.Equal(t, "integer", schema[0].DataType)
+	assert.Equal(t, "name", schema[1].Name)
+	assert.Equal(t, "character varying", schema[1].DataType)
+	assert.Equal(t, "created_at", schema[2].Name)
+	assert.Equal(t, "timestamp", schema[2].DataType)
 
 	// モックの期待値が満たされたことを確認
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -319,7 +329,7 @@ func TestHandleToGetTableSchemaMinimum_Error(t *testing.T) {
 
 	// アサーション
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "データベースエラー")
 
 	// モックの期待値が満たされたことを確認
