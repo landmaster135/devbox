@@ -12,7 +12,7 @@ type Config struct {
 	WebhookURL         string // webhook-url (必須)
 	ContentText        string // content-text (必須)
 	BotName            string // bot-name (任意)
-	EmbedType          string // embed-type (none, vscode, open-weather-map, google-*-success, google-*-failed)
+	EmbedType          string // embed-type (none, vscode, postgres, open-weather-map, google-*-success, google-*-failed)
 	EmbedText          string // embed-text (任意)
 	EmbedColor         string // embed-color (任意)
 	EmbedURLLinkedText string // embed-url-linked-text (任意)
@@ -22,6 +22,7 @@ type Config struct {
 var validEmbedTypes = []string{
 	"none",
 	"vscode",
+	"postgres",
 	"open-weather-map",
 	"google-compute-engine-success",
 	"google-compute-engine-failed",
@@ -173,6 +174,9 @@ func PrintUsage() {
   VSCode風embed付き通知:
     %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "デプロイ完了" -embed-type vscode -embed-text "アプリケーションが正常にデプロイされました"
 
+  PostgreSQLダンプ通知:
+    %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "ダンプが完了しました" -embed-type postgres -embed-text "最新のPostgreSQLバックアップ"
+
   OpenWeatherMap embed付き通知:
     %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "天気予報" -embed-type open-weather-map -embed-text "今日の天気予報"
 
@@ -194,8 +198,9 @@ func PrintUsage() {
 embed-typeについて:
   none             : Embedを使用せず、content-textのみを送信
   vscode           : VSCode風のEmbedを使用（フッターにVSCodeアイコンを表示）
+  postgres         : VSCode風レイアウトでPostgreSQL通知を送信（専用Bot名とアイコンを使用）
   open-weather-map : 天気予報向けのEmbedをOpenWeatherMap用アイコンで送信
   google-*-success / google-*-failed : Google Cloud各サービスのリクエスト結果を通知（compute-engine, secret-manager, cloud-storage, cloud-scheduler, cloud-iam, cloud-run, cloud-run-function）
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], embedTypeHelpMessage())
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], embedTypeHelpMessage())
 }

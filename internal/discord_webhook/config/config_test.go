@@ -235,7 +235,7 @@ func TestNewConfig_Error(t *testing.T) {
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
 			botName:       "",
 			contentText:   "テストメッセージ",
-			expectedError: "無効なembed-typeです: invalid (有効な値: google-cloud-iam-failed, google-cloud-iam-success, google-cloud-run-failed, google-cloud-run-function-failed, google-cloud-run-function-success, google-cloud-run-success, google-cloud-scheduler-failed, google-cloud-scheduler-success, google-cloud-storage-failed, google-cloud-storage-success, google-compute-engine-failed, google-compute-engine-success, google-secret-manager-failed, google-secret-manager-success, none, open-weather-map, vscode)",
+			expectedError: "無効なembed-typeです: invalid (有効な値: google-cloud-iam-failed, google-cloud-iam-success, google-cloud-run-failed, google-cloud-run-function-failed, google-cloud-run-function-success, google-cloud-run-success, google-cloud-scheduler-failed, google-cloud-scheduler-success, google-cloud-storage-failed, google-cloud-storage-success, google-compute-engine-failed, google-compute-engine-success, google-secret-manager-failed, google-secret-manager-success, none, open-weather-map, postgres, vscode)",
 		},
 		{
 			name:          "無効なwebhook-URL（httpスキーム）",
