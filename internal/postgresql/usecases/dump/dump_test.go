@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,7 +53,7 @@ func createTestTableDumper() (*TableDumper, *MockDatabaseQueryExecutor, *MockFil
 	mockExecutor := &MockDatabaseQueryExecutor{}
 	mockFileWriter := &MockFileWriter{}
 
-	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 		trimmed := strings.TrimSpace(query)
 		if strings.Contains(trimmed, "FROM information_schema.tables") {
 			return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil

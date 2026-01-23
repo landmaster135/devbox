@@ -18,6 +18,8 @@ import (
 	"time"
 
 	pq "github.com/lib/pq"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
 var identifierPattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
@@ -61,7 +63,7 @@ type FailedDump struct {
 
 // DumpTask は並行処理用のダンプタスクを表します
 type DumpTask struct {
-	Table   Table
+	Table   model.Table
 	Options *DumpOptions
 }
 
@@ -137,24 +139,10 @@ type FileWriter interface {
 	Create(name string) (*os.File, error)
 }
 
-// RowsInterface は sql.Rows の操作を抽象化するインターフェースです
-type RowsInterface interface {
-	Columns() ([]string, error)
-	Next() bool
-	Scan(dest ...any) error
-	Close() error
-	Err() error
-}
-
-// RowInterface は sql.Row の操作を抽象化するインターフェースです
-type RowInterface interface {
-	Scan(dest ...any) error
-}
-
 // DatabaseQueryExecutor はクエリ実行を抽象化するインターフェースです
 type DatabaseQueryExecutor interface {
-	QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error)
-	QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface
+	QueryContextRows(ctx context.Context, query string, args ...any) (model.RowsInterface, error)
+	QueryRowContextRow(ctx context.Context, query string, args ...any) model.RowInterface
 }
 
 // #==============================================================#
@@ -393,7 +381,7 @@ func (d *TableDumper) getFileExtension(format string) string {
 }
 
 // streamRows は取得した行を一定件数ずつ writer に書き込みます
-func (d *TableDumper) streamRows(rows RowsInterface, columnOrder []string, writer tableDataWriter) error {
+func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string, writer tableDataWriter) error {
 	if writer == nil {
 		return errors.New("writerが初期化されていません")
 	}
@@ -849,7 +837,7 @@ func (w *sqlStreamWriter) RowsWritten() int {
 // ##          DumpAllTables                                     ##
 // #==============================================================#
 // getAllTables はデータベース内の全テーブル一覧を取得します
-func (d *TableDumper) getAllTables(ctx context.Context) ([]Table, error) {
+func (d *TableDumper) getAllTables(ctx context.Context) ([]model.Table, error) {
 	query := `
 		SELECT table_name
 		FROM information_schema.tables
@@ -863,9 +851,9 @@ func (d *TableDumper) getAllTables(ctx context.Context) ([]Table, error) {
 	}
 	defer rows.Close()
 
-	var tables []Table
+	var tables []model.Table
 	for rows.Next() {
-		var table Table
+		var table model.Table
 		if err := rows.Scan(&table.Name); err != nil {
 			return nil, err
 		}
@@ -937,7 +925,7 @@ func (d *TableDumper) collectDumpResults(resultChan <-chan DumpTaskResult, resul
 }
 
 // executeConcurrentDumps は並行処理でテーブルダンプを実行します
-func (d *TableDumper) executeConcurrentDumps(ctx context.Context, databaseName string, tables []Table, concurrency int, outputPath, format string, limit *int) (*DumpAllTablesResult, error) {
+func (d *TableDumper) executeConcurrentDumps(ctx context.Context, databaseName string, tables []model.Table, concurrency int, outputPath, format string, limit *int) (*DumpAllTablesResult, error) {
 	if concurrency <= 0 {
 		concurrency = 1
 	}

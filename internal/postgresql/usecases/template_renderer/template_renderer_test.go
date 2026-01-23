@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
 // #==============================================================#
@@ -29,59 +31,59 @@ func TestFormatPK_Normal(t *testing.T) {
 // TestFormatUK はformatUK関数をテストします
 func TestFormatUK_Normal(t *testing.T) {
 	// 単一一意キー
-	uk1 := UniqueKey{Name: "uk1", Columns: []string{"email"}}
-	result := formatUK([]UniqueKey{uk1})
+	uk1 := model.UniqueKey{Name: "uk1", Columns: []string{"email"}}
+	result := formatUK([]model.UniqueKey{uk1})
 	assert.Equal(t, "email", result)
 
 	// 複合一意キー
-	uk2 := UniqueKey{Name: "uk2", Columns: []string{"username", "domain"}}
-	result = formatUK([]UniqueKey{uk2})
+	uk2 := model.UniqueKey{Name: "uk2", Columns: []string{"username", "domain"}}
+	result = formatUK([]model.UniqueKey{uk2})
 	assert.Equal(t, "(username, domain)", result)
 
 	// 複数の一意キー
-	result = formatUK([]UniqueKey{uk1, uk2})
+	result = formatUK([]model.UniqueKey{uk1, uk2})
 	assert.Equal(t, "email; (username, domain)", result)
 
 	// 空の一意キー
-	result = formatUK([]UniqueKey{})
+	result = formatUK([]model.UniqueKey{})
 	assert.Equal(t, "", result)
 }
 
 // TestFormatFK はformatFK関数をテストします
 func TestFormatFK_Normal(t *testing.T) {
 	// 単一外部キー
-	fk1 := ForeignKey{
+	fk1 := model.ForeignKey{
 		Name:       "fk1",
 		Columns:    []string{"role_id"},
 		RefTable:   "roles",
 		RefColumns: []string{"id"},
 	}
-	result := formatFK([]ForeignKey{fk1})
+	result := formatFK([]model.ForeignKey{fk1})
 	assert.Equal(t, "role_id -> roles.id", result)
 
 	// 複合外部キー
-	fk2 := ForeignKey{
+	fk2 := model.ForeignKey{
 		Name:       "fk2",
 		Columns:    []string{"country_id", "region_id"},
 		RefTable:   "locations",
 		RefColumns: []string{"country_id", "region_id"},
 	}
-	result = formatFK([]ForeignKey{fk2})
+	result = formatFK([]model.ForeignKey{fk2})
 	assert.Equal(t, "(country_id, region_id) -> locations.(country_id, region_id)", result)
 
 	// 複数の外部キー
-	result = formatFK([]ForeignKey{fk1, fk2})
+	result = formatFK([]model.ForeignKey{fk1, fk2})
 	assert.Equal(t, "role_id -> roles.id; (country_id, region_id) -> locations.(country_id, region_id)", result)
 
 	// 空の外部キー
-	result = formatFK([]ForeignKey{})
+	result = formatFK([]model.ForeignKey{})
 	assert.Equal(t, "", result)
 }
 
 // TestFormatColumn はformatColumn関数をテストします
 func TestFormatColumn_Normal(t *testing.T) {
 	// NOT NULLカラム（デフォルト値あり）
-	col1 := ColumnInfo{
+	col1 := model.ColumnInfo{
 		Name:       "id",
 		Type:       "integer",
 		IsNullable: "NO",
@@ -92,7 +94,7 @@ func TestFormatColumn_Normal(t *testing.T) {
 	assert.Equal(t, "- id: integer NOT NULL DEFAULT nextval('users_id_seq'::regclass) [ID]", result)
 
 	// NULLカラム（デフォルト値なし）
-	col2 := ColumnInfo{
+	col2 := model.ColumnInfo{
 		Name:       "name",
 		Type:       "character varying",
 		IsNullable: "YES",
@@ -103,7 +105,7 @@ func TestFormatColumn_Normal(t *testing.T) {
 	assert.Equal(t, "- name: character varying NULL [名前]", result)
 
 	// コメントなし
-	col3 := ColumnInfo{
+	col3 := model.ColumnInfo{
 		Name:       "status",
 		Type:       "boolean",
 		IsNullable: "NO",
@@ -117,29 +119,29 @@ func TestFormatColumn_Normal(t *testing.T) {
 // TestFormatIndex はformatIndex関数をテストします
 func TestFormatIndex_Normal(t *testing.T) {
 	// 単一インデックス
-	idx1 := IndexInfo{
+	idx1 := model.IndexInfo{
 		Name:    "users_email_idx",
 		Columns: []string{"email"},
 		Unique:  true,
 	}
-	result := formatIndex([]IndexInfo{idx1})
+	result := formatIndex([]model.IndexInfo{idx1})
 	assert.Equal(t, "email", result)
 
 	// 複合インデックス
-	idx2 := IndexInfo{
+	idx2 := model.IndexInfo{
 		Name:    "users_name_idx",
 		Columns: []string{"first_name", "last_name"},
 		Unique:  false,
 	}
-	result = formatIndex([]IndexInfo{idx2})
+	result = formatIndex([]model.IndexInfo{idx2})
 	assert.Equal(t, "(first_name, last_name)", result)
 
 	// 複数のインデックス
-	result = formatIndex([]IndexInfo{idx1, idx2})
+	result = formatIndex([]model.IndexInfo{idx1, idx2})
 	assert.Equal(t, "email; (first_name, last_name)", result)
 
 	// 空のインデックス
-	result = formatIndex([]IndexInfo{})
+	result = formatIndex([]model.IndexInfo{})
 	assert.Equal(t, "", result)
 }
 
@@ -151,10 +153,10 @@ func TestFormatIndex_Normal(t *testing.T) {
 func TestDefaultTemplateRenderer_RenderTableDetail_Normal(t *testing.T) {
 	// Arrange
 	renderer := &DefaultTemplateRenderer{}
-	detail := &TableDetail{
+	detail := &model.TableDetail{
 		Name:    "users",
 		Comment: "ユーザーテーブル",
-		Columns: []ColumnInfo{
+		Columns: []model.ColumnInfo{
 			{
 				Name:       "id",
 				Type:       "integer",
@@ -171,10 +173,10 @@ func TestDefaultTemplateRenderer_RenderTableDetail_Normal(t *testing.T) {
 			},
 		},
 		PrimaryKeys: []string{"id"},
-		UniqueKeys: []UniqueKey{
+		UniqueKeys: []model.UniqueKey{
 			{Name: "users_email_key", Columns: []string{"email"}},
 		},
-		ForeignKeys: []ForeignKey{
+		ForeignKeys: []model.ForeignKey{
 			{
 				Name:       "users_role_id_fkey",
 				Columns:    []string{"role_id"},
@@ -182,7 +184,7 @@ func TestDefaultTemplateRenderer_RenderTableDetail_Normal(t *testing.T) {
 				RefColumns: []string{"id"},
 			},
 		},
-		Indexes: []IndexInfo{
+		Indexes: []model.IndexInfo{
 			{Name: "users_email_idx", Columns: []string{"email"}, Unique: true},
 		},
 	}
@@ -208,9 +210,9 @@ func TestDefaultTemplateRenderer_RenderTableDetail_Normal(t *testing.T) {
 func TestDefaultTemplateRenderer_RenderTableDetail_MinimalData(t *testing.T) {
 	// Arrange
 	renderer := &DefaultTemplateRenderer{}
-	detail := &TableDetail{
+	detail := &model.TableDetail{
 		Name: "simple_table",
-		Columns: []ColumnInfo{
+		Columns: []model.ColumnInfo{
 			{
 				Name:       "id",
 				Type:       "integer",
@@ -220,9 +222,9 @@ func TestDefaultTemplateRenderer_RenderTableDetail_MinimalData(t *testing.T) {
 			},
 		},
 		PrimaryKeys: []string{},
-		UniqueKeys:  []UniqueKey{},
-		ForeignKeys: []ForeignKey{},
-		Indexes:     []IndexInfo{},
+		UniqueKeys:  []model.UniqueKey{},
+		ForeignKeys: []model.ForeignKey{},
+		Indexes:     []model.IndexInfo{},
 	}
 
 	// Act
@@ -246,16 +248,16 @@ func TestDefaultTemplateRenderer_RenderTableDetail_MinimalData(t *testing.T) {
 func TestDefaultTemplateRenderer_RenderTableList_Normal(t *testing.T) {
 	// Arrange
 	renderer := &DefaultTemplateRenderer{}
-	data := ListTablesData{
-		Tables: []TableSummary{
+	data := model.ListTablesData{
+		Tables: []model.TableSummary{
 			{
 				Name:    "users",
 				Comment: "ユーザーテーブル",
 				PK:      []string{"id"},
-				UK: []UniqueKey{
+				UK: []model.UniqueKey{
 					{Name: "users_email_key", Columns: []string{"email"}},
 				},
-				FK: []ForeignKey{
+				FK: []model.ForeignKey{
 					{
 						Name:       "users_role_id_fkey",
 						Columns:    []string{"role_id"},
@@ -268,8 +270,8 @@ func TestDefaultTemplateRenderer_RenderTableList_Normal(t *testing.T) {
 				Name:    "products",
 				Comment: "商品テーブル",
 				PK:      []string{"id"},
-				UK:      []UniqueKey{},
-				FK:      []ForeignKey{},
+				UK:      []model.UniqueKey{},
+				FK:      []model.ForeignKey{},
 			},
 		},
 	}
@@ -292,8 +294,8 @@ func TestDefaultTemplateRenderer_RenderTableList_Normal(t *testing.T) {
 func TestDefaultTemplateRenderer_RenderTableList_EmptyData(t *testing.T) {
 	// Arrange
 	renderer := &DefaultTemplateRenderer{}
-	data := ListTablesData{
-		Tables: []TableSummary{},
+	data := model.ListTablesData{
+		Tables: []model.TableSummary{},
 	}
 
 	// Act
@@ -309,14 +311,14 @@ func TestDefaultTemplateRenderer_RenderTableList_EmptyData(t *testing.T) {
 func TestDefaultTemplateRenderer_RenderTableList_MinimalTableData(t *testing.T) {
 	// Arrange
 	renderer := &DefaultTemplateRenderer{}
-	data := ListTablesData{
-		Tables: []TableSummary{
+	data := model.ListTablesData{
+		Tables: []model.TableSummary{
 			{
 				Name:    "simple_table",
 				Comment: "",
 				PK:      []string{},
-				UK:      []UniqueKey{},
-				FK:      []ForeignKey{},
+				UK:      []model.UniqueKey{},
+				FK:      []model.ForeignKey{},
 			},
 		},
 	}
@@ -376,7 +378,7 @@ func TestFormatFunctions_EdgeCases(t *testing.T) {
 	assert.Equal(t, "", result)
 
 	// formatColumn with empty values
-	col := ColumnInfo{
+	col := model.ColumnInfo{
 		Name:       "",
 		Type:       "",
 		IsNullable: "",
@@ -390,10 +392,10 @@ func TestFormatFunctions_EdgeCases(t *testing.T) {
 // TestComplexDataStructures は複雑なデータ構造でのテストです
 func TestComplexDataStructures_Normal(t *testing.T) {
 	// 複合主キー、複数の一意キー、複数の外部キーを持つテーブル
-	detail := &TableDetail{
+	detail := &model.TableDetail{
 		Name:    "complex_table",
 		Comment: "複雑なテーブル",
-		Columns: []ColumnInfo{
+		Columns: []model.ColumnInfo{
 			{
 				Name:       "id1",
 				Type:       "integer",
@@ -410,11 +412,11 @@ func TestComplexDataStructures_Normal(t *testing.T) {
 			},
 		},
 		PrimaryKeys: []string{"id1", "id2"},
-		UniqueKeys: []UniqueKey{
+		UniqueKeys: []model.UniqueKey{
 			{Name: "uk1", Columns: []string{"col1"}},
 			{Name: "uk2", Columns: []string{"col2", "col3"}},
 		},
-		ForeignKeys: []ForeignKey{
+		ForeignKeys: []model.ForeignKey{
 			{
 				Name:       "fk1",
 				Columns:    []string{"ref1"},
@@ -428,7 +430,7 @@ func TestComplexDataStructures_Normal(t *testing.T) {
 				RefColumns: []string{"id1", "id2"},
 			},
 		},
-		Indexes: []IndexInfo{
+		Indexes: []model.IndexInfo{
 			{Name: "idx1", Columns: []string{"col1"}, Unique: false},
 			{Name: "idx2", Columns: []string{"col2", "col3"}, Unique: true},
 		},

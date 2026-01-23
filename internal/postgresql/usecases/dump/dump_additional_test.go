@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
 func TestQualifyTableIdentifier_DefaultSchema(t *testing.T) {
@@ -34,7 +36,7 @@ func TestQualifyTableIdentifier_Invalid(t *testing.T) {
 
 func TestTableDumper_EnsureAllowedTable(t *testing.T) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 		return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
 	}
 
@@ -55,7 +57,7 @@ func TestTableDumper_EnsureAllowedTable_InvalidSchema(t *testing.T) {
 
 func TestTableDumper_EnsureAllowedTable_NotFound(t *testing.T) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 		return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
 	}
 
