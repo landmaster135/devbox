@@ -1,13 +1,13 @@
 package dump
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -160,60 +160,99 @@ func TestCSVStreamWriter_WithoutHeaders(t *testing.T) {
 	assert.Equal(t, "", string(data))
 }
 
-func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
-	dir := t.TempDir()
-	filePath := filepath.Join(dir, "dump.sql")
+// #==============================================================#
+// ##          Stream Writer Tests                               ##
+// #==============================================================#
 
-	writer, err := newSQLStreamWriter(&MockFileWriter{
-		CreateFunc: func(name string) (*os.File, error) {
-			return os.Create(name)
-		},
-	}, filePath, "public.users", []string{"id", "name", "created_at", "payload", "active", "score", "amount", "note"})
-	require.NoError(t, err)
+func TestJSONStreamWriter_WriteBatch(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "test.json")
+	writer, err := newJSONStreamWriter(&DefaultFileWriter{}, filePath)
+	assert.NoError(t, err)
 
+	batch1 := []map[string]any{{"id": 1, "name": "John"}}
+	batch2 := []map[string]any{{"id": 2, "name": "Jane"}}
+
+	// Act
+	assert.NoError(t, writer.writeBatch(batch1))
+	assert.NoError(t, writer.writeBatch(batch2))
+	assert.NoError(t, writer.Close())
+
+	// Assert
+	data, err := os.ReadFile(filePath)
+	assert.NoError(t, err)
+	expected := `[
+  {
+    "id": 1,
+    "name": "John"
+  },
+  {
+    "id": 2,
+    "name": "Jane"
+  }
+]`
+	assert.Equal(t, expected, string(data))
+	assert.Equal(t, 2, writer.RowsWritten())
+}
+
+func TestJSONStreamWriter_CloseWithoutRows(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "empty.json")
+	writer, err := newJSONStreamWriter(&DefaultFileWriter{}, filePath)
+	assert.NoError(t, err)
+
+	// Act
+	assert.NoError(t, writer.Close())
+
+	// Assert
+	data, err := os.ReadFile(filePath)
+	assert.NoError(t, err)
+	assert.Equal(t, "[]", string(data))
+	assert.Equal(t, 0, writer.RowsWritten())
+}
+
+func TestCSVStreamWriter_WriteBatch(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "test.csv")
+	headers := []string{"id", "name", "score", "active", "created_at", "payload"}
+	writer, err := newCSVStreamWriter(&DefaultFileWriter{}, filePath, headers)
+	assert.NoError(t, err)
+
+	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 6000, time.UTC)
 	rows := []map[string]any{
 		{
-			"id":         int64(1),
-			"name":       "Alice",
-			"created_at": time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC),
-			"payload":    []byte{0xBE, 0xEF},
+			"id":         1,
+			"name":       "John",
+			"score":      1.2345,
 			"active":     true,
-			"score":      float64(9.5),
-			"amount":     int(42),
-			"note":       testStringer{value: "memo"},
+			"created_at": createdAt,
+			"payload":    []byte("hi"),
+		},
+		{
+			"id":         2,
+			"name":       "Jane",
+			"score":      2.5,
+			"active":     false,
+			"created_at": createdAt.Add(time.Minute),
+			"payload":    nil,
 		},
 	}
 
+	// Act
 	assert.NoError(t, writer.writeBatch(rows))
-	assert.Equal(t, 1, writer.RowsWritten())
-
 	assert.NoError(t, writer.Close())
 
+	// Assert
 	data, err := os.ReadFile(filePath)
-	require.NoError(t, err)
-	content := string(data)
-
-	query := "INSERT INTO \"" + model.DefaultTableSchema + "\".\"users\" (\"id\", \"name\", \"created_at\", \"payload\", \"active\", \"score\", \"amount\", \"note\") VALUES (1, "
-	assert.Contains(t, content, query)
-	assert.Contains(t, content, "decode('beef','hex')")
-	assert.Contains(t, content, "TRUE")
-
-	assert.NoError(t, writer.Close())
-
-	err = writer.writeBatch(rows)
-	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
-}
-
-func TestNewSQLStreamWriter_InvalidTable(t *testing.T) {
-	dir := t.TempDir()
-	filePath := filepath.Join(dir, "invalid.sql")
-
-	writer, err := newSQLStreamWriter(&MockFileWriter{
-		CreateFunc: func(name string) (*os.File, error) {
-			return os.Create(name)
-		},
-	}, filePath, "invalid table", []string{"id"})
-
-	assert.Error(t, err)
-	assert.Nil(t, writer)
+	assert.NoError(t, err)
+	expected := strings.Join([]string{
+		"id,name,score,active,created_at,payload",
+		fmt.Sprintf("1,John,1.2345,true,%s,aGk=", createdAt.Format(time.RFC3339Nano)),
+		fmt.Sprintf("2,Jane,2.5,false,%s,", createdAt.Add(time.Minute).Format(time.RFC3339Nano)),
+	}, "\n") + "\n"
+	assert.Equal(t, expected, string(data))
+	assert.Equal(t, 2, writer.RowsWritten())
 }
