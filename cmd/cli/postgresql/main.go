@@ -108,20 +108,12 @@ func handleListTables(cfg *config.Config) {
 		fmt.Print(result)
 	} else {
 		// JSON形式で取得
-		result, err := service.GetAllTableSummaries(context.Background())
+		result, err := service.HandleGetAllTableSummaries(context.Background())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: テーブル一覧の取得に失敗しました: %v\n", err)
 			os.Exit(1)
 		}
-
-		// 結果をJSON形式で標準出力に表示
-		jsonResult, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: 結果のJSON変換に失敗しました: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Print(string(jsonResult))
+		fmt.Print(result)
 	}
 }
 

@@ -11,6 +11,8 @@ const (
 	EnvKeyDiscordWebhookURLForWeather       EnvKey = "DISCORD_WEBHOOK_URL_FOR_WEATHER"
 	EnvKeyOpenWeatherAPIKey                 EnvKey = "OPEN_WEATHER_API_KEY"
 	EnvKeyDiscordWebhookURLForDailyTemplate EnvKey = "DISCORD_WEBHOOK_URL_FOR_DAILY_TEMPLATE"
+	EnvKeyDBURL01Staging                    EnvKey = "DATABASE_URL_01_STAGING"
+	EnvKeyDBURL01Product                    EnvKey = "DATABASE_URL_01_PRODUCT"
 )
 
 func getEnvVars(repo infraEnv.Repository, envKey EnvKey) (string, error) {

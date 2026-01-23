@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
 // #==============================================================#
@@ -108,18 +110,18 @@ func (m *MockRow) Scan(dest ...any) error {
 
 // MockDatabaseQueryExecutor は新しいインターフェース用のモック
 type MockDatabaseQueryExecutor struct {
-	QueryContextRowsFunc   func(ctx context.Context, query string, args ...any) (RowsInterface, error)
-	QueryRowContextRowFunc func(ctx context.Context, query string, args ...any) RowInterface
+	QueryContextRowsFunc   func(ctx context.Context, query string, args ...any) (model.RowsInterface, error)
+	QueryRowContextRowFunc func(ctx context.Context, query string, args ...any) model.RowInterface
 }
 
-func (m *MockDatabaseQueryExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+func (m *MockDatabaseQueryExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 	if m.QueryContextRowsFunc != nil {
 		return m.QueryContextRowsFunc(ctx, query, args)
 	}
 	return nil, nil
 }
 
-func (m *MockDatabaseQueryExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
+func (m *MockDatabaseQueryExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) model.RowInterface {
 	if m.QueryRowContextRowFunc != nil {
 		return m.QueryRowContextRowFunc(ctx, query, args)
 	}
@@ -184,20 +186,20 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 	dbRow := NewMockRow([]any{"testdb"}, nil)
 
 	// 各テーブルのダンプクエリの成功レスポンス
-	usersRows := func() RowsInterface {
+	usersRows := func() model.RowsInterface {
 		return NewMockRows([]string{"id", "name"}, [][]any{
 			{1, "John"},
 			{2, "Jane"},
 		})
 	}
 
-	productsRows := func() RowsInterface {
+	productsRows := func() model.RowsInterface {
 		return NewMockRows([]string{"id", "title"}, [][]any{
 			{1, "Product A"},
 		})
 	}
 
-	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 		if query == `
 		SELECT table_name
 		FROM information_schema.tables
@@ -216,7 +218,7 @@ func TestTableDumper_DumpAllTables_Normal(t *testing.T) {
 		return nil, errors.New("unexpected query")
 	}
 
-	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) RowInterface {
+	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) model.RowInterface {
 		if query == "SELECT current_database()" {
 			return dbRow
 		}
@@ -269,7 +271,7 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 	// データベース名取得
 	dbRow := NewMockRow([]any{"testdb"}, nil)
 
-	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+	suite.mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 		if query == `
 		SELECT table_name
 		FROM information_schema.tables
@@ -281,7 +283,7 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 		return nil, errors.New("unexpected query")
 	}
 
-	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) RowInterface {
+	suite.mockExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) model.RowInterface {
 		if query == "SELECT current_database()" {
 			return dbRow
 		}

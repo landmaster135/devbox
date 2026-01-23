@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
 // #==============================================================#
@@ -68,7 +70,7 @@ func formatPK(pk []string) string {
 }
 
 // formatUK は一意キー情報をフォーマットします
-func formatUK(uk []UniqueKey) string {
+func formatUK(uk []model.UniqueKey) string {
 	if len(uk) == 0 {
 		return ""
 	}
@@ -84,7 +86,7 @@ func formatUK(uk []UniqueKey) string {
 }
 
 // formatFK は外部キー情報をフォーマットします
-func formatFK(fk []ForeignKey) string {
+func formatFK(fk []model.ForeignKey) string {
 	if len(fk) == 0 {
 		return ""
 	}
@@ -110,7 +112,7 @@ func formatFK(fk []ForeignKey) string {
 }
 
 // formatColumn はカラム情報をフォーマットします
-func formatColumn(col ColumnInfo) string {
+func formatColumn(col model.ColumnInfo) string {
 	nullable := "NOT NULL"
 	if col.IsNullable == "YES" {
 		nullable = "NULL"
@@ -131,7 +133,7 @@ func formatColumn(col ColumnInfo) string {
 }
 
 // formatIndex はインデックス情報をフォーマットします
-func formatIndex(idx []IndexInfo) string {
+func formatIndex(idx []model.IndexInfo) string {
 	if len(idx) == 0 {
 		return ""
 	}
@@ -154,7 +156,7 @@ func formatIndex(idx []IndexInfo) string {
 type DefaultTemplateRenderer struct{}
 
 // RenderTableDetail はテーブル詳細情報をテンプレートでレンダリングします
-func (r *DefaultTemplateRenderer) RenderTableDetail(detail *TableDetail) (string, error) {
+func (r *DefaultTemplateRenderer) RenderTableDetail(detail *model.TableDetail) (string, error) {
 	var output bytes.Buffer
 	tmpl, err := template.New("describeTableDetail").Funcs(funcMap).Parse(describeTableDetailTemplate)
 	if err != nil {
@@ -169,7 +171,7 @@ func (r *DefaultTemplateRenderer) RenderTableDetail(detail *TableDetail) (string
 }
 
 // RenderTableList はテーブル一覧をテンプレートでレンダリングします
-func (r *DefaultTemplateRenderer) RenderTableList(data ListTablesData) (string, error) {
+func (r *DefaultTemplateRenderer) RenderTableList(data model.ListTablesData) (string, error) {
 	var output bytes.Buffer
 	tmpl, err := template.New("listTables").Funcs(funcMap).Parse(listTablesTemplate)
 	if err != nil {
