@@ -10,30 +10,6 @@ import (
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
 
-func TestQualifyTableIdentifier_DefaultSchema(t *testing.T) {
-	qualified, schema, name, err := qualifyTableIdentifier("users")
-	require.NoError(t, err)
-	assert.Equal(t, "\"public\".\"users\"", qualified)
-	assert.Equal(t, "public", schema)
-	assert.Equal(t, "users", name)
-}
-
-func TestQualifyTableIdentifier_CustomSchema(t *testing.T) {
-	qualified, schema, name, err := qualifyTableIdentifier("custom.orders")
-	require.NoError(t, err)
-	assert.Equal(t, "\"custom\".\"orders\"", qualified)
-	assert.Equal(t, "custom", schema)
-	assert.Equal(t, "orders", name)
-}
-
-func TestQualifyTableIdentifier_Invalid(t *testing.T) {
-	_, _, _, err := qualifyTableIdentifier("invalid.table.name")
-	assert.Error(t, err)
-
-	_, _, _, err = qualifyTableIdentifier("invalid name")
-	assert.Error(t, err)
-}
-
 func TestTableDumper_EnsureAllowedTable(t *testing.T) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
 	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {

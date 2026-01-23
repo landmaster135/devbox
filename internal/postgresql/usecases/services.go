@@ -12,12 +12,9 @@ import (
 	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	dump "github.com/landmaster135/devbox/internal/postgresql/usecases/dump"
+	metaFetch "github.com/landmaster135/devbox/internal/postgresql/usecases/meta_fetch"
 	templateRenderer "github.com/landmaster135/devbox/internal/postgresql/usecases/template_renderer"
 )
-
-// #==============================================================#
-// ##          Data Structures                                   ##
-// #==============================================================#
 
 // #==============================================================#
 // ##          Interfaces                                        ##
@@ -211,7 +208,7 @@ func (s *PostgreSQLService) HandleToQuery(ctx context.Context, sqlQuery string) 
 // HandleToGetTableSchema はテーブルのスキーマ情報を取得して、結果をテキスト形式で返します
 func (s *PostgreSQLService) HandleToGetTableSchema(ctx context.Context, tableName string) (string, error) {
 	// テーブルの詳細情報を取得
-	detail, err := dump.GetTableDetail(ctx, s.executor, tableName)
+	detail, err := metaFetch.GetTableDetail(ctx, s.executor, tableName)
 	if err != nil {
 		return "", err
 	}
@@ -223,7 +220,7 @@ func (s *PostgreSQLService) HandleToGetTableSchema(ctx context.Context, tableNam
 // HandleToListTables はデータベース内のテーブル一覧を取得して、結果をテキスト形式で返します
 func (s *PostgreSQLService) HandleToListTables(ctx context.Context) (string, error) {
 	// テーブル情報の取得
-	tables, err := dump.GetAllTableSummaries(ctx, s.executor)
+	tables, err := metaFetch.GetAllTableSummaries(ctx, s.executor)
 	if err != nil {
 		return "", fmt.Errorf("テーブル情報の取得に失敗しました: %w", err)
 	}
@@ -241,7 +238,7 @@ func (s *PostgreSQLService) HandleToListTables(ctx context.Context) (string, err
 
 func (s *PostgreSQLService) HandleGetAllTableSummaries(ctx context.Context) (string, error) {
 	// テーブル情報の取得
-	tables, err := dump.GetAllTableSummaries(ctx, s.executor)
+	tables, err := metaFetch.GetAllTableSummaries(ctx, s.executor)
 	if err != nil {
 		return "", fmt.Errorf("テーブル情報の取得に失敗しました: %w", err)
 	}
@@ -263,7 +260,7 @@ func (s *PostgreSQLService) HandleGetAllTableSummaries(ctx context.Context) (str
 
 // HandleToGetTableSchemaMinimum はテーブルの最小限のスキーマ情報を取得して、結果をJSON形式で返します
 func (s *PostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, tableName string) (string, error) {
-	schema, err := dump.GetTableSchemaMinimum(ctx, s.executor, tableName)
+	schema, err := metaFetch.GetTableSchemaMinimum(ctx, s.executor, tableName)
 	if err != nil {
 		return "", fmt.Errorf("テーブルスキーマの取得に失敗しました: %v\n", err)
 	}
@@ -279,7 +276,7 @@ func (s *PostgreSQLService) HandleToGetTableSchemaMinimum(ctx context.Context, t
 
 // HandleToListTablesMinimum はデータベース内のテーブル一覧を取得して、結果をJSON形式で返します
 func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) (string, error) {
-	tables, err := dump.GetTablesMinimum(ctx, s.executor)
+	tables, err := metaFetch.GetTablesMinimum(ctx, s.executor)
 	if err != nil {
 		return "", fmt.Errorf("テーブル一覧の取得に失敗しました: %v\n", err)
 	}

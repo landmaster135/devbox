@@ -8,6 +8,7 @@ import (
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
@@ -48,6 +49,34 @@ func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *testDumpService) {
 // newMockRows はモック行セットを作成します
 func newMockRows(columns ...string) *sqlmock.Rows {
 	return sqlmock.NewRows(columns)
+}
+
+// #==============================================================#
+// ##          qualifyTableIdentifier Tests                      ##
+// #==============================================================#
+
+func TestQualifyTableIdentifier_DefaultSchema(t *testing.T) {
+	qualified, schema, name, err := qualifyTableIdentifier("users")
+	require.NoError(t, err)
+	assert.Equal(t, "\"public\".\"users\"", qualified)
+	assert.Equal(t, "public", schema)
+	assert.Equal(t, "users", name)
+}
+
+func TestQualifyTableIdentifier_CustomSchema(t *testing.T) {
+	qualified, schema, name, err := qualifyTableIdentifier("custom.orders")
+	require.NoError(t, err)
+	assert.Equal(t, "\"custom\".\"orders\"", qualified)
+	assert.Equal(t, "custom", schema)
+	assert.Equal(t, "orders", name)
+}
+
+func TestQualifyTableIdentifier_Invalid(t *testing.T) {
+	_, _, _, err := qualifyTableIdentifier("invalid.table.name")
+	assert.Error(t, err)
+
+	_, _, _, err = qualifyTableIdentifier("invalid name")
+	assert.Error(t, err)
 }
 
 // #==============================================================#

@@ -2,13 +2,52 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 
-	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
+
+const defaultTableSchema = "public"
+
+var IdentifierPattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
+
+func qualifyTableIdentifier(tableName string) (qualified string, schema string, name string, err error) {
+	if tableName == "" {
+		return "", "", "", errors.New("テーブル名が指定されていません")
+	}
+
+	parts := strings.Split(tableName, ".")
+	if len(parts) > 2 {
+		return "", "", "", fmt.Errorf("サポートされていないテーブル識別子です: %s", tableName)
+	}
+
+	schema = defaultTableSchema
+	name = parts[len(parts)-1]
+	if len(parts) == 2 {
+		schema = parts[0]
+	}
+
+	if schema == "" {
+		schema = defaultTableSchema
+	}
+
+	if !IdentifierPattern.MatchString(schema) {
+		return "", "", "", fmt.Errorf("スキーマ名に使用できない文字が含まれています: %s", schema)
+	}
+	if !IdentifierPattern.MatchString(name) {
+		return "", "", "", fmt.Errorf("テーブル名に使用できない文字が含まれています: %s", tableName)
+	}
+
+	qualified = fmt.Sprintf("%s.%s", pq.QuoteIdentifier(schema), pq.QuoteIdentifier(name))
+	return qualified, schema, name, nil
+}
 
 // GetTableSchemaMinimum はテーブルの最小限のスキーマ情報を取得します
 func GetTableSchemaMinimum(ctx context.Context, exec dbExecutor.DatabaseExecutor, tableName string) ([]model.Column, error) {
@@ -433,7 +472,6 @@ func GetTablesMinimum(ctx context.Context, exec dbExecutor.DatabaseExecutor) ([]
 
 	return tables, nil
 }
-
 
 // #==============================================================#
 // ##          High-level Service Methods                        ##
