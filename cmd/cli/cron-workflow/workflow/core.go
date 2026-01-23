@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strings"
 	"time"
 
 	infraEnv "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/env"
@@ -13,6 +14,7 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
 	discordWebhook "github.com/landmaster135/devbox/internal/discord_webhook/usecases"
+	postgres "github.com/landmaster135/devbox/internal/postgresql/usecases"
 	weatherNotificator "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
 
@@ -40,12 +42,17 @@ func List() ([]usecases.Workflow, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Daily Heading Workflow: %w", err)
 	}
+	postgresDumpWorkflow, err := createPostgreSQLDumpNotificationWorkflow(wc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PostgreSQL Dump Workflow: %w", err)
+	}
 
 	return []usecases.Workflow{
 		*heartbeatWorkflow,
 		*hourlyHealthSnapshotWorkflow,
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
+		*postgresDumpWorkflow,
 	}, nil
 }
 
@@ -163,6 +170,103 @@ func createDailyHeadingNotificationWorkflow(c *usecases.WorkflowCreator) (*useca
 			}
 
 			log.Printf("[daily-heading] dispatched heading content to Discord")
+			return nil
+		},
+	), nil
+}
+
+func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+	const (
+		cronExp        = "0 2 * * *"
+		workflowName   = "Daily PostgreSQL dump notification"
+		format         = "sql"
+		notification   = "PostgreSQLのダンプが完了しました"
+		embedType      = "postgres"
+		embedText      = "最新バックアップ"
+		workerParallel = 3
+	)
+
+	webhookURL, err := getEnvVars(c.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Discord webhook URL for PostgreSQL dump: %w", err)
+	}
+	stagingDBURL, err := getEnvVars(c.EnvRepo, EnvKeyDBURL01Staging)
+	if err != nil {
+		return nil, fmt.Errorf("resolve staging DB URL: %w", err)
+	}
+	stagingDirEnv, err := getEnvVars(c.EnvRepo, EnvKeyDBDirectory01Staging)
+	if err != nil {
+		return nil, fmt.Errorf("resolve staging dump directory: %w", err)
+	}
+	productDBURL, err := getEnvVars(c.EnvRepo, EnvKeyDBURL01Product)
+	if err != nil {
+		return nil, fmt.Errorf("resolve production DB URL: %w", err)
+	}
+	productDirEnv, err := getEnvVars(c.EnvRepo, EnvKeyDBDirectory01Product)
+	if err != nil {
+		return nil, fmt.Errorf("resolve production dump directory: %w", err)
+	}
+
+	stagingOutputDir := filepath.Join(c.VolumeDir, stagingDirEnv)
+	productOutputDir := filepath.Join(c.VolumeDir, productDirEnv)
+
+	service := discordWebhook.NewDefaultDiscordWebhookService()
+	concurrency := workerParallel
+
+	targets := []struct {
+		name      string
+		dbURL     string
+		outputDir string
+	}{
+		{name: "staging", dbURL: stagingDBURL, outputDir: stagingOutputDir},
+		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
+	}
+
+	return usecases.NewWorkflow(
+		workflowName,
+		cronExp,
+		c.Timezone,
+		func(ctx context.Context) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			var dumpSummaries []string
+			for _, target := range targets {
+				if err := c.FileRepo.EnsureDir(target.outputDir); err != nil {
+					return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
+				}
+
+				result, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency)
+				if err != nil {
+					return fmt.Errorf("dump %s database: %w", target.name, err)
+				}
+
+				log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
+				dumpSummaries = append(dumpSummaries, fmt.Sprintf("[%s]\n%s", target.name, result))
+			}
+
+			content := notification
+			if len(dumpSummaries) > 0 {
+				content = fmt.Sprintf("%s\n%s", notification, strings.Join(dumpSummaries, "\n\n"))
+			}
+
+			if err := service.SendNotification(
+				ctx,
+				webhookURL,
+				"",
+				content,
+				embedType,
+				embedText,
+				"",
+				"",
+			); err != nil {
+				return fmt.Errorf("send PostgreSQL dump notification: %w", err)
+			}
+
+			log.Printf("[postgres-dump] dispatched Discord notification for PostgreSQL backups")
 			return nil
 		},
 	), nil
