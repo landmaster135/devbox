@@ -11,6 +11,8 @@ func floatEquals(a, b, tolerance float64) bool {
 	return math.Abs(a-b) <= tolerance
 }
 
+
+
 // TestDatetimeCalculator_sumTimeFloat_Normal はsumTimeFloat関数の正常系テスト
 func TestDatetimeCalculator_sumTimeFloat_Normal(t *testing.T) {
 	// Arrange
@@ -76,7 +78,7 @@ func TestDatetimeCalculator_sumTimeFloat_Normal(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result := calculator.sumTimeFloat(tc.figures)
+			result := calculator.SumTimeFloat(tc.figures)
 
 			// Assert
 			if result != tc.expected {
@@ -245,7 +247,7 @@ func TestDatetimeCalculator_sumTimeFloat_EmptySlice(t *testing.T) {
 	figures := []float64{}
 
 	// Act
-	result := calculator.sumTimeFloat(figures)
+	result := calculator.SumTimeFloat(figures)
 
 	// Assert
 	if result != 0 {
@@ -340,7 +342,7 @@ func TestDatetimeCalculator_extractTimeFromText_Normal(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.extractTimeFromText(tc.text, tc.outputUnit)
+			result, err := calculator.ExtractTimeFromText(tc.text, tc.outputUnit)
 
 			// Assert
 			if (err != nil) != tc.wantErr {
@@ -403,7 +405,7 @@ func TestDatetimeCalculator_extractTimeFromText_NoMatches(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.extractTimeFromText(tc.text, tc.outputUnit)
+			result, err := calculator.ExtractTimeFromText(tc.text, tc.outputUnit)
 
 			// Assert
 			if err != nil {
@@ -424,7 +426,7 @@ func TestDatetimeCalculator_extractTimeFromText_InvalidUnit(t *testing.T) {
 	outputUnit := "invalid_unit"
 
 	// Act
-	result, err := calculator.extractTimeFromText(text, outputUnit)
+	result, err := calculator.ExtractTimeFromText(text, outputUnit)
 
 	// Assert
 	if err == nil {
@@ -479,7 +481,7 @@ func TestDatetimeCalculator_extractTimeFromText_ComplexText(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.extractTimeFromText(tc.text, tc.outputUnit)
+			result, err := calculator.ExtractTimeFromText(tc.text, tc.outputUnit)
 
 			// Assert
 			if err != nil {
@@ -532,7 +534,7 @@ func TestDatetimeCalculator_extractTimeFromText_EdgeCases(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.extractTimeFromText(tc.text, tc.outputUnit)
+			result, err := calculator.ExtractTimeFromText(tc.text, tc.outputUnit)
 
 			// Assert
 			if err != nil {

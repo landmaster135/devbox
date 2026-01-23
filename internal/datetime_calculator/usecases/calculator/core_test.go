@@ -411,7 +411,7 @@ func TestAddDatetimeFloat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.addDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.addYears, tt.addMonths, tt.addDays, tt.addHours, tt.addMinutes, tt.addSeconds)
+			result := calc.AddDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.addYears, tt.addMonths, tt.addDays, tt.addHours, tt.addMinutes, tt.addSeconds)
 			if result != tt.expected {
 				t.Errorf("AddDatetimeFloat() = %v, want %v", result, tt.expected)
 			}
@@ -601,7 +601,7 @@ func TestSubtractDatetimeFloat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calc.subtractDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.subYears, tt.subMonths, tt.subDays, tt.subHours, tt.subMinutes, tt.subSeconds)
+			result := calc.SubtractDatetimeFloat(tt.year, tt.month, tt.day, tt.hour, tt.minute, tt.second, tt.subYears, tt.subMonths, tt.subDays, tt.subHours, tt.subMinutes, tt.subSeconds)
 			if result != tt.expected {
 				t.Errorf("SubtractDatetimeFloat() = %v, want %v", result, tt.expected)
 			}
@@ -684,7 +684,7 @@ func TestDatetimeCalculator_convertTimeUnit_Normal(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.convertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
+			result, err := calculator.ConvertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
 
 			// Assert
 			if err != nil {
@@ -726,7 +726,7 @@ func TestDatetimeCalculator_convertTimeUnit_ComplexConversions(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.convertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
+			result, err := calculator.ConvertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
 
 			// Assert
 			if err != nil {
@@ -764,7 +764,7 @@ func TestDatetimeCalculator_convertTimeUnit_DecimalValues(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Act
-			result, err := calculator.convertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
+			result, err := calculator.ConvertTimeUnit(tc.value, tc.inputUnit, tc.outputUnit)
 
 			// Assert
 			if err != nil {
@@ -783,7 +783,7 @@ func TestDatetimeCalculator_convertTimeUnit_InvalidInputUnit(t *testing.T) {
 	calculator := &DatetimeCalculator{}
 
 	// Act
-	result, err := calculator.convertTimeUnit(100, "invalid", "hour")
+	result, err := calculator.ConvertTimeUnit(100, "invalid", "hour")
 
 	// Assert
 	if err == nil {
@@ -800,7 +800,7 @@ func TestDatetimeCalculator_convertTimeUnit_InvalidOutputUnit(t *testing.T) {
 	calculator := &DatetimeCalculator{}
 
 	// Act
-	result, err := calculator.convertTimeUnit(100, "hour", "invalid")
+	result, err := calculator.ConvertTimeUnit(100, "hour", "invalid")
 
 	// Assert
 	if err == nil {
@@ -817,7 +817,7 @@ func TestDatetimeCalculator_convertTimeUnit_ZeroValue(t *testing.T) {
 	calculator := &DatetimeCalculator{}
 
 	// Act
-	result, err := calculator.convertTimeUnit(0, "hour", "minute")
+	result, err := calculator.ConvertTimeUnit(0, "hour", "minute")
 
 	// Assert
 	if err != nil {
@@ -834,7 +834,7 @@ func TestDatetimeCalculator_convertTimeUnit_NegativeValue(t *testing.T) {
 	calculator := &DatetimeCalculator{}
 
 	// Act
-	result, err := calculator.convertTimeUnit(-2, "hour", "minute")
+	result, err := calculator.ConvertTimeUnit(-2, "hour", "minute")
 
 	// Assert
 	if err != nil {
