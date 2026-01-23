@@ -36,6 +36,15 @@ type DumpOptions struct {
 	Limit      *int
 }
 
+func NewDumpOptions(tableName, outputPath, format string, limit *int) *DumpOptions {
+	return &DumpOptions{
+		TableName:  tableName,
+		OutputPath: outputPath,
+		Format:     format,
+		Limit:      limit,
+	}
+}
+
 // DumpResult はダンプ処理の結果を表します
 type DumpResult struct {
 	TableName   string `json:"table_name"`

@@ -84,7 +84,7 @@ func (h *PostgreSQLMCPHandler) HandleToGetTableSchemaMinimum(ctx context.Context
 		return returnError(err)
 	}
 
-	return returnJSONResult(result)
+	return returnTextResult(result)
 }
 
 // HandleToListTablesMinimum はデータベース内のテーブル一覧を取得して、結果をJSON形式で返します
@@ -94,7 +94,7 @@ func (h *PostgreSQLMCPHandler) HandleToListTablesMinimum(ctx context.Context, re
 		return returnError(err)
 	}
 
-	return returnJSONResult(result)
+	return returnTextResult(result)
 }
 
 // HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
