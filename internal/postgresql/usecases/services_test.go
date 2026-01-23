@@ -340,3 +340,143 @@ func TestDefaultDatabaseExecutor_QueryHelpers(t *testing.T) {
 
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+// #==============================================================#
+// ##          Handler Method Tests                              ##
+// #==============================================================#
+
+// TestHandleToGetTableSchema はHandleToGetTableSchema関数をテストします
+func TestHandleToGetTableSchema_Normal(t *testing.T) {
+	// モックデータベースをセットアップ
+	db, mock, service := setupMockDB(t)
+	defer db.Close()
+
+	// fetchTableWithCommentsのモック
+	tableRows := newMockRows("table_name", "table_comment").
+		AddRow("users", "ユーザーテーブル")
+	mock.ExpectQuery("SELECT t.table_name, COALESCE").
+		WithArgs("public", "users").
+		WillReturnRows(tableRows)
+
+	// fetchPrimaryKeysのモック
+	pkRows := newMockRows("attname").
+		AddRow("id")
+	mock.ExpectQuery("SELECT a.attname FROM pg_index").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(pkRows)
+
+	// fetchUniqueKeysのモック
+	ukRows := newMockRows("constraint_name", "column_name").
+		AddRow("users_email_key", "email")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(ukRows)
+
+	// fetchForeignKeysのモック
+	fkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
+		AddRow("users_role_id_fkey", "role_id", "roles", "id")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(fkRows)
+
+	// fetchTableColumnsのモック
+	colRows := newMockRows("column_name", "data_type", "is_nullable", "column_default", "column_comment").
+		AddRow("id", "integer", "NO", sql.NullString{String: "nextval('users_id_seq'::regclass)", Valid: true}, "ID").
+		AddRow("name", "character varying", "YES", sql.NullString{Valid: false}, "名前")
+	mock.ExpectQuery("SELECT c.column_name, c.data_type, c.is_nullable").
+		WithArgs("public", "users").
+		WillReturnRows(colRows)
+
+	// fetchTableIndexesのモック
+	idxRows := newMockRows("index_name", "column_name", "is_unique").
+		AddRow("users_email_idx", "email", true)
+	mock.ExpectQuery("SELECT i.relname AS index_name, a.attname AS column_name").
+		WithArgs("users", "public").
+		WillReturnRows(idxRows)
+
+	// 関数を実行
+	ctx := context.Background()
+	result, err := service.HandleToGetTableSchema(ctx, "users")
+
+	// アサーション
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, "users")
+	assert.Contains(t, result, "ユーザーテーブル")
+
+	// モックの期待値が満たされたことを確認
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("満たされていない期待値があります: %s", err)
+	}
+}
+
+// TestHandleToListTables はHandleToListTables関数をテストします
+func TestHandleToListTables_Normal(t *testing.T) {
+	// モックデータベースをセットアップ
+	db, mock, service := setupMockDB(t)
+	defer db.Close()
+
+	// テーブル一覧のモック
+	tableRows := newMockRows("table_name", "table_comment").
+		AddRow("users", "ユーザーテーブル").
+		AddRow("products", "商品テーブル")
+	mock.ExpectQuery("SELECT t.table_name, COALESCE").
+		WillReturnRows(tableRows)
+
+	// users テーブルの主キー情報のモック
+	usersPkRows := newMockRows("attname").
+		AddRow("id")
+	mock.ExpectQuery("SELECT a.attname FROM pg_index").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(usersPkRows)
+
+	// users テーブルの一意キー情報のモック
+	usersUkRows := newMockRows("constraint_name", "column_name").
+		AddRow("users_email_key", "email")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(usersUkRows)
+
+	// users テーブルの外部キー情報のモック
+	usersFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
+		AddRow("users_role_id_fkey", "role_id", "roles", "id")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(usersFkRows)
+
+	// products テーブルの主キー情報のモック
+	productsPkRows := newMockRows("attname").
+		AddRow("id")
+	mock.ExpectQuery("SELECT a.attname FROM pg_index").
+		WithArgs("\"public\".\"products\"").
+		WillReturnRows(productsPkRows)
+
+	// products テーブルの一意キー情報のモック
+	productsUkRows := newMockRows("constraint_name", "column_name").
+		AddRow("products_code_key", "code")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
+		WithArgs("\"public\".\"products\"").
+		WillReturnRows(productsUkRows)
+
+	// products テーブルの外部キー情報のモック
+	productsFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
+		AddRow("products_category_id_fkey", "category_id", "categories", "id")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
+		WithArgs("\"public\".\"products\"").
+		WillReturnRows(productsFkRows)
+
+	// 関数を実行
+	ctx := context.Background()
+	result, err := service.HandleToListTables(ctx)
+
+	// アサーション
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, "users")
+	assert.Contains(t, result, "products")
+
+	// モックの期待値が満たされたことを確認
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("満たされていない期待値があります: %s", err)
+	}
+}
