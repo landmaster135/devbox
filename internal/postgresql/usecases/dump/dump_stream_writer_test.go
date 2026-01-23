@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,7 +192,9 @@ func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
 	data, err := os.ReadFile(filePath)
 	require.NoError(t, err)
 	content := string(data)
-	assert.Contains(t, content, "INSERT INTO \"public\".\"users\" (\"id\", \"name\", \"created_at\", \"payload\", \"active\", \"score\", \"amount\", \"note\") VALUES (1, ")
+
+	query := "INSERT INTO \"" + model.DefaultTableSchema + "\".\"users\" (\"id\", \"name\", \"created_at\", \"payload\", \"active\", \"score\", \"amount\", \"note\") VALUES (1, "
+	assert.Contains(t, content, query)
 	assert.Contains(t, content, "decode('beef','hex')")
 	assert.Contains(t, content, "TRUE")
 
