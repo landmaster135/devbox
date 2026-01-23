@@ -7,13 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
-	pq "github.com/lib/pq"
-
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
-	metaFetch "github.com/landmaster135/devbox/internal/postgresql/usecases/meta_fetch"
 )
 
 // #==============================================================#
@@ -58,27 +54,6 @@ func NewDumpResult(tableName string, recordCount int, outputPath, fileName, form
 	}
 }
 
-func quoteQualifiedTableName(tableName string) (string, []string, error) {
-	if tableName == "" {
-		return "", nil, errors.New("テーブル名が指定されていません")
-	}
-
-	parts := strings.Split(tableName, ".")
-	if len(parts) > 2 {
-		return "", nil, fmt.Errorf("サポートされていないテーブル識別子です: %s", tableName)
-	}
-
-	quotedParts := make([]string, len(parts))
-	for i, part := range parts {
-		if part == "" || !metaFetch.IdentifierPattern.MatchString(part) {
-			return "", nil, fmt.Errorf("テーブル名に使用できない文字が含まれています: %s", tableName)
-		}
-		quotedParts[i] = pq.QuoteIdentifier(part)
-	}
-
-	return strings.Join(quotedParts, "."), parts, nil
-}
-
 // #==============================================================#
 // ##          Interfaces                                        ##
 // #==============================================================#
@@ -94,6 +69,12 @@ type FileWriter interface {
 type DatabaseQueryExecutor interface {
 	QueryContextRows(ctx context.Context, query string, args ...any) (model.RowsInterface, error)
 	QueryRowContextRow(ctx context.Context, query string, args ...any) model.RowInterface
+}
+
+type tableDataWriter interface {
+	writeBatch(rows []map[string]any) error
+	Close() error
+	RowsWritten() int
 }
 
 // #==============================================================#
@@ -147,29 +128,13 @@ func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (resu
 		return nil, errors.New("オプションが指定されていません")
 	}
 
-	// パラメータ検証
-	if err := d.validateOptions(options); err != nil {
-		return nil, fmt.Errorf("オプション検証エラー: %w", err)
+	if err := d.ensureOptions(ctx, options); err != nil {
+		return nil, fmt.Errorf("オプションによる確保に失敗しました: %w", err)
 	}
 
-	if err := d.ensureAllowedTable(ctx, options.TableName); err != nil {
-		return nil, fmt.Errorf("テーブル検証エラー: %w", err)
-	}
-
-	// 出力ディレクトリを作成
-	if err := d.ensureOutputDirectory(options.OutputPath); err != nil {
-		return nil, fmt.Errorf("出力ディレクトリ作成エラー: %w", err)
-	}
-
-	// クエリを構築
-	query, err := d.buildQuery(options)
+	rows, err := d.queryRows(ctx, options)
 	if err != nil {
-		return nil, fmt.Errorf("クエリ構築エラー: %w", err)
-	}
-
-	rows, err := d.executor.QueryContextRows(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("データ取得エラー: %w", err)
+		return nil, fmt.Errorf("データの取得に失敗しました: %w", err)
 	}
 	defer rows.Close()
 
@@ -218,96 +183,17 @@ func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (resu
 	return result, nil
 }
 
-// validateOptions はオプションを検証します
-func (d *TableDumper) validateOptions(options *DumpOptions) error {
-	if options == nil {
-		return errors.New("オプションが指定されていません")
+func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sortedColumns []string) (tableDataWriter, error) {
+	switch format {
+	case "json":
+		return newJSONStreamWriter(d.fileWriter, filePath)
+	case "csv":
+		return newCSVStreamWriter(d.fileWriter, filePath, sortedColumns)
+	case "sql":
+		return newSQLStreamWriter(d.fileWriter, filePath, tableName, sortedColumns)
+	default:
+		return nil, fmt.Errorf("サポートされていないフォーマット: %s", format)
 	}
-
-	if _, _, err := quoteQualifiedTableName(options.TableName); err != nil {
-		return err
-	}
-
-	if options.OutputPath == "" {
-		options.OutputPath = "."
-	}
-
-	// パストラバーサル攻撃を防ぐ
-	cleanPath := filepath.Clean(options.OutputPath)
-	if strings.Contains(cleanPath, "..") {
-		return fmt.Errorf("無効なパスが指定されました: %s", options.OutputPath)
-	}
-
-	// サポートされているフォーマットかチェック
-	validFormats := map[string]bool{
-		"json": true,
-		"csv":  true,
-		"sql":  true,
-	}
-	if !validFormats[options.Format] {
-		return fmt.Errorf("サポートされていないフォーマットです: %s", options.Format)
-	}
-
-	if options.Limit != nil && *options.Limit <= 0 {
-		return fmt.Errorf("limitは正の数である必要があります: %d", *options.Limit)
-	}
-
-	return nil
-}
-
-// ensureAllowedTable はテーブルが存在し、ホワイトリストに一致することを確認します
-func (d *TableDumper) ensureAllowedTable(ctx context.Context, tableName string) error {
-	_, parts, err := quoteQualifiedTableName(tableName)
-	if err != nil {
-		return err
-	}
-
-	if len(parts) == 2 && parts[0] != model.DefaultTableSchema {
-		return fmt.Errorf("サポートされていないスキーマが指定されました: %s", parts[0])
-	}
-
-	tables, err := d.getAllTables(ctx)
-	if err != nil {
-		return fmt.Errorf("テーブル一覧取得エラー: %w", err)
-	}
-
-	targetName := parts[len(parts)-1]
-	for _, tbl := range tables {
-		if tbl.Name == targetName {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("指定されたテーブルが存在しません: %s", tableName)
-}
-
-// buildQuery はダンプ用のクエリを構築します
-func (d *TableDumper) buildQuery(options *DumpOptions) (string, error) {
-	if options == nil {
-		return "", errors.New("オプションが指定されていません")
-	}
-
-	quotedTable, _, err := quoteQualifiedTableName(options.TableName)
-	if err != nil {
-		return "", err
-	}
-
-	query := fmt.Sprintf("SELECT * FROM %s", quotedTable)
-
-	if options.Limit != nil {
-		query += fmt.Sprintf(" LIMIT %d", *options.Limit)
-	}
-
-	return query, nil
-}
-
-// ensureOutputDirectory は出力ディレクトリが存在することを確認し、必要に応じて作成します
-func (d *TableDumper) ensureOutputDirectory(outputPath string) error {
-	if outputPath == "" || outputPath == "." {
-		return nil
-	}
-
-	return d.fileWriter.MkdirAll(outputPath, 0755)
 }
 
 // generateFileName はファイル名を生成します
@@ -376,23 +262,4 @@ func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string,
 	}
 
 	return rows.Err()
-}
-
-type tableDataWriter interface {
-	writeBatch(rows []map[string]any) error
-	Close() error
-	RowsWritten() int
-}
-
-func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sortedColumns []string) (tableDataWriter, error) {
-	switch format {
-	case "json":
-		return newJSONStreamWriter(d.fileWriter, filePath)
-	case "csv":
-		return newCSVStreamWriter(d.fileWriter, filePath, sortedColumns)
-	case "sql":
-		return newSQLStreamWriter(d.fileWriter, filePath, tableName, sortedColumns)
-	default:
-		return nil, fmt.Errorf("サポートされていないフォーマット: %s", format)
-	}
 }

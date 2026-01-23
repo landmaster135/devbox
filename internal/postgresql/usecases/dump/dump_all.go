@@ -44,37 +44,6 @@ type DumpTaskResult struct {
 // #==============================================================#
 // ##          DumpAllTables                                     ##
 // #==============================================================#
-// getAllTables はデータベース内の全テーブル一覧を取得します
-func (d *TableDumper) getAllTables(ctx context.Context) ([]model.Table, error) {
-	query := `
-		SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-		ORDER BY table_name
-	`
-
-	rows, err := d.executor.QueryContextRows(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tables []model.Table
-	for rows.Next() {
-		var table model.Table
-		if err := rows.Scan(&table.Name); err != nil {
-			return nil, err
-		}
-		tables = append(tables, table)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return tables, nil
-}
-
 // getDatabaseName は現在のデータベース名を取得します
 func (d *TableDumper) getDatabaseName(ctx context.Context) (string, error) {
 	query := "SELECT current_database()"
