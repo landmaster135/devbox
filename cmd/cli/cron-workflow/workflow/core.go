@@ -135,7 +135,7 @@ func createWeatherNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.W
 
 func createDailyHeadingNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
 	const (
-		cronExp   = "*/1 * * * *"
+		cronExp   = "1 0 * * 0-6"
 		dayOffset = 0
 	)
 
