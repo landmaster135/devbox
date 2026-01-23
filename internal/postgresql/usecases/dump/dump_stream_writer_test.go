@@ -1,4 +1,4 @@
-package usecases
+package dump
 
 import (
 	"os"
@@ -69,7 +69,7 @@ func TestJSONStreamWriter_WriteAndClose(t *testing.T) {
 		{"id": 2, "logged_in_at": time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)},
 	}
 
-	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.writeBatch(rows))
 	assert.Equal(t, 2, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -84,7 +84,7 @@ func TestJSONStreamWriter_WriteAndClose(t *testing.T) {
 
 	assert.NoError(t, writer.Close())
 
-	err = writer.WriteBatch(rows)
+	err = writer.writeBatch(rows)
 	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
 }
 
@@ -123,7 +123,7 @@ func TestCSVStreamWriter_WriteAndClose(t *testing.T) {
 		{"id": 2, "name": "Bob", "active": false},
 	}
 
-	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.writeBatch(rows))
 	assert.Equal(t, 2, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -134,7 +134,7 @@ func TestCSVStreamWriter_WriteAndClose(t *testing.T) {
 
 	assert.NoError(t, writer.Close())
 
-	err = writer.WriteBatch(rows)
+	err = writer.writeBatch(rows)
 	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
 }
 
@@ -149,7 +149,7 @@ func TestCSVStreamWriter_WithoutHeaders(t *testing.T) {
 	}, filePath, nil)
 	require.NoError(t, err)
 
-	assert.NoError(t, writer.WriteBatch(nil))
+	assert.NoError(t, writer.writeBatch(nil))
 	assert.Equal(t, 0, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -183,7 +183,7 @@ func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.writeBatch(rows))
 	assert.Equal(t, 1, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -197,7 +197,7 @@ func TestSQLStreamWriter_WriteAndClose(t *testing.T) {
 
 	assert.NoError(t, writer.Close())
 
-	err = writer.WriteBatch(rows)
+	err = writer.writeBatch(rows)
 	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
 }
 
