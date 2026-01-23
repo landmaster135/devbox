@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -20,9 +19,8 @@ import (
 	pq "github.com/lib/pq"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	metaFetch "github.com/landmaster135/devbox/internal/postgresql/usecases/meta_fetch"
 )
-
-var identifierPattern = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
 // #==============================================================#
 // ##          Data Structures                                   ##
@@ -83,8 +81,6 @@ type DumpTaskResult struct {
 	Failed  *FailedDump
 }
 
-const defaultTableSchema = "public"
-
 func quoteQualifiedTableName(tableName string) (string, []string, error) {
 	if tableName == "" {
 		return "", nil, errors.New("テーブル名が指定されていません")
@@ -97,44 +93,13 @@ func quoteQualifiedTableName(tableName string) (string, []string, error) {
 
 	quotedParts := make([]string, len(parts))
 	for i, part := range parts {
-		if part == "" || !identifierPattern.MatchString(part) {
+		if part == "" || !metaFetch.IdentifierPattern.MatchString(part) {
 			return "", nil, fmt.Errorf("テーブル名に使用できない文字が含まれています: %s", tableName)
 		}
 		quotedParts[i] = pq.QuoteIdentifier(part)
 	}
 
 	return strings.Join(quotedParts, "."), parts, nil
-}
-
-func qualifyTableIdentifier(tableName string) (qualified string, schema string, name string, err error) {
-	if tableName == "" {
-		return "", "", "", errors.New("テーブル名が指定されていません")
-	}
-
-	parts := strings.Split(tableName, ".")
-	if len(parts) > 2 {
-		return "", "", "", fmt.Errorf("サポートされていないテーブル識別子です: %s", tableName)
-	}
-
-	schema = defaultTableSchema
-	name = parts[len(parts)-1]
-	if len(parts) == 2 {
-		schema = parts[0]
-	}
-
-	if schema == "" {
-		schema = defaultTableSchema
-	}
-
-	if !identifierPattern.MatchString(schema) {
-		return "", "", "", fmt.Errorf("スキーマ名に使用できない文字が含まれています: %s", schema)
-	}
-	if !identifierPattern.MatchString(name) {
-		return "", "", "", fmt.Errorf("テーブル名に使用できない文字が含まれています: %s", tableName)
-	}
-
-	qualified = fmt.Sprintf("%s.%s", pq.QuoteIdentifier(schema), pq.QuoteIdentifier(name))
-	return qualified, schema, name, nil
 }
 
 // #==============================================================#
