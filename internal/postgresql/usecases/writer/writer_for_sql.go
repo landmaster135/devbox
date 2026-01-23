@@ -10,9 +10,11 @@ import (
 	"time"
 
 	pq "github.com/lib/pq"
+
+	sql "github.com/landmaster135/devbox/internal/postgresql/domain/sql"
 )
 
-type sqlStreamWriter struct {
+type SQLStreamWriter struct {
 	file          *os.File
 	tableName     string
 	quotedTable   string
@@ -25,13 +27,13 @@ type sqlStreamWriter struct {
 	generatedAt   time.Time
 }
 
-func newSQLStreamWriter(fileWriter FileWriter, filePath, tableName string, columns []string) (*sqlStreamWriter, error) {
+func NewSQLStreamWriter(fileWriter FileWriter, filePath, tableName string, columns []string) (*SQLStreamWriter, error) {
 	file, err := fileWriter.Create(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	quotedTable, _, err := quoteQualifiedTableName(tableName)
+	quotedTable, _, err := sql.QuoteQualifiedTableName(tableName)
 	if err != nil {
 		_ = file.Close()
 		return nil, err
@@ -42,7 +44,7 @@ func newSQLStreamWriter(fileWriter FileWriter, filePath, tableName string, colum
 		quotedColumns[i] = pq.QuoteIdentifier(col)
 	}
 
-	return &sqlStreamWriter{
+	return &SQLStreamWriter{
 		file:          file,
 		tableName:     tableName,
 		quotedTable:   quotedTable,
@@ -102,7 +104,7 @@ func formatSQLValue(value any) string {
 	}
 }
 
-func (w *sqlStreamWriter) writeBatch(rows []map[string]any) error {
+func (w *SQLStreamWriter) WriteBatch(rows []map[string]any) error {
 	if w.closed {
 		return errors.New("既にクローズされたライターに書き込めません")
 	}
@@ -144,7 +146,7 @@ func (w *sqlStreamWriter) writeBatch(rows []map[string]any) error {
 	return nil
 }
 
-func (w *sqlStreamWriter) Close() error {
+func (w *SQLStreamWriter) Close() error {
 	if w.closed {
 		return w.closeErr
 	}
@@ -170,6 +172,6 @@ func (w *sqlStreamWriter) Close() error {
 	return nil
 }
 
-func (w *sqlStreamWriter) RowsWritten() int {
+func (w *SQLStreamWriter) RowsWritten() int {
 	return w.rows
 }

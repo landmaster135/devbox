@@ -12,53 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTableDumper_newStreamWriter_SupportedFormats(t *testing.T) {
-	dir := t.TempDir()
-	mockWriter := &MockFileWriter{
-		CreateFunc: func(name string) (*os.File, error) {
-			return os.Create(name)
-		},
-	}
-
-	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, mockWriter)
-	columns := []string{"id", "name"}
-
-	jsonWriter, err := dumper.newStreamWriter("json", filepath.Join(dir, "data.json"), "users", columns)
-	require.NoError(t, err)
-	require.IsType(t, &jsonStreamWriter{}, jsonWriter)
-	require.NoError(t, jsonWriter.Close())
-
-	csvWriter, err := dumper.newStreamWriter("csv", filepath.Join(dir, "data.csv"), "users", columns)
-	require.NoError(t, err)
-	require.IsType(t, &csvStreamWriter{}, csvWriter)
-	require.NoError(t, csvWriter.Close())
-
-	sqlWriter, err := dumper.newStreamWriter("sql", filepath.Join(dir, "data.sql"), "public.users", columns)
-	require.NoError(t, err)
-	require.IsType(t, &sqlStreamWriter{}, sqlWriter)
-	require.NoError(t, sqlWriter.Close())
-}
-
-func TestTableDumper_newStreamWriter_InvalidFormat(t *testing.T) {
-	dir := t.TempDir()
-	mockWriter := &MockFileWriter{
-		CreateFunc: func(name string) (*os.File, error) {
-			return os.Create(name)
-		},
-	}
-
-	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, mockWriter)
-
-	_, err := dumper.newStreamWriter("unsupported", filepath.Join(dir, "data.bin"), "users", nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "サポートされていないフォーマット")
-}
-
 func TestJSONStreamWriter_WriteAndClose(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "dump.json")
 
-	writer, err := newJSONStreamWriter(&MockFileWriter{
+	writer, err := NewJSONStreamWriter(&MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
@@ -70,7 +28,7 @@ func TestJSONStreamWriter_WriteAndClose(t *testing.T) {
 		{"id": 2, "logged_in_at": time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)},
 	}
 
-	assert.NoError(t, writer.writeBatch(rows))
+	assert.NoError(t, writer.WriteBatch(rows))
 	assert.Equal(t, 2, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -85,7 +43,7 @@ func TestJSONStreamWriter_WriteAndClose(t *testing.T) {
 
 	assert.NoError(t, writer.Close())
 
-	err = writer.writeBatch(rows)
+	err = writer.WriteBatch(rows)
 	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
 }
 
@@ -93,7 +51,7 @@ func TestJSONStreamWriter_CloseEmpty(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "empty.json")
 
-	writer, err := newJSONStreamWriter(&MockFileWriter{
+	writer, err := NewJSONStreamWriter(&MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
@@ -112,7 +70,7 @@ func TestCSVStreamWriter_WriteAndClose(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "dump.csv")
 
-	writer, err := newCSVStreamWriter(&MockFileWriter{
+	writer, err := NewCSVStreamWriter(&MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
@@ -124,7 +82,7 @@ func TestCSVStreamWriter_WriteAndClose(t *testing.T) {
 		{"id": 2, "name": "Bob", "active": false},
 	}
 
-	assert.NoError(t, writer.writeBatch(rows))
+	assert.NoError(t, writer.WriteBatch(rows))
 	assert.Equal(t, 2, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -135,7 +93,7 @@ func TestCSVStreamWriter_WriteAndClose(t *testing.T) {
 
 	assert.NoError(t, writer.Close())
 
-	err = writer.writeBatch(rows)
+	err = writer.WriteBatch(rows)
 	assert.EqualError(t, err, "既にクローズされたライターに書き込めません")
 }
 
@@ -143,14 +101,14 @@ func TestCSVStreamWriter_WithoutHeaders(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "noheaders.csv")
 
-	writer, err := newCSVStreamWriter(&MockFileWriter{
+	writer, err := NewCSVStreamWriter(&MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
 	}, filePath, nil)
 	require.NoError(t, err)
 
-	assert.NoError(t, writer.writeBatch(nil))
+	assert.NoError(t, writer.WriteBatch(nil))
 	assert.Equal(t, 0, writer.RowsWritten())
 
 	assert.NoError(t, writer.Close())
@@ -168,15 +126,15 @@ func TestJSONStreamWriter_WriteBatch(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "test.json")
-	writer, err := newJSONStreamWriter(&DefaultFileWriter{}, filePath)
+	writer, err := NewJSONStreamWriter(&DefaultFileWriter{}, filePath)
 	assert.NoError(t, err)
 
 	batch1 := []map[string]any{{"id": 1, "name": "John"}}
 	batch2 := []map[string]any{{"id": 2, "name": "Jane"}}
 
 	// Act
-	assert.NoError(t, writer.writeBatch(batch1))
-	assert.NoError(t, writer.writeBatch(batch2))
+	assert.NoError(t, writer.WriteBatch(batch1))
+	assert.NoError(t, writer.WriteBatch(batch2))
 	assert.NoError(t, writer.Close())
 
 	// Assert
@@ -200,7 +158,7 @@ func TestJSONStreamWriter_CloseWithoutRows(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "empty.json")
-	writer, err := newJSONStreamWriter(&DefaultFileWriter{}, filePath)
+	writer, err := NewJSONStreamWriter(&DefaultFileWriter{}, filePath)
 	assert.NoError(t, err)
 
 	// Act
@@ -218,7 +176,7 @@ func TestCSVStreamWriter_WriteBatch(t *testing.T) {
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "test.csv")
 	headers := []string{"id", "name", "score", "active", "created_at", "payload"}
-	writer, err := newCSVStreamWriter(&DefaultFileWriter{}, filePath, headers)
+	writer, err := NewCSVStreamWriter(&DefaultFileWriter{}, filePath, headers)
 	assert.NoError(t, err)
 
 	createdAt := time.Date(2024, 1, 2, 3, 4, 5, 6000, time.UTC)
@@ -242,7 +200,7 @@ func TestCSVStreamWriter_WriteBatch(t *testing.T) {
 	}
 
 	// Act
-	assert.NoError(t, writer.writeBatch(rows))
+	assert.NoError(t, writer.WriteBatch(rows))
 	assert.NoError(t, writer.Close())
 
 	// Assert

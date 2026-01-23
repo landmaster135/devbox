@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type csvStreamWriter struct {
+type CSVStreamWriter struct {
 	file     *os.File
 	writer   *csv.Writer
 	headers  []string
@@ -19,7 +19,7 @@ type csvStreamWriter struct {
 	closeErr error
 }
 
-func newCSVStreamWriter(fileWriter FileWriter, filePath string, headers []string) (*csvStreamWriter, error) {
+func NewCSVStreamWriter(fileWriter FileWriter, filePath string, headers []string) (*CSVStreamWriter, error) {
 	file, err := fileWriter.Create(filePath)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func newCSVStreamWriter(fileWriter FileWriter, filePath string, headers []string
 		}
 	}
 
-	return &csvStreamWriter{
+	return &CSVStreamWriter{
 		file:    file,
 		writer:  writer,
 		headers: headers,
@@ -93,7 +93,7 @@ func formatCSVValue(value any) string {
 	}
 }
 
-func (w *csvStreamWriter) writeBatch(rows []map[string]any) error {
+func (w *CSVStreamWriter) WriteBatch(rows []map[string]any) error {
 	if w.closed {
 		return errors.New("既にクローズされたライターに書き込めません")
 	}
@@ -118,7 +118,7 @@ func (w *csvStreamWriter) writeBatch(rows []map[string]any) error {
 	return nil
 }
 
-func (w *csvStreamWriter) Close() error {
+func (w *CSVStreamWriter) Close() error {
 	if w.closed {
 		return w.closeErr
 	}
@@ -143,6 +143,6 @@ func (w *csvStreamWriter) Close() error {
 	return nil
 }
 
-func (w *csvStreamWriter) RowsWritten() int {
+func (w *CSVStreamWriter) RowsWritten() int {
 	return w.rows
 }
