@@ -27,6 +27,13 @@ const (
 	defaultOpenWeatherEmbedText  = "最新の天気予報"
 	defaultOpenWeatherEmbedColor = "orange"
 
+	// Postgres
+	botNameForPostgres        = "Postgresあゆ"
+	footerTextInPostgresEmbed = "PostgreSQL"
+	postgresIconURL           = "https://www.postgresql.org/media/img/about/press/elephant.png"
+	defaultPostgresEmbedText  = "PostgreSQLダンプ"
+	defaultPostgresEmbedColor = "purple"
+
 	// gcloud
 	botNameForGCloud           = "クラウドウォッチャーあゆ"
 	defaultGCloudSuccessColor  = "green"
@@ -197,6 +204,25 @@ func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embe
 	)
 }
 
+func (s *DiscordWebhookService) createPostgresPayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
+	if embedText == "" {
+		embedText = defaultPostgresEmbedText
+	}
+	if embedColor == "" {
+		embedColor = defaultPostgresEmbedColor
+	}
+
+	return s.createPayloadWithEmbed(
+		botNameForPostgres,
+		contentText,
+		embedText,
+		embedColor,
+		embedURLLinkedText,
+		footerTextInPostgresEmbed,
+		postgresIconURL,
+	)
+}
+
 func (s *DiscordWebhookService) createOpenWeatherMapPayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
 	if embedText == "" {
 		embedText = defaultOpenWeatherEmbedText
@@ -306,6 +332,11 @@ func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL
 		}
 	case embedType == "vscode":
 		payload, err = s.createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText)
+		if err != nil {
+			return err
+		}
+	case embedType == "postgres":
+		payload, err = s.createPostgresPayload(contentText, embedText, embedColor, embedURLLinkedText)
 		if err != nil {
 			return err
 		}
