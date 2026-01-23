@@ -11,6 +11,8 @@ import (
 	infraFilesystem "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/filesystem"
 	infraTime "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/time"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+
+	weatherNotificator "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
 
 // List returns all configured workflows.
@@ -29,10 +31,15 @@ func List() ([]usecases.Workflow, error) {
 		return nil, fmt.Errorf("failed to create Heartbeat Workflow: %w", err)
 	}
 	hourlyHealthSnapshotWorkflow := createHourlyHealthSnapshotWorkflow(wc)
+	weatherWorkflow, err := createWeatherNotificationWorkflow(wc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Weather Notification Workflow: %w", err)
+	}
 
 	return []usecases.Workflow{
 		*heartbeatWorkflow,
 		*hourlyHealthSnapshotWorkflow,
+		*weatherWorkflow,
 	}, nil
 }
 
@@ -80,4 +87,42 @@ func createHourlyHealthSnapshotWorkflow(c *usecases.WorkflowCreator) *usecases.W
 			}
 		},
 	)
+}
+
+func createWeatherNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+	const (
+		city    = "Tokyo"
+		maxDays = 3
+		cronExp = "0 1 * * 0-6"
+	)
+
+	webhookURL, err := getEnvVars(c.EnvRepo, EnvKeyDiscordWebhookURLForWeather)
+	if err != nil {
+		return nil, fmt.Errorf("resolve Discord webhook URL: %w", err)
+	}
+	apiKey, err := getEnvVars(c.EnvRepo, EnvKeyOpenWeatherAPIKey)
+	if err != nil {
+		return nil, fmt.Errorf("resolve OpenWeather API key: %w", err)
+	}
+	service := weatherNotificator.NewWeatherNotificatorService()
+
+	return usecases.NewWorkflow(
+		"Daily Tokyo weather notification",
+		cronExp,
+		c.Timezone,
+		func(ctx context.Context) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			if err := service.HandleWeatherNotification(apiKey, city, maxDays, webhookURL); err != nil {
+				return fmt.Errorf("send weather notification: %w", err)
+			}
+
+			log.Printf("[weather] dispatched %s forecast to Discord", city)
+			return nil
+		},
+	), nil
 }

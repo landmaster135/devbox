@@ -17,3 +17,8 @@
 - "--operation"には、"inspect"を受け付ける。
 - "--task-type"には、"root"を受け付ける。
 - --operation: inspect, --task-type: root の場合は、/home/user/devbox/internal/taskfile/usecases/taskfiles/root.ymlにあるフィールドが、"--taskfile-path"で渡されたTaskfileで不足していないかどうかを確認する。
+
+## 新規のCronワークフローの追加
+/home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにDiscordに天気予報を通知するための新規ワークフローを追加して。/home/user/devbox/cmd/cli/weather-notificator/main.go内で呼び出されているservice.HandleWeatherNotification関数を呼び出せば処理出来るはずだ。city: "Tokyo", maxDays: 3を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値も渡す。
+- EnvKeyDiscordWebhookURL
+- EnvKeyOpenWeatherAPIKey
