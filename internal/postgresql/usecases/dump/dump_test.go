@@ -1,4 +1,4 @@
-package usecases
+package dump
 
 import (
 	"context"
@@ -398,8 +398,8 @@ func TestJSONStreamWriter_WriteBatch(t *testing.T) {
 	batch2 := []map[string]any{{"id": 2, "name": "Jane"}}
 
 	// Act
-	assert.NoError(t, writer.WriteBatch(batch1))
-	assert.NoError(t, writer.WriteBatch(batch2))
+	assert.NoError(t, writer.writeBatch(batch1))
+	assert.NoError(t, writer.writeBatch(batch2))
 	assert.NoError(t, writer.Close())
 
 	// Assert
@@ -465,7 +465,7 @@ func TestCSVStreamWriter_WriteBatch(t *testing.T) {
 	}
 
 	// Act
-	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.writeBatch(rows))
 	assert.NoError(t, writer.Close())
 
 	// Assert
@@ -507,7 +507,7 @@ func TestSQLStreamWriter_WriteBatch(t *testing.T) {
 	}
 
 	// Act
-	assert.NoError(t, writer.WriteBatch(rows))
+	assert.NoError(t, writer.writeBatch(rows))
 	assert.NoError(t, writer.Close())
 
 	// Assert
