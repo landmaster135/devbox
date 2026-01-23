@@ -11,6 +11,7 @@ import (
 type Config struct {
 	WebhookURL         string // webhook-url (必須)
 	ContentText        string // content-text (必須)
+	BotName            string // bot-name (任意)
 	EmbedType          string // embed-type (none, vscode, open-weather-map, google-*-success, google-*-failed)
 	EmbedText          string // embed-text (任意)
 	EmbedColor         string // embed-color (任意)
@@ -39,7 +40,7 @@ var validEmbedTypes = []string{
 }
 
 // NewConfig は新しいConfigを作成する
-func NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedURLLinkedText string) (*Config, error) {
+func NewConfig(embedType, webhookURL, botName, contentText, embedText, embedColor, embedURLLinkedText string) (*Config, error) {
 	// 必須パラメータの検証
 	if webhookURL == "" {
 		return nil, fmt.Errorf("webhook-urlが指定されていません")
@@ -62,19 +63,26 @@ func NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedU
 		return nil, fmt.Errorf("無効なwebhook-urlです。Discord WebhookのURLを指定してください")
 	}
 
-	// content-textの長さ検証
-	if len(contentText) > 2000 {
-		return nil, fmt.Errorf("content-textは2000文字以下である必要があります")
+	const BotNameMaxLen = 80
+	if len(botName) > BotNameMaxLen {
+		return nil, fmt.Errorf("bot-nameは%d文字以下である必要があります", BotNameMaxLen)
+	}
+
+	const ContentTextMaxLen = 2000
+	if len(contentText) > ContentTextMaxLen {
+		return nil, fmt.Errorf("content-textは%d文字以下である必要があります", ContentTextMaxLen)
 	}
 
 	// embed-textの長さ検証
-	if embedText != "" && len(embedText) > 256 {
-		return nil, fmt.Errorf("embed-textは256文字以下である必要があります")
+	const EmbedTextMaxLen = 256
+	if embedText != "" && len(embedText) > EmbedTextMaxLen {
+		return nil, fmt.Errorf("embed-textは%d文字以下である必要があります", EmbedTextMaxLen)
 	}
 
 	return &Config{
 		EmbedType:          embedType,
 		WebhookURL:         webhookURL,
+		BotName:            botName,
 		ContentText:        contentText,
 		EmbedText:          embedText,
 		EmbedColor:         embedColor,
@@ -108,6 +116,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
 		embedType          = ""
 		webhookURL         = ""
+		botName            = ""
 		contentText        = ""
 		embedText          = ""
 		embedColor         = ""
@@ -122,6 +131,9 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	parser.StringVar(&webhookURL, "webhook-url", webhookURL, "Discord WebhookのURL")
 	parser.StringVar(&webhookURL, "wu", webhookURL, "webhook-urlの短縮形")
+
+	parser.StringVar(&botName, "bot-name", botName, "ボットの名前")
+	parser.StringVar(&botName, "bn", botName, "bot-nameの短縮形")
 
 	parser.StringVar(&contentText, "content-text", contentText, "メッセージの本文")
 	parser.StringVar(&contentText, "ct", contentText, "content-textの短縮形")
@@ -147,7 +159,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(embedType, webhookURL, contentText, embedText, embedColor, embedURLLinkedText)
+	return NewConfig(embedType, webhookURL, botName, contentText, embedText, embedColor, embedURLLinkedText)
 }
 
 // PrintUsage は使用方法を表示する
@@ -156,7 +168,7 @@ func PrintUsage() {
 
 使用方法:
   基本的な通知（embedなし）:
-    %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "Hello, Discord!" -embed-type none
+    %s -webhook-url "https://discord.com/api/webhooks/..." -bot-name "テストボット" -content-text "Hello, Discord!" -embed-type none
 
   VSCode風embed付き通知:
     %s -webhook-url "https://discord.com/api/webhooks/..." -content-text "デプロイ完了" -embed-type vscode -embed-text "アプリケーションが正常にデプロイされました"
@@ -173,6 +185,7 @@ func PrintUsage() {
   -embed-type, -et      Embedのタイプ (%s)
 
 任意オプション:
+  -bot-name, -bn            ボットの名前
   -embed-text, -et-text     Embedのタイトル
   -embed-color, -ec         Embedの色 (green, red, blue, yellow, orange, purple, pink, sky_blue, gray_blue, white, black)
   -embed-url-linked-text, -eult  EmbedタイトルのリンクURL

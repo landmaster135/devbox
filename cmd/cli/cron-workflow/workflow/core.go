@@ -11,7 +11,8 @@ import (
 	infraFilesystem "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/filesystem"
 	infraTime "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/time"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
-
+	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
+	discordWebhook "github.com/landmaster135/devbox/internal/discord_webhook/usecases"
 	weatherNotificator "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
 
@@ -35,11 +36,16 @@ func List() ([]usecases.Workflow, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Weather Notification Workflow: %w", err)
 	}
+	dailyHeadingWorkflow, err := createDailyHeadingNotificationWorkflow(wc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Daily Heading Workflow: %w", err)
+	}
 
 	return []usecases.Workflow{
 		*heartbeatWorkflow,
 		*hourlyHealthSnapshotWorkflow,
 		*weatherWorkflow,
+		*dailyHeadingWorkflow,
 	}, nil
 }
 
@@ -122,6 +128,41 @@ func createWeatherNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.W
 			}
 
 			log.Printf("[weather] dispatched %s forecast to Discord", city)
+			return nil
+		},
+	), nil
+}
+
+func createDailyHeadingNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+	const (
+		cronExp   = "*/1 * * * *"
+		dayOffset = 0
+	)
+
+	webhookURL, err := getEnvVars(c.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("resolve daily heading Discord webhook URL: %w", err)
+	}
+
+	service := discordWebhook.NewDefaultDiscordWebhookService()
+
+	return usecases.NewWorkflow(
+		"Daily heading Discord notification",
+		cronExp,
+		c.Timezone,
+		func(ctx context.Context) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			content := textGenerator.GenerateDailyHeading(dayOffset)
+			if err := service.SendNotification(ctx, webhookURL, "テンプレートあゆ", content, "none", "", "", ""); err != nil {
+				return fmt.Errorf("send daily heading notification: %w", err)
+			}
+
+			log.Printf("[daily-heading] dispatched heading content to Discord")
 			return nil
 		},
 	), nil
