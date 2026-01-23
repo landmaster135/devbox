@@ -12,6 +12,7 @@ import (
 
 // PostgreSQLMCPHandler はMCPリクエストを処理するハンドラーです
 type PostgreSQLMCPHandler struct {
+	url     string
 	service *usecases.PostgreSQLService
 }
 
@@ -23,6 +24,7 @@ func NewPostgreSQLMCPHandler(databaseURL string) (*PostgreSQLMCPHandler, error) 
 	}
 
 	return &PostgreSQLMCPHandler{
+		url:     databaseURL,
 		service: service,
 	}, nil
 }
@@ -112,7 +114,7 @@ func (h *PostgreSQLMCPHandler) HandleToDumpTable(ctx context.Context, request mc
 		limit = &limitValue
 	}
 
-	result, err := h.service.HandleToDumpTable(ctx, tableName, outputPath, format, limit)
+	result, err := usecases.HandleToDumpTable(ctx, h.url, tableName, outputPath, format, limit)
 	if err != nil {
 		return nil, fmt.Errorf("テーブルダンプの実行に失敗しました: %v", err)
 	}

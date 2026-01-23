@@ -291,7 +291,7 @@ func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) (stri
 }
 
 // HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, outputPath, format string, limit *int) (*dump.DumpResult, error) {
+func HandleToDumpTable(ctx context.Context, dbURL, tableName, outputPath, format string, limit *int) (string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -299,16 +299,34 @@ func (s *PostgreSQLService) HandleToDumpTable(ctx context.Context, tableName, ou
 	if format == "" {
 		format = "json"
 	}
+
+	// PostgreSQLサービスを初期化
+	service, err := NewPostgreSQLService(dbURL)
+	if err != nil {
+		return "", fmt.Errorf("PostgreSQLサービスの初期化に失敗しました: %v", err)
+	}
+	defer service.Close()
 
 	// ダンプオプションを作成
 	options := dump.NewDumpOptions(tableName, outputPath, format, limit)
 
 	// ダンプを実行
-	return s.tableDumper.DumpTable(ctx, options)
+	result, err := service.tableDumper.DumpTable(ctx, options)
+	if err != nil {
+		return "", fmt.Errorf("テーブルダンプの実行に失敗しました: %v", err)
+	}
+
+	// 結果をJSON形式で標準出力に表示
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("結果のJSON変換に失敗しました: %v", err)
+	}
+
+	return string(jsonResult), nil
 }
 
 // HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
-func (s *PostgreSQLService) HandleToDumpAllTables(ctx context.Context, outputPath, format string, limit *int, concurrency *int) (*dump.DumpAllTablesResult, error) {
+func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format string, limit *int, concurrency *int) (string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -317,6 +335,24 @@ func (s *PostgreSQLService) HandleToDumpAllTables(ctx context.Context, outputPat
 		format = "json"
 	}
 
+	// PostgreSQLサービスを初期化
+	service, err := NewPostgreSQLService(dbURL)
+	if err != nil {
+		return "", fmt.Errorf("PostgreSQLサービスの初期化に失敗しました: %v", err)
+	}
+	defer service.Close()
+
 	// 全テーブルダンプを実行
-	return s.tableDumper.DumpAllTables(ctx, outputPath, format, limit, concurrency)
+	result, err := service.tableDumper.DumpAllTables(ctx, outputPath, format, limit, concurrency)
+	if err != nil {
+		return "", fmt.Errorf("全テーブルダンプの実行に失敗しました: %v", err)
+	}
+
+	// 結果をJSON形式で標準出力に表示
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("結果のJSON変換に失敗しました: %v", err)
+	}
+
+	return string(jsonResult), nil
 }
