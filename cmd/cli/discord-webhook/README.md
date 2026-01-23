@@ -25,6 +25,7 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 ```bash
 go run ./cmd/cli/discord-webhook \
   -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
+  -bot-name "テスト用のボット" \
   -content-text "Hello, Discord!" \
   -embed-type none
 ```
@@ -94,6 +95,7 @@ go run ./cmd/cli/discord-webhook \
 
 | オプション | 短縮形 | 説明 |
 |-----------|--------|------|
+| `-bot-name` | `-bn` | ボットの名前 |
 | `-embed-text` | `-et-text` | Embedのタイトル |
 | `-embed-color` | `-ec` | Embedの色 |
 | `-embed-url-linked-text` | `-eult` | EmbedタイトルのリンクURL |
