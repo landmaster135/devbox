@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	config "github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
+	reversePolishNotation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/reverse_polish_notation"
 )
 
 // #==============================================================#
@@ -469,11 +470,7 @@ func (e *ExpressionEvaluatorService) safeEvaluate(expression string) (float64, e
 		expression = strings.ReplaceAll(expression, name, fmt.Sprintf("%f", value))
 	}
 
-	// ^ を ** に置換（べき乗演算子）
-	expression = strings.ReplaceAll(expression, "^", "**")
-
-	// 基本的な数式のみを許可する簡単な評価器
-	// 実際の実装では、より安全なパーサーを使用することを推奨
+	// RPNベースの評価器で式を安全に評価
 	result, err := e.evaluateBasicExpression(expression)
 	if err != nil {
 		return 0, fmt.Errorf("数式の評価に失敗しました: %v", err)
@@ -484,150 +481,21 @@ func (e *ExpressionEvaluatorService) safeEvaluate(expression string) (float64, e
 
 // evaluateBasicExpression は基本的な数式を評価するメソッドです
 func (e *ExpressionEvaluatorService) evaluateBasicExpression(expression string) (float64, error) {
-	// 簡単な数式評価の実装
-	// 実際の実装では、より堅牢なパーサーを使用することを推奨
-
-	// 単純な数値の場合
-	if value, err := strconv.ParseFloat(expression, 64); err == nil {
-		return value, nil
-	}
-
-	// sqrt関数の処理
-	if strings.HasPrefix(expression, "sqrt(") && strings.HasSuffix(expression, ")") {
-		inner := expression[5 : len(expression)-1]
-		value, err := e.evaluateBasicExpression(inner)
-		if err != nil {
-			return 0, err
-		}
-		if value < 0 {
-			return 0, fmt.Errorf("負数の平方根は計算できません")
-		}
-		return math.Sqrt(value), nil
-	}
-
-	// sin関数の処理
-	if strings.HasPrefix(expression, "sin(") && strings.HasSuffix(expression, ")") {
-		inner := expression[4 : len(expression)-1]
-		value, err := e.evaluateBasicExpression(inner)
-		if err != nil {
-			return 0, err
-		}
-		return math.Sin(value), nil
-	}
-
-	// cos関数の処理
-	if strings.HasPrefix(expression, "cos(") && strings.HasSuffix(expression, ")") {
-		inner := expression[4 : len(expression)-1]
-		value, err := e.evaluateBasicExpression(inner)
-		if err != nil {
-			return 0, err
-		}
-		return math.Cos(value), nil
-	}
-
-	// tan関数の処理
-	if strings.HasPrefix(expression, "tan(") && strings.HasSuffix(expression, ")") {
-		inner := expression[4 : len(expression)-1]
-		value, err := e.evaluateBasicExpression(inner)
-		if err != nil {
-			return 0, err
-		}
-		return math.Tan(value), nil
-	}
-
-	// 基本的な四則演算の処理
-	return e.evaluateArithmeticExpression(expression)
+	return e.evaluateUsingReversePolish(expression)
 }
 
 // evaluateArithmeticExpression は四則演算を評価するメソッドです
 func (e *ExpressionEvaluatorService) evaluateArithmeticExpression(expression string) (float64, error) {
-	// 簡単な四則演算の実装
-	// 実際の実装では、より堅牢な演算子優先度を考慮したパーサーを使用することを推奨
+	return e.evaluateUsingReversePolish(expression)
+}
 
-	// 加算の処理
-	if strings.Contains(expression, "+") {
-		parts := strings.Split(expression, "+")
-		if len(parts) == 2 {
-			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
-			if err != nil {
-				return 0, err
-			}
-			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
-			if err != nil {
-				return 0, err
-			}
-			return left + right, nil
-		}
+func (e *ExpressionEvaluatorService) evaluateUsingReversePolish(expression string) (float64, error) {
+	cleaned := strings.ReplaceAll(expression, " ", "")
+	cleaned = strings.ReplaceAll(cleaned, "**", "^")
+	if cleaned == "" {
+		return 0, fmt.Errorf("無効な数式です: %s", expression)
 	}
-
-	// 減算の処理
-	if strings.Contains(expression, "-") && !strings.HasPrefix(expression, "-") {
-		parts := strings.Split(expression, "-")
-		if len(parts) == 2 {
-			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
-			if err != nil {
-				return 0, err
-			}
-			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
-			if err != nil {
-				return 0, err
-			}
-			return left - right, nil
-		}
-	}
-
-	// 乗算の処理
-	if strings.Contains(expression, "*") && !strings.Contains(expression, "**") {
-		parts := strings.Split(expression, "*")
-		if len(parts) == 2 {
-			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
-			if err != nil {
-				return 0, err
-			}
-			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
-			if err != nil {
-				return 0, err
-			}
-			return left * right, nil
-		}
-	}
-
-	// べき乗の処理
-	if strings.Contains(expression, "**") {
-		parts := strings.Split(expression, "**")
-		if len(parts) == 2 {
-			base, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
-			if err != nil {
-				return 0, err
-			}
-			exponent, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
-			if err != nil {
-				return 0, err
-			}
-			return math.Pow(base, exponent), nil
-		}
-	}
-
-	// 除算の処理
-	if strings.Contains(expression, "/") {
-		parts := strings.Split(expression, "/")
-		if len(parts) == 2 {
-			left, err := e.evaluateBasicExpression(strings.TrimSpace(parts[0]))
-			if err != nil {
-				return 0, err
-			}
-			right, err := e.evaluateBasicExpression(strings.TrimSpace(parts[1]))
-			if err != nil {
-				return 0, err
-			}
-			if right == 0 {
-				return 0, fmt.Errorf("ゼロ除算は許可されていません")
-			}
-			return left / right, nil
-		}
-	}
-
-	return 0, fmt.Errorf("無効な数式です: %s", expression)
+	return reversePolishNotation.Evaluate(cleaned)
 }
 
 // checkOsPattern は"os"パターンの特別処理を行う（cos関数内のosは許可）
