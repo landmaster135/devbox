@@ -7,9 +7,9 @@ import (
 type EnvKey string
 
 const (
-	EnvKeyHeartOwner        EnvKey = "HEART_OWNER"
-	EnvKeyDiscordWebhookURL EnvKey = "DISCORD_WEBHOOK_URL"
-	EnvKeyOpenWeatherAPIKey EnvKey = "OPEN_WEATHER_API_KEY"
+	EnvKeyHeartOwner                  EnvKey = "HEART_OWNER"
+	EnvKeyDiscordWebhookURLForWeather EnvKey = "DISCORD_WEBHOOK_URL_FOR_WEATHER"
+	EnvKeyOpenWeatherAPIKey           EnvKey = "OPEN_WEATHER_API_KEY"
 )
 
 func getEnvVars(repo infraEnv.Repository, envKey EnvKey) (string, error) {
