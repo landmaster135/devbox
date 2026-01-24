@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -223,24 +224,48 @@ func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format stri
 	return d.executeConcurrentDumps(ctx, databaseName, tables, effectiveConcurrency, outputPath, format, limit)
 }
 
-// DumpAllTablesAndOutputJSON はデータベース内の全テーブルをダンプして結果をJSONに出力します
-func (d *TableDumper) DumpAllTablesAndOutputJSON(ctx context.Context, outputPath, format string, limit *int, concurrency *int) (string, string, error) {
+// DumpAllTablesAndOutputJSON はデータベース内の全テーブルをダンプして結果を指定フォーマットで出力します
+func (d *TableDumper) DumpAllTablesAndOutputJSON(ctx context.Context, outputPath, format string, limit *int, concurrency *int, resultFormat, heading string) (string, string, error) {
+	resultFormat = strings.ToLower(resultFormat)
+	if resultFormat != "json" && resultFormat != "markdown" {
+		return "", "", fmt.Errorf("未対応の結果フォーマットです: %s", resultFormat)
+	}
+
 	result, err := d.DumpAllTables(ctx, outputPath, format, limit, concurrency)
 	if err != nil {
 		return "", "", fmt.Errorf("全テーブルダンプの実行に失敗しました: %v", err)
 	}
 
-	// 結果をJSON形式で標準出力に表示
+	fullResult, minResult, err := formatDumpAllTablesResult(result, resultFormat, heading)
+	if err != nil {
+		return "", "", err
+	}
+
+	if err := d.OutputResultIntoFile([]byte(fullResult), outputPath, resultFormat); err != nil {
+		return "", "", fmt.Errorf("結果のファイル出力に失敗しました: %v", err)
+	}
+
+	return fullResult, minResult, nil
+}
+
+func formatDumpAllTablesResult(result *DumpAllTablesResult, format, heading string) (string, string, error) {
+	switch strings.ToLower(format) {
+	case "json":
+		return formatDumpAllTablesResultAsJSON(result)
+	case "markdown":
+		full, min := formatDumpAllTablesResultAsMarkdown(result, heading)
+		return full, min, nil
+	default:
+		return "", "", fmt.Errorf("サポートされていない結果フォーマットです: %s", format)
+	}
+}
+
+func formatDumpAllTablesResultAsJSON(result *DumpAllTablesResult) (string, string, error) {
 	jsonResult, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
 		return "", "", fmt.Errorf("結果のJSON変換に失敗しました: %v", err)
 	}
 
-	if err := d.OutputResultIntoFile(jsonResult, outputPath, "json"); err != nil {
-		return "", "", fmt.Errorf("結果のファイル出力に失敗しました: %v", err)
-	}
-
-	// 結果を最小限のJSON形式で標準出力に表示
 	minResult := &DumpAllTablesMinResult{
 		TotalTables: result.TotalTables,
 		ExecutedAt:  result.ExecutedAt,
@@ -251,4 +276,56 @@ func (d *TableDumper) DumpAllTablesAndOutputJSON(ctx context.Context, outputPath
 	}
 
 	return string(jsonResult), string(minJSONResult), nil
+}
+
+func formatDumpAllTablesResultAsMarkdown(result *DumpAllTablesResult, heading string) (string, string) {
+	successCount := len(result.Results)
+	failureCount := len(result.FailedTables)
+	title := strings.TrimSpace(heading)
+	if title == "" {
+		title = "PostgreSQL Dump Report"
+	}
+	builder := &strings.Builder{}
+	fmt.Fprintf(builder, "## %s\n\n", title)
+	builder.WriteString("| 項目 | 値 |\n")
+	builder.WriteString("| --- | --- |\n")
+	fmt.Fprintf(builder, "| Database | `%s` |\n", result.DatabaseName)
+	fmt.Fprintf(builder, "| Total tables discovered | %d |\n", result.TotalTables)
+	fmt.Fprintf(builder, "| Successful dumps | %d |\n", successCount)
+	fmt.Fprintf(builder, "| Failed dumps | %d |\n", failureCount)
+	fmt.Fprintf(builder, "| Executed at | %s |\n", result.ExecutedAt)
+
+	if successCount > 0 {
+		builder.WriteString("\n### Successful Tables\n")
+		builder.WriteString("| Table | Rows | File | Format |\n")
+		builder.WriteString("| --- | --- | --- | --- |\n")
+		for _, res := range result.Results {
+			fmt.Fprintf(builder, "| `%s` | %d | %s | %s |\n", res.TableName, res.RecordCount, res.FileName, res.Format)
+		}
+	} else {
+		builder.WriteString("\n### Successful Tables\n| Table | Rows | File | Format |\n| --- | --- | --- | --- |\n| なし | 0 | - | - |\n")
+	}
+
+	if failureCount > 0 {
+		builder.WriteString("\n### Failed Tables\n")
+		builder.WriteString("| Table | Error |\n")
+		builder.WriteString("| --- | --- |\n")
+		for _, failed := range result.FailedTables {
+			fmt.Fprintf(builder, "| `%s` | %s |\n", failed.TableName, failed.Error)
+		}
+	} else {
+		builder.WriteString("\n### Failed Tables\n| Table | Error |\n| --- | --- |\n| なし | - |\n")
+	}
+
+	minBuilder := &strings.Builder{}
+	minBuilder.WriteString("| 項目 | 値 |\n")
+	minBuilder.WriteString("| --- | --- |\n")
+	fmt.Fprintf(minBuilder, "| Heading | %s |\n", title)
+	fmt.Fprintf(minBuilder, "| Database | `%s` |\n", result.DatabaseName)
+	fmt.Fprintf(minBuilder, "| Total tables | %d |\n", result.TotalTables)
+	fmt.Fprintf(minBuilder, "| Successful | %d |\n", successCount)
+	fmt.Fprintf(minBuilder, "| Failed | %d |\n", failureCount)
+	fmt.Fprintf(minBuilder, "| Executed at | %s |", result.ExecutedAt)
+
+	return strings.TrimSpace(builder.String()), strings.TrimSpace(minBuilder.String())
 }

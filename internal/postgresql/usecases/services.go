@@ -326,13 +326,16 @@ func HandleToDumpTable(ctx context.Context, dbURL, tableName, outputPath, format
 }
 
 // HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
-func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format string, limit *int, concurrency *int) (string, string, error) {
+func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format string, limit *int, concurrency *int, resultFormat, heading string) (string, string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
 	}
 	if format == "" {
 		format = "json"
+	}
+	if resultFormat == "" {
+		resultFormat = "json"
 	}
 
 	// PostgreSQLサービスを初期化
@@ -343,7 +346,7 @@ func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format
 	defer service.Close()
 
 	// 全テーブルダンプを実行
-	jsonResult, minJSONResult, err := service.tableDumper.DumpAllTablesAndOutputJSON(ctx, outputPath, format, limit, concurrency)
+	jsonResult, minJSONResult, err := service.tableDumper.DumpAllTablesAndOutputJSON(ctx, outputPath, format, limit, concurrency, resultFormat, heading)
 	if err != nil {
 		return "", "", err
 	}

@@ -223,11 +223,7 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 	}
 
 	h2MarkdownGen := func(header string, summaries []string) string {
-		return fmt.Sprintf("## %s\n%s", header, strings.Join(summaries, "\n\n"))
-	}
-
-	h3MarkdownGen := func(heading, content string) string {
-		return fmt.Sprintf("### %s\n%s", heading, content)
+		return fmt.Sprintf("%s\n\n%s", header, strings.Join(summaries, "\n\n"))
 	}
 
 	return usecases.NewWorkflow(
@@ -247,13 +243,13 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 					return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
 				}
 
-				_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency)
+				_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency, "markdown", target.name)
 				if err != nil {
 					return fmt.Errorf("dump %s database: %w", target.name, err)
 				}
 
 				log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
-				dumpSummaries = append(dumpSummaries, h3MarkdownGen(target.name, minResult))
+				dumpSummaries = append(dumpSummaries, minResult)
 			}
 
 			content := notification
