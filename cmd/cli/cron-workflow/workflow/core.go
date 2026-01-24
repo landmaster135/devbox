@@ -177,7 +177,7 @@ func createDailyHeadingNotificationWorkflow(c *usecases.WorkflowCreator) (*useca
 
 func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
 	const (
-		cronExp        = "0 2 * * *"
+		cronExp        = "0 2 * * 0-6"
 		workflowName   = "Daily PostgreSQL dump notification"
 		format         = "sql"
 		notification   = "PostgreSQLのダンプが完了しました"
@@ -222,6 +222,14 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
 	}
 
+	h2MarkdownGen := func(header string, summaries []string) string {
+		return fmt.Sprintf("## %s\n%s", header, strings.Join(summaries, "\n\n"))
+	}
+
+	h3MarkdownGen := func(heading, content string) string {
+		return fmt.Sprintf("### %s\n%s", heading, content)
+	}
+
 	return usecases.NewWorkflow(
 		workflowName,
 		cronExp,
@@ -245,12 +253,12 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 				}
 
 				log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
-				dumpSummaries = append(dumpSummaries, fmt.Sprintf("[%s]\n%s", target.name, minResult))
+				dumpSummaries = append(dumpSummaries, h3MarkdownGen(target.name, minResult))
 			}
 
 			content := notification
 			if len(dumpSummaries) > 0 {
-				content = fmt.Sprintf("%s\n%s", notification, strings.Join(dumpSummaries, "\n\n"))
+				content = h2MarkdownGen(notification, dumpSummaries)
 			}
 
 			if err := service.SendNotification(
