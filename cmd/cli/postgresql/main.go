@@ -22,7 +22,16 @@ func handleDump(cfg *config.Config) {
 
 func handleDumpAllTables(cfg *config.Config) {
 	// 全テーブルダンプを実行
-	result, _, err := usecases.HandleToDumpAllTables(context.Background(), cfg.DatabaseURL, cfg.OutputPath, cfg.Format, cfg.Limit, cfg.Concurrency)
+	result, _, err := usecases.HandleToDumpAllTables(
+		context.Background(),
+		cfg.DatabaseURL,
+		cfg.OutputPath,
+		cfg.Format,
+		cfg.Limit,
+		cfg.Concurrency,
+		cfg.ResultFormat,
+		cfg.ResultHeading,
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: 全テーブルダンプに失敗しました: %v\n", err)
 		os.Exit(1)

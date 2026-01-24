@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -188,4 +189,53 @@ func TestTableDumper_DumpAllTables_EmptyDatabase(t *testing.T) {
 	assert.Equal(t, 0, result.TotalTables)
 	assert.Len(t, result.Results, 0)
 	assert.Len(t, result.FailedTables, 0)
+}
+
+func TestFormatDumpAllTablesResult_JSON(t *testing.T) {
+	result := &DumpAllTablesResult{
+		DatabaseName: "testdb",
+		TotalTables:  2,
+		Results: []DumpResult{
+			{TableName: "users", RecordCount: 10, OutputPath: "/tmp", FileName: "users.json", Format: "json", ExecutedAt: "2026-01-01 00:00:00"},
+		},
+		FailedTables: []FailedDump{},
+		ExecutedAt:   "2026-01-24 12:34:56",
+	}
+
+	full, min, err := formatDumpAllTablesResult(result, "json", "Custom Heading")
+
+	assert.NoError(t, err)
+	assert.Contains(t, full, "\"database_name\": \"testdb\"")
+	assert.Contains(t, min, "\"total_tables\": 2")
+}
+
+func TestFormatDumpAllTablesResult_Markdown(t *testing.T) {
+	result := &DumpAllTablesResult{
+		DatabaseName: "testdb",
+		TotalTables:  2,
+		Results: []DumpResult{
+			{TableName: "users", RecordCount: 10, OutputPath: "/tmp", FileName: "users.json", Format: "json", ExecutedAt: "2026-01-01 00:00:00"},
+		},
+		FailedTables: []FailedDump{{TableName: "orders", Error: "boom"}},
+		ExecutedAt:   "2026-01-24 12:34:56",
+	}
+
+	full, min, err := formatDumpAllTablesResult(result, "markdown", "Staging Dump")
+
+	assert.NoError(t, err)
+	assert.True(t, strings.HasPrefix(full, "## Staging Dump"))
+	assert.Contains(t, full, "| 項目 | 値 |")
+	assert.Contains(t, full, "| Successful dumps | 1 |")
+	assert.Contains(t, full, "### Successful Tables")
+	assert.Contains(t, full, "| `users` | 10 | users.json | json |")
+	assert.Contains(t, full, "### Failed Tables")
+	assert.Contains(t, full, "| `orders` | boom |")
+	assert.Contains(t, min, "| Total tables | 2 |")
+	assert.Contains(t, min, "| Failed | 1 |")
+}
+
+func TestFormatDumpAllTablesResult_InvalidFormat(t *testing.T) {
+	result := &DumpAllTablesResult{}
+	_, _, err := formatDumpAllTablesResult(result, "xml", "")
+	assert.Error(t, err)
 }

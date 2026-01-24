@@ -212,6 +212,8 @@ func (d *TableDumper) getFileExtension(format string) string {
 		return "csv"
 	case "sql":
 		return "sql"
+	case "markdown":
+		return "md"
 	default:
 		return "txt"
 	}
