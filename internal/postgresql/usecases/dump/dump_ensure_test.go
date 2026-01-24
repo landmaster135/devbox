@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	writer "github.com/landmaster135/devbox/internal/postgresql/usecases/writer"
 )
 
 // #==============================================================#
@@ -125,7 +126,7 @@ func TestTableDumper_EnsureAllowedTable(t *testing.T) {
 		return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
 	}
 
-	dumper := NewTableDumperWithDependencies(mockExecutor, &MockFileWriter{})
+	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{})
 
 	err := dumper.ensureAllowedTable(context.Background(), "users")
 	assert.NoError(t, err)
@@ -133,7 +134,7 @@ func TestTableDumper_EnsureAllowedTable(t *testing.T) {
 
 func TestTableDumper_EnsureAllowedTable_InvalidSchema(t *testing.T) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	dumper := NewTableDumperWithDependencies(mockExecutor, &MockFileWriter{})
+	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{})
 
 	err := dumper.ensureAllowedTable(context.Background(), "admin.users")
 	assert.Error(t, err)
@@ -146,7 +147,7 @@ func TestTableDumper_EnsureAllowedTable_NotFound(t *testing.T) {
 		return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
 	}
 
-	dumper := NewTableDumperWithDependencies(mockExecutor, &MockFileWriter{})
+	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{})
 
 	err := dumper.ensureAllowedTable(context.Background(), "orders")
 	assert.Error(t, err)

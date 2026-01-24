@@ -239,13 +239,13 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 					return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
 				}
 
-				result, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency)
+				_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency)
 				if err != nil {
 					return fmt.Errorf("dump %s database: %w", target.name, err)
 				}
 
 				log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
-				dumpSummaries = append(dumpSummaries, fmt.Sprintf("[%s]\n%s", target.name, result))
+				dumpSummaries = append(dumpSummaries, fmt.Sprintf("[%s]\n%s", target.name, minResult))
 			}
 
 			content := notification

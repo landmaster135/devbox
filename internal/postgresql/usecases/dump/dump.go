@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"time"
@@ -59,42 +58,10 @@ func NewDumpResult(tableName string, recordCount int, outputPath, fileName, form
 // ##          Interfaces                                        ##
 // #==============================================================#
 
-// FileWriter はファイル書き込み操作のインターフェースです
-type FileWriter interface {
-	WriteFile(filename string, data []byte, perm os.FileMode) error
-	MkdirAll(path string, perm os.FileMode) error
-	Create(name string) (*os.File, error)
-}
-
 // DatabaseQueryExecutor はクエリ実行を抽象化するインターフェースです
 type DatabaseQueryExecutor interface {
 	QueryContextRows(ctx context.Context, query string, args ...any) (model.RowsInterface, error)
 	QueryRowContextRow(ctx context.Context, query string, args ...any) model.RowInterface
-}
-
-type tableDataWriter interface {
-	WriteBatch(rows []map[string]any) error
-	Close() error
-	RowsWritten() int
-}
-
-// #==============================================================#
-// ##          Default Implementations                           ##
-// #==============================================================#
-
-// DefaultFileWriter は標準のファイル操作を使用する実装
-type DefaultFileWriter struct{}
-
-func (w *DefaultFileWriter) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	return os.WriteFile(filename, data, perm)
-}
-
-func (w *DefaultFileWriter) MkdirAll(path string, perm os.FileMode) error {
-	return os.MkdirAll(path, perm)
-}
-
-func (w *DefaultFileWriter) Create(name string) (*os.File, error) {
-	return os.Create(name)
 }
 
 // #==============================================================#
@@ -104,19 +71,19 @@ func (w *DefaultFileWriter) Create(name string) (*os.File, error) {
 // TableDumper はテーブルダンプ機能を提供します
 type TableDumper struct {
 	executor   DatabaseQueryExecutor
-	fileWriter FileWriter
+	fileWriter writer.FileWriter
 }
 
 // NewTableDumper は新しいTableDumperを作成します
 func NewTableDumper(executor DatabaseQueryExecutor) *TableDumper {
 	return &TableDumper{
 		executor:   executor,
-		fileWriter: &DefaultFileWriter{},
+		fileWriter: &writer.DefaultFileWriter{},
 	}
 }
 
 // NewTableDumperWithDependencies はテスト用に依存性を注入できるTableDumperを作成します
-func NewTableDumperWithDependencies(executor DatabaseQueryExecutor, fileWriter FileWriter) *TableDumper {
+func NewTableDumperWithDependencies(executor DatabaseQueryExecutor, fileWriter writer.FileWriter) *TableDumper {
 	return &TableDumper{
 		executor:   executor,
 		fileWriter: fileWriter,
@@ -166,7 +133,7 @@ func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (resu
 		}
 	}()
 
-	if err := d.streamRows(rows, columnOrder, writer); err != nil {
+	if err := streamRows(rows, columnOrder, writer); err != nil {
 		return nil, fmt.Errorf("データ書き込みエラー: %w", err)
 	}
 
@@ -184,7 +151,32 @@ func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (resu
 	return result, nil
 }
 
-func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sortedColumns []string) (tableDataWriter, error) {
+func (d *TableDumper) OutputResultIntoFile(jsonResult []byte, outputPath, format string) error {
+	if err := d.ensureOutputDirectory(outputPath); err != nil {
+		return fmt.Errorf("出力ディレクトリ作成エラー: %w", err)
+	}
+
+	fileName := d.generateResultFileName(format)
+	filePath := filepath.Join(outputPath, fileName)
+
+	file, err := d.fileWriter.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("結果ファイル作成エラー: %w", err)
+	}
+
+	if _, err := d.fileWriter.Write(file, jsonResult); err != nil {
+		_ = file.Close()
+		return fmt.Errorf("結果ファイル書き込みエラー: %w", err)
+	}
+
+	if err := d.fileWriter.Close(file); err != nil {
+		return fmt.Errorf("結果ファイルクローズエラー: %w", err)
+	}
+
+	return nil
+}
+
+func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sortedColumns []string) (writer.TableDataWriter, error) {
 	switch format {
 	case "json":
 		return writer.NewJSONStreamWriter(d.fileWriter, filePath)
@@ -204,6 +196,13 @@ func (d *TableDumper) generateFileName(tableName, format string) string {
 	return fmt.Sprintf("%s_%s.%s", tableName, timestamp, extension)
 }
 
+func (d *TableDumper) generateResultFileName(format string) string {
+	baseName := "results"
+	timestamp := time.Now().Format("20060102_150405")
+	extension := d.getFileExtension(format)
+	return fmt.Sprintf("%s_%s.%s", timestamp, baseName, extension)
+}
+
 // getFileExtension はフォーマットに応じたファイル拡張子を返します
 func (d *TableDumper) getFileExtension(format string) string {
 	switch format {
@@ -219,8 +218,8 @@ func (d *TableDumper) getFileExtension(format string) string {
 }
 
 // streamRows は取得した行を一定件数ずつ writer に書き込みます
-func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string, writer tableDataWriter) error {
-	if writer == nil {
+func streamRows(rows model.RowsInterface, columnOrder []string, dataWriter writer.TableDataWriter) error {
+	if dataWriter == nil {
 		return errors.New("writerが初期化されていません")
 	}
 
@@ -249,7 +248,7 @@ func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string,
 
 		batch = append(batch, row)
 		if len(batch) == 1000 {
-			if err := writer.WriteBatch(batch); err != nil {
+			if err := dataWriter.WriteBatch(batch); err != nil {
 				return err
 			}
 			batch = batch[:0]
@@ -257,7 +256,7 @@ func (d *TableDumper) streamRows(rows model.RowsInterface, columnOrder []string,
 	}
 
 	if len(batch) > 0 {
-		if err := writer.WriteBatch(batch); err != nil {
+		if err := dataWriter.WriteBatch(batch); err != nil {
 			return err
 		}
 	}

@@ -9,15 +9,16 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	writer "github.com/landmaster135/devbox/internal/postgresql/usecases/writer"
 )
 
 // #==============================================================#
 // ##          Test Helper Functions                             ##
 // #==============================================================#
 
-func createTestTableDumperForDumpAllTables() (*TableDumper, *MockDatabaseQueryExecutor, *MockFileWriter) {
+func createTestTableDumperForDumpAllTables() (*TableDumper, *MockDatabaseQueryExecutor, *writer.MockFileWriter) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	mockFileWriter := &MockFileWriter{}
+	mockFileWriter := &writer.MockFileWriter{}
 
 	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
 
@@ -31,7 +32,7 @@ func createTestTableDumperForDumpAllTables() (*TableDumper, *MockDatabaseQueryEx
 type TestTableDumper_DumpAllTables struct {
 	dumper       *TableDumper
 	mockExecutor *MockDatabaseQueryExecutor
-	mockWriter   *MockFileWriter
+	mockWriter   *writer.MockFileWriter
 }
 
 func (suite *TestTableDumper_DumpAllTables) setup() {

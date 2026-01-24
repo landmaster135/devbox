@@ -8,17 +8,19 @@ import (
 	"strings"
 	"testing"
 
-	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	"github.com/stretchr/testify/assert"
+
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	writer "github.com/landmaster135/devbox/internal/postgresql/usecases/writer"
 )
 
 // #==============================================================#
 // ##          Test Helper Functions                             ##
 // #==============================================================#
 
-func createTestTableDumper() (*TableDumper, *MockDatabaseQueryExecutor, *MockFileWriter) {
+func createTestTableDumper() (*TableDumper, *MockDatabaseQueryExecutor, *writer.MockFileWriter) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	mockFileWriter := &MockFileWriter{}
+	mockFileWriter := &writer.MockFileWriter{}
 
 	mockExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 		trimmed := strings.TrimSpace(query)
@@ -47,13 +49,13 @@ func TestNewTableDumper_Normal(t *testing.T) {
 	// Assert
 	assert.NotNil(t, dumper)
 	assert.Equal(t, mockExecutor, dumper.executor)
-	assert.IsType(t, &DefaultFileWriter{}, dumper.fileWriter)
+	assert.IsType(t, &writer.DefaultFileWriter{}, dumper.fileWriter)
 }
 
 func TestNewTableDumperWithDependencies_Normal(t *testing.T) {
 	// Arrange
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	mockFileWriter := &MockFileWriter{}
+	mockFileWriter := &writer.MockFileWriter{}
 
 	// Act
 	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
@@ -202,6 +204,63 @@ func TestTableDumper_ensureOutputDirectory_CreateDirectoryError(t *testing.T) {
 }
 
 // #==============================================================#
+// ##          OutputResultIntoFile Tests                        ##
+// #==============================================================#
+
+func TestTableDumper_OutputResultIntoFile_Success(t *testing.T) {
+	// Arrange
+	dumper, _, mockFileWriter := createTestTableDumper()
+	baseDir := t.TempDir()
+	outputPath := filepath.Join(baseDir, "results")
+	jsonBytes := []byte(`{"total_tables":1}`)
+
+	mockFileWriter.MkdirAllFunc = func(path string, perm os.FileMode) error {
+		assert.Equal(t, outputPath, path)
+		return os.MkdirAll(path, perm)
+	}
+
+	var createdPath string
+	mockFileWriter.CreateFunc = func(name string) (*os.File, error) {
+		createdPath = name
+		return os.Create(name)
+	}
+
+	// Act
+	err := dumper.OutputResultIntoFile(jsonBytes, outputPath, "json")
+
+	// Assert
+	assert.NoError(t, err)
+	assert.NotEmpty(t, createdPath)
+	assert.Equal(t, outputPath, filepath.Dir(createdPath))
+	written, readErr := os.ReadFile(createdPath)
+	assert.NoError(t, readErr)
+	assert.Equal(t, jsonBytes, written)
+}
+
+func TestTableDumper_OutputResultIntoFile_CreateError(t *testing.T) {
+	// Arrange
+	dumper, _, mockFileWriter := createTestTableDumper()
+	outputPath := "/tmp/dump"
+	expectedErr := fmt.Errorf("permission denied")
+
+	mockFileWriter.MkdirAllFunc = func(path string, perm os.FileMode) error {
+		assert.Equal(t, outputPath, path)
+		return nil
+	}
+
+	mockFileWriter.CreateFunc = func(name string) (*os.File, error) {
+		return nil, expectedErr
+	}
+
+	// Act
+	err := dumper.OutputResultIntoFile([]byte(`{}`), outputPath, "json")
+
+	// Assert
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "結果ファイル作成エラー")
+}
+
+// #==============================================================#
 // ##          DumpTable Integration Tests                       ##
 // #==============================================================#
 
@@ -253,28 +312,9 @@ func TestTableDumper_DumpTable_DirectoryCreationError(t *testing.T) {
 // ##          DefaultFileWriter Tests                           ##
 // #==============================================================#
 
-func TestDefaultFileWriter_WriteFile_Normal(t *testing.T) {
-	// Arrange
-	writer := &DefaultFileWriter{}
-	tempDir := t.TempDir()
-	filePath := filepath.Join(tempDir, "test.txt")
-	content := []byte("test content")
-
-	// Act
-	err := writer.WriteFile(filePath, content, 0644)
-
-	// Assert
-	assert.NoError(t, err)
-
-	// ファイルが作成されたことを確認
-	data, err := os.ReadFile(filePath)
-	assert.NoError(t, err)
-	assert.Equal(t, content, data)
-}
-
 func TestDefaultFileWriter_MkdirAll_Normal(t *testing.T) {
 	// Arrange
-	writer := &DefaultFileWriter{}
+	writer := &writer.DefaultFileWriter{}
 	tempDir := t.TempDir()
 	dirPath := filepath.Join(tempDir, "test", "nested", "dir")
 
@@ -292,7 +332,7 @@ func TestDefaultFileWriter_MkdirAll_Normal(t *testing.T) {
 
 func TestDefaultFileWriter_Create_Normal(t *testing.T) {
 	// Arrange
-	writer := &DefaultFileWriter{}
+	writer := &writer.DefaultFileWriter{}
 	tempDir := t.TempDir()
 	filePath := filepath.Join(tempDir, "test.txt")
 
