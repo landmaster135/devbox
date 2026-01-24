@@ -222,8 +222,8 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
 	}
 
-	h2MarkdownGen := func(header string, summaries []string) string {
-		return fmt.Sprintf("%s\n\n%s", header, strings.Join(summaries, "\n\n"))
+	headerGen := func(header string, summaries []string) string {
+		return fmt.Sprintf("%s\n%s", header, strings.Join(summaries, "\n"))
 	}
 
 	return usecases.NewWorkflow(
@@ -254,7 +254,7 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 
 			content := notification
 			if len(dumpSummaries) > 0 {
-				content = h2MarkdownGen(notification, dumpSummaries)
+				content = headerGen(notification, dumpSummaries)
 			}
 
 			if err := service.SendNotification(

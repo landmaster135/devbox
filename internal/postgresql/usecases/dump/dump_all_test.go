@@ -207,6 +207,8 @@ func TestFormatDumpAllTablesResult_JSON(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, full, "\"database_name\": \"testdb\"")
 	assert.Contains(t, min, "\"total_tables\": 2")
+	assert.Contains(t, min, "\"successful_tables\": 1")
+	assert.Contains(t, min, "\"failed_tables\": 0")
 }
 
 func TestFormatDumpAllTablesResult_Markdown(t *testing.T) {
@@ -231,7 +233,9 @@ func TestFormatDumpAllTablesResult_Markdown(t *testing.T) {
 	assert.Contains(t, full, "### Failed Tables")
 	assert.Contains(t, full, "| `orders` | boom |")
 	assert.Contains(t, min, "| Total tables | 2 |")
-	assert.Contains(t, min, "| Failed | 1 |")
+	assert.Contains(t, min, "| Successful tables | 1 |")
+	assert.Contains(t, min, "| Failed tables | 1 |")
+	assert.Contains(t, min, "| Executed at | 2026-01-24 12:34:56 |")
 }
 
 func TestFormatDumpAllTablesResult_InvalidFormat(t *testing.T) {
