@@ -1,12 +1,15 @@
 package usecases
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	filesystem "github.com/landmaster135/devbox/internal/machine_info/infrastructure/filesystem"
 )
 
 // MachineInfo はシステム情報を保持する
@@ -38,11 +41,23 @@ type MachineInfoResult struct {
 }
 
 // MachineInfoService はマシン情報収集に関するユースケースを実行する
-type MachineInfoService struct{}
+type MachineInfoService struct {
+	fileSystem filesystem.Repository
+}
 
 // NewMachineInfoService はMachineInfoServiceを生成する
 func NewMachineInfoService() *MachineInfoService {
-	return &MachineInfoService{}
+	return &MachineInfoService{
+		fileSystem: filesystem.NewRepository(),
+	}
+}
+
+// NewMachineInfoServiceWithDependencies はDI用のコンストラクタ
+func NewMachineInfoServiceWithDependencies(fs filesystem.Repository) *MachineInfoService {
+	if fs == nil {
+		fs = filesystem.NewRepository()
+	}
+	return &MachineInfoService{fileSystem: fs}
 }
 
 // CollectUbuntuInfo はUbuntu環境向けにマシン情報を収集する
@@ -108,6 +123,35 @@ func (s *MachineInfoService) CollectUbuntuInfo(networkInterface string) (*Machin
 	}
 
 	return &MachineInfoResult{Info: info, Warnings: warnings}, nil
+}
+
+// SaveMachineInfoLog は収集した情報をJSONとして保存し、表示用JSON文字列と保存先パスを返す
+func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error) {
+	if info == nil {
+		return "", "", fmt.Errorf("保存対象のマシン情報がありません")
+	}
+
+	jsonData, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return "", "", fmt.Errorf("JSON変換エラー: %w", err)
+	}
+
+	trimmedOutputDir := strings.TrimSpace(outputDir)
+	if trimmedOutputDir == "" {
+		trimmedOutputDir = "."
+	}
+
+	if err := s.fileSystem.EnsureDir(trimmedOutputDir, 0o755); err != nil {
+		return "", "", err
+	}
+
+	filename := fmt.Sprintf("log_%s.json", time.Now().Format("20060102-150405"))
+	outputPath := s.fileSystem.Join(trimmedOutputDir, filename)
+	if err := s.fileSystem.WriteFile(outputPath, jsonData, 0o644); err != nil {
+		return "", "", err
+	}
+
+	return string(jsonData), outputPath, nil
 }
 
 func getCPUInfo() (name string, cores int, logicalProcessors int, maxClockSpeed float64, err error) {
