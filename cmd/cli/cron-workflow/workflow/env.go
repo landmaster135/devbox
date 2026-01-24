@@ -15,6 +15,7 @@ const (
 	EnvKeyDBDirectory01Staging              EnvKey = "DATABASE_DUMP_DIR_01_STAGING"
 	EnvKeyDBURL01Product                    EnvKey = "DATABASE_URL_01_PRODUCT"
 	EnvKeyDBDirectory01Product              EnvKey = "DATABASE_DUMP_DIR_01_PRODUCT"
+	EnvKeyPCInfoOutputDirectory             EnvKey = "PC_INFO_OUTPUT_DIR"
 )
 
 func getEnvVars(repo infraEnv.Repository, envKey EnvKey) (string, error) {

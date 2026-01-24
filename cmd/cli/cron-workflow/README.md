@@ -9,6 +9,7 @@
 | ハートビート監視 (毎分) | `*/1 * * * *` | Asia/Tokyo (既定) | 外形監視が生存確認できるよう短いログを継続的に出力します。 |
 | 毎時の状態スナップショット | `15 * * * *` | Asia/Tokyo | `context.Context` を介したキャンセルを尊重する集計ジョブの例となります。 |
 | 東京の天気通知 (毎朝) | `0 1 * * 0-6` | Asia/Tokyo | OpenWeatherMap から 3 日分の予報を取得し、Discord Webhook へ投稿します。 |
+| PC情報スナップショット (10分毎) | `*/10 * * * *` | Asia/Tokyo | `machine-info` ユースケースの `CollectAndSaveUbuntuInfo` を呼び出し、`PC_INFO_OUTPUT_DIR` で指定した配下に JSON ログを書き出します。 |
 
 ワークフローを追加・更新する場合は `workflow/core.go` を変更し、CLI を再ビルドしてください。
 

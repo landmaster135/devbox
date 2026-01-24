@@ -12,8 +12,10 @@ import (
 	infraFilesystem "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/filesystem"
 	infraTime "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/time"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+
 	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
 	discordWebhook "github.com/landmaster135/devbox/internal/discord_webhook/usecases"
+	machineInfo "github.com/landmaster135/devbox/internal/machine_info/usecases"
 	postgres "github.com/landmaster135/devbox/internal/postgresql/usecases"
 	weatherNotificator "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
@@ -46,6 +48,10 @@ func List() ([]usecases.Workflow, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PostgreSQL Dump Workflow: %w", err)
 	}
+	pcInfoWorkflow, err := createPCInfoWorkflow(wc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PC Info Workflow: %w", err)
+	}
 
 	return []usecases.Workflow{
 		*heartbeatWorkflow,
@@ -53,6 +59,7 @@ func List() ([]usecases.Workflow, error) {
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
 		*postgresDumpWorkflow,
+		*pcInfoWorkflow,
 	}, nil
 }
 
@@ -271,6 +278,66 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 			}
 
 			log.Printf("[postgres-dump] dispatched Discord notification for PostgreSQL backups")
+			return nil
+		},
+	), nil
+}
+
+func createPCInfoWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+	const (
+		workflowName     = "Ubuntu PC info snapshot"
+		cronExp          = "*/10 * * * 0-6"
+		networkInterface = "eth0"
+	)
+
+	outDirEnv, err := getEnvVars(c.EnvRepo, EnvKeyPCInfoOutputDirectory)
+	if err != nil {
+		return nil, fmt.Errorf("resolve PC info output directory: %w", err)
+	}
+	trimmedOutDir := strings.TrimSpace(outDirEnv)
+	if trimmedOutDir == "" {
+		return nil, fmt.Errorf("PC info output directory is empty (env=%s)", EnvKeyPCInfoOutputDirectory)
+	}
+	service := machineInfo.NewMachineInfoService()
+
+	return usecases.NewWorkflow(
+		workflowName,
+		cronExp,
+		c.Timezone,
+		func(ctx context.Context) error {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			outputDir := filepath.Join(c.VolumeDir, trimmedOutDir)
+			if err := c.FileRepo.EnsureDir(outputDir); err != nil {
+				return fmt.Errorf("prepare PC info output directory: %w", err)
+			}
+
+			result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, outputDir)
+			if err != nil {
+				return fmt.Errorf("collect Ubuntu PC info: %w", err)
+			}
+			if result != nil {
+				for _, warning := range result.Warnings {
+					log.Printf("[pc-info] warning: %s", warning)
+				}
+				if result.Info != nil {
+					log.Printf(
+						"[pc-info] CPU=%s temp=%.2fC mem_used=%.2fMB mem_total=%.2fMB path=%s",
+						strings.TrimSpace(result.Info.CPUName),
+						result.Info.CPUTemperature,
+						result.Info.MemoryUsageMB,
+						result.Info.MemoryTotalMB,
+						outputPath,
+					)
+					return nil
+				}
+			}
+
+			log.Printf("[pc-info] exported machine info to %s", outputPath)
 			return nil
 		},
 	), nil
