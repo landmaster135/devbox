@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	yaml "gopkg.in/yaml.v3"
 )
 
 // DataParser はデータ解析を行う構造体
@@ -35,6 +37,8 @@ func (p *DataParser) ParseInput(inputFormat, input, inputFilePath string) ([][]s
 	switch inputFormat {
 	case "json":
 		return p.parseJSON(data)
+	case "yaml":
+		return p.parseYAML(data)
 	case "csv":
 		return p.parseCSV(data)
 	case "tsv":
@@ -76,6 +80,98 @@ func (p *DataParser) parseJSON(data string) ([][]string, error) {
 		return nil, fmt.Errorf("JSON解析エラー: %v", err)
 	}
 	return result, nil
+}
+
+// parseYAML はYAML形式のデータを解析する
+func (p *DataParser) parseYAML(data string) ([][]string, error) {
+	if strings.TrimSpace(data) == "" {
+		return [][]string{}, nil
+	}
+
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(data), &root); err != nil {
+		return nil, fmt.Errorf("YAML解析エラー: %v", err)
+	}
+
+	content := p.extractYAMLDocumentRoot(&root)
+	if content == nil {
+		return [][]string{}, nil
+	}
+	if content.Kind != yaml.SequenceNode {
+		return nil, fmt.Errorf("YAML解析エラー: ルートは配列 (- key: value) である必要があります")
+	}
+
+	headerOrder := make([]string, 0)
+	headerIndex := make(map[string]int)
+	rows := make([]map[string]string, 0, len(content.Content))
+
+	for _, item := range content.Content {
+		if item.Kind != yaml.MappingNode {
+			return nil, fmt.Errorf("YAML解析エラー: 各要素はkey-value形式である必要があります")
+		}
+
+		row := make(map[string]string)
+		for i := 0; i < len(item.Content); i += 2 {
+			keyNode := item.Content[i]
+			valueNode := item.Content[i+1]
+			key := strings.TrimSpace(keyNode.Value)
+			if key == "" {
+				continue
+			}
+			if _, exists := headerIndex[key]; !exists {
+				headerIndex[key] = len(headerOrder)
+				headerOrder = append(headerOrder, key)
+			}
+			row[key] = p.yamlNodeToString(valueNode)
+		}
+		rows = append(rows, row)
+	}
+
+	if len(headerOrder) == 0 {
+		return [][]string{}, nil
+	}
+
+	result := make([][]string, 0, len(rows)+1)
+	result = append(result, headerOrder)
+	for _, row := range rows {
+		record := make([]string, len(headerOrder))
+		for idx, key := range headerOrder {
+			record[idx] = row[key]
+		}
+		result = append(result, record)
+	}
+
+	return result, nil
+}
+
+func (p *DataParser) extractYAMLDocumentRoot(root *yaml.Node) *yaml.Node {
+	if root == nil {
+		return nil
+	}
+	if root.Kind == yaml.DocumentNode {
+		if len(root.Content) == 0 {
+			return nil
+		}
+		return root.Content[0]
+	}
+	return root
+}
+
+func (p *DataParser) yamlNodeToString(node *yaml.Node) string {
+	if node == nil {
+		return ""
+	}
+	if node.Kind == yaml.ScalarNode {
+		return node.Value
+	}
+	var v any
+	if err := node.Decode(&v); err == nil {
+		if marshaled, err := yaml.Marshal(v); err == nil {
+			return strings.TrimSpace(string(marshaled))
+		}
+		return fmt.Sprint(v)
+	}
+	return ""
 }
 
 // parseMarkdownTable はMarkdownテーブル形式のデータを解析する
