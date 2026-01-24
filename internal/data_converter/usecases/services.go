@@ -8,6 +8,7 @@ import (
 
 	"github.com/landmaster135/devbox/internal/data_converter/converters"
 	"github.com/landmaster135/devbox/internal/data_converter/parsers"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // DataConverterService はデータ変換サービス
@@ -48,6 +49,8 @@ func (s *DataConverterService) ConvertData(inputFormat, outputFormat, input, inp
 		return s.convertToArray(data)
 	case "json":
 		return s.convertToJSON(data)
+	case "yaml":
+		return s.convertToYAML(data)
 	case "list":
 		return s.convertToList(data)
 	case "ordered-list":
@@ -90,6 +93,19 @@ func (s *DataConverterService) convertToArray(data [][]string) (string, error) {
 	return string(jsonBytes), nil
 }
 
+// convertToYAML はデータをYAML形式に変換する
+func (s *DataConverterService) convertToYAML(data [][]string) (string, error) {
+	records, err := s.convertToRecordObjects(data)
+	if err != nil {
+		return "", err
+	}
+	yamlBytes, err := yaml.Marshal(records)
+	if err != nil {
+		return "", fmt.Errorf("YAML変換エラー: %v", err)
+	}
+	return string(yamlBytes), nil
+}
+
 // convertToTable はデータをMarkdownテーブル形式に変換する
 func (s *DataConverterService) convertToTable(data [][]string) (string, error) {
 	result := s.markdownConverter.ConvertToTable(data)
@@ -110,15 +126,25 @@ func (s *DataConverterService) convertToOrderedList(data [][]string) (string, er
 
 // convertToJSON はデータをJSON形式（オブジェクトの配列）に変換する
 func (s *DataConverterService) convertToJSON(data [][]string) (string, error) {
+	records, err := s.convertToRecordObjects(data)
+	if err != nil {
+		return "", err
+	}
+	jsonBytes, err := json.Marshal(records)
+	if err != nil {
+		return "", fmt.Errorf("JSON変換エラー: %v", err)
+	}
+	return string(jsonBytes), nil
+}
+
+func (s *DataConverterService) convertToRecordObjects(data [][]string) ([]map[string]any, error) {
 	if len(data) == 0 {
-		return "[]", nil
+		return []map[string]any{}, nil
 	}
 
-	// 1行目をヘッダーとして使用
 	headers := data[0]
-	var result []map[string]any
+	records := make([]map[string]any, 0, max(len(data)-1, 0))
 
-	// 2行目以降をオブジェクトに変換
 	for i := 1; i < len(data); i++ {
 		row := data[i]
 		obj := make(map[string]any)
@@ -128,28 +154,28 @@ func (s *DataConverterService) convertToJSON(data [][]string) (string, error) {
 			if j < len(row) {
 				cellValue := strings.TrimSpace(row[j])
 				if cellValue == "" {
-					value = nil // 空の値はnullに
+					value = nil
+				} else if num, err := strconv.Atoi(cellValue); err == nil {
+					value = num
+				} else if num, err := strconv.ParseFloat(cellValue, 64); err == nil {
+					value = num
 				} else {
-					// 数値判定を行い、可能なら数値に変換
-					if num, err := strconv.Atoi(cellValue); err == nil {
-						value = num
-					} else if num, err := strconv.ParseFloat(cellValue, 64); err == nil {
-						value = num
-					} else {
-						value = cellValue
-					}
+					value = cellValue
 				}
 			} else {
-				value = nil // フィールドが存在しない場合もnull
+				value = nil
 			}
 			obj[header] = value
 		}
-		result = append(result, obj)
+		records = append(records, obj)
 	}
 
-	jsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return "", fmt.Errorf("JSON変換エラー: %v", err)
+	return records, nil
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
 	}
-	return string(jsonBytes), nil
+	return b
 }
