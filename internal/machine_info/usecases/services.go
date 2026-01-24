@@ -45,6 +45,13 @@ type MachineInfoService struct {
 	fileSystem filesystem.Repository
 }
 
+// MachineInfoUsecase はmachine-infoユースケースの共通インターフェース
+type MachineInfoUsecase interface {
+	CollectUbuntuInfo(networkInterface string) (*MachineInfoResult, error)
+	SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error)
+	CollectAndSaveUbuntuInfo(networkInterface, outputDir string) (*MachineInfoResult, string, string, error)
+}
+
 // NewMachineInfoService はMachineInfoServiceを生成する
 func NewMachineInfoService() *MachineInfoService {
 	return &MachineInfoService{
@@ -152,6 +159,28 @@ func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir str
 	}
 
 	return string(jsonData), outputPath, nil
+}
+
+// CollectAndSaveUbuntuInfo はマシン情報の収集とログ保存を一度に行う
+func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, outputDir string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(s, networkInterface, outputDir)
+}
+
+func collectAndSave(usecase MachineInfoUsecase, networkInterface, outputDir string) (*MachineInfoResult, string, string, error) {
+	result, err := usecase.CollectUbuntuInfo(networkInterface)
+	if err != nil {
+		return nil, "", "", err
+	}
+	if result == nil || result.Info == nil {
+		return nil, "", "", fmt.Errorf("マシン情報の取得に失敗しました")
+	}
+
+	jsonText, outputPath, err := usecase.SaveMachineInfoLog(result.Info, outputDir)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return result, jsonText, outputPath, nil
 }
 
 func getCPUInfo() (name string, cores int, logicalProcessors int, maxClockSpeed float64, err error) {
