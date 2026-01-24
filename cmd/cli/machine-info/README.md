@@ -29,7 +29,7 @@ go run ./cmd/cli/machine-info --operation=ubuntu --network-interface=eth0
 | フラグ | 説明 | デフォルト | 備考 |
 |--------|------|------------|------|
 | `--operation` | 実行する操作モード。現在は`ubuntu`のみサポート | `ubuntu` | 今後の拡張用に追加 |
-| `--network-interface` | ネットワーク速度を計測するインターフェース名 | `eth0` | 互換性のため、位置引数でも指定可 |
+| `--network-interface` | ネットワーク速度を計測するインターフェース名 | `eth0` |  |
 | `--output-dir` | JSONログを保存するディレクトリ | カレント | 不存在の場合は自動作成 |
 | `--help`, `-h` | 使い方を表示 | `false` | - |
 
@@ -37,13 +37,6 @@ go run ./cmd/cli/machine-info --operation=ubuntu --network-interface=eth0
 | operation | 説明 |
 |-----------|------|
 | `ubuntu` | Ubuntu系OSで`lscpu`や`lm-sensors`等の標準ユーティリティを用いて各種情報を取得 |
-
-### 位置引数でのインターフェース指定
-従来の挙動との互換性のため、以下のように位置引数だけでインターフェースを指定することもできます。
-```bash
-go run ./cmd/cli/machine-info eth1
-```
-この場合 `--network-interface` を明示しない限り、最初の位置引数が使用されます。
 
 ### 実行例
 ```

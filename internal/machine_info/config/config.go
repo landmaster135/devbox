@@ -49,10 +49,6 @@ func ParseFlags(args []string) (*Config, error) {
 		return nil, fmt.Errorf("operationフラグを指定してください")
 	}
 
-	if fs.NArg() > 0 && cfg.NetworkInterface == defaultNetworkInterface {
-		cfg.NetworkInterface = fs.Arg(0)
-	}
-
 	cfg.NetworkInterface = strings.TrimSpace(cfg.NetworkInterface)
 	cfg.OutputDir = strings.TrimSpace(cfg.OutputDir)
 	if cfg.OutputDir == "" {
@@ -79,6 +75,4 @@ func PrintUsage() {
 	fmt.Fprintln(os.Stderr, "  --network-interface   ネットワークインターフェース名 (デフォルト: eth0)")
 	fmt.Fprintln(os.Stderr, "  --output-dir          ログファイルの出力先ディレクトリ (デフォルト: カレント)")
 	fmt.Fprintln(os.Stderr, "  --help, -h            このヘルプを表示")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "互換性のため、位置引数でネットワークインターフェースを指定することもできます。")
 }
