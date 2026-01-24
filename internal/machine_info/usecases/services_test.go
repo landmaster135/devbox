@@ -133,3 +133,86 @@ func TestSaveMachineInfoLog_Errors(t *testing.T) {
 		t.Fatalf("expected write file error, got %v", err)
 	}
 }
+
+type mockCollectorSaver struct {
+	ifaceCalls  []string
+	outputCalls []string
+	savedInfos  []*MachineInfo
+	result      *MachineInfoResult
+	collectErr  error
+	saveJSON    string
+	savePath    string
+	saveErr     error
+}
+
+func (m *mockCollectorSaver) CollectUbuntuInfo(networkInterface string) (*MachineInfoResult, error) {
+	m.ifaceCalls = append(m.ifaceCalls, networkInterface)
+	if m.collectErr != nil {
+		return nil, m.collectErr
+	}
+	return m.result, nil
+}
+
+func (m *mockCollectorSaver) SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error) {
+	m.savedInfos = append(m.savedInfos, info)
+	m.outputCalls = append(m.outputCalls, outputDir)
+	if m.saveErr != nil {
+		return "", "", m.saveErr
+	}
+	return m.saveJSON, m.savePath, nil
+}
+
+func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface, outputDir string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(m, networkInterface, outputDir)
+}
+
+func TestCollectAndSaveHelperSuccess(t *testing.T) {
+	mock := &mockCollectorSaver{
+		result:   &MachineInfoResult{Info: &MachineInfo{CPUName: "Mock"}},
+		saveJSON: `{"cpu_name":"Mock"}`,
+		savePath: "/tmp/log.json",
+	}
+
+	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "/tmp")
+	if err != nil {
+		t.Fatalf("collectAndSave returned error: %v", err)
+	}
+	if len(mock.ifaceCalls) != 1 || mock.ifaceCalls[0] != "eth1" {
+		t.Fatalf("expected collector to be called with eth1, got %v", mock.ifaceCalls)
+	}
+	if len(mock.outputCalls) != 1 || mock.outputCalls[0] != "/tmp" {
+		t.Fatalf("expected saver to be called with /tmp, got %v", mock.outputCalls)
+	}
+	if len(mock.savedInfos) != 1 || mock.savedInfos[0].CPUName != "Mock" {
+		t.Fatalf("unexpected info saved: %#v", mock.savedInfos)
+	}
+	if result.Info.CPUName != "Mock" {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+	if jsonText != mock.saveJSON || outputPath != mock.savePath {
+		t.Fatalf("unexpected outputs json=%s path=%s", jsonText, outputPath)
+	}
+}
+
+func TestCollectAndSaveHelperErrors(t *testing.T) {
+	mCollectErr := errors.New("collect fail")
+	mock := &mockCollectorSaver{collectErr: mCollectErr}
+	if _, _, _, err := collectAndSave(mock, "eth0", "/tmp"); !errors.Is(err, mCollectErr) {
+		t.Fatalf("expected collect error, got %v", err)
+	}
+
+	mock = &mockCollectorSaver{result: &MachineInfoResult{}}
+	if _, _, _, err := collectAndSave(mock, "eth0", "/tmp"); err == nil {
+		t.Fatalf("expected error when info is nil")
+	}
+
+	saveErr := errors.New("save fail")
+	mock = &mockCollectorSaver{
+		result:   &MachineInfoResult{Info: &MachineInfo{CPUName: "Mock"}},
+		saveErr:  saveErr,
+		saveJSON: "",
+	}
+	if _, _, _, err := collectAndSave(mock, "eth0", "/tmp"); !errors.Is(err, saveErr) {
+		t.Fatalf("expected save error, got %v", err)
+	}
+}
