@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"time"
 
 	"github.com/landmaster135/devbox/internal/machine_info/config"
 	"github.com/landmaster135/devbox/internal/machine_info/usecases"
@@ -67,24 +64,13 @@ func runUbuntuOperation(cfg *config.Config, service *usecases.MachineInfoService
 	fmt.Printf("平均送信速度: %.2f Kbps\n", info.EthernetAvgSentKbps)
 	fmt.Printf("平均受信速度: %.2f Kbps\n", info.EthernetAvgReceivedKbps)
 
-	jsonData, err := json.MarshalIndent(info, "", "  ")
+	jsonText, outputPath, err := service.SaveMachineInfoLog(info, cfg.OutputDir)
 	if err != nil {
-		return fmt.Errorf("JSON変換エラー: %w", err)
+		return err
 	}
 
 	fmt.Println("\n取得したシステム情報JSON:")
-	fmt.Println(string(jsonData))
-
-	if err := os.MkdirAll(cfg.OutputDir, 0o755); err != nil {
-		return fmt.Errorf("出力ディレクトリの作成に失敗: %w", err)
-	}
-
-	filename := fmt.Sprintf("log_%s.json", time.Now().Format("20060102-150405"))
-	outputPath := filepath.Join(cfg.OutputDir, filename)
-	if err := os.WriteFile(outputPath, jsonData, 0o644); err != nil {
-		return fmt.Errorf("ファイル書き込みエラー: %w", err)
-	}
-
+	fmt.Println(jsonText)
 	fmt.Printf("\nログファイルに保存しました: %s\n", outputPath)
 	return nil
 }
