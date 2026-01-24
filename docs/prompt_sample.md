@@ -22,3 +22,7 @@
 /home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにDiscordに天気予報を通知するための新規ワークフローを追加して。/home/user/devbox/cmd/cli/weather-notificator/main.go内で呼び出されているservice.HandleWeatherNotification関数を呼び出せば処理出来るはずだ。city: "Tokyo", maxDays: 3を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値も渡す。
 - EnvKeyDiscordWebhookURL
 - EnvKeyOpenWeatherAPIKey
+
+## 新規のCronワークフローの追加（PC情報取得タスクの場合）
+/home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにPC情報を取得するための新規ワークフローを追加して。/home/user/devbox/internal/machine_info/usecases/services.goにあるCollectAndSaveUbuntuInfo関数を呼び出せば処理出来るはずだ。引数networkInterfaceに "eth0"を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値をoutDirとして、引数outputDirにfilepath.Join(c.VolumeDir, outDir)も渡す。cronは10分おきに設定して。
+- EnvKeyPCInfoOutputDirectory
