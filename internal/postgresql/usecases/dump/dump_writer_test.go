@@ -13,7 +13,7 @@ import (
 
 func TestTableDumper_newStreamWriter_SupportedFormats(t *testing.T) {
 	dir := t.TempDir()
-	mockWriter := &MockFileWriter{
+	mockWriter := &writer.MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},
@@ -40,7 +40,7 @@ func TestTableDumper_newStreamWriter_SupportedFormats(t *testing.T) {
 
 func TestTableDumper_newStreamWriter_InvalidFormat(t *testing.T) {
 	dir := t.TempDir()
-	mockWriter := &MockFileWriter{
+	mockWriter := &writer.MockFileWriter{
 		CreateFunc: func(name string) (*os.File, error) {
 			return os.Create(name)
 		},

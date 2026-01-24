@@ -21,8 +21,7 @@ func TestTableDumper_BuildQuery(t *testing.T) {
 func TestStreamRows_WriterNil(t *testing.T) {
 	rows := NewMockRows([]string{"id"}, [][]any{})
 
-	dumper := NewTableDumper(&MockDatabaseQueryExecutor{})
-	err := dumper.streamRows(rows, []string{"id"}, nil)
+	err := streamRows(rows, []string{"id"}, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "writerが初期化されていません")
 }

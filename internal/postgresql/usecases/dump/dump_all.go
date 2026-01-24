@@ -2,6 +2,7 @@ package dump
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -12,6 +13,12 @@ import (
 // #==============================================================#
 // ##          Data Structures                                   ##
 // #==============================================================#
+
+// DumpAllTablesMinResult は全テーブルダンプの最小限の結果を表します
+type DumpAllTablesMinResult struct {
+	TotalTables int    `json:"total_tables"`
+	ExecutedAt  string `json:"executed_at"`
+}
 
 // DumpAllTablesResult は全テーブルダンプの結果を表します
 type DumpAllTablesResult struct {
@@ -214,4 +221,34 @@ func (d *TableDumper) DumpAllTables(ctx context.Context, outputPath, format stri
 
 	// 並行処理でダンプを実行
 	return d.executeConcurrentDumps(ctx, databaseName, tables, effectiveConcurrency, outputPath, format, limit)
+}
+
+// DumpAllTablesAndOutputJSON はデータベース内の全テーブルをダンプして結果をJSONに出力します
+func (d *TableDumper) DumpAllTablesAndOutputJSON(ctx context.Context, outputPath, format string, limit *int, concurrency *int) (string, string, error) {
+	result, err := d.DumpAllTables(ctx, outputPath, format, limit, concurrency)
+	if err != nil {
+		return "", "", fmt.Errorf("全テーブルダンプの実行に失敗しました: %v", err)
+	}
+
+	// 結果をJSON形式で標準出力に表示
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", "", fmt.Errorf("結果のJSON変換に失敗しました: %v", err)
+	}
+
+	if err := d.OutputResultIntoFile(jsonResult, outputPath, "json"); err != nil {
+		return "", "", fmt.Errorf("結果のファイル出力に失敗しました: %v", err)
+	}
+
+	// 結果を最小限のJSON形式で標準出力に表示
+	minResult := &DumpAllTablesMinResult{
+		TotalTables: result.TotalTables,
+		ExecutedAt:  result.ExecutedAt,
+	}
+	minJSONResult, err := json.MarshalIndent(minResult, "", "  ")
+	if err != nil {
+		return "", "", fmt.Errorf("最小限の結果のJSON変換に失敗しました: %v", err)
+	}
+
+	return string(jsonResult), string(minJSONResult), nil
 }

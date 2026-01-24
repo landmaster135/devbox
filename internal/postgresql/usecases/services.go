@@ -326,7 +326,7 @@ func HandleToDumpTable(ctx context.Context, dbURL, tableName, outputPath, format
 }
 
 // HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
-func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format string, limit *int, concurrency *int) (string, error) {
+func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format string, limit *int, concurrency *int) (string, string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -338,21 +338,15 @@ func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format
 	// PostgreSQLサービスを初期化
 	service, err := NewPostgreSQLService(dbURL)
 	if err != nil {
-		return "", fmt.Errorf("PostgreSQLサービスの初期化に失敗しました: %v", err)
+		return "", "", fmt.Errorf("PostgreSQLサービスの初期化に失敗しました: %v", err)
 	}
 	defer service.Close()
 
 	// 全テーブルダンプを実行
-	result, err := service.tableDumper.DumpAllTables(ctx, outputPath, format, limit, concurrency)
+	jsonResult, minJSONResult, err := service.tableDumper.DumpAllTablesAndOutputJSON(ctx, outputPath, format, limit, concurrency)
 	if err != nil {
-		return "", fmt.Errorf("全テーブルダンプの実行に失敗しました: %v", err)
+		return "", "", err
 	}
 
-	// 結果をJSON形式で標準出力に表示
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("結果のJSON変換に失敗しました: %v", err)
-	}
-
-	return string(jsonResult), nil
+	return jsonResult, minJSONResult, nil
 }
