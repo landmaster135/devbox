@@ -135,18 +135,20 @@ func TestSaveMachineInfoLog_Errors(t *testing.T) {
 }
 
 type mockCollectorSaver struct {
-	ifaceCalls  []string
-	outputCalls []string
-	savedInfos  []*MachineInfo
-	result      *MachineInfoResult
-	collectErr  error
-	saveJSON    string
-	savePath    string
-	saveErr     error
+	ifaceCalls    []string
+	hostnameCalls []string
+	outputCalls   []string
+	savedInfos    []*MachineInfo
+	result        *MachineInfoResult
+	collectErr    error
+	saveJSON      string
+	savePath      string
+	saveErr       error
 }
 
-func (m *mockCollectorSaver) CollectUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string) (*MachineInfoResult, error) {
+func (m *mockCollectorSaver) CollectUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string, preferredHostname string) (*MachineInfoResult, error) {
 	m.ifaceCalls = append(m.ifaceCalls, networkInterface)
+	m.hostnameCalls = append(m.hostnameCalls, preferredHostname)
 	if m.collectErr != nil {
 		return nil, m.collectErr
 	}
@@ -162,8 +164,8 @@ func (m *mockCollectorSaver) SaveMachineInfoLog(info *MachineInfo, outputDir str
 	return m.saveJSON, m.savePath, nil
 }
 
-func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string, outputDir string) (*MachineInfoResult, string, string, error) {
-	return collectAndSave(m, networkInterface, memoryManufacturers, memoryNames, outputDir)
+func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string, outputDir string, preferredHostname string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(m, networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname)
 }
 
 func TestCollectAndSaveHelperSuccess(t *testing.T) {
@@ -173,12 +175,16 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 		savePath: "/tmp/log.json",
 	}
 
-	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "maker", "parts", "/tmp")
+	overrideHostname := "nas-override"
+	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "maker", "parts", "/tmp", overrideHostname)
 	if err != nil {
 		t.Fatalf("collectAndSave returned error: %v", err)
 	}
 	if len(mock.ifaceCalls) != 1 || mock.ifaceCalls[0] != "eth1" {
 		t.Fatalf("expected collector to be called with eth1, got %v", mock.ifaceCalls)
+	}
+	if len(mock.hostnameCalls) != 1 || mock.hostnameCalls[0] != overrideHostname {
+		t.Fatalf("expected collector to receive hostname override %s, got %v", overrideHostname, mock.hostnameCalls)
 	}
 	if len(mock.outputCalls) != 1 || mock.outputCalls[0] != "/tmp" {
 		t.Fatalf("expected saver to be called with /tmp, got %v", mock.outputCalls)
@@ -197,12 +203,12 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 func TestCollectAndSaveHelperErrors(t *testing.T) {
 	mCollectErr := errors.New("collect fail")
 	mock := &mockCollectorSaver{collectErr: mCollectErr}
-	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp"); !errors.Is(err, mCollectErr) {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", ""); !errors.Is(err, mCollectErr) {
 		t.Fatalf("expected collect error, got %v", err)
 	}
 
 	mock = &mockCollectorSaver{result: &MachineInfoResult{}}
-	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp"); err == nil {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", ""); err == nil {
 		t.Fatalf("expected error when info is nil")
 	}
 
@@ -212,7 +218,7 @@ func TestCollectAndSaveHelperErrors(t *testing.T) {
 		saveErr:  saveErr,
 		saveJSON: "",
 	}
-	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp"); !errors.Is(err, saveErr) {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", ""); !errors.Is(err, saveErr) {
 		t.Fatalf("expected save error, got %v", err)
 	}
 }

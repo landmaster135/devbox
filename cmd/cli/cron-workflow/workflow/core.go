@@ -136,6 +136,10 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("resolve PC memory manufacturers: %w", err)
 	}
+	hostnameOverride, err := getOptionalEnvVars(creator.EnvRepo, EnvKeyPCInfoHostnameOfNAS01)
+	if err != nil {
+		return fmt.Errorf("resolve PC hostname override: %w", err)
+	}
 	service := machineInfo.NewMachineInfoService()
 
 	select {
@@ -149,7 +153,13 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		return fmt.Errorf("prepare PC info output directory: %w", err)
 	}
 
-	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir)
+	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(
+		networkInterface,
+		memoryManufacturers,
+		memoryNames,
+		outputDir,
+		strings.TrimSpace(hostnameOverride),
+	)
 	if err != nil {
 		return fmt.Errorf("collect Ubuntu PC info: %w", err)
 	}
