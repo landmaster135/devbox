@@ -1,6 +1,8 @@
 package gocron
 
-import "context"
+import (
+	"context"
+)
 
 // Repository abstracts task scheduler creation backed by go-co-op/gocron.
 type Repository interface {
