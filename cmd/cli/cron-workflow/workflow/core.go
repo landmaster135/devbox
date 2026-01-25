@@ -12,6 +12,7 @@ import (
 	infraFilesystem "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/filesystem"
 	infraTime "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/time"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+	workflowCreator "github.com/landmaster135/devbox/internal/cron_workflow/usecases/workflow_creator"
 
 	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
 	discordWebhook "github.com/landmaster135/devbox/internal/discord_webhook/usecases"
@@ -26,7 +27,7 @@ func List() ([]usecases.Workflow, error) {
 	envRepo := infraEnv.NewRepository()
 	filesystemRepo := infraFilesystem.NewRepository()
 	timeRepo := infraTime.NewRepository()
-	wc, err := usecases.NewWorkflowCreator(tz, envRepo, filesystemRepo, timeRepo)
+	wc, err := workflowCreator.NewWorkflowCreator(tz, envRepo, filesystemRepo, timeRepo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize WorkflowCreator: %w", err)
 	}
@@ -35,7 +36,6 @@ func List() ([]usecases.Workflow, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Heartbeat Workflow: %w", err)
 	}
-	hourlyHealthSnapshotWorkflow := createHourlyHealthSnapshotWorkflow(wc)
 	weatherWorkflow, err := createWeatherNotificationWorkflow(wc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Weather Notification Workflow: %w", err)
@@ -55,7 +55,6 @@ func List() ([]usecases.Workflow, error) {
 
 	return []usecases.Workflow{
 		*heartbeatWorkflow,
-		*hourlyHealthSnapshotWorkflow,
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
 		*postgresDumpWorkflow,
@@ -63,7 +62,7 @@ func List() ([]usecases.Workflow, error) {
 	}, nil
 }
 
-func createHeartbeatWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+func createHeartbeatWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
 	heartOwner, err := getEnvVars(c.EnvRepo, EnvKeyHeartOwner)
 	if err != nil {
 		return nil, fmt.Errorf("resolve heart owner from %s: %w", "HEART_OWNER", err)
@@ -92,24 +91,7 @@ func createHeartbeatWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, e
 	), nil
 }
 
-func createHourlyHealthSnapshotWorkflow(c *usecases.WorkflowCreator) *usecases.Workflow {
-	return usecases.NewWorkflow(
-		"Hourly state snapshot",
-		"15 * * * *",
-		c.Timezone,
-		func(ctx context.Context) error {
-			select {
-			case <-time.After(2 * time.Second):
-				log.Printf("[snapshot] captured at UTC=%s", time.Now().UTC().Format(time.RFC3339))
-				return nil
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-		},
-	)
-}
-
-func createWeatherNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+func createWeatherNotificationWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
 	const (
 		city    = "Tokyo"
 		maxDays = 3
@@ -147,7 +129,7 @@ func createWeatherNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.W
 	), nil
 }
 
-func createDailyHeadingNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+func createDailyHeadingNotificationWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
 	const (
 		cronExp   = "1 0 * * 0-6"
 		dayOffset = 0
@@ -182,7 +164,7 @@ func createDailyHeadingNotificationWorkflow(c *usecases.WorkflowCreator) (*useca
 	), nil
 }
 
-func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+func createPostgreSQLDumpNotificationWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
 	const (
 		cronExp        = "0 2 * * 0-6"
 		workflowName   = "Daily PostgreSQL dump notification"
@@ -283,7 +265,7 @@ func createPostgreSQLDumpNotificationWorkflow(c *usecases.WorkflowCreator) (*use
 	), nil
 }
 
-func createPCInfoWorkflow(c *usecases.WorkflowCreator) (*usecases.Workflow, error) {
+func createPCInfoWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
 	const (
 		workflowName     = "Ubuntu PC info snapshot"
 		cronExp          = "*/10 * * * 0-6"
