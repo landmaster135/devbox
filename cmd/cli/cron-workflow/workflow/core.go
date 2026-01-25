@@ -128,6 +128,14 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 	if trimmedOutDir == "" {
 		return fmt.Errorf("PC info output directory is empty (env=%s)", EnvKeyPCInfoOutputDirectory)
 	}
+	memoryNames, err := getOptionalEnvVars(creator.EnvRepo, EnvKeyPCInfoMemoryNamesOfNAS01)
+	if err != nil {
+		return fmt.Errorf("resolve PC memory names: %w", err)
+	}
+	memoryManufacturers, err := getOptionalEnvVars(creator.EnvRepo, EnvKeyPCInfoMemoryManufacturersOfNAS01)
+	if err != nil {
+		return fmt.Errorf("resolve PC memory manufacturers: %w", err)
+	}
 	service := machineInfo.NewMachineInfoService()
 
 	select {
@@ -141,7 +149,7 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		return fmt.Errorf("prepare PC info output directory: %w", err)
 	}
 
-	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, "", "", outputDir)
+	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir)
 	if err != nil {
 		return fmt.Errorf("collect Ubuntu PC info: %w", err)
 	}
