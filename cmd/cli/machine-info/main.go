@@ -56,8 +56,8 @@ func runUbuntuOperation(cfg *config.Config, service *usecases.MachineInfoService
 	fmt.Printf("CPU最大クロック速度: %.2f MHz\n", info.CPUMaxClockSpeedMHz)
 	fmt.Printf("CPU現在のクロック速度: %.2f MHz\n", info.CPUCurrentClockSpeedMHz)
 	fmt.Printf("CPU温度: %.2f °C\n", info.CPUTemperature)
-	fmt.Printf("メモリ総容量: %.2f MB\n", info.MemoryTotalMB)
-	fmt.Printf("メモリ使用量: %.2f MB\n", info.MemoryUsageMB)
+	fmt.Printf("メモリ総容量: %d MB\n", info.MemoryTotalMB)
+	fmt.Printf("メモリ使用量: %d MB\n", info.MemoryUsageMB)
 	fmt.Printf("ホスト名: %s\n", info.PCHostname)
 
 	fmt.Println("ネットワーク速度の計測結果:")

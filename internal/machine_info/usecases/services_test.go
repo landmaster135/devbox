@@ -216,3 +216,48 @@ func TestCollectAndSaveHelperErrors(t *testing.T) {
 		t.Fatalf("expected save error, got %v", err)
 	}
 }
+
+func TestParseProcMeminfoWithAvailable(t *testing.T) {
+	meminfo := `MemTotal:        7909052 kB
+MemAvailable:    2256340 kB
+MemFree:          534360 kB
+Buffers:          149000 kB
+Cached:          1884336 kB
+SReclaimable:     250000 kB
+Shmem:            534360 kB
+`
+
+	total, used, err := parseProcMeminfo([]byte(meminfo))
+	if err != nil {
+		t.Fatalf("parseProcMeminfo returned error: %v", err)
+	}
+
+	if total != 7723 {
+		t.Fatalf("unexpected total: got %d MB", total)
+	}
+	if used != 5520 {
+		t.Fatalf("unexpected used: got %d MB", used)
+	}
+}
+
+func TestParseProcMeminfoFallbackWithoutAvailable(t *testing.T) {
+	meminfo := `MemTotal:        2048000 kB
+MemFree:          512000 kB
+Buffers:           64000 kB
+Cached:           256000 kB
+SReclaimable:      32000 kB
+Shmem:             16000 kB
+`
+
+	total, used, err := parseProcMeminfo([]byte(meminfo))
+	if err != nil {
+		t.Fatalf("parseProcMeminfo returned error: %v", err)
+	}
+
+	if total != 2000 {
+		t.Fatalf("unexpected total: got %d MB", total)
+	}
+	if used != 1171 {
+		t.Fatalf("unexpected used: got %d MB", used)
+	}
+}

@@ -1,6 +1,8 @@
 package usecases
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -24,8 +26,8 @@ type MachineInfo struct {
 	CPUCores                int     `json:"cpu_cores"`
 	CPULogicalProcessors    int     `json:"cpu_logical_processors"`
 	CPUTemperature          float64 `json:"cpu_temperature"`
-	MemoryTotalMB           float64 `json:"memory_total_mb"`
-	MemoryUsageMB           float64 `json:"memory_usage_mb"`
+	MemoryTotalMB           int     `json:"memory_total_mb"`
+	MemoryUsageMB           int     `json:"memory_usage_mb"`
 	PCHostname              string  `json:"pc_hostname"`
 	EthernetAvgSentKbps     float64 `json:"ethernet_avg_sent_kbps"`
 	EthernetAvgReceivedKbps float64 `json:"ethernet_avg_received_kbps"`
@@ -343,20 +345,71 @@ func getCPUTemperature(samplings int, interval time.Duration) (float64, error) {
 	return totalTemp / float64(validSamples), nil
 }
 
-func getMemoryInfo() (totalMB float64, usageMB float64, err error) {
-	cmd := exec.Command(SHELL, "-c", "free -m | grep Mem: | awk '{print $2, $3}'")
-	output, err := runCommand(cmd)
+func getMemoryInfo() (int, int, error) {
+	data, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
 		return 0, 0, fmt.Errorf("メモリ情報の取得に失敗: %w", err)
 	}
 
-	parts := strings.Fields(strings.TrimSpace(string(output)))
-	if len(parts) >= 2 {
-		totalMB, _ = strconv.ParseFloat(parts[0], 64)
-		usageMB, _ = strconv.ParseFloat(parts[1], 64)
+	return parseProcMeminfo(data)
+}
+
+func parseProcMeminfo(data []byte) (int, int, error) {
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	stats := map[string]float64{}
+
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) < 2 {
+			continue
+		}
+
+		key := strings.TrimSuffix(fields[0], ":")
+		value, err := strconv.ParseFloat(fields[1], 64)
+		if err != nil {
+			continue
+		}
+
+		switch key {
+		case "MemTotal", "MemAvailable", "MemFree", "Buffers", "Cached", "SReclaimable", "Shmem":
+			stats[key] = value
+		}
 	}
 
-	return totalMB, usageMB, nil
+	if err := scanner.Err(); err != nil {
+		return 0, 0, fmt.Errorf("/proc/meminfo の解析に失敗: %w", err)
+	}
+
+	memTotal := stats["MemTotal"]
+	if memTotal <= 0 {
+		return 0, 0, fmt.Errorf("MemTotal を取得できませんでした")
+	}
+
+	memAvailable := stats["MemAvailable"]
+	memFree := stats["MemFree"]
+	buffers := stats["Buffers"]
+	cached := stats["Cached"]
+	sreclaimable := stats["SReclaimable"]
+	shmem := stats["Shmem"]
+
+	var usedKB float64
+	if memAvailable > 0 {
+		usedKB = memTotal - memAvailable
+	} else {
+		buffCache := buffers + cached + sreclaimable - shmem
+		if buffCache < 0 {
+			buffCache = 0
+		}
+		usedKB = memTotal - memFree - buffCache
+	}
+
+	if usedKB < 0 {
+		usedKB = 0
+	}
+
+	totalMB := int(memTotal / 1024)
+	usedMB := int(usedKB / 1024)
+	return totalMB, usedMB, nil
 }
 
 func getHostname() (string, error) {
