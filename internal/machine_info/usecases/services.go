@@ -55,9 +55,9 @@ type MachineInfoService struct {
 
 // MachineInfoUsecase はmachine-infoユースケースの共通インターフェース
 type MachineInfoUsecase interface {
-	CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames string) (*MachineInfoResult, error)
+	CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, preferredHostname string) (*MachineInfoResult, error)
 	SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error)
-	CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir string) (*MachineInfoResult, string, string, error)
+	CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname string) (*MachineInfoResult, string, string, error)
 }
 
 // NewMachineInfoService はMachineInfoServiceを生成する
@@ -76,7 +76,7 @@ func NewMachineInfoServiceWithDependencies(fs filesystem.Repository) *MachineInf
 }
 
 // CollectUbuntuInfo はUbuntu環境向けにマシン情報を収集する
-func (s *MachineInfoService) CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames string) (*MachineInfoResult, error) {
+func (s *MachineInfoService) CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, preferredHostname string) (*MachineInfoResult, error) {
 	if strings.TrimSpace(networkInterface) == "" {
 		return nil, fmt.Errorf("ネットワークインターフェース名を指定してください")
 	}
@@ -112,9 +112,13 @@ func (s *MachineInfoService) CollectUbuntuInfo(networkInterface, memoryManufactu
 		warnings = append(warnings, err.Error())
 	}
 
-	hostname, err := getHostname()
-	if err != nil {
-		warnings = append(warnings, err.Error())
+	hostname := strings.TrimSpace(preferredHostname)
+	if hostname == "" {
+		var hostErr error
+		hostname, hostErr = getHostname()
+		if hostErr != nil {
+			warnings = append(warnings, hostErr.Error())
+		}
 	}
 
 	sentKbps, receivedKbps, err := getEthernetSpeeds(networkInterface, 10, 1*time.Second)
@@ -172,12 +176,12 @@ func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir str
 }
 
 // CollectAndSaveUbuntuInfo はマシン情報の収集とログ保存を一度に行う
-func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir string) (*MachineInfoResult, string, string, error) {
-	return collectAndSave(s, networkInterface, memoryManufacturers, memoryNames, outputDir)
+func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(s, networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname)
 }
 
-func collectAndSave(usecase MachineInfoUsecase, networkInterface string, memoryManufacturers string, memoryNames string, outputDir string) (*MachineInfoResult, string, string, error) {
-	result, err := usecase.CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames)
+func collectAndSave(usecase MachineInfoUsecase, networkInterface string, memoryManufacturers string, memoryNames string, outputDir string, preferredHostname string) (*MachineInfoResult, string, string, error) {
+	result, err := usecase.CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, preferredHostname)
 	if err != nil {
 		return nil, "", "", err
 	}
