@@ -21,18 +21,40 @@ import (
 	weatherNotificator "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
 
+type WorkflowHandler struct {
+	Creator *workflowCreator.WorkflowCreator
+}
+
+type WorkflowHandlerRepository interface {
+	GetCreator() *workflowCreator.WorkflowCreator
+	KeepHeartbeat(ctx context.Context) error
+	RetrievePCInfo(ctx context.Context) error
+}
+
+func (wh *WorkflowHandler) GetCreator() *workflowCreator.WorkflowCreator {
+	return wh.Creator
+}
+
+func NewWorkflowHandler(creator *workflowCreator.WorkflowCreator) *WorkflowHandler {
+	return &WorkflowHandler{
+		Creator: creator,
+	}
+}
+
 // List returns all configured workflows.
 func List() ([]usecases.Workflow, error) {
 	const tz = "Asia/Tokyo"
 	envRepo := infraEnv.NewRepository()
 	filesystemRepo := infraFilesystem.NewRepository()
 	timeRepo := infraTime.NewRepository()
+
 	wc, err := workflowCreator.NewWorkflowCreator(tz, envRepo, filesystemRepo, timeRepo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize WorkflowCreator: %w", err)
 	}
+	wh := NewWorkflowHandler(wc)
 
-	heartbeatWorkflow, err := createHeartbeatWorkflow(wc)
+	heartbeatWorkflow, err := createHeartbeatWorkflow(wh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Heartbeat Workflow: %w", err)
 	}
@@ -48,7 +70,7 @@ func List() ([]usecases.Workflow, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PostgreSQL Dump Workflow: %w", err)
 	}
-	pcInfoWorkflow, err := createPCInfoWorkflow(wc)
+	pcInfoWorkflow, err := createPCInfoWorkflow(wh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PC Info Workflow: %w", err)
 	}
@@ -62,32 +84,34 @@ func List() ([]usecases.Workflow, error) {
 	}, nil
 }
 
-func createHeartbeatWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
-	heartOwner, err := getEnvVars(c.EnvRepo, EnvKeyHeartOwner)
+func (wh *WorkflowHandler) KeepHeartbeat(ctx context.Context) error {
+	heartOwner, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyHeartOwner)
 	if err != nil {
-		return nil, fmt.Errorf("resolve heart owner from %s: %w", "HEART_OWNER", err)
+		return fmt.Errorf("resolve heart owner from %s: %w", "HEART_OWNER", err)
 	}
 
+	now, err := wh.GetCreator().TimeRepo.Now(wh.GetCreator().Timezone)
+	if err != nil {
+		return fmt.Errorf("resolve current time: %w", err)
+	}
+	timestamp := now.Format("20060102150405")
+	statusFile := filepath.Join(wh.GetCreator().VolumeDir, fmt.Sprintf("heartbeat-%s.status", timestamp))
+
+	message := fmt.Sprintf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), heartOwner)
+	log.Printf("%s", message)
+	log.Printf("[heartbeat] writing status file: %s", statusFile)
+	if err := wh.GetCreator().FileRepo.Write(statusFile, true, message+"\n"); err != nil {
+		return fmt.Errorf("write heartbeat status file: %w", err)
+	}
+	return nil
+}
+
+func createHeartbeatWorkflow(h WorkflowHandlerRepository) (*usecases.Workflow, error) {
 	return usecases.NewWorkflow(
 		"Heartbeat monitor (every minute)",
 		"*/1 * * * *",
-		c.Timezone,
-		func(ctx context.Context) error {
-			now, err := c.TimeRepo.Now(c.Timezone)
-			if err != nil {
-				return fmt.Errorf("resolve current time: %w", err)
-			}
-			timestamp := now.Format("20060102150405")
-			statusFile := filepath.Join(c.VolumeDir, fmt.Sprintf("heartbeat-%s.status", timestamp))
-
-			message := fmt.Sprintf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), heartOwner)
-			log.Printf("%s", message)
-			log.Printf("[heartbeat] writing status file: %s", statusFile)
-			if err := c.FileRepo.Write(statusFile, true, message+"\n"); err != nil {
-				return fmt.Errorf("write heartbeat status file: %w", err)
-			}
-			return nil
-		},
+		h.GetCreator().Timezone,
+		h.KeepHeartbeat,
 	), nil
 }
 
@@ -265,62 +289,67 @@ func createPostgreSQLDumpNotificationWorkflow(c *workflowCreator.WorkflowCreator
 	), nil
 }
 
-func createPCInfoWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
+func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 	const (
-		workflowName     = "Ubuntu PC info snapshot"
-		cronExp          = "*/10 * * * 0-6"
 		networkInterface = "eth0"
 	)
 
-	outDirEnv, err := getEnvVars(c.EnvRepo, EnvKeyPCInfoOutputDirectory)
+	outDirEnv, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyPCInfoOutputDirectory)
 	if err != nil {
-		return nil, fmt.Errorf("resolve PC info output directory: %w", err)
+		return fmt.Errorf("resolve PC info output directory: %w", err)
 	}
 	trimmedOutDir := strings.TrimSpace(outDirEnv)
 	if trimmedOutDir == "" {
-		return nil, fmt.Errorf("PC info output directory is empty (env=%s)", EnvKeyPCInfoOutputDirectory)
+		return fmt.Errorf("PC info output directory is empty (env=%s)", EnvKeyPCInfoOutputDirectory)
 	}
 	service := machineInfo.NewMachineInfoService()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	outputDir := filepath.Join(wh.GetCreator().VolumeDir, trimmedOutDir)
+	if err := wh.GetCreator().FileRepo.EnsureDir(outputDir); err != nil {
+		return fmt.Errorf("prepare PC info output directory: %w", err)
+	}
+
+	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, outputDir)
+	if err != nil {
+		return fmt.Errorf("collect Ubuntu PC info: %w", err)
+	}
+	if result != nil {
+		for _, warning := range result.Warnings {
+			log.Printf("[pc-info] warning: %s", warning)
+		}
+		if result.Info != nil {
+			log.Printf(
+				"[pc-info] CPU=%s temp=%.2fC mem_used=%.2fMB mem_total=%.2fMB path=%s",
+				strings.TrimSpace(result.Info.CPUName),
+				result.Info.CPUTemperature,
+				result.Info.MemoryUsageMB,
+				result.Info.MemoryTotalMB,
+				outputPath,
+			)
+			return nil
+		}
+	}
+
+	log.Printf("[pc-info] exported machine info to %s", outputPath)
+	return nil
+}
+
+func createPCInfoWorkflow(h WorkflowHandlerRepository) (*usecases.Workflow, error) {
+	const (
+		workflowName = "Ubuntu PC info snapshot"
+		cronExp      = "*/10 * * * 0-6"
+	)
 
 	return usecases.NewWorkflow(
 		workflowName,
 		cronExp,
-		c.Timezone,
-		func(ctx context.Context) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			outputDir := filepath.Join(c.VolumeDir, trimmedOutDir)
-			if err := c.FileRepo.EnsureDir(outputDir); err != nil {
-				return fmt.Errorf("prepare PC info output directory: %w", err)
-			}
-
-			result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, outputDir)
-			if err != nil {
-				return fmt.Errorf("collect Ubuntu PC info: %w", err)
-			}
-			if result != nil {
-				for _, warning := range result.Warnings {
-					log.Printf("[pc-info] warning: %s", warning)
-				}
-				if result.Info != nil {
-					log.Printf(
-						"[pc-info] CPU=%s temp=%.2fC mem_used=%.2fMB mem_total=%.2fMB path=%s",
-						strings.TrimSpace(result.Info.CPUName),
-						result.Info.CPUTemperature,
-						result.Info.MemoryUsageMB,
-						result.Info.MemoryTotalMB,
-						outputPath,
-					)
-					return nil
-				}
-			}
-
-			log.Printf("[pc-info] exported machine info to %s", outputPath)
-			return nil
-		},
+		h.GetCreator().Timezone,
+		h.RetrievePCInfo,
 	), nil
 }
