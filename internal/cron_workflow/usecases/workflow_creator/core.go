@@ -42,3 +42,11 @@ func NewWorkflowCreator(timezone string, envRepo infraEnv.Repository, fileRepo i
 		VolumeDir: volumeDir,
 	}, nil
 }
+
+func NewWorkflowCreatorDefault(timezone string) (*WorkflowCreator, error) {
+	envRepo := infraEnv.NewRepository()
+	filesystemRepo := infraFilesystem.NewRepository()
+	timeRepo := infraTime.NewRepository()
+
+	return NewWorkflowCreator(timezone, envRepo, filesystemRepo, timeRepo)
+}
