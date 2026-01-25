@@ -36,6 +36,9 @@ type WorkflowHandlerRepository interface {
 	GetCreator() *workflowCreator.WorkflowCreator
 	KeepHeartbeat(ctx context.Context) error
 	RetrievePCInfo(ctx context.Context) error
+	NotifyWeather(ctx context.Context) error
+	NotifyDailyHeading(ctx context.Context) error
+	DumpPostgreSQLNotification(ctx context.Context) error
 }
 
 // List returns all configured workflows.
@@ -48,26 +51,36 @@ func List() ([]usecases.Workflow, error) {
 	}
 	wh := NewWorkflowHandler(wc)
 
-	heartbeatWorkflow, err := createHeartbeatWorkflow(wh)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Heartbeat Workflow: %w", err)
-	}
-	weatherWorkflow, err := createWeatherNotificationWorkflow(wc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Weather Notification Workflow: %w", err)
-	}
-	dailyHeadingWorkflow, err := createDailyHeadingNotificationWorkflow(wc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Daily Heading Workflow: %w", err)
-	}
-	postgresDumpWorkflow, err := createPostgreSQLDumpNotificationWorkflow(wc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create PostgreSQL Dump Workflow: %w", err)
-	}
-	pcInfoWorkflow, err := createPCInfoWorkflow(wh)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create PC Info Workflow: %w", err)
-	}
+	heartbeatWorkflow := usecases.NewWorkflow(
+		"Heartbeat monitor",
+		"*/1 * * * *",
+		wh.GetCreator().Timezone,
+		wh.KeepHeartbeat,
+	)
+	weatherWorkflow := usecases.NewWorkflow(
+		"Daily Tokyo weather notification",
+		"0 1 * * 0-6",
+		wh.GetCreator().Timezone,
+		wh.NotifyWeather,
+	)
+	dailyHeadingWorkflow := usecases.NewWorkflow(
+		"Daily heading Discord notification",
+		"1 0 * * 0-6",
+		wh.GetCreator().Timezone,
+		wh.NotifyDailyHeading,
+	)
+	postgresDumpWorkflow := usecases.NewWorkflow(
+		"Daily PostgreSQL dump with notification",
+		"0 2 * * 0-6",
+		wh.GetCreator().Timezone,
+		wh.DumpPostgreSQLNotification,
+	)
+	pcInfoWorkflow := usecases.NewWorkflow(
+		"Ubuntu PC info snapshot",
+		"*/10 * * * 0-6",
+		wh.GetCreator().Timezone,
+		wh.RetrievePCInfo,
+	)
 
 	return []usecases.Workflow{
 		*heartbeatWorkflow,
@@ -98,189 +111,6 @@ func (wh *WorkflowHandler) KeepHeartbeat(ctx context.Context) error {
 		return fmt.Errorf("write heartbeat status file: %w", err)
 	}
 	return nil
-}
-
-func createHeartbeatWorkflow(h WorkflowHandlerRepository) (*usecases.Workflow, error) {
-	return usecases.NewWorkflow(
-		"Heartbeat monitor (every minute)",
-		"*/1 * * * *",
-		h.GetCreator().Timezone,
-		h.KeepHeartbeat,
-	), nil
-}
-
-func createWeatherNotificationWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
-	const (
-		city    = "Tokyo"
-		maxDays = 3
-		cronExp = "0 1 * * 0-6"
-	)
-
-	webhookURL, err := getEnvVars(c.EnvRepo, EnvKeyDiscordWebhookURLForWeather)
-	if err != nil {
-		return nil, fmt.Errorf("resolve Discord webhook URL: %w", err)
-	}
-	apiKey, err := getEnvVars(c.EnvRepo, EnvKeyOpenWeatherAPIKey)
-	if err != nil {
-		return nil, fmt.Errorf("resolve OpenWeather API key: %w", err)
-	}
-	service := weatherNotificator.NewWeatherNotificatorService()
-
-	return usecases.NewWorkflow(
-		"Daily Tokyo weather notification",
-		cronExp,
-		c.Timezone,
-		func(ctx context.Context) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			if err := service.HandleWeatherNotification(apiKey, city, maxDays, webhookURL); err != nil {
-				return fmt.Errorf("send weather notification: %w", err)
-			}
-
-			log.Printf("[weather] dispatched %s forecast to Discord", city)
-			return nil
-		},
-	), nil
-}
-
-func createDailyHeadingNotificationWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
-	const (
-		cronExp   = "1 0 * * 0-6"
-		dayOffset = 0
-	)
-
-	webhookURL, err := getEnvVars(c.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("resolve daily heading Discord webhook URL: %w", err)
-	}
-
-	service := discordWebhook.NewDefaultDiscordWebhookService()
-
-	return usecases.NewWorkflow(
-		"Daily heading Discord notification",
-		cronExp,
-		c.Timezone,
-		func(ctx context.Context) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			content := textGenerator.GenerateDailyHeading(dayOffset)
-			if err := service.SendNotification(ctx, webhookURL, "テンプレートあゆ", content, "none", "", "", ""); err != nil {
-				return fmt.Errorf("send daily heading notification: %w", err)
-			}
-
-			log.Printf("[daily-heading] dispatched heading content to Discord")
-			return nil
-		},
-	), nil
-}
-
-func createPostgreSQLDumpNotificationWorkflow(c *workflowCreator.WorkflowCreator) (*usecases.Workflow, error) {
-	const (
-		cronExp        = "0 2 * * 0-6"
-		workflowName   = "Daily PostgreSQL dump notification"
-		format         = "sql"
-		notification   = "PostgreSQLのダンプが完了しました"
-		embedType      = "postgres"
-		embedText      = "最新バックアップ"
-		workerParallel = 3
-	)
-
-	webhookURL, err := getEnvVars(c.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("resolve Discord webhook URL for PostgreSQL dump: %w", err)
-	}
-	stagingDBURL, err := getEnvVars(c.EnvRepo, EnvKeyDBURL01Staging)
-	if err != nil {
-		return nil, fmt.Errorf("resolve staging DB URL: %w", err)
-	}
-	stagingDirEnv, err := getEnvVars(c.EnvRepo, EnvKeyDBDirectory01Staging)
-	if err != nil {
-		return nil, fmt.Errorf("resolve staging dump directory: %w", err)
-	}
-	productDBURL, err := getEnvVars(c.EnvRepo, EnvKeyDBURL01Product)
-	if err != nil {
-		return nil, fmt.Errorf("resolve production DB URL: %w", err)
-	}
-	productDirEnv, err := getEnvVars(c.EnvRepo, EnvKeyDBDirectory01Product)
-	if err != nil {
-		return nil, fmt.Errorf("resolve production dump directory: %w", err)
-	}
-
-	stagingOutputDir := filepath.Join(c.VolumeDir, stagingDirEnv)
-	productOutputDir := filepath.Join(c.VolumeDir, productDirEnv)
-
-	service := discordWebhook.NewDefaultDiscordWebhookService()
-	concurrency := workerParallel
-
-	targets := []struct {
-		name      string
-		dbURL     string
-		outputDir string
-	}{
-		{name: "staging", dbURL: stagingDBURL, outputDir: stagingOutputDir},
-		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
-	}
-
-	headerGen := func(header string, summaries []string) string {
-		return fmt.Sprintf("%s\n%s", header, strings.Join(summaries, "\n"))
-	}
-
-	return usecases.NewWorkflow(
-		workflowName,
-		cronExp,
-		c.Timezone,
-		func(ctx context.Context) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			var dumpSummaries []string
-			for _, target := range targets {
-				if err := c.FileRepo.EnsureDir(target.outputDir); err != nil {
-					return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
-				}
-
-				_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency, "markdown", target.name)
-				if err != nil {
-					return fmt.Errorf("dump %s database: %w", target.name, err)
-				}
-
-				log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
-				dumpSummaries = append(dumpSummaries, minResult)
-			}
-
-			content := notification
-			if len(dumpSummaries) > 0 {
-				content = headerGen(notification, dumpSummaries)
-			}
-
-			if err := service.SendNotification(
-				ctx,
-				webhookURL,
-				"",
-				content,
-				embedType,
-				embedText,
-				"",
-				"",
-			); err != nil {
-				return fmt.Errorf("send PostgreSQL dump notification: %w", err)
-			}
-
-			log.Printf("[postgres-dump] dispatched Discord notification for PostgreSQL backups")
-			return nil
-		},
-	), nil
 }
 
 func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
@@ -334,16 +164,150 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 	return nil
 }
 
-func createPCInfoWorkflow(h WorkflowHandlerRepository) (*usecases.Workflow, error) {
+func (wh *WorkflowHandler) NotifyWeather(ctx context.Context) error {
 	const (
-		workflowName = "Ubuntu PC info snapshot"
-		cronExp      = "*/10 * * * 0-6"
+		city    = "Tokyo"
+		maxDays = 3
 	)
 
-	return usecases.NewWorkflow(
-		workflowName,
-		cronExp,
-		h.GetCreator().Timezone,
-		h.RetrievePCInfo,
-	), nil
+	webhookURL, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyDiscordWebhookURLForWeather)
+	if err != nil {
+		return fmt.Errorf("resolve Discord webhook URL: %w", err)
+	}
+	apiKey, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyOpenWeatherAPIKey)
+	if err != nil {
+		return fmt.Errorf("resolve OpenWeather API key: %w", err)
+	}
+	service := weatherNotificator.NewWeatherNotificatorService()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	if err := service.HandleWeatherNotification(apiKey, city, maxDays, webhookURL); err != nil {
+		return fmt.Errorf("send weather notification: %w", err)
+	}
+
+	log.Printf("[weather] dispatched %s forecast to Discord", city)
+	return nil
+}
+
+func (wh *WorkflowHandler) NotifyDailyHeading(ctx context.Context) error {
+	const dayOffset = 0
+
+	webhookURL, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	if err != nil {
+		return fmt.Errorf("resolve daily heading Discord webhook URL: %w", err)
+	}
+
+	service := discordWebhook.NewDefaultDiscordWebhookService()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	content := textGenerator.GenerateDailyHeading(dayOffset)
+	if err := service.SendNotification(ctx, webhookURL, "テンプレートあゆ", content, "none", "", "", ""); err != nil {
+		return fmt.Errorf("send daily heading notification: %w", err)
+	}
+
+	log.Printf("[daily-heading] dispatched heading content to Discord")
+	return nil
+}
+
+func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error {
+	const (
+		format         = "sql"
+		notification   = "PostgreSQLのダンプが完了しました"
+		embedType      = "postgres"
+		embedText      = "最新バックアップ"
+		workerParallel = 3
+	)
+
+	creator := wh.GetCreator()
+	webhookURL, err := getEnvVars(creator.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	if err != nil {
+		return fmt.Errorf("resolve Discord webhook URL for PostgreSQL dump: %w", err)
+	}
+	stagingDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01Staging)
+	if err != nil {
+		return fmt.Errorf("resolve staging DB URL: %w", err)
+	}
+	stagingDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyDBDirectory01Staging)
+	if err != nil {
+		return fmt.Errorf("resolve staging dump directory: %w", err)
+	}
+	productDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01Product)
+	if err != nil {
+		return fmt.Errorf("resolve production DB URL: %w", err)
+	}
+	productDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyDBDirectory01Product)
+	if err != nil {
+		return fmt.Errorf("resolve production dump directory: %w", err)
+	}
+
+	stagingOutputDir := filepath.Join(creator.VolumeDir, stagingDirEnv)
+	productOutputDir := filepath.Join(creator.VolumeDir, productDirEnv)
+
+	service := discordWebhook.NewDefaultDiscordWebhookService()
+	concurrency := workerParallel
+
+	targets := []struct {
+		name      string
+		dbURL     string
+		outputDir string
+	}{
+		{name: "staging", dbURL: stagingDBURL, outputDir: stagingOutputDir},
+		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
+	}
+
+	headerGen := func(header string, summaries []string) string {
+		return fmt.Sprintf("%s\n%s", header, strings.Join(summaries, "\n"))
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	var dumpSummaries []string
+	for _, target := range targets {
+		if err := creator.FileRepo.EnsureDir(target.outputDir); err != nil {
+			return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
+		}
+
+		_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency, "markdown", target.name)
+		if err != nil {
+			return fmt.Errorf("dump %s database: %w", target.name, err)
+		}
+
+		log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
+		dumpSummaries = append(dumpSummaries, minResult)
+	}
+
+	content := notification
+	if len(dumpSummaries) > 0 {
+		content = headerGen(notification, dumpSummaries)
+	}
+
+	if err := service.SendNotification(
+		ctx,
+		webhookURL,
+		"",
+		content,
+		embedType,
+		embedText,
+		"",
+		"",
+	); err != nil {
+		return fmt.Errorf("send PostgreSQL dump notification: %w", err)
+	}
+
+	log.Printf("[postgres-dump] dispatched Discord notification for PostgreSQL backups")
+	return nil
 }
