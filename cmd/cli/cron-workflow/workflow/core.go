@@ -92,22 +92,23 @@ func List() ([]usecases.Workflow, error) {
 }
 
 func (wh *WorkflowHandler) KeepHeartbeat(ctx context.Context) error {
-	heartOwner, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyHeartOwner)
+	creator := wh.GetCreator()
+	heartOwner, err := getEnvVars(creator.EnvRepo, EnvKeyHeartOwner)
 	if err != nil {
 		return fmt.Errorf("resolve heart owner from %s: %w", "HEART_OWNER", err)
 	}
 
-	now, err := wh.GetCreator().TimeRepo.Now(wh.GetCreator().Timezone)
+	now, err := creator.TimeRepo.Now(creator.Timezone)
 	if err != nil {
 		return fmt.Errorf("resolve current time: %w", err)
 	}
 	timestamp := now.Format("20060102150405")
-	statusFile := filepath.Join(wh.GetCreator().VolumeDir, fmt.Sprintf("heartbeat-%s.status", timestamp))
+	statusFile := filepath.Join(creator.VolumeDir, fmt.Sprintf("heartbeat-%s.status", timestamp))
 
 	message := fmt.Sprintf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), heartOwner)
 	log.Printf("%s", message)
 	log.Printf("[heartbeat] writing status file: %s", statusFile)
-	if err := wh.GetCreator().FileRepo.Write(statusFile, true, message+"\n"); err != nil {
+	if err := creator.FileRepo.Write(statusFile, true, message+"\n"); err != nil {
 		return fmt.Errorf("write heartbeat status file: %w", err)
 	}
 	return nil
@@ -118,7 +119,8 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		networkInterface = "eth0"
 	)
 
-	outDirEnv, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyPCInfoOutputDirectory)
+	creator := wh.GetCreator()
+	outDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyPCInfoOutputDirectory)
 	if err != nil {
 		return fmt.Errorf("resolve PC info output directory: %w", err)
 	}
@@ -134,8 +136,8 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 	default:
 	}
 
-	outputDir := filepath.Join(wh.GetCreator().VolumeDir, trimmedOutDir)
-	if err := wh.GetCreator().FileRepo.EnsureDir(outputDir); err != nil {
+	outputDir := filepath.Join(creator.VolumeDir, trimmedOutDir)
+	if err := creator.FileRepo.EnsureDir(outputDir); err != nil {
 		return fmt.Errorf("prepare PC info output directory: %w", err)
 	}
 
@@ -170,11 +172,12 @@ func (wh *WorkflowHandler) NotifyWeather(ctx context.Context) error {
 		maxDays = 3
 	)
 
-	webhookURL, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyDiscordWebhookURLForWeather)
+	creator := wh.GetCreator()
+	webhookURL, err := getEnvVars(creator.EnvRepo, EnvKeyDiscordWebhookURLForWeather)
 	if err != nil {
 		return fmt.Errorf("resolve Discord webhook URL: %w", err)
 	}
-	apiKey, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyOpenWeatherAPIKey)
+	apiKey, err := getEnvVars(creator.EnvRepo, EnvKeyOpenWeatherAPIKey)
 	if err != nil {
 		return fmt.Errorf("resolve OpenWeather API key: %w", err)
 	}
@@ -197,7 +200,8 @@ func (wh *WorkflowHandler) NotifyWeather(ctx context.Context) error {
 func (wh *WorkflowHandler) NotifyDailyHeading(ctx context.Context) error {
 	const dayOffset = 0
 
-	webhookURL, err := getEnvVars(wh.GetCreator().EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	creator := wh.GetCreator()
+	webhookURL, err := getEnvVars(creator.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
 	if err != nil {
 		return fmt.Errorf("resolve daily heading Discord webhook URL: %w", err)
 	}
