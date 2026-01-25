@@ -151,7 +151,7 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		}
 		if result.Info != nil {
 			log.Printf(
-				"[pc-info] CPU=%s temp=%.2fC mem_used=%.2fMB mem_total=%.2fMB path=%s",
+				"[pc-info] CPU=%s temp=%.2fC mem_used=%dMB mem_total=%dMB path=%s",
 				strings.TrimSpace(result.Info.CPUName),
 				result.Info.CPUTemperature,
 				result.Info.MemoryUsageMB,
