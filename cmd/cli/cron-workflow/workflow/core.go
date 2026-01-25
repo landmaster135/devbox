@@ -8,9 +8,6 @@ import (
 	"strings"
 	"time"
 
-	infraEnv "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/env"
-	infraFilesystem "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/filesystem"
-	infraTime "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/time"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	workflowCreator "github.com/landmaster135/devbox/internal/cron_workflow/usecases/workflow_creator"
 
@@ -44,11 +41,8 @@ func NewWorkflowHandler(creator *workflowCreator.WorkflowCreator) *WorkflowHandl
 // List returns all configured workflows.
 func List() ([]usecases.Workflow, error) {
 	const tz = "Asia/Tokyo"
-	envRepo := infraEnv.NewRepository()
-	filesystemRepo := infraFilesystem.NewRepository()
-	timeRepo := infraTime.NewRepository()
 
-	wc, err := workflowCreator.NewWorkflowCreator(tz, envRepo, filesystemRepo, timeRepo)
+	wc, err := workflowCreator.NewWorkflowCreatorDefault(tz)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize WorkflowCreator: %w", err)
 	}
