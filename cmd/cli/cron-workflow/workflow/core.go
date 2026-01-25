@@ -22,12 +22,6 @@ type WorkflowHandler struct {
 	Creator *workflowCreator.WorkflowCreator
 }
 
-type WorkflowHandlerRepository interface {
-	GetCreator() *workflowCreator.WorkflowCreator
-	KeepHeartbeat(ctx context.Context) error
-	RetrievePCInfo(ctx context.Context) error
-}
-
 func (wh *WorkflowHandler) GetCreator() *workflowCreator.WorkflowCreator {
 	return wh.Creator
 }
@@ -36,6 +30,12 @@ func NewWorkflowHandler(creator *workflowCreator.WorkflowCreator) *WorkflowHandl
 	return &WorkflowHandler{
 		Creator: creator,
 	}
+}
+
+type WorkflowHandlerRepository interface {
+	GetCreator() *workflowCreator.WorkflowCreator
+	KeepHeartbeat(ctx context.Context) error
+	RetrievePCInfo(ctx context.Context) error
 }
 
 // List returns all configured workflows.
