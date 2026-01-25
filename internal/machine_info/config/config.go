@@ -18,10 +18,12 @@ const (
 
 // Config はmachine-info CLIの設定を保持する
 type Config struct {
-	Operation        string
-	NetworkInterface string
-	OutputDir        string
-	Help             bool
+	Operation           string
+	NetworkInterface    string
+	OutputDir           string
+	MemoryManufacturers string
+	MemoryNames         string
+	Help                bool
 }
 
 // ParseFlags はコマンドライン引数からConfigを生成する
@@ -33,6 +35,8 @@ func ParseFlags(args []string) (*Config, error) {
 	fs.StringVar(&cfg.Operation, "operation", OperationUbuntu, "実行する操作 (例: ubuntu)")
 	fs.StringVar(&cfg.NetworkInterface, "network-interface", defaultNetworkInterface, "ネットワークインターフェース名")
 	fs.StringVar(&cfg.OutputDir, "output-dir", defaultOutputDir, "ログファイルを保存するディレクトリ")
+	fs.StringVar(&cfg.MemoryManufacturers, "memory-manufacturers", "", "メモリのメーカー名 (カンマ区切り)")
+	fs.StringVar(&cfg.MemoryNames, "memory-names", "", "メモリモジュール名 (カンマ区切り)")
 
 	var help bool
 	fs.BoolVar(&help, "help", false, "このヘルプを表示")
@@ -51,6 +55,8 @@ func ParseFlags(args []string) (*Config, error) {
 
 	cfg.NetworkInterface = strings.TrimSpace(cfg.NetworkInterface)
 	cfg.OutputDir = strings.TrimSpace(cfg.OutputDir)
+	cfg.MemoryManufacturers = strings.TrimSpace(cfg.MemoryManufacturers)
+	cfg.MemoryNames = strings.TrimSpace(cfg.MemoryNames)
 	if cfg.OutputDir == "" {
 		cfg.OutputDir = defaultOutputDir
 	}
@@ -74,5 +80,7 @@ func PrintUsage() {
 	fmt.Fprintln(os.Stderr, "  --operation           実行する操作 (デフォルト: ubuntu)")
 	fmt.Fprintln(os.Stderr, "  --network-interface   ネットワークインターフェース名 (デフォルト: eth0)")
 	fmt.Fprintln(os.Stderr, "  --output-dir          ログファイルの出力先ディレクトリ (デフォルト: カレント)")
+	fmt.Fprintln(os.Stderr, "  --memory-manufacturers メモリのメーカー名 (カンマ区切り)")
+	fmt.Fprintln(os.Stderr, "  --memory-names        メモリモジュール名 (カンマ区切り)")
 	fmt.Fprintln(os.Stderr, "  --help, -h            このヘルプを表示")
 }

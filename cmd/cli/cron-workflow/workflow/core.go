@@ -141,7 +141,7 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		return fmt.Errorf("prepare PC info output directory: %w", err)
 	}
 
-	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, outputDir)
+	result, _, outputPath, err := service.CollectAndSaveUbuntuInfo(networkInterface, "", "", outputDir)
 	if err != nil {
 		return fmt.Errorf("collect Ubuntu PC info: %w", err)
 	}

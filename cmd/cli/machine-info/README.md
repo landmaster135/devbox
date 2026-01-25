@@ -5,6 +5,7 @@ Ubuntu系LinuxでPCのハードウェア／ネットワーク情報を収集し�
 ## 主な機能
 - CPU名、コア数、論理プロセッサ数、クロック情報、温度を取得
 - メモリ容量と使用量、ホスト名を取得
+- `--memory-manufacturers` / `--memory-names` で取得したメモリ情報に手動入力値を反映可能
 - 指定インターフェースの送受信スループットを複数サンプリングして平均化
 - 取得した情報を標準出力へ表示し、`log_<timestamp>.json` に保存
 - `--output-dir` でログの保存先ディレクトリを指定可能
@@ -31,6 +32,8 @@ go run ./cmd/cli/machine-info --operation=ubuntu --network-interface=eth0
 | `--operation` | 実行する操作モード。現在は`ubuntu`のみサポート | `ubuntu` | 今後の拡張用に追加 |
 | `--network-interface` | ネットワーク速度を計測するインターフェース名 | `eth0` |  |
 | `--output-dir` | JSONログを保存するディレクトリ | カレント | 不存在の場合は自動作成 |
+| `--memory-manufacturers` | メモリメーカー名 | 空文字 | 入力時はカンマ区切り |
+| `--memory-names` | メモリモジュール名 | 空文字 | 入力時はカンマ区切り |
 | `--help`, `-h` | 使い方を表示 | `false` | - |
 
 ### Operation一覧

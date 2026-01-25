@@ -28,6 +28,8 @@ type MachineInfo struct {
 	CPUTemperature          float64 `json:"cpu_temperature"`
 	MemoryTotalMB           int     `json:"memory_total_mb"`
 	MemoryUsageMB           int     `json:"memory_usage_mb"`
+	MemoryNames             string  `json:"memory_names"`
+	MemoryManufacturers     string  `json:"memory_manufacturers"`
 	PCHostname              string  `json:"pc_hostname"`
 	EthernetAvgSentKbps     float64 `json:"ethernet_avg_sent_kbps"`
 	EthernetAvgReceivedKbps float64 `json:"ethernet_avg_received_kbps"`
@@ -53,9 +55,9 @@ type MachineInfoService struct {
 
 // MachineInfoUsecase はmachine-infoユースケースの共通インターフェース
 type MachineInfoUsecase interface {
-	CollectUbuntuInfo(networkInterface string) (*MachineInfoResult, error)
+	CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames string) (*MachineInfoResult, error)
 	SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error)
-	CollectAndSaveUbuntuInfo(networkInterface, outputDir string) (*MachineInfoResult, string, string, error)
+	CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir string) (*MachineInfoResult, string, string, error)
 }
 
 // NewMachineInfoService はMachineInfoServiceを生成する
@@ -74,7 +76,7 @@ func NewMachineInfoServiceWithDependencies(fs filesystem.Repository) *MachineInf
 }
 
 // CollectUbuntuInfo はUbuntu環境向けにマシン情報を収集する
-func (s *MachineInfoService) CollectUbuntuInfo(networkInterface string) (*MachineInfoResult, error) {
+func (s *MachineInfoService) CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames string) (*MachineInfoResult, error) {
 	if strings.TrimSpace(networkInterface) == "" {
 		return nil, fmt.Errorf("ネットワークインターフェース名を指定してください")
 	}
@@ -129,6 +131,8 @@ func (s *MachineInfoService) CollectUbuntuInfo(networkInterface string) (*Machin
 		CPUTemperature:          cpuTemp,
 		MemoryTotalMB:           memoryTotal,
 		MemoryUsageMB:           memoryUsage,
+		MemoryNames:             memoryNames,
+		MemoryManufacturers:     memoryManufacturers,
 		PCHostname:              hostname,
 		EthernetAvgSentKbps:     sentKbps,
 		EthernetAvgReceivedKbps: receivedKbps,
@@ -168,12 +172,12 @@ func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir str
 }
 
 // CollectAndSaveUbuntuInfo はマシン情報の収集とログ保存を一度に行う
-func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, outputDir string) (*MachineInfoResult, string, string, error) {
-	return collectAndSave(s, networkInterface, outputDir)
+func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(s, networkInterface, memoryManufacturers, memoryNames, outputDir)
 }
 
-func collectAndSave(usecase MachineInfoUsecase, networkInterface, outputDir string) (*MachineInfoResult, string, string, error) {
-	result, err := usecase.CollectUbuntuInfo(networkInterface)
+func collectAndSave(usecase MachineInfoUsecase, networkInterface string, memoryManufacturers string, memoryNames string, outputDir string) (*MachineInfoResult, string, string, error) {
+	result, err := usecase.CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames)
 	if err != nil {
 		return nil, "", "", err
 	}

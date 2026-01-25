@@ -145,7 +145,7 @@ type mockCollectorSaver struct {
 	saveErr     error
 }
 
-func (m *mockCollectorSaver) CollectUbuntuInfo(networkInterface string) (*MachineInfoResult, error) {
+func (m *mockCollectorSaver) CollectUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string) (*MachineInfoResult, error) {
 	m.ifaceCalls = append(m.ifaceCalls, networkInterface)
 	if m.collectErr != nil {
 		return nil, m.collectErr
@@ -162,8 +162,8 @@ func (m *mockCollectorSaver) SaveMachineInfoLog(info *MachineInfo, outputDir str
 	return m.saveJSON, m.savePath, nil
 }
 
-func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface, outputDir string) (*MachineInfoResult, string, string, error) {
-	return collectAndSave(m, networkInterface, outputDir)
+func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string, outputDir string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(m, networkInterface, memoryManufacturers, memoryNames, outputDir)
 }
 
 func TestCollectAndSaveHelperSuccess(t *testing.T) {
@@ -173,7 +173,7 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 		savePath: "/tmp/log.json",
 	}
 
-	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "/tmp")
+	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "maker", "parts", "/tmp")
 	if err != nil {
 		t.Fatalf("collectAndSave returned error: %v", err)
 	}
@@ -197,12 +197,12 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 func TestCollectAndSaveHelperErrors(t *testing.T) {
 	mCollectErr := errors.New("collect fail")
 	mock := &mockCollectorSaver{collectErr: mCollectErr}
-	if _, _, _, err := collectAndSave(mock, "eth0", "/tmp"); !errors.Is(err, mCollectErr) {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp"); !errors.Is(err, mCollectErr) {
 		t.Fatalf("expected collect error, got %v", err)
 	}
 
 	mock = &mockCollectorSaver{result: &MachineInfoResult{}}
-	if _, _, _, err := collectAndSave(mock, "eth0", "/tmp"); err == nil {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp"); err == nil {
 		t.Fatalf("expected error when info is nil")
 	}
 
@@ -212,7 +212,7 @@ func TestCollectAndSaveHelperErrors(t *testing.T) {
 		saveErr:  saveErr,
 		saveJSON: "",
 	}
-	if _, _, _, err := collectAndSave(mock, "eth0", "/tmp"); !errors.Is(err, saveErr) {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp"); !errors.Is(err, saveErr) {
 		t.Fatalf("expected save error, got %v", err)
 	}
 }

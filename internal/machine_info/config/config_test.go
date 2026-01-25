@@ -17,10 +17,22 @@ func TestParseFlagsDefaults(t *testing.T) {
 	if cfg.OutputDir != "." {
 		t.Fatalf("expected default output dir '.', got %s", cfg.OutputDir)
 	}
+	if cfg.MemoryManufacturers != "" {
+		t.Fatalf("expected default memory manufacturers '', got %s", cfg.MemoryManufacturers)
+	}
+	if cfg.MemoryNames != "" {
+		t.Fatalf("expected default memory names '', got %s", cfg.MemoryNames)
+	}
 }
 
 func TestParseFlagsCustomValues(t *testing.T) {
-	args := []string{"--operation=ubuntu", "--network-interface=enp0s3", "--output-dir=/tmp/machine"}
+	args := []string{
+		"--operation=ubuntu",
+		"--network-interface=enp0s3",
+		"--output-dir=/tmp/machine",
+		"--memory-manufacturers=MakerA,MakerB",
+		"--memory-names=Part1,Part2",
+	}
 	cfg, err := ParseFlags(args)
 	if err != nil {
 		t.Fatalf("ParseFlags returned error: %v", err)
@@ -31,6 +43,12 @@ func TestParseFlagsCustomValues(t *testing.T) {
 	}
 	if cfg.OutputDir != "/tmp/machine" {
 		t.Fatalf("expected /tmp/machine, got %s", cfg.OutputDir)
+	}
+	if cfg.MemoryManufacturers != "MakerA,MakerB" {
+		t.Fatalf("expected memory manufacturers MakerA,MakerB got %s", cfg.MemoryManufacturers)
+	}
+	if cfg.MemoryNames != "Part1,Part2" {
+		t.Fatalf("expected memory names Part1,Part2 got %s", cfg.MemoryNames)
 	}
 }
 
