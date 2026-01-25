@@ -12,6 +12,10 @@ import (
 	filesystem "github.com/landmaster135/devbox/internal/machine_info/infrastructure/filesystem"
 )
 
+const (
+	SHELL = "sh"
+)
+
 // MachineInfo はシステム情報を保持する
 type MachineInfo struct {
 	CPUName                 string  `json:"cpu_name"`
@@ -184,21 +188,21 @@ func collectAndSave(usecase MachineInfoUsecase, networkInterface, outputDir stri
 }
 
 func getCPUInfo() (name string, cores int, logicalProcessors int, maxClockSpeed float64, err error) {
-	cmd := exec.Command("sh", "-c", "lscpu | grep 'Model name:' | sed 's/.*Model name:[[:space:]]*//'")
+	cmd := exec.Command(SHELL, "-c", "lscpu | grep 'Model name:' | sed 's/.*Model name:[[:space:]]*//'")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", 0, 0, 0, fmt.Errorf("CPU名の取得に失敗: %w", err)
 	}
 	name = strings.TrimSpace(string(output))
 
-	cmd = exec.Command("sh", "-c", "lscpu | grep 'Core(s) per socket:' | sed 's/.*Core(s) per socket:[[:space:]]*//'")
+	cmd = exec.Command(SHELL, "-c", "lscpu | grep 'Core(s) per socket:' | sed 's/.*Core(s) per socket:[[:space:]]*//'")
 	output, err = cmd.Output()
 	if err != nil {
 		return name, 0, 0, 0, fmt.Errorf("コア数の取得に失敗: %w", err)
 	}
 	coresPerSocket, _ := strconv.Atoi(strings.TrimSpace(string(output)))
 
-	cmd = exec.Command("sh", "-c", "lscpu | grep 'Socket(s):' | sed 's/.*Socket(s):[[:space:]]*//'")
+	cmd = exec.Command(SHELL, "-c", "lscpu | grep 'Socket(s):' | sed 's/.*Socket(s):[[:space:]]*//'")
 	output, err = cmd.Output()
 	if err != nil {
 		return name, 0, 0, 0, fmt.Errorf("ソケット数の取得に失敗: %w", err)
@@ -206,24 +210,24 @@ func getCPUInfo() (name string, cores int, logicalProcessors int, maxClockSpeed 
 	sockets, _ := strconv.Atoi(strings.TrimSpace(string(output)))
 	cores = coresPerSocket * sockets
 
-	cmd = exec.Command("sh", "-c", "lscpu | grep '^CPU(s):' | sed 's/.*CPU(s):[[:space:]]*//'")
+	cmd = exec.Command(SHELL, "-c", "lscpu | grep '^CPU(s):' | sed 's/.*CPU(s):[[:space:]]*//'")
 	output, err = cmd.Output()
 	if err != nil {
 		return name, cores, 0, 0, fmt.Errorf("論理プロセッサ数の取得に失敗: %w", err)
 	}
 	logicalProcessors, _ = strconv.Atoi(strings.TrimSpace(string(output)))
 
-	cmd = exec.Command("sh", "-c", "lscpu | grep 'CPU max MHz:' | sed 's/.*CPU max MHz:[[:space:]]*//'")
+	cmd = exec.Command(SHELL, "-c", "lscpu | grep 'CPU max MHz:' | sed 's/.*CPU max MHz:[[:space:]]*//'")
 	output, err = cmd.Output()
 	if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 		maxClockSpeed, _ = strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
 	} else {
-		cmd = exec.Command("sh", "-c", "lscpu | grep 'CPU MHz:' | sed 's/.*CPU MHz:[[:space:]]*//'")
+		cmd = exec.Command(SHELL, "-c", "lscpu | grep 'CPU MHz:' | sed 's/.*CPU MHz:[[:space:]]*//'")
 		output, err = cmd.Output()
 		if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 			maxClockSpeed, _ = strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
 		} else {
-			cmd = exec.Command("sh", "-c", "cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+			cmd = exec.Command(SHELL, "-c", "cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
 			output, err = cmd.Output()
 			if err == nil {
 				freqKHz, _ := strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
@@ -238,7 +242,7 @@ func getCPUInfo() (name string, cores int, logicalProcessors int, maxClockSpeed 
 }
 
 func getCurrentCPUClockSpeed() (float64, error) {
-	cmd := exec.Command("sh", "-c", "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | sed 's/.*:[[:space:]]*//'")
+	cmd := exec.Command(SHELL, "-c", "cat /proc/cpuinfo | grep 'cpu MHz' | head -1 | sed 's/.*:[[:space:]]*//'")
 	output, err := cmd.Output()
 	if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 		speed, _ := strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
@@ -247,7 +251,7 @@ func getCurrentCPUClockSpeed() (float64, error) {
 		}
 	}
 
-	cmd = exec.Command("sh", "-c", "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+	cmd = exec.Command(SHELL, "-c", "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
 	output, err = cmd.Output()
 	if err == nil {
 		freqKHz, _ := strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
@@ -265,7 +269,7 @@ func getCPUTemperature(samplings int, interval time.Duration) (float64, error) {
 		temp := 0.0
 		found := false
 
-		cmd := exec.Command("sh", "-c", "sensors | grep 'Tctl:' | awk '{print $2}' | tr -d '+°C'")
+		cmd := exec.Command(SHELL, "-c", "sensors | grep 'Tctl:' | awk '{print $2}' | tr -d '+°C'")
 		output, err := cmd.Output()
 		if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 			temp, err = strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
@@ -275,7 +279,7 @@ func getCPUTemperature(samplings int, interval time.Duration) (float64, error) {
 		}
 
 		if !found {
-			cmd = exec.Command("sh", "-c", "sensors | grep 'Tdie:' | awk '{print $2}' | tr -d '+°C'")
+			cmd = exec.Command(SHELL, "-c", "sensors | grep 'Tdie:' | awk '{print $2}' | tr -d '+°C'")
 			output, err = cmd.Output()
 			if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 				temp, err = strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
@@ -286,7 +290,7 @@ func getCPUTemperature(samplings int, interval time.Duration) (float64, error) {
 		}
 
 		if !found {
-			cmd = exec.Command("sh", "-c", "sensors | grep 'Package id 0:' | awk '{print $4}' | tr -d '+°C'")
+			cmd = exec.Command(SHELL, "-c", "sensors | grep 'Package id 0:' | awk '{print $4}' | tr -d '+°C'")
 			output, err = cmd.Output()
 			if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 				temp, err = strconv.ParseFloat(strings.TrimSpace(string(output)), 64)
@@ -297,7 +301,7 @@ func getCPUTemperature(samplings int, interval time.Duration) (float64, error) {
 		}
 
 		if !found {
-			cmd = exec.Command("sh", "-c", "find /sys/class/hwmon -name 'temp*_label' -exec grep -l 'Tctl\\|Tdie\\|Package' {} \\; 2>/dev/null | head -1")
+			cmd = exec.Command(SHELL, "-c", "find /sys/class/hwmon -name 'temp*_label' -exec grep -l 'Tctl\\|Tdie\\|Package' {} \\; 2>/dev/null | head -1")
 			output, err = cmd.Output()
 			if err == nil && len(strings.TrimSpace(string(output))) > 0 {
 				labelPath := strings.TrimSpace(string(output))
@@ -340,7 +344,7 @@ func getCPUTemperature(samplings int, interval time.Duration) (float64, error) {
 }
 
 func getMemoryInfo() (totalMB float64, usageMB float64, err error) {
-	cmd := exec.Command("sh", "-c", "free -m | grep Mem: | awk '{print $2, $3}'")
+	cmd := exec.Command(SHELL, "-c", "free -m | grep Mem: | awk '{print $2, $3}'")
 	output, err := cmd.Output()
 	if err != nil {
 		return 0, 0, fmt.Errorf("メモリ情報の取得に失敗: %w", err)
@@ -364,14 +368,14 @@ func getHostname() (string, error) {
 }
 
 func getNetworkStats(interfaceName string) (*NetworkStats, error) {
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("cat /sys/class/net/%s/statistics/tx_bytes", interfaceName))
+	cmd := exec.Command(SHELL, "-c", fmt.Sprintf("cat /sys/class/net/%s/statistics/tx_bytes", interfaceName))
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("送信バイト数の取得に失敗: %w", err)
 	}
 	sentBytes, _ := strconv.ParseUint(strings.TrimSpace(string(output)), 10, 64)
 
-	cmd = exec.Command("sh", "-c", fmt.Sprintf("cat /sys/class/net/%s/statistics/rx_bytes", interfaceName))
+	cmd = exec.Command(SHELL, "-c", fmt.Sprintf("cat /sys/class/net/%s/statistics/rx_bytes", interfaceName))
 	output, err = cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("受信バイト数の取得に失敗: %w", err)

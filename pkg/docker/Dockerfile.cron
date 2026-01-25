@@ -13,10 +13,25 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build -trimpath -ldflags="-s -w" -o /workspace/bin/cron-workflow ./cmd/cli/cron-workflow
 
-# 実行ステージ: distroless で軽量実行
-FROM gcr.io/distroless/base-debian12:nonroot
+# 実行ステージ: Debian Slim（bookwormに合わせる）
+FROM debian:bookworm-slim
+
+# 必要最小限のパッケージをインストール
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
+# 非rootユーザーを作成
+RUN groupadd -g 65532 nonroot && \
+    useradd -u 65532 -g nonroot -s /bin/bash -m nonroot
+
 COPY --from=builder /workspace/bin/cron-workflow /app/cron-workflow
+RUN chown -R nonroot:nonroot /app
+
+USER nonroot
 
 ENTRYPOINT ["/app/cron-workflow"]
