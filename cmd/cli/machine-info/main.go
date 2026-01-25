@@ -39,7 +39,7 @@ func main() {
 func runUbuntuOperation(cfg *config.Config, service *usecases.MachineInfoService) error {
 	fmt.Println("マシン情報を取得中...")
 
-	result, err := service.CollectUbuntuInfo(cfg.NetworkInterface)
+	result, err := service.CollectUbuntuInfo(cfg.NetworkInterface, cfg.MemoryManufacturers, cfg.MemoryNames)
 	if err != nil {
 		return err
 	}
