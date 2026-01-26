@@ -233,7 +233,7 @@ func (wh *WorkflowHandler) NotifyDailyHeading(ctx context.Context) error {
 	default:
 	}
 
-	content := textGenerator.GenerateDailyHeading(dayOffset)
+	content := textGenerator.GenerateDailyHeading(dayOffset, creator.Timezone)
 	if err := service.SendNotification(ctx, webhookURL, "テンプレートあゆ", content, "none", "", "", ""); err != nil {
 		return fmt.Errorf("send daily heading notification: %w", err)
 	}

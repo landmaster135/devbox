@@ -68,6 +68,7 @@ go build -o bin/datetime-calculator ./cmd/cli/datetime-calculator
 | オプション | 短縮形 | 説明 | デフォルト | 例 |
 |-----------|--------|------|-----------|-----|
 | `-day-offset` | `-do` | 日付オフセット（実行日からの日数） | 0 | `-do -1` |
+| `-timezone` | `-tz` | IANA形式のタイムゾーン。未指定はシステムローカルを使用 | (ローカル) | `-tz Asia/Tokyo` |
 
 ## 使用例
 
@@ -159,6 +160,9 @@ go run ./cmd/cli/datetime-calculator -operation generate-daily-heading -day-offs
 
 # 短縮形を使用
 go run ./cmd/cli/datetime-calculator -o generate-daily-heading -do -1
+
+# ニューヨーク時間を基準に見出しを生成
+go run ./cmd/cli/datetime-calculator -o generate-daily-heading -do 0 -tz America/New_York
 ```
 
 ## テスト

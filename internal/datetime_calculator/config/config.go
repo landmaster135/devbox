@@ -28,6 +28,7 @@ type Config struct {
 	FilePath       string    // ファイルパス (parse-time操作用)
 	TextInput      string    // テキスト入力 (parse-time操作用)
 	DayOffset      int       // 日付オフセット (generate-daily-heading操作用)
+	Timezone       string    // タイムゾーン (generate-daily-heading操作用)
 	Help           bool      // ヘルプ表示フラグ
 }
 
@@ -164,7 +165,7 @@ func NewConfigForParseTime(operation, filePath, textInput, outputUnit string) (*
 }
 
 // NewConfigForGenerateDailyHeading はgenerate-daily-heading操作用の新しいConfigを作成する
-func NewConfigForGenerateDailyHeading(operation string, dayOffset int) (*Config, error) {
+func NewConfigForGenerateDailyHeading(operation string, dayOffset int, timezone string) (*Config, error) {
 	if operation == "" {
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
@@ -176,6 +177,7 @@ func NewConfigForGenerateDailyHeading(operation string, dayOffset int) (*Config,
 	return &Config{
 		Operation: operation,
 		DayOffset: dayOffset,
+		Timezone:  timezone,
 	}, nil
 }
 
@@ -201,6 +203,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		filePath          = ""
 		textInput         = ""
 		dayOffsetStr      = "0"
+		timezoneStr       = ""
 		help              = false
 	)
 
@@ -249,9 +252,11 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&textInput, "text-input", textInput, "テキスト入力 (parse-time操作用)")
 	parser.StringVar(&textInput, "ti", textInput, "テキスト入力の短縮形")
 
-	// 日付オフセット用のパラメータ (generate-daily-heading操作用)
+	// 日次見出し生成専用のパラメータ
 	parser.StringVar(&dayOffsetStr, "day-offset", dayOffsetStr, "日付オフセット (generate-daily-heading操作用)")
 	parser.StringVar(&dayOffsetStr, "do", dayOffsetStr, "日付オフセットの短縮形")
+	parser.StringVar(&timezoneStr, "timezone", timezoneStr, "IANA形式のタイムゾーン (generate-daily-heading操作用)")
+	parser.StringVar(&timezoneStr, "tz", timezoneStr, "タイムゾーンの短縮形")
 
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプの短縮形")
@@ -361,7 +366,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		if err != nil {
 			return nil, fmt.Errorf("無効な日付オフセットの値です: %s", dayOffsetStr)
 		}
-		return NewConfigForGenerateDailyHeading(operation, dayOffset)
+		return NewConfigForGenerateDailyHeading(operation, dayOffset, timezoneStr)
 	}
 
 	return NewConfig(operation, year1, month1, day1, hour1, minute1, second1, durationYear, durationMonth, durationDay, durationHour, durationMinute, durationSecond)

@@ -123,7 +123,7 @@ func handleTimeExtraction(cfg *config.Config) {
 
 // handleGenerateDailyHeading は日次見出し生成を処理する
 func handleGenerateDailyHeading(cfg *config.Config) {
-	output := textGenerator.GenerateDailyHeading(cfg.DayOffset)
+	output := textGenerator.GenerateDailyHeading(cfg.DayOffset, cfg.Timezone)
 	fmt.Print(output)
 }
 

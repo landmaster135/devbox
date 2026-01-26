@@ -2,13 +2,16 @@ package textGenerator
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
+var timeNow = time.Now
+
 // GenerateDailyHeading は日次見出しテキストを生成して返す
-func GenerateDailyHeading(dayOffset int) string {
-	// 現在日時からdayOffsetを適用
-	now := time.Now()
+func GenerateDailyHeading(dayOffset int, timezone string) string {
+	loc := resolveLocation(timezone)
+	now := timeNow().In(loc)
 	startDate := now.AddDate(0, 0, dayOffset)
 	endDate := startDate.AddDate(0, 0, 1)
 
@@ -22,6 +25,18 @@ func GenerateDailyHeading(dayOffset int) string {
 	checkpoint := fmt.Sprintf("- [ ]  %s(%s)から%s(%s)にかけて進める。・・・合計0分掛かった。\n", startDateStr, startWeekday, endDateStr, endWeekday)
 
 	return heading + checkpoint
+}
+
+func resolveLocation(timezone string) *time.Location {
+	tz := strings.TrimSpace(timezone)
+	if tz == "" || strings.EqualFold(tz, "local") {
+		return time.Local
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.Local
+	}
+	return loc
 }
 
 // getWeekdayJapanese は曜日を英語略称で返す
