@@ -61,7 +61,7 @@ func TestSaveMachineInfoLog_Success(t *testing.T) {
 		OutputAt:                1234567890,
 	}
 
-	jsonText, outputPath, err := svc.SaveMachineInfoLog(info, " /tmp/machine-info ")
+	jsonText, outputPath, err := svc.SaveMachineInfoLog(info, " /tmp/machine-info ", "UTC")
 	if err != nil {
 		t.Fatalf("SaveMachineInfoLog returned error: %v", err)
 	}
@@ -115,22 +115,26 @@ func TestSaveMachineInfoLog_Success(t *testing.T) {
 
 func TestSaveMachineInfoLog_Errors(t *testing.T) {
 	svc := NewMachineInfoServiceWithDependencies(&mockFileSystem{})
-	if _, _, err := svc.SaveMachineInfoLog(nil, "."); err == nil {
+	if _, _, err := svc.SaveMachineInfoLog(nil, ".", ""); err == nil {
 		t.Fatalf("expected error when info is nil")
 	}
 
 	mEnsureErr := errors.New("ensure failure")
 	svc = NewMachineInfoServiceWithDependencies(&mockFileSystem{ensureDirErr: mEnsureErr})
-	_, _, err := svc.SaveMachineInfoLog(&MachineInfo{CPUName: "cpu"}, "/tmp")
+	_, _, err := svc.SaveMachineInfoLog(&MachineInfo{CPUName: "cpu"}, "/tmp", "UTC")
 	if !errors.Is(err, mEnsureErr) {
 		t.Fatalf("expected ensure dir error, got %v", err)
 	}
 
 	mWriteErr := errors.New("write failure")
 	svc = NewMachineInfoServiceWithDependencies(&mockFileSystem{writeFileErr: mWriteErr})
-	_, _, err = svc.SaveMachineInfoLog(&MachineInfo{CPUName: "cpu"}, "/tmp")
+	_, _, err = svc.SaveMachineInfoLog(&MachineInfo{CPUName: "cpu"}, "/tmp", "UTC")
 	if !errors.Is(err, mWriteErr) {
 		t.Fatalf("expected write file error, got %v", err)
+	}
+
+	if _, _, err := svc.SaveMachineInfoLog(&MachineInfo{CPUName: "cpu"}, "/tmp", "Invalid/Timezone"); err == nil {
+		t.Fatalf("expected error for invalid timezone")
 	}
 }
 
@@ -138,6 +142,7 @@ type mockCollectorSaver struct {
 	ifaceCalls    []string
 	hostnameCalls []string
 	outputCalls   []string
+	timezoneCalls []string
 	savedInfos    []*MachineInfo
 	result        *MachineInfoResult
 	collectErr    error
@@ -155,17 +160,18 @@ func (m *mockCollectorSaver) CollectUbuntuInfo(networkInterface string, memoryMa
 	return m.result, nil
 }
 
-func (m *mockCollectorSaver) SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error) {
+func (m *mockCollectorSaver) SaveMachineInfoLog(info *MachineInfo, outputDir string, timezone string) (string, string, error) {
 	m.savedInfos = append(m.savedInfos, info)
 	m.outputCalls = append(m.outputCalls, outputDir)
+	m.timezoneCalls = append(m.timezoneCalls, timezone)
 	if m.saveErr != nil {
 		return "", "", m.saveErr
 	}
 	return m.saveJSON, m.savePath, nil
 }
 
-func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string, outputDir string, preferredHostname string) (*MachineInfoResult, string, string, error) {
-	return collectAndSave(m, networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname)
+func (m *mockCollectorSaver) CollectAndSaveUbuntuInfo(networkInterface string, memoryManufacturers string, memoryNames string, outputDir string, preferredHostname string, timezone string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(m, networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname, timezone)
 }
 
 func TestCollectAndSaveHelperSuccess(t *testing.T) {
@@ -176,7 +182,8 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 	}
 
 	overrideHostname := "nas-override"
-	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "maker", "parts", "/tmp", overrideHostname)
+	timezone := "Asia/Tokyo"
+	result, jsonText, outputPath, err := collectAndSave(mock, "eth1", "maker", "parts", "/tmp", overrideHostname, timezone)
 	if err != nil {
 		t.Fatalf("collectAndSave returned error: %v", err)
 	}
@@ -188,6 +195,9 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 	}
 	if len(mock.outputCalls) != 1 || mock.outputCalls[0] != "/tmp" {
 		t.Fatalf("expected saver to be called with /tmp, got %v", mock.outputCalls)
+	}
+	if len(mock.timezoneCalls) != 1 || mock.timezoneCalls[0] != timezone {
+		t.Fatalf("expected saver to receive timezone %s, got %v", timezone, mock.timezoneCalls)
 	}
 	if len(mock.savedInfos) != 1 || mock.savedInfos[0].CPUName != "Mock" {
 		t.Fatalf("unexpected info saved: %#v", mock.savedInfos)
@@ -203,12 +213,12 @@ func TestCollectAndSaveHelperSuccess(t *testing.T) {
 func TestCollectAndSaveHelperErrors(t *testing.T) {
 	mCollectErr := errors.New("collect fail")
 	mock := &mockCollectorSaver{collectErr: mCollectErr}
-	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", ""); !errors.Is(err, mCollectErr) {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", "", "UTC"); !errors.Is(err, mCollectErr) {
 		t.Fatalf("expected collect error, got %v", err)
 	}
 
 	mock = &mockCollectorSaver{result: &MachineInfoResult{}}
-	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", ""); err == nil {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", "", "UTC"); err == nil {
 		t.Fatalf("expected error when info is nil")
 	}
 
@@ -218,7 +228,7 @@ func TestCollectAndSaveHelperErrors(t *testing.T) {
 		saveErr:  saveErr,
 		saveJSON: "",
 	}
-	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", ""); !errors.Is(err, saveErr) {
+	if _, _, _, err := collectAndSave(mock, "eth0", "", "", "/tmp", "", "UTC"); !errors.Is(err, saveErr) {
 		t.Fatalf("expected save error, got %v", err)
 	}
 }

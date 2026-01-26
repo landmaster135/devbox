@@ -64,7 +64,7 @@ func runUbuntuOperation(cfg *config.Config, service *usecases.MachineInfoService
 	fmt.Printf("平均送信速度: %.2f Kbps\n", info.EthernetAvgSentKbps)
 	fmt.Printf("平均受信速度: %.2f Kbps\n", info.EthernetAvgReceivedKbps)
 
-	jsonText, outputPath, err := service.SaveMachineInfoLog(info, cfg.OutputDir)
+	jsonText, outputPath, err := service.SaveMachineInfoLog(info, cfg.OutputDir, "")
 	if err != nil {
 		return err
 	}

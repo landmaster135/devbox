@@ -159,6 +159,7 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		memoryNames,
 		outputDir,
 		strings.TrimSpace(hostnameOverride),
+		wh.GetCreator().Timezone,
 	)
 	if err != nil {
 		return fmt.Errorf("collect Ubuntu PC info: %w", err)

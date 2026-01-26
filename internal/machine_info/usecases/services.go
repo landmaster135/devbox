@@ -56,8 +56,8 @@ type MachineInfoService struct {
 // MachineInfoUsecase はmachine-infoユースケースの共通インターフェース
 type MachineInfoUsecase interface {
 	CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, preferredHostname string) (*MachineInfoResult, error)
-	SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error)
-	CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname string) (*MachineInfoResult, string, string, error)
+	SaveMachineInfoLog(info *MachineInfo, outputDir, timezone string) (string, string, error)
+	CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname, timezone string) (*MachineInfoResult, string, string, error)
 }
 
 // NewMachineInfoService はMachineInfoServiceを生成する
@@ -147,7 +147,7 @@ func (s *MachineInfoService) CollectUbuntuInfo(networkInterface, memoryManufactu
 }
 
 // SaveMachineInfoLog は収集した情報をJSONとして保存し、表示用JSON文字列と保存先パスを返す
-func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir string) (string, string, error) {
+func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir, timezone string) (string, string, error) {
 	if info == nil {
 		return "", "", fmt.Errorf("保存対象のマシン情報がありません")
 	}
@@ -166,7 +166,12 @@ func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir str
 		return "", "", err
 	}
 
-	filename := fmt.Sprintf("log_%s.json", time.Now().Format("20060102-150405"))
+	loc, err := resolveLocation(timezone)
+	if err != nil {
+		return "", "", err
+	}
+	timestamp := time.Now().In(loc).Format("20060102-150405")
+	filename := fmt.Sprintf("log_%s.json", timestamp)
 	outputPath := s.fileSystem.Join(trimmedOutputDir, filename)
 	if err := s.fileSystem.WriteFile(outputPath, jsonData, 0o644); err != nil {
 		return "", "", err
@@ -176,11 +181,11 @@ func (s *MachineInfoService) SaveMachineInfoLog(info *MachineInfo, outputDir str
 }
 
 // CollectAndSaveUbuntuInfo はマシン情報の収集とログ保存を一度に行う
-func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname string) (*MachineInfoResult, string, string, error) {
-	return collectAndSave(s, networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname)
+func (s *MachineInfoService) CollectAndSaveUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname, timezone string) (*MachineInfoResult, string, string, error) {
+	return collectAndSave(s, networkInterface, memoryManufacturers, memoryNames, outputDir, preferredHostname, timezone)
 }
 
-func collectAndSave(usecase MachineInfoUsecase, networkInterface string, memoryManufacturers string, memoryNames string, outputDir string, preferredHostname string) (*MachineInfoResult, string, string, error) {
+func collectAndSave(usecase MachineInfoUsecase, networkInterface string, memoryManufacturers string, memoryNames string, outputDir string, preferredHostname string, timezone string) (*MachineInfoResult, string, string, error) {
 	result, err := usecase.CollectUbuntuInfo(networkInterface, memoryManufacturers, memoryNames, preferredHostname)
 	if err != nil {
 		return nil, "", "", err
@@ -189,12 +194,24 @@ func collectAndSave(usecase MachineInfoUsecase, networkInterface string, memoryM
 		return nil, "", "", fmt.Errorf("マシン情報の取得に失敗しました")
 	}
 
-	jsonText, outputPath, err := usecase.SaveMachineInfoLog(result.Info, outputDir)
+	jsonText, outputPath, err := usecase.SaveMachineInfoLog(result.Info, outputDir, timezone)
 	if err != nil {
 		return nil, "", "", err
 	}
 
 	return result, jsonText, outputPath, nil
+}
+
+func resolveLocation(timezone string) (*time.Location, error) {
+	trimmed := strings.TrimSpace(timezone)
+	if trimmed == "" {
+		return time.Local, nil
+	}
+	loc, err := time.LoadLocation(trimmed)
+	if err != nil {
+		return nil, fmt.Errorf("無効なタイムゾーンです: %s: %w", trimmed, err)
+	}
+	return loc, nil
 }
 
 func getCPUInfo() (name string, cores int, logicalProcessors int, maxClockSpeed float64, err error) {
