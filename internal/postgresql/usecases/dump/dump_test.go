@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	writer "github.com/landmaster135/devbox/internal/postgresql/usecases/writer"
@@ -30,7 +32,7 @@ func createTestTableDumper() (*TableDumper, *MockDatabaseQueryExecutor, *writer.
 		return nil, fmt.Errorf("unexpected query: %s", trimmed)
 	}
 
-	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
+	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter, "")
 
 	return dumper, mockExecutor, mockFileWriter
 }
@@ -44,7 +46,7 @@ func TestNewTableDumper_Normal(t *testing.T) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
 
 	// Act
-	dumper := NewTableDumper(mockExecutor)
+	dumper := NewTableDumper(mockExecutor, "")
 
 	// Assert
 	assert.NotNil(t, dumper)
@@ -58,7 +60,7 @@ func TestNewTableDumperWithDependencies_Normal(t *testing.T) {
 	mockFileWriter := &writer.MockFileWriter{}
 
 	// Act
-	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
+	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter, "")
 
 	// Assert
 	assert.NotNil(t, dumper)
@@ -104,6 +106,28 @@ func TestTableDumper_generateFileName_SQL(t *testing.T) {
 	// Assert
 	assert.Contains(t, fileName, "orders_")
 	assert.Contains(t, fileName, ".sql")
+}
+
+func TestTableDumper_generateFileName_UsesTimezone(t *testing.T) {
+	// Arrange
+	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, &writer.MockFileWriter{}, "Asia/Tokyo")
+	loc, err := time.LoadLocation("Asia/Tokyo")
+	require.NoError(t, err)
+
+	before := time.Now().In(loc)
+	fileName := dumper.generateFileName("users", "json")
+	after := time.Now().In(loc)
+
+	assert.True(t, strings.HasPrefix(fileName, "users_"))
+	assert.True(t, strings.HasSuffix(fileName, ".json"))
+
+	timestamp := strings.TrimSuffix(strings.TrimPrefix(fileName, "users_"), ".json")
+	generatedTime, err := time.ParseInLocation("20060102_150405", timestamp, loc)
+	require.NoError(t, err)
+
+	if generatedTime.Before(before.Add(-2*time.Second)) || generatedTime.After(after.Add(2*time.Second)) {
+		t.Fatalf("expected timestamp within timezone window (before=%v after=%v actual=%v)", before, after, generatedTime)
+	}
 }
 
 // #==============================================================#

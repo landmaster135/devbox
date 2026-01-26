@@ -11,7 +11,7 @@ import (
 
 func handleDump(cfg *config.Config) {
 	// ダンプを実行
-	result, err := usecases.HandleToDumpTable(context.Background(), cfg.DatabaseURL, cfg.TableName, cfg.OutputPath, cfg.Format, cfg.Limit)
+	result, err := usecases.HandleToDumpTable(context.Background(), cfg.DatabaseURL, cfg.Timezone, cfg.TableName, cfg.OutputPath, cfg.Format, cfg.Limit)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: テーブルダンプの実行に失敗しました: %v\n", err)
 		os.Exit(1)
@@ -25,6 +25,7 @@ func handleDumpAllTables(cfg *config.Config) {
 	result, _, err := usecases.HandleToDumpAllTables(
 		context.Background(),
 		cfg.DatabaseURL,
+		cfg.Timezone,
 		cfg.OutputPath,
 		cfg.Format,
 		cfg.Limit,
@@ -42,7 +43,7 @@ func handleDumpAllTables(cfg *config.Config) {
 
 func handleListTablesMinimum(cfg *config.Config) {
 	// PostgreSQLサービスを初期化
-	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
+	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL, cfg.Timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
 		os.Exit(1)
@@ -61,7 +62,7 @@ func handleListTablesMinimum(cfg *config.Config) {
 
 func handleListTables(cfg *config.Config) {
 	// PostgreSQLサービスを初期化
-	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
+	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL, cfg.Timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
 		os.Exit(1)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 )
@@ -93,7 +92,7 @@ func (d *TableDumper) createInitialResult(databaseName string, totalTables int) 
 		TotalTables:  totalTables,
 		Results:      []DumpResult{},
 		FailedTables: []FailedDump{},
-		ExecutedAt:   time.Now().Format("2006-01-02 15:04:05"),
+		ExecutedAt:   d.currentTime().Format("2006-01-02 15:04:05"),
 	}
 }
 

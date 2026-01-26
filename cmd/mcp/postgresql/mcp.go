@@ -14,9 +14,9 @@ const (
 )
 
 // setPostgreSQLQueryServer は受け取ったMCPサーバにPostgreSQL用のツールを付与して、そのMCPサーバを返します。
-func setPostgreSQLQueryServer(databaseURL string, s *server.MCPServer) *server.MCPServer {
+func setPostgreSQLQueryServer(databaseURL, timezone string, s *server.MCPServer) *server.MCPServer {
 	// PostgreSQLハンドラーを初期化
-	handler, err := NewPostgreSQLMCPHandler(databaseURL)
+	handler, err := NewPostgreSQLMCPHandler(databaseURL, timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to create PostgreSQL handler: %v\n", err)
 		os.Exit(1)
@@ -111,6 +111,7 @@ func createPostgreSQLServer() *server.MCPServer {
 		fmt.Fprintln(os.Stderr, "Error: POSTGRESQL_DATABASE_URL environment variable not set.")
 		os.Exit(1)
 	}
+	timezone := os.Getenv("POSTGRESQL_TIMEZONE")
 
 	// MCPサーバーを作成
 	s := server.NewMCPServer(
@@ -120,7 +121,7 @@ func createPostgreSQLServer() *server.MCPServer {
 		server.WithPromptCapabilities(true),
 		server.WithLogging(),
 	)
-	s = setPostgreSQLQueryServer(databaseURL, s)
+	s = setPostgreSQLQueryServer(databaseURL, timezone, s)
 
 	// プロンプト
 	s = addPromptIntoServer(s)

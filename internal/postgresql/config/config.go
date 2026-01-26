@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 )
 
 // Config はCLIツールの設定を表します
@@ -18,6 +19,7 @@ type Config struct {
 	Concurrency   *int   // オプション: 並行処理数 (1-CPUコア数)
 	ResultFormat  string // オプション: ダンプ結果のフォーマット (json, markdown)
 	ResultHeading string // オプション: ダンプ結果の見出し (Markdown出力用)
+	Timezone      string // オプション: タイムスタンプ・ファイル名で使用するタイムゾーン
 	Help          bool   // ヘルプフラグ
 }
 
@@ -32,6 +34,7 @@ func ParseFlags() (*Config, error) {
 	flag.StringVar(&cfg.Format, "format", "json", "出力フォーマット (オプション: json, csv, sql, text、デフォルト: json)")
 	flag.StringVar(&cfg.ResultFormat, "result-format", "json", "ダンプ結果のフォーマット (オプション: json, markdown、デフォルト: json)")
 	flag.StringVar(&cfg.ResultHeading, "result-heading", "", "ダンプ結果サマリの見出し (Markdown出力時に利用)")
+	flag.StringVar(&cfg.Timezone, "timezone", "", "タイムゾーン (例: Asia/Tokyo)。未指定の場合はシステムローカルを使用")
 
 	var limitValue int
 	flag.IntVar(&limitValue, "limit", 0, "最大レコード数 (オプション)")
@@ -124,6 +127,12 @@ func (c *Config) validate() error {
 		return fmt.Errorf("--limit は正の数もしくは0である必要があります: %d", *c.Limit)
 	}
 
+	if c.Timezone != "" {
+		if _, err := time.LoadLocation(c.Timezone); err != nil {
+			return fmt.Errorf("--timezone で指定されたタイムゾーンが無効です: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -141,6 +150,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --format string         出力フォーマット: json, csv, sql, text (デフォルト: json)\n")
 	fmt.Fprintf(os.Stderr, "  --result-format string  ダンプ結果フォーマット: json, markdown (デフォルト: json)\n")
 	fmt.Fprintf(os.Stderr, "  --result-heading string ダンプ結果サマリの見出し (Markdown時のみ)\n")
+	fmt.Fprintf(os.Stderr, "  --timezone string       タイムスタンプ/ファイル名で利用するタイムゾーン (例: Asia/Tokyo)\n")
 	fmt.Fprintf(os.Stderr, "  --limit int             最大レコード数\n")
 	fmt.Fprintf(os.Stderr, "  --concurrency int       並行処理数: 1-CPUコア数 (デフォルト: CPUコア数)\n")
 	fmt.Fprintf(os.Stderr, "  --help                  このヘルプを表示\n\n")
