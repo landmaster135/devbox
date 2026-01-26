@@ -126,7 +126,7 @@ func TestTableDumper_EnsureAllowedTable(t *testing.T) {
 		return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
 	}
 
-	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{})
+	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "")
 
 	err := dumper.ensureAllowedTable(context.Background(), "users")
 	assert.NoError(t, err)
@@ -134,7 +134,7 @@ func TestTableDumper_EnsureAllowedTable(t *testing.T) {
 
 func TestTableDumper_EnsureAllowedTable_InvalidSchema(t *testing.T) {
 	mockExecutor := &MockDatabaseQueryExecutor{}
-	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{})
+	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "")
 
 	err := dumper.ensureAllowedTable(context.Background(), "admin.users")
 	assert.Error(t, err)
@@ -147,7 +147,7 @@ func TestTableDumper_EnsureAllowedTable_NotFound(t *testing.T) {
 		return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
 	}
 
-	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{})
+	dumper := NewTableDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "")
 
 	err := dumper.ensureAllowedTable(context.Background(), "orders")
 	assert.Error(t, err)

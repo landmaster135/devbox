@@ -51,12 +51,12 @@ func List() ([]usecases.Workflow, error) {
 	}
 	wh := NewWorkflowHandler(wc)
 
-	heartbeatWorkflow := usecases.NewWorkflow(
-		"Heartbeat monitor",
-		"*/1 * * * *",
-		wh.GetCreator().Timezone,
-		wh.KeepHeartbeat,
-	)
+	// heartbeatWorkflow := usecases.NewWorkflow(
+	// 	"Heartbeat monitor",
+	// 	"*/1 * * * *",
+	// 	wh.GetCreator().Timezone,
+	// 	wh.KeepHeartbeat,
+	// )
 	weatherWorkflow := usecases.NewWorkflow(
 		"Daily Tokyo weather notification",
 		"0 1 * * 0-6",
@@ -83,7 +83,7 @@ func List() ([]usecases.Workflow, error) {
 	)
 
 	return []usecases.Workflow{
-		*heartbeatWorkflow,
+		// *heartbeatWorkflow,
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
 		*postgresDumpWorkflow,
@@ -304,7 +304,7 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 			return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
 		}
 
-		_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, target.outputDir, format, nil, &concurrency, "markdown", target.name)
+		_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, creator.Timezone, target.outputDir, format, nil, &concurrency, "markdown", target.name)
 		if err != nil {
 			return fmt.Errorf("dump %s database: %w", target.name, err)
 		}

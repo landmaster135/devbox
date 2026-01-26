@@ -19,7 +19,7 @@ func TestTableDumper_newStreamWriter_SupportedFormats(t *testing.T) {
 		},
 	}
 
-	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, mockWriter)
+	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, mockWriter, "")
 	columns := []string{"id", "name"}
 
 	jsonWriter, err := dumper.newStreamWriter("json", filepath.Join(dir, "data.json"), "users", columns)
@@ -46,7 +46,7 @@ func TestTableDumper_newStreamWriter_InvalidFormat(t *testing.T) {
 		},
 	}
 
-	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, mockWriter)
+	dumper := NewTableDumperWithDependencies(&MockDatabaseQueryExecutor{}, mockWriter, "")
 
 	_, err := dumper.newStreamWriter("unsupported", filepath.Join(dir, "data.bin"), "users", nil)
 	assert.Error(t, err)

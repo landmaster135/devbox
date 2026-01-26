@@ -21,7 +21,7 @@ func createTestTableDumperForDumpAllTables() (*TableDumper, *MockDatabaseQueryEx
 	mockExecutor := &MockDatabaseQueryExecutor{}
 	mockFileWriter := &writer.MockFileWriter{}
 
-	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter)
+	dumper := NewTableDumperWithDependencies(mockExecutor, mockFileWriter, "")
 
 	return dumper, mockExecutor, mockFileWriter
 }

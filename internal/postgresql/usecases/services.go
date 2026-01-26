@@ -62,7 +62,7 @@ type PostgreSQLService struct {
 }
 
 // NewPostgreSQLService は新しいPostgreSQLServiceを作成します
-func NewPostgreSQLService(databaseURL string) (*PostgreSQLService, error) {
+func NewPostgreSQLService(databaseURL, timezone string) (*PostgreSQLService, error) {
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("データベース接続の作成に失敗しました: %w", err)
@@ -85,7 +85,7 @@ func NewPostgreSQLService(databaseURL string) (*PostgreSQLService, error) {
 		executor:         executor,
 		templateRenderer: &templateRenderer.DefaultTemplateRenderer{},
 		jsonMarshaler:    &DefaultJSONMarshaler{},
-		tableDumper:      dump.NewTableDumper(executor),
+		tableDumper:      dump.NewTableDumper(executor, timezone),
 		databaseURL:      databaseURL,
 		resourceBase:     resourceBase,
 	}, nil
@@ -291,7 +291,7 @@ func (s *PostgreSQLService) HandleToListTablesMinimum(ctx context.Context) (stri
 }
 
 // HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
-func HandleToDumpTable(ctx context.Context, dbURL, tableName, outputPath, format string, limit *int) (string, error) {
+func HandleToDumpTable(ctx context.Context, dbURL, timezone, tableName, outputPath, format string, limit *int) (string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -301,7 +301,7 @@ func HandleToDumpTable(ctx context.Context, dbURL, tableName, outputPath, format
 	}
 
 	// PostgreSQLサービスを初期化
-	service, err := NewPostgreSQLService(dbURL)
+	service, err := NewPostgreSQLService(dbURL, timezone)
 	if err != nil {
 		return "", fmt.Errorf("PostgreSQLサービスの初期化に失敗しました: %v", err)
 	}
@@ -326,7 +326,7 @@ func HandleToDumpTable(ctx context.Context, dbURL, tableName, outputPath, format
 }
 
 // HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
-func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format string, limit *int, concurrency *int, resultFormat, heading string) (string, string, error) {
+func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPath, format string, limit *int, concurrency *int, resultFormat, heading string) (string, string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -339,7 +339,7 @@ func HandleToDumpAllTables(ctx context.Context, dbURL string, outputPath, format
 	}
 
 	// PostgreSQLサービスを初期化
-	service, err := NewPostgreSQLService(dbURL)
+	service, err := NewPostgreSQLService(dbURL, timezone)
 	if err != nil {
 		return "", "", fmt.Errorf("PostgreSQLサービスの初期化に失敗しました: %v", err)
 	}

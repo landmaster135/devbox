@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
@@ -72,22 +73,37 @@ type DatabaseQueryExecutor interface {
 type TableDumper struct {
 	executor   DatabaseQueryExecutor
 	fileWriter writer.FileWriter
+	timezone   string
 }
 
 // NewTableDumper は新しいTableDumperを作成します
-func NewTableDumper(executor DatabaseQueryExecutor) *TableDumper {
+func NewTableDumper(executor DatabaseQueryExecutor, timezone string) *TableDumper {
 	return &TableDumper{
 		executor:   executor,
 		fileWriter: &writer.DefaultFileWriter{},
+		timezone:   strings.TrimSpace(timezone),
 	}
 }
 
 // NewTableDumperWithDependencies はテスト用に依存性を注入できるTableDumperを作成します
-func NewTableDumperWithDependencies(executor DatabaseQueryExecutor, fileWriter writer.FileWriter) *TableDumper {
+func NewTableDumperWithDependencies(executor DatabaseQueryExecutor, fileWriter writer.FileWriter, timezone string) *TableDumper {
 	return &TableDumper{
 		executor:   executor,
 		fileWriter: fileWriter,
+		timezone:   strings.TrimSpace(timezone),
 	}
+}
+
+func (d *TableDumper) currentTime() time.Time {
+	tz := strings.TrimSpace(d.timezone)
+	if tz == "" {
+		return time.Now()
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return time.Now()
+	}
+	return time.Now().In(loc)
 }
 
 // DumpTable はテーブルの全レコードをダンプします
@@ -145,7 +161,7 @@ func (d *TableDumper) DumpTable(ctx context.Context, options *DumpOptions) (resu
 		options.OutputPath,
 		fileName,
 		options.Format,
-		time.Now().Format("2006-01-02 15:04:05"),
+		d.currentTime().Format("2006-01-02 15:04:05"),
 	)
 
 	return result, nil
@@ -191,16 +207,16 @@ func (d *TableDumper) newStreamWriter(format, filePath, tableName string, sorted
 
 // generateFileName はファイル名を生成します
 func (d *TableDumper) generateFileName(tableName, format string) string {
-	timestamp := time.Now().Format("20060102_150405")
+	datetimeStr := d.currentTime().Format("20060102_150405")
 	extension := d.getFileExtension(format)
-	return fmt.Sprintf("%s_%s.%s", tableName, timestamp, extension)
+	return fmt.Sprintf("%s_%s.%s", tableName, datetimeStr, extension)
 }
 
 func (d *TableDumper) generateResultFileName(format string) string {
 	baseName := "results"
-	timestamp := time.Now().Format("20060102_150405")
+	datetimeStr := d.currentTime().Format("20060102_150405")
 	extension := d.getFileExtension(format)
-	return fmt.Sprintf("%s_%s.%s", timestamp, baseName, extension)
+	return fmt.Sprintf("%s_%s.%s", datetimeStr, baseName, extension)
 }
 
 // getFileExtension はフォーマットに応じたファイル拡張子を返します
