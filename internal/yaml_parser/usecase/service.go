@@ -11,34 +11,49 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// FileReader は任意のソースからファイルを読み込むためのインターフェースです。
-type FileReader interface {
+// FileAccessor はYAMLファイルの読み書きを抽象化します。
+type FileAccessor interface {
 	ReadFile(path string) ([]byte, error)
+	WriteFile(path string, data []byte) error
 }
 
-// osFileReader はローカルファイルシステムからデータを読み込みます。
-type osFileReader struct{}
+// osFileAccessor はローカルファイルシステムを利用します。
+type osFileAccessor struct{}
 
-func (osFileReader) ReadFile(path string) ([]byte, error) {
+func (osFileAccessor) ReadFile(path string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
-// Service はYAMLの解析機能を提供します。
-type Service struct {
-	fileReader FileReader
-}
-
-// NewService は標準のFileReaderを使ってサービスを生成します。
-func NewService() *Service {
-	return NewServiceWithFileReader(osFileReader{})
-}
-
-// NewServiceWithFileReader はカスタムFileReaderを注入できます（主にテスト用）。
-func NewServiceWithFileReader(reader FileReader) *Service {
-	if reader == nil {
-		reader = osFileReader{}
+func (osFileAccessor) WriteFile(path string, data []byte) error {
+	perm := os.FileMode(0o644)
+	if info, err := os.Stat(path); err == nil {
+		perm = info.Mode()
 	}
-	return &Service{fileReader: reader}
+	return os.WriteFile(path, data, perm)
+}
+
+// KeyValuePair は編集対象のキーと値を表します。
+type KeyValuePair struct {
+	Key   string
+	Value interface{}
+}
+
+// Service はYAMLの解析・編集機能を提供します。
+type Service struct {
+	fileAccessor FileAccessor
+}
+
+// NewService は標準のFileAccessorを使ってサービスを生成します。
+func NewService() *Service {
+	return NewServiceWithFileAccessor(osFileAccessor{})
+}
+
+// NewServiceWithFileAccessor はカスタムFileAccessorを注入できます（主にテスト用）。
+func NewServiceWithFileAccessor(accessor FileAccessor) *Service {
+	if accessor == nil {
+		accessor = osFileAccessor{}
+	}
+	return &Service{fileAccessor: accessor}
 }
 
 // ReadFromFile は指定されたファイルからYAMLを読み取り、オブジェクトとして返します。
@@ -47,7 +62,7 @@ func (s *Service) ReadFromFile(path string) (any, error) {
 		return nil, errors.New("YAMLファイルのパスが指定されていません")
 	}
 
-	data, err := s.fileReader.ReadFile(path)
+	data, err := s.fileAccessor.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("YAMLファイルの読み込みに失敗しました: %w", err)
 	}
@@ -62,6 +77,46 @@ func (s *Service) ParseFromContent(content string) (any, error) {
 	}
 
 	return parseYAML([]byte(content))
+}
+
+// EditFile は指定されたキーと値でYAMLファイルを更新し、更新後の構造を返します。
+func (s *Service) EditFile(path string, keyValueList string) (any, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, errors.New("YAMLファイルのパスが指定されていません")
+	}
+	if strings.TrimSpace(keyValueList) == "" {
+		return nil, errors.New("更新するキーと値を指定してください")
+	}
+
+	keyValues, err := parseKeyValueList(keyValueList)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := s.fileAccessor.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("YAMLファイルの読み込みに失敗しました: %w", err)
+	}
+
+	parsed, err := parseYAML(data)
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := ensureEditableMap(parsed)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := applyKeyValuePairs(root, keyValues); err != nil {
+		return nil, err
+	}
+
+	if err := s.writeYAML(path, root); err != nil {
+		return nil, err
+	}
+
+	return root, nil
 }
 
 func parseYAML(data []byte) (any, error) {
