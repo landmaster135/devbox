@@ -98,25 +98,21 @@ func (s *Service) EditFile(path string, keyValueList string) (any, error) {
 		return nil, fmt.Errorf("YAMLファイルの読み込みに失敗しました: %w", err)
 	}
 
-	parsed, err := parseYAML(data)
+	updated, err := applyEditsWithOriginalOrder(data, keyValues)
 	if err != nil {
 		return nil, err
 	}
 
-	root, err := ensureEditableMap(parsed)
+	if err := s.fileAccessor.WriteFile(path, updated); err != nil {
+		return nil, fmt.Errorf("YAMLファイルの書き込みに失敗しました: %w", err)
+	}
+
+	result, err := parseYAML(updated)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := applyKeyValuePairs(root, keyValues); err != nil {
-		return nil, err
-	}
-
-	if err := s.writeYAML(path, root); err != nil {
-		return nil, err
-	}
-
-	return root, nil
+	return result, nil
 }
 
 func parseYAML(data []byte) (any, error) {
