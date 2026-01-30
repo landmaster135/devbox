@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 )
 
@@ -229,240 +228,188 @@ func TestRenameXiaomiToDateTime_Normal(t *testing.T) {
 	}
 }
 
-func TestProcessScreenshotRename_PixelPattern(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-pixel-screenshot")
+func TestResolveScreenshotRenameTarget_Operations(t *testing.T) {
+	testCases := []struct {
+		name      string
+		fileName  string
+		operation Operation
+		expected  string
+	}{
+		{
+			name:      "PixelPNG",
+			fileName:  "screen-20250215-064735.png",
+			operation: OperationPixel,
+			expected:  "Screenshot_20250215-064735.png",
+		},
+		{
+			name:      "PixelMP4",
+			fileName:  "screen-20250215-064735.mp4",
+			operation: OperationPixel,
+			expected:  "Screenshot_20250215-064735.mp4",
+		},
+		{
+			name:      "VLC",
+			fileName:  "vlcsnap-2025-05-07-12-34-56.png",
+			operation: OperationVLC,
+			expected:  "Screenshot_20250507-123456.png",
+		},
+		{
+			name:      "Windows",
+			fileName:  "スクリーンショット 2025-05-07 123456.png",
+			operation: OperationWin,
+			expected:  "Screenshot_20250507-123456.png",
+		},
+		{
+			name:      "Xiaomi",
+			fileName:  "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg",
+			operation: OperationXiaomi,
+			expected:  "Screenshot_20251227-120339.jpg",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			src := filepath.Join(tempDir, tc.fileName)
+			if err := os.WriteFile(src, []byte("test"), 0644); err != nil {
+				t.Fatalf("failed to create test file: %v", err)
+			}
+
+			file := FileInfo{Path: src, Name: tc.fileName}
+			newPath, shouldRename, err := resolveScreenshotRenameTarget(file, Config{Operation: tc.operation})
+			if err != nil {
+				t.Fatalf("resolveScreenshotRenameTarget() returned error: %v", err)
+			}
+			if !shouldRename {
+				t.Fatalf("resolveScreenshotRenameTarget() should request rename for %s", tc.fileName)
+			}
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			if err := performScreenshotRename(file.Path, newPath, stdout, stderr); err != nil {
+				t.Fatalf("performScreenshotRename() returned error: %v", err)
+			}
+
+			expectedPath := filepath.Join(tempDir, tc.expected)
+			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+				t.Fatalf("expected file %s does not exist", expectedPath)
+			}
+		})
+	}
+}
+
+func TestResolveScreenshotRenameTarget_ToDateTime(t *testing.T) {
+	testCases := []struct {
+		name     string
+		fileName string
+		expected string
+	}{
+		{"VLC", "vlcsnap-2025-05-07-12-34-56.png", "20250507123456.png"},
+		{"Windows", "スクリーンショット 2025-05-07 123456.png", "20250507123456.png"},
+		{"Pixel", "screen-20250215-064735.png", "20250215064735.png"},
+		{"Xiaomi", "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg", "20251227120339.jpg"},
+		{"ScreenshotPrefix", "Screenshot_20250101-010203.png", "20250101010203.png"},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			src := filepath.Join(tempDir, tc.fileName)
+			if err := os.WriteFile(src, []byte("test"), 0644); err != nil {
+				t.Fatalf("failed to create test file: %v", err)
+			}
+
+			file := FileInfo{Path: src, Name: tc.fileName}
+			newPath, shouldRename, err := resolveScreenshotRenameTarget(file, Config{ToDateTime: true})
+			if err != nil {
+				t.Fatalf("resolveScreenshotRenameTarget() returned error: %v", err)
+			}
+			if !shouldRename {
+				t.Fatalf("resolveScreenshotRenameTarget() should request rename for %s", tc.fileName)
+			}
+
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			if err := performScreenshotRename(file.Path, newPath, stdout, stderr); err != nil {
+				t.Fatalf("performScreenshotRename() returned error: %v", err)
+			}
+
+			expectedPath := filepath.Join(tempDir, tc.expected)
+			if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+				t.Fatalf("expected file %s does not exist", expectedPath)
+			}
+		})
+	}
+}
+
+func TestResolveScreenshotRenameTarget_ParseError(t *testing.T) {
+	tempDir := t.TempDir()
+	fileName := "vlcsnap-invalid.png"
+	path := filepath.Join(tempDir, fileName)
+	if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	file := FileInfo{Path: path, Name: fileName}
+	_, shouldRename, err := resolveScreenshotRenameTarget(file, Config{Operation: OperationVLC})
+	if err == nil {
+		t.Fatalf("resolveScreenshotRenameTarget() should return error for invalid pattern")
+	}
+	if shouldRename {
+		t.Fatalf("resolveScreenshotRenameTarget() should not request rename when error occurs")
+	}
+}
+
+func TestResolveScreenshotRenameTarget_NoMatch(t *testing.T) {
+	tempDir := t.TempDir()
+	fileName := "normal.png"
+	path := filepath.Join(tempDir, fileName)
+	if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+
+	file := FileInfo{Path: path, Name: fileName}
+	newPath, shouldRename, err := resolveScreenshotRenameTarget(file, Config{Operation: OperationVLC})
 	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
+		t.Fatalf("resolveScreenshotRenameTarget() returned unexpected error: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	if shouldRename {
+		t.Fatalf("resolveScreenshotRenameTarget() should skip non-matching file")
+	}
+	if newPath != "" {
+		t.Fatalf("resolveScreenshotRenameTarget() should return empty path when skipping")
+	}
+}
 
-	testFile := filepath.Join(tempDir, "screen-20250215-064735.png")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
+func TestPerformScreenshotRename_RenameError(t *testing.T) {
+	tempDir := t.TempDir()
+	readOnlyDir := filepath.Join(tempDir, "readonly")
+	if err := os.Mkdir(readOnlyDir, 0500); err != nil {
+		t.Fatalf("failed to create readonly dir: %v", err)
 	}
 
-	file := FileInfo{
-		Path: testFile,
-		Name: "screen-20250215-064735.png",
+	if err := os.Chmod(readOnlyDir, 0700); err != nil {
+		t.Fatalf("failed to chmod dir: %v", err)
+	}
+	src := filepath.Join(readOnlyDir, "vlcsnap-2025-05-07-12-34-56.png")
+	if err := os.WriteFile(src, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create test file: %v", err)
+	}
+	if err := os.Chmod(readOnlyDir, 0500); err != nil {
+		t.Fatalf("failed to set readonly: %v", err)
 	}
 
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationPixel, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 1 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
+	if err := performScreenshotRename(src, filepath.Join(readOnlyDir, "new.png"), stdout, stderr); err == nil {
+		t.Fatalf("performScreenshotRename() should fail on readonly directory")
 	}
-	if errorCount != 0 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	expectedNewPath := filepath.Join(tempDir, "Screenshot_20250215-064735.png")
-	if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
-		t.Errorf("File was not renamed to %s", expectedNewPath)
+	if err := os.Chmod(readOnlyDir, 0700); err != nil {
+		t.Fatalf("failed to reset readonly dir permission: %v", err)
 	}
 }
-
-func TestProcessScreenshotRename_PixelPatternMP4(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-pixel-screenshot-mp4")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	testFile := filepath.Join(tempDir, "screen-20250215-064735.mp4")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{
-		Path: testFile,
-		Name: "screen-20250215-064735.mp4",
-	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationPixel, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 1 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
-	}
-	if errorCount != 0 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	expectedNewPath := filepath.Join(tempDir, "Screenshot_20250215-064735.mp4")
-	if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
-		t.Errorf("File was not renamed to %s", expectedNewPath)
-	}
-}
-
-func TestProcessScreenshotRename_VlcPattern(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-vlc-screenshot")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	testFile := filepath.Join(tempDir, "vlcsnap-2025-05-07-12-34-56.png")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{
-		Path: testFile,
-		Name: "vlcsnap-2025-05-07-12-34-56.png",
-	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 1 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
-	}
-	if errorCount != 0 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	expectedNewPath := filepath.Join(tempDir, "Screenshot_20250507-123456.png")
-	if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
-		t.Errorf("File was not renamed to %s", expectedNewPath)
-	}
-}
-
-func TestProcessScreenshotRename_WinPattern(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-win-screenshot")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	testFile := filepath.Join(tempDir, "スクリーンショット 2025-05-07 123456.png")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{
-		Path: testFile,
-		Name: "スクリーンショット 2025-05-07 123456.png",
-	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationWin, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 1 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
-	}
-	if errorCount != 0 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	expectedNewPath := filepath.Join(tempDir, "Screenshot_20250507-123456.png")
-	if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
-		t.Errorf("File was not renamed to %s", expectedNewPath)
-	}
-}
-
-func TestProcessScreenshotRename_XiaomiPattern(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-xiaomi-screenshot")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	oldName := "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg"
-	testFile := filepath.Join(tempDir, oldName)
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{Path: testFile, Name: oldName}
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	processScreenshotRename(file, OperationXiaomi, &mu, &successCount, &errorCount, stdout, stderr)
-
-	if successCount != 1 {
-		t.Fatalf("processScreenshotRename() successCount = %v, want %v", successCount, 1)
-	}
-	if errorCount != 0 {
-		t.Fatalf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	newPath := filepath.Join(tempDir, "Screenshot_20251227-120339.jpg")
-	if _, err := os.Stat(newPath); os.IsNotExist(err) {
-		t.Fatalf("File was not renamed to %s", newPath)
-	}
-}
-
-func TestProcessScreenshotRenameToDateTime_Xiaomi(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "test-xiaomi-to-datetime")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	oldName := "Screenshot_2025-12-27-12-03-39-927_com.YoStarJP.AzurLane.jpg"
-	testFile := filepath.Join(tempDir, oldName)
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{Path: testFile, Name: oldName}
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	processScreenshotRenameToDateTime(file, &mu, &successCount, &errorCount, stdout, stderr)
-
-	if successCount != 1 {
-		t.Fatalf("processScreenshotRenameToDateTime() successCount = %v, want %v", successCount, 1)
-	}
-	if errorCount != 0 {
-		t.Fatalf("processScreenshotRenameToDateTime() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	newPath := filepath.Join(tempDir, "20251227120339.jpg")
-	if _, err := os.Stat(newPath); os.IsNotExist(err) {
-		t.Fatalf("File was not renamed to %s", newPath)
-	}
-}
-
 func TestValidateConfig_InvalidDirectory(t *testing.T) {
 	// Arrange
 	stderr := &bytes.Buffer{}
@@ -810,6 +757,47 @@ func TestRenameScreenshotFiles_WorkerAdjustment(t *testing.T) {
 	}
 }
 
+func TestRenameScreenshotFiles_AbortOnExistingNameConflict(t *testing.T) {
+	tempDir := t.TempDir()
+	sourceName := "vlcsnap-2025-05-07-12-34-56.png"
+	sourcePath := filepath.Join(tempDir, sourceName)
+	if err := os.WriteFile(sourcePath, []byte("test"), 0644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+
+	conflictName := "Screenshot_20250507-123456.png"
+	conflictPath := filepath.Join(tempDir, conflictName)
+	if err := os.WriteFile(conflictPath, []byte("existing"), 0644); err != nil {
+		t.Fatalf("failed to create conflict file: %v", err)
+	}
+
+	fileInfos := []FileInfo{
+		{Path: sourcePath, Name: sourceName},
+	}
+
+	config := Config{SrcDir: tempDir, Operation: OperationVLC, Workers: 2}
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	successCount, errorCount := renameScreenshotFiles(fileInfos, config, stdout, stderr)
+	if successCount != 0 {
+		t.Fatalf("renameScreenshotFiles() successCount = %d, want 0", successCount)
+	}
+	if errorCount == 0 {
+		t.Fatalf("renameScreenshotFiles() errorCount should be > 0 when conflicts exist")
+	}
+
+	if _, err := os.Stat(sourcePath); err != nil {
+		t.Fatalf("source file should remain untouched: %v", err)
+	}
+	if _, err := os.Stat(conflictPath); err != nil {
+		t.Fatalf("conflict file should remain untouched: %v", err)
+	}
+	if !strings.Contains(stderr.String(), conflictName) {
+		t.Fatalf("stderr should mention conflict file, got: %s", stderr.String())
+	}
+}
+
 func TestFindScreenshotFiles_WalkDirError(t *testing.T) {
 	// Arrange
 	// 一時的に権限のないディレクトリを作成
@@ -852,138 +840,6 @@ func TestFindScreenshotFiles_WalkDirError(t *testing.T) {
 	} else {
 		// エラーが発生しなかった場合も、関数が実行されていればOK
 		t.Log("No error occurred, but function executed")
-	}
-}
-
-func TestProcessScreenshotRename_ParseError(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-process-rename-parse-error")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// 不正なフォーマットのVLCスクリーンショットファイル
-	testFile := filepath.Join(tempDir, "vlcsnap-invalid.png")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{
-		Path: testFile,
-		Name: "vlcsnap-invalid.png",
-	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 0 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 0)
-	}
-	if errorCount != 1 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 1)
-	}
-}
-
-func TestProcessScreenshotRename_InvalidPattern(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-process-rename-invalid")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	testFile := filepath.Join(tempDir, "normal.png")
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	file := FileInfo{
-		Path: testFile,
-		Name: "normal.png",
-	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 0 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 0)
-	}
-	if errorCount != 0 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 0)
-	}
-
-	// ファイルがリネームされていないことを確認
-	if _, err := os.Stat(testFile); os.IsNotExist(err) {
-		t.Errorf("File should not be renamed")
-	}
-}
-
-func TestProcessScreenshotRename_RenameError(t *testing.T) {
-	// Arrange
-	tempDir, err := os.MkdirTemp("", "test-process-rename-error")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// 読み取り専用ディレクトリを作成（リネームエラーを発生させるため）
-	readOnlyDir := filepath.Join(tempDir, "readonly")
-	if err := os.Mkdir(readOnlyDir, 0500); err != nil {
-		t.Fatalf("Failed to create readonly dir: %v", err)
-	}
-
-	// 読み取り専用ディレクトリにファイルを作成
-	testFile := filepath.Join(readOnlyDir, "vlcsnap-2025-05-07-12-34-56.png")
-
-	// ファイルを作成するためにディレクトリのパーミッションを一時的に変更
-	if err := os.Chmod(readOnlyDir, 0700); err != nil {
-		t.Fatalf("Failed to change directory permission: %v", err)
-	}
-
-	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	// ディレクトリを再び読み取り専用に戻す
-	if err := os.Chmod(readOnlyDir, 0500); err != nil {
-		t.Fatalf("Failed to change directory permission back: %v", err)
-	}
-
-	file := FileInfo{
-		Path: testFile,
-		Name: "vlcsnap-2025-05-07-12-34-56.png",
-	}
-
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
-
-	// Act
-	processScreenshotRename(file, OperationVLC, &mu, &successCount, &errorCount, stdout, stderr)
-
-	// Assert
-	if successCount != 0 {
-		t.Errorf("processScreenshotRename() successCount = %v, want %v", successCount, 0)
-	}
-	if errorCount != 1 {
-		t.Errorf("processScreenshotRename() errorCount = %v, want %v", errorCount, 1)
 	}
 }
 
