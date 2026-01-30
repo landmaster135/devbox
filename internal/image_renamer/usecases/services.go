@@ -188,12 +188,7 @@ func renameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) 
 
 	// ワーカープールの設定
 	workerCount := config.Workers
-	if workerCount < 1 {
-		workerCount = 1
-	}
-	if workerCount > len(fileInfos) {
-		workerCount = len(fileInfos)
-	}
+	workerCount = min(len(fileInfos), max(1, workerCount))
 
 	// ジョブの準備（シリアル番号と新パスを事前に割り当て）
 	jobs := prepareJobs(fileInfos, config)
@@ -288,13 +283,11 @@ func detectRenameConflicts(fileInfos []FileInfo, jobs []Job, stderr io.Writer) e
 // startWorkers はリネームワーカーを起動します
 func startWorkers(workerCount int, jobChan <-chan Job, wg *sync.WaitGroup, stats *renameStats, stdout, stderr io.Writer) {
 	for range workerCount {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for job := range jobChan {
 				processRenameJob(job, stats, stdout, stderr)
 			}
-		}()
+		})
 	}
 }
 
