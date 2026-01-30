@@ -301,9 +301,7 @@ func renameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 	errorCount := precheckErrors
 
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for task := range jobChan {
 				if err := performScreenshotRename(task.oldPath, task.newPath, stdout, stderr); err != nil {
 					mu.Lock()
@@ -316,7 +314,7 @@ func renameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 				successCount++
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 
 	for _, task := range renamedTasks {

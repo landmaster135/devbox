@@ -351,9 +351,7 @@ func buildRenameTasks(infos []fileInfo, config cfg.Config, stderr io.Writer) ([]
 
 func startWorkers(workerCount int, jobs <-chan renameTask, wg *sync.WaitGroup, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for task := range jobs {
 				if err := executeRename(task.oldPath, task.newPath, stdout, stderr); err != nil {
 					mu.Lock()
@@ -365,7 +363,7 @@ func startWorkers(workerCount int, jobs <-chan renameTask, wg *sync.WaitGroup, m
 					mu.Unlock()
 				}
 			}
-		}()
+		})
 	}
 }
 
