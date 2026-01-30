@@ -22,15 +22,17 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	fs := flag.NewFlagSet("yaml-parser", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
-	operation := fs.String("operation", "", "実行する操作 (read|parse)")
-	filePath := fs.String("file-path", "", "YAMLファイルのパス (--operation=read)")
+	operation := fs.String("operation", "", "実行する操作 (read|parse|edit-file)")
+	filePath := fs.String("file-path", "", "YAMLファイルのパス (--operation=read|edit-file)")
 	yamlContent := fs.String("yaml-content", "", "解析するYAML文字列 (--operation=parse)")
+	keyValueList := fs.String("key-value-list", "", "key=value 形式をカンマ/改行区切りで列挙 (--operation=edit-file)")
 
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "YAML Parser CLI")
 		fmt.Fprintln(stderr, "使用方法:")
 		fmt.Fprintln(stderr, "  yaml-parser --operation read --file-path ./config.yaml")
 		fmt.Fprintln(stderr, "  yaml-parser --operation parse --yaml-content \"key: value\"")
+		fmt.Fprintln(stderr, "  yaml-parser --operation edit-file --file-path ./config.yaml --key-value-list \"server.port=8081\"")
 		fmt.Fprintln(stderr)
 		fmt.Fprintln(stderr, "フラグ一覧:")
 		fs.PrintDefaults()
@@ -40,7 +42,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	cfg, err := yamlconfig.NewConfig(*operation, *filePath, *yamlContent)
+	cfg, err := yamlconfig.NewConfig(*operation, *filePath, *yamlContent, *keyValueList)
 	if err != nil {
 		fmt.Fprintf(stderr, "エラー: %v\n", err)
 		fs.Usage()
@@ -55,6 +57,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		result, err = svc.ReadFromFile(cfg.FilePath)
 	case yamlconfig.OperationParse:
 		result, err = svc.ParseFromContent(cfg.YAMLContent)
+	case yamlconfig.OperationEditFile:
+		result, err = svc.EditFile(cfg.FilePath, cfg.KeyValueList)
 	default:
 		err = fmt.Errorf("未対応の操作です: %s", cfg.Operation)
 	}
