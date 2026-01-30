@@ -77,8 +77,8 @@ func TestProcessScreenshotRename_ToDateTime(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	// Screenshot_ファイルを作成
-	screenshotFile := filepath.Join(tempDir, "Screenshot_20250507-123456.png")
+	// Screenshot_ファイルを作成（別の時刻にして衝突を避ける）
+	screenshotFile := filepath.Join(tempDir, "Screenshot_20250507-123501.png")
 	if err := os.WriteFile(screenshotFile, []byte("test"), 0644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestProcessScreenshotRename_ToDateTime(t *testing.T) {
 	}
 
 	// Screenshot_ファイルがYYYYMMDDHHMMSS形式にリネームされたことを確認
-	expectedScreenshotPath := filepath.Join(tempDir, "20250507123456.png")
+	expectedScreenshotPath := filepath.Join(tempDir, "20250507123501.png")
 	if _, err := os.Stat(expectedScreenshotPath); os.IsNotExist(err) {
 		t.Errorf("Screenshot_ file was not renamed to %s", expectedScreenshotPath)
 	}
