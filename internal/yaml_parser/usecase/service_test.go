@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -219,5 +220,25 @@ func TestService_EditFile_SupportsArrayIndexUpdates(t *testing.T) {
 	second := servers[1].(map[string]any)
 	if second["port"].(int) != 9100 {
 		t.Fatalf("expected second port 9100, got %v", second["port"])
+	}
+}
+
+func TestService_EditFile_PreservesFieldOrder(t *testing.T) {
+	initial := "first: 1\nsecond: 2\n"
+	accessor := &stubFileAccessor{data: []byte(initial)}
+	svc := NewServiceWithFileAccessor(accessor)
+
+	if _, err := svc.EditFile("order.yaml", "first=10"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	output := string(accessor.written)
+	firstIdx := strings.Index(output, "first: 10")
+	secondIdx := strings.Index(output, "second: 2")
+	if firstIdx == -1 || secondIdx == -1 {
+		t.Fatalf("unexpected output: %s", output)
+	}
+	if firstIdx > secondIdx {
+		t.Fatalf("field order changed:\n%s", output)
 	}
 }

@@ -4,120 +4,206 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-func ensureEditableMap(value any) (map[string]any, error) {
-	switch v := value.(type) {
-	case map[string]any:
-		return v, nil
-	case []any:
+func applyEditsWithOriginalOrder(data []byte, pairs []KeyValuePair) ([]byte, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var doc yaml.Node
+	if err := decoder.Decode(&doc); err != nil {
+		return nil, fmt.Errorf("YAMLの解析に失敗しました: %w", err)
+	}
+	if len(doc.Content) == 0 {
+		return nil, errors.New("YAMLの内容が空です")
+	}
+
+	// Ensure single document
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); err != io.EOF {
 		return nil, errors.New("edit-file は単一ドキュメントのYAMLのみ対応しています")
-	default:
+	}
+
+	root := doc.Content[0]
+	if root == nil || root.Kind != yaml.MappingNode {
 		return nil, errors.New("YAMLをマップオブジェクトとして解釈できません")
 	}
-}
 
-func applyKeyValuePairs(root map[string]any, pairs []KeyValuePair) error {
 	for _, pair := range pairs {
-		if strings.TrimSpace(pair.Key) == "" {
-			return errors.New("キーが空の値が含まれています")
-		}
-		if err := setNestedValue(root, pair.Key, normalize(pair.Value)); err != nil {
-			return err
+		if err := setNodeValue(root, pair.Key, pair.Value); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(&doc); err != nil {
+		encoder.Close()
+		return nil, fmt.Errorf("YAMLの再構築に失敗しました: %w", err)
+	}
+	if err := encoder.Close(); err != nil {
+		return nil, fmt.Errorf("YAMLエンコーダーの終了に失敗しました: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }
 
-func setNestedValue(root map[string]any, dottedKey string, value any) error {
+func setNodeValue(root *yaml.Node, dottedKey string, value interface{}) error {
+	segments, err := splitKeySegments(dottedKey)
+	if err != nil {
+		return err
+	}
+	valueNode, err := buildValueNode(value)
+	if err != nil {
+		return err
+	}
+	return setNodeValueRecursive(root, segments, valueNode, dottedKey)
+}
+
+func splitKeySegments(dottedKey string) ([]string, error) {
 	trimmed := strings.TrimSpace(dottedKey)
 	if trimmed == "" {
-		return errors.New("更新対象のキーが空です")
+		return nil, errors.New("更新対象のキーが空です")
 	}
-	partsRaw := strings.Split(dottedKey, ".")
-	parts := make([]string, 0, len(partsRaw))
-	for _, raw := range partsRaw {
-		segment := strings.TrimSpace(raw)
+	raw := strings.Split(trimmed, ".")
+	segments := make([]string, 0, len(raw))
+	for _, part := range raw {
+		segment := strings.TrimSpace(part)
 		if segment == "" {
-			return fmt.Errorf("キー '%s' に空のセグメントが含まれています", dottedKey)
+			return nil, fmt.Errorf("キー '%s' に空のセグメントが含まれています", dottedKey)
 		}
-		parts = append(parts, segment)
+		segments = append(segments, segment)
 	}
-	_, err := setNestedValueRecursive(root, parts, dottedKey, value)
-	return err
+	return segments, nil
 }
 
-func setNestedValueRecursive(node interface{}, parts []string, originalKey string, value any) (interface{}, error) {
+func setNodeValueRecursive(node *yaml.Node, parts []string, valueNode *yaml.Node, originalKey string) error {
 	if len(parts) == 0 {
-		return node, fmt.Errorf("キー '%s' の解析に失敗しました", originalKey)
+		return fmt.Errorf("キー '%s' の解析に失敗しました", originalKey)
 	}
-	part := parts[0]
-	isLast := len(parts) == 1
-	idx, isIndex := parseIndex(part)
 
-	switch current := node.(type) {
-	case map[string]any:
+	currentPart := parts[0]
+	isLast := len(parts) == 1
+	index, isIndex := parseIndex(currentPart)
+
+	switch node.Kind {
+	case yaml.MappingNode:
 		if isIndex {
-			return node, fmt.Errorf("キー '%s' のセグメント '%s' は配列インデックスですが、ここはオブジェクトです", originalKey, part)
+			return fmt.Errorf("キー '%s' のセグメント '%s' は配列インデックスですが、ここはオブジェクトです", originalKey, currentPart)
 		}
+		keyIdx := findKeyIndex(node, currentPart)
 		if isLast {
-			current[part] = value
-			return current, nil
+			if keyIdx >= 0 {
+				node.Content[keyIdx+1] = cloneNode(valueNode)
+			} else {
+				node.Content = append(node.Content, newScalarKeyNode(currentPart), cloneNode(valueNode))
+			}
+			return nil
 		}
-		child, exists := current[part]
-		if !exists || child == nil {
-			child = defaultContainer(parts[1])
+
+		var child *yaml.Node
+		if keyIdx >= 0 {
+			child = node.Content[keyIdx+1]
+		} else {
+			child = defaultContainerNode(parts[1])
+			node.Content = append(node.Content, newScalarKeyNode(currentPart), child)
 		}
-		updatedChild, err := setNestedValueRecursive(child, parts[1:], originalKey, value)
-		if err != nil {
-			return node, err
+
+		if err := ensureNodeKind(child, parts[1], originalKey); err != nil {
+			return err
 		}
-		current[part] = updatedChild
-		return current, nil
-	case []any:
+		return setNodeValueRecursive(child, parts[1:], valueNode, originalKey)
+
+	case yaml.SequenceNode:
 		if !isIndex {
-			return node, fmt.Errorf("キー '%s' のセグメント '%s' はキーですが、ここは配列です", originalKey, part)
+			return fmt.Errorf("キー '%s' のセグメント '%s' はキーですが、ここは配列です", originalKey, currentPart)
 		}
-		if idx < 0 {
-			return node, fmt.Errorf("配列インデックスは0以上で指定してください: %s", part)
+		if index < 0 {
+			return fmt.Errorf("配列インデックスは0以上で指定してください: %s", currentPart)
 		}
-		arr := current
-		if idx >= len(arr) {
-			newArr := make([]any, idx+1)
-			copy(newArr, arr)
-			arr = newArr
+
+		// Extend slice if needed
+		for len(node.Content) <= index {
+			node.Content = append(node.Content, newNullNode())
 		}
+
 		if isLast {
-			arr[idx] = value
-			return arr, nil
+			node.Content[index] = cloneNode(valueNode)
+			return nil
 		}
-		child := arr[idx]
-		if child == nil {
-			child = defaultContainer(parts[1])
+
+		child := node.Content[index]
+		if child == nil || child.Kind == 0 || child.Kind == yaml.ScalarNode && child.Tag == "!!null" {
+			child = defaultContainerNode(parts[1])
+			node.Content[index] = child
 		}
-		updatedChild, err := setNestedValueRecursive(child, parts[1:], originalKey, value)
-		if err != nil {
-			return node, err
+		if err := ensureNodeKind(child, parts[1], originalKey); err != nil {
+			return err
 		}
-		arr[idx] = updatedChild
-		return arr, nil
+		return setNodeValueRecursive(child, parts[1:], valueNode, originalKey)
+
 	default:
-		return node, fmt.Errorf("キー '%s' の途中にオブジェクト以外の値があります", originalKey)
+		return fmt.Errorf("キー '%s' の途中にオブジェクト以外の値があります", originalKey)
 	}
 }
 
-func defaultContainer(nextSegment string) interface{} {
-	if nextSegment == "" {
-		return map[string]any{}
+func ensureNodeKind(node *yaml.Node, nextSegment string, originalKey string) error {
+	if node == nil {
+		return fmt.Errorf("キー '%s' の途中でノードが無効です", originalKey)
 	}
-	if _, isIndex := parseIndex(strings.TrimSpace(nextSegment)); isIndex {
-		return []any{}
+
+	if isIndexSegment(nextSegment) {
+		if node.Kind == yaml.SequenceNode {
+			return nil
+		}
+		if node.Kind == 0 || (node.Kind == yaml.ScalarNode && node.Tag == "!!null") {
+			*node = *defaultContainerNode(nextSegment)
+			return nil
+		}
+		return fmt.Errorf("キー '%s' の途中に配列ではない値があります", originalKey)
 	}
-	return map[string]any{}
+
+	if node.Kind == yaml.MappingNode {
+		return nil
+	}
+	if node.Kind == 0 || (node.Kind == yaml.ScalarNode && node.Tag == "!!null") {
+		*node = *defaultContainerNode(nextSegment)
+		return nil
+	}
+	return fmt.Errorf("キー '%s' の途中にオブジェクト以外の値があります", originalKey)
+}
+
+func findKeyIndex(node *yaml.Node, key string) int {
+	for i := 0; i < len(node.Content); i += 2 {
+		if node.Content[i].Value == key {
+			return i
+		}
+	}
+	return -1
+}
+
+func defaultContainerNode(nextSegment string) *yaml.Node {
+	if isIndexSegment(nextSegment) {
+		return &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{}}
+	}
+	return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{}}
+}
+
+func newScalarKeyNode(value string) *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
+}
+
+func newNullNode() *yaml.Node {
+	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}
+}
+
+func isIndexSegment(segment string) bool {
+	_, ok := parseIndex(segment)
+	return ok
 }
 
 func parseIndex(segment string) (int, bool) {
@@ -134,6 +220,36 @@ func parseIndex(segment string) (int, bool) {
 		return 0, false
 	}
 	return idx, true
+}
+
+func buildValueNode(value interface{}) (*yaml.Node, error) {
+	raw, err := yaml.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("値のエンコードに失敗しました: %w", err)
+	}
+	decoder := yaml.NewDecoder(bytes.NewReader(raw))
+	var doc yaml.Node
+	if err := decoder.Decode(&doc); err != nil {
+		return nil, fmt.Errorf("値の解析に失敗しました: %w", err)
+	}
+	if len(doc.Content) == 0 {
+		return newNullNode(), nil
+	}
+	return cloneNode(doc.Content[0]), nil
+}
+
+func cloneNode(node *yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	copy := *node
+	if len(node.Content) > 0 {
+		copy.Content = make([]*yaml.Node, len(node.Content))
+		for i, child := range node.Content {
+			copy.Content[i] = cloneNode(child)
+		}
+	}
+	return &copy
 }
 
 func parseKeyValueList(raw string) ([]KeyValuePair, error) {
@@ -183,21 +299,4 @@ func parseValue(raw string) (any, error) {
 		return raw, nil
 	}
 	return parsed, nil
-}
-
-func (s *Service) writeYAML(path string, value any) error {
-	var buf bytes.Buffer
-	encoder := yaml.NewEncoder(&buf)
-	encoder.SetIndent(2)
-	if err := encoder.Encode(value); err != nil {
-		encoder.Close()
-		return fmt.Errorf("YAMLの再構築に失敗しました: %w", err)
-	}
-	if err := encoder.Close(); err != nil {
-		return fmt.Errorf("YAMLエンコーダーの終了に失敗しました: %w", err)
-	}
-	if err := s.fileAccessor.WriteFile(path, buf.Bytes()); err != nil {
-		return fmt.Errorf("YAMLファイルの書き込みに失敗しました: %w", err)
-	}
-	return nil
 }
