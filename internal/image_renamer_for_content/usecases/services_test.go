@@ -189,6 +189,65 @@ func TestProcessContentImageRename_InvalidOperation(t *testing.T) {
 	}
 }
 
+func TestProcessContentImageRename_DetectsConflicts(t *testing.T) {
+	dir := t.TempDir()
+
+	files := map[string]string{
+		"MA0001_01.png": "already renamed",
+		"000_raw.png":   "needs rename",
+	}
+
+	for name, body := range files {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatalf("failed to create file %s: %v", name, err)
+		}
+	}
+
+	config := cfg.Config{
+		SrcDir:     dir,
+		SortByName: true,
+		Operation:  "mackerel",
+	}
+
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	success, failed, err := ProcessContentImageRename(config, stdout, stderr)
+	if err == nil {
+		t.Fatalf("expected conflict error, got nil")
+	}
+	if success != 0 {
+		t.Fatalf("expected 0 successes due to early abort, got %d", success)
+	}
+	if failed != 1 {
+		t.Fatalf("expected error count to be 1, got %d", failed)
+	}
+	if !strings.Contains(stderr.String(), "衝突") {
+		t.Fatalf("expected stderr to mention conflict, got: %s", stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "スキップ: 1") {
+		t.Fatalf("expected stdout to include skip count, got: %s", stdout.String())
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("failed to read directory: %v", err)
+	}
+
+	existing := map[string]struct{}{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		existing[entry.Name()] = struct{}{}
+	}
+
+	if len(existing) != len(files) {
+		t.Fatalf("expected files to remain untouched, got %+v", existing)
+	}
+}
+
 func TestApplyOperationPresetVariants(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -352,9 +411,9 @@ func TestRenameFilesSkipAndWorkers(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	success, errors := renameFiles([]fileInfo{info}, config, stdout, stderr)
-	if success != 1 || errors != 0 {
-		t.Fatalf("expected skip counted as success, got success=%d errors=%d", success, errors)
+	success, errors, skipped := renameFiles([]fileInfo{info}, config, stdout, stderr)
+	if success != 1 || errors != 0 || skipped != 0 {
+		t.Fatalf("expected skip counted as success, got success=%d errors=%d skipped=%d", success, errors, skipped)
 	}
 	if _, err := os.Stat(initialPath); err != nil {
 		t.Fatalf("expected original file to remain, err=%v", err)
@@ -385,9 +444,9 @@ func TestRenameFilesRenameError(t *testing.T) {
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 
-	success, errors := renameFiles([]fileInfo{info}, config, stdout, stderr)
-	if success != 0 || errors != 1 {
-		t.Fatalf("expected rename failure to count as error, got success=%d errors=%d", success, errors)
+	success, errors, skipped := renameFiles([]fileInfo{info}, config, stdout, stderr)
+	if success != 0 || errors != 1 || skipped != 0 {
+		t.Fatalf("expected rename failure to count as error, got success=%d errors=%d skipped=%d", success, errors, skipped)
 	}
 	if !strings.Contains(stderr.String(), "リネームに失敗") {
 		t.Fatalf("expected rename failure logged, got %q", stderr.String())

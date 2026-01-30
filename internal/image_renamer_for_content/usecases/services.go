@@ -20,9 +20,9 @@ type fileInfo struct {
 	modTime int64
 }
 
-type renameJob struct {
-	info   fileInfo
-	serial int
+type renameTask struct {
+	oldPath string
+	newPath string
 }
 
 var supportedExtensions = map[string]struct{}{
@@ -88,10 +88,13 @@ func ProcessContentImageRename(config cfg.Config, stdout, stderr io.Writer) (int
 		fmt.Fprintln(stdout, "ファイル名順で処理します。")
 	}
 
-	successCount, errorCount := renameFiles(infos, config, stdout, stderr)
+	successCount, errorCount, skippedCount := renameFiles(infos, config, stdout, stderr)
 
 	fmt.Fprintln(stdout, "✔ ファイルリネームが完了しました")
 	fmt.Fprintf(stdout, "  成功: %d ファイル\n", successCount)
+	if skippedCount > 0 {
+		fmt.Fprintf(stdout, "  スキップ: %d ファイル\n", skippedCount)
+	}
 	if errorCount > 0 {
 		fmt.Fprintf(stdout, "  失敗: %d ファイル\n", errorCount)
 		return successCount, errorCount, fmt.Errorf("一部のファイルのリネームに失敗しました")
@@ -258,9 +261,9 @@ func sortFileInfos(infos []fileInfo, sortByTime bool) {
 	})
 }
 
-func renameFiles(infos []fileInfo, config cfg.Config, stdout, stderr io.Writer) (int, int) {
+func renameFiles(infos []fileInfo, config cfg.Config, stdout, stderr io.Writer) (int, int, int) {
 	if len(infos) == 0 {
-		return 0, 0
+		return 0, 0, 0
 	}
 
 	workerCount := config.Workers
@@ -273,53 +276,100 @@ func renameFiles(infos []fileInfo, config cfg.Config, stdout, stderr io.Writer) 
 
 	fmt.Fprintf(stdout, "リネーム操作に %d ワーカーを使用します。\n", workerCount)
 
-	jobs := make(chan renameJob, len(infos))
+	renamedTasks, conflicts, precheckErrors := buildRenameTasks(infos, config, stderr)
+
+	if len(conflicts) > 0 {
+		fmt.Fprintln(stderr, "エラー: リネーム予定のファイル名が既存のファイル名と衝突しています。以下を確認してください:")
+		for _, msg := range conflicts {
+			fmt.Fprintf(stderr, "  - %s\n", msg)
+		}
+		return 0, precheckErrors + len(conflicts), len(renamedTasks)
+	}
+
+	if len(renamedTasks) == 0 {
+		return 0, precheckErrors, 0
+	}
+
+	jobs := make(chan renameTask, len(renamedTasks))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	successCount := 0
-	errorCount := 0
+	errorCount := precheckErrors
 
-	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for job := range jobs {
-				if err := executeRename(job, config, stdout, stderr); err != nil {
-					mu.Lock()
-					errorCount++
-					mu.Unlock()
-				} else {
-					mu.Lock()
-					successCount++
-					mu.Unlock()
-				}
-			}
-		}()
-	}
+	startWorkers(workerCount, jobs, &wg, &mu, &successCount, &errorCount, stdout, stderr)
 
-	for idx, info := range infos {
-		jobs <- renameJob{info: info, serial: config.Start + idx}
+	for _, task := range renamedTasks {
+		jobs <- task
 	}
 	close(jobs)
 
 	wg.Wait()
 
-	return successCount, errorCount
+	return successCount, errorCount, 0
 }
 
-func executeRename(job renameJob, config cfg.Config, stdout, stderr io.Writer) error {
-	oldPath := job.info.path
-	dir := filepath.Dir(oldPath)
-	ext := strings.ToLower(filepath.Ext(job.info.name))
-
-	if ext == "" {
-		fmt.Fprintf(stderr, "エラー: %s は拡張子がないためスキップします。\n", oldPath)
-		return errors.New("missing file extension")
+func buildRenameTasks(infos []fileInfo, config cfg.Config, stderr io.Writer) ([]renameTask, []string, int) {
+	existingPaths := make(map[string]string, len(infos))
+	for _, info := range infos {
+		existingPaths[info.path] = info.path
 	}
 
-	newName := buildNewFileName(config, job.serial, ext)
-	newPath := filepath.Join(dir, newName)
+	plannedPaths := make(map[string]string, len(infos))
+	renamedTasks := make([]renameTask, 0, len(infos))
+	conflicts := make([]string, 0)
+	precheckErrors := 0
 
+	for idx, info := range infos {
+		serial := config.Start + idx
+		ext := strings.ToLower(filepath.Ext(info.name))
+		if ext == "" {
+			fmt.Fprintf(stderr, "エラー: %s は拡張子がないためスキップします。\n", info.path)
+			precheckErrors++
+			continue
+		}
+
+		newName := buildNewFileName(config, serial, ext)
+		dir := filepath.Dir(info.path)
+		newPath := filepath.Join(dir, newName)
+
+		if owner, ok := existingPaths[newPath]; ok && owner != info.path {
+			conflicts = append(conflicts, fmt.Sprintf("%s -> %s (既存ファイル %s と衝突)", info.path, newPath, owner))
+			continue
+		}
+
+		if prev, ok := plannedPaths[newPath]; ok {
+			conflicts = append(conflicts, fmt.Sprintf("%s と %s が同じリネーム先 %s を要求", info.path, prev, newPath))
+			continue
+		}
+
+		plannedPaths[newPath] = info.path
+		renamedTasks = append(renamedTasks, renameTask{oldPath: info.path, newPath: newPath})
+	}
+
+	return renamedTasks, conflicts, precheckErrors
+}
+
+func startWorkers(workerCount int, jobs <-chan renameTask, wg *sync.WaitGroup, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for task := range jobs {
+				if err := executeRename(task.oldPath, task.newPath, stdout, stderr); err != nil {
+					mu.Lock()
+					(*errorCount)++
+					mu.Unlock()
+				} else {
+					mu.Lock()
+					(*successCount)++
+					mu.Unlock()
+				}
+			}
+		}()
+	}
+}
+
+func executeRename(oldPath, newPath string, stdout, stderr io.Writer) error {
 	if oldPath == newPath {
 		fmt.Fprintf(stdout, "スキップ: %s は既に目的のファイル名です。\n", oldPath)
 		return nil
