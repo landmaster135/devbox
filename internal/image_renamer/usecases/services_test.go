@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -458,25 +457,34 @@ func TestPrepareJobs_Normal(t *testing.T) {
 
 	// テストケース
 	testCases := []struct {
-		name       string
-		startCount int
-		expected   []int
+		name         string
+		startCount   int
+		expected     []int
+		expectedName []string
 	}{
 		{
-			name:       "開始番号が1の場合",
-			startCount: 1,
-			expected:   []int{1, 2},
+			name:         "開始番号が1の場合",
+			startCount:   1,
+			expected:     []int{1, 2},
+			expectedName: []string{"test_0001.jpg", "test_0002.jpg"},
 		},
 		{
-			name:       "開始番号が10の場合",
-			startCount: 10,
-			expected:   []int{10, 11},
+			name:         "開始番号が10の場合",
+			startCount:   10,
+			expected:     []int{10, 11},
+			expectedName: []string{"test_0010.jpg", "test_0011.jpg"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			jobs := prepareJobs(fileInfos, tc.startCount)
+			config := Config{
+				Prefix:     "test",
+				Delimiter:  "_",
+				Digits:     4,
+				StartCount: tc.startCount,
+			}
+			jobs := prepareJobs(fileInfos, config)
 
 			// ジョブ数の確認
 			if len(jobs) != len(fileInfos) {
@@ -487,6 +495,9 @@ func TestPrepareJobs_Normal(t *testing.T) {
 			for i, job := range jobs {
 				if job.NewSerial != tc.expected[i] {
 					t.Errorf("prepareJobs() シリアル番号が期待と異なります。位置 %d で期待: %d, 実際: %d", i, tc.expected[i], job.NewSerial)
+				}
+				if job.NewName != tc.expectedName[i] {
+					t.Errorf("prepareJobs() 新しいファイル名が期待と異なります。位置 %d で期待: %s, 実際: %s", i, tc.expectedName[i], job.NewName)
 				}
 				if !reflect.DeepEqual(job.File, fileInfos[i]) {
 					t.Errorf("prepareJobs() ファイル情報が期待と異なります。位置 %d", i)
@@ -541,7 +552,6 @@ func TestProcessRenameJob_Normal(t *testing.T) {
 		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
 	}
 
-	// テスト用のジョブを作成
 	job := Job{
 		File: FileInfo{
 			Path:    testFile,
@@ -549,55 +559,25 @@ func TestProcessRenameJob_Normal(t *testing.T) {
 			Name:    "test.jpg",
 		},
 		NewSerial: 1,
+		NewName:   "test_0001.jpg",
+		NewPath:   filepath.Join(tempDir, "test_0001.jpg"),
 	}
 
-	// テストケース
-	testCases := []struct {
-		name          string
-		digits        int
-		prefix        string
-		expectedError bool
-	}{
-		{
-			name:          "正常なリネーム",
-			digits:        4,
-			prefix:        "test",
-			expectedError: false,
-		},
+	var stdout, stderr bytes.Buffer
+	stats := &renameStats{}
+
+	processRenameJob(job, stats, &stdout, &stderr)
+
+	if stats.successCount != 1 || stats.errorCount != 0 {
+		t.Errorf("processRenameJob() 成功/失敗カウントが期待と異なります。期待: success=1, error=0, 実際: success=%d, error=%d", stats.successCount, stats.errorCount)
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			var stdout, stderr bytes.Buffer
-			var mu sync.Mutex
-			successCount := 0
-			errorCount := 0
+	if !strings.Contains(stdout.String(), "処理中:") {
+		t.Errorf("processRenameJob() 処理中メッセージが出力されていません。実際: %s", stdout.String())
+	}
 
-			// テスト実行
-			processRenameJob(job, tc.digits, tc.prefix, "_", &mu, &successCount, &errorCount, &stdout, &stderr)
-
-			// 結果の確認
-			if tc.expectedError {
-				if errorCount != 1 || successCount != 0 {
-					t.Errorf("processRenameJob() エラーカウントが期待と異なります。期待: errorCount=1, successCount=0, 実際: errorCount=%d, successCount=%d", errorCount, successCount)
-				}
-			} else {
-				if errorCount != 0 || successCount != 1 {
-					t.Errorf("processRenameJob() 成功カウントが期待と異なります。期待: errorCount=0, successCount=1, 実際: errorCount=%d, successCount=%d", errorCount, successCount)
-				}
-			}
-
-			// 出力メッセージを確認
-			if !strings.Contains(stdout.String(), "処理中:") {
-				t.Errorf("processRenameJob() 処理中メッセージが出力されていません。実際: %s", stdout.String())
-			}
-
-			// リネームされたファイルの存在を確認
-			expectedNewPath := filepath.Join(tempDir, fmt.Sprintf("%s_%04d.jpg", tc.prefix, job.NewSerial))
-			if _, err := os.Stat(expectedNewPath); os.IsNotExist(err) {
-				t.Errorf("リネームされたファイルが存在しません: %s", expectedNewPath)
-			}
-		})
+	if _, err := os.Stat(job.NewPath); os.IsNotExist(err) {
+		t.Errorf("リネームされたファイルが存在しません: %s", job.NewPath)
 	}
 }
 
@@ -619,19 +599,17 @@ func TestProcessRenameJob_Error(t *testing.T) {
 			Name:    "non-existent.jpg",
 		},
 		NewSerial: 1,
+		NewName:   "test_0001.jpg",
+		NewPath:   filepath.Join(tempDir, "test_0001.jpg"),
 	}
 
-	// テスト実行
 	var stdout, stderr bytes.Buffer
-	var mu sync.Mutex
-	successCount := 0
-	errorCount := 0
+	stats := &renameStats{}
 
-	processRenameJob(job, 4, "test", "_", &mu, &successCount, &errorCount, &stdout, &stderr)
+	processRenameJob(job, stats, &stdout, &stderr)
 
-	// 結果の確認
-	if errorCount != 1 || successCount != 0 {
-		t.Errorf("processRenameJob() エラーカウントが期待と異なります。期待: errorCount=1, successCount=0, 実際: errorCount=%d, successCount=%d", errorCount, successCount)
+	if stats.errorCount != 1 || stats.successCount != 0 {
+		t.Errorf("processRenameJob() エラーカウントが期待と異なります。期待: errorCount=1, successCount=0, 実際: errorCount=%d, successCount=%d", stats.errorCount, stats.successCount)
 	}
 
 	// エラーメッセージの確認
@@ -645,7 +623,7 @@ func TestProcessRenameJob_Error(t *testing.T) {
 	}
 
 	// リネームされたファイルが存在しないことを確認
-	expectedNewPath := filepath.Join(tempDir, "test_0001.jpg")
+	expectedNewPath := job.NewPath
 	if _, err := os.Stat(expectedNewPath); !os.IsNotExist(err) {
 		t.Errorf("リネームされたファイルが存在します（存在しないはず）: %s", expectedNewPath)
 	}
@@ -708,7 +686,10 @@ func TestRenameFiles_Normal(t *testing.T) {
 
 	// テスト実行
 	var stdout, stderr bytes.Buffer
-	successCount, errorCount := renameFiles(fileInfos, config, &stdout, &stderr)
+	successCount, errorCount, err := renameFiles(fileInfos, config, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("RenameFiles() が予期せず失敗しました: %v", err)
+	}
 
 	// 結果の確認
 	if successCount != 2 {
@@ -866,7 +847,10 @@ func TestRenameFiles_WithScreenshotFiles(t *testing.T) {
 			// テスト実行
 			var stdout, stderr bytes.Buffer
 			config.SrcDir = testDir
-			successCount, errorCount := renameFiles(testFileInfos, config, &stdout, &stderr)
+			successCount, errorCount, err := renameFiles(testFileInfos, config, &stdout, &stderr)
+			if err != nil {
+				t.Fatalf("RenameFiles() が予期せず失敗しました: %v", err)
+			}
 
 			// 結果の確認
 			if successCount != len(fileNames) {
@@ -992,7 +976,10 @@ func TestRenameFiles_WithDifferentWorkers(t *testing.T) {
 
 			// テスト実行
 			var stdout, stderr bytes.Buffer
-			successCount, errorCount := renameFiles(fileInfos, config, &stdout, &stderr)
+			successCount, errorCount, err := renameFiles(fileInfos, config, &stdout, &stderr)
+			if err != nil {
+				t.Fatalf("RenameFiles() が予期せず失敗しました: %v", err)
+			}
 
 			// 結果の確認
 			if successCount != tc.expectedCount {
@@ -1022,5 +1009,59 @@ func TestRenameFiles_WithDifferentWorkers(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestRenameFiles_DetectsConflicts はリネーム先と既存ファイルの衝突を検出できることを確認します
+func TestRenameFiles_DetectsConflicts(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "image-renamer-conflict")
+	if err != nil {
+		t.Fatalf("一時ディレクトリの作成に失敗しました: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	conflicting := filepath.Join(tempDir, "test_0001.jpg")
+	source := filepath.Join(tempDir, "a.jpg")
+	if err := os.WriteFile(conflicting, []byte("old"), 0644); err != nil {
+		t.Fatalf("既存ファイルの作成に失敗しました: %v", err)
+	}
+	if err := os.WriteFile(source, []byte("new"), 0644); err != nil {
+		t.Fatalf("リネーム対象ファイルの作成に失敗しました: %v", err)
+	}
+
+	fileInfos := []FileInfo{
+		{Path: source, ModTime: time.Now().Unix(), Name: "a.jpg"},
+		{Path: conflicting, ModTime: time.Now().Unix(), Name: "test_0001.jpg"},
+	}
+
+	config := Config{
+		SrcDir:     tempDir,
+		SortByName: true,
+		SortByTime: false,
+		Prefix:     "test",
+		Delimiter:  "_",
+		Digits:     4,
+		StartCount: 1,
+		Recursive:  false,
+		Workers:    2,
+	}
+
+	var stdout, stderr bytes.Buffer
+	successCount, errorCount, err := renameFiles(fileInfos, config, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("リネーム衝突が検出されることを期待しましたが、エラーが返されませんでした")
+	}
+	if successCount != 0 || errorCount != 0 {
+		t.Errorf("衝突検出時はカウンタが増えない想定です。success=%d error=%d", successCount, errorCount)
+	}
+	if !strings.Contains(stderr.String(), "衝突") {
+		t.Errorf("衝突メッセージが stderr に含まれていません。stderr=%s", stderr.String())
+	}
+
+	if _, err := os.Stat(conflicting); err != nil {
+		t.Errorf("既存ファイルが失われています: %v", err)
+	}
+	if _, err := os.Stat(source); err != nil {
+		t.Errorf("リネーム対象ファイルが失われています: %v", err)
 	}
 }
