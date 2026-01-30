@@ -22,6 +22,27 @@ type FileInfo struct {
 type Job struct {
 	File      FileInfo
 	NewSerial int
+	NewName   string
+	NewPath   string
+}
+
+// renameStats はリネーム結果のカウンタを保持します
+type renameStats struct {
+	mu           sync.Mutex
+	successCount int
+	errorCount   int
+}
+
+func (s *renameStats) recordSuccess() {
+	s.mu.Lock()
+	s.successCount++
+	s.mu.Unlock()
+}
+
+func (s *renameStats) recordError() {
+	s.mu.Lock()
+	s.errorCount++
+	s.mu.Unlock()
 }
 
 // Config はプログラムの設定を保持する構造体です
@@ -160,7 +181,11 @@ func sortFiles(fileInfos []FileInfo, sortByTime bool, stdout io.Writer) {
 }
 
 // renameFiles はファイルをリネームします
-func renameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) (int, int) {
+func renameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) (int, int, error) {
+	if len(fileInfos) == 0 {
+		return 0, 0, nil
+	}
+
 	// ワーカープールの設定
 	workerCount := config.Workers
 	if workerCount < 1 {
@@ -170,22 +195,22 @@ func renameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) 
 		workerCount = len(fileInfos)
 	}
 
+	// ジョブの準備（シリアル番号と新パスを事前に割り当て）
+	jobs := prepareJobs(fileInfos, config)
+
+	// リネーム前後のファイル名衝突チェック
+	if err := detectRenameConflicts(fileInfos, jobs, stderr); err != nil {
+		return 0, 0, err
+	}
+
 	fmt.Fprintf(stdout, "リネーム操作に %d ワーカーを使用します。\n", workerCount)
 
-	// カウンターとワーカーの同期用
-	var mu sync.Mutex
+	stats := &renameStats{}
 	var wg sync.WaitGroup
-	successCount := 0
-	errorCount := 0
-
-	// ジョブの準備（シリアル番号を事前に割り当て）
-	jobs := prepareJobs(fileInfos, config.StartCount)
-
-	// ジョブチャネル
 	jobChan := make(chan Job, len(jobs))
 
 	// ワーカーの起動
-	startWorkers(workerCount, jobChan, &wg, &mu, &successCount, &errorCount, config.Digits, config.Prefix, config.Delimiter, stdout, stderr)
+	startWorkers(workerCount, jobChan, &wg, stats, stdout, stderr)
 
 	// ジョブの送信
 	for _, job := range jobs {
@@ -196,61 +221,97 @@ func renameFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) 
 	// すべてのワーカーが完了するのを待つ
 	wg.Wait()
 
-	return successCount, errorCount
+	return stats.successCount, stats.errorCount, nil
 }
 
 // prepareJobs はリネームジョブを準備します
-func prepareJobs(fileInfos []FileInfo, startCount int) []Job {
+func prepareJobs(fileInfos []FileInfo, config Config) []Job {
 	jobs := make([]Job, len(fileInfos))
+	formatStr := fmt.Sprintf("%%0%dd", config.Digits)
 	for i, file := range fileInfos {
+		serial := config.StartCount + i
+		serialStr := fmt.Sprintf(formatStr, serial)
+		ext := filepath.Ext(file.Path)
+		newName := fmt.Sprintf("%s%s%s%s", config.Prefix, config.Delimiter, serialStr, ext)
+		newPath := filepath.Join(filepath.Dir(file.Path), newName)
 		jobs[i] = Job{
 			File:      file,
-			NewSerial: startCount + i,
+			NewSerial: serial,
+			NewName:   newName,
+			NewPath:   newPath,
 		}
 	}
 	return jobs
 }
 
+// detectRenameConflicts はリネーム前後のパス衝突を検出します
+func detectRenameConflicts(fileInfos []FileInfo, jobs []Job, stderr io.Writer) error {
+	if len(jobs) == 0 {
+		return nil
+	}
+
+	existingPaths := make(map[string]struct{}, len(fileInfos))
+	for _, info := range fileInfos {
+		existingPaths[info.Path] = struct{}{}
+	}
+
+	plannedPaths := make(map[string]string, len(jobs))
+	var conflicts []string
+
+	for _, job := range jobs {
+		// 既存ファイルとの衝突チェック
+		if _, ok := existingPaths[job.NewPath]; ok {
+			conflicts = append(conflicts, fmt.Sprintf("%s -> %s (既存ファイルと衝突)", job.File.Path, job.NewPath))
+			continue
+		}
+
+		// リネーム先同士の重複チェック
+		if prev, ok := plannedPaths[job.NewPath]; ok {
+			conflicts = append(conflicts, fmt.Sprintf("%s と %s が同じリネーム先 %s を要求", job.File.Path, prev, job.NewPath))
+			continue
+		}
+
+		plannedPaths[job.NewPath] = job.File.Path
+	}
+
+	if len(conflicts) > 0 {
+		fmt.Fprintln(stderr, "エラー: リネーム予定のファイル名が既存ファイルと衝突しています。以下を確認してください:")
+		for _, msg := range conflicts {
+			fmt.Fprintf(stderr, "  - %s\n", msg)
+		}
+		return fmt.Errorf("リネーム先のファイルパスが衝突しています")
+	}
+
+	return nil
+}
+
 // startWorkers はリネームワーカーを起動します
-func startWorkers(workerCount int, jobChan <-chan Job, wg *sync.WaitGroup, mu *sync.Mutex, successCount, errorCount *int, digits int, prefix string, delimiter string, stdout, stderr io.Writer) {
+func startWorkers(workerCount int, jobChan <-chan Job, wg *sync.WaitGroup, stats *renameStats, stdout, stderr io.Writer) {
 	for range workerCount {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for job := range jobChan {
-				processRenameJob(job, digits, prefix, delimiter, mu, successCount, errorCount, stdout, stderr)
+				processRenameJob(job, stats, stdout, stderr)
 			}
 		}()
 	}
 }
 
 // processRenameJob は1つのリネームジョブを処理します
-func processRenameJob(job Job, digits int, prefix string, delimiter string, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
-	// ファイルのリネーム
+func processRenameJob(job Job, stats *renameStats, stdout, stderr io.Writer) {
 	oldPath := job.File.Path
-	dir := filepath.Dir(oldPath)
-	oldName := filepath.Base(oldPath)
-	ext := filepath.Ext(oldName)
-
-	// シリアル番号を指定桁数になるようにフォーマット
-	formatStr := fmt.Sprintf("%%0%dd", digits)
-	serial := fmt.Sprintf(formatStr, job.NewSerial)
-	newName := fmt.Sprintf("%s%s%s%s", prefix, delimiter, serial, ext)
-	newPath := filepath.Join(dir, newName)
+	newPath := job.NewPath
 
 	fmt.Fprintf(stdout, "処理中: %s -> %s\n", oldPath, newPath)
 
-	err := os.Rename(oldPath, newPath)
-	if err != nil {
+	if err := os.Rename(oldPath, newPath); err != nil {
 		fmt.Fprintf(stderr, "エラー: %s のリネームに失敗しました: %v\n", oldPath, err)
-		mu.Lock()
-		*errorCount++
-		mu.Unlock()
-	} else {
-		mu.Lock()
-		*successCount++
-		mu.Unlock()
+		stats.recordError()
+		return
 	}
+
+	stats.recordSuccess()
 }
 
 // ProcessImageRename は画像ファイルのリネーム処理全体を実行します
@@ -286,7 +347,10 @@ func ProcessImageRename(config Config, stdout, stderr io.Writer) (int, int, erro
 	sortFiles(fileInfos, config.SortByTime, stdout)
 
 	// リネーム処理の実行
-	successCount, errorCount := renameFiles(fileInfos, config, stdout, stderr)
+	successCount, errorCount, err := renameFiles(fileInfos, config, stdout, stderr)
+	if err != nil {
+		return successCount, errorCount, err
+	}
 
 	return successCount, errorCount, nil
 }
