@@ -15,6 +15,7 @@ import (
 
 	workflowpkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+	"github.com/landmaster135/devbox/internal/templ_components/button"
 )
 
 const (
@@ -301,7 +302,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 				return err
 			}
 			for _, cat := range data.Categories {
-				if err := renderCategorySection(w, cat); err != nil {
+				if err := renderCategorySection(ctx, w, cat); err != nil {
 					return err
 				}
 			}
@@ -344,7 +345,7 @@ func renderEmptyState(w io.Writer) error {
 	return writeString(w, "<section class=\"empty-state\"><h2>No workflows</h2><p>workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.</p></section>")
 }
 
-func renderCategorySection(w io.Writer, cat workflowCategoryView) error {
+func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategoryView) error {
 	if err := writeString(w, "<section class=\"workflow-category\" id=\""); err != nil {
 		return err
 	}
@@ -375,14 +376,14 @@ func renderCategorySection(w io.Writer, cat workflowCategoryView) error {
 		return err
 	}
 	for _, wf := range cat.Workflows {
-		if err := renderWorkflowCard(w, wf); err != nil {
+		if err := renderWorkflowCard(ctx, w, wf); err != nil {
 			return err
 		}
 	}
 	return writeString(w, "</div></section>")
 }
 
-func renderWorkflowCard(w io.Writer, card workflowCardView) error {
+func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView) error {
 	if err := writeString(w, "<article class=\"workflow-card\" data-workflow-key=\""); err != nil {
 		return err
 	}
@@ -470,7 +471,10 @@ func renderWorkflowCard(w io.Writer, card workflowCardView) error {
 				return err
 			}
 		}
-		if err := writeString(w, "<button type=\"submit\">Manual Run</button></form>"); err != nil {
+		if err := button.Submit("Manual Run").Render(ctx, w); err != nil {
+			return err
+		}
+		if err := writeString(w, "</form>"); err != nil {
 			return err
 		}
 	}
