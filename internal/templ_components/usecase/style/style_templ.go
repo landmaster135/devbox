@@ -37,8 +37,7 @@ func Tag() templ.Component {
 			Rules: []style.CSSRule{
 				style.Rule(":root",
 					style.Property("color-scheme", "light dark"),
-					// TODO: MustSafeFontFamily
-					style.Property("font-family", "\"Inter\", \"Segoe UI\", system-ui, -apple-system, BlinkMacSystemFont, sans-serif"),
+					style.MustSafeFontFamily("font-family", []string{"Inter", "Segoe UI", "system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"}),
 				),
 				style.Rule("*",
 					style.Property("box-sizing", "border-box"),
@@ -146,7 +145,7 @@ func Tag() templ.Component {
 					style.Property("padding", "4px 6px"),
 					style.MustSafeColorProperty("background", "#e2e8f0"),
 					style.Property("border-radius", "6px"),
-					style.Property("font-family", "\"JetBrains Mono\", \"SFMono-Regular\", Consolas, monospace"),
+					style.MustSafeFontFamily("font-family", []string{"JetBrains Mono", "SFMono-Regular", "Consolas", "monospace"}),
 				),
 				style.Rule(".workflow-card__manual",
 					style.Property("margin-top", "auto"),

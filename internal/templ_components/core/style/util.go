@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/a-h/templ"
 )
@@ -129,6 +130,21 @@ func safeColorProperty(property, color string) (templ.SafeCSS, error) {
 	return safeProperty(property, templ.SafeCSSProperty(sanitized)), nil
 }
 
+func safeFontFamily(property string, families []string) (templ.SafeCSS, error) {
+	if len(families) == 0 {
+		return "", errors.New("font-family requires at least one value")
+	}
+	sanitized := make([]string, len(families))
+	for i, family := range families {
+		value, err := sanitizeFontFamily(family)
+		if err != nil {
+			return "", fmt.Errorf("invalid font family %q: %w", family, err)
+		}
+		sanitized[i] = value
+	}
+	return safeProperty(property, templ.SafeCSSProperty(strings.Join(sanitized, ", "))), nil
+}
+
 func MustSafeLinearGradient(property, angle string, stops ...string) templ.SafeCSS {
 	css, err := safeLinearGradient(property, angle, stops...)
 	if err != nil {
@@ -161,6 +177,14 @@ func MustSafeColorProperty(property, color string) templ.SafeCSS {
 	return css
 }
 
+func MustSafeFontFamily(property string, families []string) templ.SafeCSS {
+	css, err := safeFontFamily(property, families)
+	if err != nil {
+		panic(err)
+	}
+	return css
+}
+
 var (
 	gradientAnglePattern       = regexp.MustCompile(`^(?:-?\d+(?:\.\d+)?)(?:deg|rad|turn)$`)
 	lengthPattern              = regexp.MustCompile(`^-?\d+(?:\.\d+)?(?:px|rem|em|vw|vh|%)$`)
@@ -187,6 +211,28 @@ var allowedBorderStyles = map[string]struct{}{
 var allowedColorKeywords = map[string]struct{}{
 	"transparent":  {},
 	"currentcolor": {},
+}
+
+var allowedFontFamilyKeywords = map[string]struct{}{
+	"serif":         {},
+	"sans-serif":    {},
+	"monospace":     {},
+	"cursive":       {},
+	"fantasy":       {},
+	"system-ui":     {},
+	"-apple-system": {},
+	"ui-serif":      {},
+	"ui-sans-serif": {},
+	"ui-monospace":  {},
+	"ui-rounded":    {},
+	"emoji":         {},
+	"math":          {},
+	"fangsong":      {},
+	"inherit":       {},
+	"initial":       {},
+	"unset":         {},
+	"revert":        {},
+	"revert-layer":  {},
 }
 
 func sanitizeLength(value string, allowUnitlessZero bool) (string, error) {
@@ -238,4 +284,32 @@ func sanitizeColorStop(value string) (string, error) {
 		return "", errors.New("invalid gradient position")
 	}
 	return color + " " + position, nil
+}
+
+func sanitizeFontFamily(value string) (string, error) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return "", errors.New("font family cannot be empty")
+	}
+	if strings.ContainsAny(v, "\"'`\\,") {
+		return "", errors.New("font family contains invalid punctuation")
+	}
+	lower := strings.ToLower(v)
+	if _, ok := allowedFontFamilyKeywords[lower]; ok {
+		return lower, nil
+	}
+	normalized := strings.Join(strings.Fields(v), " ")
+	if normalized == "" {
+		return "", errors.New("font family cannot be empty")
+	}
+	for _, r := range normalized {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == ' ' || r == '-' || r == '_' {
+			continue
+		}
+		return "", fmt.Errorf("invalid character %q in font family", r)
+	}
+	if strings.ContainsRune(normalized, ' ') {
+		return fmt.Sprintf("\"%s\"", normalized), nil
+	}
+	return normalized, nil
 }
