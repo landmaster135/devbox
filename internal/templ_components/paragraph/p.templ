@@ -1,1 +1,33 @@
 package paragraph
+
+templ Text(class string, text string) {
+  if class == "" {
+    <p>{ text }</p>
+  } else {
+    <p class={ class }>{ text }</p>
+  }
+}
+
+templ Content(class string, body templ.Component) {
+  if class == "" {
+    <p>
+      if body != nil {
+        @body
+      }
+    </p>
+  } else {
+    <p class={ class }>
+      if body != nil {
+        @body
+      }
+    </p>
+  }
+}
+
+templ Status(class string) {
+  if class == "" {
+    <p data-manual-run-status></p>
+  } else {
+    <p class={ class } data-manual-run-status></p>
+  }
+}
