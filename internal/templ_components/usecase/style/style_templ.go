@@ -9,7 +9,7 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	style "github.com/landmaster135/devbox/internal/templ_components/style"
+	style "github.com/landmaster135/devbox/internal/templ_components/core/style"
 )
 
 func Tag() templ.Component {
