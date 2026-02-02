@@ -21,6 +21,7 @@ import (
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/section"
+	style "github.com/landmaster135/devbox/internal/templ_components/style"
 )
 
 const (
@@ -292,7 +293,13 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeEscapedString(w, data.Title); err != nil {
 			return err
 		}
-		if err := writeString(w, "</title><style>"+cronWorkflowPageStyles+"</style></head><body><main class=\"page\">"); err != nil {
+		if err := writeString(w, "</title>"); err != nil {
+			return err
+		}
+		if err := style.Tag(cronWorkflowPageStyles).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := writeString(w, "</head><body><main class=\"page\">"); err != nil {
 			return err
 		}
 		if err := renderHeroSection(ctx, w, data); err != nil {
