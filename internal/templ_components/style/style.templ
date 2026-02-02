@@ -1,7 +1,5 @@
 package style
 
-templ Tag(content string) {
-  @templ.Raw("<style>")
-  @templ.Raw(content)
-  @templ.Raw("</style>")
+templ Tag(s CSSStyle) {
+  @renderStyle(s)
 }
