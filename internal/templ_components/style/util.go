@@ -29,25 +29,11 @@ type CSSMediaRule struct {
 
 // Rule builds a CSSRule with non-empty declarations.
 func Rule(selector string, declarations ...templ.SafeCSS) CSSRule {
-	return CSSRule{
-		Selector:     strings.TrimSpace(selector),
-		Declarations: filterDeclarations(declarations),
-	}
+	return rule(selector, declarations...)
 }
 
-// Media builds a CSSMediaRule while dropping empty child rules.
 func Media(query string, rules ...CSSRule) CSSMediaRule {
-	filtered := make([]CSSRule, 0, len(rules))
-	for _, rule := range rules {
-		if strings.TrimSpace(rule.Selector) == "" {
-			continue
-		}
-		if len(rule.Declarations) == 0 {
-			continue
-		}
-		filtered = append(filtered, rule)
-	}
-	return CSSMediaRule{Query: strings.TrimSpace(query), Rules: filtered}
+	return media(query, rules...)
 }
 
 // Property sanitizes a CSS property/value pair.
@@ -55,20 +41,9 @@ func Property(name string, value string) templ.SafeCSS {
 	return templ.SanitizeCSS(name, value)
 }
 
-// MustSafeProperty allows callers to provide a value already marked safe.
-func MustSafeProperty(name string, value templ.SafeCSSProperty) templ.SafeCSS {
+// safeProperty allows callers to provide a value already marked safe.
+func safeProperty(name string, value templ.SafeCSSProperty) templ.SafeCSS {
 	return templ.SanitizeCSS(name, value)
-}
-
-func filterDeclarations(values []templ.SafeCSS) []templ.SafeCSS {
-	filtered := make([]templ.SafeCSS, 0, len(values))
-	for _, decl := range values {
-		if strings.TrimSpace(string(decl)) == "" {
-			continue
-		}
-		filtered = append(filtered, decl)
-	}
-	return filtered
 }
 
 func safeLinearGradient(property, angle string, stops ...string) (templ.SafeCSS, error) {
@@ -88,7 +63,7 @@ func safeLinearGradient(property, angle string, stops ...string) (templ.SafeCSS,
 		sanitizedStops[i] = sanitized
 	}
 	value := fmt.Sprintf("linear-gradient(%s, %s)", angle, strings.Join(sanitizedStops, ", "))
-	return MustSafeProperty(property, templ.SafeCSSProperty(value)), nil
+	return safeProperty(property, templ.SafeCSSProperty(value)), nil
 }
 
 func safeBoxShadow(property string, offsets []string, colors []string) (templ.SafeCSS, error) {
@@ -115,7 +90,7 @@ func safeBoxShadow(property string, offsets []string, colors []string) (templ.Sa
 		sanitizedColors[i] = sanitized
 	}
 	value := strings.Join(sanitizedOffsets, " ") + " " + strings.Join(sanitizedColors, ", ")
-	return MustSafeProperty(property, templ.SafeCSSProperty(value)), nil
+	return safeProperty(property, templ.SafeCSSProperty(value)), nil
 }
 
 func safeBorder(property, width, style string, colors []string) (templ.SafeCSS, error) {
@@ -143,15 +118,7 @@ func safeBorder(property, width, style string, colors []string) (templ.SafeCSS, 
 		sanitizedColors[i] = sanitized
 	}
 	value := fmt.Sprintf("%s %s %s", sanitizedWidth, styleLower, strings.Join(sanitizedColors, ", "))
-	return MustSafeProperty(property, templ.SafeCSSProperty(value)), nil
-}
-
-func MustSafeLinearGradient(property, angle string, stops ...string) templ.SafeCSS {
-	css, err := safeLinearGradient(property, angle, stops...)
-	if err != nil {
-		panic(err)
-	}
-	return css
+	return safeProperty(property, templ.SafeCSSProperty(value)), nil
 }
 
 func safeColorProperty(property, color string) (templ.SafeCSS, error) {
@@ -159,11 +126,11 @@ func safeColorProperty(property, color string) (templ.SafeCSS, error) {
 	if err != nil {
 		return "", err
 	}
-	return MustSafeProperty(property, templ.SafeCSSProperty(sanitized)), nil
+	return safeProperty(property, templ.SafeCSSProperty(sanitized)), nil
 }
 
-func MustSafeColorProperty(property, color string) templ.SafeCSS {
-	css, err := safeColorProperty(property, color)
+func MustSafeLinearGradient(property, angle string, stops ...string) templ.SafeCSS {
+	css, err := safeLinearGradient(property, angle, stops...)
 	if err != nil {
 		panic(err)
 	}
@@ -186,13 +153,22 @@ func MustSafeBorder(property, width, style string, colors []string) templ.SafeCS
 	return css
 }
 
+func MustSafeColorProperty(property, color string) templ.SafeCSS {
+	css, err := safeColorProperty(property, color)
+	if err != nil {
+		panic(err)
+	}
+	return css
+}
+
 var (
-	gradientAnglePattern = regexp.MustCompile(`^(?:-?\d+(?:\.\d+)?)(?:deg|rad|turn)$`)
-	lengthPattern        = regexp.MustCompile(`^-?\d+(?:\.\d+)?(?:px|rem|em|vw|vh|%)$`)
-	unitlessZeroPattern  = regexp.MustCompile(`^-?0(?:\.0+)?$`)
-	hexColorPattern      = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
-	rgbaColorPattern     = regexp.MustCompile(`^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$`)
-	percentPattern       = regexp.MustCompile(`^(?:100|\d{1,2})(?:\.\d+)?%$`)
+	gradientAnglePattern       = regexp.MustCompile(`^(?:-?\d+(?:\.\d+)?)(?:deg|rad|turn)$`)
+	lengthPattern              = regexp.MustCompile(`^-?\d+(?:\.\d+)?(?:px|rem|em|vw|vh|%)$`)
+	unitlessZeroPattern        = regexp.MustCompile(`^-?0(?:\.0+)?$`)
+	hexColorPattern            = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
+	rgbaColorPattern           = regexp.MustCompile(`^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$`)
+	percentPattern             = regexp.MustCompile(`^(?:100|\d{1,2})(?:\.\d+)?%$`)
+	trustedPropertyNamePattern = regexp.MustCompile(`^[a-zA-Z_][-a-zA-Z0-9_]*$`)
 )
 
 var allowedBorderStyles = map[string]struct{}{

@@ -1,5 +1,36 @@
 package style
 
 templ Tag(s CSSStyle) {
-  @renderStyle(s)
+  @templ.Raw("<style type=\"text/css\">")
+  @styleContent(s)
+  @templ.Raw("</style>")
+}
+
+templ styleContent(s CSSStyle) {
+  for _, rule := range s.Rules {
+    @ruleBlock(rule, "")
+  }
+  for _, media := range s.MediaRules {
+    @mediaBlock(media)
+  }
+}
+
+templ ruleBlock(rule CSSRule, indent string) {
+  if shouldRenderRule(rule) {
+    { "\n" }{ indent }{ trimmedSelector(rule) }{ " {\n" }
+    for _, declaration := range renderableDeclarations(rule) {
+      { indent }{ "  " }{ declaration }{ "\n" }
+    }
+    { indent }{ "}\n" }
+  }
+}
+
+templ mediaBlock(media CSSMediaRule) {
+  if mediaHasRenderableRules(media) {
+    { "\n@media " }{ mediaQuery(media) }{ " {\n" }
+    for _, rule := range media.Rules {
+      @ruleBlock(rule, "  ")
+    }
+    { "}\n" }
+  }
 }
