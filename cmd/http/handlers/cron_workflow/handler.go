@@ -21,7 +21,7 @@ import (
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/section"
-	style "github.com/landmaster135/devbox/internal/templ_components/style"
+	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase_style"
 )
 
 const (
@@ -296,7 +296,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "</title>"); err != nil {
 			return err
 		}
-		if err := style.Tag(cronWorkflowPageStyles).Render(ctx, w); err != nil {
+		if err := usecaseStyle.Tag().Render(ctx, w); err != nil {
 			return err
 		}
 		if err := writeString(w, "</head><body><main class=\"page\">"); err != nil {
@@ -514,179 +514,6 @@ func writeEscapedString(w io.Writer, value string) error {
 	_, err := io.WriteString(w, templ.EscapeString(value))
 	return err
 }
-
-const cronWorkflowPageStyles = `
-:root {
-	color-scheme: light dark;
-	font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-* {
-	box-sizing: border-box;
-}
-body {
-	margin: 0;
-	background: #f5f6fb;
-	color: #111827;
-}
-main.page {
-	max-width: 1100px;
-	margin: 0 auto;
-	padding: 48px 20px 80px;
-}
-.hero {
-	background: linear-gradient(120deg, #eef2ff, #e0f2fe);
-	border: 1px solid rgba(99, 102, 241, 0.25);
-	border-radius: 20px;
-	padding: 32px;
-	box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
-}
-.hero-eyebrow {
-	text-transform: uppercase;
-	letter-spacing: 0.12em;
-	font-size: 0.75rem;
-	color: #6366f1;
-	margin: 0 0 8px;
-}
-.hero h1 {
-	margin: 0 0 16px;
-	font-size: 2rem;
-}
-.hero-description {
-	margin: 0 0 12px;
-	color: #374151;
-}
-.hero-source,
-.hero-endpoint {
-	margin: 4px 0;
-	font-size: 0.9rem;
-	color: #4b5563;
-}
-.hero code {
-	background: rgba(255, 255, 255, 0.8);
-	padding: 4px 8px;
-	border-radius: 6px;
-}
-.page-sections {
-	margin-top: 32px;
-	display: flex;
-	flex-direction: column;
-	gap: 32px;
-}
-.workflow-category {
-	background: #ffffff;
-	border-radius: 20px;
-	border: 1px solid rgba(148, 163, 184, 0.4);
-	padding: 28px;
-	box-shadow: 0 20px 45px rgba(15, 23, 42, 0.06);
-}
-.workflow-category__header > h2 {
-	margin: 0 0 4px;
-}
-.workflow-category__header > p {
-	margin: 0;
-	color: #4b5563;
-}
-.workflow-grid {
-	margin-top: 20px;
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	gap: 20px;
-}
-.workflow-card {
-	background: #f8fafc;
-	border-radius: 16px;
-	border: 1px solid rgba(203, 213, 225, 0.7);
-	padding: 20px;
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-}
-.workflow-card__process {
-	margin: 0;
-	font-size: 0.85rem;
-	color: #6b7280;
-}
-.workflow-card__process code {
-	background: rgba(255, 255, 255, 0.75);
-	padding: 2px 6px;
-	border-radius: 5px;
-}
-.workflow-card__header h3 {
-	margin: 6px 0 0;
-}
-.workflow-card__summary {
-	margin: 0;
-	color: #475569;
-	line-height: 1.4;
-}
-.workflow-card__cron {
-	display: flex;
-	flex-direction: column;
-	font-size: 0.9rem;
-}
-.workflow-card__cron span {
-	font-weight: 600;
-	color: #0f172a;
-}
-.workflow-card__cron code {
-	margin-top: 4px;
-	padding: 4px 6px;
-	background: #e2e8f0;
-	border-radius: 6px;
-	font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
-}
-.workflow-card__manual {
-	margin-top: auto;
-	display: flex;
-	justify-content: flex-start;
-}
-.workflow-card__manual button {
-	padding: 10px 16px;
-	background: #4f46e5;
-	color: #ffffff;
-	border: none;
-	border-radius: 8px;
-	cursor: pointer;
-	font-weight: 600;
-}
-.workflow-card__manual button:hover {
-	background: #4338ca;
-}
-.workflow-card__status {
-	font-size: 0.85rem;
-	margin: 8px 0 0;
-	min-height: 1.2em;
-	color: #4b5563;
-}
-.workflow-card__status[data-status="success"] {
-	color: #0f766e;
-}
-.workflow-card__status[data-status="error"] {
-	color: #dc2626;
-}
-.workflow-card__status[data-status="pending"] {
-	color: #92400e;
-}
-.empty-state {
-	margin-top: 32px;
-	padding: 40px;
-	text-align: center;
-	border-radius: 16px;
-	border: 1px dashed rgba(99, 102, 241, 0.5);
-	color: #4b5563;
-}
-@media (prefers-color-scheme: dark) {
-	body { background: #020617; color: #e2e8f0; }
-	.hero { background: linear-gradient(120deg, #312e81, #1d4ed8); border-color: rgba(99,102,241,0.5); }
-	.hero-description, .hero-source, .hero-endpoint { color: #cbd5f5; }
-	.workflow-category { background: #0f172a; border-color: rgba(59, 130, 246, 0.4); }
-	.workflow-card { background: #1e293b; border-color: rgba(59, 130, 246, 0.25); }
-	.workflow-card__summary { color: #cbd5f5; }
-	.workflow-card__cron span { color: #f8fafc; }
-	.workflow-card__cron code { background: #0f172a; }
-	.empty-state { border-color: rgba(99, 102, 241, 0.8); color: #cbd5f5; }
-}
-`
 
 const cronWorkflowPageScript = `(() => {
 	const forms = document.querySelectorAll(".workflow-card__manual");
