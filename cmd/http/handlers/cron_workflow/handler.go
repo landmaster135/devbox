@@ -16,6 +16,7 @@ import (
 	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	button "github.com/landmaster135/devbox/internal/templ_components/button"
+	heading "github.com/landmaster135/devbox/internal/templ_components/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
 )
 
@@ -295,7 +296,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 			return err
 		}
 		if len(data.Categories) == 0 {
-			if err := renderEmptyState(w); err != nil {
+			if err := renderEmptyState(ctx, w); err != nil {
 				return err
 			}
 		} else {
@@ -342,8 +343,17 @@ func renderHeroSection(w io.Writer, data workflowPageData) error {
 	return writeString(w, "</section>")
 }
 
-func renderEmptyState(w io.Writer) error {
-	return writeString(w, "<section class=\"empty-state\"><h2>No workflows</h2><p>workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.</p></section>")
+func renderEmptyState(ctx context.Context, w io.Writer) error {
+	if err := writeString(w, "<section class=\"empty-state\">"); err != nil {
+		return err
+	}
+	if err := heading.Heading(2, "No workflows").Render(ctx, w); err != nil {
+		return err
+	}
+	if err := writeString(w, "<p>workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.</p></section>"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategoryView) error {
@@ -353,13 +363,10 @@ func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategor
 	if err := writeEscapedString(w, cat.ID); err != nil {
 		return err
 	}
-	if err := writeString(w, "\"><div class=\"workflow-category__header\"><h2>"); err != nil {
+	if err := writeString(w, "\"><div class=\"workflow-category__header\">"); err != nil {
 		return err
 	}
-	if err := writeEscapedString(w, cat.Title); err != nil {
-		return err
-	}
-	if err := writeString(w, "</h2>"); err != nil {
+	if err := heading.Heading(2, cat.Title).Render(ctx, w); err != nil {
 		return err
 	}
 	if cat.Description != "" {
@@ -397,13 +404,13 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 	if err := writeEscapedString(w, card.ProcessName); err != nil {
 		return err
 	}
-	if err := writeString(w, "</code></p><h3>"); err != nil {
+	if err := writeString(w, "</code></p>"); err != nil {
 		return err
 	}
-	if err := writeEscapedString(w, card.Name); err != nil {
+	if err := heading.Heading(3, card.Name).Render(ctx, w); err != nil {
 		return err
 	}
-	if err := writeString(w, "</h3></div>"); err != nil {
+	if err := writeString(w, "</div>"); err != nil {
 		return err
 	}
 	if card.Summary != "" {
