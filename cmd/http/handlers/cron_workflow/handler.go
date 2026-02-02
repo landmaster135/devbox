@@ -327,13 +327,7 @@ func renderHeroSection(ctx context.Context, w io.Writer, data workflowPageData) 
 	if err := paragraph.Text("hero-eyebrow", "Cron Workflow").Render(ctx, w); err != nil {
 		return err
 	}
-	if err := writeString(w, "<h1>"); err != nil {
-		return err
-	}
-	if err := writeEscapedString(w, data.Title); err != nil {
-		return err
-	}
-	if err := writeString(w, "</h1>"); err != nil {
+	if err := heading.Heading(1, data.Title).Render(ctx, w); err != nil {
 		return err
 	}
 	if data.Description != "" {
