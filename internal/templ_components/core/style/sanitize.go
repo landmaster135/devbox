@@ -1,0 +1,243 @@
+package style
+
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+	"unicode"
+
+	"github.com/a-h/templ"
+)
+
+// safeProperty allows callers to provide a value already marked safe.
+func safeProperty(name string, value templ.SafeCSSProperty) templ.SafeCSS {
+	return templ.SanitizeCSS(name, value)
+}
+
+func safeLinearGradient(property, angle string, stops ...string) (templ.SafeCSS, error) {
+	angle = strings.TrimSpace(angle)
+	if !gradientAnglePattern.MatchString(angle) {
+		return "", fmt.Errorf("invalid gradient angle %q", angle)
+	}
+	if len(stops) < 2 {
+		return "", errors.New("linear-gradient requires at least two color stops")
+	}
+	sanitizedStops := make([]string, len(stops))
+	for i, stop := range stops {
+		sanitized, err := sanitizeColorStop(stop)
+		if err != nil {
+			return "", fmt.Errorf("invalid color stop %q: %w", stop, err)
+		}
+		sanitizedStops[i] = sanitized
+	}
+	value := fmt.Sprintf("linear-gradient(%s, %s)", angle, strings.Join(sanitizedStops, ", "))
+	return safeProperty(property, templ.SafeCSSProperty(value)), nil
+}
+
+func safeBoxShadow(property string, offsets []string, colors []string) (templ.SafeCSS, error) {
+	if len(offsets) == 0 {
+		return "", errors.New("box-shadow requires at least one offset value")
+	}
+	if len(colors) == 0 {
+		return "", errors.New("box-shadow requires at least one color")
+	}
+	sanitizedOffsets := make([]string, len(offsets))
+	for i, off := range offsets {
+		length, err := sanitizeLength(off, true)
+		if err != nil {
+			return "", fmt.Errorf("invalid box-shadow offset %q: %w", off, err)
+		}
+		sanitizedOffsets[i] = length
+	}
+	sanitizedColors := make([]string, len(colors))
+	for i, color := range colors {
+		sanitized, err := sanitizeColor(color)
+		if err != nil {
+			return "", fmt.Errorf("invalid box-shadow color %q: %w", color, err)
+		}
+		sanitizedColors[i] = sanitized
+	}
+	value := strings.Join(sanitizedOffsets, " ") + " " + strings.Join(sanitizedColors, ", ")
+	return safeProperty(property, templ.SafeCSSProperty(value)), nil
+}
+
+func safeBorder(property, width, style string, colors []string) (templ.SafeCSS, error) {
+	width = strings.TrimSpace(width)
+	if width == "" {
+		return "", errors.New("border width is required")
+	}
+	sanitizedWidth, err := sanitizeLength(width, false)
+	if err != nil {
+		return "", fmt.Errorf("invalid border width %q: %w", width, err)
+	}
+	styleLower := strings.ToLower(strings.TrimSpace(style))
+	if _, ok := allowedBorderStyles[styleLower]; !ok {
+		return "", fmt.Errorf("invalid border style %q", style)
+	}
+	if len(colors) == 0 {
+		return "", errors.New("border requires at least one color")
+	}
+	sanitizedColors := make([]string, len(colors))
+	for i, color := range colors {
+		sanitized, err := sanitizeColor(color)
+		if err != nil {
+			return "", fmt.Errorf("invalid border color %q: %w", color, err)
+		}
+		sanitizedColors[i] = sanitized
+	}
+	value := fmt.Sprintf("%s %s %s", sanitizedWidth, styleLower, strings.Join(sanitizedColors, ", "))
+	return safeProperty(property, templ.SafeCSSProperty(value)), nil
+}
+
+func safeColorProperty(property, color string) (templ.SafeCSS, error) {
+	sanitized, err := sanitizeColor(color)
+	if err != nil {
+		return "", err
+	}
+	return safeProperty(property, templ.SafeCSSProperty(sanitized)), nil
+}
+
+func safeFontFamily(property string, families []string) (templ.SafeCSS, error) {
+	if len(families) == 0 {
+		return "", errors.New("font-family requires at least one value")
+	}
+	sanitized := make([]string, len(families))
+	for i, family := range families {
+		value, err := sanitizeFontFamily(family)
+		if err != nil {
+			return "", fmt.Errorf("invalid font family %q: %w", family, err)
+		}
+		sanitized[i] = value
+	}
+	return safeProperty(property, templ.SafeCSSProperty(strings.Join(sanitized, ", "))), nil
+}
+
+var (
+	gradientAnglePattern       = regexp.MustCompile(`^(?:-?\d+(?:\.\d+)?)(?:deg|rad|turn)$`)
+	lengthPattern              = regexp.MustCompile(`^-?\d+(?:\.\d+)?(?:px|rem|em|vw|vh|%)$`)
+	unitlessZeroPattern        = regexp.MustCompile(`^-?0(?:\.0+)?$`)
+	hexColorPattern            = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
+	rgbaColorPattern           = regexp.MustCompile(`^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$`)
+	percentPattern             = regexp.MustCompile(`^(?:100|\d{1,2})(?:\.\d+)?%$`)
+	trustedPropertyNamePattern = regexp.MustCompile(`^[a-zA-Z_][-a-zA-Z0-9_]*$`)
+)
+
+var allowedBorderStyles = map[string]struct{}{
+	"solid":  {},
+	"dashed": {},
+	"dotted": {},
+	"double": {},
+	"groove": {},
+	"ridge":  {},
+	"inset":  {},
+	"outset": {},
+	"none":   {},
+	"hidden": {},
+}
+
+var allowedColorKeywords = map[string]struct{}{
+	"transparent":  {},
+	"currentcolor": {},
+}
+
+var allowedFontFamilyKeywords = map[string]struct{}{
+	"serif":         {},
+	"sans-serif":    {},
+	"monospace":     {},
+	"cursive":       {},
+	"fantasy":       {},
+	"system-ui":     {},
+	"-apple-system": {},
+	"ui-serif":      {},
+	"ui-sans-serif": {},
+	"ui-monospace":  {},
+	"ui-rounded":    {},
+	"emoji":         {},
+	"math":          {},
+	"fangsong":      {},
+	"inherit":       {},
+	"initial":       {},
+	"unset":         {},
+	"revert":        {},
+	"revert-layer":  {},
+}
+
+func sanitizeLength(value string, allowUnitlessZero bool) (string, error) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return "", errors.New("length cannot be empty")
+	}
+	if allowUnitlessZero && unitlessZeroPattern.MatchString(v) {
+		return v, nil
+	}
+	if lengthPattern.MatchString(v) {
+		return v, nil
+	}
+	return "", errors.New("invalid length")
+}
+
+func sanitizeColor(value string) (string, error) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return "", errors.New("color cannot be empty")
+	}
+	if hexColorPattern.MatchString(v) || rgbaColorPattern.MatchString(v) {
+		return v, nil
+	}
+	if _, ok := allowedColorKeywords[strings.ToLower(v)]; ok {
+		return strings.ToLower(v), nil
+	}
+	return "", errors.New("invalid color")
+}
+
+func sanitizeColorStop(value string) (string, error) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return "", errors.New("color stop cannot be empty")
+	}
+	parts := strings.Fields(v)
+	if len(parts) == 0 || len(parts) > 2 {
+		return "", errors.New("invalid color stop format")
+	}
+	color, err := sanitizeColor(parts[0])
+	if err != nil {
+		return "", err
+	}
+	if len(parts) == 1 {
+		return color, nil
+	}
+	position := parts[1]
+	if !percentPattern.MatchString(position) {
+		return "", errors.New("invalid gradient position")
+	}
+	return color + " " + position, nil
+}
+
+func sanitizeFontFamily(value string) (string, error) {
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return "", errors.New("font family cannot be empty")
+	}
+	if strings.ContainsAny(v, "\"'`\\,") {
+		return "", errors.New("font family contains invalid punctuation")
+	}
+	lower := strings.ToLower(v)
+	if _, ok := allowedFontFamilyKeywords[lower]; ok {
+		return lower, nil
+	}
+	normalized := strings.Join(strings.Fields(v), " ")
+	if normalized == "" {
+		return "", errors.New("font family cannot be empty")
+	}
+	for _, r := range normalized {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == ' ' || r == '-' || r == '_' {
+			continue
+		}
+		return "", fmt.Errorf("invalid character %q in font family", r)
+	}
+	if strings.ContainsRune(normalized, ' ') {
+		return fmt.Sprintf("\"%s\"", normalized), nil
+	}
+	return normalized, nil
+}
