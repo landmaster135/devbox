@@ -16,6 +16,7 @@ import (
 	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	button "github.com/landmaster135/devbox/internal/templ_components/button"
+	code "github.com/landmaster135/devbox/internal/templ_components/code"
 	heading "github.com/landmaster135/devbox/internal/templ_components/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/paragraph"
@@ -393,19 +394,7 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 	if err := writeString(w, "\"><div class=\"workflow-card__header\">"); err != nil {
 		return err
 	}
-	processComponent := templ.ComponentFunc(func(_ context.Context, childWriter io.Writer) error {
-		if err := writeString(childWriter, "<code>"); err != nil {
-			return err
-		}
-		if err := writeEscapedString(childWriter, card.ProcessName); err != nil {
-			return err
-		}
-		if err := writeString(childWriter, "</code>"); err != nil {
-			return err
-		}
-		return nil
-	})
-	if err := paragraph.Content("workflow-card__process", processComponent).Render(ctx, w); err != nil {
+	if err := paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)).Render(ctx, w); err != nil {
 		return err
 	}
 	if err := heading.Heading(3, card.Name).Render(ctx, w); err != nil {
@@ -420,13 +409,13 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 		}
 	}
 	if card.CronDefinition != "" {
-		if err := writeString(w, "<div class=\"workflow-card__cron\"><span>CRON</span><code>"); err != nil {
+		if err := writeString(w, "<div class=\"workflow-card__cron\"><span>CRON</span>"); err != nil {
 			return err
 		}
-		if err := writeEscapedString(w, card.CronDefinition); err != nil {
+		if err := code.Text("", card.CronDefinition).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := writeString(w, "</code></div>"); err != nil {
+		if err := writeString(w, "</div>"); err != nil {
 			return err
 		}
 	}
