@@ -39,6 +39,7 @@ func Property(name string, value string) templ.SafeCSS {
 func MustSafeBoxShadow(property string, offsets []string, colors []string) templ.SafeCSS {
 	css, err := safeBoxShadow(property, offsets, colors)
 	if err != nil {
+		// TODO: handle error
 		panic(err)
 	}
 	return css
@@ -47,6 +48,7 @@ func MustSafeBoxShadow(property string, offsets []string, colors []string) templ
 func MustSafeBorder(property, width, style string, colors []string) templ.SafeCSS {
 	css, err := safeBorder(property, width, style, colors)
 	if err != nil {
+		// TODO: handle error
 		panic(err)
 	}
 	return css
@@ -55,6 +57,7 @@ func MustSafeBorder(property, width, style string, colors []string) templ.SafeCS
 func MustSafeColorProperty(property, color string) templ.SafeCSS {
 	css, err := safeColorProperty(property, color)
 	if err != nil {
+		// TODO: handle error
 		panic(err)
 	}
 	return css
@@ -63,6 +66,7 @@ func MustSafeColorProperty(property, color string) templ.SafeCSS {
 func MustSafeFontFamily(property string, families []string) templ.SafeCSS {
 	css, err := safeFontFamily(property, families)
 	if err != nil {
+		// TODO: handle error
 		panic(err)
 	}
 	return css
@@ -71,6 +75,7 @@ func MustSafeFontFamily(property string, families []string) templ.SafeCSS {
 func MustSafeLinearGradient(property, angle string, stops ...string) templ.SafeCSS {
 	css, err := safeLinearGradient(property, angle, stops...)
 	if err != nil {
+		// TODO: handle error
 		panic(err)
 	}
 	return css
