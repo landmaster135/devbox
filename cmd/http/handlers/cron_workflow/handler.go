@@ -16,6 +16,7 @@ import (
 	workflowpkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	"github.com/landmaster135/devbox/internal/templ_components/button"
+	hiddeninput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
 )
 
 const (
@@ -455,19 +456,7 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 			return err
 		}
 		if card.ManualWorkflowField != "" && card.ManualWorkflowValue != "" {
-			if err := writeString(w, "<input type=\"hidden\" name=\""); err != nil {
-				return err
-			}
-			if err := writeEscapedString(w, card.ManualWorkflowField); err != nil {
-				return err
-			}
-			if err := writeString(w, "\" value=\""); err != nil {
-				return err
-			}
-			if err := writeEscapedString(w, card.ManualWorkflowValue); err != nil {
-				return err
-			}
-			if err := writeString(w, "\"/>"); err != nil {
+			if err := hiddeninput.HiddenField(card.ManualWorkflowField, card.ManualWorkflowValue).Render(ctx, w); err != nil {
 				return err
 			}
 		}
