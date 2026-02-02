@@ -23,7 +23,7 @@
 | code-analyzer                               | ✅  | ❌️  | ❌️  | ❌️ |
 | color-code-converter                        | ✅  | ❌️  | ❌️  | ❌️ |
 | context7                                    | ✅  | ✅  | ❌️  | ❌️ |
-| cron-workflow                               | ✅  | ❌️  | ❌️  | ❌️ |
+| cron-workflow                               | ✅  | ❌️  | ❌️  | ✅ |
 | data-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | datetime-calculator                         | ✅  | ✅  | ❌️  | ❌️ |
 | db-server-sync                              | ✅  | ❌️  | ❌️  | ❌️ |
@@ -127,8 +127,8 @@
 - **CLIツール実装数**: 95
 - **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
-- **HTTPハンドラ実装数**: 1
-- **CLIのみ実装**: 80
+- **HTTPハンドラ実装数**: 2
+- **CLIのみ実装**: 79
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
