@@ -18,6 +18,7 @@ import (
 	button "github.com/landmaster135/devbox/internal/templ_components/button"
 	heading "github.com/landmaster135/devbox/internal/templ_components/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
+	paragraph "github.com/landmaster135/devbox/internal/templ_components/paragraph"
 )
 
 const (
@@ -292,7 +293,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "</title><style>"+cronWorkflowPageStyles+"</style></head><body><main class=\"page\">"); err != nil {
 			return err
 		}
-		if err := renderHeroSection(w, data); err != nil {
+		if err := renderHeroSection(ctx, w, data); err != nil {
 			return err
 		}
 		if len(data.Categories) == 0 {
@@ -319,8 +320,14 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 	})
 }
 
-func renderHeroSection(w io.Writer, data workflowPageData) error {
-	if err := writeString(w, "<section class=\"hero\"><p class=\"hero-eyebrow\">Cron Workflow</p><h1>"); err != nil {
+func renderHeroSection(ctx context.Context, w io.Writer, data workflowPageData) error {
+	if err := writeString(w, "<section class=\"hero\">"); err != nil {
+		return err
+	}
+	if err := paragraph.Text("hero-eyebrow", "Cron Workflow").Render(ctx, w); err != nil {
+		return err
+	}
+	if err := writeString(w, "<h1>"); err != nil {
 		return err
 	}
 	if err := writeEscapedString(w, data.Title); err != nil {
@@ -330,13 +337,7 @@ func renderHeroSection(w io.Writer, data workflowPageData) error {
 		return err
 	}
 	if data.Description != "" {
-		if err := writeString(w, "<p class=\"hero-description\">"); err != nil {
-			return err
-		}
-		if err := writeEscapedString(w, data.Description); err != nil {
-			return err
-		}
-		if err := writeString(w, "</p>"); err != nil {
+		if err := paragraph.Text("hero-description", data.Description).Render(ctx, w); err != nil {
 			return err
 		}
 	}
@@ -350,7 +351,10 @@ func renderEmptyState(ctx context.Context, w io.Writer) error {
 	if err := heading.Heading(2, "No workflows").Render(ctx, w); err != nil {
 		return err
 	}
-	if err := writeString(w, "<p>workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.</p></section>"); err != nil {
+	if err := paragraph.Text("", "workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.").Render(ctx, w); err != nil {
+		return err
+	}
+	if err := writeString(w, "</section>"); err != nil {
 		return err
 	}
 	return nil
@@ -370,13 +374,7 @@ func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategor
 		return err
 	}
 	if cat.Description != "" {
-		if err := writeString(w, "<p>"); err != nil {
-			return err
-		}
-		if err := writeEscapedString(w, cat.Description); err != nil {
-			return err
-		}
-		if err := writeString(w, "</p>"); err != nil {
+		if err := paragraph.Text("", cat.Description).Render(ctx, w); err != nil {
 			return err
 		}
 	}
@@ -398,13 +396,22 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 	if err := writeEscapedString(w, card.Key); err != nil {
 		return err
 	}
-	if err := writeString(w, "\"><div class=\"workflow-card__header\"><p class=\"workflow-card__process\"><code>"); err != nil {
+	if err := writeString(w, "\"><div class=\"workflow-card__header\">"); err != nil {
 		return err
 	}
-	if err := writeEscapedString(w, card.ProcessName); err != nil {
-		return err
-	}
-	if err := writeString(w, "</code></p>"); err != nil {
+	processComponent := templ.ComponentFunc(func(_ context.Context, childWriter io.Writer) error {
+		if err := writeString(childWriter, "<code>"); err != nil {
+			return err
+		}
+		if err := writeEscapedString(childWriter, card.ProcessName); err != nil {
+			return err
+		}
+		if err := writeString(childWriter, "</code>"); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err := paragraph.Content("workflow-card__process", processComponent).Render(ctx, w); err != nil {
 		return err
 	}
 	if err := heading.Heading(3, card.Name).Render(ctx, w); err != nil {
@@ -414,13 +421,7 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 		return err
 	}
 	if card.Summary != "" {
-		if err := writeString(w, "<p class=\"workflow-card__summary\">"); err != nil {
-			return err
-		}
-		if err := writeEscapedString(w, card.Summary); err != nil {
-			return err
-		}
-		if err := writeString(w, "</p>"); err != nil {
+		if err := paragraph.Text("workflow-card__summary", card.Summary).Render(ctx, w); err != nil {
 			return err
 		}
 	}
@@ -474,7 +475,7 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 			return err
 		}
 	}
-	if err := writeString(w, "<p class=\"workflow-card__status\" data-manual-run-status></p>"); err != nil {
+	if err := paragraph.Status("workflow-card__status").Render(ctx, w); err != nil {
 		return err
 	}
 	return writeString(w, "</article>")
