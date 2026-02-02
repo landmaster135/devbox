@@ -20,6 +20,7 @@ import (
 	heading "github.com/landmaster135/devbox/internal/templ_components/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/paragraph"
+	section "github.com/landmaster135/devbox/internal/templ_components/section"
 )
 
 const (
@@ -322,66 +323,57 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 }
 
 func renderHeroSection(ctx context.Context, w io.Writer, data workflowPageData) error {
-	if err := writeString(w, "<section class=\"hero\">"); err != nil {
-		return err
-	}
-	if err := paragraph.Text("hero-eyebrow", "Cron Workflow").Render(ctx, w); err != nil {
-		return err
-	}
-	if err := heading.Heading(1, data.Title).Render(ctx, w); err != nil {
-		return err
-	}
-	if data.Description != "" {
-		if err := paragraph.Text("hero-description", data.Description).Render(ctx, w); err != nil {
+	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := paragraph.Text("hero-eyebrow", "Cron Workflow").Render(ctx, w); err != nil {
 			return err
 		}
-	}
-	return writeString(w, "</section>")
+		if err := heading.Heading(1, data.Title).Render(ctx, w); err != nil {
+			return err
+		}
+		if data.Description != "" {
+			if err := paragraph.Text("hero-description", data.Description).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return section.Section("hero", "", body).Render(ctx, w)
 }
 
 func renderEmptyState(ctx context.Context, w io.Writer) error {
-	if err := writeString(w, "<section class=\"empty-state\">"); err != nil {
-		return err
-	}
-	if err := heading.Heading(2, "No workflows").Render(ctx, w); err != nil {
-		return err
-	}
-	if err := paragraph.Text("", "workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.").Render(ctx, w); err != nil {
-		return err
-	}
-	if err := writeString(w, "</section>"); err != nil {
-		return err
-	}
-	return nil
+	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := heading.Heading(2, "No workflows").Render(ctx, w); err != nil {
+			return err
+		}
+		return paragraph.Text("", "workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.").Render(ctx, w)
+	})
+	return section.Section("empty-state", "", body).Render(ctx, w)
 }
 
 func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategoryView) error {
-	if err := writeString(w, "<section class=\"workflow-category\" id=\""); err != nil {
-		return err
-	}
-	if err := writeEscapedString(w, cat.ID); err != nil {
-		return err
-	}
-	if err := writeString(w, "\"><div class=\"workflow-category__header\">"); err != nil {
-		return err
-	}
-	if err := heading.Heading(2, cat.Title).Render(ctx, w); err != nil {
-		return err
-	}
-	if cat.Description != "" {
-		if err := paragraph.Text("", cat.Description).Render(ctx, w); err != nil {
+	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := writeString(w, "<div class=\"workflow-category__header\">"); err != nil {
 			return err
 		}
-	}
-	if err := writeString(w, "</div><div class=\"workflow-grid\">"); err != nil {
-		return err
-	}
-	for _, wf := range cat.Workflows {
-		if err := renderWorkflowCard(ctx, w, wf); err != nil {
+		if err := heading.Heading(2, cat.Title).Render(ctx, w); err != nil {
 			return err
 		}
-	}
-	return writeString(w, "</div></section>")
+		if cat.Description != "" {
+			if err := paragraph.Text("", cat.Description).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		if err := writeString(w, "</div><div class=\"workflow-grid\">"); err != nil {
+			return err
+		}
+		for _, wf := range cat.Workflows {
+			if err := renderWorkflowCard(ctx, w, wf); err != nil {
+				return err
+			}
+		}
+		return writeString(w, "</div>")
+	})
+	return section.Section("workflow-category", cat.ID, body).Render(ctx, w)
 }
 
 func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView) error {
