@@ -15,13 +15,13 @@ import (
 
 	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
-	button "github.com/landmaster135/devbox/internal/templ_components/button"
-	code "github.com/landmaster135/devbox/internal/templ_components/code"
-	heading "github.com/landmaster135/devbox/internal/templ_components/heading"
-	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/hidden_input"
-	paragraph "github.com/landmaster135/devbox/internal/templ_components/paragraph"
-	section "github.com/landmaster135/devbox/internal/templ_components/section"
-	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase_style"
+	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
+	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
+	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
+	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
+	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
+	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
+	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
 )
 
 const (
