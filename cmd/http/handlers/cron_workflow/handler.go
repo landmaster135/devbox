@@ -17,6 +17,7 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
+	head "github.com/landmaster135/devbox/internal/templ_components/core/head"
 	headMeta "github.com/landmaster135/devbox/internal/templ_components/core/head_meta"
 	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
@@ -289,19 +290,14 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "<!DOCTYPE html><html lang=\"ja\">"); err != nil {
 			return err
 		}
-		if err := writeString(w, "<head>"); err != nil {
+		if err := head.Tag(
+			headMeta.Base(),
+			headTitle.Title(data.Title),
+			usecaseStyle.Tag(),
+		).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := headMeta.Base().Render(ctx, w); err != nil {
-			return err
-		}
-		if err := headTitle.Title(data.Title).Render(ctx, w); err != nil {
-			return err
-		}
-		if err := usecaseStyle.Tag().Render(ctx, w); err != nil {
-			return err
-		}
-		if err := writeString(w, "</head><body><main class=\"page\">"); err != nil {
+		if err := writeString(w, "<body><main class=\"page\">"); err != nil {
 			return err
 		}
 		if err := renderHeroSection(ctx, w, data); err != nil {
