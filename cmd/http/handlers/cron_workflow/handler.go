@@ -360,27 +360,19 @@ func renderEmptyState() templ.Component {
 }
 
 func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategoryView) error {
+	headerChildren := []templ.Component{heading.Heading(2, cat.Title)}
+	if cat.Description != "" {
+		headerChildren = append(headerChildren, paragraph.Text("", cat.Description))
+	}
 	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := writeString(w, "<div class=\"workflow-category__header\">"); err != nil {
+		if err := div.Tag("workflow-category__header", headerChildren...).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := heading.Heading(2, cat.Title).Render(ctx, w); err != nil {
-			return err
-		}
-		if cat.Description != "" {
-			if err := paragraph.Text("", cat.Description).Render(ctx, w); err != nil {
-				return err
-			}
-		}
-		if err := writeString(w, "</div><div class=\"workflow-grid\">"); err != nil {
-			return err
-		}
+		workflowCards := make([]templ.Component, 0, len(cat.Workflows))
 		for _, wf := range cat.Workflows {
-			if err := renderWorkflowCard(wf).Render(ctx, w); err != nil {
-				return err
-			}
+			workflowCards = append(workflowCards, renderWorkflowCard(wf))
 		}
-		return writeString(w, "</div>")
+		return div.Tag("workflow-grid", workflowCards...).Render(ctx, w)
 	})
 	return section.Section("workflow-category", cat.ID, body).Render(ctx, w)
 }
