@@ -25,6 +25,7 @@ import (
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
+	span "github.com/landmaster135/devbox/internal/templ_components/core/span"
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
 )
 
@@ -407,7 +408,10 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 		}
 	}
 	if card.CronDefinition != "" {
-		if err := writeString(w, "<div class=\"workflow-card__cron\"><span>CRON</span>"); err != nil {
+		if err := writeString(w, "<div class=\"workflow-card__cron\">"); err != nil {
+			return err
+		}
+		if err := span.Text("", "CRON").Render(ctx, w); err != nil {
 			return err
 		}
 		if err := code.Text("", card.CronDefinition).Render(ctx, w); err != nil {
