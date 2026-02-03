@@ -304,7 +304,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 			return err
 		}
 		if len(data.Categories) == 0 {
-			if err := renderEmptyState(ctx, w); err != nil {
+			if err := renderEmptyState().Render(ctx, w); err != nil {
 				return err
 			}
 		} else {
@@ -345,14 +345,14 @@ func renderHeroSection(ctx context.Context, w io.Writer, data workflowPageData) 
 	return section.Section("hero", "", body).Render(ctx, w)
 }
 
-func renderEmptyState(ctx context.Context, w io.Writer) error {
+func renderEmptyState() templ.Component {
 	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := heading.Heading(2, "No workflows").Render(ctx, w); err != nil {
 			return err
 		}
 		return paragraph.Text("", "workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.").Render(ctx, w)
 	})
-	return section.Section("empty-state", "", body).Render(ctx, w)
+	return section.Section("empty-state", "", body)
 }
 
 func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategoryView) error {
