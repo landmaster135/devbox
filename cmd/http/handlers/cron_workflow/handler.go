@@ -19,7 +19,7 @@ import (
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
-	pageTitle "github.com/landmaster135/devbox/internal/templ_components/core/page_title"
+	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
@@ -291,7 +291,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"); err != nil {
 			return err
 		}
-		if err := pageTitle.Title(data.Title).Render(ctx, w); err != nil {
+		if err := headTitle.Title(data.Title).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := usecaseStyle.Tag().Render(ctx, w); err != nil {
