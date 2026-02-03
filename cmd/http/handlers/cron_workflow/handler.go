@@ -304,7 +304,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "<body><main class=\"page\">"); err != nil {
 			return err
 		}
-		if err := renderHeroSection(ctx, w, data); err != nil {
+		if err := renderHeroSection(data).Render(ctx, w); err != nil {
 			return err
 		}
 		if len(data.Categories) == 0 {
@@ -329,7 +329,7 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 	})
 }
 
-func renderHeroSection(ctx context.Context, w io.Writer, data workflowPageData) error {
+func renderHeroSection(data workflowPageData) templ.Component {
 	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := paragraph.Text("hero-eyebrow", "Cron Workflow").Render(ctx, w); err != nil {
 			return err
@@ -344,7 +344,7 @@ func renderHeroSection(ctx context.Context, w io.Writer, data workflowPageData) 
 		}
 		return nil
 	})
-	return section.Section("hero", "", body).Render(ctx, w)
+	return section.Section("hero", "", body)
 }
 
 func renderEmptyState() templ.Component {
