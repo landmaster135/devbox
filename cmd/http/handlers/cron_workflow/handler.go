@@ -17,6 +17,7 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
+	div "github.com/landmaster135/devbox/internal/templ_components/core/div"
 	form "github.com/landmaster135/devbox/internal/templ_components/core/form"
 	head "github.com/landmaster135/devbox/internal/templ_components/core/head"
 	headMeta "github.com/landmaster135/devbox/internal/templ_components/core/head_meta"
@@ -390,16 +391,13 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 	if err := writeEscapedString(w, card.Key); err != nil {
 		return err
 	}
-	if err := writeString(w, "\"><div class=\"workflow-card__header\">"); err != nil {
+	if err := writeString(w, "\">"); err != nil {
 		return err
 	}
-	if err := paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)).Render(ctx, w); err != nil {
-		return err
-	}
-	if err := heading.Heading(3, card.Name).Render(ctx, w); err != nil {
-		return err
-	}
-	if err := writeString(w, "</div>"); err != nil {
+	if err := div.Tag("workflow-card__header",
+		paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)),
+		heading.Heading(3, card.Name),
+	).Render(ctx, w); err != nil {
 		return err
 	}
 	if card.Summary != "" {
@@ -408,16 +406,10 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 		}
 	}
 	if card.CronDefinition != "" {
-		if err := writeString(w, "<div class=\"workflow-card__cron\">"); err != nil {
-			return err
-		}
-		if err := span.Text("", "CRON").Render(ctx, w); err != nil {
-			return err
-		}
-		if err := code.Text("", card.CronDefinition).Render(ctx, w); err != nil {
-			return err
-		}
-		if err := writeString(w, "</div>"); err != nil {
+		if err := div.Tag("workflow-card__cron",
+			span.Text("", "CRON"),
+			code.Text("", card.CronDefinition),
+		).Render(ctx, w); err != nil {
 			return err
 		}
 	}
