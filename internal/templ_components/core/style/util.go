@@ -36,47 +36,22 @@ func Property(name string, value string) templ.SafeCSS {
 	return templ.SanitizeCSS(name, value)
 }
 
-func MustSafeBoxShadow(property string, offsets []string, colors []string) templ.SafeCSS {
-	css, err := safeBoxShadow(property, offsets, colors)
-	if err != nil {
-		// TODO: handle error
-		panic(err)
-	}
-	return css
+func MustSafeBoxShadow(property string, offsets []string, colors []string) (templ.SafeCSS, error) {
+	return safeBoxShadow(property, offsets, colors)
 }
 
-func MustSafeBorder(property, width, style string, colors []string) templ.SafeCSS {
-	css, err := safeBorder(property, width, style, colors)
-	if err != nil {
-		// TODO: handle error
-		panic(err)
-	}
-	return css
+func MustSafeBorder(property, width, style string, colors []string) (templ.SafeCSS, error) {
+	return safeBorder(property, width, style, colors)
 }
 
-func MustSafeColorProperty(property, color string) templ.SafeCSS {
-	css, err := safeColorProperty(property, color)
-	if err != nil {
-		// TODO: handle error
-		panic(err)
-	}
-	return css
+func MustSafeColorProperty(property, color string) (templ.SafeCSS, error) {
+	return safeColorProperty(property, color)
 }
 
-func MustSafeFontFamily(property string, families []string) templ.SafeCSS {
-	css, err := safeFontFamily(property, families)
-	if err != nil {
-		// TODO: handle error
-		panic(err)
-	}
-	return css
+func MustSafeFontFamily(property string, families []string) (templ.SafeCSS, error) {
+	return safeFontFamily(property, families)
 }
 
-func MustSafeLinearGradient(property, angle string, stops ...string) templ.SafeCSS {
-	css, err := safeLinearGradient(property, angle, stops...)
-	if err != nil {
-		// TODO: handle error
-		panic(err)
-	}
-	return css
+func MustSafeLinearGradient(property, angle string, stops ...string) (templ.SafeCSS, error) {
+	return safeLinearGradient(property, angle, stops...)
 }
