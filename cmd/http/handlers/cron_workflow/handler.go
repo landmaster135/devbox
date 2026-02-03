@@ -15,6 +15,7 @@ import (
 
 	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+	body "github.com/landmaster135/devbox/internal/templ_components/core/body"
 	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
 	div "github.com/landmaster135/devbox/internal/templ_components/core/div"
@@ -303,9 +304,6 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := writeString(w, "<body>"); err != nil {
-			return err
-		}
 		mainChildren := []templ.Component{renderHeroSection(data)}
 		if len(data.Categories) == 0 {
 			mainChildren = append(mainChildren, renderEmptyState())
@@ -318,13 +316,13 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 			}
 			mainChildren = append(mainChildren, div.Tag("page-sections", categorySections...))
 		}
-		if err := mainComponent.Tag("page", mainChildren...).Render(ctx, w); err != nil {
+		if err := body.Tag("",
+			mainComponent.Tag("page", mainChildren...),
+			script.Tag(cronWorkflowPageScript),
+		).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := script.Tag(cronWorkflowPageScript).Render(ctx, w); err != nil {
-			return err
-		}
-		if err := writeString(w, "</body></html>"); err != nil {
+		if err := writeString(w, "</html>"); err != nil {
 			return err
 		}
 		return nil
