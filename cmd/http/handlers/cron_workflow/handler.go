@@ -17,6 +17,7 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
+	form "github.com/landmaster135/devbox/internal/templ_components/core/form"
 	head "github.com/landmaster135/devbox/internal/templ_components/core/head"
 	headMeta "github.com/landmaster135/devbox/internal/templ_components/core/head_meta"
 	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
@@ -417,41 +418,21 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 		}
 	}
 	if card.ManualAction != "" {
-		if err := writeString(w, "<form class=\"workflow-card__manual\" method=\""); err != nil {
-			return err
-		}
 		method := card.ManualMethod
 		if method == "" {
 			method = http.MethodPost
 		}
-		if err := writeEscapedString(w, strings.ToUpper(method)); err != nil {
-			return err
-		}
-		if err := writeString(w, "\" action=\""); err != nil {
-			return err
-		}
+		upperMethod := strings.ToUpper(method)
 		action := card.ManualAction
-		if err := writeEscapedString(w, action); err != nil {
-			return err
-		}
-		if err := writeString(w, "\" data-endpoint=\""); err != nil {
-			return err
-		}
-		if err := writeEscapedString(w, action); err != nil {
-			return err
-		}
-		if err := writeString(w, "\">"); err != nil {
-			return err
-		}
-		if card.ManualWorkflowField != "" && card.ManualWorkflowValue != "" {
-			if err := hiddenInput.HiddenField(card.ManualWorkflowField, card.ManualWorkflowValue).Render(ctx, w); err != nil {
-				return err
+		body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+			if card.ManualWorkflowField != "" && card.ManualWorkflowValue != "" {
+				if err := hiddenInput.HiddenField(card.ManualWorkflowField, card.ManualWorkflowValue).Render(ctx, w); err != nil {
+					return err
+				}
 			}
-		}
-		if err := button.Submit("Manual Run").Render(ctx, w); err != nil {
-			return err
-		}
-		if err := writeString(w, "</form>"); err != nil {
+			return button.Submit("Manual Run").Render(ctx, w)
+		})
+		if err := form.Tag("workflow-card__manual", upperMethod, action, action, body).Render(ctx, w); err != nil {
 			return err
 		}
 	}
