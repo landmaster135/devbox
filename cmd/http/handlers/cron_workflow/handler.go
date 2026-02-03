@@ -24,6 +24,7 @@ import (
 	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
+	maincomponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	span "github.com/landmaster135/devbox/internal/templ_components/core/span"
@@ -301,28 +302,26 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := writeString(w, "<body><main class=\"page\">"); err != nil {
+		if err := writeString(w, "<body>"); err != nil {
 			return err
 		}
-		if err := renderHeroSection(data).Render(ctx, w); err != nil {
-			return err
-		}
+		mainChildren := []templ.Component{renderHeroSection(data)}
 		if len(data.Categories) == 0 {
-			if err := renderEmptyState().Render(ctx, w); err != nil {
-				return err
-			}
+			mainChildren = append(mainChildren, renderEmptyState())
 		} else {
 			categorySections := make([]templ.Component, 0, len(data.Categories))
 			for _, cat := range data.Categories {
+				cat := cat
 				categorySections = append(categorySections, templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 					return renderCategorySection(ctx, w, cat)
 				}))
 			}
-			if err := div.Tag("page-sections", categorySections...).Render(ctx, w); err != nil {
-				return err
-			}
+			mainChildren = append(mainChildren, div.Tag("page-sections", categorySections...))
 		}
-		if err := writeString(w, "</main><script>"+cronWorkflowPageScript+"</script></body></html>"); err != nil {
+		if err := maincomponent.Tag("page", mainChildren...).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := writeString(w, "<script>"+cronWorkflowPageScript+"</script></body></html>"); err != nil {
 			return err
 		}
 		return nil
