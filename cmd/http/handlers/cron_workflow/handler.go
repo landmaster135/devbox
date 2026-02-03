@@ -19,6 +19,7 @@ import (
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
+	pageTitle "github.com/landmaster135/devbox/internal/templ_components/core/page_title"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
@@ -287,13 +288,10 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "<!DOCTYPE html><html lang=\"ja\">"); err != nil {
 			return err
 		}
-		if err := writeString(w, "<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"); err != nil {
+		if err := writeString(w, "<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"); err != nil {
 			return err
 		}
-		if err := writeEscapedString(w, data.Title); err != nil {
-			return err
-		}
-		if err := writeString(w, "</title>"); err != nil {
+		if err := pageTitle.Title(data.Title).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := usecaseStyle.Tag().Render(ctx, w); err != nil {
