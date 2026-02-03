@@ -1,10 +1,10 @@
 package heading
 
 import (
-	"context"
 	"strings"
 	"testing"
-	"golang.org/x/net/html"
+
+	test "github.com/landmaster135/devbox/internal/templ_components/core/test"
 )
 
 func TestHeadingLevelSelection(t *testing.T) {
@@ -28,13 +28,13 @@ func TestHeadingLevelSelection(t *testing.T) {
 			t.Parallel()
 
 			markup := renderHeadingHTML(t, tt.level, tt.text)
-			node := parseSingleElement(t, markup)
+			node := test.ParseSingleElement(t, markup)
 
 			if node.Data != tt.wantTag {
 				t.Fatalf("expected tag %s but got %s", tt.wantTag, node.Data)
 			}
 
-			if text := strings.TrimSpace(textContent(node)); text != tt.text {
+			if text := strings.TrimSpace(test.GetTextContent(node)); text != tt.text {
 				t.Fatalf("expected text %q but got %q", tt.text, text)
 			}
 		})
@@ -55,8 +55,8 @@ func TestHeadingEscapesText(t *testing.T) {
 		t.Fatalf("escaped script tag not found in %s", markup)
 	}
 
-	node := parseSingleElement(t, markup)
-	if got := textContent(node); got != dangerous {
+	node := test.ParseSingleElement(t, markup)
+	if got := test.GetTextContent(node); got != dangerous {
 		t.Fatalf("expected text %q but got %q", dangerous, got)
 	}
 }
@@ -70,68 +70,5 @@ func renderHeadingHTML(t *testing.T, level int, text string) string {
 		t.Fatalf("Heading returned nil component")
 	}
 
-	if err := component.Render(context.Background(), &buf); err != nil {
-		t.Fatalf("render failed: %v", err)
-	}
-
-	return buf.String()
-}
-
-func parseSingleElement(t *testing.T, markup string) *html.Node {
-	t.Helper()
-
-	root, err := html.Parse(strings.NewReader(markup))
-	if err != nil {
-		t.Fatalf("failed to parse markup: %v", err)
-	}
-
-	node := firstElement(root)
-	if node == nil {
-		t.Fatalf("no element node found: %s", markup)
-	}
-
-	return node
-}
-
-func firstElement(n *html.Node) *html.Node {
-	if n == nil {
-		return nil
-	}
-
-	if n.Type == html.ElementNode {
-		switch n.Data {
-		case "html", "head", "body":
-			// Skip the wrapper nodes html.Parse adds for fragments.
-		default:
-			return n
-		}
-	}
-
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if el := firstElement(c); el != nil {
-			return el
-		}
-	}
-
-	return nil
-}
-
-func textContent(n *html.Node) string {
-	var sb strings.Builder
-	accumulateText(n, &sb)
-	return sb.String()
-}
-
-func accumulateText(n *html.Node, sb *strings.Builder) {
-	if n == nil {
-		return
-	}
-
-	if n.Type == html.TextNode {
-		sb.WriteString(n.Data)
-	}
-
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		accumulateText(c, sb)
-	}
+	return test.RenderComponent(t, component, &buf)
 }
