@@ -25,7 +25,7 @@ func ParseSingleElement(t *testing.T, markup string) *html.Node {
 		t.Fatalf("failed to parse markup: %v", err)
 	}
 
-	node := getFirstElement(root)
+	node := GetFirstElement(root)
 	if node == nil {
 		t.Fatalf("no element node found: %s", markup)
 	}
@@ -33,7 +33,7 @@ func ParseSingleElement(t *testing.T, markup string) *html.Node {
 	return node
 }
 
-func getFirstElement(n *html.Node) *html.Node {
+func GetFirstElement(n *html.Node) *html.Node {
 	if n == nil {
 		return nil
 	}
@@ -48,8 +48,22 @@ func getFirstElement(n *html.Node) *html.Node {
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if el := getFirstElement(c); el != nil {
+		if el := GetFirstElement(c); el != nil {
 			return el
+		}
+	}
+
+	return nil
+}
+
+func GetFirstChildOfElement(n *html.Node) *html.Node {
+	if n == nil {
+		return nil
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode {
+			return c
 		}
 	}
 
@@ -83,4 +97,13 @@ func GetAttr(n *html.Node, key string) string {
 		}
 	}
 	return ""
+}
+
+func HasAttr(n *html.Node, key string) bool {
+	for _, a := range n.Attr {
+		if a.Key == key {
+			return true
+		}
+	}
+	return false
 }

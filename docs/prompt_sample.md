@@ -26,3 +26,6 @@
 ## 新規のCronワークフローの追加（PC情報取得タスクの場合）
 /home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにPC情報を取得するための新規ワークフローを追加して。/home/user/devbox/internal/machine_info/usecases/services.goにあるCollectAndSaveUbuntuInfo関数を呼び出せば処理出来るはずだ。引数networkInterfaceに "eth0"を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値をoutDirとして、引数outputDirにfilepath.Join(c.VolumeDir, outDir)も渡す。cronは10分おきに設定して。
 - EnvKeyPCInfoOutputDirectory
+
+## templコンポーネントに対するテストケースの追加
+/home/user/devbox/internal/templ_components/core/heading/index_test.goと/home/user/devbox/internal/templ_components/core/hidden_input/input_test.goを参考に/home/user/devbox/internal/templ_components/core/paragraphにテストコードを追加して。
