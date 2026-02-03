@@ -27,6 +27,7 @@ import (
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	span "github.com/landmaster135/devbox/internal/templ_components/core/span"
+	article "github.com/landmaster135/devbox/internal/templ_components/usecase/article"
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
 )
 
@@ -385,57 +386,48 @@ func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategor
 }
 
 func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView) error {
-	if err := writeString(w, "<article class=\"workflow-card\" data-workflow-key=\""); err != nil {
-		return err
-	}
-	if err := writeEscapedString(w, card.Key); err != nil {
-		return err
-	}
-	if err := writeString(w, "\">"); err != nil {
-		return err
-	}
-	if err := div.Tag("workflow-card__header",
-		paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)),
-		heading.Heading(3, card.Name),
-	).Render(ctx, w); err != nil {
-		return err
-	}
-	if card.Summary != "" {
-		if err := paragraph.Text("workflow-card__summary", card.Summary).Render(ctx, w); err != nil {
-			return err
-		}
-	}
-	if card.CronDefinition != "" {
-		if err := div.Tag("workflow-card__cron",
-			span.Text("", "CRON"),
-			code.Text("", card.CronDefinition),
+	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := div.Tag("workflow-card__header",
+			paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)),
+			heading.Heading(3, card.Name),
 		).Render(ctx, w); err != nil {
 			return err
 		}
-	}
-	if card.ManualAction != "" {
-		method := card.ManualMethod
-		if method == "" {
-			method = http.MethodPost
-		}
-		upperMethod := strings.ToUpper(method)
-		action := card.ManualAction
-		body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-			if card.ManualWorkflowField != "" && card.ManualWorkflowValue != "" {
-				if err := hiddenInput.HiddenField(card.ManualWorkflowField, card.ManualWorkflowValue).Render(ctx, w); err != nil {
-					return err
-				}
+		if card.Summary != "" {
+			if err := paragraph.Text("workflow-card__summary", card.Summary).Render(ctx, w); err != nil {
+				return err
 			}
-			return button.Submit("Manual Run").Render(ctx, w)
-		})
-		if err := form.Tag("workflow-card__manual", upperMethod, action, action, body).Render(ctx, w); err != nil {
-			return err
 		}
-	}
-	if err := paragraph.Status("workflow-card__status").Render(ctx, w); err != nil {
-		return err
-	}
-	return writeString(w, "</article>")
+		if card.CronDefinition != "" {
+			if err := div.Tag("workflow-card__cron",
+				span.Text("", "CRON"),
+				code.Text("", card.CronDefinition),
+			).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		if card.ManualAction != "" {
+			method := card.ManualMethod
+			if method == "" {
+				method = http.MethodPost
+			}
+			upperMethod := strings.ToUpper(method)
+			action := card.ManualAction
+			body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+				if card.ManualWorkflowField != "" && card.ManualWorkflowValue != "" {
+					if err := hiddenInput.HiddenField(card.ManualWorkflowField, card.ManualWorkflowValue).Render(ctx, w); err != nil {
+						return err
+					}
+				}
+				return button.Submit("Manual Run").Render(ctx, w)
+			})
+			if err := form.Tag("workflow-card__manual", upperMethod, action, action, body).Render(ctx, w); err != nil {
+				return err
+			}
+		}
+		return paragraph.Status("workflow-card__status").Render(ctx, w)
+	})
+	return article.Tag("workflow-card", card.Key, body).Render(ctx, w)
 }
 
 type manualRunResponse struct {
