@@ -376,7 +376,7 @@ func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategor
 			return err
 		}
 		for _, wf := range cat.Workflows {
-			if err := renderWorkflowCard(ctx, w, wf); err != nil {
+			if err := renderWorkflowCard(wf).Render(ctx, w); err != nil {
 				return err
 			}
 		}
@@ -385,7 +385,7 @@ func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategor
 	return section.Section("workflow-category", cat.ID, body).Render(ctx, w)
 }
 
-func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView) error {
+func renderWorkflowCard(card workflowCardView) templ.Component {
 	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := div.Tag("workflow-card__header",
 			paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)),
@@ -427,7 +427,7 @@ func renderWorkflowCard(ctx context.Context, w io.Writer, card workflowCardView)
 		}
 		return paragraph.Status("workflow-card__status").Render(ctx, w)
 	})
-	return article.Tag("workflow-card", card.Key, body).Render(ctx, w)
+	return article.Tag("workflow-card", card.Key, body)
 }
 
 type manualRunResponse struct {
