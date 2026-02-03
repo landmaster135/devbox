@@ -1,6 +1,6 @@
 # devbox
 ![Go](https://img.shields.io/badge/Go-1.25-%2300ADD8?logo=go)
-![Coverage](https://img.shields.io/badge/Coverage-56.5%25-yellow)
+![Coverage](https://img.shields.io/badge/Coverage-56.7%25-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 Provides utilities for development.
