@@ -26,6 +26,7 @@ import (
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
 	maincomponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
+	script "github.com/landmaster135/devbox/internal/templ_components/core/script"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	span "github.com/landmaster135/devbox/internal/templ_components/core/span"
 	article "github.com/landmaster135/devbox/internal/templ_components/usecase/article"
@@ -321,7 +322,10 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := maincomponent.Tag("page", mainChildren...).Render(ctx, w); err != nil {
 			return err
 		}
-		if err := writeString(w, "<script>"+cronWorkflowPageScript+"</script></body></html>"); err != nil {
+		if err := script.Tag(cronWorkflowPageScript).Render(ctx, w); err != nil {
+			return err
+		}
+		if err := writeString(w, "</body></html>"); err != nil {
 			return err
 		}
 		return nil
