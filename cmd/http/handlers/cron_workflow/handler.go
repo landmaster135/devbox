@@ -24,12 +24,12 @@ import (
 	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
-	maincomponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
+	mainComponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	script "github.com/landmaster135/devbox/internal/templ_components/core/script"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	span "github.com/landmaster135/devbox/internal/templ_components/core/span"
-	article "github.com/landmaster135/devbox/internal/templ_components/usecase/article"
+	usecaseArticle "github.com/landmaster135/devbox/internal/templ_components/usecase/article"
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
 )
 
@@ -312,14 +312,13 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		} else {
 			categorySections := make([]templ.Component, 0, len(data.Categories))
 			for _, cat := range data.Categories {
-				cat := cat
 				categorySections = append(categorySections, templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 					return renderCategorySection(ctx, w, cat)
 				}))
 			}
 			mainChildren = append(mainChildren, div.Tag("page-sections", categorySections...))
 		}
-		if err := maincomponent.Tag("page", mainChildren...).Render(ctx, w); err != nil {
+		if err := mainComponent.Tag("page", mainChildren...).Render(ctx, w); err != nil {
 			return err
 		}
 		if err := script.Tag(cronWorkflowPageScript).Render(ctx, w); err != nil {
@@ -420,7 +419,7 @@ func renderWorkflowCard(card workflowCardView) templ.Component {
 		}
 		return paragraph.Status("workflow-card__status").Render(ctx, w)
 	})
-	return article.Tag("workflow-card", card.Key, body)
+	return usecaseArticle.Tag("workflow-card", card.Key, body)
 }
 
 type manualRunResponse struct {
