@@ -17,9 +17,10 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
 	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
+	headMeta "github.com/landmaster135/devbox/internal/templ_components/core/head_meta"
+	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
-	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
@@ -288,7 +289,10 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 		if err := writeString(w, "<!DOCTYPE html><html lang=\"ja\">"); err != nil {
 			return err
 		}
-		if err := writeString(w, "<head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"); err != nil {
+		if err := writeString(w, "<head>"); err != nil {
+			return err
+		}
+		if err := headMeta.Base().Render(ctx, w); err != nil {
 			return err
 		}
 		if err := headTitle.Title(data.Title).Render(ctx, w); err != nil {
