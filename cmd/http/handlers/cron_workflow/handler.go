@@ -312,15 +312,13 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 				return err
 			}
 		} else {
-			if err := writeString(w, "<div class=\"page-sections\">"); err != nil {
-				return err
-			}
+			categorySections := make([]templ.Component, 0, len(data.Categories))
 			for _, cat := range data.Categories {
-				if err := renderCategorySection(ctx, w, cat); err != nil {
-					return err
-				}
+				categorySections = append(categorySections, templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+					return renderCategorySection(ctx, w, cat)
+				}))
 			}
-			if err := writeString(w, "</div>"); err != nil {
+			if err := div.Tag("page-sections", categorySections...).Render(ctx, w); err != nil {
 				return err
 			}
 		}
@@ -466,11 +464,6 @@ func respondJSONError(w http.ResponseWriter, status int, message string) {
 
 func writeString(w io.Writer, value string) error {
 	_, err := io.WriteString(w, value)
-	return err
-}
-
-func writeEscapedString(w io.Writer, value string) error {
-	_, err := io.WriteString(w, templ.EscapeString(value))
 	return err
 }
 
