@@ -17,7 +17,9 @@ templ styleContent(s CSSStyle) {
 
 templ ruleBlock(rule CSSRule, indent string) {
   if shouldRenderRule(rule) {
-    { "\n" }{ indent }{ trimmedSelector(rule) }{ " {\n" }
+    { "\n" }{ indent }
+    @templ.Raw(trimmedSelector(rule))
+    { " {\n" }
     for _, declaration := range renderableDeclarations(rule) {
       { indent }{ "  " }@templ.Raw(declaration){ "\n" }
     }
