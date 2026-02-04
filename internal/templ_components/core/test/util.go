@@ -73,6 +73,21 @@ func GetFirstChildOfElement(n *html.Node) *html.Node {
 	return nil
 }
 
+func GetNextSiblingOfElement(n *html.Node) *html.Node {
+	if n == nil {
+		return nil
+	}
+
+	for c := n.NextSibling; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode {
+			return c
+		}
+	}
+
+	return nil
+}
+
+
 func GetTextContent(n *html.Node) string {
 	var sb strings.Builder
 	accumulateText(n, &sb)
