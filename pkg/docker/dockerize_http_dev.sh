@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_PATH="${PROJECT_ROOT}/docker-compose.yml"
 ENV_PATH="${PROJECT_ROOT}/env.yml"
 BUILD_SCRIPT="${PROJECT_ROOT}/pkg/docker/build_image.sh"
-DOCKERFILE_PATH="${PROJECT_ROOT}/pkg/docker/Dockerfile.cron"
+DOCKERFILE_PATH="${PROJECT_ROOT}/pkg/docker/Dockerfile.http"
 IMAGE_NAME="devbox-cron"
 IMAGE_TAG="${IMAGE_NAME}:latest"
 PORT_KEY="CRON_URL_PORT"
@@ -70,7 +70,7 @@ run_user_sync() {
 
 build_frontend() {
   log "フロントエンドイメージをビルド"
-  "$BUILD_SCRIPT" "$ENV_PATH" "$DOCKERFILE_PATH"
+  "$BUILD_SCRIPT" "$ENV_PATH" "$DOCKERFILE_PATH" "$PORT_KEY"
 }
 
 verify_image() {

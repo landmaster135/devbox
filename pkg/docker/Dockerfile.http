@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+
+# Build stage: compile the HTTP server binary
+FROM golang:1.25-bookworm AS builder
+WORKDIR /workspace
+
+# Download dependencies first for better layer caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the entire source tree and build the Cloud Run entrypoint
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o /workspace/bin/server ./cmd/http
+
+# Runtime stage: minimal image for Cloud Run
+FROM debian:bookworm-slim
+ARG CRON_URL_PORT
+
+# 必要最小限のパッケージをインストール
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 非rootユーザーを作成
+RUN groupadd -g 65532 nonroot && \
+    useradd -u 65532 -g nonroot -s /bin/bash -m nonroot
+
+COPY --from=builder /workspace/bin/server /app/server
+RUN chown -R nonroot:nonroot /app
+USER nonroot
+
+ENV PORT=${CRON_URL_PORT}
+EXPOSE ${CRON_URL_PORT}
+
+ENTRYPOINT ["/app/server"]

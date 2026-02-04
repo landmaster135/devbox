@@ -67,7 +67,7 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	)
 	dailyHeadingWorkflow := usecases.NewWorkflow(
 		"Daily heading Discord notification",
-		"*/2 * * * 0-6",
+		"1 0 * * 0-6",
 		wh.GetCreator().Timezone,
 		wh.NotifyDailyHeading,
 	)
