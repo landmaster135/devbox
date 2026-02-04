@@ -39,6 +39,10 @@ tasks:
     desc: "Run an executable for backend"
     cmds:
       - echo 'No registered command...'
+  run:http:
+    desc: "Run an executable for HTTP server"
+    cmds:
+      - echo 'No registered command...'
   check:
     desc: "Check on syntax and linting"
     cmds:
