@@ -1,39 +1,16 @@
 package cron_workflow
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"sort"
 	"strings"
 
-	templ "github.com/a-h/templ"
-
 	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
+	page "github.com/landmaster135/devbox/cmd/http/handlers/cron_workflow/page"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	logging "github.com/landmaster135/devbox/internal/logging"
-
-	body "github.com/landmaster135/devbox/internal/templ_components/core/body"
-	button "github.com/landmaster135/devbox/internal/templ_components/core/button"
-	code "github.com/landmaster135/devbox/internal/templ_components/core/code"
-	div "github.com/landmaster135/devbox/internal/templ_components/core/div"
-	form "github.com/landmaster135/devbox/internal/templ_components/core/form"
-	head "github.com/landmaster135/devbox/internal/templ_components/core/head"
-	headMeta "github.com/landmaster135/devbox/internal/templ_components/core/head_meta"
-	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
-	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
-	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
-	html "github.com/landmaster135/devbox/internal/templ_components/core/html"
-	mainComponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
-	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
-	script "github.com/landmaster135/devbox/internal/templ_components/core/script"
-	section "github.com/landmaster135/devbox/internal/templ_components/core/section"
-	span "github.com/landmaster135/devbox/internal/templ_components/core/span"
-	usecaseArticle "github.com/landmaster135/devbox/internal/templ_components/usecase/article"
-	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
 )
 
 const (
@@ -42,43 +19,22 @@ const (
 	manualWorkflowFieldName = "workflow"
 )
 
-const (
-	categoryWeatherAutomationID = "weather-automation"
-	categoryDailyHeadingID      = "daily-heading"
-)
-
-var workflowCategoryDefinitions = []workflowCategoryDefinition{
-	{
-		ID:          categoryWeatherAutomationID,
-		Title:       "Weather & Climate",
-		Description: "Workflows that source OpenWeatherMap data and fan out Discord notifications.",
-	},
-	{
-		ID:          categoryDailyHeadingID,
-		Title:       "Daily Briefing",
-		Description: "Text-generation workflows that prepare Discord-ready summaries.",
-	},
-}
-
-var (
-	workflowDefinitionsByDescription = initWorkflowDefinitions()
-	workflowDefinitionsByKey         = buildWorkflowDefinitionsByKey(workflowDefinitionsByDescription)
-)
-
-var (
-	errWorkflowNotRegistered = errors.New("workflow not registered")
-	errWorkflowUnavailable   = errors.New("workflow unavailable")
-)
-
 // Handler exposes cron-workflow metadata as a templ-rendered HTML page.
 type Handler struct {
-	listWorkflows func(logger *logging.StructuredLogger) ([]usecases.Workflow, error)
-	logger        *logging.StructuredLogger
+	listWorkflows           func(logger *logging.StructuredLogger) ([]usecases.Workflow, error)
+	logger                  *logging.StructuredLogger
+	manualWorkflowFieldName string
+	manualRunEndpoint       string
 }
 
 // NewHandler creates a handler backed by workflow.List.
 func NewHandler(logger *logging.StructuredLogger) *Handler {
-	return &Handler{listWorkflows: workflowPkg.List, logger: logging.Ensure(logger)}
+	return &Handler{
+		listWorkflows:           workflowPkg.List,
+		logger:                  logging.Ensure(logger),
+		manualWorkflowFieldName: manualWorkflowFieldName,
+		manualRunEndpoint:       ManualRunEndpoint,
+	}
 }
 
 // NewHandlerWithLister allows supplying a custom workflow lister (primarily for tests).
@@ -86,7 +42,12 @@ func NewHandlerWithLister(listFn func(logger *logging.StructuredLogger) ([]useca
 	if listFn == nil {
 		listFn = workflowPkg.List
 	}
-	return &Handler{listWorkflows: listFn, logger: logging.Ensure(logger)}
+	return &Handler{
+		listWorkflows:           listFn,
+		logger:                  logging.Ensure(logger),
+		manualWorkflowFieldName: manualWorkflowFieldName,
+		manualRunEndpoint:       ManualRunEndpoint,
+	}
 }
 
 // HandleCronWorkflowPage renders the cron-workflow dashboard page.
@@ -105,14 +66,7 @@ func (h *Handler) HandleCronWorkflowPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	data, err := buildWorkflowPageData(workflows)
-	if err != nil {
-		pageLogger.WithTags("render").Errorf("failed to build workflow page data: %v", err)
-		http.Error(w, "failed to render workflow page", http.StatusInternalServerError)
-		return
-	}
-
-	templ.Handler(CronWorkflowPage(data)).ServeHTTP(w, r)
+	page.Start(w, r, pageLogger, workflows, h.manualRunEndpoint, h.manualWorkflowFieldName)
 }
 
 // HandleManualRun triggers a workflow immediately without navigating away from the page.
@@ -142,13 +96,13 @@ func (h *Handler) HandleManualRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	process, def, err := workflowProcessByKey(workflows, workflowKey)
+	process, def, err := page.WorkflowProcessByKey(workflows, workflowKey)
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch {
-		case errors.Is(err, errWorkflowNotRegistered):
+		case errors.Is(err, page.ErrWorkflowNotRegistered):
 			status = http.StatusBadRequest
-		case errors.Is(err, errWorkflowUnavailable):
+		case errors.Is(err, page.ErrWorkflowUnavailable):
 			status = http.StatusServiceUnavailable
 		}
 		respondJSONError(manualLogger, w, status, err.Error())
@@ -168,279 +122,10 @@ func (h *Handler) HandleManualRun(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-type workflowDefinition struct {
-	Key             string
-	DisplayName     string
-	Summary         string
-	CategoryID      string
-	ProcessDisplay  string
-	ListDescription string
-}
-
-type workflowCategoryDefinition struct {
-	ID          string
-	Title       string
-	Description string
-}
-
-func initWorkflowDefinitions() map[string]workflowDefinition {
-	defs := map[string]workflowDefinition{
-		"Daily Tokyo weather notification": {
-			Key:            "daily-tokyo-weather",
-			DisplayName:    "Daily Tokyo weather notification",
-			Summary:        "Fetches a three-day forecast for Tokyo and shares it with the weather Discord channel.",
-			CategoryID:     categoryWeatherAutomationID,
-			ProcessDisplay: "WorkflowHandler.NotifyWeather",
-		},
-		"Daily heading Discord notification": {
-			Key:            "daily-heading",
-			DisplayName:    "Daily heading Discord notification",
-			Summary:        "Generates the day's heading template and posts it to the daily heading Discord webhook.",
-			CategoryID:     categoryDailyHeadingID,
-			ProcessDisplay: "WorkflowHandler.NotifyDailyHeading",
-		},
-	}
-	for desc, def := range defs {
-		def.ListDescription = desc
-		defs[desc] = def
-	}
-	return defs
-}
-
-func buildWorkflowDefinitionsByKey(defs map[string]workflowDefinition) map[string]workflowDefinition {
-	result := make(map[string]workflowDefinition, len(defs))
-	for _, def := range defs {
-		result[def.Key] = def
-	}
-	return result
-}
-
-type workflowPageData struct {
-	Title       string
-	Description string
-	Categories  []workflowCategoryView
-}
-
-type workflowCategoryView struct {
-	ID          string
-	Title       string
-	Description string
-	Workflows   []workflowCardView
-}
-
-type workflowCardView struct {
-	Key                 string
-	Name                string
-	Summary             string
-	CronDefinition      string
-	ManualAction        string
-	ManualMethod        string
-	ManualWorkflowField string
-	ManualWorkflowValue string
-	ProcessName         string
-}
-
-func buildWorkflowPageData(workflows []usecases.Workflow) (workflowPageData, error) {
-	categories := make(map[string]*workflowCategoryView, len(workflowCategoryDefinitions))
-	for _, catDef := range workflowCategoryDefinitions {
-		categories[catDef.ID] = &workflowCategoryView{
-			ID:          catDef.ID,
-			Title:       catDef.Title,
-			Description: catDef.Description,
-		}
-	}
-
-	for _, wf := range workflows {
-		descKey := strings.TrimSpace(wf.Description)
-		def, ok := workflowDefinitionsByDescription[descKey]
-		if !ok {
-			continue
-		}
-
-		cronDef, _, err := wf.GetCronDefinition()
-		if err != nil {
-			return workflowPageData{}, fmt.Errorf("get cron definition for %s: %w", descKey, err)
-		}
-
-		card := workflowCardView{
-			Key:                 def.Key,
-			Name:                def.DisplayName,
-			Summary:             def.Summary,
-			CronDefinition:      cronDef,
-			ManualAction:        ManualRunEndpoint,
-			ManualMethod:        http.MethodPost,
-			ManualWorkflowField: manualWorkflowFieldName,
-			ManualWorkflowValue: def.Key,
-			ProcessName:         def.ProcessDisplay,
-		}
-		categoryView := categories[def.CategoryID]
-		categoryView.Workflows = append(categoryView.Workflows, card)
-	}
-
-	data := workflowPageData{
-		Title:       "Cron Workflow Orchestrator",
-		Description: "Workflows registered in workflow.List() are grouped by category for quick inspection.",
-	}
-
-	for _, catDef := range workflowCategoryDefinitions {
-		catView := categories[catDef.ID]
-		if len(catView.Workflows) == 0 {
-			continue
-		}
-		sort.Slice(catView.Workflows, func(i, j int) bool {
-			return strings.Compare(catView.Workflows[i].Name, catView.Workflows[j].Name) < 0
-		})
-		data.Categories = append(data.Categories, *catView)
-	}
-
-	return data, nil
-}
-
-// CronWorkflowPage produces the templ component for the dashboard.
-func CronWorkflowPage(data workflowPageData) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		mainChildren := []templ.Component{renderHeroSection(data)}
-		if len(data.Categories) == 0 {
-			mainChildren = append(mainChildren, renderEmptyState())
-		} else {
-			categorySections := make([]templ.Component, 0, len(data.Categories))
-			for _, cat := range data.Categories {
-				categorySections = append(categorySections, templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-					return renderCategorySection(ctx, w, cat)
-				}))
-			}
-			mainChildren = append(mainChildren, div.Tag("page-sections", categorySections...))
-		}
-		return html.Document(
-			"ja",
-			head.Tag(
-				headMeta.Base(),
-				headTitle.Title(data.Title),
-				usecaseStyle.Tag(),
-			),
-			body.Tag("",
-				mainComponent.Tag("page", mainChildren...),
-				script.Tag(cronWorkflowPageScript),
-			),
-		).Render(ctx, w)
-	})
-}
-
-func renderHeroSection(data workflowPageData) templ.Component {
-	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := paragraph.Text("hero-eyebrow", "Cron Workflow").Render(ctx, w); err != nil {
-			return err
-		}
-		if err := heading.Heading(1, data.Title).Render(ctx, w); err != nil {
-			return err
-		}
-		if data.Description != "" {
-			if err := paragraph.Text("hero-description", data.Description).Render(ctx, w); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	return section.Section("hero", "", body)
-}
-
-func renderEmptyState() templ.Component {
-	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := heading.Heading(2, "No workflows").Render(ctx, w); err != nil {
-			return err
-		}
-		return paragraph.Text("", "workflow.List() did not expose weatherWorkflow or dailyHeadingWorkflow.").Render(ctx, w)
-	})
-	return section.Section("empty-state", "", body)
-}
-
-func renderCategorySection(ctx context.Context, w io.Writer, cat workflowCategoryView) error {
-	headerChildren := []templ.Component{heading.Heading(2, cat.Title)}
-	if cat.Description != "" {
-		headerChildren = append(headerChildren, paragraph.Text("", cat.Description))
-	}
-	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := div.Tag("workflow-category__header", headerChildren...).Render(ctx, w); err != nil {
-			return err
-		}
-		workflowCards := make([]templ.Component, 0, len(cat.Workflows))
-		for _, wf := range cat.Workflows {
-			workflowCards = append(workflowCards, renderWorkflowCard(wf))
-		}
-		return div.Tag("workflow-grid", workflowCards...).Render(ctx, w)
-	})
-	return section.Section("workflow-category", cat.ID, body).Render(ctx, w)
-}
-
-func renderWorkflowCard(card workflowCardView) templ.Component {
-	body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := div.Tag("workflow-card__header",
-			paragraph.Content("workflow-card__process", code.Text("", card.ProcessName)),
-			heading.Heading(3, card.Name),
-		).Render(ctx, w); err != nil {
-			return err
-		}
-		if card.Summary != "" {
-			if err := paragraph.Text("workflow-card__summary", card.Summary).Render(ctx, w); err != nil {
-				return err
-			}
-		}
-		if card.CronDefinition != "" {
-			if err := div.Tag("workflow-card__cron",
-				span.Text("", "CRON"),
-				code.Text("", card.CronDefinition),
-			).Render(ctx, w); err != nil {
-				return err
-			}
-		}
-		if card.ManualAction != "" {
-			method := card.ManualMethod
-			if method == "" {
-				method = http.MethodPost
-			}
-			upperMethod := strings.ToUpper(method)
-			action := card.ManualAction
-			body := templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-				if card.ManualWorkflowField != "" && card.ManualWorkflowValue != "" {
-					if err := hiddenInput.HiddenField(card.ManualWorkflowField, card.ManualWorkflowValue).Render(ctx, w); err != nil {
-						return err
-					}
-				}
-				return button.Submit("Manual Run").Render(ctx, w)
-			})
-			if err := form.Tag("workflow-card__manual", upperMethod, action, action, body).Render(ctx, w); err != nil {
-				return err
-			}
-		}
-		return paragraph.Status("workflow-card__status").Render(ctx, w)
-	})
-	return usecaseArticle.Tag("workflow-card", card.Key, body)
-}
-
 type manualRunResponse struct {
 	Status   string `json:"status"`
 	Workflow string `json:"workflow"`
 	Message  string `json:"message"`
-}
-
-func workflowProcessByKey(workflows []usecases.Workflow, workflowKey string) (usecases.ProcessFunc, workflowDefinition, error) {
-	def, ok := workflowDefinitionsByKey[workflowKey]
-	if !ok {
-		return nil, workflowDefinition{}, fmt.Errorf("%w: %s", errWorkflowNotRegistered, workflowKey)
-	}
-
-	desc := strings.TrimSpace(def.ListDescription)
-	for _, wf := range workflows {
-		if strings.TrimSpace(wf.Description) != desc {
-			continue
-		}
-		if wf.Process == nil {
-			return nil, def, fmt.Errorf("%w: %s missing process", errWorkflowUnavailable, workflowKey)
-		}
-		return wf.Process, def, nil
-	}
-
-	return nil, def, fmt.Errorf("%w: %s not scheduled", errWorkflowUnavailable, workflowKey)
 }
 
 func respondJSON(logger *logging.StructuredLogger, w http.ResponseWriter, status int, payload any) {
@@ -458,52 +143,3 @@ func respondJSONError(logger *logging.StructuredLogger, w http.ResponseWriter, s
 		"error":   message,
 	})
 }
-
-const cronWorkflowPageScript = `(() => {
-	const forms = document.querySelectorAll(".workflow-card__manual");
-	forms.forEach((form) => {
-		form.addEventListener("submit", async (event) => {
-			event.preventDefault();
-			const statusEl = form.parentElement?.querySelector("[data-manual-run-status]");
-			if (statusEl) {
-				statusEl.textContent = "手動実行中...";
-				statusEl.dataset.status = "pending";
-			}
-			const formData = new FormData(form);
-			const payload = new URLSearchParams();
-			formData.forEach((value, key) => {
-				payload.append(key, value.toString());
-			});
-			try {
-				const response = await fetch(form.action, {
-					method: form.method || "POST",
-					headers: {
-						"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-					},
-					body: payload.toString(),
-				});
-				let data = null;
-				try {
-					data = await response.json();
-				} catch (error) {
-					data = null;
-				}
-				if (statusEl) {
-					if (response.ok) {
-						statusEl.textContent = (data && (data.message || data.status)) || "完了しました";
-						statusEl.dataset.status = "success";
-					} else {
-						const message = (data && (data.error || data.message)) || ("HTTP " + response.status);
-						statusEl.textContent = message;
-						statusEl.dataset.status = "error";
-					}
-				}
-			} catch (error) {
-				if (statusEl) {
-					statusEl.textContent = "リクエストに失敗しました";
-					statusEl.dataset.status = "error";
-				}
-			}
-		});
-	});
-})();`
