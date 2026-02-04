@@ -27,7 +27,11 @@ func TestTagRendersHeadAndChildren(t *testing.T) {
 
 	markup := renderHeadTag(t, meta, title)
 
-	headNode := parseHeadNode(t, markup)
+	htmlNode := test.ParseSingleElement(t, markup, false)
+	headNode := test.GetFirstChildOfElementByData(htmlNode, "head")
+	if headNode == nil {
+		t.Fatalf("expected <head> as first element but got %v", headNode)
+	}
 
 	metaNode := test.GetFirstChildOfElement(headNode)
 	if metaNode == nil || metaNode.Data != "meta" {
@@ -63,7 +67,11 @@ func TestTagSkipsNilChildrenAndPreservesOrder(t *testing.T) {
 
 	markup := renderHeadTag(t, nil, link, nil, script, nil)
 
-	headNode := parseHeadNode(t, markup)
+	htmlNode := test.ParseSingleElement(t, markup, false)
+	headNode := test.GetFirstChildOfElementByData(htmlNode, "head")
+	if headNode == nil {
+		t.Fatalf("expected <head> as first element but got %v", headNode)
+	}
 
 	var childTags []string
 	for child := headNode.FirstChild; child != nil; child = child.NextSibling {
@@ -91,13 +99,7 @@ func TestTagSkipsNilChildrenAndPreservesOrder(t *testing.T) {
 		t.Fatalf("expected href /app.css but got %q", got)
 	}
 
-	var scriptNode *html.Node
-	for sibling := linkNode.NextSibling; sibling != nil; sibling = sibling.NextSibling {
-		if sibling.Type == html.ElementNode && sibling.Data == "script" {
-			scriptNode = sibling
-			break
-		}
-	}
+	scriptNode := test.GetNextSiblingOfElementByData(linkNode, "script")
 
 	if scriptNode == nil {
 		t.Fatalf("expected to find <script> sibling, got nil")
@@ -122,17 +124,4 @@ func renderHeadTag(t *testing.T, children ...templ.Component) string {
 
 	var buf strings.Builder
 	return test.RenderComponent(t, component, &buf)
-}
-
-func parseHeadNode(t *testing.T, markup string) *html.Node {
-	t.Helper()
-
-	htmlNode := test.ParseSingleElement(t, markup, false)
-	headNode := test.GetFirstChildOfElement(htmlNode)
-
-	if headNode == nil || headNode.Data != "head" {
-		t.Fatalf("expected <head> as first element but got %v", headNode)
-	}
-
-	return headNode
 }

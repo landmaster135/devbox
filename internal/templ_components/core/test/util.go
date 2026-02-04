@@ -73,6 +73,20 @@ func GetFirstChildOfElement(n *html.Node) *html.Node {
 	return nil
 }
 
+func GetFirstChildOfElementByData(n *html.Node, data string) *html.Node {
+	if n == nil {
+		return nil
+	}
+
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && c.Data == data {
+			return c
+		}
+	}
+
+	return nil
+}
+
 func GetNextSiblingOfElement(n *html.Node) *html.Node {
 	if n == nil {
 		return nil
@@ -87,6 +101,19 @@ func GetNextSiblingOfElement(n *html.Node) *html.Node {
 	return nil
 }
 
+func GetNextSiblingOfElementByData(n *html.Node, data string) *html.Node {
+	if n == nil {
+		return nil
+	}
+
+	for c := n.NextSibling; c != nil; c = c.NextSibling {
+		if c.Type == html.ElementNode && c.Data == data {
+			return c
+		}
+	}
+
+	return nil
+}
 
 func GetTextContent(n *html.Node) string {
 	var sb strings.Builder
