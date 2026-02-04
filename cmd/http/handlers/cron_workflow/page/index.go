@@ -51,67 +51,46 @@ func Serve(
 	templ.Handler(CronWorkflowPage(data)).ServeHTTP(w, r)
 }
 
-const (
-	categoryDailyHeadingID   = "daily-heading"
-	categoryHourlyWorkflowID = "hourly-workflow"
-)
-
 var workflowCategoryDefinitions = []workflowCategoryDefinition{
 	{
-		ID:          categoryDailyHeadingID,
+		ID:          "daily-workflow",
 		Title:       "Daily Workflow",
 		Description: "Daily workflows that prepare Discord-ready summaries.",
 		Workflows: []workflowDefinition{
 			{
-				Key:             "daily-tokyo-weather",
-				DisplayName:     "Daily Tokyo weather notification",
-				Summary:         "Fetches a three-day forecast for Tokyo and shares it with the weather Discord channel.",
-				ProcessDisplay:  "WorkflowHandler.NotifyWeather",
-				ListDescription: "Daily Tokyo weather notification",
+				Key:         "daily-tokyo-weather",
+				DisplayName: "Daily Tokyo weather notification",
+				Summary:     "Fetches a three-day forecast for Tokyo and shares it with the weather Discord channel.",
+				TagDisplay:  "weather",
 			},
 			{
-				Key:             "daily-heading",
-				DisplayName:     "Daily heading Discord notification",
-				Summary:         "Generates the day's heading template and posts it to the daily heading Discord webhook.",
-				ProcessDisplay:  "WorkflowHandler.NotifyDailyHeading",
-				ListDescription: "Daily heading Discord notification",
+				Key:         "daily-heading",
+				DisplayName: "Daily heading Discord notification",
+				Summary:     "Generates the day's heading template and posts it to the daily heading Discord webhook.",
+				TagDisplay:  "heading",
 			},
 		},
 	},
 	{
-		ID:          categoryHourlyWorkflowID,
+		ID:          "hourly-workflow",
 		Title:       "Hourly Workflow",
 		Description: "Hourly workflows that capture telemetry on a short cadence.",
 		Workflows: []workflowDefinition{
 			{
-				Key:             "ubuntu-pc-info",
-				DisplayName:     "Ubuntu PC info snapshot",
-				Summary:         "Collects Ubuntu host CPU, memory, and temperature stats and archives the snapshot to disk.",
-				ProcessDisplay:  "WorkflowHandler.RetrievePCInfo",
-				ListDescription: "Ubuntu PC info snapshot",
+				Key:         "ubuntu-pc-info",
+				DisplayName: "Ubuntu PC info snapshot",
+				Summary:     "Collects Ubuntu host CPU, memory, and temperature stats and archives the snapshot to disk.",
+				TagDisplay:  "pc-info",
 			},
 		},
 	},
-}
-
-var (
-	workflowDefinitionsByDescription = initWorkflowDefinitions()
-	workflowDefinitionsByKey         = buildWorkflowDefinitionsByKey(workflowDefinitionsByDescription)
-)
-
-func buildWorkflowDefinitionsByKey(defs map[string]workflowDefinition) map[string]workflowDefinition {
-	result := make(map[string]workflowDefinition, len(defs))
-	for _, def := range defs {
-		result[def.Key] = def
-	}
-	return result
 }
 
 func initWorkflowDefinitions() map[string]workflowDefinition {
 	defs := make(map[string]workflowDefinition)
 	for _, cat := range workflowCategoryDefinitions {
 		for _, def := range cat.Workflows {
-			desc := strings.TrimSpace(def.ListDescription)
+			desc := strings.TrimSpace(def.Key)
 			if desc == "" {
 				continue
 			}
@@ -127,12 +106,13 @@ var (
 )
 
 func WorkflowProcessByKey(workflows []usecases.Workflow, workflowKey string) (usecases.ProcessFunc, workflowDefinition, error) {
+	workflowDefinitionsByKey := initWorkflowDefinitions()
 	def, ok := workflowDefinitionsByKey[workflowKey]
 	if !ok {
 		return nil, workflowDefinition{}, fmt.Errorf("%w: %s", ErrWorkflowNotRegistered, workflowKey)
 	}
 
-	desc := strings.TrimSpace(def.ListDescription)
+	desc := strings.TrimSpace(def.DisplayName)
 	for _, wf := range workflows {
 		if strings.TrimSpace(wf.Description) != desc {
 			continue
@@ -147,11 +127,10 @@ func WorkflowProcessByKey(workflows []usecases.Workflow, workflowKey string) (us
 }
 
 type workflowDefinition struct {
-	Key             string
-	DisplayName     string
-	Summary         string
-	ProcessDisplay  string
-	ListDescription string
+	Key         string
+	DisplayName string
+	Summary     string
+	TagDisplay  string
 }
 
 type workflowCategoryDefinition struct {
@@ -208,14 +187,14 @@ func buildWorkflowPageData(workflows []usecases.Workflow, manualRunEndpoint stri
 			Description: catDef.Description,
 		}
 		for _, wfDef := range catDef.Workflows {
-			wf, ok := workflowByDescription[strings.TrimSpace(wfDef.ListDescription)]
+			wf, ok := workflowByDescription[strings.TrimSpace(wfDef.DisplayName)]
 			if !ok {
 				continue
 			}
 
 			cronDef, _, err := wf.GetCronDefinition()
 			if err != nil {
-				return workflowPageData{}, fmt.Errorf("get cron definition for %s: %w", wfDef.ListDescription, err)
+				return workflowPageData{}, fmt.Errorf("get cron definition for %s: %w", wfDef.DisplayName, err)
 			}
 
 			catView.Workflows = append(catView.Workflows, workflowCardView{
@@ -227,7 +206,7 @@ func buildWorkflowPageData(workflows []usecases.Workflow, manualRunEndpoint stri
 				ManualMethod:        http.MethodPost,
 				ManualWorkflowField: manualWorkflowFieldName,
 				ManualWorkflowValue: wfDef.Key,
-				ProcessName:         wfDef.ProcessDisplay,
+				ProcessName:         wfDef.TagDisplay,
 			})
 		}
 		if len(catView.Workflows) == 0 {
