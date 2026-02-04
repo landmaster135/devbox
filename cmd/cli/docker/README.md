@@ -136,6 +136,6 @@ VALUE_WITH_SPACE: "value with space"
 
 ## 関連スクリプト
 
-- `pkg/docker/build_frontend_image.sh`: Vite 用のビルド引数を env.yml から生成して Docker イメージを作成
+- `pkg/docker/build_cron_image.sh`: Vite 用のビルド引数を env.yml から生成して Docker イメージを作成
 - `pkg/docker/dockerize_dev.sh`: 本CLIで同期後、開発用に docker compose を起動
 - `pkg/docker/dockerize.sh`: 同期 & ビルド後にイメージをアーカイブ
