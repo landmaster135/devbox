@@ -25,6 +25,7 @@ import (
 	headTitle "github.com/landmaster135/devbox/internal/templ_components/core/head_title"
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
+	html "github.com/landmaster135/devbox/internal/templ_components/core/html"
 	mainComponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	script "github.com/landmaster135/devbox/internal/templ_components/core/script"
@@ -294,16 +295,6 @@ func buildWorkflowPageData(workflows []usecases.Workflow) (workflowPageData, err
 // CronWorkflowPage produces the templ component for the dashboard.
 func CronWorkflowPage(data workflowPageData) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
-		if err := writeString(w, "<!DOCTYPE html><html lang=\"ja\">"); err != nil {
-			return err
-		}
-		if err := head.Tag(
-			headMeta.Base(),
-			headTitle.Title(data.Title),
-			usecaseStyle.Tag(),
-		).Render(ctx, w); err != nil {
-			return err
-		}
 		mainChildren := []templ.Component{renderHeroSection(data)}
 		if len(data.Categories) == 0 {
 			mainChildren = append(mainChildren, renderEmptyState())
@@ -316,16 +307,18 @@ func CronWorkflowPage(data workflowPageData) templ.Component {
 			}
 			mainChildren = append(mainChildren, div.Tag("page-sections", categorySections...))
 		}
-		if err := body.Tag("",
-			mainComponent.Tag("page", mainChildren...),
-			script.Tag(cronWorkflowPageScript),
-		).Render(ctx, w); err != nil {
-			return err
-		}
-		if err := writeString(w, "</html>"); err != nil {
-			return err
-		}
-		return nil
+		return html.Document(
+			"ja",
+			head.Tag(
+				headMeta.Base(),
+				headTitle.Title(data.Title),
+				usecaseStyle.Tag(),
+			),
+			body.Tag("",
+				mainComponent.Tag("page", mainChildren...),
+				script.Tag(cronWorkflowPageScript),
+			),
+		).Render(ctx, w)
 	})
 }
 
@@ -460,11 +453,6 @@ func respondJSONError(w http.ResponseWriter, status int, message string) {
 		"message": message,
 		"error":   message,
 	})
-}
-
-func writeString(w io.Writer, value string) error {
-	_, err := io.WriteString(w, value)
-	return err
 }
 
 const cronWorkflowPageScript = `(() => {
