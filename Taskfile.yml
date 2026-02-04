@@ -69,11 +69,11 @@ tasks:
   build:dev:
     desc: "Build files for development"
     cmds:
-      - pkg/docker/dockerize_dev.sh
+      - pkg/docker/dockerize_cron_dev.sh
   build:staging:
     desc: "Build files for development"
     cmds:
-      - pkg/docker/dockerize.sh
+      - pkg/docker/dockerize_cron.sh
   build:prod:
     desc: "Build files for development"
     cmds:
