@@ -3,13 +3,13 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"log"
 	"path/filepath"
 	"strings"
 	"time"
 
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	workflowCreator "github.com/landmaster135/devbox/internal/cron_workflow/usecases/workflow_creator"
+	"github.com/landmaster135/devbox/internal/logging"
 
 	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
 	discordWebhook "github.com/landmaster135/devbox/internal/discord_webhook/usecases"
@@ -20,15 +20,17 @@ import (
 
 type WorkflowHandler struct {
 	Creator *workflowCreator.WorkflowCreator
+	logger  *logging.StructuredLogger
 }
 
 func (wh *WorkflowHandler) GetCreator() *workflowCreator.WorkflowCreator {
 	return wh.Creator
 }
 
-func NewWorkflowHandler(creator *workflowCreator.WorkflowCreator) *WorkflowHandler {
+func NewWorkflowHandler(creator *workflowCreator.WorkflowCreator, logger *logging.StructuredLogger) *WorkflowHandler {
 	return &WorkflowHandler{
 		Creator: creator,
+		logger:  logging.Ensure(logger),
 	}
 }
 
@@ -42,14 +44,14 @@ type WorkflowHandlerRepository interface {
 }
 
 // List returns all configured workflows.
-func List() ([]usecases.Workflow, error) {
+func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	const tz = "Asia/Tokyo"
 
 	wc, err := workflowCreator.NewWorkflowCreatorDefault(tz)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize WorkflowCreator: %w", err)
 	}
-	wh := NewWorkflowHandler(wc)
+	wh := NewWorkflowHandler(wc, logging.Ensure(logger))
 
 	// heartbeatWorkflow := usecases.NewWorkflow(
 	// 	"Heartbeat monitor",
@@ -65,7 +67,7 @@ func List() ([]usecases.Workflow, error) {
 	)
 	dailyHeadingWorkflow := usecases.NewWorkflow(
 		"Daily heading Discord notification",
-		"1 0 * * 0-6",
+		"*/2 * * * 0-6",
 		wh.GetCreator().Timezone,
 		wh.NotifyDailyHeading,
 	)
@@ -105,9 +107,10 @@ func (wh *WorkflowHandler) KeepHeartbeat(ctx context.Context) error {
 	timestamp := now.Format("20060102150405")
 	statusFile := filepath.Join(creator.VolumeDir, fmt.Sprintf("heartbeat-%s.status", timestamp))
 
-	message := fmt.Sprintf("[heartbeat] alive: %s (owner=%s)", time.Now().Format(time.RFC3339), heartOwner)
-	log.Printf("%s", message)
-	log.Printf("[heartbeat] writing status file: %s", statusFile)
+	heartbeatLogger := wh.logger.WithTags("heartbeat")
+	message := fmt.Sprintf("alive: %s (owner=%s)", time.Now().Format(time.RFC3339), heartOwner)
+	heartbeatLogger.Infof("%s", message)
+	heartbeatLogger.Infof("writing status file: %s", statusFile)
 	if err := creator.FileRepo.Write(statusFile, true, message+"\n"); err != nil {
 		return fmt.Errorf("write heartbeat status file: %w", err)
 	}
@@ -164,13 +167,14 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("collect Ubuntu PC info: %w", err)
 	}
+	pcLogger := wh.logger.WithTags("pc-info")
 	if result != nil {
 		for _, warning := range result.Warnings {
-			log.Printf("[pc-info] warning: %s", warning)
+			pcLogger.Warnf("warning: %s", warning)
 		}
 		if result.Info != nil {
-			log.Printf(
-				"[pc-info] CPU=%s temp=%.2fC mem_used=%dMB mem_total=%dMB path=%s",
+			pcLogger.Infof(
+				"CPU=%s temp=%.2fC mem_used=%dMB mem_total=%dMB path=%s",
 				strings.TrimSpace(result.Info.CPUName),
 				result.Info.CPUTemperature,
 				result.Info.MemoryUsageMB,
@@ -181,7 +185,7 @@ func (wh *WorkflowHandler) RetrievePCInfo(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("[pc-info] exported machine info to %s", outputPath)
+	pcLogger.Infof("exported machine info to %s", outputPath)
 	return nil
 }
 
@@ -212,7 +216,7 @@ func (wh *WorkflowHandler) NotifyWeather(ctx context.Context) error {
 		return fmt.Errorf("send weather notification: %w", err)
 	}
 
-	log.Printf("[weather] dispatched %s forecast to Discord", city)
+	wh.logger.WithTags("weather").Infof("dispatched %s forecast to Discord", city)
 	return nil
 }
 
@@ -238,7 +242,7 @@ func (wh *WorkflowHandler) NotifyDailyHeading(ctx context.Context) error {
 		return fmt.Errorf("send daily heading notification: %w", err)
 	}
 
-	log.Printf("[daily-heading] dispatched heading content to Discord")
+	wh.logger.WithTags("daily-heading").Infof("dispatched heading content to Discord")
 	return nil
 }
 
@@ -309,7 +313,7 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 			return fmt.Errorf("dump %s database: %w", target.name, err)
 		}
 
-		log.Printf("[postgres-dump] completed %s dump into %s", target.name, target.outputDir)
+		wh.logger.WithTags("postgres-dump").Infof("completed %s dump into %s", target.name, target.outputDir)
 		dumpSummaries = append(dumpSummaries, minResult)
 	}
 
@@ -331,6 +335,6 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 		return fmt.Errorf("send PostgreSQL dump notification: %w", err)
 	}
 
-	log.Printf("[postgres-dump] dispatched Discord notification for PostgreSQL backups")
+	wh.logger.WithTags("postgres-dump").Infof("dispatched Discord notification for PostgreSQL backups")
 	return nil
 }

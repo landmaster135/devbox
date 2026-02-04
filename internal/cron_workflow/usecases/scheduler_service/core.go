@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,46 +11,49 @@ import (
 
 	gocronInfra "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/gocron"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+	logging "github.com/landmaster135/devbox/internal/logging"
 )
 
 var schedulerShutdownTimeout = 15 * time.Second
 
-func Schedule(workflows []usecases.Workflow) error {
+func Schedule(logger *logging.StructuredLogger, workflows []usecases.Workflow) error {
 	repo := gocronInfra.NewRepository()
+	scheduleLogger := logging.Ensure(logger)
 
 	scheduler, err := repo.NewScheduler()
 	if err != nil {
 		return fmt.Errorf("failed to initialize CronScheduler: %w", err)
 	}
 
-	if err := registerWorkflows(repo, scheduler, workflows); err != nil {
+	if err := registerWorkflows(scheduleLogger, repo, scheduler, workflows); err != nil {
 		return err
 	}
 
 	scheduler.Start()
-	log.Printf("scheduler started (%d workflow(s)). waiting for termination signal...", len(workflows))
+	scheduleLogger.WithTags("scheduler").Infof("scheduler started (%d workflow(s)). waiting for termination signal...", len(workflows))
 
-	if err := waitForShutdownSignal(scheduler); err != nil {
+	if err := waitForShutdownSignal(scheduleLogger, scheduler); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func newTask(repo gocronInfra.Repository, wf *usecases.Workflow) *gocronInfra.Task {
+func newTask(logger *logging.StructuredLogger, repo gocronInfra.Repository, wf *usecases.Workflow) *gocronInfra.Task {
+	taskLogger := logging.Ensure(logger).WithTags("workflow", wf.Description)
 	task := repo.NewTask(func(ctx context.Context) {
 		if err := wf.Process(ctx); err != nil {
-			log.Printf("workflow %q failed: %v", wf.Description, err)
+			taskLogger.WithTags("error").Errorf("failed: %v", err)
 			return
 		}
-		log.Printf("workflow %q completed", wf.Description)
+		taskLogger.Infof("completed")
 	})
 	return task
 }
 
-func registerWorkflows(repo gocronInfra.Repository, cs gocronInfra.CronSchedulerRepository, workflows []usecases.Workflow) error {
+func registerWorkflows(logger *logging.StructuredLogger, repo gocronInfra.Repository, cs gocronInfra.CronSchedulerRepository, workflows []usecases.Workflow) error {
 	for _, wf := range workflows {
-		task := newTask(repo, &wf)
+		task := newTask(logger, repo, &wf)
 
 		expression, withSeconds, err := wf.GetCronDefinition()
 		if err != nil {
@@ -61,17 +63,19 @@ func registerWorkflows(repo gocronInfra.Repository, cs gocronInfra.CronScheduler
 		if _, err := cs.RegisterJob(wf.Description, expression, withSeconds, task); err != nil {
 			return fmt.Errorf("failed to register job: %w", err)
 		}
+
+		logger.WithTags("registry", wf.Description).Infof("registered workflow (cron=%s)", expression)
 	}
 	return nil
 }
 
-func waitForShutdownSignal(cs gocronInfra.CronSchedulerRepository) error {
+func waitForShutdownSignal(logger *logging.StructuredLogger, cs gocronInfra.CronSchedulerRepository) error {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	defer signal.Stop(sigCh)
 
 	sig := <-sigCh
-	log.Printf("signal received: %s. shutting down...", sig)
+	logging.Ensure(logger).WithTags("scheduler").Infof("signal received: %s. shutting down...", sig)
 
 	shutdownDone := make(chan error, 1)
 	go func() {

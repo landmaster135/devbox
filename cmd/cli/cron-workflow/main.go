@@ -4,11 +4,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	workflow "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	schedulerService "github.com/landmaster135/devbox/internal/cron_workflow/usecases/scheduler_service"
+	logging "github.com/landmaster135/devbox/internal/logging"
 )
 
 func main() {
@@ -18,16 +18,15 @@ func main() {
 	}
 	flag.Parse()
 
-	log.SetOutput(os.Stdout)
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-
-	if err := run(); err != nil {
-		log.Fatalf("cron-workflow: %v", err)
+	logger := logging.New(logging.WithWriter(os.Stdout)).WithTags("CRON workflow")
+	if err := run(logger); err != nil {
+		logger.WithTags("fatal").Errorf("cron-workflow: %v", err)
+		os.Exit(1)
 	}
 }
 
-func run() error {
-	workflows, err := workflow.List()
+func run(logger *logging.StructuredLogger) error {
+	workflows, err := workflow.List(logger)
 	if err != nil {
 		return err
 	}
@@ -35,10 +34,10 @@ func run() error {
 		return errors.New("no workflows configured")
 	}
 
-	if err := schedulerService.Schedule(workflows); err != nil {
+	if err := schedulerService.Schedule(logger, workflows); err != nil {
 		return err
 	}
 
-	log.Printf("scheduler stopped cleanly")
+	logger.WithTags("scheduler").Infof("scheduler stopped cleanly")
 	return nil
 }
