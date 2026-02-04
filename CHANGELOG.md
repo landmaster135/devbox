@@ -2,7 +2,7 @@
 
 ## v0.07 — 2026-02-04
 
-PR: pending
+PR: #21
 
 ### Features
 - **cron-workflow / cmd/http (CLI/HTTP)**: gocronベースの`cmd/cli/cron-workflow`を新設し、`cmd/http`エントリポイントでHTTPサーバーとスケジューラを同居させ、templ製ダッシュボードからカテゴリ別ワークフローやマニュアル実行フォームを操作可能に。`Taskfile.yml`の`run:http`やDocker向けビルドスクリプトも追加し、常駐運用と可視化をワンコマンド化。
