@@ -9,6 +9,7 @@ import (
 
 	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	page "github.com/landmaster135/devbox/cmd/http/handlers/cron_workflow/page"
+	workflow "github.com/landmaster135/devbox/cmd/http/handlers/cron_workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	logging "github.com/landmaster135/devbox/internal/logging"
 )
@@ -96,13 +97,13 @@ func (h *Handler) HandleManualRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	process, def, err := page.WorkflowProcessByKey(workflows, workflowKey)
+	process, def, err := workflow.WorkflowProcessByKey(workflows, workflowKey)
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch {
-		case errors.Is(err, page.ErrWorkflowNotRegistered):
+		case errors.Is(err, workflow.ErrWorkflowNotRegistered):
 			status = http.StatusBadRequest
-		case errors.Is(err, page.ErrWorkflowUnavailable):
+		case errors.Is(err, workflow.ErrWorkflowUnavailable):
 			status = http.StatusServiceUnavailable
 		}
 		respondJSONError(manualLogger, w, status, err.Error())
