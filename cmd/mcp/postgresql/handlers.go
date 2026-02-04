@@ -12,18 +12,22 @@ import (
 
 // PostgreSQLMCPHandler はMCPリクエストを処理するハンドラーです
 type PostgreSQLMCPHandler struct {
-	service *usecases.PostgreSQLService
+	url      string
+	timezone string
+	service  *usecases.PostgreSQLService
 }
 
 // NewPostgreSQLMCPHandler は新しいPostgreSQLMCPHandlerを作成します
-func NewPostgreSQLMCPHandler(databaseURL string) (*PostgreSQLMCPHandler, error) {
-	service, err := usecases.NewPostgreSQLService(databaseURL)
+func NewPostgreSQLMCPHandler(databaseURL, timezone string) (*PostgreSQLMCPHandler, error) {
+	service, err := usecases.NewPostgreSQLService(databaseURL, timezone)
 	if err != nil {
 		return nil, fmt.Errorf("PostgreSQLサービスの作成に失敗しました: %w", err)
 	}
 
 	return &PostgreSQLMCPHandler{
-		service: service,
+		url:      databaseURL,
+		timezone: timezone,
+		service:  service,
 	}, nil
 }
 
@@ -84,7 +88,7 @@ func (h *PostgreSQLMCPHandler) HandleToGetTableSchemaMinimum(ctx context.Context
 		return returnError(err)
 	}
 
-	return returnJSONResult(result)
+	return returnTextResult(result)
 }
 
 // HandleToListTablesMinimum はデータベース内のテーブル一覧を取得して、結果をJSON形式で返します
@@ -94,7 +98,7 @@ func (h *PostgreSQLMCPHandler) HandleToListTablesMinimum(ctx context.Context, re
 		return returnError(err)
 	}
 
-	return returnJSONResult(result)
+	return returnTextResult(result)
 }
 
 // HandleToDumpTable はテーブルの全レコードをダンプして、結果をJSON形式で返します
@@ -112,7 +116,7 @@ func (h *PostgreSQLMCPHandler) HandleToDumpTable(ctx context.Context, request mc
 		limit = &limitValue
 	}
 
-	result, err := h.service.HandleToDumpTable(ctx, tableName, outputPath, format, limit)
+	result, err := usecases.HandleToDumpTable(ctx, h.url, h.timezone, tableName, outputPath, format, limit)
 	if err != nil {
 		return nil, fmt.Errorf("テーブルダンプの実行に失敗しました: %v", err)
 	}

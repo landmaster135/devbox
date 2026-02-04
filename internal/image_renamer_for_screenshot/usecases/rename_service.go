@@ -10,6 +10,11 @@ import (
 	"sync"
 )
 
+type renameTask struct {
+	oldPath string
+	newPath string
+}
+
 var xiaomiScreenshotRegexp = regexp.MustCompile(`^Screenshot_(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d+)_([A-Za-z0-9._-]+)$`)
 
 // renameVlcToDateTime はVLCスクリーンショットファイルをYYYYMMDDHHMMSS形式にリネームします
@@ -86,58 +91,6 @@ func renameScreenshotToDateTime(baseName, ext string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s%s%s", dateStr, timeStr, ext), nil
-}
-
-// processScreenshotRenameToDateTime は--to-datetimeフラグ用のリネーム処理を行います
-func processScreenshotRenameToDateTime(file FileInfo, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
-	oldPath := file.Path
-	dir := filepath.Dir(oldPath)
-	oldName := filepath.Base(oldPath)
-	ext := filepath.Ext(oldName)
-	baseName := strings.TrimSuffix(oldName, ext)
-
-	var newName string
-	var err error
-
-	// 各パターンを試行してYYYYMMDDHHMMSS形式に変換
-	switch {
-	case strings.HasPrefix(baseName, "vlcsnap-"):
-		newName, err = renameVlcToDateTime(baseName, ext)
-	case strings.HasPrefix(baseName, "スクリーンショット "):
-		newName, err = renameWindowsToDateTime(baseName, ext)
-	case strings.HasPrefix(baseName, "screen-"):
-		newName, err = renamePixelToDateTime(baseName, ext)
-	case xiaomiScreenshotRegexp.MatchString(baseName):
-		newName, err = renameXiaomiToDateTime(baseName, ext)
-	case strings.HasPrefix(baseName, "Screenshot_"):
-		newName, err = renameScreenshotToDateTime(baseName, ext)
-	default:
-		// パターンに一致しないファイルはスキップ
-		return
-	}
-
-	if err != nil {
-		fmt.Fprintf(stderr, "エラー: %s の解析に失敗しました: %v\n", oldPath, err)
-		mu.Lock()
-		*errorCount++
-		mu.Unlock()
-		return
-	}
-
-	newPath := filepath.Join(dir, newName)
-	fmt.Fprintf(stdout, "処理中: %s -> %s\n", oldPath, newPath)
-
-	if err := os.Rename(oldPath, newPath); err != nil {
-		fmt.Fprintf(stderr, "エラー: %s のリネームに失敗しました: %v\n", oldPath, err)
-		mu.Lock()
-		*errorCount++
-		mu.Unlock()
-		return
-	}
-
-	mu.Lock()
-	*successCount++
-	mu.Unlock()
 }
 
 // renameVlcScreenshot はVLCスクリーンショットファイルをリネームします
@@ -235,68 +188,101 @@ func renameXiaomiToDateTime(baseName, ext string) (string, error) {
 	return fmt.Sprintf("%s%s%s", dateStr, timeStr, ext), nil
 }
 
-// processScreenshotRename は1つのスクリーンショットファイルをリネームします
-func processScreenshotRename(file FileInfo, operation Operation, mu *sync.Mutex, successCount, errorCount *int, stdout, stderr io.Writer) {
+func resolveScreenshotRenameTarget(file FileInfo, config Config) (string, bool, error) {
 	oldPath := file.Path
-	dir := filepath.Dir(oldPath)
-	oldName := filepath.Base(oldPath)
+	oldName := file.Name
+	if oldName == "" {
+		oldName = filepath.Base(oldPath)
+	}
 	ext := filepath.Ext(oldName)
 	baseName := strings.TrimSuffix(oldName, ext)
 
 	var newName string
 	var err error
 
-	switch operation {
-	case OperationVLC:
-		if !strings.HasPrefix(baseName, "vlcsnap-") {
-			return
+	if config.ToDateTime {
+		switch {
+		case strings.HasPrefix(baseName, "vlcsnap-"):
+			newName, err = renameVlcToDateTime(baseName, ext)
+		case strings.HasPrefix(baseName, "スクリーンショット "):
+			newName, err = renameWindowsToDateTime(baseName, ext)
+		case strings.HasPrefix(baseName, "screen-"):
+			newName, err = renamePixelToDateTime(baseName, ext)
+		case xiaomiScreenshotRegexp.MatchString(baseName):
+			newName, err = renameXiaomiToDateTime(baseName, ext)
+		case strings.HasPrefix(baseName, "Screenshot_"):
+			newName, err = renameScreenshotToDateTime(baseName, ext)
+		default:
+			return "", false, nil
 		}
-		newName, err = renameVlcScreenshot(baseName, ext)
-	case OperationWin:
-		if !strings.HasPrefix(baseName, "スクリーンショット ") {
-			return
+	} else {
+		switch config.Operation {
+		case OperationVLC:
+			if !strings.HasPrefix(baseName, "vlcsnap-") {
+				return "", false, nil
+			}
+			newName, err = renameVlcScreenshot(baseName, ext)
+		case OperationWin:
+			if !strings.HasPrefix(baseName, "スクリーンショット ") {
+				return "", false, nil
+			}
+			newName, err = renameWindowsScreenshot(baseName, ext)
+		case OperationPixel:
+			if !strings.HasPrefix(baseName, "screen-") {
+				return "", false, nil
+			}
+			newName, err = renamePixelScreenshot(baseName, ext)
+		case OperationXiaomi:
+			if !xiaomiScreenshotRegexp.MatchString(baseName) {
+				return "", false, nil
+			}
+			newName, err = renameXiaomiScreenshot(baseName, ext)
+		default:
+			return "", false, fmt.Errorf("未対応のoperation: %v", config.Operation)
 		}
-		newName, err = renameWindowsScreenshot(baseName, ext)
-	case OperationPixel:
-		if !strings.HasPrefix(baseName, "screen-") {
-			return
-		}
-		newName, err = renamePixelScreenshot(baseName, ext)
-	case OperationXiaomi:
-		if !xiaomiScreenshotRegexp.MatchString(baseName) {
-			return
-		}
-		newName, err = renameXiaomiScreenshot(baseName, ext)
-	default:
-		return
 	}
 
 	if err != nil {
-		fmt.Fprintf(stderr, "エラー: %s の解析に失敗しました: %v\n", oldPath, err)
-		mu.Lock()
-		*errorCount++
-		mu.Unlock()
-		return
+		return "", false, err
 	}
 
-	newPath := filepath.Join(dir, newName)
-	fmt.Fprintf(stdout, "処理中: %s -> %s\n", oldPath, newPath)
+	return filepath.Join(filepath.Dir(oldPath), newName), true, nil
+}
 
+func performScreenshotRename(oldPath, newPath string, stdout, stderr io.Writer) error {
+	if oldPath == newPath {
+		fmt.Fprintf(stdout, "スキップ: %s は既に目的のファイル名です。\n", oldPath)
+		return nil
+	}
+
+	fmt.Fprintf(stdout, "処理中: %s -> %s\n", oldPath, newPath)
 	if err := os.Rename(oldPath, newPath); err != nil {
 		fmt.Fprintf(stderr, "エラー: %s のリネームに失敗しました: %v\n", oldPath, err)
-		mu.Lock()
-		*errorCount++
-		mu.Unlock()
-		return
+		return err
 	}
 
-	mu.Lock()
-	*successCount++
-	mu.Unlock()
+	return nil
 }
 
 // renameScreenshotFiles はスクリーンショットファイルをリネームします
 func renameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr io.Writer) (int, int) {
+	if len(fileInfos) == 0 {
+		return 0, 0
+	}
+
+	renamedTasks, conflicts, precheckErrors := buildScreenshotRenamePlan(fileInfos, config, stderr)
+	if len(conflicts) > 0 {
+		fmt.Fprintln(stderr, "エラー: リネーム予定のファイル名が既存のファイル名と衝突しています。以下を確認してください:")
+		for _, msg := range conflicts {
+			fmt.Fprintf(stderr, "  - %s\n", msg)
+		}
+		return 0, precheckErrors + len(conflicts)
+	}
+
+	if len(renamedTasks) == 0 {
+		return 0, precheckErrors
+	}
+
 	// ワーカープールの設定
 	workerCount := config.Workers
 	if workerCount < 1 {
@@ -308,38 +294,75 @@ func renameScreenshotFiles(fileInfos []FileInfo, config Config, stdout, stderr i
 
 	fmt.Fprintf(stdout, "リネーム操作に %d ワーカーを使用します。\n", workerCount)
 
-	// カウンターとワーカーの同期用
+	jobChan := make(chan renameTask, len(renamedTasks))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	successCount := 0
-	errorCount := 0
+	errorCount := precheckErrors
 
-	// ジョブチャネル
-	jobChan := make(chan FileInfo, len(fileInfos))
-
-	// ワーカーの起動
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for file := range jobChan {
-				if config.ToDateTime {
-					processScreenshotRenameToDateTime(file, &mu, &successCount, &errorCount, stdout, stderr)
-				} else {
-					processScreenshotRename(file, config.Operation, &mu, &successCount, &errorCount, stdout, stderr)
+		wg.Go(func() {
+			for task := range jobChan {
+				if err := performScreenshotRename(task.oldPath, task.newPath, stdout, stderr); err != nil {
+					mu.Lock()
+					errorCount++
+					mu.Unlock()
+					continue
 				}
+
+				mu.Lock()
+				successCount++
+				mu.Unlock()
 			}
-		}()
+		})
 	}
 
-	// ジョブの送信
-	for _, file := range fileInfos {
-		jobChan <- file
+	for _, task := range renamedTasks {
+		jobChan <- task
 	}
 	close(jobChan)
-
-	// すべてのワーカーが完了するのを待つ
 	wg.Wait()
 
 	return successCount, errorCount
+}
+
+func buildScreenshotRenamePlan(fileInfos []FileInfo, config Config, stderr io.Writer) ([]renameTask, []string, int) {
+	plannedPaths := make(map[string]string, len(fileInfos))
+	renamedTasks := make([]renameTask, 0, len(fileInfos))
+	conflicts := make([]string, 0)
+	precheckErrors := 0
+
+	for _, file := range fileInfos {
+		newPath, shouldRename, err := resolveScreenshotRenameTarget(file, config)
+		if err != nil {
+			fmt.Fprintf(stderr, "エラー: %s の解析に失敗しました: %v\n", file.Path, err)
+			precheckErrors++
+			continue
+		}
+
+		if !shouldRename {
+			continue
+		}
+
+		if newPath != file.Path {
+			if _, err := os.Stat(newPath); err == nil {
+				conflicts = append(conflicts, fmt.Sprintf("%s -> %s (既存ファイルが存在します)", file.Path, newPath))
+				continue
+			} else if !os.IsNotExist(err) {
+				fmt.Fprintf(stderr, "エラー: %s の存在確認に失敗しました: %v\n", newPath, err)
+				precheckErrors++
+				continue
+			}
+		}
+
+		if owner, exists := plannedPaths[newPath]; exists && owner != file.Path {
+			conflicts = append(conflicts, fmt.Sprintf("%s と %s が同じリネーム先 %s を要求しています。", file.Path, owner, newPath))
+			continue
+		}
+
+		plannedPaths[newPath] = file.Path
+		renamedTasks = append(renamedTasks, renameTask{oldPath: file.Path, newPath: newPath})
+	}
+
+	return renamedTasks, conflicts, precheckErrors
 }

@@ -91,6 +91,7 @@ func TestNewConfig_Normal(t *testing.T) {
 		name               string
 		embedType          string
 		webhookURL         string
+		botName            string
 		contentText        string
 		embedText          string
 		embedColor         string
@@ -100,6 +101,7 @@ func TestNewConfig_Normal(t *testing.T) {
 		{
 			name:        "基本的な設定（embed-type: none）",
 			embedType:   "none",
+			botName:     "testボット",
 			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
 			contentText: "テストメッセージ",
 			expectError: false,
@@ -107,6 +109,7 @@ func TestNewConfig_Normal(t *testing.T) {
 		{
 			name:        "基本的な設定（embed-type: vscode）",
 			embedType:   "vscode",
+			botName:     "",
 			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
 			contentText: "テストメッセージ",
 			expectError: false,
@@ -115,6 +118,7 @@ func TestNewConfig_Normal(t *testing.T) {
 			name:               "全オプション指定",
 			embedType:          "vscode",
 			webhookURL:         "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:            "",
 			contentText:        "テストメッセージ",
 			embedText:          "埋め込みタイトル",
 			embedColor:         "green",
@@ -125,6 +129,7 @@ func TestNewConfig_Normal(t *testing.T) {
 			name:        "discordapp.comドメインのwebhook URL",
 			embedType:   "none",
 			webhookURL:  "https://discordapp.com/api/webhooks/123456789/abcdefg",
+			botName:     "",
 			contentText: "テストメッセージ",
 			expectError: false,
 		},
@@ -132,6 +137,7 @@ func TestNewConfig_Normal(t *testing.T) {
 			name:        "OpenWeatherMap embed",
 			embedType:   "open-weather-map",
 			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:     "",
 			contentText: "テストメッセージ",
 			embedText:   "本日の天気予報",
 			embedColor:  "orange",
@@ -141,6 +147,7 @@ func TestNewConfig_Normal(t *testing.T) {
 			name:        "Google Compute Engine success embed",
 			embedType:   "google-compute-engine-success",
 			webhookURL:  "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:     "",
 			contentText: "テストメッセージ",
 			expectError: false,
 		},
@@ -149,7 +156,7 @@ func TestNewConfig_Normal(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			config, err := NewConfig(tt.embedType, tt.webhookURL, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
+			config, err := NewConfig(tt.embedType, tt.webhookURL, tt.botName, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
 
 			if tt.expectError {
 				if err == nil {
@@ -191,6 +198,7 @@ func TestNewConfig_Error(t *testing.T) {
 		name               string
 		embedType          string
 		webhookURL         string
+		botName            string
 		contentText        string
 		embedText          string
 		embedColor         string
@@ -201,6 +209,7 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "webhook-url未指定",
 			embedType:     "none",
 			webhookURL:    "",
+			botName:       "",
 			contentText:   "テストメッセージ",
 			expectedError: "webhook-urlが指定されていません",
 		},
@@ -208,6 +217,7 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "content-text未指定",
 			embedType:     "none",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:       "",
 			contentText:   "",
 			expectedError: "content-textが指定されていません",
 		},
@@ -215,6 +225,7 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "embed-type未指定",
 			embedType:     "",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:       "",
 			contentText:   "テストメッセージ",
 			expectedError: "embed-typeが指定されていません",
 		},
@@ -222,13 +233,15 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "無効なembed-type",
 			embedType:     "invalid",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:       "",
 			contentText:   "テストメッセージ",
-			expectedError: "無効なembed-typeです: invalid (有効な値: google-cloud-iam-failed, google-cloud-iam-success, google-cloud-run-failed, google-cloud-run-function-failed, google-cloud-run-function-success, google-cloud-run-success, google-cloud-scheduler-failed, google-cloud-scheduler-success, google-cloud-storage-failed, google-cloud-storage-success, google-compute-engine-failed, google-compute-engine-success, google-secret-manager-failed, google-secret-manager-success, none, open-weather-map, vscode)",
+			expectedError: "無効なembed-typeです: invalid (有効な値: google-cloud-iam-failed, google-cloud-iam-success, google-cloud-run-failed, google-cloud-run-function-failed, google-cloud-run-function-success, google-cloud-run-success, google-cloud-scheduler-failed, google-cloud-scheduler-success, google-cloud-storage-failed, google-cloud-storage-success, google-compute-engine-failed, google-compute-engine-success, google-secret-manager-failed, google-secret-manager-success, none, open-weather-map, postgres, vscode)",
 		},
 		{
 			name:          "無効なwebhook-URL（httpスキーム）",
 			embedType:     "none",
 			webhookURL:    "http://discord.com/api/webhooks/123456789/abcdefg",
+			botName:       "",
 			contentText:   "テストメッセージ",
 			expectedError: "無効なwebhook-urlです。Discord WebhookのURLを指定してください",
 		},
@@ -236,6 +249,7 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "無効なwebhook-URL（異なるドメイン）",
 			embedType:     "none",
 			webhookURL:    "https://example.com/api/webhooks/123456789/abcdefg",
+			botName:       "",
 			contentText:   "テストメッセージ",
 			expectedError: "無効なwebhook-urlです。Discord WebhookのURLを指定してください",
 		},
@@ -243,6 +257,7 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "content-textの文字数制限超過",
 			embedType:     "none",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:       "testボット",
 			contentText:   strings.Repeat("a", 2001),
 			expectedError: "content-textは2000文字以下である必要があります",
 		},
@@ -250,6 +265,7 @@ func TestNewConfig_Error(t *testing.T) {
 			name:          "embed-textの文字数制限超過",
 			embedType:     "vscode",
 			webhookURL:    "https://discord.com/api/webhooks/123456789/abcdefg",
+			botName:       "testボット",
 			contentText:   "テストメッセージ",
 			embedText:     strings.Repeat("a", 257),
 			expectedError: "embed-textは256文字以下である必要があります",
@@ -259,7 +275,7 @@ func TestNewConfig_Error(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewConfig(tt.embedType, tt.webhookURL, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
+			_, err := NewConfig(tt.embedType, tt.webhookURL, tt.botName, tt.contentText, tt.embedText, tt.embedColor, tt.embedURLLinkedText)
 
 			if err == nil {
 				t.Errorf("エラーが期待されましたが、エラーが発生しませんでした")

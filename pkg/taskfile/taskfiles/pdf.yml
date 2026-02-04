@@ -1,0 +1,152 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+vars:
+  HOME_DIR: "{{- if .HOME -}}{{ .HOME }}{{- else if .USERPROFILE -}}{{ .USERPROFILE }}{{- else -}}{{ .ROOT_TASKFILE_DIR }}{{- end -}}"
+  DEFAULT_PICTURE_BACKUP_DIR: "{{.HOME_DIR}}{{.DIR_SEP}}Downloads{{.DIR_SEP}}picture_backup"
+  DOWNLOADS_PICTURE_BACKUP_DIR: "{{ default .DEFAULT_PICTURE_BACKUP_DIR .PICTURE_BACKUP_DIR }}"
+
+tasks:
+  pdf-encrypter:encrypt:
+    desc: "pdf-encrypterでPDFへパスワードを設定"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          INPUT_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna encrypt: " in)" || exit 1
+          OWNER_PASSWORD_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input password to encrypt PDF: " opw)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
+
+          USER_PASSWORD_FLAG="${OWNER_PASSWORD_FLAG/--opw=/--upw=}"
+
+          {{.METHOD_FLAG_GUARD_NAME}} "パスワードの入力値が正しく取得できませんでした。" \
+            "$USER_PASSWORD_FLAG"
+
+          echo $'\n[Step 01: START]--- PDF暗号化プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-encrypter{{.EXE}}" \
+            --mode=encrypt \
+            "$INPUT_FILE_FLAG" "$USER_PASSWORD_FLAG" "$OWNER_PASSWORD_FLAG"
+          echo $'\n[Step 01: END]--- PDF暗号化プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-encrypter:decrypt:
+    desc: "pdf-encrypterでPDFからパスワードを削除"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          INPUT_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna decrypt: " in)" || exit 1
+          OWNER_PASSWORD_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input password to decrypt PDF: " opw)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
+
+          echo $'\n[Step 01: START]--- PDF復号化プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-encrypter{{.EXE}}" \
+            --mode=decrypt \
+            "$INPUT_FILE_FLAG" "$OWNER_PASSWORD_FLAG"
+          echo $'\n[Step 01: END]--- PDF復号化プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-merger:extract:all-pages:
+    desc: "pdf-mergerで全ページを画像抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
+            "$PDF_PATH"
+
+          OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
+
+          echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --output-dir="$OUTPUT_DIR" \
+            $PDF_PATH
+          echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-merger:extract:page-range:
+    desc: "pdf-mergerで任意のページ範囲を画像抽出"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+          START_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input start page number: " start)" || exit 1
+          END_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input end page number: " end)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
+            "$PDF_PATH"
+
+          OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
+
+          echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --output-dir="$OUTPUT_DIR" \
+            $PDF_PATH $START_PAGE $END_PAGE
+          echo $'\n[Step 01: END]--- PDFからのページ範囲抽出が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  pdf-merger:merge:cwd:
+    desc: "pdf-mergerでDownloads/現在のディレクトリの画像からPDF作成"
+    cmds:
+      - cmd: |
+          set -eu
+          TARGET_DIR=.
+
+          echo "TARGET_DIR is $TARGET_DIR"
+
+          echo $'\n[Step 01: START]--- 現在のディレクトリの画像からPDFを生成します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --dir="$TARGET_DIR"
+          echo $'\n[Step 01: END]--- 現在のディレクトリのPDF生成が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  pdf-merger:merge:into-existing:
+    desc: "pdf-mergerでDownloads/現在のディレクトリの画像を既存PDFへ追加"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}}
+          TARGET_DIR=.
+          EXISTING_PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input PDF file you wanna add new pages (e.g.: '.'): " add)" || exit 1
+
+          echo $'\n[Step 01: START]--- 現在のディレクトリの画像を既存PDFへ追加します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --dir="$TARGET_DIR" \
+            "$EXISTING_PDF_PATH"
+          echo $'\n[Step 01: END]--- 既存PDFへの追加が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true

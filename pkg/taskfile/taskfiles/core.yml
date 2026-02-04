@@ -4,7 +4,8 @@ vars:
   DIR_SEP: '{{if eq OS "windows"}}\\{{else}}/{{end}}'
   EXE: '{{if eq OS "windows"}}.exe{{else}}{{end}}'
   OS_ARCH: '{{if eq OS "windows"}}win_amd64{{else}}{{if eq OS "linux"}}linux_amd64{{else}}darwin_arm64{{end}}{{end}}'
-  CLI_BIN_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}..{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}{{.OS_ARCH}}"
+  ROOT_TASKFILE_DIR: "{{.TASKFILE_DIR}}{{.DIR_SEP}}.."
+  CLI_BIN_DIR: "{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}pkg{{.DIR_SEP}}bin{{.DIR_SEP}}cli{{.DIR_SEP}}{{.OS_ARCH}}"
   INTERACTIVE_BIN: "{{.CLI_BIN_DIR}}{{.DIR_SEP}}interactive-input{{.EXE}}"
   INTERACTIVE_TEXT_INPUT_NAME: input_text_interactively
   INTERACTIVE_TEXT_INPUT_FUNC: |

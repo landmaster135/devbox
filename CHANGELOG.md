@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.07 — 2026-02-04
+
+PR: #21
+
+### Features
+- **cron-workflow / cmd/http (CLI/HTTP)**: gocronベースの`cmd/cli/cron-workflow`を新設し、`cmd/http`エントリポイントでHTTPサーバーとスケジューラを同居させ、templ製ダッシュボードからカテゴリ別ワークフローやマニュアル実行フォームを操作可能に。`Taskfile.yml`の`run:http`やDocker向けビルドスクリプトも追加し、常駐運用と可視化をワンコマンド化。
+- **logging**: 標準`log`を廃止し、タグ付き`StructuredLogger`でHTTPサーバー／cronワーカー／Dockerビルドスクリプトを統一。`WithTags`や`Ensure`で子ロガーを安全に受け渡し、シャットダウンやGraceful処理のログ粒度を揃えた。
+- **docker (CLI)**: `cmd/cli/docker`と`internal/docker`を追加し、`env.yml`の環境変数だけでなくports/volumes/userブロックやUID:GIDを`docker-compose.yml`へ同期する`env-into-compose`/`ports-into-compose`/`volumes-into-compose`/`user-into-compose`オペレーションを提供。
+- **taskfile (CLI)**: テンプレートとなる`internal/taskfile/usecases/taskfiles/root.yml`と比較して不足フィールドを検出・補完・新規生成する`inspect`/`fill`/`new`オペレーションを実装し、JSONレスポンスで状態を返してCIなしでもルートTaskfileを整合。
+- **html-sanitizer (CLI)**: web-scraperとhttp-requestでバラバラだったDOMクレンジングを`internal/html_sanitizer`へ集約し、denyリストやConfig、エラーハンドリングを共通化。main/article配下のみを抽出し、denyリスト化したform/nav/asideなどを除去、class/style属性や不要空行をクリーンアップするCLIを新設。入力/出力パス指定とエラー時の全文書き出し制御をフラグ化し、スクレイピング後の整形をツールチェーンに組み込めるようにした。
+- **yaml-parser (CLI)**: YAMLファイル/文字列をJSONに変換する`read`/`parse`に加えて、`--key-value-list`でネスト指定した値を書き換えファイルへ保存する`edit-file`を実装。`yaml.Node`ベースでキー順やコメントを維持しつつ、複数ドキュメントの検出・バリデーションも行う。
+- **エージェントスキル**: `.config/codex/skills/supabase-postgres-best-practices`にSKILL/README/参照資料を追加し、接続制御・ロック・インデックス・監視など34トピックを体系化。その他の20種類以上のスキル（C/C++/Go/Rust/TypeScript/JavaScript関連）も追加。AGENTSやClaude向けプロンプトも同梱してスキルレジストリを拡張。
+
+### Improvements
+- **postgresql (CLI/MCP)**: ダンプ機能を再設計し、単一テーブルだけでなく全テーブル一括ダンプや並列制御、件数制限、タイムゾーン指定付きファイル名、JSON/Markdownの結果要約、成功/失敗テーブル集計をサポート。writer・meta_fetch分離と追加テストでCLI/MCP双方の再利用性が上がった。
+- **ocr-executor-with-ai**: 外部AI選択肢を拡張し、Geminiに加えてVertex AIとOllamaを切り替え可能に。Markdownテーブル出力、ディレクトリ再帰処理、Palworldステータス解析タスクやデフォルトパス指定も追加し、スクリーンショットからの構造化テキスト抽出を自動化。
+- **web-scraper**: `get_meta_props`オペレーションでリダイレクト後URLとタイトルだけをJSON返却できるようになり、`interactive-input`経由のTaskfileプリセットでDOM抽出/メタ取得を切り替えながら実行可能に。
+- **iso8601-converter**: フラグを`--operation`へ統一し、`now`結果をISO/UNIX/日付(`YYYYMMDD`)のいずれかに絞れる`--format`や、JST扱いの有無を組み合わせた日付→UNIX変換を追加。Taskfileからのテンプレ生成や自動スクリプトが簡潔になった。
+- **Taskfile automation**: `pkg/taskfile`配下のUIタスクを全面拡充し、PDF暗号化/復号/抽出/結合、Kana・diff-dreamer連携、映画のGIF/WEBM変換、db-server向けハビットデータ投入、HTTPリクエスト送信、自動シンボル付きお気に入り登録などを一括で実行できるよう整理。
+
 ## v0.06 — 2025-12-25
 
 PR: #19

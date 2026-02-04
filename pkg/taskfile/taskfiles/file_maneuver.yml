@@ -1,11 +1,11 @@
 version: "3"
 
 includes:
-  env:
-    taskfile: ./env.yml
-    internal: true
   core:
     taskfile: ./core.yml
+    internal: true
+  env:
+    taskfile: ./env.yml
     internal: true
 
 tasks:

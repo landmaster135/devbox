@@ -11,11 +11,11 @@ tasks:
     cmds:
       - cmd: |
           set -eu
-          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          TO_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
-            "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " \
-            --choice-option "u|--to-unix" --choice-option "i|--to-iso")" || exit 1
+          TO_FLAG="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select conversion format  [u]='--to-unix'  [i]='--to-iso' : " operation \
+            --choice-option "u|to-unix" --choice-option "i|to-iso")" || exit 1
 
           INPUT_VALUE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input datetime in ISO-8601 format or UNIX timestamp: " input)" || exit 1
@@ -40,7 +40,7 @@ tasks:
           set -eu
 
           echo $'\n[Step 01: START]--- iso8601-converterを --now で実行します ---'
-          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" --now
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}}" --operation now --format all
           echo $'\n[Step 01: END]--- iso8601-converterの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         silent: true

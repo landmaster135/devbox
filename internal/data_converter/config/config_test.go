@@ -32,6 +32,16 @@ func TestConfig_Validate_Normal(t *testing.T) {
 			},
 		},
 		{
+			name: "ValidConfig_YAML",
+			config: &Config{
+				InputFormat:   "yaml",
+				OutputFormat:  "html",
+				Input:         "- - Name\n  - Age\n",
+				InputFilePath: "",
+				Help:          false,
+			},
+		},
+		{
 			name: "ValidConfig_Help",
 			config: &Config{
 				InputFormat:   "",
@@ -161,6 +171,11 @@ func TestIsValidInputFormat_Normal(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "ValidYAML",
+			format:   "yaml",
+			expected: true,
+		},
+		{
 			name:     "InvalidXML",
 			format:   "xml",
 			expected: false,
@@ -204,6 +219,11 @@ func TestIsValidOutputFormat_Normal(t *testing.T) {
 		{
 			name:     "ValidJSON",
 			format:   "json",
+			expected: true,
+		},
+		{
+			name:     "ValidYAML",
+			format:   "yaml",
 			expected: true,
 		},
 		{

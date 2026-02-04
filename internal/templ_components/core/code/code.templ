@@ -1,0 +1,25 @@
+package code
+
+templ Text(class string, text string) {
+  if class == "" {
+    <code>{ text }</code>
+  } else {
+    <code class={ class }>{ text }</code>
+  }
+}
+
+templ Content(class string, body templ.Component) {
+  if class == "" {
+    <code>
+      if body != nil {
+        @body
+      }
+    </code>
+  } else {
+    <code class={ class }>
+      if body != nil {
+        @body
+      }
+    </code>
+  }
+}

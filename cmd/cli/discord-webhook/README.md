@@ -7,6 +7,7 @@ Discord WebhookでメッセージやEmbed付き通知を送信するためのCLI
 - Discord Webhookへのメッセージ送信
 - Embedなしの簡単な通知
 - VSCode風のEmbed付き通知（フッターにVSCodeアイコン表示）
+- PostgreSQLダンプ結果のEmbed付き通知（VSCodeレイアウトを流用）
 - OpenWeatherMap風のEmbed付き通知（専用カラーとアイコンを使用）
 - Google Cloud各サービス（Compute Engine / Secret Manager / Cloud Runなど）の成功・失敗通知Embed
 - カスタマイズ可能な色設定
@@ -25,11 +26,12 @@ go build -o bin/discord-webhook ./cmd/cli/discord-webhook
 ```bash
 go run ./cmd/cli/discord-webhook \
   -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
+  -bot-name "テスト用のボット" \
   -content-text "Hello, Discord!" \
   -embed-type none
 ```
 
-### VSCode風Embed付き通知
+### VSCode用Embed付き通知
 
 ```bash
 go run ./cmd/cli/discord-webhook \
@@ -39,7 +41,17 @@ go run ./cmd/cli/discord-webhook \
   -embed-text "アプリケーションが正常にデプロイされました"
 ```
 
-### OpenWeatherMap風Embed付き通知
+### PostgreSQLダンプ通知
+
+```bash
+go run ./cmd/cli/discord-webhook \
+  -webhook-url "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN" \
+  -content-text "PostgreSQLのダンプが完了しました" \
+  -embed-type postgres \
+  -embed-text "バックアップ完了"
+```
+
+### OpenWeatherMap用Embed付き通知
 
 ```bash
 go run ./cmd/cli/discord-webhook \
@@ -88,12 +100,13 @@ go run ./cmd/cli/discord-webhook \
 |-----------|--------|------|
 | `-webhook-url` | `-wu` | Discord WebhookのURL |
 | `-content-text` | `-ct` | メッセージの本文 |
-| `-embed-type` | `-et` | Embedのタイプ (none, vscode, open-weather-map, google-*-success, google-*-failed) |
+| `-embed-type` | `-et` | Embedのタイプ (none, vscode, postgres, open-weather-map, google-*-success, google-*-failed) |
 
 ### 任意オプション
 
 | オプション | 短縮形 | 説明 |
 |-----------|--------|------|
+| `-bot-name` | `-bn` | ボットの名前 |
 | `-embed-text` | `-et-text` | Embedのタイトル |
 | `-embed-color` | `-ec` | Embedの色 |
 | `-embed-url-linked-text` | `-eult` | EmbedタイトルのリンクURL |
@@ -124,6 +137,12 @@ go run ./cmd/cli/discord-webhook \
 - フッターにVSCodeアイコンを表示
 - タイムスタンプ付き
 - カスタマイズ可能な色とリンク
+
+### postgres
+- VSCode風レイアウトでPostgreSQL関連イベントを通知
+- フッターにPostgreSQL公式アイコンを表示
+- デフォルトで紫色・「PostgreSQLダンプ」タイトルを設定
+- `-embed-text` / `-embed-color` / `-embed-url-linked-text` で上書き可能
 
 ### open-weather-map
 - OpenWeatherMap風のEmbedを使用

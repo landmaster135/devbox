@@ -2,7 +2,6 @@ package fetchers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -17,42 +16,27 @@ type RodDOMFetcher struct {
 	launchTimeout time.Duration
 }
 
-type mainNotFoundError struct{}
-
-func (e *mainNotFoundError) Error() string {
-	return "main要素が見つかりません"
-}
-
-// Option はRodDOMFetcherのオプションです。
-type Option func(*RodDOMFetcher)
-
-// WithLaunchTimeout はブラウザ起動のタイムアウトを設定します。
-func WithLaunchTimeout(d time.Duration) Option {
-	return func(f *RodDOMFetcher) {
-		if d > 0 {
-			f.launchTimeout = d
-		}
-	}
-}
-
 // NewRodDOMFetcher はRodDOMFetcherのインスタンスを生成します。
-func NewRodDOMFetcher(opts ...Option) *RodDOMFetcher {
-	fetcher := &RodDOMFetcher{launchTimeout: defaultLaunchTimeout}
-	for _, opt := range opts {
-		if opt != nil {
-			opt(fetcher)
-		}
+func NewRodDOMFetcher(timeout time.Duration) *RodDOMFetcher {
+	if timeout == 0 {
+		timeout = defaultLaunchTimeout
 	}
-	return fetcher
+	return &RodDOMFetcher{
+		launchTimeout: timeout,
+	}
 }
 
-// FetchDOM は対象URLのDOMツリーを取得します。
-func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait time.Duration) (string, error) {
+func (f *RodDOMFetcher) FetchPage(ctx context.Context, targetURL string, wait time.Duration) (string, string, string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
-	var html string
+	var (
+		html        string
+		pageTitle   string
+		resolvedURL string
+	)
+
 	err := rod.Try(func() {
 		launchCtx := ctx
 		var cancel context.CancelFunc
@@ -82,20 +66,13 @@ func (f *RodDOMFetcher) FetchDOM(ctx context.Context, targetURL string, wait tim
 			}
 		}
 
+		pageTitle = page.MustEval(`() => document.title || ""`).Str()
+		resolvedURL = page.MustEval(`() => window.location.href`).Str()
 		html = page.MustEval(`() => document.documentElement.outerHTML`).Str()
 	})
 	if err != nil {
-		return "", fmt.Errorf("DOMツリーの取得に失敗しました: %w", err)
+		return "", "", "", fmt.Errorf("DOMツリーの取得に失敗しました: %w", err)
 	}
 
-	sanitized, err := sanitizeHTMLBody(html)
-	if err != nil {
-		var notFoundErr *mainNotFoundError
-		if errors.As(err, &notFoundErr) {
-			return "", fmt.Errorf("main要素が見つかりません: %w", err)
-		}
-		return "", fmt.Errorf("HTMLのサニタイズに失敗しました: %w", err)
-	}
-
-	return sanitized, nil
+	return html, resolvedURL, pageTitle, nil
 }

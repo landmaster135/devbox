@@ -39,6 +39,45 @@ func TestDataParser_ParseJSON_Normal(t *testing.T) {
 	}
 }
 
+func TestDataParser_ParseYAML_Normal(t *testing.T) {
+	parser := NewDataParser()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected [][]string
+	}{
+		{
+			name: "NormalCase",
+			input: `- Name: Alice
+  Age: "25"
+  City: New York
+- Name: Bob
+  Age: "30"
+  City: London
+`,
+			expected: [][]string{
+				{"Name", "Age", "City"},
+				{"Alice", "25", "New York"},
+				{"Bob", "30", "London"},
+			},
+		},
+		{
+			name:     "EmptyCase",
+			input:    "",
+			expected: [][]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parser.parseYAML(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestDataParser_ParseCSV_Normal(t *testing.T) {
 	parser := NewDataParser()
 
@@ -109,16 +148,16 @@ func TestDataParser_ParseInput_Normal(t *testing.T) {
 	parser := NewDataParser()
 
 	tests := []struct {
-		name         string
-		inputFormat  string
-		input        string
+		name          string
+		inputFormat   string
+		input         string
 		inputFilePath string
-		expected     [][]string
+		expected      [][]string
 	}{
 		{
-			name:         "JSONInput_Normal",
-			inputFormat:  "json",
-			input:        "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
+			name:          "JSONInput_Normal",
+			inputFormat:   "json",
+			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
 			inputFilePath: "",
 			expected: [][]string{
 				{"Name", "Age", "City"},
@@ -127,9 +166,9 @@ func TestDataParser_ParseInput_Normal(t *testing.T) {
 			},
 		},
 		{
-			name:         "CSVInput_Normal",
-			inputFormat:  "csv",
-			input:        "Name,Age,City\nAlice,25,New York\nBob,30,London",
+			name:          "CSVInput_Normal",
+			inputFormat:   "csv",
+			input:         "Name,Age,City\nAlice,25,New York\nBob,30,London",
 			inputFilePath: "",
 			expected: [][]string{
 				{"Name", "Age", "City"},
@@ -138,9 +177,24 @@ func TestDataParser_ParseInput_Normal(t *testing.T) {
 			},
 		},
 		{
-			name:         "TSVInput_Normal",
-			inputFormat:  "tsv",
-			input:        "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tLondon",
+			name:        "YAMLInput_Normal",
+			inputFormat: "yaml",
+			input: `- Name: Alice
+  Age: "25"
+- Name: Bob
+  Age: "30"
+`,
+			inputFilePath: "",
+			expected: [][]string{
+				{"Name", "Age"},
+				{"Alice", "25"},
+				{"Bob", "30"},
+			},
+		},
+		{
+			name:          "TSVInput_Normal",
+			inputFormat:   "tsv",
+			input:         "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tLondon",
 			inputFilePath: "",
 			expected: [][]string{
 				{"Name", "Age", "City"},
@@ -163,23 +217,30 @@ func TestDataParser_ParseInput_Error(t *testing.T) {
 	parser := NewDataParser()
 
 	tests := []struct {
-		name         string
-		inputFormat  string
-		input        string
+		name          string
+		inputFormat   string
+		input         string
 		inputFilePath string
 		expectedError string
 	}{
 		{
-			name:         "UnsupportedFormat_Error",
-			inputFormat:  "xml",
-			input:        "test",
+			name:          "InvalidYAML_Error",
+			inputFormat:   "yaml",
+			input:         ":: invalid",
+			inputFilePath: "",
+			expectedError: "YAML解析エラー",
+		},
+		{
+			name:          "UnsupportedFormat_Error",
+			inputFormat:   "xml",
+			input:         "test",
 			inputFilePath: "",
 			expectedError: "未対応の入力形式です: xml",
 		},
 		{
-			name:         "InvalidJSON_Error",
-			inputFormat:  "json",
-			input:        "invalid json",
+			name:          "InvalidJSON_Error",
+			inputFormat:   "json",
+			input:         "invalid json",
 			inputFilePath: "",
 			expectedError: "JSON解析エラー:",
 		},
@@ -234,18 +295,18 @@ func TestDataParser_ParseHTML_Error(t *testing.T) {
 	parser := NewDataParser()
 
 	tests := []struct {
-		name         string
-		input        string
+		name          string
+		input         string
 		expectedError string
 	}{
 		{
-			name:         "NoTable_Error",
-			input:        "<div>No table here</div>",
+			name:          "NoTable_Error",
+			input:         "<div>No table here</div>",
 			expectedError: "HTMLテーブルが見つかりません",
 		},
 		{
-			name:         "NoClosingTable_Error",
-			input:        "<table><tr><td>test</td></tr>",
+			name:          "NoClosingTable_Error",
+			input:         "<table><tr><td>test</td></tr>",
 			expectedError: "HTMLテーブルの終了タグが見つかりません",
 		},
 	}
@@ -406,8 +467,8 @@ func TestDataParser_ParseMarkdownTable_Error(t *testing.T) {
 	parser := NewDataParser()
 
 	tests := []struct {
-		name         string
-		input        string
+		name          string
+		input         string
 		expectedError string
 	}{
 		{
@@ -533,8 +594,8 @@ func TestDataParser_ParseMarkdownList_Error(t *testing.T) {
 	parser := NewDataParser()
 
 	tests := []struct {
-		name         string
-		input        string
+		name          string
+		input         string
 		expectedError string
 	}{
 		{
@@ -603,8 +664,8 @@ func TestDataParser_ParseMarkdownOrderedList_Error(t *testing.T) {
 	parser := NewDataParser()
 
 	tests := []struct {
-		name         string
-		input        string
+		name          string
+		input         string
 		expectedError string
 	}{
 		{

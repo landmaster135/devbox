@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
 	config "github.com/landmaster135/devbox/internal/datetime_calculator/config"
 	usecases "github.com/landmaster135/devbox/internal/datetime_calculator/usecases"
+	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
 )
 
 // getOperationSymbol は操作タイプに対応する記号を返す
@@ -121,46 +121,10 @@ func handleTimeExtraction(cfg *config.Config) {
 	fmt.Printf("抽出された時間の合計: %.6f%s\n", result, unitName)
 }
 
-// getWeekdayJapanese は曜日を日本語で返す
-func getWeekdayJapanese(weekday time.Weekday) string {
-	switch weekday {
-	case time.Sunday:
-		return "Sun"
-	case time.Monday:
-		return "Mon"
-	case time.Tuesday:
-		return "Tue"
-	case time.Wednesday:
-		return "Wed"
-	case time.Thursday:
-		return "Thu"
-	case time.Friday:
-		return "Fri"
-	case time.Saturday:
-		return "Sat"
-	default:
-		return ""
-	}
-}
-
 // handleGenerateDailyHeading は日次見出し生成を処理する
 func handleGenerateDailyHeading(cfg *config.Config) {
-	// 現在日時を取得
-	now := time.Now()
-
-	// day-offsetを適用して開始日を計算
-	startDate := now.AddDate(0, 0, cfg.DayOffset)
-	endDate := startDate.AddDate(0, 0, 1)
-
-	// 日付と曜日をフォーマット
-	startDateStr := startDate.Format("2006-01-02")
-	endDateStr := endDate.Format("2006-01-02")
-	startWeekday := getWeekdayJapanese(startDate.Weekday())
-	endWeekday := getWeekdayJapanese(endDate.Weekday())
-
-	// 指定されたフォーマットで出力
-	fmt.Printf("## %s(%s)から%s(%s)にかけて（）\n", startDateStr, startWeekday, endDateStr, endWeekday)
-	fmt.Printf("- [ ]  %s(%s)から%s(%s)にかけて進める。・・・合計0分掛かった。\n", startDateStr, startWeekday, endDateStr, endWeekday)
+	output := textGenerator.GenerateDailyHeading(cfg.DayOffset, cfg.Timezone)
+	fmt.Print(output)
 }
 
 func main() {

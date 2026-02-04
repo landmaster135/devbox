@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,60 +10,40 @@ import (
 )
 
 func handleDump(cfg *config.Config) {
-	// PostgreSQLサービスを初期化
-	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
-		os.Exit(1)
-	}
-	defer service.Close()
-
 	// ダンプを実行
-	result, err := service.HandleToDumpTable(context.Background(), cfg.TableName, cfg.OutputPath, cfg.Format, cfg.Limit)
+	result, err := usecases.HandleToDumpTable(context.Background(), cfg.DatabaseURL, cfg.Timezone, cfg.TableName, cfg.OutputPath, cfg.Format, cfg.Limit)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: テーブルダンプの実行に失敗しました: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 結果をJSON形式で標準出力に表示
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: 結果のJSON変換に失敗しました: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Print(string(jsonResult))
+	fmt.Print(result)
 }
 
 func handleDumpAllTables(cfg *config.Config) {
-	// PostgreSQLサービスを初期化
-	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
-		os.Exit(1)
-	}
-	defer service.Close()
-
 	// 全テーブルダンプを実行
-	result, err := service.HandleToDumpAllTables(context.Background(), cfg.OutputPath, cfg.Format, cfg.Limit, cfg.Concurrency)
+	result, _, err := usecases.HandleToDumpAllTables(
+		context.Background(),
+		cfg.DatabaseURL,
+		cfg.Timezone,
+		cfg.OutputPath,
+		cfg.Format,
+		cfg.Limit,
+		cfg.Concurrency,
+		cfg.ResultFormat,
+		cfg.ResultHeading,
+	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: 全テーブルダンプの実行に失敗しました: %v\n", err)
+		fmt.Fprintf(os.Stderr, "エラー: 全テーブルダンプに失敗しました: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 結果をJSON形式で標準出力に表示
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: 結果のJSON変換に失敗しました: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Print(string(jsonResult))
+	fmt.Print(result)
 }
 
 func handleListTablesMinimum(cfg *config.Config) {
 	// PostgreSQLサービスを初期化
-	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
+	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL, cfg.Timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
 		os.Exit(1)
@@ -78,19 +57,12 @@ func handleListTablesMinimum(cfg *config.Config) {
 		os.Exit(1)
 	}
 
-	// 結果をJSON形式で標準出力に表示
-	jsonResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: 結果のJSON変換に失敗しました: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Print(string(jsonResult))
+	fmt.Print(result)
 }
 
 func handleListTables(cfg *config.Config) {
 	// PostgreSQLサービスを初期化
-	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL)
+	service, err := usecases.NewPostgreSQLService(cfg.DatabaseURL, cfg.Timezone)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: PostgreSQLサービスの初期化に失敗しました: %v\n", err)
 		os.Exit(1)
@@ -108,20 +80,12 @@ func handleListTables(cfg *config.Config) {
 		fmt.Print(result)
 	} else {
 		// JSON形式で取得
-		result, err := service.GetAllTableSummaries(context.Background())
+		result, err := service.HandleGetAllTableSummaries(context.Background())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: テーブル一覧の取得に失敗しました: %v\n", err)
 			os.Exit(1)
 		}
-
-		// 結果をJSON形式で標準出力に表示
-		jsonResult, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "エラー: 結果のJSON変換に失敗しました: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Print(string(jsonResult))
+		fmt.Print(result)
 	}
 }
 

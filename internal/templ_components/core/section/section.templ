@@ -1,0 +1,30 @@
+package section
+
+templ Section(class string, id string, body templ.Component) {
+  switch {
+  case class == "" && id == "":
+    <section>
+      if body != nil {
+        @body
+      }
+    </section>
+  case class != "" && id == "":
+    <section class={ class }>
+      if body != nil {
+        @body
+      }
+    </section>
+  case class == "" && id != "":
+    <section id={ id }>
+      if body != nil {
+        @body
+      }
+    </section>
+  default:
+    <section class={ class } id={ id }>
+      if body != nil {
+        @body
+      }
+    </section>
+  }
+}

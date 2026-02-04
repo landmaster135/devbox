@@ -10,6 +10,7 @@
 - Pixelスクリーンショット/録画ファイル (`screen-YYYYMMDD-HHMMSS.png/mp4`) を `Screenshot_YYYYMMDD-HHMMSS.png/mp4` 形式にリネーム
 - Xiaomi端末のスクリーンショットファイル (`Screenshot_YYYY-MM-DD-HH-MM-SS-SSS_package.name.png/jpg` など) を `Screenshot_YYYYMMDD-HHMMSS.png/jpg` 形式にリネーム
 - **新機能**: 全てのスクリーンショットファイルを `YYYYMMDDHHMMSS.png/mp4` 形式（日時のみ）にリネーム
+- リネーム後のファイル名が既存ファイルと衝突する場合は処理開始前に検知して安全に中止
 - 複数のファイルを並行処理
 - 再帰的なディレクトリスキャン
 

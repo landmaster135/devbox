@@ -1,0 +1,82 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+vars:
+  DEFAULT_OUTPUT_DIR: .{{.DIR_SEP}}999_converted_images
+
+tasks:
+  movie-converter-for-gif:mp4-to-gif:
+    desc: "movie-converter-for-gifでMP4からGIFへ一括変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- MP4→GIF変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-gif{{.EXE}}" \
+            --input-dir=. --input-ext=mp4 \
+            --output-dir={{.DEFAULT_OUTPUT_DIR}} --output-ext=gif
+          echo $'\n[Step 01: END]--- MP4→GIF変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  movie-converter-for-gif:gif-to-mp4:
+    desc: "movie-converter-for-gifでGIFからMP4へ一括変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- GIF→MP4変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-gif{{.EXE}}" \
+            --input-dir=. --input-ext=gif \
+            --output-dir={{.DEFAULT_OUTPUT_DIR}} --output-ext=mp4
+          echo $'\n[Step 01: END]--- GIF→MP4変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  movie-converter-for-webm:mp4-to-webm-for-not-movie-material:
+    desc: "movie-converter-for-webmでMP4から非映像素材用のWebMに変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- MP4(素材)→WebM(Vorbis)変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-webm{{.EXE}}" \
+            --input-dir=. --input-ext=mp4 \
+            --output-dir={{.DEFAULT_OUTPUT_DIR}} --output-ext=webm \
+            --conversion-mode=cbr --audio-codec=vorbis --video-quality=35
+          echo $'\n[Step 01: END]--- MP4(素材)→WebM(Vorbis)変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  movie-converter-for-webm:mp4-to-webm-for-movie-material:
+    desc: "movie-converter-for-webmでMP4から映像素材用のWebMに変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- MP4(映像素材)→WebM(Opus)変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-webm{{.EXE}}" \
+            --input-dir=. --input-ext=mp4 \
+            --output-dir={{.DEFAULT_OUTPUT_DIR}} --output-ext=webm \
+            --conversion-mode=cbr --audio-codec=opus --video-quality=35
+          echo $'\n[Step 01: END]--- MP4(映像素材)→WebM(Opus)変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true
+
+  movie-converter-for-webm:webm-to-mp4:
+    desc: "movie-converter-for-webmでWebMからMP4へ一括変換"
+    cmds:
+      - cmd: |
+          set -eu
+
+          echo $'\n[Step 01: START]--- WebM→MP4変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}movie-converter-for-webm{{.EXE}}" \
+            --input-dir=. --input-ext=webm \
+            --output-dir={{.DEFAULT_OUTPUT_DIR}} --output-ext=mp4
+          echo $'\n[Step 01: END]--- WebM→MP4変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true

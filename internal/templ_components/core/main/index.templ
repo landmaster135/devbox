@@ -1,0 +1,21 @@
+package main_component
+
+templ Tag(class string, children ...templ.Component) {
+  if class == "" {
+    <main>
+      for _, child := range children {
+        if child != nil {
+          @child
+        }
+      }
+    </main>
+  } else {
+    <main class={ class }>
+      for _, child := range children {
+        if child != nil {
+          @child
+        }
+      }
+    </main>
+  }
+}

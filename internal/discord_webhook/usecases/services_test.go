@@ -132,6 +132,7 @@ func TestDiscordWebhookService_OpenWeather_Defaults(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
@@ -186,6 +187,7 @@ func TestDiscordWebhookService_OpenWeather_WithOptions(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"カスタムタイトル",
@@ -214,6 +216,61 @@ func TestDiscordWebhookService_OpenWeather_WithOptions(t *testing.T) {
 	}
 }
 
+func TestDiscordWebhookService_Postgres_Defaults(t *testing.T) {
+	repo := newMockDiscordRepository()
+	service := NewDiscordWebhookService(repo)
+
+	err := service.SendNotification(
+		context.Background(),
+		"https://discord.com/api/webhooks/test",
+		"user指定bot",
+		"バックアップ完了",
+		"postgres",
+		"",
+		"",
+		"",
+	)
+	if err != nil {
+		t.Fatalf("予期しないエラー: %v", err)
+	}
+
+	if len(repo.convertColorCalls) != 1 || repo.convertColorCalls[0] != defaultPostgresEmbedColor {
+		t.Fatalf("ConvertColorToDecimalの呼び出しが不正です: %#v", repo.convertColorCalls)
+	}
+
+	if len(repo.createEmbedsCalls) != 1 {
+		t.Fatalf("CreateEmbedsの呼び出し数が不正です: %d", len(repo.createEmbedsCalls))
+	}
+	call := repo.createEmbedsCalls[0]
+	if call.title != defaultPostgresEmbedText {
+		t.Errorf("タイトルが期待値と異なります: got %s, want %s", call.title, defaultPostgresEmbedText)
+	}
+	if call.footerText != footerTextInPostgresEmbed {
+		t.Errorf("フッター文言が期待値と異なります: got %s, want %s", call.footerText, footerTextInPostgresEmbed)
+	}
+	if call.footerIconURL != postgresIconURL {
+		t.Errorf("フッターアイコンが期待値と異なります: got %s, want %s", call.footerIconURL, postgresIconURL)
+	}
+
+	if len(repo.payloadCalls) != 1 {
+		t.Fatalf("CreatePayloadの呼び出し数が不正です: %d", len(repo.payloadCalls))
+	}
+	payloadCall := repo.payloadCalls[0]
+	if payloadCall.botName != botNameForPostgres {
+		t.Errorf("Bot名が期待値と異なります: got %s, want %s", payloadCall.botName, botNameForPostgres)
+	}
+	if payloadCall.content != "バックアップ完了" {
+		t.Errorf("本文が期待値と異なります: got %s, want %s", payloadCall.content, "バックアップ完了")
+	}
+
+	if len(repo.webhookCalls) != 1 {
+		t.Fatalf("SendWebhookの呼び出し数が不正です: %d", len(repo.webhookCalls))
+	}
+	if repo.webhookCalls[0].url != "https://discord.com/api/webhooks/test" {
+		t.Errorf("WebhookURLが期待値と異なります: got %s", repo.webhookCalls[0].url)
+	}
+}
+
 func TestDiscordWebhookService_OpenWeather_ColorConversionError(t *testing.T) {
 	repo := newMockDiscordRepository()
 	repo.convertColorErr = errors.New("color conversion error")
@@ -222,6 +279,7 @@ func TestDiscordWebhookService_OpenWeather_ColorConversionError(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
@@ -244,6 +302,7 @@ func TestDiscordWebhookService_OpenWeather_CreateEmbedsError(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",
@@ -266,6 +325,7 @@ func TestDiscordWebhookService_OpenWeather_CreatePayloadError(t *testing.T) {
 	err := service.SendNotification(
 		context.Background(),
 		"https://discord.com/api/webhooks/test",
+		"testボット",
 		"本文",
 		"open-weather-map",
 		"",

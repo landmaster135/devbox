@@ -8,8 +8,11 @@ PostgreSQLデータベースのテーブルダンプ機能を提供するCLIツ�
 - **データベース内の全テーブルを一括ダンプ**
 - テーブル一覧の取得（最小限・詳細）
 - 複数の出力フォーマット対応（JSON、CSV、SQL、テキスト）
+- ダンプ結果サマリをJSONまたはMarkdownで取得
+- ダンプ結果サマリの見出しをカスタマイズ
 - レコード数制限機能
 - 出力ディレクトリ指定
+- タイムスタンプと出力ファイル名に使用するタイムゾーンを指定可能
 
 ## ビルド方法
 
@@ -34,6 +37,9 @@ go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pas
 
 # 出力ディレクトリを指定
 go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pass@localhost/db" --table-name=users --output-path=/tmp
+
+# タイムゾーンを指定（Asia/Tokyo）
+go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pass@localhost/db" --table-name=users --timezone=Asia/Tokyo
 
 # レコード数を制限
 go run ./cmd/cli/postgresql --operation=dump --database-url="postgres://user:pass@localhost/db" --table-name=users --limit=100
@@ -63,8 +69,17 @@ go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres
 # 並行処理数を指定して全テーブルダンプ
 go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --concurrency=3
 
+# タイムゾーンを指定して全テーブルダンプ
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --timezone=UTC
+
 # 全オプション指定で全テーブルダンプ
 go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=csv --output-path=/tmp/dumps --limit=500 --concurrency=5
+
+# ダンプ結果サマリをMarkdownで取得
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --result-format=markdown
+
+# Markdown出力の見出しを変更
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --result-format=markdown --result-heading="Production Dump"
 ```
 
 ### テーブル一覧取得
@@ -102,6 +117,9 @@ go run ./cmd/cli/postgresql -help
 |-----------|------|-------------|-----|
 | `--output-path` | 出力ディレクトリパス（dump操作時のみ） | カレントディレクトリ | `/tmp` |
 | `--format` | 出力フォーマット | `json` | `csv`, `sql`, `text` |
+| `--result-format` | ダンプ結果サマリのフォーマット（dump-all-tables向け） | `json` | `markdown` |
+| `--result-heading` | ダンプ結果サマリの見出し（dump-all-tables + Markdown向け） | なし | `Production Dump` |
+| `--timezone` | タイムスタンプ/ファイル名に使用するタイムゾーン | システムローカル | `Asia/Tokyo` |
 | `--limit` | 最大レコード数（dump操作時のみ） | 制限なし | `100` |
 | `--concurrency` | 並行処理数（dump-all-tables操作時のみ） | CPUコア数（最大10） | `3` |
 | `--help` | ヘルプを表示 | - | - |
@@ -110,11 +128,11 @@ go run ./cmd/cli/postgresql -help
 
 dump操作
 - **必須**: `--operation`, `--database-url`, `--table-name`
-- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`
+- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`, `--timezone`
 
 dump-all-tables操作
 - **必須**: `--operation`, `--database-url`
-- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`, `--concurrency`
+- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`, `--concurrency`, `--result-format` (json, markdown), `--result-heading`, `--timezone`
 
 list-tables-minimum操作
 - **必須**: `--operation`, `--database-url`
@@ -180,6 +198,32 @@ list-tables操作
 }
 ```
 
+**Markdown形式（`--result-format=markdown`）**
+
+```
+## PostgreSQL Dump Report
+
+| 項目 | 値 |
+| --- | --- |
+| Database | `mydb` |
+| Total tables discovered | 3 |
+| Successful dumps | 3 |
+| Failed dumps | 0 |
+| Executed at | 2025-08-22 18:05:30 |
+
+### Successful Tables
+| Table | Rows | File | Format |
+| --- | --- | --- | --- |
+| `users` | 150 | users_20250822_180530.json | json |
+| `products` | 75 | products_20250822_180531.json | json |
+| `orders` | 200 | orders_20250822_180532.json | json |
+
+### Failed Tables
+| Table | Error |
+| --- | --- |
+| なし | - |
+```
+
 **エラーが発生した場合の出力例**
 
 ```json
@@ -222,6 +266,8 @@ list-tables操作
 - `users_20250822_180530.json`
 - `products_20250822_180530.csv`
 - `orders_20250822_180530.sql`
+
+`--timezone`を指定した場合、これらのファイル名や結果中の`executed_at`は指定タイムゾーンを基準とした日時になります。
 
 ### list-tables-minimum操作の出力
 

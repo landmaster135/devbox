@@ -9,6 +9,8 @@ import (
 const (
 	// OperationGetDOMTree は指定したURLのDOMツリーを取得する操作です。
 	OperationGetDOMTree = "get_dom_tree"
+	// OperationGetMetaProps は対象URLのメタ情報を取得する操作です。
+	OperationGetMetaProps = "get_meta_props"
 )
 
 // Config はCLIから受け取る設定値を保持します。
@@ -30,6 +32,16 @@ func (c Config) Validate() error {
 	case OperationGetDOMTree:
 		if strings.TrimSpace(c.URL) == "" {
 			return fmt.Errorf("get_dom_treeではurlを指定してください")
+		}
+		if c.WaitSeconds < 0 {
+			return fmt.Errorf("wait-secondsは0以上を指定してください")
+		}
+		if c.OutputPath != "" && strings.TrimSpace(c.OutputPath) == "" {
+			return fmt.Errorf("output-fileは空文字では指定できません")
+		}
+	case OperationGetMetaProps:
+		if strings.TrimSpace(c.URL) == "" {
+			return fmt.Errorf("get_meta_propsではurlを指定してください")
 		}
 		if c.WaitSeconds < 0 {
 			return fmt.Errorf("wait-secondsは0以上を指定してください")

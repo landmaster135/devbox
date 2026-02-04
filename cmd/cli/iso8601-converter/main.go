@@ -25,12 +25,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	fs.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	toISO := fs.Bool("to-iso", false, "UNIXタイムスタンプをISO-8601形式に変換")
-	toUnix := fs.Bool("to-unix", false, "ISO-8601形式をUNIXタイムスタンプに変換")
+	operation := fs.String("operation", "", "実行する操作を指定 (to-iso|to-unix|now)")
+	format := fs.String("format", "all", "--operation now 用の出力形式 (all|unix|iso|date)")
 	isJST := fs.Bool("is-jst", false, "JSTタイムゾーンを使用（日付変換のみ）")
 	help := fs.Bool("help", false, "ヘルプメッセージを表示")
 	input := fs.String("input", "", "変換する値")
-	now := fs.Bool("now", false, "現在日時を表示")
 
 	// 引数の解析
 	if err := fs.Parse(args); err != nil {
@@ -38,30 +37,57 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
+	op := strings.ToLower(strings.TrimSpace(*operation))
+
 	// ヘルプメッセージの表示
-	if *help || (!*now && *input == "") {
+	if *help || op == "" {
 		showHelp(stdout)
 		return exitCodeOK
 	}
 
 	// 現在日時の表示
-	if *now {
-		fmt.Fprintf(stdout, "現在日時:\n")
-		fmt.Fprintf(stdout, "  ISO-8601形式 (UTC): %s\n", usecases.NowToISO8601InUTC())
-		fmt.Fprintf(stdout, "  ISO-8601形式 (JST): %s\n", usecases.NowToISO8601InJST())
-		fmt.Fprintf(stdout, "  UNIXタイムスタンプ: %s\n", usecases.NowToUnix())
+	if op == "now" {
+		formatType := strings.ToLower(strings.TrimSpace(*format))
+		printHeader := func() {
+			fmt.Fprintf(stdout, "現在日時:\n")
+		}
+		switch formatType {
+		case "", "all":
+			printHeader()
+			fmt.Fprintf(stdout, "  ISO-8601形式 (UTC): %s\n", usecases.NowToISO8601InUTC())
+			fmt.Fprintf(stdout, "  ISO-8601形式 (JST): %s\n", usecases.NowToISO8601InJST())
+			fmt.Fprintf(stdout, "  UNIXタイムスタンプ: %s\n", usecases.NowToUnix())
+		case "iso":
+			printHeader()
+			fmt.Fprintf(stdout, "  ISO-8601形式 (UTC): %s\n", usecases.NowToISO8601InUTC())
+			fmt.Fprintf(stdout, "  ISO-8601形式 (JST): %s\n", usecases.NowToISO8601InJST())
+		case "unix":
+			printHeader()
+			fmt.Fprintf(stdout, "  UNIXタイムスタンプ: %s\n", usecases.NowToUnix())
+		case "date":
+			fmt.Fprintln(stdout, usecases.NowToDateString())
+		default:
+			fmt.Fprintf(stderr, "エラー: --format には all, unix, iso, date のいずれかを指定してください\n")
+			return exitCodeError
+		}
 		return exitCodeOK
 	}
 
+	if *input == "" {
+		fmt.Fprintln(stderr, "エラー: --input フラグで変換対象を指定してください")
+		return exitCodeError
+	}
+
 	// 変換処理の実行
-	if *toISO {
+	switch op {
+	case "to-iso":
 		result, err := usecases.UnixToISO8601(*input)
 		if err != nil {
 			fmt.Fprintf(stderr, "エラー: %v\n", err)
 			return exitCodeError
 		}
 		fmt.Fprintln(stdout, result)
-	} else if *toUnix {
+	case "to-unix":
 		// 入力に時刻情報が含まれているかチェック
 		if strings.Contains(*input, "T") {
 			// 入力はISO-8601形式
@@ -80,8 +106,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 			}
 			fmt.Fprintln(stdout, result)
 		}
-	} else {
-		fmt.Fprintf(stderr, "エラー: --to-iso または --to-unix フラグを指定する必要があります\n")
+	default:
+		fmt.Fprintf(stderr, "エラー: --operation には to-iso, to-unix, now のいずれかを指定してください\n")
 		return exitCodeError
 	}
 
@@ -93,26 +119,26 @@ func showHelp(w io.Writer) {
 	fmt.Fprintln(w, "ISO-8601 コンバーター")
 	fmt.Fprintln(w, "使用方法:")
 	fmt.Fprintln(w, "  現在日時を表示:")
-	fmt.Fprintln(w, "    iso8601-converter --now")
+	fmt.Fprintln(w, "    iso8601-converter --operation now [--format all|unix|iso|date]")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "  UNIXタイムスタンプをISO-8601形式に変換:")
-	fmt.Fprintln(w, "    iso8601-converter --to-iso --input <unix_timestamp>")
+	fmt.Fprintln(w, "    iso8601-converter --operation to-iso --input <unix_timestamp>")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "  ISO-8601形式をUNIXタイムスタンプに変換:")
-	fmt.Fprintln(w, "    iso8601-converter --to-unix --input <iso8601_time>")
+	fmt.Fprintln(w, "    iso8601-converter --operation to-unix --input <iso8601_time>")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "  日付をUNIXタイムスタンプに変換 (UTC):")
-	fmt.Fprintln(w, "    iso8601-converter --to-unix --input <date>")
+	fmt.Fprintln(w, "    iso8601-converter --operation to-unix --input <date>")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "  日付をUNIXタイムスタンプに変換 (JST):")
-	fmt.Fprintln(w, "    iso8601-converter --to-unix --is-jst --input <date>")
+	fmt.Fprintln(w, "    iso8601-converter --operation to-unix --is-jst --input <date>")
 	fmt.Fprintln(w, "")
 	fmt.Fprintln(w, "例:")
-	fmt.Fprintln(w, "  iso8601-converter --now")
-	fmt.Fprintln(w, "  iso8601-converter --to-iso --input 1619712000")
-	fmt.Fprintln(w, "  iso8601-converter --to-unix --input 2021-04-30T00:00:00Z")
-	fmt.Fprintln(w, "  iso8601-converter --to-unix --input 2021-04-30")
-	fmt.Fprintln(w, "  iso8601-converter --to-unix --is-jst --input 2021-04-30")
+	fmt.Fprintln(w, "  iso8601-converter --operation now")
+	fmt.Fprintln(w, "  iso8601-converter --operation to-iso --input 1619712000")
+	fmt.Fprintln(w, "  iso8601-converter --operation to-unix --input 2021-04-30T00:00:00Z")
+	fmt.Fprintln(w, "  iso8601-converter --operation to-unix --input 2021-04-30")
+	fmt.Fprintln(w, "  iso8601-converter --operation to-unix --is-jst --input 2021-04-30")
 }
 
 func main() {

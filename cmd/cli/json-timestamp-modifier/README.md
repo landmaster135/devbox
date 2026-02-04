@@ -33,19 +33,19 @@ cd devbox
 JSONファイルに現在の日時のタイムスタンプを追加するには、以下のコマンドを使用します：
 
 ```bash
-./json-timestamp-modifier -file <JSONファイルパス> [-key <キー>] [-mode add]
+./json-timestamp-modifier -path <JSONファイルパス> [-key <キー>] [-mode add]
 ```
 
 例：
 
 ```bash
-./json-timestamp-modifier -file data.json
+./json-timestamp-modifier -path data.json
 ```
 
 このコマンドは、`data.json`ファイルに`timestamp`キー（デフォルト）と現在の日時のタイムスタンプを追加します。
 
 ```bash
-./json-timestamp-modifier -file data.json -key created_at -mode add
+./json-timestamp-modifier -path data.json -key created_at -mode add
 ```
 
 このコマンドは、`data.json`ファイルに`created_at`キーと現在の日時のタイムスタンプを追加します。
@@ -59,19 +59,19 @@ JSONファイルに現在の日時のタイムスタンプを追加するには�
 JSONファイル内の指定したキーの値をISO-8601形式からUNIXタイムスタンプに変換するには、以下のコマンドを使用します：
 
 ```bash
-./json-timestamp-modifier -file <JSONファイルパス> -key <キー> -mode to-unix [-is-jst]
+./json-timestamp-modifier -path <JSONファイルパス> -key <キー> -mode to-unix [-is-jst]
 ```
 
 例：
 
 ```bash
-./json-timestamp-modifier -file data.json -key date -mode to-unix
+./json-timestamp-modifier -path data.json -key date -mode to-unix
 ```
 
 このコマンドは、`data.json`ファイル内の`date`キーの値をISO-8601形式からUNIXタイムスタンプに変換します。
 
 ```bash
-./json-timestamp-modifier -file data.json -key date -mode to-unix -is-jst
+./json-timestamp-modifier -path data.json -key date -mode to-unix -is-jst
 ```
 
 このコマンドは、`data.json`ファイル内の`date`キーの値を日本標準時（JST）として扱い、UNIXタイムスタンプに変換します。
@@ -84,13 +84,13 @@ JSONファイル内の指定したキーの値をISO-8601形式からUNIXタイ�
 JSONファイル内の指定したキーの値をUNIXタイムスタンプからISO-8601形式に変換するには、以下のコマンドを使用します：
 
 ```bash
-./json-timestamp-modifier -file <JSONファイルパス> -key <キー> -mode to-iso
+./json-timestamp-modifier -path <JSONファイルパス> -key <キー> -mode to-iso
 ```
 
 例：
 
 ```bash
-./json-timestamp-modifier -file data.json -key timestamp -mode to-iso
+./json-timestamp-modifier -path data.json -key timestamp -mode to-iso
 ```
 
 このコマンドは、`data.json`ファイル内の`timestamp`キーの値をUNIXタイムスタンプからISO-8601形式に変換します。
@@ -104,19 +104,19 @@ JSONファイル内の指定したキーの値をUNIXタイムスタンプから
 ディレクトリ内の全てのJSONファイルに現在の日時のタイムスタンプを追加するには、以下のコマンドを使用します：
 
 ```bash
-./json-timestamp-modifier -dir <ディレクトリパス> [-key <キー>] [-mode add] [-recursive]
+./json-timestamp-modifier -path <ディレクトリパス> [-key <キー>] [-mode add] [-recursive]
 ```
 
 例：
 
 ```bash
-./json-timestamp-modifier -dir ./data
+./json-timestamp-modifier -path ./data
 ```
 
 このコマンドは、`./data`ディレクトリ内の全てのJSONファイルに`timestamp`キー（デフォルト）と現在の日時のタイムスタンプを追加します。
 
 ```bash
-./json-timestamp-modifier -dir ./data -key created_at -recursive
+./json-timestamp-modifier -path ./data -key created_at -recursive
 ```
 
 このコマンドは、`./data`ディレクトリとそのサブディレクトリ内の全てのJSONファイルに`created_at`キーと現在の日時のタイムスタンプを追加します。
@@ -129,19 +129,19 @@ JSONファイル内の指定したキーの値をUNIXタイムスタンプから
 ディレクトリ内の全てのJSONファイルの指定したキーの値をISO-8601形式からUNIXタイムスタンプに変換するには、以下のコマンドを使用します：
 
 ```bash
-./json-timestamp-modifier -dir <ディレクトリパス> -key <キー> -mode to-unix [-is-jst] [-recursive]
+./json-timestamp-modifier -path <ディレクトリパス> -key <キー> -mode to-unix [-is-jst] [-recursive]
 ```
 
 例：
 
 ```bash
-./json-timestamp-modifier -dir ./data -key date -mode to-unix
+./json-timestamp-modifier -path ./data -key date -mode to-unix
 ```
 
 このコマンドは、`./data`ディレクトリ内の全てのJSONファイルの`date`キーの値をISO-8601形式からUNIXタイムスタンプに変換します。
 
 ```bash
-./json-timestamp-modifier -dir ./data -key date -mode to-unix -is-jst -recursive
+./json-timestamp-modifier -path ./data -key date -mode to-unix -is-jst -recursive
 ```
 
 このコマンドは、`./data`ディレクトリとそのサブディレクトリ内の全てのJSONファイルの`date`キーの値を日本標準時（JST）として扱い、UNIXタイムスタンプに変換します。
@@ -151,19 +151,19 @@ JSONファイル内の指定したキーの値をUNIXタイムスタンプから
 ディレクトリ内の全てのJSONファイルの指定したキーの値をUNIXタイムスタンプからISO-8601形式に変換するには、以下のコマンドを使用します：
 
 ```bash
-./json-timestamp-modifier -dir <ディレクトリパス> -key <キー> -mode to-iso [-recursive]
+./json-timestamp-modifier -path <ディレクトリパス> -key <キー> -mode to-iso [-recursive]
 ```
 
 例：
 
 ```bash
-./json-timestamp-modifier -dir ./data -key timestamp -mode to-iso
+./json-timestamp-modifier -path ./data -key timestamp -mode to-iso
 ```
 
 このコマンドは、`./data`ディレクトリ内の全てのJSONファイルの`timestamp`キーの値をUNIXタイムスタンプからISO-8601形式に変換します。
 
 ```bash
-./json-timestamp-modifier -dir ./data -key timestamp -mode to-iso -recursive
+./json-timestamp-modifier -path ./data -key timestamp -mode to-iso -recursive
 ```
 
 このコマンドは、`./data`ディレクトリとそのサブディレクトリ内の全てのJSONファイルの`timestamp`キーの値をUNIXタイムスタンプからISO-8601形式に変換します。
@@ -172,20 +172,19 @@ JSONファイル内の指定したキーの値をUNIXタイムスタンプから
 
 | オプション | 説明 |
 |------------|------|
-| `-file` | 操作するJSONファイルのパス |
-| `-dir` | 操作するJSONファイルが含まれるディレクトリのパス |
-| `-recursive` | ディレクトリを再帰的に処理する（`-dir`オプションと共に使用）（デフォルト: `false`） |
+| `-path` | 操作するJSONファイルまたはJSONファイルを含むディレクトリのパス |
+| `-recursive` | ディレクトリを再帰的に処理する（`-path`でディレクトリを指定した場合のみ有効）（デフォルト: `false`） |
 | `-key` | 操作するキー（デフォルト: `timestamp`） |
 | `-mode` | 操作モード: `add`（タイムスタンプ追加）, `to-unix`（ISO-8601→UNIX）, `to-iso`（UNIX→ISO-8601）（デフォルト: `add`） |
 | `-is-jst` | 日付のみの文字列をJSTとして扱う（`to-unix`モードのみ有効）（デフォルト: `false`） |
 
-**注意**: `-file`と`-dir`オプションは同時に指定できません。どちらか一方を指定してください。
+**注意**: `-recursive` はディレクトリパスを指定した場合のみ効果があります。
 
 ## エラーメッセージ
 
 以下のような場合にエラーメッセージが表示されます：
 
-- ファイルパスが指定されていない場合
+- 対象パスが指定されていない場合
 - キーが空の場合
 - JSONファイルの読み込みや書き込みに失敗した場合
 
@@ -195,41 +194,41 @@ JSONファイル内の指定したキーの値をUNIXタイムスタンプから
 
 ```bash
 # 新しいJSONファイルの作成
-./json-timestamp-modifier -file new_data.json
+./json-timestamp-modifier -path new_data.json
 
 # 既存のJSONファイルにタイムスタンプを追加
-./json-timestamp-modifier -file data.json
+./json-timestamp-modifier -path data.json
 
 # カスタムキーでタイムスタンプを追加
-./json-timestamp-modifier -file data.json -key updated_at -mode add
+./json-timestamp-modifier -path data.json -key updated_at -mode add
 
 # ISO-8601形式からUNIXタイムスタンプに変換
-./json-timestamp-modifier -file data.json -key created_at -mode to-unix
+./json-timestamp-modifier -path data.json -key created_at -mode to-unix
 
 # 日付のみの文字列をJSTとして扱い、UNIXタイムスタンプに変換
-./json-timestamp-modifier -file data.json -key date -mode to-unix -is-jst
+./json-timestamp-modifier -path data.json -key date -mode to-unix -is-jst
 
 # UNIXタイムスタンプからISO-8601形式に変換
-./json-timestamp-modifier -file data.json -key timestamp -mode to-iso
+./json-timestamp-modifier -path data.json -key timestamp -mode to-iso
 ```
 
 ### ディレクトリ内の全てのJSONファイルの操作
 
 ```bash
 # ディレクトリ内の全てのJSONファイルにタイムスタンプを追加
-./json-timestamp-modifier -dir ./data
+./json-timestamp-modifier -path ./data
 
 # ディレクトリとサブディレクトリ内の全てのJSONファイルにタイムスタンプを追加
-./json-timestamp-modifier -dir ./data -recursive
+./json-timestamp-modifier -path ./data -recursive
 
 # ディレクトリ内の全てのJSONファイルのISO-8601形式をUNIXタイムスタンプに変換
-./json-timestamp-modifier -dir ./data -key date -mode to-unix
+./json-timestamp-modifier -path ./data -key date -mode to-unix
 
 # ディレクトリとサブディレクトリ内の全てのJSONファイルの日付をJSTとして扱い、UNIXタイムスタンプに変換
-./json-timestamp-modifier -dir ./data -key date -mode to-unix -is-jst -recursive
+./json-timestamp-modifier -path ./data -key date -mode to-unix -is-jst -recursive
 
 # ディレクトリ内の全てのJSONファイルのUNIXタイムスタンプをISO-8601形式に変換
-./json-timestamp-modifier -dir ./data -key timestamp -mode to-iso -recursive
+./json-timestamp-modifier -path ./data -key timestamp -mode to-iso -recursive
 ```
 
 ## 注意事項

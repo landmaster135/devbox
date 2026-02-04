@@ -3,11 +3,17 @@ package usecases
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+
+	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	dump "github.com/landmaster135/devbox/internal/postgresql/usecases/dump"
+	templateRenderer "github.com/landmaster135/devbox/internal/postgresql/usecases/template_renderer"
 )
 
 // #==============================================================#
@@ -21,10 +27,10 @@ func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *PostgreSQLService) {
 		t.Fatalf("モックデータベースの作成に失敗しました: %v", err)
 	}
 
-	executor := &DefaultDatabaseExecutor{db: db}
-	renderer := &DefaultTemplateRenderer{}
+	executor := &dbExecutor.DefaultDatabaseExecutor{DB: db}
+	renderer := &templateRenderer.DefaultTemplateRenderer{}
 	marshaler := &DefaultJSONMarshaler{}
-	tableDumper := NewTableDumper(executor)
+	tableDumper := dump.NewTableDumper(executor, "")
 
 	service := NewPostgreSQLServiceWithDependencies(
 		executor,
@@ -41,133 +47,6 @@ func setupMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *PostgreSQLService) {
 // newMockRows はモック用のRowsを作成します
 func newMockRows(columns ...string) *sqlmock.Rows {
 	return sqlmock.NewRows(columns)
-}
-
-// #==============================================================#
-// ##          GetTablesMinimum Tests                            ##
-// #==============================================================#
-
-// TestGetTablesMinimum はGetTablesMinimum関数をテストします
-func TestGetTablesMinimum_Normal(t *testing.T) {
-	// モックデータベースをセットアップ
-	db, mock, service := setupMockDB(t)
-	defer db.Close()
-
-	// モックの期待値を設定
-	rows := newMockRows("table_name").
-		AddRow("users").
-		AddRow("products").
-		AddRow("orders")
-
-	mock.ExpectQuery("SELECT table_name FROM information_schema.tables").
-		WillReturnRows(rows)
-
-	// 関数を実行
-	ctx := context.Background()
-	tables, err := service.GetTablesMinimum(ctx)
-
-	// アサーション
-	assert.NoError(t, err)
-	assert.Len(t, tables, 3)
-	assert.Equal(t, "users", tables[0].Name)
-	assert.Equal(t, "products", tables[1].Name)
-	assert.Equal(t, "orders", tables[2].Name)
-
-	// モックの期待値が満たされたことを確認
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("満たされていない期待値があります: %s", err)
-	}
-}
-
-// TestGetTablesMinimum_Error はGetTablesMinimumのエラーケースをテストします
-func TestGetTablesMinimum_Error(t *testing.T) {
-	// モックデータベースをセットアップ
-	db, mock, service := setupMockDB(t)
-	defer db.Close()
-
-	// クエリエラーのモック
-	mock.ExpectQuery("SELECT table_name FROM information_schema.tables").
-		WillReturnError(fmt.Errorf("データベースエラー"))
-
-	// 関数を実行
-	ctx := context.Background()
-	tables, err := service.GetTablesMinimum(ctx)
-
-	// アサーション
-	assert.Error(t, err)
-	assert.Nil(t, tables)
-	assert.Contains(t, err.Error(), "データベースエラー")
-
-	// モックの期待値が満たされたことを確認
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("満たされていない期待値があります: %s", err)
-	}
-}
-
-// #==============================================================#
-// ##          GetTableSchemaMinimum Tests                       ##
-// #==============================================================#
-
-// TestGetTableSchemaMinimum はGetTableSchemaMinimum関数をテストします
-func TestGetTableSchemaMinimum_Normal(t *testing.T) {
-	// モックデータベースをセットアップ
-	db, mock, service := setupMockDB(t)
-	defer db.Close()
-
-	// モックの期待値を設定
-	rows := newMockRows("column_name", "data_type").
-		AddRow("id", "integer").
-		AddRow("name", "character varying").
-		AddRow("created_at", "timestamp")
-
-	mock.ExpectQuery("SELECT column_name, data_type FROM information_schema.columns").
-		WithArgs("public", "users").
-		WillReturnRows(rows)
-
-	// 関数を実行
-	ctx := context.Background()
-	columns, err := service.GetTableSchemaMinimum(ctx, "users")
-
-	// アサーション
-	assert.NoError(t, err)
-	assert.Len(t, columns, 3)
-	assert.Equal(t, "id", columns[0].Name)
-	assert.Equal(t, "integer", columns[0].DataType)
-	assert.Equal(t, "name", columns[1].Name)
-	assert.Equal(t, "character varying", columns[1].DataType)
-	assert.Equal(t, "created_at", columns[2].Name)
-	assert.Equal(t, "timestamp", columns[2].DataType)
-
-	// モックの期待値が満たされたことを確認
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("満たされていない期待値があります: %s", err)
-	}
-}
-
-// TestGetTableSchemaMinimum_Error はGetTableSchemaMinimumのエラーケースをテストします
-func TestGetTableSchemaMinimum_Error(t *testing.T) {
-	// モックデータベースをセットアップ
-	db, mock, service := setupMockDB(t)
-	defer db.Close()
-
-	// クエリエラーのモック
-	mock.ExpectQuery("SELECT column_name, data_type FROM information_schema.columns").
-		WithArgs("public", "users").
-		WillReturnError(fmt.Errorf("データベースエラー"))
-
-	// 関数を実行
-	ctx := context.Background()
-	columns, err := service.GetTableSchemaMinimum(ctx, "users")
-
-	// アサーション
-	assert.Error(t, err)
-	assert.Nil(t, columns)
-	assert.Contains(t, err.Error(), "データベースエラー")
-
-	// モックの期待値が満たされたことを確認
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("満たされていない期待値があります: %s", err)
-	}
 }
 
 // #==============================================================#
@@ -353,10 +232,14 @@ func TestHandleToListTablesMinimum_Normal(t *testing.T) {
 
 	// アサーション
 	assert.NoError(t, err)
-	assert.Len(t, result, 3)
-	assert.Equal(t, "users", result[0].Name)
-	assert.Equal(t, "products", result[1].Name)
-	assert.Equal(t, "orders", result[2].Name)
+
+	var tables []model.Table
+	err = json.Unmarshal([]byte(result), &tables)
+	assert.NoError(t, err)
+	assert.Len(t, tables, 3)
+	assert.Equal(t, "users", tables[0].Name)
+	assert.Equal(t, "products", tables[1].Name)
+	assert.Equal(t, "orders", tables[2].Name)
 
 	// モックの期待値が満たされたことを確認
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -380,7 +263,7 @@ func TestHandleToListTablesMinimum_Error(t *testing.T) {
 
 	// アサーション
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "データベースエラー")
 
 	// モックの期待値が満たされたことを確認
@@ -411,13 +294,17 @@ func TestHandleToGetTableSchemaMinimum_Normal(t *testing.T) {
 
 	// アサーション
 	assert.NoError(t, err)
-	assert.Len(t, result, 3)
-	assert.Equal(t, "id", result[0].Name)
-	assert.Equal(t, "integer", result[0].DataType)
-	assert.Equal(t, "name", result[1].Name)
-	assert.Equal(t, "character varying", result[1].DataType)
-	assert.Equal(t, "created_at", result[2].Name)
-	assert.Equal(t, "timestamp", result[2].DataType)
+
+	var schema []model.Column
+	err = json.Unmarshal([]byte(result), &schema)
+	assert.NoError(t, err)
+	assert.Len(t, schema, 3)
+	assert.Equal(t, "id", schema[0].Name)
+	assert.Equal(t, "integer", schema[0].DataType)
+	assert.Equal(t, "name", schema[1].Name)
+	assert.Equal(t, "character varying", schema[1].DataType)
+	assert.Equal(t, "created_at", schema[2].Name)
+	assert.Equal(t, "timestamp", schema[2].DataType)
 
 	// モックの期待値が満たされたことを確認
 	if err := mock.ExpectationsWereMet(); err != nil {
@@ -442,7 +329,7 @@ func TestHandleToGetTableSchemaMinimum_Error(t *testing.T) {
 
 	// アサーション
 	assert.Error(t, err)
-	assert.Nil(t, result)
+	assert.Empty(t, result)
 	assert.Contains(t, err.Error(), "データベースエラー")
 
 	// モックの期待値が満たされたことを確認

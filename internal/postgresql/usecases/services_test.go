@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
-	"os"
-	"strings"
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
+	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
+	dump "github.com/landmaster135/devbox/internal/postgresql/usecases/dump"
 )
 
 // #==============================================================#
@@ -25,8 +26,8 @@ type MockDatabaseExecutor struct {
 	BeginTxFunc            func(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 	PingFunc               func() error
 	CloseFunc              func() error
-	QueryContextRowsFunc   func(ctx context.Context, query string, args ...any) (RowsInterface, error)
-	QueryRowContextRowFunc func(ctx context.Context, query string, args ...any) RowInterface
+	QueryContextRowsFunc   func(ctx context.Context, query string, args ...any) (model.RowsInterface, error)
+	QueryRowContextRowFunc func(ctx context.Context, query string, args ...any) model.RowInterface
 }
 
 func (m *MockDatabaseExecutor) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
@@ -65,7 +66,7 @@ func (m *MockDatabaseExecutor) Close() error {
 }
 
 // QueryContextRows は新しいインターフェース用のメソッド
-func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (RowsInterface, error) {
+func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query string, args ...any) (model.RowsInterface, error) {
 	if m.QueryContextRowsFunc != nil {
 		return m.QueryContextRowsFunc(ctx, query, args)
 	}
@@ -73,7 +74,7 @@ func (m *MockDatabaseExecutor) QueryContextRows(ctx context.Context, query strin
 }
 
 // QueryRowContextRow は新しいインターフェース用のメソッド
-func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) RowInterface {
+func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query string, args ...any) model.RowInterface {
 	if m.QueryRowContextRowFunc != nil {
 		return m.QueryRowContextRowFunc(ctx, query, args)
 	}
@@ -82,18 +83,18 @@ func (m *MockDatabaseExecutor) QueryRowContextRow(ctx context.Context, query str
 
 // MockTemplateRenderer はテスト用のTemplateRendererモック
 type MockTemplateRenderer struct {
-	RenderTableDetailFunc func(detail *TableDetail) (string, error)
-	RenderTableListFunc   func(data ListTablesData) (string, error)
+	RenderTableDetailFunc func(detail *model.TableDetail) (string, error)
+	RenderTableListFunc   func(data model.ListTablesData) (string, error)
 }
 
-func (m *MockTemplateRenderer) RenderTableDetail(detail *TableDetail) (string, error) {
+func (m *MockTemplateRenderer) RenderTableDetail(detail *model.TableDetail) (string, error) {
 	if m.RenderTableDetailFunc != nil {
 		return m.RenderTableDetailFunc(detail)
 	}
 	return "", nil
 }
 
-func (m *MockTemplateRenderer) RenderTableList(data ListTablesData) (string, error) {
+func (m *MockTemplateRenderer) RenderTableList(data model.ListTablesData) (string, error) {
 	if m.RenderTableListFunc != nil {
 		return m.RenderTableListFunc(data)
 	}
@@ -120,7 +121,7 @@ func createTestPostgreSQLService() *PostgreSQLService {
 	mockExecutor := &MockDatabaseExecutor{}
 	mockRenderer := &MockTemplateRenderer{}
 	mockMarshaler := &MockJSONMarshaler{}
-	tableDumper := NewTableDumper(mockExecutor)
+	tableDumper := dump.NewTableDumper(mockExecutor, "")
 
 	return NewPostgreSQLServiceWithDependencies(
 		mockExecutor,
@@ -146,7 +147,7 @@ func TestNewPostgreSQLServiceWithDependencies_Normal(t *testing.T) {
 	mockExecutor := &MockDatabaseExecutor{}
 	mockRenderer := &MockTemplateRenderer{}
 	mockMarshaler := &MockJSONMarshaler{}
-	tableDumper := NewTableDumper(mockExecutor)
+	tableDumper := dump.NewTableDumper(mockExecutor, "")
 	databaseURL := "postgres://test:test@localhost/testdb"
 	resourceBase := "postgres://test@localhost/testdb"
 
@@ -301,7 +302,7 @@ func TestDefaultDatabaseExecutor_QueryHelpers(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
 
-	executor := &DefaultDatabaseExecutor{db: db}
+	executor := &dbExecutor.DefaultDatabaseExecutor{DB: db}
 	ctx := context.Background()
 
 	mock.ExpectQuery("SELECT 1").
@@ -340,96 +341,142 @@ func TestDefaultDatabaseExecutor_QueryHelpers(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestPostgreSQLService_HandleToDumpTable_Defaults(t *testing.T) {
-	mockExecutor := &MockDatabaseExecutor{}
-	mockRenderer := &MockTemplateRenderer{}
-	mockMarshaler := &MockJSONMarshaler{}
-	mockQueryExecutor := &MockDatabaseQueryExecutor{}
-	tempDir := t.TempDir()
+// #==============================================================#
+// ##          Handler Method Tests                              ##
+// #==============================================================#
 
-	mockFileWriter := &MockFileWriter{
-		CreateFunc: func(name string) (*os.File, error) {
-			return os.CreateTemp(tempDir, "dump-table-*.json")
-		},
+// TestHandleToGetTableSchema はHandleToGetTableSchema関数をテストします
+func TestHandleToGetTableSchema_Normal(t *testing.T) {
+	// モックデータベースをセットアップ
+	db, mock, service := setupMockDB(t)
+	defer db.Close()
+
+	// fetchTableWithCommentsのモック
+	tableRows := newMockRows("table_name", "table_comment").
+		AddRow("users", "ユーザーテーブル")
+	mock.ExpectQuery("SELECT t.table_name, COALESCE").
+		WithArgs("public", "users").
+		WillReturnRows(tableRows)
+
+	// fetchPrimaryKeysのモック
+	pkRows := newMockRows("attname").
+		AddRow("id")
+	mock.ExpectQuery("SELECT a.attname FROM pg_index").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(pkRows)
+
+	// fetchUniqueKeysのモック
+	ukRows := newMockRows("constraint_name", "column_name").
+		AddRow("users_email_key", "email")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(ukRows)
+
+	// fetchForeignKeysのモック
+	fkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
+		AddRow("users_role_id_fkey", "role_id", "roles", "id")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(fkRows)
+
+	// fetchTableColumnsのモック
+	colRows := newMockRows("column_name", "data_type", "is_nullable", "column_default", "column_comment").
+		AddRow("id", "integer", "NO", sql.NullString{String: "nextval('users_id_seq'::regclass)", Valid: true}, "ID").
+		AddRow("name", "character varying", "YES", sql.NullString{Valid: false}, "名前")
+	mock.ExpectQuery("SELECT c.column_name, c.data_type, c.is_nullable").
+		WithArgs("public", "users").
+		WillReturnRows(colRows)
+
+	// fetchTableIndexesのモック
+	idxRows := newMockRows("index_name", "column_name", "is_unique").
+		AddRow("users_email_idx", "email", true)
+	mock.ExpectQuery("SELECT i.relname AS index_name, a.attname AS column_name").
+		WithArgs("users", "public").
+		WillReturnRows(idxRows)
+
+	// 関数を実行
+	ctx := context.Background()
+	result, err := service.HandleToGetTableSchema(ctx, "users")
+
+	// アサーション
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, "users")
+	assert.Contains(t, result, "ユーザーテーブル")
+
+	// モックの期待値が満たされたことを確認
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("満たされていない期待値があります: %s", err)
 	}
-
-	tableDumper := NewTableDumperWithDependencies(mockQueryExecutor, mockFileWriter)
-	service := NewPostgreSQLServiceWithDependencies(
-		mockExecutor,
-		mockRenderer,
-		mockMarshaler,
-		tableDumper,
-		"postgres://user:pass@localhost/testdb",
-		"postgres://user@localhost/testdb",
-	)
-
-	mockQueryExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
-		trimmed := strings.TrimSpace(query)
-		switch {
-		case strings.Contains(trimmed, "FROM information_schema.tables"):
-			return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
-		case strings.HasPrefix(trimmed, "SELECT * FROM \"users\""):
-			return NewMockRows([]string{"id", "name"}, [][]any{{1, "Alice"}}), nil
-		default:
-			return nil, fmt.Errorf("unexpected query: %s", trimmed)
-		}
-	}
-
-	result, err := service.HandleToDumpTable(context.Background(), "users", "", "", nil)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Equal(t, "users", result.TableName)
-	assert.Equal(t, 1, result.RecordCount)
-	assert.Equal(t, ".", result.OutputPath)
-	assert.Equal(t, "json", result.Format)
 }
 
-func TestPostgreSQLService_HandleToDumpAllTables_Defaults(t *testing.T) {
-	mockExecutor := &MockDatabaseExecutor{}
-	mockRenderer := &MockTemplateRenderer{}
-	mockMarshaler := &MockJSONMarshaler{}
-	mockQueryExecutor := &MockDatabaseQueryExecutor{}
-	tempDir := t.TempDir()
+// TestHandleToListTables はHandleToListTables関数をテストします
+func TestHandleToListTables_Normal(t *testing.T) {
+	// モックデータベースをセットアップ
+	db, mock, service := setupMockDB(t)
+	defer db.Close()
 
-	mockFileWriter := &MockFileWriter{
-		CreateFunc: func(name string) (*os.File, error) {
-			return os.CreateTemp(tempDir, "dump-all-*.json")
-		},
+	// テーブル一覧のモック
+	tableRows := newMockRows("table_name", "table_comment").
+		AddRow("users", "ユーザーテーブル").
+		AddRow("products", "商品テーブル")
+	mock.ExpectQuery("SELECT t.table_name, COALESCE").
+		WillReturnRows(tableRows)
+
+	// users テーブルの主キー情報のモック
+	usersPkRows := newMockRows("attname").
+		AddRow("id")
+	mock.ExpectQuery("SELECT a.attname FROM pg_index").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(usersPkRows)
+
+	// users テーブルの一意キー情報のモック
+	usersUkRows := newMockRows("constraint_name", "column_name").
+		AddRow("users_email_key", "email")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(usersUkRows)
+
+	// users テーブルの外部キー情報のモック
+	usersFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
+		AddRow("users_role_id_fkey", "role_id", "roles", "id")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
+		WithArgs("\"public\".\"users\"").
+		WillReturnRows(usersFkRows)
+
+	// products テーブルの主キー情報のモック
+	productsPkRows := newMockRows("attname").
+		AddRow("id")
+	mock.ExpectQuery("SELECT a.attname FROM pg_index").
+		WithArgs("\"public\".\"products\"").
+		WillReturnRows(productsPkRows)
+
+	// products テーブルの一意キー情報のモック
+	productsUkRows := newMockRows("constraint_name", "column_name").
+		AddRow("products_code_key", "code")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name FROM pg_constraint").
+		WithArgs("\"public\".\"products\"").
+		WillReturnRows(productsUkRows)
+
+	// products テーブルの外部キー情報のモック
+	productsFkRows := newMockRows("constraint_name", "column_name", "referenced_table", "referenced_column").
+		AddRow("products_category_id_fkey", "category_id", "categories", "id")
+	mock.ExpectQuery("SELECT c.conname AS constraint_name, a.attname AS column_name").
+		WithArgs("\"public\".\"products\"").
+		WillReturnRows(productsFkRows)
+
+	// 関数を実行
+	ctx := context.Background()
+	result, err := service.HandleToListTables(ctx)
+
+	// アサーション
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, "users")
+	assert.Contains(t, result, "products")
+
+	// モックの期待値が満たされたことを確認
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("満たされていない期待値があります: %s", err)
 	}
-
-	tableDumper := NewTableDumperWithDependencies(mockQueryExecutor, mockFileWriter)
-	service := NewPostgreSQLServiceWithDependencies(
-		mockExecutor,
-		mockRenderer,
-		mockMarshaler,
-		tableDumper,
-		"postgres://user:pass@localhost/testdb",
-		"postgres://user@localhost/testdb",
-	)
-
-	mockQueryExecutor.QueryContextRowsFunc = func(ctx context.Context, query string, args ...any) (RowsInterface, error) {
-		trimmed := strings.TrimSpace(query)
-		switch {
-		case strings.Contains(trimmed, "FROM information_schema.tables"):
-			return NewMockRows([]string{"table_name"}, [][]any{{"users"}}), nil
-		case strings.HasPrefix(trimmed, "SELECT * FROM \"users\""):
-			return NewMockRows([]string{"id", "name"}, [][]any{{1, "Alice"}}), nil
-		default:
-			return nil, fmt.Errorf("unexpected query: %s", trimmed)
-		}
-	}
-
-	mockQueryExecutor.QueryRowContextRowFunc = func(ctx context.Context, query string, args ...any) RowInterface {
-		return NewMockRow([]any{"testdb"}, nil)
-	}
-
-	result, err := service.HandleToDumpAllTables(context.Background(), "", "", nil, nil)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	assert.Equal(t, "testdb", result.DatabaseName)
-	assert.Equal(t, 1, result.TotalTables)
-	require.Len(t, result.Results, 1)
-	assert.Equal(t, "users", result.Results[0].TableName)
-	assert.Equal(t, ".", result.Results[0].OutputPath)
-	assert.Equal(t, "json", result.Results[0].Format)
 }

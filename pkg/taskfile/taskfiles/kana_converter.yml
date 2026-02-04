@@ -1,0 +1,31 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  kana-converter:convert:
+    desc: "kana-converterで入力文字列を全角/半角/濁音ペア変換"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          INPUT_VALUE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input characters you wanna convert: " input)" || exit 1
+          MODE_VALUE="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select conversion mode  [f]='full'  [h]='half'  [p]='voiced-pairs' : " mode \
+            --choice-option "f|full" --choice-option "h|half" --choice-option "p|voiced-pairs")" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$INPUT_VALUE" "$MODE_VALUE"
+
+          echo $'\n[Step 01: START]--- kana-converterを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}kana-converter{{.EXE}}" \
+            "$INPUT_VALUE" "$MODE_VALUE"
+          echo $'\n[Step 01: END]--- kana-converterの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true

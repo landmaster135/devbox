@@ -8,6 +8,24 @@
 /home/user/devbox/.config/cagent/config_linux/github_pull_request_creator/config.ymlを参考に、/home/user/devbox/.config/cagent/config_linux/github_issue_creator/config.ymlにGithubに新規イシューを起票するためのエージェント用のワークフローを作成して。イシュー本文に書く内容をユーザーに尋ねるようにして。
 
 ## Taskfileへのタスクの追加（分割パターン）
-/home/user/devbox/pkg/win_dos/taskfiles/image_convert.ymlに下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして、/home/user/devbox/pkg/win_dos/Taskfile.ymlから呼び出すようにして。
-- /home/user/devbox/pkg/win_dos/batch_files/Z3-1_image_converter_jpg_to_webp.bat
+/home/user/devbox/pkg/taskfile/taskfiles/exif.ymlに下記のファイルにあるタスクを下記のファイルの代わりに行えるようにして、/home/user/devbox/pkg/taskfile/Taskfile.ymlから呼び出すようにして。
+- /home/user/devbox/pkg/win_dos/Z3-4_exif_modifier_from_filename.bat
 - 
+
+## 新規のCLIツールの追加
+/home/user/devbox/cmd/cli/taskfile/main.goにTaskfileを管理するためのCLIツールを実装して。CLIフラグには"--operation"、"--task-type"、"--taskfile-path"を受け付けるようにして。
+- "--operation"には、"inspect"を受け付ける。
+- "--task-type"には、"root"を受け付ける。
+- --operation: inspect, --task-type: root の場合は、/home/user/devbox/internal/taskfile/usecases/taskfiles/root.ymlにあるフィールドが、"--taskfile-path"で渡されたTaskfileで不足していないかどうかを確認する。
+
+## 新規のCronワークフローの追加
+/home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにDiscordに天気予報を通知するための新規ワークフローを追加して。/home/user/devbox/cmd/cli/weather-notificator/main.go内で呼び出されているservice.HandleWeatherNotification関数を呼び出せば処理出来るはずだ。city: "Tokyo", maxDays: 3を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値も渡す。
+- EnvKeyDiscordWebhookURL
+- EnvKeyOpenWeatherAPIKey
+
+## 新規のCronワークフローの追加（PC情報取得タスクの場合）
+/home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにPC情報を取得するための新規ワークフローを追加して。/home/user/devbox/internal/machine_info/usecases/services.goにあるCollectAndSaveUbuntuInfo関数を呼び出せば処理出来るはずだ。引数networkInterfaceに "eth0"を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値をoutDirとして、引数outputDirにfilepath.Join(c.VolumeDir, outDir)も渡す。cronは10分おきに設定して。
+- EnvKeyPCInfoOutputDirectory
+
+## templコンポーネントに対するテストケースの追加
+/home/user/devbox/internal/templ_components/core/heading/index_test.goと/home/user/devbox/internal/templ_components/core/hidden_input/input_test.goを参考に/home/user/devbox/internal/templ_components/core/paragraphにテストコードを追加して。

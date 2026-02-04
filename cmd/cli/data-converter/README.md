@@ -4,12 +4,13 @@
 
 ## 概要
 
-このツールは、JSON、CSV、TSV、HTML、Markdownリスト形式のデータを相互に変換できます。sample1111111.jsにあったJavaScript処理をGoに移植して実装されています。
+このツールは、JSON、YAML、CSV、TSV、HTML、Markdownリスト形式のデータを相互に変換できます。sample1111111.jsにあったJavaScript処理をGoに移植して実装されています。
 
 ## 対応形式
 
 ### 入力形式
 - `json`: JSON形式の2次元配列
+- `yaml`: YAML形式のkey-valueリスト（例: `- Name: Alice`）
 - `csv`: CSV（カンマ区切り）形式
 - `tsv`: TSV（タブ区切り）形式
 - `html`: HTMLテーブル形式
@@ -19,6 +20,7 @@
 
 ### 出力形式
 - `json`: JSON形式の2次元配列
+- `yaml`: YAML形式のkey-valueリスト
 - `csv`: CSV（カンマ区切り）形式
 - `tsv`: TSV（タブ区切り）形式
 - `html`: HTMLテーブル形式
@@ -46,6 +48,16 @@ go run ./cmd/cli/data-converter -input-format=<入力形式> -output-format=<出
 以下のいずれかを指定してください（排他的）：
 - `-input=<データ>`: 直接データを入力
 - `-input-file-path=<ファイルパス>`: ファイルから入力
+
+### CLIフラグ一覧
+
+| フラグ | 必須 | 説明 | デフォルト |
+| --- | --- | --- | --- |
+| `-input-format` | * | 入力データの形式。`json`/`yaml`(key-valueリスト)/`csv`/`tsv`/`html`/`list`/`ordered-list`/`table`から選択。 | なし |
+| `-output-format` | * | 出力データの形式。`html`/`csv`/`tsv`/`json`/`yaml`(key-valueリスト)/`list`/`ordered-list`/`table`から選択。 | なし |
+| `-input` | 入力いずれか | 文字列として直接入力データを渡す。`-input-file-path`とは同時指定不可。 | 空文字 |
+| `-input-file-path` | 入力いずれか | ファイルパスを指定してデータを読み込む。`-input`とは同時指定不可。 | 空文字 |
+| `-help` | 任意 | 使い方を表示して終了。 | `false` |
 
 ## 使用例
 
@@ -250,6 +262,42 @@ go run ./cmd/cli/data-converter -input-format=csv -output-format=table -input='"
 | 佐藤 | 30     | デザイナー |
 ```
 
+### 15. YAMLファイルをCSVに変換
+
+```bash
+cat <<'YAML' > data.yaml
+- 名前: 田中
+  年齢: 25
+  職業: エンジニア
+- 名前: 佐藤
+  年齢: 30
+  職業: デザイナー
+YAML
+
+go run ./cmd/cli/data-converter -input-format=yaml -output-format=csv -input-file-path=data.yaml
+```
+
+出力:
+```csv
+名前,年齢,職業
+田中,25,エンジニア
+佐藤,30,デザイナー
+```
+
+### 16. JSONをYAMLに変換
+
+```bash
+go run ./cmd/cli/data-converter -input-format=json -output-format=yaml -input='[["名前","年齢"],["田中","25"],["佐藤","30"]]'
+```
+
+出力:
+```yaml
+- 名前: 田中
+  年齢: 25
+- 名前: 佐藤
+  年齢: 30
+```
+
 ## 機能詳細
 
 ### HTML変換の特徴
@@ -364,9 +412,23 @@ internal/data_converter/
 | html → table       | ✅      |
 | list → table       | ✅      |
 | ordered-list → table | ✅    |
+| yaml → html        | ✅      |
+| yaml → csv         | ✅      |
+| yaml → tsv         | ✅      |
+| yaml → json        | ✅      |
+| yaml → list        | ✅      |
+| yaml → ordered-list | ✅     |
+| yaml → table       | ✅      |
+| json → yaml        | ✅      |
+| csv → yaml         | ✅      |
+| tsv → yaml         | ✅      |
+| html → yaml        | ✅      |
+| list → yaml        | ✅      |
+| ordered-list → yaml | ✅    |
+| table → yaml       | ✅      |
 
 ## ヘルプ
 
 ```bash
-./data-converter -help
+go run ./cmd/cli/data-converter -help
 ```

@@ -1,0 +1,22 @@
+package form
+
+templ Tag(class string, method string, action string, dataEndpoint string, body templ.Component) {
+  <form
+    if class != "" {
+      class={ class }
+    }
+    if method != "" {
+      method={ method }
+    }
+    if action != "" {
+      action={ action }
+    }
+    if dataEndpoint != "" {
+      data-endpoint={ dataEndpoint }
+    }
+  >
+    if body != nil {
+      @body
+    }
+  </form>
+}

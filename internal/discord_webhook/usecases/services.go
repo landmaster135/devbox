@@ -27,6 +27,13 @@ const (
 	defaultOpenWeatherEmbedText  = "最新の天気予報"
 	defaultOpenWeatherEmbedColor = "orange"
 
+	// Postgres
+	botNameForPostgres        = "Postgresあゆ"
+	footerTextInPostgresEmbed = "PostgreSQL"
+	postgresIconURL           = "https://www.postgresql.org/media/img/about/press/elephant.png"
+	defaultPostgresEmbedText  = "PostgreSQLダンプ"
+	defaultPostgresEmbedColor = "purple"
+
 	// gcloud
 	botNameForGCloud           = "クラウドウォッチャーあゆ"
 	defaultGCloudSuccessColor  = "green"
@@ -139,9 +146,9 @@ func NewDefaultDiscordWebhookService() *DiscordWebhookService {
 // ##       Webhook Process                                      ##
 // #==============================================================#
 // createSimplePayload はembedなしの簡単な通知を送信します
-func (s *DiscordWebhookService) createSimplePayload(contentText string) (*discord.Payload, error) {
+func (s *DiscordWebhookService) createSimplePayload(botName, contentText string) (*discord.Payload, error) {
 	// ペイロードを作成
-	payload, err := s.repository.CreatePayload(botNameForVSCODE, contentText, nil, false)
+	payload, err := s.repository.CreatePayload(botName, contentText, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 	}
@@ -194,6 +201,25 @@ func (s *DiscordWebhookService) createVSCodePayload(contentText, embedText, embe
 		embedURLLinkedText,
 		footerTextInVSCODEEmbed,
 		vsCodeIconURL,
+	)
+}
+
+func (s *DiscordWebhookService) createPostgresPayload(contentText, embedText, embedColor, embedURLLinkedText string) (*discord.Payload, error) {
+	if embedText == "" {
+		embedText = defaultPostgresEmbedText
+	}
+	if embedColor == "" {
+		embedColor = defaultPostgresEmbedColor
+	}
+
+	return s.createPayloadWithEmbed(
+		botNameForPostgres,
+		contentText,
+		embedText,
+		embedColor,
+		embedURLLinkedText,
+		footerTextInPostgresEmbed,
+		postgresIconURL,
 	)
 }
 
@@ -294,18 +320,23 @@ func (s *DiscordWebhookService) SendWebhook(ctx context.Context, webhookURL stri
 }
 
 // SendNotification はDiscordに通知を送信します
-func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL, contentText, embedType, embedText, embedColor, embedURLLinkedText string) error {
+func (s *DiscordWebhookService) SendNotification(ctx context.Context, webhookURL, botName, contentText, embedType, embedText, embedColor, embedURLLinkedText string) error {
 	// embed-typeに応じた処理
 	var payload *discord.Payload
 	var err error
 	switch {
 	case embedType == "none":
-		payload, err = s.createSimplePayload(contentText)
+		payload, err = s.createSimplePayload(botName, contentText)
 		if err != nil {
 			return fmt.Errorf("ペイロードの作成に失敗しました: %w", err)
 		}
 	case embedType == "vscode":
 		payload, err = s.createVSCodePayload(contentText, embedText, embedColor, embedURLLinkedText)
+		if err != nil {
+			return err
+		}
+	case embedType == "postgres":
+		payload, err = s.createPostgresPayload(contentText, embedText, embedColor, embedURLLinkedText)
 		if err != nil {
 			return err
 		}

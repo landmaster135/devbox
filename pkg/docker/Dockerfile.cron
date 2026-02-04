@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1
+
+# ビルドステージ: cron-workflow CLI をビルド
+FROM golang:1.25-bookworm AS builder
+WORKDIR /workspace
+
+# 依存関係を先にダウンロードしてキャッシュ効率を高める
+COPY go.mod go.sum ./
+RUN go mod download
+
+# プロジェクト全体をコピーしてビルド
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags="-s -w" -o /workspace/bin/cron-workflow ./cmd/cli/cron-workflow
+
+# 実行ステージ: Debian Slim（bookwormに合わせる）
+FROM debian:bookworm-slim
+
+# 必要最小限のパッケージをインストール
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# 非rootユーザーを作成
+RUN groupadd -g 65532 nonroot && \
+    useradd -u 65532 -g nonroot -s /bin/bash -m nonroot
+
+COPY --from=builder /workspace/bin/cron-workflow /app/cron-workflow
+RUN chown -R nonroot:nonroot /app
+
+USER nonroot
+
+ENTRYPOINT ["/app/cron-workflow"]

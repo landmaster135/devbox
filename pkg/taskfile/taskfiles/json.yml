@@ -1,0 +1,163 @@
+version: "3"
+
+includes:
+  core:
+    taskfile: ./core.yml
+    internal: true
+
+tasks:
+  json-timestamp-modifier:add:now:
+    desc: "json-timestamp-modifierでディレクトリ配下のJSONへUNIXタイムスタンプを追加"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          JSON_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input directory or file path for JSON files you wanna edit: " path)" || exit 1
+          KEY_NAME="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to add UNIX timestamp: " key)" || exit 1
+          RECURSIVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to enable the --recursive option or not  [y]='--recursive'  [n]='' : " recursive)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$JSON_PATH" "$KEY_NAME"
+
+          echo $'\n[Step 01: START]--- json-timestamp-modifier (mode=add) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-timestamp-modifier{{.EXE}}" \
+            --mode add \
+            "$JSON_PATH" "$KEY_NAME" $RECURSIVE_FLAG
+          echo $'\n[Step 01: END]--- json-timestamp-modifierの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-timestamp-modifier:convert:
+    desc: "json-timestamp-modifierでディレクトリ配下のJSONタイムスタンプを変換"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_INPUT_FUNC}} {{.INTERACTIVE_CONFIRM_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          JSON_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input directory or file path for JSON files you wanna edit: " path)" || exit 1
+          MODE_VALUE="$({{.INTERACTIVE_CHOICE_INPUT_NAME}} \
+            "Select conversion format  [u]='to-unix'  [i]='to-iso' : " mode \
+            --choice-option "u|to-unix" --choice-option "i|to-iso")" || exit 1
+          KEY_NAME="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to convert to ISO-8601 format or UNIX timestamp: " key)" || exit 1
+          IS_JST_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to enable the --is-jst option or not  [y]='--is-jst'  [n]='' : " is-jst)" || exit 1
+          RECURSIVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
+            "Select whether to enable the --recursive option or not  [y]='--recursive'  [n]='' : " recursive)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$JSON_PATH" "$MODE_VALUE" "$KEY_NAME"
+
+          echo "[INFO] Selected mode: ${MODE_VALUE}"
+          echo $'\n[Step 01: START]--- json-timestamp-modifier (dir convert) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-timestamp-modifier{{.EXE}}" \
+            "$JSON_PATH" "$KEY_NAME" "$MODE_VALUE" \
+            $IS_JST_FLAG $RECURSIVE_FLAG
+          echo $'\n[Step 01: END]--- json-timestamp-modifierの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-modifier:get:
+    desc: "json-modifierでJSONファイルから値を取得"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of JSON file you wanna edit: " file)" || exit 1
+          KEY_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to get: " key)" || exit 1
+          GET_ALL_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select whether to get all keys and values or not  [y]='--get-all'  [n]='--get' : " \
+            --choice-option "y|--get-all" --choice-option "n|--get")" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$FILE_FLAG" "$KEY_FLAG" "$GET_ALL_FLAG"
+
+          echo $'\n[Step 01: START]--- json-modifier (mode=get) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-modifier{{.EXE}}" \
+            "$FILE_FLAG" "$KEY_FLAG" "$GET_ALL_FLAG"
+          echo $'\n[Step 01: END]--- json-modifierの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-modifier:set:
+    desc: "json-modifierでJSONファイルへキーと値を設定"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of JSON file you wanna edit: " file)" || exit 1
+          KEY_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to set: " key)" || exit 1
+          VALUE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input value to set: " set)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$FILE_FLAG" "$KEY_FLAG" "$VALUE_FLAG"
+
+          echo $'\n[Step 01: START]--- json-modifier (mode=set) を実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-modifier{{.EXE}}" \
+            "$FILE_FLAG" "$KEY_FLAG" "$VALUE_FLAG"
+          echo $'\n[Step 01: END]--- json-modifierの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-file-merger:merge:
+    desc: "json-file-mergerでディレクトリ内のJSONをマージ"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          DIR_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input directory path having JSON files you wanna merge: " dir)" || exit 1
+          KEY_NAME="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input key to store JSON objects merged with this process: " key)" || exit 1
+          OUTPUT_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input name of new file merged all JSON files (Don't forget '.json'): " output)" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} "interactive-input から値を取得できませんでした。" \
+            "$DIR_PATH" "$KEY_NAME" "$OUTPUT_PATH"
+
+          echo $'\n[Step 01: START]--- json-file-mergerでJSONファイルを統合します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-file-merger{{.EXE}}" \
+            "$DIR_PATH" "$KEY_NAME" "$OUTPUT_PATH"
+          echo $'\n[Step 01: END]--- json-file-mergerの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
+  json-file-merger:merge:pc-stats:
+    desc: "json-file-mergerでpc_stats用JSONをマージ"
+    cmds:
+      - cmd: |
+          set -eu
+
+          JSON_DIR="{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}9_json"
+          KEY="pc_stats"
+          
+          DATE=$({{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}} --operation now --format date)
+          OUTPUT_PATH="$JSON_DIR{{.DIR_SEP}}__merged_$DATE.json"
+
+          echo "[INFO] Merge source: ${JSON_DIR}"
+          echo "[INFO] Output file: ${OUTPUT_PATH}"
+          echo $'\n[Step 01: START]--- json-file-mergerでpc_stats用JSONを統合します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}json-file-merger{{.EXE}}" \
+            --dir "$JSON_DIR" --key "$KEY" \
+            --output "$OUTPUT_PATH"
+          echo $'\n[Step 01: END]--- json-file-mergerの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        silent: true

@@ -64,6 +64,8 @@ mypkg/go.sum
 ### data ###
 # testdata/*
 downloads/
+*.zip
+*.tar
 
 ### binary ###
 pkg/bin/*

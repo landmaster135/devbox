@@ -45,6 +45,7 @@ func handleDiscordWebhookNotification(cfg *config.Config) error {
 	err := service.SendNotification(
 		ctx,
 		cfg.WebhookURL,
+		cfg.BotName,
 		cfg.ContentText,
 		cfg.EmbedType,
 		cfg.EmbedText,

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func TestDataConverterService_ConvertToHTML_Normal(t *testing.T) {
@@ -107,6 +108,20 @@ func TestDataConverterService_ConvertData_Normal(t *testing.T) {
 			inputFilePath: "",
 			expected:      "[{\"Age\":25,\"Name\":\"Alice\",\"Score\":85.5},{\"Age\":30,\"Name\":\"Bob\",\"Score\":92},{\"Age\":null,\"Name\":\"Charlie\",\"Score\":78}]",
 		},
+		{
+			name:         "YAMLToCSV_Normal",
+			inputFormat:  "yaml",
+			outputFormat: "csv",
+			input: `- Name: Alice
+  Age: "25"
+  City: New York
+- Name: Bob
+  Age: "30"
+  City: London
+`,
+			inputFilePath: "",
+			expected:      "Name,Age,City\nAlice,25,New York\nBob,30,London",
+		},
 	}
 
 	for _, tt := range tests {
@@ -190,6 +205,22 @@ func TestDataConverterService_ConvertToArray_Normal(t *testing.T) {
 	}
 }
 
+func TestDataConverterService_ConvertToYAML_Normal(t *testing.T) {
+	service := NewDataConverterService()
+	input := [][]string{
+		{"Name", "Age", "City"},
+		{"Alice", "25", "New York"},
+	}
+
+	result, err := service.convertToYAML(input)
+	assert.NoError(t, err)
+
+	var decoded []map[string]any
+	decodeErr := yaml.Unmarshal([]byte(result), &decoded)
+	assert.NoError(t, decodeErr)
+	assert.Equal(t, []map[string]any{{"Age": 25, "City": "New York", "Name": "Alice"}}, decoded)
+}
+
 func TestDataConverterService_ConvertToJSON_Normal(t *testing.T) {
 	service := NewDataConverterService()
 
@@ -225,6 +256,22 @@ func TestDataConverterService_ConvertToJSON_Normal(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDataConverterService_ConvertData_OutputYAML(t *testing.T) {
+	service := NewDataConverterService()
+	input := "[[\"Name\",\"Age\"],[\"Alice\",\"25\"],[\"Bob\",\"30\"]]"
+
+	result, err := service.ConvertData("json", "yaml", input, "")
+	assert.NoError(t, err)
+
+	var decoded []map[string]any
+	decodeErr := yaml.Unmarshal([]byte(result), &decoded)
+	assert.NoError(t, decodeErr)
+	assert.Equal(t, []map[string]any{
+		{"Age": 25, "Name": "Alice"},
+		{"Age": 30, "Name": "Bob"},
+	}, decoded)
 }
 
 func TestDataConverterService_ConvertToCSV_Normal(t *testing.T) {

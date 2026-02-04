@@ -1,0 +1,16 @@
+package article
+
+templ Tag(class string, dataWorkflowKey string, body templ.Component) {
+  <article
+    if class != "" {
+      class={ class }
+    }
+    if dataWorkflowKey != "" {
+      data-workflow-key={ dataWorkflowKey }
+    }
+  >
+    if body != nil {
+      @body
+    }
+  </article>
+}

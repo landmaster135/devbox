@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/landmaster135/devbox/internal/web_scraper/config"
-	"github.com/landmaster135/devbox/internal/web_scraper/interfaces/fetchers"
-	"github.com/landmaster135/devbox/internal/web_scraper/interfaces/writers"
 	"github.com/landmaster135/devbox/internal/web_scraper/usecases"
 )
 
@@ -30,7 +29,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	fs.SetOutput(stderr)
 
 	cfg := &config.Config{}
-	fs.StringVar(&cfg.Operation, "operation", "", "実行するoperation (例: get_dom_tree)")
+	fs.StringVar(&cfg.Operation, "operation", "", "実行するoperation (例: get_dom_tree, get_meta_props)")
 	fs.StringVar(&cfg.URL, "url", "", "対象のURL")
 	fs.IntVar(&cfg.WaitSeconds, "wait-seconds", 0, "ページ読み込み後にDOMを取得するまでの待機秒数（秒）")
 	fs.StringVar(&cfg.OutputPath, "output-file", "", "取得したDOMを保存するファイルパス（新規作成）")
@@ -47,9 +46,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	}
 
 	ctx := context.Background()
-	domFetcher := fetchers.NewRodDOMFetcher()
-	domWriter := writers.NewFileWriter()
-	service := usecases.NewDOMService(domFetcher, domWriter)
+	service := usecases.NewDefaultDOMService()
 
 	switch cfg.OperationName() {
 	case config.OperationGetDOMTree:
@@ -65,6 +62,21 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		}
 
 		fmt.Fprintln(stdout, html)
+		return exitCodeOK
+	case config.OperationGetMetaProps:
+		props, err := service.GetMetaProps(ctx, cfg.URL, cfg.WaitDuration())
+		if err != nil {
+			fmt.Fprintf(stderr, "メタ情報取得に失敗しました: %v\n", err)
+			return exitCodeError
+		}
+
+		encoded, err := json.MarshalIndent(props, "", "  ")
+		if err != nil {
+			fmt.Fprintf(stderr, "結果のエンコードに失敗しました: %v\n", err)
+			return exitCodeError
+		}
+
+		fmt.Fprintln(stdout, string(encoded))
 		return exitCodeOK
 	default:
 		fmt.Fprintf(stderr, "未対応のoperationです: %s\n", cfg.Operation)

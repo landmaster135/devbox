@@ -1,49 +1,96 @@
 version: "3"
-
 tasks:
   default:
+    desc: "デフォルト実行タスク"
     cmds:
       - task: test:all:cov
       - task: build
       - task: build:mcp
   alias:
+    desc: "タスク一覧表示"
     cmds:
       - task --list-all
   find:docs:
-    cmd: find docs | sort -f
+    desc: "List files in the docs directory at the project root."
+    cmds:
+      - find docs | sort -f
   find:agents:
-    cmd: find .agents | sort -f
+    desc: "List files in the agent directory at the project root"
+    cmds:
+      - find .agents | sort -f
   find:pjroot:
-    cmd: find . -maxdepth 1 -type f | sort -f
+    desc: "List files in the project root directory"
+    cmds:
+      - find . -maxdepth 1 -type f | sort -f
   find:sql:
-    cmd: echo 'No registered command...'
+    desc: "List files in the directory for SQL"
+    cmds:
+      - echo 'No registered command...'
   run:dev:
-    cmd: go run {{ .DIR }}
+    desc: "Run an executable"
+    cmds:
+      - go run {{ .DIR }}
     vars:
       DIR: ./cmd/cli/{{ .CLI_ARGS }}
   run:tee:
-    cmd: go run {{ .DIR }} | tee
+    desc: "Run an executable with the file recording log"
+    cmds:
+      - go run {{ .DIR }} | tee
     vars:
       DIR: ./cmd/cli/{{ .CLI_ARGS }}
   run:backend:
-    cmd: echo 'No registered command...'
+    desc: "Run an executable for backend"
+    cmds:
+      - echo 'No registered command...'
+  run:http:
+    desc: "Run an executable for HTTP server"
+    cmds:
+      - go run ./cmd/http/main.go
   check:
-    cmd: go vet ./...
+    desc: "Check on syntax and linting"
+    cmds:
+      - go vet ./...
   test:cov:
-    cmd: go test -cover
+    desc: "Run tests and confirm the test coverage"
+    cmds:
+      - go test -cover
   test:all:cov:
-    cmd: go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
+    desc: "Run all tests and confirm the test coverage"
+    cmds:
+      - go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
   test:all:out:
-    cmd: go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
+    desc: "Run all tests and output test coverage as files"
+    cmds:
+      - go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out && go tool cover -html=coverage.out -o coverage.html
   build:
-    cmd: ./scripts/build/build.sh
+    desc: "Build files at the project root directory"
+    cmds:
+      - ./scripts/build/build.sh
   build:dev:
-    cmd: echo 'No registered command...'
+    desc: "Build files for development"
+    cmds:
+      - pkg/docker/dockerize_http_dev.sh
+  build:staging:
+    desc: "Build files for development"
+    cmds:
+      - pkg/docker/dockerize_http.sh
+  build:prod:
+    desc: "Build files for development"
+    cmds:
+      - echo 'No registered command...'
   build:pre:
-    cmd: ./scripts/initialize/script_generator_to_build.sh {{ .CLI_ARGS }}
+    desc: "Run required pre-build processes"
+    cmds:
+      - ./scripts/initialize/script_generator_to_build.sh {{ .CLI_ARGS }}
   build:mcp:
-    cmd: ./scripts/build/build_mcp_tools.sh
+    desc: "Build MCP tools"
+    cmds:
+      - ./scripts/build/build_mcp_tools.sh
   domain:mig:new:
-    cmd: ./scripts/initialize/create_project_files.sh {{ .CLI_ARGS }}
+    desc: "Initialize resources for a new domain"
+    cmds:
+      - ./scripts/initialize/create_project_files.sh {{ .CLI_ARGS }}
   domain:mig:run:
-    cmd: echo 'No registered command...'
+    desc: "Run process to migrate domain data"
+    cmds:
+      - echo 'No registered command...'

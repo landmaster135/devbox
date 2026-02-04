@@ -1,0 +1,12 @@
+package heading
+
+templ Heading(level int, text string) {
+  switch {
+  case level <= 1:
+    <h1>{ text }</h1>
+  case level == 2:
+    <h2>{ text }</h2>
+  default:
+    <h3>{ text }</h3>
+  }
+}
