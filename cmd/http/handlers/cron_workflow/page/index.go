@@ -34,7 +34,7 @@ import (
 	usecaseStyle "github.com/landmaster135/devbox/internal/templ_components/usecase/style"
 )
 
-func Start(
+func Serve(
 	w http.ResponseWriter,
 	r *http.Request,
 	logger *logging.StructuredLogger,
@@ -86,17 +86,17 @@ func buildWorkflowDefinitionsByKey(defs map[string]workflowDefinition) map[strin
 func initWorkflowDefinitions() map[string]workflowDefinition {
 	defs := map[string]workflowDefinition{
 		"Daily Tokyo weather notification": {
+			CategoryID:     categoryWeatherAutomationID,
 			Key:            "daily-tokyo-weather",
 			DisplayName:    "Daily Tokyo weather notification",
 			Summary:        "Fetches a three-day forecast for Tokyo and shares it with the weather Discord channel.",
-			CategoryID:     categoryWeatherAutomationID,
 			ProcessDisplay: "WorkflowHandler.NotifyWeather",
 		},
 		"Daily heading Discord notification": {
+			CategoryID:     categoryDailyHeadingID,
 			Key:            "daily-heading",
 			DisplayName:    "Daily heading Discord notification",
 			Summary:        "Generates the day's heading template and posts it to the daily heading Discord webhook.",
-			CategoryID:     categoryDailyHeadingID,
 			ProcessDisplay: "WorkflowHandler.NotifyDailyHeading",
 		},
 	}
