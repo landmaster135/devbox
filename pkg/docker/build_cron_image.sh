@@ -5,7 +5,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEFAULT_ENV_FILE="${PROJECT_ROOT}/env.yml"
 ENV_FILE="${1:-$DEFAULT_ENV_FILE}"
-DOCKERFILE_PATH="${PROJECT_ROOT}/pkg/docker/Dockerfile.cron"
+if [[ $# -lt 2 || -z "${2:-}" ]]; then
+  echo "[docker:build:frontend] DOCKERFILE_PATH 引数が必要です" >&2
+  echo "使い方: $0 [env.ymlパス] <Dockerfileパス>" >&2
+  exit 1
+fi
+DOCKERFILE_PATH="$2"
 IMAGE_NAME="devbox-cron"
 IMAGE_TAG="${IMAGE_NAME}:latest"
 
