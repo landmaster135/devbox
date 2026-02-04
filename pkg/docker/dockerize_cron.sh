@@ -6,6 +6,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_PATH="${PROJECT_ROOT}/docker-compose.yml"
 ENV_PATH="${PROJECT_ROOT}/env.yml"
 BUILD_SCRIPT="${PROJECT_ROOT}/pkg/docker/build_cron_image.sh"
+DOCKERFILE_PATH="${PROJECT_ROOT}/pkg/docker/Dockerfile.cron"
 IMAGE_NAME="devbox-cron"
 IMAGE_TAG="${IMAGE_NAME}:latest"
 TAR_PATH="${PROJECT_ROOT}/${IMAGE_NAME}-image.tar"
@@ -71,7 +72,7 @@ run_user_sync() {
 
 build_frontend() {
   log "フロントエンドイメージをビルド"
-  "$BUILD_SCRIPT" "$ENV_PATH"
+  "$BUILD_SCRIPT" "$ENV_PATH" "$DOCKERFILE_PATH"
 }
 
 verify_image() {
