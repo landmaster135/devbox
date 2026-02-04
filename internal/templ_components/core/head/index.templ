@@ -2,11 +2,9 @@ package head
 
 templ Tag(children ...templ.Component) {
   <head>
-    if len(children) > 0 {
-      for _, child := range children {
-        if child != nil {
-          @child
-        }
+    for _, child := range children {
+      if child != nil {
+        @child
       }
     }
   </head>
