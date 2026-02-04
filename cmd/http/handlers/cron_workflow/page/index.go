@@ -53,20 +53,20 @@ func Serve(
 }
 
 const (
-	categoryWeatherAutomationID = "weather-automation"
 	categoryDailyHeadingID      = "daily-heading"
+	categoryHourlyWorkflowID    = "hourly-workflow"
 )
 
 var workflowCategoryDefinitions = []workflowCategoryDefinition{
 	{
-		ID:          categoryWeatherAutomationID,
-		Title:       "Weather & Climate",
-		Description: "Workflows that source OpenWeatherMap data and fan out Discord notifications.",
-	},
-	{
 		ID:          categoryDailyHeadingID,
 		Title:       "Daily Briefing",
 		Description: "Text-generation workflows that prepare Discord-ready summaries.",
+	},
+	{
+		ID:          categoryHourlyWorkflowID,
+		Title:       "Hourly Workflow",
+		Description: "Operational workflows that capture telemetry on a short cadence.",
 	},
 }
 
@@ -86,11 +86,12 @@ func buildWorkflowDefinitionsByKey(defs map[string]workflowDefinition) map[strin
 func initWorkflowDefinitions() map[string]workflowDefinition {
 	defs := map[string]workflowDefinition{
 		"Daily Tokyo weather notification": {
-			CategoryID:     categoryWeatherAutomationID,
+			CategoryID:     categoryDailyHeadingID,
 			Key:            "daily-tokyo-weather",
 			DisplayName:    "Daily Tokyo weather notification",
 			Summary:        "Fetches a three-day forecast for Tokyo and shares it with the weather Discord channel.",
 			ProcessDisplay: "WorkflowHandler.NotifyWeather",
+			DisplayOrder:   20,
 		},
 		"Daily heading Discord notification": {
 			CategoryID:     categoryDailyHeadingID,
@@ -98,6 +99,15 @@ func initWorkflowDefinitions() map[string]workflowDefinition {
 			DisplayName:    "Daily heading Discord notification",
 			Summary:        "Generates the day's heading template and posts it to the daily heading Discord webhook.",
 			ProcessDisplay: "WorkflowHandler.NotifyDailyHeading",
+			DisplayOrder:   10,
+		},
+		"Ubuntu PC info snapshot": {
+			CategoryID:     categoryHourlyWorkflowID,
+			Key:            "ubuntu-pc-info",
+			DisplayName:    "Ubuntu PC info snapshot",
+			Summary:        "Collects Ubuntu host CPU, memory, and temperature stats and archives the snapshot to disk.",
+			ProcessDisplay: "WorkflowHandler.RetrievePCInfo",
+			DisplayOrder:   10,
 		},
 	}
 	for desc, def := range defs {
@@ -139,6 +149,7 @@ type workflowDefinition struct {
 	CategoryID      string
 	ProcessDisplay  string
 	ListDescription string
+	DisplayOrder    int
 }
 
 type workflowCategoryDefinition struct {
@@ -170,6 +181,7 @@ type workflowCardView struct {
 	ManualWorkflowField string
 	ManualWorkflowValue string
 	ProcessName         string
+	DisplayOrder        int
 }
 
 func buildWorkflowPageData(workflows []usecases.Workflow, manualRunEndpoint string, manualWorkflowFieldName string) (workflowPageData, error) {
@@ -204,6 +216,7 @@ func buildWorkflowPageData(workflows []usecases.Workflow, manualRunEndpoint stri
 			ManualWorkflowField: manualWorkflowFieldName,
 			ManualWorkflowValue: def.Key,
 			ProcessName:         def.ProcessDisplay,
+			DisplayOrder:        def.DisplayOrder,
 		}
 		categoryView := categories[def.CategoryID]
 		categoryView.Workflows = append(categoryView.Workflows, card)
@@ -220,12 +233,27 @@ func buildWorkflowPageData(workflows []usecases.Workflow, manualRunEndpoint stri
 			continue
 		}
 		sort.Slice(catView.Workflows, func(i, j int) bool {
-			return strings.Compare(catView.Workflows[i].Name, catView.Workflows[j].Name) < 0
+			return workflowCardLess(catView.Workflows[i], catView.Workflows[j])
 		})
 		data.Categories = append(data.Categories, *catView)
 	}
 
 	return data, nil
+}
+
+func workflowCardLess(a, b workflowCardView) bool {
+	switch {
+	case a.DisplayOrder == 0 && b.DisplayOrder == 0:
+		return strings.Compare(a.Name, b.Name) < 0
+	case a.DisplayOrder == 0:
+		return false
+	case b.DisplayOrder == 0:
+		return true
+	case a.DisplayOrder == b.DisplayOrder:
+		return strings.Compare(a.Name, b.Name) < 0
+	default:
+		return a.DisplayOrder < b.DisplayOrder
+	}
 }
 
 // CronWorkflowPage produces the templ component for the dashboard.
