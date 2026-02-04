@@ -3,21 +3,17 @@ package body
 templ Tag(class string, children ...templ.Component) {
   if class == "" {
     <body>
-      if len(children) > 0 {
-        for _, child := range children {
-          if child != nil {
-            @child
-          }
+      for _, child := range children {
+        if child != nil {
+          @child
         }
       }
     </body>
   } else {
     <body class={ class }>
-      if len(children) > 0 {
-        for _, child := range children {
-          if child != nil {
-            @child
-          }
+      for _, child := range children {
+        if child != nil {
+          @child
         }
       }
     </body>

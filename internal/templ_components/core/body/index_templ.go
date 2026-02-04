@@ -34,13 +34,11 @@ func Tag(class string, children ...templ.Component) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(children) > 0 {
-				for _, child := range children {
-					if child != nil {
-						templ_7745c5c3_Err = child.Render(ctx, templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
+			for _, child := range children {
+				if child != nil {
+					templ_7745c5c3_Err = child.Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
 					}
 				}
 			}
@@ -71,13 +69,11 @@ func Tag(class string, children ...templ.Component) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if len(children) > 0 {
-				for _, child := range children {
-					if child != nil {
-						templ_7745c5c3_Err = child.Render(ctx, templ_7745c5c3_Buffer)
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
+			for _, child := range children {
+				if child != nil {
+					templ_7745c5c3_Err = child.Render(ctx, templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
 					}
 				}
 			}
