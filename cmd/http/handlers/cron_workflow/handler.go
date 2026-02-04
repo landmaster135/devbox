@@ -66,7 +66,7 @@ func (h *Handler) HandleCronWorkflowPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	page.Start(w, r, pageLogger, workflows, h.manualRunEndpoint, h.manualWorkflowFieldName)
+	page.Serve(w, r, pageLogger, workflows, h.manualRunEndpoint, h.manualWorkflowFieldName)
 }
 
 // HandleManualRun triggers a workflow immediately without navigating away from the page.
