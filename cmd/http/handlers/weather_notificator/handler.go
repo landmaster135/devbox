@@ -3,10 +3,10 @@ package weather_notificator
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
-	"github.com/landmaster135/devbox/internal/weather_notificator/usecases"
+	logging "github.com/landmaster135/devbox/internal/logging"
+	usecases "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
 
 // WeatherNotificationRequest は天気通知リクエストの構造体
@@ -32,19 +32,25 @@ type ErrorResponse struct {
 // WeatherNotificationHandler は天気通知のHTTPハンドラ
 type WeatherNotificationHandler struct {
 	service *usecases.WeatherNotificatorService
+	logger  *logging.StructuredLogger
 }
 
 // NewWeatherNotificationHandler は新しいWeatherNotificationHandlerを作成する
-func NewWeatherNotificationHandler() *WeatherNotificationHandler {
+func NewWeatherNotificationHandler(logger *logging.StructuredLogger) *WeatherNotificationHandler {
 	return &WeatherNotificationHandler{
 		service: usecases.NewWeatherNotificatorService(),
+		logger:  logging.Ensure(logger),
 	}
 }
 
 // NewWeatherNotificationHandlerWithService はサービスを注入したWeatherNotificationHandlerを作成する
-func NewWeatherNotificationHandlerWithService(service *usecases.WeatherNotificatorService) *WeatherNotificationHandler {
+func NewWeatherNotificationHandlerWithService(service *usecases.WeatherNotificatorService, logger *logging.StructuredLogger) *WeatherNotificationHandler {
+	if service == nil {
+		service = usecases.NewWeatherNotificatorService()
+	}
 	return &WeatherNotificationHandler{
 		service: service,
+		logger:  logging.Ensure(logger),
 	}
 }
 
@@ -84,7 +90,7 @@ func (h *WeatherNotificationHandler) sendErrorResponse(w http.ResponseWriter, st
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("エラーレスポンスの送信に失敗しました: %v", err)
+		h.logger.WithTags("response").Errorf("エラーレスポンスの送信に失敗しました: %v", err)
 	}
 }
 
@@ -99,7 +105,7 @@ func (h *WeatherNotificationHandler) sendSuccessResponse(w http.ResponseWriter, 
 	}
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("成功レスポンスの送信に失敗しました: %v", err)
+		h.logger.WithTags("response").Errorf("成功レスポンスの送信に失敗しました: %v", err)
 	}
 }
 
@@ -121,14 +127,14 @@ func (h *WeatherNotificationHandler) HandleWeatherNotification(w http.ResponseWr
 	// リクエストボディの解析
 	var req WeatherNotificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Printf("リクエストボディの解析に失敗しました: %v", err)
+		h.logger.WithTags("request", "decode").Errorf("リクエストボディの解析に失敗しました: %v", err)
 		h.sendErrorResponse(w, http.StatusBadRequest, "リクエストボディの形式が正しくありません")
 		return
 	}
 
 	// リクエストのバリデーション
 	if err := h.validateRequest(&req); err != nil {
-		log.Printf("リクエストのバリデーションに失敗しました: %v", err)
+		h.logger.WithTags("request", "validation").Errorf("リクエストのバリデーションに失敗しました: %v", err)
 		h.sendErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -136,13 +142,13 @@ func (h *WeatherNotificationHandler) HandleWeatherNotification(w http.ResponseWr
 	// 天気通知の実行
 	err := h.service.HandleWeatherNotification(req.APIKey, req.City, req.MaxDays, req.WebhookURL)
 	if err != nil {
-		log.Printf("天気通知の実行に失敗しました: %v", err)
+		h.logger.WithTags("service").Errorf("天気通知の実行に失敗しました: %v", err)
 		h.sendErrorResponse(w, http.StatusInternalServerError, fmt.Sprintf("天気通知の実行に失敗しました: %v", err))
 		return
 	}
 
 	// 成功レスポンスの送信
 	successMessage := fmt.Sprintf("✅ %sの%d日間天気予報をDiscordに送信しました", req.City, req.MaxDays)
-	log.Printf("%s", successMessage)
+	h.logger.WithTags("dispatch").Infof("%s", successMessage)
 	h.sendSuccessResponse(w, successMessage)
 }

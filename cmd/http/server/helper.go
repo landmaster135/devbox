@@ -2,8 +2,9 @@ package server
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+
+	logging "github.com/landmaster135/devbox/internal/logging"
 )
 
 // APIInfo はAPI情報を表す構造体
@@ -62,37 +63,41 @@ func createAPIInfo() APIInfo {
 }
 
 // handleHealth はヘルスチェックエンドポイントのハンドラ
-func handleHealth(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "GETメソッドのみサポートしています", http.StatusMethodNotAllowed)
-		return
-	}
+func handleHealth(logger *logging.StructuredLogger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "GETメソッドのみサポートしています", http.StatusMethodNotAllowed)
+			return
+		}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status": "ok", "message": "Weather Notification API is running"}`))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status": "ok", "message": "Weather Notification API is running"}`))
+	}
 }
 
 // handleRoot はルートエンドポイントのハンドラ
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "GETメソッドのみサポートしています", http.StatusMethodNotAllowed)
-		return
+func handleRoot(logger *logging.StructuredLogger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "GETメソッドのみサポートしています", http.StatusMethodNotAllowed)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+
+		// 構造体からAPI情報を作成
+		apiInfo := createAPIInfo()
+
+		// JSONに変換
+		jsonData, err := json.MarshalIndent(apiInfo, "", "  ")
+		if err != nil {
+			logging.Ensure(logger).WithTags("root").Errorf("JSON変換エラー: %v", err)
+			http.Error(w, "内部サーバーエラー", http.StatusInternalServerError)
+			return
+		}
+
+		_, _ = w.Write(jsonData)
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	// 構造体からAPI情報を作成
-	apiInfo := createAPIInfo()
-
-	// JSONに変換
-	jsonData, err := json.MarshalIndent(apiInfo, "", "  ")
-	if err != nil {
-		log.Printf("JSON変換エラー: %v", err)
-		http.Error(w, "内部サーバーエラー", http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(jsonData)
 }

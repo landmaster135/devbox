@@ -3,6 +3,7 @@ package schedulerService
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"sync"
 	"syscall"
@@ -11,12 +12,14 @@ import (
 
 	gocronInfra "github.com/landmaster135/devbox/internal/cron_workflow/infrastructure/gocron"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
+	logging "github.com/landmaster135/devbox/internal/logging"
 )
 
 func TestRegisterWorkflowsSuccess(t *testing.T) {
 
 	repo := &stubRepository{}
 	cs := &recordingCronScheduler{}
+	logger := newTestLogger()
 	workflows := []usecases.Workflow{
 		{
 			Description: "wf-no-seconds",
@@ -36,7 +39,7 @@ func TestRegisterWorkflowsSuccess(t *testing.T) {
 		},
 	}
 
-	if err := registerWorkflows(repo, cs, workflows); err != nil {
+	if err := registerWorkflows(logger, repo, cs, workflows); err != nil {
 		t.Fatalf("registerWorkflows() error = %v", err)
 	}
 
@@ -69,7 +72,8 @@ func TestRegisterWorkflowsCronDefinitionError(t *testing.T) {
 		},
 	}
 
-	err := registerWorkflows(repo, cs, workflows)
+	logger := newTestLogger()
+	err := registerWorkflows(logger, repo, cs, workflows)
 	if err == nil {
 		t.Fatalf("registerWorkflows() error = nil, want error")
 	}
@@ -95,7 +99,8 @@ func TestRegisterWorkflowsRegisterJobError(t *testing.T) {
 		},
 	}
 
-	err := registerWorkflows(repo, cs, workflows)
+	logger := newTestLogger()
+	err := registerWorkflows(logger, repo, cs, workflows)
 	if err == nil {
 		t.Fatalf("registerWorkflows() error = nil, want error")
 	}
@@ -120,7 +125,8 @@ func TestNewTaskExecutesWorkflowProcess(t *testing.T) {
 		},
 	}
 
-	task := newTask(repo, wf)
+	logger := newTestLogger()
+	task := newTask(logger, repo, wf)
 	if task == nil {
 		t.Fatalf("newTask() returned nil task")
 	}
@@ -152,7 +158,8 @@ func TestNewTaskSwallowsWorkflowErrors(t *testing.T) {
 		},
 	}
 
-	newTask(repo, wf)
+	logger := newTestLogger()
+	newTask(logger, repo, wf)
 	process := repo.latestProcess()
 	if process == nil {
 		t.Fatalf("repo.latestProcess() = nil, want process")
@@ -182,7 +189,7 @@ func TestWaitForShutdownSignalSuccess(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	go func() {
-		errCh <- waitForShutdownSignal(scheduler)
+		errCh <- waitForShutdownSignal(newTestLogger(), scheduler)
 	}()
 
 	// Give goroutine time to register signal handler.
@@ -206,7 +213,7 @@ func TestWaitForShutdownSignalShutdownError(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	go func() {
-		errCh <- waitForShutdownSignal(scheduler)
+		errCh <- waitForShutdownSignal(newTestLogger(), scheduler)
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -230,7 +237,7 @@ func TestWaitForShutdownSignalTimeout(t *testing.T) {
 	setSchedulerShutdownTimeout(t, 50*time.Millisecond)
 
 	go func() {
-		errCh <- waitForShutdownSignal(scheduler)
+		errCh <- waitForShutdownSignal(newTestLogger(), scheduler)
 	}()
 
 	time.Sleep(50 * time.Millisecond)
@@ -272,7 +279,7 @@ func TestScheduleRunsWorkflowAndShutsDown(t *testing.T) {
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- Schedule([]usecases.Workflow{workflow})
+		errCh <- Schedule(newTestLogger(), []usecases.Workflow{workflow})
 	}()
 
 	select {
@@ -405,6 +412,13 @@ func newBlockingSignalTestScheduler() *blockingSignalTestScheduler {
 		},
 		unblock: unblock,
 	}
+}
+
+func newTestLogger() *logging.StructuredLogger {
+	return logging.New(
+		logging.WithWriter(io.Discard),
+		logging.WithClock(func() time.Time { return time.Unix(0, 0) }),
+	)
 }
 
 func (b *blockingSignalTestScheduler) release() {

@@ -3,13 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
 	"time"
+
+	logging "github.com/landmaster135/devbox/internal/logging"
 )
 
 const (
@@ -29,16 +30,19 @@ const (
 type HTTPServer struct {
 	server *http.Server
 	port   int
+	logger *logging.StructuredLogger
 }
 
 // NewHTTPServer は新しいHTTPServerインスタンスを作成する
-func NewHTTPServer() *HTTPServer {
+func NewHTTPServer(logger *logging.StructuredLogger) *HTTPServer {
+	appLogger := logging.Ensure(logger)
 	httpServer := &HTTPServer{
-		port: getPort(),
+		port:   getPort(appLogger),
+		logger: appLogger,
 	}
 
 	// ルーターを初期化
-	mux := setupRouter()
+	mux := setupRouter(appLogger)
 
 	// サーバーを設定
 	httpServer.server = &http.Server{
@@ -53,20 +57,21 @@ func NewHTTPServer() *HTTPServer {
 }
 
 // getPort は環境変数またはデフォルトからポート番号を取得する
-func getPort() int {
+func getPort(logger *logging.StructuredLogger) int {
 	portStr := os.Getenv("PORT")
 	if portStr == "" {
 		return DefaultPort
 	}
 
 	port, err := strconv.Atoi(portStr)
+	taggedLogger := logging.Ensure(logger).WithTags("config")
 	if err != nil {
-		log.Printf("無効なPORT環境変数: %s, デフォルトポート %d を使用します", portStr, DefaultPort)
+		taggedLogger.Warnf("無効なPORT環境変数: %s, デフォルトポート %d を使用します", portStr, DefaultPort)
 		return DefaultPort
 	}
 
 	if port <= 0 || port > 65535 {
-		log.Printf("無効なポート番号: %d, デフォルトポート %d を使用します", port, DefaultPort)
+		taggedLogger.Warnf("無効なポート番号: %d, デフォルトポート %d を使用します", port, DefaultPort)
 		return DefaultPort
 	}
 
@@ -81,30 +86,33 @@ func (s *HTTPServer) GracefulShutdown() {
 
 	// シグナルを待機
 	<-quit
-	log.Println("シャットダウンシグナルを受信しました...")
+	taggedLogger := s.logger.WithTags("shutdown")
+	taggedLogger.Infof("シャットダウンシグナルを受信しました...")
 
 	// シャットダウンのコンテキストを作成
 	ctx, cancel := context.WithTimeout(context.Background(), ShutdownTimeout)
 	defer cancel()
 
 	// サーバーをグレースフルシャットダウン
-	log.Printf("サーバーをシャットダウンしています（タイムアウト: %v）...", ShutdownTimeout)
+	taggedLogger.Infof("サーバーをシャットダウンしています（タイムアウト: %v）...", ShutdownTimeout)
 	if err := s.server.Shutdown(ctx); err != nil {
-		log.Printf("サーバーのシャットダウンでエラーが発生しました: %v", err)
+		taggedLogger.Errorf("サーバーのシャットダウンでエラーが発生しました: %v", err)
 	} else {
-		log.Println("サーバーが正常にシャットダウンされました")
+		taggedLogger.Infof("サーバーが正常にシャットダウンされました")
 	}
 }
 
 // Start はHTTPサーバーを開始する
 func (s *HTTPServer) Start() {
-	log.Printf("Weather Notification APIサーバーを開始します")
-	log.Printf("サーバーアドレス: %s", s.server.Addr)
-	log.Printf("読み取りタイムアウト: %v", s.server.ReadTimeout)
-	log.Printf("書き込みタイムアウト: %v", s.server.WriteTimeout)
-	log.Printf("アイドルタイムアウト: %v", s.server.IdleTimeout)
+	lifecycleLogger := s.logger.WithTags("lifecycle")
+	lifecycleLogger.Infof("Weather Notification APIサーバーを開始します")
+	lifecycleLogger.Infof("サーバーアドレス: %s", s.server.Addr)
+	lifecycleLogger.Infof("読み取りタイムアウト: %v", s.server.ReadTimeout)
+	lifecycleLogger.Infof("書き込みタイムアウト: %v", s.server.WriteTimeout)
+	lifecycleLogger.Infof("アイドルタイムアウト: %v", s.server.IdleTimeout)
 
 	if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("サーバーの開始に失敗しました: %v", err)
+		lifecycleLogger.Errorf("サーバーの開始に失敗しました: %v", err)
+		os.Exit(1)
 	}
 }

@@ -2,7 +2,6 @@ package gocron
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/go-co-op/gocron/v2"
 )
@@ -49,8 +48,6 @@ func (cs *CronScheduler) RegisterJob(name, expression string, withSeconds bool, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to register workflow %q: %w", name, err)
 	}
-
-	log.Printf("registered workflow %q (cron=%s)", name, expression)
 
 	return &Job{
 		Job: j,

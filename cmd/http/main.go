@@ -2,16 +2,17 @@ package main
 
 import (
 	"errors"
-	"log"
 
 	httpServer "github.com/landmaster135/devbox/cmd/http/server"
 
 	workflow "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	schedulerService "github.com/landmaster135/devbox/internal/cron_workflow/usecases/scheduler_service"
+	logging "github.com/landmaster135/devbox/internal/logging"
 )
 
-func runCronWorkflow() error {
-	workflows, err := workflow.List()
+func runCronWorkflow(logger *logging.StructuredLogger) error {
+	cronLogger := logging.Ensure(logger)
+	workflows, err := workflow.List(cronLogger)
 	if err != nil {
 		return err
 	}
@@ -19,27 +20,36 @@ func runCronWorkflow() error {
 		return errors.New("no workflows configured")
 	}
 
-	if err := schedulerService.Schedule(workflows); err != nil {
+	if err := schedulerService.Schedule(cronLogger, workflows); err != nil {
 		return err
 	}
 
-	log.Printf("scheduler stopped cleanly")
+	cronLogger.WithTags("scheduler").Infof("scheduler stopped cleanly")
 	return nil
 }
 
 func main() {
-	log.Println("HTTP REST API サーバーを初期化しています...")
+	baseLogger := logging.New()
+	httpLogger := baseLogger.WithTags("HTTP server")
+	cronLogger := baseLogger.WithTags("CRON workflow")
+
+	tag := "lifecycle"
+	httpLogger.WithTags(tag).Infof("HTTP REST API サーバーを初期化しています...")
 
 	// サーバーを作成
-	server := httpServer.NewHTTPServer()
+	server := httpServer.NewHTTPServer(httpLogger)
 
 	// グレースフルシャットダウンのゴルーチンを開始
 	go server.GracefulShutdown()
-	log.Printf("registered graceful shutdown")
+	httpLogger.WithTags(tag).Infof("registered graceful shutdown")
 
 	// cron workflowのゴルーチンを開始
-	go runCronWorkflow()
-	log.Printf("registered cron workflow")
+	go func() {
+		if err := runCronWorkflow(cronLogger); err != nil {
+			cronLogger.WithTags("scheduler").Errorf("cron workflow exited: %v", err)
+		}
+	}()
+	httpLogger.WithTags(tag).Infof("registered cron workflow")
 
 	// サーバーを開始
 	server.Start()
