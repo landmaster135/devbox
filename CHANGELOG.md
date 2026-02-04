@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.08 — 2026-02-04
+
+PR: #22
+
+### Chore
+- `docker-compose.yml`をGitリポジトリ全体から削除。
+
 ## v0.07 — 2026-02-04
 
 PR: #21
