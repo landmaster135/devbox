@@ -11,7 +11,7 @@ PR: #21
 - **taskfile (CLI)**: テンプレートとなる`internal/taskfile/usecases/taskfiles/root.yml`と比較して不足フィールドを検出・補完・新規生成する`inspect`/`fill`/`new`オペレーションを実装し、JSONレスポンスで状態を返してCIなしでもルートTaskfileを整合。
 - **html-sanitizer (CLI)**: web-scraperとhttp-requestでバラバラだったDOMクレンジングを`internal/html_sanitizer`へ集約し、denyリストやConfig、エラーハンドリングを共通化。main/article配下のみを抽出し、denyリスト化したform/nav/asideなどを除去、class/style属性や不要空行をクリーンアップするCLIを新設。入力/出力パス指定とエラー時の全文書き出し制御をフラグ化し、スクレイピング後の整形をツールチェーンに組み込めるようにした。
 - **yaml-parser (CLI)**: YAMLファイル/文字列をJSONに変換する`read`/`parse`に加えて、`--key-value-list`でネスト指定した値を書き換えファイルへ保存する`edit-file`を実装。`yaml.Node`ベースでキー順やコメントを維持しつつ、複数ドキュメントの検出・バリデーションも行う。
-- **エージェントスキル**: `.config/codex/skills/supabase-postgres-best-practices`にSKILL/README/参照資料を追加し、接続制御・ロック・インデックス・監視など34トピックを体系化。AGENTSやClaude向けプロンプトも同梱してスキルレジストリを拡張。
+- **エージェントスキル**: `.config/codex/skills/supabase-postgres-best-practices`にSKILL/README/参照資料を追加し、接続制御・ロック・インデックス・監視など34トピックを体系化。その他の20種類以上のスキル（C/C++/Go/Rust/TypeScript/JavaScript関連）も追加。AGENTSやClaude向けプロンプトも同梱してスキルレジストリを拡張。
 
 ### Improvements
 - **postgresql (CLI/MCP)**: ダンプ機能を再設計し、単一テーブルだけでなく全テーブル一括ダンプや並列制御、件数制限、タイムゾーン指定付きファイル名、JSON/Markdownの結果要約、成功/失敗テーブル集計をサポート。writer・meta_fetch分離と追加テストでCLI/MCP双方の再利用性が上がった。
