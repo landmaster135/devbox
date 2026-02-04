@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
+	workflow "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	schedulerService "github.com/landmaster135/devbox/internal/cron_workflow/usecases/scheduler_service"
 )
 
