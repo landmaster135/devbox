@@ -28,7 +28,7 @@ func TestHeadingLevelSelection(t *testing.T) {
 			t.Parallel()
 
 			markup := renderHeadingHTML(t, tt.level, tt.text)
-			node := test.ParseSingleElement(t, markup)
+			node := test.ParseSingleElement(t, markup, true)
 
 			if node.Data != tt.wantTag {
 				t.Fatalf("expected tag %s but got %s", tt.wantTag, node.Data)
@@ -55,7 +55,7 @@ func TestHeadingEscapesText(t *testing.T) {
 		t.Fatalf("escaped script tag not found in %s", markup)
 	}
 
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 	if got := test.GetTextContent(node); got != dangerous {
 		t.Fatalf("expected text %q but got %q", dangerous, got)
 	}

@@ -17,7 +17,7 @@ func TestTextRendersCodeWithoutClassAndEscapesText(t *testing.T) {
 	dangerous := `fmt.Println("<script>alert('x')</script>")`
 
 	markup := renderCodeText(t, "", dangerous)
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if node.Data != "code" {
 		t.Fatalf("expected <code> but got <%s>", node.Data)
@@ -42,7 +42,7 @@ func TestTextAppliesClassAndEscapesAttribute(t *testing.T) {
 	class := `code-block" onclick="alert('x')`
 
 	markup := renderCodeText(t, class, "fmt.Println(42)")
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if node.Data != "code" {
 		t.Fatalf("expected <code> but got <%s>", node.Data)
@@ -70,7 +70,7 @@ func TestContentRendersBodyComponent(t *testing.T) {
 	})
 
 	markup := renderCodeContent(t, "code-sample", body)
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if attr := test.GetAttr(node, "class"); attr != "code-sample" {
 		t.Fatalf("expected class code-sample but got %q", attr)
@@ -111,7 +111,7 @@ func TestContentWithNilBodyRendersEmptyCode(t *testing.T) {
 			t.Parallel()
 
 			markup := renderCodeContent(t, tt.class, nil)
-			node := test.ParseSingleElement(t, markup)
+			node := test.ParseSingleElement(t, markup, true)
 
 			if node.Data != "code" {
 				t.Fatalf("expected <code> but got <%s>", node.Data)

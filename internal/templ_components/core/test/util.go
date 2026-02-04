@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -17,7 +18,7 @@ func RenderComponent(t *testing.T, component templ.Component, buf *strings.Build
 	return buf.String()
 }
 
-func ParseSingleElement(t *testing.T, markup string) *html.Node {
+func ParseSingleElement(t *testing.T, markup string, ignoresBaseNodes bool) *html.Node {
 	t.Helper()
 
 	root, err := html.Parse(strings.NewReader(markup))
@@ -25,7 +26,7 @@ func ParseSingleElement(t *testing.T, markup string) *html.Node {
 		t.Fatalf("failed to parse markup: %v", err)
 	}
 
-	node := GetFirstElement(root)
+	node := GetFirstElement(root, ignoresBaseNodes)
 	if node == nil {
 		t.Fatalf("no element node found: %s", markup)
 	}
@@ -33,14 +34,16 @@ func ParseSingleElement(t *testing.T, markup string) *html.Node {
 	return node
 }
 
-func GetFirstElement(n *html.Node) *html.Node {
+func GetFirstElement(n *html.Node, ignoresBaseNodes bool) *html.Node {
 	if n == nil {
 		return nil
 	}
 
+	baseNodes := []string{"html", "head", "body"}
+
 	if n.Type == html.ElementNode {
-		switch n.Data {
-		case "html", "head", "body":
+		switch {
+		case ignoresBaseNodes && slices.Contains(baseNodes, n.Data):
 			// Skip the wrapper nodes html.Parse adds for fragments.
 		default:
 			return n
@@ -48,7 +51,7 @@ func GetFirstElement(n *html.Node) *html.Node {
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if el := GetFirstElement(c); el != nil {
+		if el := GetFirstElement(c, ignoresBaseNodes); el != nil {
 			return el
 		}
 	}

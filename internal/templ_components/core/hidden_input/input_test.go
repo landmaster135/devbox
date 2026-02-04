@@ -13,7 +13,7 @@ func TestHiddenFieldRendersHiddenInput(t *testing.T) {
 	t.Parallel()
 
 	markup := renderHiddenField(t, "session_token", "abc123")
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if node.Data != "input" {
 		t.Fatalf("expected <input> but got <%s>", node.Data)
@@ -43,7 +43,7 @@ func TestHiddenFieldEscapesAttributeValues(t *testing.T) {
 		t.Fatalf("raw value should be escaped in markup: %s", markup)
 	}
 
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if got := getAttr(node, "name"); got != name {
 		t.Fatalf("expected decoded name %q but got %q", name, got)

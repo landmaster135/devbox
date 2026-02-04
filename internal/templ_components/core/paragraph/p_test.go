@@ -17,7 +17,7 @@ func TestTextRendersParagraphAndEscapesText(t *testing.T) {
 	dangerous := `Next <script>alert("x")</script> Step`
 
 	markup := renderParagraphText(t, "", dangerous)
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if node.Data != "p" {
 		t.Fatalf("expected <p> but got <%s>", node.Data)
@@ -42,7 +42,7 @@ func TestTextAppliesClassAndEscapesAttribute(t *testing.T) {
 	class := `body-copy" onclick="alert('x')`
 
 	markup := renderParagraphText(t, class, "Safe")
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if node.Data != "p" {
 		t.Fatalf("expected <p> but got <%s>", node.Data)
@@ -70,7 +70,7 @@ func TestContentRendersBodyComponent(t *testing.T) {
 	})
 
 	markup := renderParagraphContent(t, "with-component", body)
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if attr := test.GetAttr(node, "class"); attr != "with-component" {
 		t.Fatalf("expected class with-component but got %q", attr)
@@ -98,7 +98,7 @@ func TestContentWithNilBodyRendersEmptyParagraph(t *testing.T) {
 	t.Parallel()
 
 	markup := renderParagraphContent(t, "", nil)
-	node := test.ParseSingleElement(t, markup)
+	node := test.ParseSingleElement(t, markup, true)
 
 	if node.Data != "p" {
 		t.Fatalf("expected <p> but got <%s>", node.Data)
@@ -126,7 +126,7 @@ func TestStatusRendersDataAttribute(t *testing.T) {
 			t.Parallel()
 
 			markup := renderParagraphStatus(t, tt.class)
-			node := test.ParseSingleElement(t, markup)
+			node := test.ParseSingleElement(t, markup, true)
 
 			if node.Data != "p" {
 				t.Fatalf("expected <p> but got <%s>", node.Data)
