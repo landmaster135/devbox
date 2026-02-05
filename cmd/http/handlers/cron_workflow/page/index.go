@@ -22,6 +22,7 @@ import (
 	heading "github.com/landmaster135/devbox/internal/templ_components/core/heading"
 	hiddenInput "github.com/landmaster135/devbox/internal/templ_components/core/hidden_input"
 	html "github.com/landmaster135/devbox/internal/templ_components/core/html"
+	link "github.com/landmaster135/devbox/internal/templ_components/core/link"
 	mainComponent "github.com/landmaster135/devbox/internal/templ_components/core/main"
 	paragraph "github.com/landmaster135/devbox/internal/templ_components/core/paragraph"
 	script "github.com/landmaster135/devbox/internal/templ_components/core/script"
@@ -68,6 +69,18 @@ func createCronWorkflowPage(data workflowPageData) templ.Component {
 			"ja",
 			head.Tag(
 				headMeta.Base(),
+				link.Tag(link.Attributes{
+					Rel:   "icon",
+					Href:  cronWorkflowFaviconDataURI(),
+					Type:  "image/png",
+					Sizes: "32x32",
+				}),
+				link.Tag(link.Attributes{
+					Rel:   "shortcut icon",
+					Href:  cronWorkflowFaviconDataURI(),
+					Type:  "image/png",
+					Sizes: "32x32",
+				}),
 				headTitle.Title(data.Title),
 				usecaseStyle.Tag(),
 			),
