@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -112,7 +113,7 @@ func TestService_Generate(t *testing.T) {
 	}
 }
 
-func TestService_PullModel(t *testing.T) {
+func TestService_StreamPull(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/pull", func(w http.ResponseWriter, r *http.Request) {
 		var req domain.PullRequest
@@ -134,10 +135,11 @@ func TestService_PullModel(t *testing.T) {
 	defer server.Close()
 
 	svc := NewService(ServiceOptions{BaseURL: server.URL, HTTPClient: server.Client(), Timeout: time.Second})
-	out, err := svc.PullModel(context.Background(), domain.PullRequest{Model: "llama3"})
-	if err != nil {
-		t.Fatalf("PullModel returned error: %v", err)
+	var buf bytes.Buffer
+	if err := svc.StreamPull(context.Background(), domain.PullRequest{Model: "llama3"}, &buf); err != nil {
+		t.Fatalf("StreamPull returned error: %v", err)
 	}
+	out := buf.String()
 	if !strings.Contains(out, "downloading 50.0% (50/100)") {
 		t.Fatalf("unexpected progress output: %s", out)
 	}

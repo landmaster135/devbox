@@ -107,11 +107,9 @@ func handleGenerate(ctx context.Context, service *usecases.Service, conf *cfg.Co
 }
 
 func handlePull(ctx context.Context, service *usecases.Service, conf *cfg.Config) {
-	output, err := service.PullModel(ctx, domain.PullRequest{Model: conf.Model})
-	if err != nil {
+	if err := service.StreamPull(ctx, domain.PullRequest{Model: conf.Model}, os.Stdout); err != nil {
 		exitWithError(err)
 	}
-	printText(output)
 }
 
 func printJSON(v any) error {

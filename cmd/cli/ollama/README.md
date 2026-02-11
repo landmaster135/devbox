@@ -8,7 +8,7 @@ Ollama ローカルサーバーの HTTP API を手元から叩くための CLI �
 - **list-models**: `/api/tags`（インストール済み）または `/api/ps`（稼働中のみ）を取得
 - **embed**: `/api/embed` に複数テキストを送り、埋め込みベクトルを得る
 - **generate**: `/api/generate` をストリーミングで呼び出し、生成テキストをまとめて表示
-- **pull**: `/api/pull` の進捗を逐次受け取り、%表示付きでサマリ出力
+- **pull**: `/api/pull` の進捗をリアルタイムに受け取り、%表示付きでストリーム出力
 
 ## ビルド
 
@@ -43,7 +43,7 @@ go run ./cmd/cli/ollama \
 | `list-models` | `--running-only` | `true` を指定すると `/api/ps` の結果のみ表示 |
 | `embed` | `--model`, `--input` (複数可) | `--input` は最低 1 件必要 |
 | `generate` | `--model`, `--prompt` | レスポンスは標準出力へまとめて出力 |
-| `pull` | `--model` | 進捗ログを整形して表示 |
+| `pull` | `--model` | 進捗ログをリアルタイム表示 |
 
 ## 使用例
 バージョン確認
@@ -88,7 +88,7 @@ go run ./cmd/cli/ollama \
 
 - `version` / `list-models` / `embed`: `jq` で扱いやすい整形 JSON
 - `generate`: ストリームを結合したテキスト（改行はモデル出力に従う）
-- `pull`: `downloading 50.0% (50/100)` のような人間向けサマリを行単位で表示
+- `pull`: `downloading 50.0% (50/100)` のようなサマリをストリームでそのまま表示
 
 ## 参考資料
 

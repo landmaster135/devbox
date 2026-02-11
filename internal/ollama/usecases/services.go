@@ -131,14 +131,14 @@ func (s *Service) Generate(ctx context.Context, req domain.GenerateRequest) (str
 	return builder.String(), nil
 }
 
-// PullModel は /api/pull のストリーミングレスポンスを処理する。
-func (s *Service) PullModel(ctx context.Context, req domain.PullRequest) (string, error) {
+// StreamPull は /api/pull のストリーミングレスポンスを writer に逐次書き出す。
+func (s *Service) StreamPull(ctx context.Context, req domain.PullRequest, writer io.Writer) error {
 	if !req.Stream {
 		req.Stream = true
 	}
 	resp, err := s.stream(ctx, "/api/pull", req)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -146,7 +146,6 @@ func (s *Service) PullModel(ctx context.Context, req domain.PullRequest) (string
 	buf := make([]byte, 0, 64*1024)
 	scanner.Buffer(buf, scannerMaxTokenSize)
 
-	var builder strings.Builder
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -154,20 +153,28 @@ func (s *Service) PullModel(ctx context.Context, req domain.PullRequest) (string
 		}
 		var chunk domain.PullChunk
 		if err := json.Unmarshal([]byte(line), &chunk); err != nil {
-			return "", fmt.Errorf("pull レスポンスの解析に失敗しました: %w", err)
+			return fmt.Errorf("pull レスポンスの解析に失敗しました: %w", err)
 		}
 		if chunk.Error != "" {
-			return "", fmt.Errorf("Ollama API エラー: %s", chunk.Error)
+			if _, wErr := fmt.Fprintf(writer, "error: %s\n", chunk.Error); wErr != nil {
+				return fmt.Errorf("pull 進捗の出力に失敗しました: %w", wErr)
+			}
+			return fmt.Errorf("Ollama API エラー: %s", chunk.Error)
 		}
 		if chunk.Status != "" {
-			builder.WriteString(formatPullStatus(chunk))
-			builder.WriteByte('\n')
+			formatted := formatPullStatus(chunk)
+			if formatted == "" {
+				continue
+			}
+			if _, err := fmt.Fprintln(writer, formatted); err != nil {
+				return fmt.Errorf("pull 進捗の出力に失敗しました: %w", err)
+			}
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("pull レスポンスの読み取りに失敗しました: %w", err)
+		return fmt.Errorf("pull レスポンスの読み取りに失敗しました: %w", err)
 	}
-	return strings.TrimRight(builder.String(), "\n"), nil
+	return nil
 }
 
 func (s *Service) doJSON(ctx context.Context, method, path string, payload any, out any) error {
