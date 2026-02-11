@@ -12,13 +12,14 @@ import (
 
 const (
 	OperationOllama = "ollama"
+	OperationOpenAI = "openai"
 
 	defaultHost           = "127.0.0.1"
 	defaultPort           = 11434
 	defaultTimeoutSeconds = 60
 )
 
-var supportedOperations = []string{OperationOllama}
+var supportedOperations = []string{OperationOllama, OperationOpenAI}
 
 // Config は CLI で受け取る設定値を保持する。
 type Config struct {
@@ -26,6 +27,7 @@ type Config struct {
 	Host           string
 	Port           int
 	Model          string
+	APIKey         string
 	Inputs         []string
 	TimeoutSeconds int
 	Help           bool
@@ -46,6 +48,7 @@ func ParseFlags() (*Config, error) {
 	fs.StringVar(&cfg.Host, "host", cfg.Host, "Ollama API のホスト名")
 	fs.IntVar(&cfg.Port, "port", cfg.Port, "Ollama API のポート番号")
 	fs.StringVar(&cfg.Model, "model", cfg.Model, "使用するモデル名")
+	fs.StringVar(&cfg.APIKey, "api-key", cfg.APIKey, "OpenAI API キー (operation=openai で必須)")
 	inputValues := &stringList{}
 	fs.Var(inputValues, "input", "ベクトル化するテキスト (複数指定可)")
 	timeoutValue := newTrackedIntValue(defaultTimeoutSeconds)
@@ -66,6 +69,7 @@ func ParseFlags() (*Config, error) {
 	cfg.Operation = strings.ToLower(strings.TrimSpace(cfg.Operation))
 	cfg.Host = strings.TrimSpace(cfg.Host)
 	cfg.Model = strings.TrimSpace(cfg.Model)
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
 	cfg.Inputs = inputValues.Items()
 	cfg.TimeoutSeconds = timeoutValue.Value()
 
@@ -87,23 +91,33 @@ func validateConfig(cfg *Config) error {
 	if !isSupportedOperation(cfg.Operation) {
 		return fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}
-	if cfg.Host == "" {
-		return fmt.Errorf("host パラメータは必須です")
-	}
-	if cfg.Port <= 0 || cfg.Port > 65535 {
-		return fmt.Errorf("port パラメータが不正です: %d", cfg.Port)
-	}
 	if cfg.TimeoutSeconds <= 0 {
 		return fmt.Errorf("timeout パラメータは 1 以上を指定してください")
 	}
 
 	switch cfg.Operation {
 	case OperationOllama:
+		if cfg.Host == "" {
+			return fmt.Errorf("ollama 操作には host パラメータが必要です")
+		}
+		if cfg.Port <= 0 || cfg.Port > 65535 {
+			return fmt.Errorf("ollama 操作の port パラメータが不正です: %d", cfg.Port)
+		}
 		if cfg.Model == "" {
 			return fmt.Errorf("ollama 操作には model パラメータが必要です")
 		}
 		if len(cfg.Inputs) == 0 {
 			return fmt.Errorf("ollama 操作には 1 件以上の input パラメータが必要です")
+		}
+	case OperationOpenAI:
+		if cfg.APIKey == "" {
+			return fmt.Errorf("openai 操作には api-key パラメータが必要です")
+		}
+		if cfg.Model == "" {
+			return fmt.Errorf("openai 操作には model パラメータが必要です")
+		}
+		if len(cfg.Inputs) == 0 {
+			return fmt.Errorf("openai 操作には 1 件以上の input パラメータが必要です")
 		}
 	}
 
@@ -127,10 +141,12 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -operation string\n        実行する操作 (%s)\n", strings.Join(supportedOperations, ", "))
 	fmt.Fprintf(os.Stderr, "  -host string\n        Ollama API のホスト名 (デフォルト: %s)\n", defaultHost)
 	fmt.Fprintf(os.Stderr, "  -port int\n        Ollama API のポート番号 (デフォルト: %d)\n", defaultPort)
+	fmt.Fprintf(os.Stderr, "  -api-key string\n        OpenAI API キー (operation=openai で必須)\n")
 	fmt.Fprintf(os.Stderr, "  -timeout int\n        HTTP リクエストのタイムアウト秒数 (デフォルト: %d)\n", defaultTimeoutSeconds)
 	fmt.Fprintf(os.Stderr, "  -help\n        このヘルプを表示\n\n")
 	fmt.Fprintf(os.Stderr, "操作別パラメータ:\n")
-	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): モデル名\n        -input (複数可・必須): 埋め込み対象のテキスト\n", OperationOllama)
+	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): モデル名\n        -input (複数可・必須): 埋め込み対象のテキスト\n        -host / -port: 呼び出す Ollama API エンドポイント\n", OperationOllama)
+	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): モデル名\n        -input (複数可・必須): 埋め込み対象のテキスト\n        -api-key (必須): OpenAI API キー\n", OperationOpenAI)
 }
 
 // stringList は複数の -input フラグを収集する。

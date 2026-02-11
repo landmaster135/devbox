@@ -28,6 +28,7 @@ func main() {
 		Host:    cfg.Host,
 		Port:    cfg.Port,
 		Timeout: time.Duration(cfg.TimeoutSeconds) * time.Second,
+		APIKey:  cfg.APIKey,
 	})
 	if err != nil {
 		exitWithError(err)

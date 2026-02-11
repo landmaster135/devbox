@@ -57,3 +57,51 @@ func TestParseFlags_ValidationError(t *testing.T) {
 		t.Fatal("expected error but got nil")
 	}
 }
+
+func TestParseFlags_OpenAISuccess(t *testing.T) {
+	t.Setenv("GOFLAGS", "")
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{
+		"vector-embedding",
+		"-operation", "openai",
+		"-api-key", "sk-test",
+		"-model", "text-embedding-3-small",
+		"-input", "hello",
+	}
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() error = %v", err)
+	}
+	if cfg.Operation != OperationOpenAI {
+		t.Fatalf("unexpected operation: %s", cfg.Operation)
+	}
+	if cfg.APIKey != "sk-test" {
+		t.Fatalf("unexpected api key: %s", cfg.APIKey)
+	}
+	if cfg.Model != "text-embedding-3-small" {
+		t.Fatalf("unexpected model: %s", cfg.Model)
+	}
+	if len(cfg.Inputs) != 1 {
+		t.Fatalf("unexpected inputs: %#v", cfg.Inputs)
+	}
+}
+
+func TestParseFlags_OpenAIValidationError(t *testing.T) {
+	t.Setenv("GOFLAGS", "")
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+
+	os.Args = []string{
+		"vector-embedding",
+		"-operation", "openai",
+		"-model", "text-embedding-3-small",
+		"-input", "foo",
+	}
+
+	if _, err := ParseFlags(); err == nil {
+		t.Fatal("expected validation error but got nil")
+	}
+}

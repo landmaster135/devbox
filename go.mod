@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/run v1.11.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.10.3
+	github.com/a-h/templ v0.3.977
 	github.com/andybalholm/brotli v1.1.0
 	github.com/anthonynsimon/bild v0.14.0
 	github.com/dsoprea/go-exif/v3 v3.0.1
@@ -20,6 +21,7 @@ require (
 	github.com/kkdai/youtube/v2 v2.10.4
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.33.0
+	github.com/openai/openai-go/v3 v3.0.0
 	github.com/pdfcpu/pdfcpu v0.10.2
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
@@ -44,7 +46,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	cloud.google.com/go/iam v1.5.2 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
-	github.com/a-h/templ v0.3.977 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aws/aws-sdk-go v1.38.20 // indirect
 	github.com/bitly/go-simplejson v0.5.1 // indirect
@@ -82,6 +83,10 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/u2takey/go-utils v0.3.1 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/ysmood/fetchup v0.2.3 // indirect
