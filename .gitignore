@@ -67,6 +67,7 @@ mypkg/go.sum
 downloads/
 *.zip
 *.tar
+qdrant_storage/
 
 ### binary ###
 pkg/bin/*
