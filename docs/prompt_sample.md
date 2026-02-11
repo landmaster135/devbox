@@ -18,6 +18,44 @@
 - "--task-type"には、"root"を受け付ける。
 - --operation: inspect, --task-type: root の場合は、/home/user/devbox/internal/taskfile/usecases/taskfiles/root.ymlにあるフィールドが、"--taskfile-path"で渡されたTaskfileで不足していないかどうかを確認する。
 
+## 新規のCLIツールの追加の実装計画の作成
+/home/user/devbox/cmd/cli/gcloud-genset-spanner/main.goにCloud Spanner用のgcloudコマンドを出力するCLIツールを実装したい。そのCLIツールでは、--operationとその他のCLIフラグを受け取る。下記の--operationを実装する計画を/home/user/devbox/.agents/draft.mdに書いて。実装の仕方は/home/user/devbox/cmd/cli/gcloud-genset-cloudsql/main.goを参考にして。
+
+### --operation: instance-list
+下記のgcloudコマンドを出力する。
+```
+gcloud spanner instances list
+```
+
+### --operation: instance-create
+--instance-id、--config、--description、--nodesのCLIフラグも受け取る。
+```
+gcloud spanner instances create my-instance \
+    --config=regional-asia-northeast1 \
+    --description="My Spanner Instance" \
+    --nodes=1
+```
+
+### --operation: db-create
+--instance-id、--db-id、--ddl-file-pathのCLIフラグも受け取る。そして下記のgcloudコマンドを出力する。
+```
+gcloud spanner databases create my-database \
+    --instance=my-instance \
+    --ddl-file=schema.sql
+```
+
+### --operation: db-list
+--instance-idのCLIフラグも受け取る。そして下記のgcloudコマンドを出力する。
+```
+gcloud spanner databases list --instance=my-instance
+```
+
+### --operation: db-describe
+--instance-id、--db-idのCLIフラグも受け取る。そして下記のgcloudコマンドを出力する。
+```
+gcloud spanner databases describe my-database --instance=my-instance
+```
+
 ## 新規のCronワークフローの追加
 /home/user/devbox/cmd/cli/cron-workflow/workflow/core.goにDiscordに天気予報を通知するための新規ワークフローを追加して。/home/user/devbox/cmd/cli/weather-notificator/main.go内で呼び出されているservice.HandleWeatherNotification関数を呼び出せば処理出来るはずだ。city: "Tokyo", maxDays: 3を渡して、/home/user/devbox/cmd/cli/cron-workflow/workflow/env.go内にある下記の環境変数にある値も渡す。
 - EnvKeyDiscordWebhookURL

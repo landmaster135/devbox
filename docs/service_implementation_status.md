@@ -56,6 +56,7 @@
 | gcloud-genset-monitoring-dashboard          | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-scheduler                     | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-secret                        | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-spanner                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-storage                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-wrapper-workload-identity-federation | ✅  | ❌️  | ❌️  | ❌️ |
 | gdrive                                      | ❌️  | ✅  | ❌️  | ❌️ |
