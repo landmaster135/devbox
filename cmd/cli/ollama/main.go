@@ -10,6 +10,7 @@ import (
 
 	cfg "github.com/landmaster135/devbox/internal/ollama/config"
 	"github.com/landmaster135/devbox/internal/ollama/domain"
+	progressWriter "github.com/landmaster135/devbox/internal/ollama/infrastructure/progress_writer"
 	usecases "github.com/landmaster135/devbox/internal/ollama/usecases"
 )
 
@@ -107,7 +108,8 @@ func handleGenerate(ctx context.Context, service *usecases.Service, conf *cfg.Co
 }
 
 func handlePull(ctx context.Context, service *usecases.Service, conf *cfg.Config) {
-	if err := service.StreamPull(ctx, domain.PullRequest{Model: conf.Model}, os.Stdout); err != nil {
+	writer := progressWriter.NewPullProgressWriter(os.Stdout)
+	if err := service.StreamPull(ctx, domain.PullRequest{Model: conf.Model}, writer); err != nil {
 		exitWithError(err)
 	}
 }
