@@ -68,8 +68,8 @@ func NewService(opts Options) (*Service, error) {
 	return svc, nil
 }
 
-// Run は設定に基づき埋め込み処理を実行する。
-func (s *Service) Run(ctx context.Context, cfg *config.Config) (*domain.EmbedResult, error) {
+// Embed は設定に基づき埋め込み処理を実行する。
+func (s *Service) Embed(ctx context.Context, cfg *config.Config) (*domain.EmbedResult, error) {
 	if s == nil {
 		return nil, fmt.Errorf("Service が初期化されていません")
 	}

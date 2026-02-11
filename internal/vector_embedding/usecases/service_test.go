@@ -34,7 +34,7 @@ func TestServiceRun_Ollama(t *testing.T) {
 		Inputs:    []string{"hello"},
 	}
 
-	got, err := svc.Run(context.Background(), cfg)
+	got, err := svc.Embed(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -63,7 +63,7 @@ func TestServiceRun_Error(t *testing.T) {
 	svc, _ := NewService(Options{OllamaClient: client})
 
 	cfg := &config.Config{Operation: config.OperationOllama, Model: "abc", Inputs: []string{"x"}}
-	if _, err := svc.Run(context.Background(), cfg); err == nil {
+	if _, err := svc.Embed(context.Background(), cfg); err == nil {
 		t.Fatal("expected error but got nil")
 	}
 }
@@ -82,7 +82,7 @@ func TestServiceRun_OpenAI(t *testing.T) {
 		APIKey:    "sk-test",
 	}
 
-	result, err := svc.Run(context.Background(), cfg)
+	result, err := svc.Embed(context.Background(), cfg)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -103,7 +103,7 @@ func TestServiceRun_OpenAIWithoutClient(t *testing.T) {
 		Inputs:    []string{"hello"},
 	}
 
-	if _, err := svc.Run(context.Background(), cfg); err == nil {
+	if _, err := svc.Embed(context.Background(), cfg); err == nil {
 		t.Fatal("expected error due to missing api key")
 	}
 }

@@ -35,7 +35,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	result, err := service.Run(ctx, cfg)
+	result, err := service.Embed(ctx, cfg)
 	if err != nil {
 		exitWithError(err)
 	}
