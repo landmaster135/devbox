@@ -148,6 +148,91 @@ func TestService_StreamPull(t *testing.T) {
 	}
 }
 
+func TestService_DescribeModel(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/show", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		var req domain.ShowModelRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("failed to decode request: %v", err)
+		}
+		if req.Model != "llama3" {
+			t.Fatalf("unexpected model: %s", req.Model)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"model":"llama3","modified_at":"2024-01-01T00:00:00Z","size":123,"details":{"format":"gguf"}}`))
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	svc := NewService(ServiceOptions{BaseURL: server.URL, HTTPClient: server.Client(), Timeout: time.Second})
+	resp, err := svc.DescribeModel(context.Background(), domain.ShowModelRequest{Model: "llama3"})
+	if err != nil {
+		t.Fatalf("DescribeModel returned error: %v", err)
+	}
+	if resp.Model != "llama3" {
+		t.Fatalf("unexpected model: %s", resp.Model)
+	}
+	if resp.Details == nil || resp.Details["format"] != "gguf" {
+		t.Fatalf("unexpected details: %#v", resp.Details)
+	}
+}
+
+func TestService_DeleteModel_WithResponse(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		var req domain.DeleteModelRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Fatalf("failed to decode request: %v", err)
+		}
+		if req.Model != "llama3" {
+			t.Fatalf("unexpected model: %s", req.Model)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"success","model":"llama3"}`))
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	svc := NewService(ServiceOptions{BaseURL: server.URL, HTTPClient: server.Client(), Timeout: time.Second})
+	resp, err := svc.DeleteModel(context.Background(), domain.DeleteModelRequest{Model: "llama3"})
+	if err != nil {
+		t.Fatalf("DeleteModel returned error: %v", err)
+	}
+	if resp == nil || resp.Status != "success" {
+		t.Fatalf("unexpected response: %#v", resp)
+	}
+}
+
+func TestService_DeleteModel_EmptyResponse(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Fatalf("unexpected method: %s", r.Method)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	svc := NewService(ServiceOptions{BaseURL: server.URL, HTTPClient: server.Client(), Timeout: time.Second})
+	resp, err := svc.DeleteModel(context.Background(), domain.DeleteModelRequest{Model: "llama3"})
+	if err != nil {
+		t.Fatalf("DeleteModel returned error: %v", err)
+	}
+	if resp != nil {
+		t.Fatalf("expected nil response, got: %#v", resp)
+	}
+}
+
 func TestService_ListRunningModels_APIError(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/ps", func(w http.ResponseWriter, r *http.Request) {

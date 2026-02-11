@@ -1,6 +1,6 @@
 # Ollama CLI
 
-Ollama ローカルサーバーの HTTP API を手元から叩くための CLI です。`version`/`list-models`/`embed`/`generate`/`pull` といった代表的なエンドポイント（[公式ドキュメント](https://docs.ollama.com/api)）をカバーし、簡単に API の結果を確認できます。
+Ollama ローカルサーバーの HTTP API を手元から叩くための CLI です。`version`/`list-models`/`embed`/`generate`/`pull`/`describe`/`delete` といった代表的なエンドポイント（[公式ドキュメント](https://docs.ollama.com/api)）をカバーし、簡単に API の結果を確認できます。
 
 ## 主な機能
 
@@ -9,6 +9,8 @@ Ollama ローカルサーバーの HTTP API を手元から叩くための CLI �
 - **embed**: `/api/embed` に複数テキストを送り、埋め込みベクトルを得る
 - **generate**: `/api/generate` をストリーミングで呼び出し、生成テキストをまとめて表示
 - **pull**: `/api/pull` の進捗をリアルタイムに受け取り、%表示付きでストリーム出力（TTYでは同一ハッシュの行を上書き表示）
+- **describe**: `/api/show` からモデル詳細メタデータを取得
+- **delete**: `/api/delete` で不要モデルを削除
 
 ## ビルド
 
@@ -30,7 +32,7 @@ go run ./cmd/cli/ollama \
 
 | フラグ | 説明 | 既定値 |
 | --- | --- | --- |
-| `--operation` | `version` / `list-models` / `embed` / `generate` / `pull` | **必須** |
+| `--operation` | `version` / `list-models` / `embed` / `generate` / `pull` / `describe` / `delete` | **必須** |
 | `--host` | Ollama サーバーのホスト名 | `127.0.0.1` |
 | `--port` | Ollama サーバーのポート番号 | `11434` |
 | `--timeout` | HTTP タイムアウト秒数。`embed`/`generate`/`pull` は未指定なら 300 秒、それ以外は 30 秒 | `30` |
@@ -44,6 +46,8 @@ go run ./cmd/cli/ollama \
 | `embed` | `--model`, `--input` (複数可) | `--input` は最低 1 件必要 |
 | `generate` | `--model`, `--prompt` | レスポンスは標準出力へまとめて出力 |
 | `pull` | `--model` | 進捗ログをリアルタイム表示 |
+| `describe` | `--model` | `/api/show` のレスポンスを JSON で表示 |
+| `delete` | `--model` | `/api/delete` 成功時はレスポンスまたは成功メッセージを表示 |
 
 ## 使用例
 バージョン確認
@@ -84,11 +88,27 @@ go run ./cmd/cli/ollama \
   --model=llama3:instruct
 ```
 
+モデル詳細表示
+```bash
+go run ./cmd/cli/ollama \
+  --operation=describe \
+  --model=llama3
+```
+
+モデル削除
+```bash
+go run ./cmd/cli/ollama \
+  --operation=delete \
+  --model=llama3
+```
+
 ## 出力形式
 
 - `version` / `list-models` / `embed`: `jq` で扱いやすい整形 JSON
 - `generate`: ストリームを結合したテキスト（改行はモデル出力に従う）
 - `pull`: `downloading 50.0% (50/100)` のようなサマリをストリームでそのまま表示
+- `describe`: `/api/show` の詳細 JSON
+- `delete`: `/api/delete` のレスポンス JSON（空レスポンス時は成功メッセージ）
 
 ## 参考資料
 
@@ -98,3 +118,5 @@ go run ./cmd/cli/ollama \
 - [Ollama API Reference / Embed](https://docs.ollama.com/api/embed)
 - [Ollama API Reference / Generate](https://docs.ollama.com/api/generate)
 - [Ollama API Reference / Pull](https://docs.ollama.com/api/pull)
+- [Ollama API Reference / Show](https://docs.ollama.com/api-reference/show-model-details)
+- [Ollama API Reference / Delete](https://docs.ollama.com/api/delete)

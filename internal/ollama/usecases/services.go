@@ -177,6 +177,47 @@ func (s *Service) StreamPull(ctx context.Context, req domain.PullRequest, writer
 	return nil
 }
 
+// DescribeModel は /api/show を呼び出してモデル詳細を取得する。
+func (s *Service) DescribeModel(ctx context.Context, req domain.ShowModelRequest) (*domain.ShowModelResponse, error) {
+	var resp domain.ShowModelResponse
+	if err := s.doJSON(ctx, http.MethodPost, "/api/show", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// DeleteModel は /api/delete を呼び出し、レスポンスがあれば返す。
+func (s *Service) DeleteModel(ctx context.Context, req domain.DeleteModelRequest) (*domain.DeleteModelResponse, error) {
+	httpReq, err := s.newJSONRequest(ctx, http.MethodDelete, "/api/delete", req)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("Ollama API DELETE /api/delete の呼び出しに失敗しました: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Ollama API DELETE /api/delete が失敗しました: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("/api/delete レスポンスの読み取りに失敗しました: %w", err)
+	}
+	body = bytes.TrimSpace(body)
+	if len(body) == 0 {
+		return nil, nil
+	}
+	var result domain.DeleteModelResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("/api/delete レスポンスの解析に失敗しました: %w", err)
+	}
+	return &result, nil
+}
+
 func (s *Service) doJSON(ctx context.Context, method, path string, payload any, out any) error {
 	req, err := s.newJSONRequest(ctx, method, path, payload)
 	if err != nil {

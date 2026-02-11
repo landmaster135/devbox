@@ -16,6 +16,8 @@ const (
 	OperationEmbed      = "embed"
 	OperationGenerate   = "generate"
 	OperationPull       = "pull"
+	OperationDescribe   = "describe"
+	OperationDelete     = "delete"
 
 	defaultHost                = "127.0.0.1"
 	defaultPort                = 11434
@@ -25,6 +27,8 @@ const (
 
 var supportedOperations = []string{
 	OperationEmbed,
+	OperationDelete,
+	OperationDescribe,
 	OperationGenerate,
 	OperationListModels,
 	OperationPull,
@@ -61,7 +65,7 @@ func ParseFlags() (*Config, error) {
 	fs.BoolVar(&cfg.RunningOnly, "running-only", false, "list-models 操作時に稼働中モデルのみを表示")
 	timeoutValue := newTrackedIntValue(defaultShortTimeoutSeconds)
 	fs.Var(timeoutValue, "timeout", "HTTP リクエストのタイムアウト秒数 (デフォルト: 30, embed/generate/pull では 300)")
-	fs.StringVar(&cfg.Model, "model", "", "embed/generate/pull で使用するモデル名")
+	fs.StringVar(&cfg.Model, "model", "", "embed/generate/pull/describe/delete で使用するモデル名")
 	fs.StringVar(&cfg.Prompt, "prompt", "", "generate で送信するプロンプト")
 
 	inputValues := &stringList{}
@@ -152,6 +156,10 @@ func validateConfig(cfg *Config) error {
 		if cfg.Model == "" {
 			return fmt.Errorf("pull 操作には model パラメータが必要です")
 		}
+	case OperationDescribe, OperationDelete:
+		if cfg.Model == "" {
+			return fmt.Errorf("%s 操作には model パラメータが必要です", cfg.Operation)
+		}
 	}
 
 	return nil
@@ -193,6 +201,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): モデル名\n        -input (複数可・必須): 埋め込み対象テキスト\n", OperationEmbed)
 	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): モデル名\n        -prompt (必須): プロンプト文字列\n", OperationGenerate)
 	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): モデル名\n", OperationPull)
+	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): 詳細を取得するモデル名\n", OperationDescribe)
+	fmt.Fprintf(os.Stderr, "  %s\n        -model (必須): 削除するモデル名\n", OperationDelete)
 }
 
 // stringList は複数回指定可能な input フラグを表す。

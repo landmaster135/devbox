@@ -74,3 +74,35 @@ type PullChunk struct {
 	Completed int64  `json:"completed"`
 	Error     string `json:"error"`
 }
+
+// ShowModelRequest は /api/show のリクエストを表す。
+type ShowModelRequest struct {
+	Model string `json:"model"`
+}
+
+// ShowModelResponse は /api/show のレスポンスを表す。
+type ShowModelResponse struct {
+	Model      string         `json:"model"`
+	ModifiedAt string         `json:"modified_at"`
+	Size       int64          `json:"size"`
+	Digest     string         `json:"digest"`
+	Details    map[string]any `json:"details"`
+	Parameters string         `json:"parameters"`
+	Template   string         `json:"template"`
+	License    string         `json:"license"`
+	Modelfile  string         `json:"modelfile"`
+	System     string         `json:"system"`
+	Options    map[string]any `json:"options"`
+	ModelInfo  map[string]any `json:"model_info"`
+}
+
+// DeleteModelRequest は /api/delete のリクエスト。
+type DeleteModelRequest struct {
+	Model string `json:"model"`
+}
+
+// DeleteModelResponse は /api/delete のレスポンス。
+type DeleteModelResponse struct {
+	Status string `json:"status"`
+	Model  string `json:"model"`
+}

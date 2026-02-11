@@ -46,6 +46,10 @@ func main() {
 		handleGenerate(ctx, service, conf)
 	case cfg.OperationPull:
 		handlePull(ctx, service, conf)
+	case cfg.OperationDescribe:
+		handleDescribe(ctx, service, conf)
+	case cfg.OperationDelete:
+		handleDelete(ctx, service, conf)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の operation です: %s\n", conf.Operation)
 		os.Exit(1)
@@ -112,6 +116,30 @@ func handlePull(ctx context.Context, service *usecases.Service, conf *cfg.Config
 	if err := service.StreamPull(ctx, domain.PullRequest{Model: conf.Model}, writer); err != nil {
 		exitWithError(err)
 	}
+}
+
+func handleDescribe(ctx context.Context, service *usecases.Service, conf *cfg.Config) {
+	resp, err := service.DescribeModel(ctx, domain.ShowModelRequest{Model: conf.Model})
+	if err != nil {
+		exitWithError(err)
+	}
+	if err := printJSON(resp); err != nil {
+		exitWithError(err)
+	}
+}
+
+func handleDelete(ctx context.Context, service *usecases.Service, conf *cfg.Config) {
+	resp, err := service.DeleteModel(ctx, domain.DeleteModelRequest{Model: conf.Model})
+	if err != nil {
+		exitWithError(err)
+	}
+	if resp != nil {
+		if err := printJSON(resp); err != nil {
+			exitWithError(err)
+		}
+		return
+	}
+	fmt.Printf("モデル %s を削除しました\n", conf.Model)
 }
 
 func printJSON(v any) error {
