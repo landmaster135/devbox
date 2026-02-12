@@ -35,6 +35,37 @@ func TestConfig_ParseFlags_CreateMemo_Normal(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlags_CreateMemoWithContentFile_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-file=/tmp/memo.md",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.ContentFile != "/tmp/memo.md" {
+		t.Fatalf("content-file = %s, want /tmp/memo.md", cfg.ContentFile)
+	}
+}
+
+func TestConfig_ParseFlags_CreateMemoWithContentAndFile_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=create-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content=hello",
+		"-content-file=/tmp/memo.md",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "同時に指定できません") {
+		t.Fatalf("error = %v, want 同時に指定できません", err)
+	}
+}
+
 func TestConfig_ParseFlags_UpdateMemoRequiresParams(t *testing.T) {
 	_, err := ParseFlagsFromArgs([]string{
 		"-operation=update-memo",
@@ -226,8 +257,24 @@ func TestConfig_ParseFlagsFromArgs_UpdateMemoMissingContent_Error(t *testing.T) 
 	if err == nil {
 		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
 	}
-	if !strings.Contains(err.Error(), "content パラメータ") {
-		t.Fatalf("error = %v, want content パラメータ", err)
+	if !strings.Contains(err.Error(), "content または content-file") {
+		t.Fatalf("error = %v, want content または content-file", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateMemoWithContentFile_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=update-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-content-file=/tmp/memo.md",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.ContentFile != "/tmp/memo.md" {
+		t.Fatalf("content-file = %s, want /tmp/memo.md", cfg.ContentFile)
 	}
 }
 

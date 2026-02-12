@@ -41,7 +41,8 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-content` | メモ本文 | 必須 |
+| `-content` | メモ本文（`-content-file` とどちらか一方必須） | 条件付き必須 |
+| `-content-file` | メモ本文を読み込むファイルパス（`-content` とどちらか一方必須） | 条件付き必須 |
 | `-memo-id` | 作成時に指定する memoId | 任意 |
 | `-visibility` | 公開範囲（`PRIVATE`, `PROTECTED`, `PUBLIC`） | 任意 |
 | `-state` | 状態（`NORMAL`, `ARCHIVED`） | 任意 |
@@ -68,7 +69,8 @@ go run ./cmd/cli/memos \
 | オプション | 説明 | 必須 |
 |---|---|---|
 | `-memo` | 更新対象の memo 識別子 | 必須 |
-| `-content` | 更新後の本文 | 必須 |
+| `-content` | 更新後の本文（`-content-file` とどちらか一方必須） | 条件付き必須 |
+| `-content-file` | 更新後本文を読み込むファイルパス（`-content` とどちらか一方必須） | 条件付き必須 |
 | `-visibility` | 更新後の公開範囲 | 任意 |
 | `-state` | 更新後の状態 | 任意 |
 | `-pinned` | 更新後のピン留め（`true/false`） | 任意 |
@@ -115,6 +117,16 @@ go run ./cmd/cli/memos \
   -memo=memo-123 \
   -content="更新後の本文" \
   -visibility=PUBLIC
+```
+
+メモ作成（改行を含む本文をファイルから渡す）
+```bash
+go run ./cmd/cli/memos \
+  -operation=create-memo \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -content-file="./memo.md" \
+  -visibility=PRIVATE
 ```
 
 ## 出力

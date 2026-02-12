@@ -51,6 +51,7 @@ type Config struct {
 	Memo   string
 
 	Content     string
+	ContentFile string
 	Visibility  string
 	State       string
 	Pinned      bool
@@ -91,6 +92,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.MemoID, "memo-id", "", "create-memo で作成する memoId（任意）")
 	fs.StringVar(&cfg.Memo, "memo", "", "get-memo/update-memo で対象にする memo 識別子")
 	fs.StringVar(&cfg.Content, "content", "", "create-memo/update-memo で設定する本文")
+	fs.StringVar(&cfg.ContentFile, "content-file", "", "create-memo/update-memo で設定する本文ファイルのパス")
 	fs.StringVar(&cfg.Visibility, "visibility", "", "visibility（PRIVATE/PROTECTED/PUBLIC）")
 	fs.StringVar(&cfg.State, "state", "", "state（NORMAL/ARCHIVED）")
 	fs.Var(pinnedValue, "pinned", "pinned の設定値（true/false）")
@@ -118,6 +120,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.MemoID = strings.TrimSpace(cfg.MemoID)
 	cfg.Memo = strings.TrimSpace(cfg.Memo)
 	cfg.Content = strings.TrimSpace(cfg.Content)
+	cfg.ContentFile = strings.TrimSpace(cfg.ContentFile)
 	cfg.Visibility = strings.ToUpper(strings.TrimSpace(cfg.Visibility))
 	cfg.State = strings.ToUpper(strings.TrimSpace(cfg.State))
 	cfg.DisplayTime = strings.TrimSpace(cfg.DisplayTime)
@@ -166,8 +169,8 @@ func validateConfig(cfg *Config) error {
 
 	switch cfg.Operation {
 	case OperationCreateMemo:
-		if cfg.Content == "" {
-			return fmt.Errorf("create-memo 操作には content パラメータが必要です")
+		if err := validateContentInput(cfg.Content, cfg.ContentFile, "create-memo"); err != nil {
+			return err
 		}
 	case OperationGetMemo:
 		if cfg.Memo == "" {
@@ -181,8 +184,8 @@ func validateConfig(cfg *Config) error {
 		if cfg.Memo == "" {
 			return fmt.Errorf("update-memo 操作には memo パラメータが必要です")
 		}
-		if cfg.Content == "" {
-			return fmt.Errorf("update-memo 操作には content パラメータが必要です")
+		if err := validateContentInput(cfg.Content, cfg.ContentFile, "update-memo"); err != nil {
+			return err
 		}
 	}
 
@@ -203,6 +206,19 @@ func isSupportedValue(value string, candidates map[string]struct{}) bool {
 	return ok
 }
 
+func validateContentInput(content, contentFile, operation string) error {
+	hasContent := content != ""
+	hasContentFile := contentFile != ""
+
+	if hasContent && hasContentFile {
+		return fmt.Errorf("%s 操作では content と content-file は同時に指定できません", operation)
+	}
+	if !hasContent && !hasContentFile {
+		return fmt.Errorf("%s 操作には content または content-file パラメータが必要です", operation)
+	}
+	return nil
+}
+
 // PrintUsage は CLI の利用方法を表示する。
 func PrintUsage() {
 	ops := make([]string, len(supportedOperations))
@@ -221,16 +237,17 @@ func PrintUsage() {
 
 	fmt.Fprintf(os.Stderr, "operation 別オプション:\n")
 	fmt.Fprintf(os.Stderr, "  create-memo\n")
-	fmt.Fprintf(os.Stderr, "        -content (必須), -memo-id (任意), -visibility (任意), -state (任意), -pinned (任意), -display-time (任意)\n")
+	fmt.Fprintf(os.Stderr, "        -content または -content-file (どちらか必須), -memo-id (任意), -visibility (任意), -state (任意), -pinned (任意), -display-time (任意)\n")
 	fmt.Fprintf(os.Stderr, "  get-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
-	fmt.Fprintf(os.Stderr, "        -memo (必須), -content (必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意)\n\n")
+	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意)\n\n")
 
 	fmt.Fprintf(os.Stderr, "例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content='hello'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content-file=./memo.md\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=get-memo -base-url=https://memos.example.com -api-token=token -memo=abc123\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -page-size=20 -state=NORMAL\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
