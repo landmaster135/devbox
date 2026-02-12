@@ -37,10 +37,16 @@ func main() {
 		handleCreateCollection(ctx, service, cfg)
 	case config.OperationListCollections:
 		handleListCollections(ctx, service, cfg)
+	case config.OperationDescribeCollection:
+		handleDescribeCollection(ctx, service, cfg)
+	case config.OperationDeleteCollection:
+		handleDeleteCollection(ctx, service, cfg)
 	case config.OperationUpsertTexts:
 		handleUpsertTexts(ctx, service, cfg)
 	case config.OperationQueryPoints:
 		handleQueryPoints(ctx, service, cfg)
+	case config.OperationOverwritePayload:
+		handleOverwritePayload(ctx, service, cfg)
 	default:
 		exitWithError(fmt.Errorf("未対応の operation です: %s", cfg.Operation))
 	}
@@ -73,6 +79,38 @@ func handleListCollections(ctx context.Context, service *usecases.Service, cfg *
 		exitWithError(err)
 	}
 	if err := printJSON(map[string][]string{"collections": collections}); err != nil {
+		exitWithError(err)
+	}
+}
+
+func handleDescribeCollection(ctx context.Context, service *usecases.Service, cfg *config.Config) {
+	params := domain.DescribeCollectionParams{
+		DBHost:         cfg.DBHost,
+		DBPort:         cfg.DBPort,
+		CollectionName: cfg.CollectionName,
+	}
+	info, err := service.DescribeCollection(ctx, params)
+	if err != nil {
+		exitWithError(err)
+	}
+	if err := printJSON(info); err != nil {
+		exitWithError(err)
+	}
+}
+
+func handleDeleteCollection(ctx context.Context, service *usecases.Service, cfg *config.Config) {
+	params := domain.DeleteCollectionParams{
+		DBHost:         cfg.DBHost,
+		DBPort:         cfg.DBPort,
+		CollectionName: cfg.CollectionName,
+	}
+	if err := service.DeleteCollection(ctx, params); err != nil {
+		exitWithError(err)
+	}
+	if err := printJSON(map[string]string{
+		"collection_name": cfg.CollectionName,
+		"status":          "deleted",
+	}); err != nil {
 		exitWithError(err)
 	}
 }
@@ -134,6 +172,28 @@ func handleQueryPoints(ctx context.Context, service *usecases.Service, cfg *conf
 		exitWithError(err)
 	}
 	if err := printJSON(points); err != nil {
+		exitWithError(err)
+	}
+}
+
+func handleOverwritePayload(ctx context.Context, service *usecases.Service, cfg *config.Config) {
+	payloadMap, err := parsePayloadMap(cfg.Payload)
+	if err != nil {
+		exitWithError(err)
+	}
+
+	params := domain.OverwritePayloadParams{
+		DBHost:         cfg.DBHost,
+		DBPort:         cfg.DBPort,
+		CollectionName: cfg.CollectionName,
+		Payload:        payloadCopy(payloadMap),
+	}
+
+	result, err := service.OverwritePayload(ctx, params)
+	if err != nil {
+		exitWithError(err)
+	}
+	if err := printJSON(result); err != nil {
 		exitWithError(err)
 	}
 }

@@ -16,6 +16,20 @@ type CreateCollectionParams struct {
 	Size           int
 }
 
+// DescribeCollectionParams は describe-collection 操作の入力を表す。
+type DescribeCollectionParams struct {
+	DBHost         string
+	DBPort         int
+	CollectionName string
+}
+
+// DeleteCollectionParams は delete-collection 操作の入力を表す。
+type DeleteCollectionParams struct {
+	DBHost         string
+	DBPort         int
+	CollectionName string
+}
+
 // ListCollectionsParams は list-collections 操作の入力を表す。
 type ListCollectionsParams struct {
 	DBHost string
@@ -52,4 +66,14 @@ type QueryPointsParams struct {
 	Input          string
 	PayloadFilters []PayloadFilter
 	Limit          int
+}
+
+// OverwritePayloadParams は overwrite-payload 操作の入力。
+type OverwritePayloadParams struct {
+	DBHost         string
+	DBPort         int
+	CollectionName string
+	Payload        map[string]string
+	PointIDs       []string
+	Filters        []PayloadFilter
 }

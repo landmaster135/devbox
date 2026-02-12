@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -87,6 +88,24 @@ func (s *Service) CreateCollection(ctx context.Context, params domain.CreateColl
 	return nil
 }
 
+// DescribeCollection はコレクションの詳細情報を取得する。
+func (s *Service) DescribeCollection(ctx context.Context, params domain.DescribeCollectionParams) (*qdrant.CollectionInfo, error) {
+	client, err := s.clientFactory.NewClient(ClientOptions{Host: params.DBHost, Port: params.DBPort})
+	if err != nil {
+		return nil, fmt.Errorf("Qdrant クライアントの初期化に失敗しました: %w", err)
+	}
+	defer client.Close()
+
+	reqCtx, cancel := s.withTimeout(ctx)
+	defer cancel()
+
+	info, err := client.GetCollectionInfo(reqCtx, params.CollectionName)
+	if err != nil {
+		return nil, fmt.Errorf("コレクション情報の取得に失敗しました: %w", err)
+	}
+	return info, nil
+}
+
 // ListCollections はコレクション一覧を取得する。
 func (s *Service) ListCollections(ctx context.Context, params domain.ListCollectionsParams) ([]string, error) {
 	client, err := s.clientFactory.NewClient(ClientOptions{Host: params.DBHost, Port: params.DBPort})
@@ -103,6 +122,23 @@ func (s *Service) ListCollections(ctx context.Context, params domain.ListCollect
 		return nil, fmt.Errorf("コレクション一覧の取得に失敗しました: %w", err)
 	}
 	return collections, nil
+}
+
+// DeleteCollection は指定コレクションを削除する。
+func (s *Service) DeleteCollection(ctx context.Context, params domain.DeleteCollectionParams) error {
+	client, err := s.clientFactory.NewClient(ClientOptions{Host: params.DBHost, Port: params.DBPort})
+	if err != nil {
+		return fmt.Errorf("Qdrant クライアントの初期化に失敗しました: %w", err)
+	}
+	defer client.Close()
+
+	reqCtx, cancel := s.withTimeout(ctx)
+	defer cancel()
+
+	if err := client.DeleteCollection(reqCtx, params.CollectionName); err != nil {
+		return fmt.Errorf("コレクションの削除に失敗しました: %w", err)
+	}
+	return nil
 }
 
 // UpsertTexts は入力テキストのリストをベクトル化し、Qdrant に upsert する。
@@ -218,6 +254,34 @@ func (s *Service) QueryPoints(ctx context.Context, params domain.QueryPointsPara
 	return points, nil
 }
 
+// OverwritePayload は指定ポイント群の payload を完全に置き換える。
+func (s *Service) OverwritePayload(ctx context.Context, params domain.OverwritePayloadParams) (*qdrant.UpdateResult, error) {
+	if len(params.Payload) == 0 {
+		return nil, fmt.Errorf("overwrite する payload がありません")
+	}
+
+	client, err := s.clientFactory.NewClient(ClientOptions{Host: params.DBHost, Port: params.DBPort})
+	if err != nil {
+		return nil, fmt.Errorf("Qdrant クライアントの初期化に失敗しました: %w", err)
+	}
+	defer client.Close()
+
+	reqCtx, cancel := s.withTimeout(ctx)
+	defer cancel()
+
+	req := &qdrant.SetPayloadPoints{
+		CollectionName: params.CollectionName,
+		Payload:        buildStringPayload(params.Payload),
+		PointsSelector: buildPointsSelector(params.PointIDs, params.Filters),
+		Wait:           boolPtr(true),
+	}
+	result, err := client.OverwritePayload(reqCtx, req)
+	if err != nil {
+		return nil, fmt.Errorf("payload の overwrite に失敗しました: %w", err)
+	}
+	return result, nil
+}
+
 func (s *Service) embedAll(ctx context.Context, params domain.UpsertTextsParams) ([][]float64, error) {
 	svc, err := s.embeddingFactory.New(EmbeddingServiceOptions{
 		Host:    params.Embedding.Host,
@@ -310,6 +374,21 @@ func stringValue(v string) *qdrant.Value {
 	return &qdrant.Value{Kind: &qdrant.Value_StringValue{StringValue: v}}
 }
 
+func buildStringPayload(src map[string]string) map[string]*qdrant.Value {
+	if len(src) == 0 {
+		return nil
+	}
+	values := make(map[string]*qdrant.Value, len(src))
+	for k, v := range src {
+		key := strings.TrimSpace(k)
+		if key == "" {
+			continue
+		}
+		values[key] = stringValue(v)
+	}
+	return values
+}
+
 func buildFilters(filters []domain.PayloadFilter) []*qdrant.Condition {
 	if len(filters) == 0 {
 		return nil
@@ -334,6 +413,31 @@ func buildFilters(filters []domain.PayloadFilter) []*qdrant.Condition {
 		return nil
 	}
 	return conditions
+}
+
+func buildPointsSelector(ids []string, filters []domain.PayloadFilter) *qdrant.PointsSelector {
+	if pts := buildPointIDs(ids); len(pts) > 0 {
+		return qdrant.NewPointsSelectorIDs(pts)
+	}
+	if conds := buildFilters(filters); conds != nil {
+		return qdrant.NewPointsSelectorFilter(&qdrant.Filter{Must: conds})
+	}
+	return qdrant.NewPointsSelectorFilter(&qdrant.Filter{})
+}
+
+func buildPointIDs(ids []string) []*qdrant.PointId {
+	if len(ids) == 0 {
+		return nil
+	}
+	result := make([]*qdrant.PointId, 0, len(ids))
+	for _, id := range ids {
+		trimmed := strings.TrimSpace(id)
+		if trimmed == "" {
+			continue
+		}
+		result = append(result, &qdrant.PointId{PointIdOptions: &qdrant.PointId_Uuid{Uuid: trimmed}})
+	}
+	return result
 }
 
 func timeoutOrDefault(seconds int) time.Duration {
@@ -371,6 +475,9 @@ type QdrantClient interface {
 	ListCollections(ctx context.Context) ([]string, error)
 	Upsert(ctx context.Context, request *qdrant.UpsertPoints) (*qdrant.UpdateResult, error)
 	Query(ctx context.Context, request *qdrant.QueryPoints) ([]*qdrant.ScoredPoint, error)
+	GetCollectionInfo(ctx context.Context, collectionName string) (*qdrant.CollectionInfo, error)
+	DeleteCollection(ctx context.Context, collectionName string) error
+	OverwritePayload(ctx context.Context, request *qdrant.SetPayloadPoints) (*qdrant.UpdateResult, error)
 }
 
 // ClientFactory は Qdrant クライアントを生成する。
@@ -416,6 +523,18 @@ func (w *wrappedQdrantClient) Upsert(ctx context.Context, request *qdrant.Upsert
 
 func (w *wrappedQdrantClient) Query(ctx context.Context, request *qdrant.QueryPoints) ([]*qdrant.ScoredPoint, error) {
 	return w.client.Query(ctx, request)
+}
+
+func (w *wrappedQdrantClient) GetCollectionInfo(ctx context.Context, collectionName string) (*qdrant.CollectionInfo, error) {
+	return w.client.GetCollectionInfo(ctx, collectionName)
+}
+
+func (w *wrappedQdrantClient) DeleteCollection(ctx context.Context, collectionName string) error {
+	return w.client.DeleteCollection(ctx, collectionName)
+}
+
+func (w *wrappedQdrantClient) OverwritePayload(ctx context.Context, request *qdrant.SetPayloadPoints) (*qdrant.UpdateResult, error) {
+	return w.client.OverwritePayload(ctx, request)
 }
 
 // ----- 埋め込みサービスファクトリ -----

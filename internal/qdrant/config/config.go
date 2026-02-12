@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	OperationCreateCollection = "create-collection"
-	OperationListCollections  = "list-collections"
-	OperationUpsertTexts      = "upsert-texts"
-	OperationQueryPoints      = "query-points"
+	OperationCreateCollection   = "create-collection"
+	OperationListCollections    = "list-collections"
+	OperationUpsertTexts        = "upsert-texts"
+	OperationQueryPoints        = "query-points"
+	OperationDescribeCollection = "describe-collection"
+	OperationDeleteCollection   = "delete-collection"
+	OperationOverwritePayload   = "overwrite-payload"
 
 	defaultDBHost         = "127.0.0.1"
 	defaultDBPort         = 6334
@@ -29,6 +32,9 @@ var supportedOperations = []string{
 	OperationListCollections,
 	OperationUpsertTexts,
 	OperationQueryPoints,
+	OperationDescribeCollection,
+	OperationDeleteCollection,
+	OperationOverwritePayload,
 }
 
 // Config は CLI で受け取る設定値を保持する。
@@ -136,6 +142,10 @@ func validateConfig(cfg *Config) error {
 		}
 	case OperationListCollections:
 		// no-op
+	case OperationDescribeCollection, OperationDeleteCollection:
+		if cfg.CollectionName == "" {
+			return fmt.Errorf("operation %s では collection-name が必要です", cfg.Operation)
+		}
 	case OperationUpsertTexts:
 		if err := validateCollectionAndEmbedding(cfg); err != nil {
 			return err
@@ -155,6 +165,16 @@ func validateConfig(cfg *Config) error {
 		}
 		if cfg.QueryLimit <= 0 {
 			return fmt.Errorf("limit パラメータは 1 以上を指定してください")
+		}
+		if err := validatePayloadFormat(cfg.Payload); err != nil {
+			return err
+		}
+	case OperationOverwritePayload:
+		if cfg.CollectionName == "" {
+			return fmt.Errorf("overwrite-payload では collection-name が必要です")
+		}
+		if strings.TrimSpace(cfg.Payload) == "" {
+			return fmt.Errorf("overwrite-payload では payload が必要です")
 		}
 		if err := validatePayloadFormat(cfg.Payload); err != nil {
 			return err
@@ -226,6 +246,9 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "create-collection 用:\n")
 	fmt.Fprintf(os.Stderr, "  -size int\n        ベクトル次元 (デフォルト: %d)\n\n", defaultCollectionSize)
 
+	fmt.Fprintf(os.Stderr, "describe-collection/delete-collection 用:\n")
+	fmt.Fprintf(os.Stderr, "  -collection-name string\n        対象コレクション名 (必須)\n\n")
+
 	fmt.Fprintf(os.Stderr, "upsert-texts/query-points 用:\n")
 	fmt.Fprintf(os.Stderr, "  -embedding-host string (デフォルト: %s)\n", defaultEmbeddingHost)
 	fmt.Fprintf(os.Stderr, "  -embedding-port int (デフォルト: %d)\n", defaultEmbeddingPort)
@@ -233,6 +256,9 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -input string\n        埋め込み対象のテキスト (単一指定)\n")
 	fmt.Fprintf(os.Stderr, "  -payload string\n        payload 条件 (key=value、単一指定)\n")
 	fmt.Fprintf(os.Stderr, "  -limit int\n        query-points の取得件数 (デフォルト: %d)\n", defaultQueryLimit)
+
+	fmt.Fprintf(os.Stderr, "overwrite-payload 用:\n")
+	fmt.Fprintf(os.Stderr, "  -payload string\n        上書きする payload (key=value、単一指定)\n")
 }
 
 // SupportedOperations はサポートされている operation を返す。

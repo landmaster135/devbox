@@ -136,6 +136,147 @@ func TestService_QueryPoints(t *testing.T) {
 	}
 }
 
+func TestService_DescribeCollection(t *testing.T) {
+	fakeClient := &fakeQdrantClient{collectionInfo: &qdrant.CollectionInfo{}}
+	svc, err := NewService(ServiceOptions{ClientFactory: &fakeClientFactory{client: fakeClient}})
+	if err != nil {
+		t.Fatalf("サービス初期化に失敗: %v", err)
+	}
+
+	info, err := svc.DescribeCollection(context.Background(), domain.DescribeCollectionParams{
+		DBHost:         "localhost",
+		DBPort:         6334,
+		CollectionName: "demo",
+	})
+	if err != nil {
+		t.Fatalf("DescribeCollection が失敗: %v", err)
+	}
+	if info != fakeClient.collectionInfo {
+		t.Fatalf("期待した collection info が返っていません")
+	}
+	if fakeClient.describeCollectionName != "demo" {
+		t.Fatalf("describe 用 collection name が不正: %s", fakeClient.describeCollectionName)
+	}
+	if !fakeClient.closed {
+		t.Fatalf("クライアントが Close されていません")
+	}
+}
+
+func TestService_DeleteCollection(t *testing.T) {
+	fakeClient := &fakeQdrantClient{}
+	svc, err := NewService(ServiceOptions{ClientFactory: &fakeClientFactory{client: fakeClient}})
+	if err != nil {
+		t.Fatalf("サービス初期化に失敗: %v", err)
+	}
+
+	params := domain.DeleteCollectionParams{
+		DBHost:         "localhost",
+		DBPort:         6334,
+		CollectionName: "demo",
+	}
+
+	if err := svc.DeleteCollection(context.Background(), params); err != nil {
+		t.Fatalf("DeleteCollection が失敗: %v", err)
+	}
+	if fakeClient.deleteCollectionName != "demo" {
+		t.Fatalf("削除対象の collection name が不正: %s", fakeClient.deleteCollectionName)
+	}
+	if !fakeClient.closed {
+		t.Fatalf("クライアントが Close されていません")
+	}
+}
+
+func TestService_OverwritePayload(t *testing.T) {
+	t.Run("PointIDsSelector", func(t *testing.T) {
+		fakeClient := &fakeQdrantClient{}
+		svc, err := NewService(ServiceOptions{ClientFactory: &fakeClientFactory{client: fakeClient}})
+		if err != nil {
+			t.Fatalf("サービス初期化に失敗: %v", err)
+		}
+
+		payload := map[string]string{"topic": "travel", "lang": "ja"}
+		params := domain.OverwritePayloadParams{
+			DBHost:         "localhost",
+			DBPort:         6334,
+			CollectionName: "demo",
+			Payload:        payload,
+			PointIDs:       []string{"point-1"},
+		}
+
+		if _, err := svc.OverwritePayload(context.Background(), params); err != nil {
+			t.Fatalf("OverwritePayload が失敗: %v", err)
+		}
+
+		req := fakeClient.overwriteReq
+		if req == nil {
+			t.Fatalf("OverwritePayload リクエストが送られていません")
+		}
+		if got := req.GetCollectionName(); got != "demo" {
+			t.Fatalf("collection name mismatch: %s", got)
+		}
+		points := req.GetPointsSelector().GetPoints()
+		if points == nil || len(points.GetIds()) != 1 {
+			t.Fatalf("ポイント ID が設定されていません")
+		}
+		if points.GetIds()[0].GetUuid() != "point-1" {
+			t.Fatalf("ポイント ID の変換に失敗しています: %s", points.GetIds()[0].GetUuid())
+		}
+		if req.GetPayload()["topic"].GetStringValue() != "travel" {
+			t.Fatalf("payload topic が一致しません")
+		}
+		if !fakeClient.closed {
+			t.Fatalf("クライアントが Close されていません")
+		}
+	})
+
+	t.Run("FilterSelectorFallback", func(t *testing.T) {
+		fakeClient := &fakeQdrantClient{}
+		svc, err := NewService(ServiceOptions{ClientFactory: &fakeClientFactory{client: fakeClient}})
+		if err != nil {
+			t.Fatalf("サービス初期化に失敗: %v", err)
+		}
+
+		params := domain.OverwritePayloadParams{
+			DBHost:         "localhost",
+			DBPort:         6334,
+			CollectionName: "demo",
+			Payload:        map[string]string{" status ": "active"},
+			Filters:        []domain.PayloadFilter{{Key: "topic", Value: "travel"}},
+		}
+
+		if _, err := svc.OverwritePayload(context.Background(), params); err != nil {
+			t.Fatalf("OverwritePayload が失敗: %v", err)
+		}
+
+		req := fakeClient.overwriteReq
+		if req.GetPointsSelector().GetFilter() == nil {
+			t.Fatalf("フィルタセレクタが設定されていません")
+		}
+		if len(req.GetPointsSelector().GetFilter().GetMust()) != 1 {
+			t.Fatalf("フィルタ条件の数が不正です")
+		}
+		if _, exists := req.GetPayload()["status"]; !exists {
+			t.Fatalf("payload のキー整形に失敗しています")
+		}
+	})
+
+	t.Run("MissingPayload", func(t *testing.T) {
+		fakeClient := &fakeQdrantClient{}
+		svc, err := NewService(ServiceOptions{ClientFactory: &fakeClientFactory{client: fakeClient}})
+		if err != nil {
+			t.Fatalf("サービス初期化に失敗: %v", err)
+		}
+		_, err = svc.OverwritePayload(context.Background(), domain.OverwritePayloadParams{
+			DBHost:         "localhost",
+			DBPort:         6334,
+			CollectionName: "demo",
+		})
+		if err == nil {
+			t.Fatalf("payload 未指定エラーを検知できていません")
+		}
+	})
+}
+
 // --- テスト用フェイク ---
 
 type fakeClientFactory struct {
@@ -149,13 +290,18 @@ func (f *fakeClientFactory) NewClient(opts ClientOptions) (QdrantClient, error) 
 }
 
 type fakeQdrantClient struct {
-	opts         ClientOptions
-	closed       bool
-	upsertReq    *qdrant.UpsertPoints
-	queryReq     *qdrant.QueryPoints
-	createReq    *qdrant.CreateCollection
-	upsertResult *qdrant.UpdateResult
-	queryResult  []*qdrant.ScoredPoint
+	opts                   ClientOptions
+	closed                 bool
+	upsertReq              *qdrant.UpsertPoints
+	queryReq               *qdrant.QueryPoints
+	createReq              *qdrant.CreateCollection
+	upsertResult           *qdrant.UpdateResult
+	queryResult            []*qdrant.ScoredPoint
+	collectionInfo         *qdrant.CollectionInfo
+	describeCollectionName string
+	deleteCollectionName   string
+	overwriteReq           *qdrant.SetPayloadPoints
+	overwriteResult        *qdrant.UpdateResult
 }
 
 func (f *fakeQdrantClient) Close() error {
@@ -172,6 +318,19 @@ func (f *fakeQdrantClient) ListCollections(ctx context.Context) ([]string, error
 	return []string{"demo"}, nil
 }
 
+func (f *fakeQdrantClient) GetCollectionInfo(ctx context.Context, collectionName string) (*qdrant.CollectionInfo, error) {
+	f.describeCollectionName = collectionName
+	if f.collectionInfo != nil {
+		return f.collectionInfo, nil
+	}
+	return &qdrant.CollectionInfo{}, nil
+}
+
+func (f *fakeQdrantClient) DeleteCollection(ctx context.Context, collectionName string) error {
+	f.deleteCollectionName = collectionName
+	return nil
+}
+
 func (f *fakeQdrantClient) Upsert(ctx context.Context, request *qdrant.UpsertPoints) (*qdrant.UpdateResult, error) {
 	f.upsertReq = request
 	if f.upsertResult != nil {
@@ -186,6 +345,14 @@ func (f *fakeQdrantClient) Query(ctx context.Context, request *qdrant.QueryPoint
 		return f.queryResult, nil
 	}
 	return nil, nil
+}
+
+func (f *fakeQdrantClient) OverwritePayload(ctx context.Context, request *qdrant.SetPayloadPoints) (*qdrant.UpdateResult, error) {
+	f.overwriteReq = request
+	if f.overwriteResult != nil {
+		return f.overwriteResult, nil
+	}
+	return &qdrant.UpdateResult{}, nil
 }
 
 type fakeEmbeddingFactory struct {

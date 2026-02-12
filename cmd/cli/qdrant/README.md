@@ -13,7 +13,7 @@ Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert /
 
 | フラグ | 説明 | 既定値 |
 |--------|------|--------|
-| `-operation` | 実行する操作。`create-collection` / `list-collections` / `upsert-texts` / `query-points` | - |
+| `-operation` | 実行する操作。`create-collection` / `describe-collection` / `delete-collection` / `list-collections` / `upsert-texts` / `query-points` / `overwrite-payload` | - |
 | `-db-host` | Qdrant gRPC ホスト | `127.0.0.1` |
 | `-db-port` | Qdrant gRPC ポート | `6334` |
 | `-collection-name` | 操作対象のコレクション名（create/list を除き必須） | - |
@@ -24,6 +24,14 @@ Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert /
 | フラグ | 説明 | 既定値 |
 |--------|------|--------|
 | `-size` | コレクションに登録するベクトル次元 | `4096` |
+
+### describe-collection / delete-collection 固有
+
+| フラグ | 説明 | 既定値 |
+|--------|------|--------|
+| `-collection-name` | 対象コレクション名（必須） | - |
+
+`describe-collection` は `qdrant.CollectionInfo` を JSON として出力します。`delete-collection` は削除結果のみを出力します。
 
 ### upsert-texts / query-points 固有
 
@@ -37,6 +45,14 @@ Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert /
 | `-limit` | `query-points` の取得件数 | `5` |
 
 > ℹ️ `upsert-texts` では 1 件の `input` と `payload` を **ペアのリスト**（長さ 1）に変換してから `points.Upsert` に渡します。`query-points` でも同様に payload 条件をリスト化して `Filter.Must` に展開します。複数条件を取り扱いたい場合は CLI の拡張のみで済むように実装されています。
+
+### overwrite-payload 固有
+
+| フラグ | 説明 | 既定値 |
+|--------|------|--------|
+| `-payload` | `key=value` 形式で指定する上書き後の payload。CLI 上では 1 キーのみ受け付けますが、ユースケース層では複数フィールド分を扱えるようになっています。 | - |
+
+`overwrite-payload` は現在、対象ポイントのセレクタを CLI から指定できないため、コレクション内のポイントをすべて対象に同じ payload を設定します。将来的に `point-id` や filter を追加する想定の作りになっています。
 
 ## 使用例
 
@@ -53,6 +69,22 @@ go run ./cmd/cli/qdrant \
 ### コレクション一覧
 ```bash
 go run ./cmd/cli/qdrant -operation list-collections -db-host 127.0.0.1 -db-port 6334
+```
+
+### コレクション情報の取得
+```bash
+go run ./cmd/cli/qdrant \
+  -operation describe-collection \
+  -collection-name documents \
+  -db-host 127.0.0.1 -db-port 6334
+```
+
+### コレクションの削除
+```bash
+go run ./cmd/cli/qdrant \
+  -operation delete-collection \
+  -collection-name documents \
+  -db-host 127.0.0.1 -db-port 6334
 ```
 
 ### テキストの upsert
@@ -81,3 +113,14 @@ go run ./cmd/cli/qdrant \
 ```
 
 `query-points` では検索ベクトル生成にも `vector-embedding` ユースケースを利用し、Qdrant 側には `WithPayload=enable` をセットして payload を常に返すようにしています。
+
+### payload の上書き
+```bash
+go run ./cmd/cli/qdrant \
+  -operation overwrite-payload \
+  -collection-name documents \
+  -db-host 127.0.0.1 -db-port 6334 \
+  -payload status=reviewed
+```
+
+> ⚠️ 現状は対象ポイントを CLI から絞り込めないため、上記コマンドは `documents` コレクションの全ポイントに同一 payload を設定します。部分的に適用したい場合は、今後追加予定のセレクタフラグをお待ちください。
