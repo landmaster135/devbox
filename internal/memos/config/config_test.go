@@ -1,0 +1,271 @@
+package config
+
+import (
+	"os"
+	"strings"
+	"testing"
+)
+
+func TestConfig_ParseFlags_CreateMemo_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content=hello",
+		"-visibility=private",
+		"-state=normal",
+		"-pinned",
+		"-display-time=2026-02-12T10:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateMemo {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateMemo)
+	}
+	if cfg.Visibility != "PRIVATE" {
+		t.Fatalf("visibility = %s, want PRIVATE", cfg.Visibility)
+	}
+	if cfg.State != "NORMAL" {
+		t.Fatalf("state = %s, want NORMAL", cfg.State)
+	}
+	if !cfg.PinnedSet || !cfg.Pinned {
+		t.Fatalf("pinned = %v (set=%v), want true and set", cfg.Pinned, cfg.PinnedSet)
+	}
+}
+
+func TestConfig_ParseFlags_UpdateMemoRequiresParams(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=update-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "memo パラメータ") {
+		t.Fatalf("error = %v, want memo パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlags_ListMemosPageSizeZero_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=0",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "page-size") {
+		t.Fatalf("error = %v, want page-size", err)
+	}
+}
+
+func TestConfig_ParseFlags_InvalidOperation_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=unknown",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "未対応") {
+		t.Fatalf("error = %v, want 未対応", err)
+	}
+}
+
+func TestConfig_ParseFlags_InvalidVisibility_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=create-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content=hello",
+		"-visibility=team-only",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "visibility") {
+		t.Fatalf("error = %v, want visibility", err)
+	}
+}
+
+func TestConfig_ParseFlags_Help_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{"-help"})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if !cfg.Help {
+		t.Fatalf("help = %v, want true", cfg.Help)
+	}
+}
+
+func TestConfig_ParseFlags_Normal(t *testing.T) {
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+	}()
+
+	os.Args = []string{
+		"memos-cli",
+		"-operation=get-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+	}
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() error = %v", err)
+	}
+	if cfg.Operation != OperationGetMemo {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationGetMemo)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_MissingBaseURL_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=get-memo",
+		"-api-token=test-token",
+		"-memo=memo-1",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "base-url") {
+		t.Fatalf("error = %v, want base-url", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_MissingAPIToken_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=get-memo",
+		"-base-url=https://memos.example.com",
+		"-memo=memo-1",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "api-token") {
+		t.Fatalf("error = %v, want api-token", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_InvalidState_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-state=done",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "state") {
+		t.Fatalf("error = %v, want state", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_InvalidTimeout_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-timeout=0",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "timeout") {
+		t.Fatalf("error = %v, want timeout", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_NegativePageSize_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=-1",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "page-size") {
+		t.Fatalf("error = %v, want page-size", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_GetMemoMissingMemo_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=get-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "memo パラメータ") {
+		t.Fatalf("error = %v, want memo パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateMemoMissingContent_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=update-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "content パラメータ") {
+		t.Fatalf("error = %v, want content パラメータ", err)
+	}
+}
+
+func TestConfig_PrintUsage_Normal(t *testing.T) {
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+	}()
+	os.Args = []string{"memos-cli"}
+
+	PrintUsage()
+}
+
+func TestParseBool_Normal(t *testing.T) {
+	tests := []struct {
+		in   string
+		want bool
+	}{
+		{in: "true", want: true},
+		{in: "false", want: false},
+		{in: "YES", want: true},
+		{in: "n", want: false},
+	}
+
+	for _, tc := range tests {
+		got, err := parseBool(tc.in)
+		if err != nil {
+			t.Fatalf("parseBool(%q) error = %v", tc.in, err)
+		}
+		if got != tc.want {
+			t.Fatalf("parseBool(%q) = %v, want %v", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestParseBool_Invalid_Error(t *testing.T) {
+	_, err := parseBool("invalid")
+	if err == nil {
+		t.Fatal("parseBool() error = nil, want error")
+	}
+}
