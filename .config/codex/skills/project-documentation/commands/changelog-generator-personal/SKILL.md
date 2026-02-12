@@ -1,5 +1,5 @@
 ---
-name: changelog-generator
+name: changelog-generator-personal
 description: Create project-grade changelogs that mirror /CHANGELOG.md (version heading, PR line, Features/Improvements/Refactor/Bug Fixes/Documentation blocks, optional tables) by organizing commits from a user-specified start datetime. Always ask the user for the exact datetime (ISO 8601 or YYYY-MM-DD HH:MM) before starting.
 ---
 
@@ -11,8 +11,8 @@ This skill walks you through producing release notes that follow `/CHANGELOG.md`
 
 1. Briefly confirm the presence of `.agents/`, `.agents/instructions.md`, and `.agents/test_results.md` in the repo root.
 2. Ask the user before touching git:
-   - "From which exact datetime (ISO 8601 or `YYYY-MM-DD HH:MM`) should the changelog start?"
-   - If relevant, ask for end datetime, target version, or PR number constraints.
+  - "From which exact datetime (ISO 8601 or `YYYY-MM-DD HH:MM`) should the changelog start?"
+  - If relevant, ask for end datetime, target version, or PR number constraints.
 3. Normalize the answer so it can drop directly into commands like `git log --since="<datetime>"`.
 
 ## 1. Gather Commits
@@ -67,9 +67,9 @@ PR: #<number> (use `PR: pending` if unknown)
 
 1. sanity-check that the number of described bullets roughly matches the commit count you analyzed.
 2. Provide whatever the user asked for:
-   - The final Markdown entry
-   - Snippets from `git show <hash>` if they want supporting detail
-   - Summaries of PR numbers, tags, or blast radius
+  - The final Markdown entry
+  - Snippets from `git show <hash>` if they want supporting detail
+  - Summaries of PR numbers, tags, or blast radius
 3. Insert the new entry at the top of `/CHANGELOG.md` unless the user specifies another location.
 4. If you ran tests (`go test`, scripts, etc.), record results and update `.agents/test_results.md` accordingly.
 
