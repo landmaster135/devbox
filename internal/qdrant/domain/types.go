@@ -75,5 +75,13 @@ type OverwritePayloadParams struct {
 	CollectionName string
 	Payload        map[string]string
 	PointIDs       []string
-	Filters        []PayloadFilter
+	Filters        OverwriteFilters
+}
+
+// OverwriteFilters は overwrite-payload 用の複数条件を表す。
+type OverwriteFilters struct {
+	Must           []PayloadFilter
+	MustNot        []PayloadFilter
+	Should         []PayloadFilter
+	MinShouldCount int
 }

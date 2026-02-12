@@ -187,6 +187,7 @@ func handleOverwritePayload(ctx context.Context, service *usecases.Service, cfg 
 		DBPort:         cfg.DBPort,
 		CollectionName: cfg.CollectionName,
 		Payload:        payloadCopy(payloadMap),
+		Filters:        convertOverwriteFilters(cfg),
 	}
 
 	result, err := service.OverwritePayload(ctx, params)
@@ -244,6 +245,26 @@ func splitKeyValue(raw string) (string, string, error) {
 		return "", "", fmt.Errorf("payload の key/value には空文字を指定できません")
 	}
 	return key, value, nil
+}
+
+func convertOverwriteFilters(cfg *config.Config) domain.OverwriteFilters {
+	return domain.OverwriteFilters{
+		Must:           convertKeyValues(cfg.FilterMust),
+		MustNot:        convertKeyValues(cfg.FilterMustNot),
+		Should:         convertKeyValues(cfg.FilterShould),
+		MinShouldCount: cfg.FilterMinShouldCount,
+	}
+}
+
+func convertKeyValues(list []config.KeyValue) []domain.PayloadFilter {
+	if len(list) == 0 {
+		return nil
+	}
+	filters := make([]domain.PayloadFilter, 0, len(list))
+	for _, kv := range list {
+		filters = append(filters, domain.PayloadFilter{Key: kv.Key, Value: kv.Value})
+	}
+	return filters
 }
 
 func printJSON(v any) error {

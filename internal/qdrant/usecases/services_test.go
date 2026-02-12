@@ -128,8 +128,8 @@ func TestService_QueryPoints(t *testing.T) {
 	if cond.GetKey() != "topic" {
 		t.Fatalf("filter key mismatch: %s", cond.GetKey())
 	}
-	if cond.GetMatch().GetText() != "greeting" {
-		t.Fatalf("filter value mismatch: %s", cond.GetMatch().GetText())
+	if cond.GetMatch().GetKeyword() != "greeting" {
+		t.Fatalf("filter value mismatch: %s", cond.GetMatch().GetKeyword())
 	}
 	if !fakeClient.closed {
 		t.Fatalf("クライアントが Close されていません")
@@ -201,6 +201,7 @@ func TestService_OverwritePayload(t *testing.T) {
 			CollectionName: "demo",
 			Payload:        payload,
 			PointIDs:       []string{"point-1"},
+			Filters:        domain.OverwriteFilters{},
 		}
 
 		if _, err := svc.OverwritePayload(context.Background(), params); err != nil {
@@ -241,7 +242,9 @@ func TestService_OverwritePayload(t *testing.T) {
 			DBPort:         6334,
 			CollectionName: "demo",
 			Payload:        map[string]string{" status ": "active"},
-			Filters:        []domain.PayloadFilter{{Key: "topic", Value: "travel"}},
+			Filters: domain.OverwriteFilters{
+				Must: []domain.PayloadFilter{{Key: "topic", Value: "travel"}},
+			},
 		}
 
 		if _, err := svc.OverwritePayload(context.Background(), params); err != nil {
@@ -257,6 +260,41 @@ func TestService_OverwritePayload(t *testing.T) {
 		}
 		if _, exists := req.GetPayload()["status"]; !exists {
 			t.Fatalf("payload のキー整形に失敗しています")
+		}
+	})
+
+	t.Run("ShouldConditions", func(t *testing.T) {
+		fakeClient := &fakeQdrantClient{}
+		svc, err := NewService(ServiceOptions{ClientFactory: &fakeClientFactory{client: fakeClient}})
+		if err != nil {
+			t.Fatalf("サービス初期化に失敗: %v", err)
+		}
+
+		params := domain.OverwritePayloadParams{
+			DBHost:         "localhost",
+			DBPort:         6334,
+			CollectionName: "demo",
+			Payload:        map[string]string{"status": "active"},
+			Filters: domain.OverwriteFilters{
+				Should:         []domain.PayloadFilter{{Key: "topic", Value: "travel"}},
+				MinShouldCount: 1,
+			},
+		}
+
+		if _, err := svc.OverwritePayload(context.Background(), params); err != nil {
+			t.Fatalf("OverwritePayload が失敗: %v", err)
+		}
+
+		selector := fakeClient.overwriteReq.GetPointsSelector()
+		filter := selector.GetFilter()
+		if filter == nil {
+			t.Fatalf("フィルタが設定されていません")
+		}
+		if len(filter.GetShould()) != 1 {
+			t.Fatalf("should 条件が設定されていません")
+		}
+		if filter.GetMinShould() == nil || filter.GetMinShould().GetMinCount() != 1 {
+			t.Fatalf("min_should が正しく設定されていません")
 		}
 	})
 

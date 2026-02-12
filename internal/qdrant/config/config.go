@@ -53,6 +53,11 @@ type Config struct {
 	Payload    string
 	QueryLimit int
 
+	FilterMust           []KeyValue
+	FilterMustNot        []KeyValue
+	FilterShould         []KeyValue
+	FilterMinShouldCount int
+
 	Help bool
 }
 
@@ -83,6 +88,11 @@ func ParseFlags() (*Config, error) {
 	fs.StringVar(&cfg.Input, "input", cfg.Input, "埋め込み対象テキスト (単一指定)")
 	fs.StringVar(&cfg.Payload, "payload", cfg.Payload, "payload 条件 (key=value) の単一指定")
 	fs.IntVar(&cfg.QueryLimit, "limit", cfg.QueryLimit, "query-points で取得する最大件数")
+	fs.IntVar(&cfg.FilterMinShouldCount, "filter-min-should", cfg.FilterMinShouldCount, "should 条件のうち最低いくつを満たすか (overwrite-payload 用)")
+
+	fs.Var(&keyValueList{target: &cfg.FilterMust}, "filter-must", "overwrite-payload 用の must 条件 (key=value、複数指定可)")
+	fs.Var(&keyValueList{target: &cfg.FilterMustNot}, "filter-must-not", "overwrite-payload 用の must-not 条件 (key=value、複数指定可)")
+	fs.Var(&keyValueList{target: &cfg.FilterShould}, "filter-should", "overwrite-payload 用の should 条件 (key=value、複数指定可)")
 	fs.BoolVar(&cfg.Help, "help", false, "ヘルプを表示する")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -181,6 +191,13 @@ func validateConfig(cfg *Config) error {
 		}
 	}
 
+	if cfg.FilterMinShouldCount < 0 {
+		return fmt.Errorf("filter-min-should は 0 以上を指定してください")
+	}
+	if cfg.Operation == OperationOverwritePayload && cfg.FilterMinShouldCount > 0 && len(cfg.FilterShould) == 0 {
+		return fmt.Errorf("filter-min-should を指定する場合は filter-should も少なくとも1件必要です")
+	}
+
 	return nil
 }
 
@@ -259,6 +276,56 @@ func PrintUsage() {
 
 	fmt.Fprintf(os.Stderr, "overwrite-payload 用:\n")
 	fmt.Fprintf(os.Stderr, "  -payload string\n        上書きする payload (key=value、単一指定)\n")
+	fmt.Fprintf(os.Stderr, "  -filter-must key=value\n        上書き対象を絞り込む must 条件 (複数指定可)\n")
+	fmt.Fprintf(os.Stderr, "  -filter-must-not key=value\n        上書き対象から除外する条件 (複数指定可)\n")
+	fmt.Fprintf(os.Stderr, "  -filter-should key=value\n        should 条件 (複数指定可)\n")
+	fmt.Fprintf(os.Stderr, "  -filter-min-should int\n        should 条件のうち満たすべき最小件数\n")
+}
+
+// KeyValue は key=value 形式の値を保持する。
+type KeyValue struct {
+	Key   string
+	Value string
+}
+
+type keyValueList struct {
+	target *[]KeyValue
+}
+
+func (l *keyValueList) String() string {
+	if l == nil || l.target == nil {
+		return ""
+	}
+	parts := make([]string, 0, len(*l.target))
+	for _, kv := range *l.target {
+		parts = append(parts, fmt.Sprintf("%s=%s", kv.Key, kv.Value))
+	}
+	return strings.Join(parts, ",")
+}
+
+func (l *keyValueList) Set(value string) error {
+	if l == nil || l.target == nil {
+		return fmt.Errorf("内部エラー: keyValueList が初期化されていません")
+	}
+	key, val, err := parseKeyValuePair(value)
+	if err != nil {
+		return err
+	}
+	*l.target = append(*l.target, KeyValue{Key: key, Value: val})
+	return nil
+}
+
+func parseKeyValuePair(raw string) (string, string, error) {
+	parts := strings.SplitN(strings.TrimSpace(raw), "=", 2)
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("key=value 形式で指定してください: %s", raw)
+	}
+	key := strings.TrimSpace(parts[0])
+	value := strings.TrimSpace(parts[1])
+	if key == "" || value == "" {
+		return "", "", fmt.Errorf("key/value に空文字は指定できません: %s", raw)
+	}
+	return key, value, nil
 }
 
 // SupportedOperations はサポートされている operation を返す。

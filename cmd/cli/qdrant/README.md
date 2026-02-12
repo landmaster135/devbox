@@ -51,8 +51,12 @@ Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert /
 | フラグ | 説明 | 既定値 |
 |--------|------|--------|
 | `-payload` | `key=value` 形式で指定する上書き後の payload。CLI 上では 1 キーのみ受け付けますが、ユースケース層では複数フィールド分を扱えるようになっています。 | - |
+| `-filter-must` | 上書き対象を絞り込む `must` 条件。`key=value` 形式で複数回指定可能。 | - |
+| `-filter-must-not` | 除外する条件 (複数指定可)。 | - |
+| `-filter-should` | `should` 条件 (複数指定可)。 | - |
+| `-filter-min-should` | `should` 条件のうち満たすべき最小件数 (`--filter-should` と併用)。 | `0` |
 
-`overwrite-payload` は現在、対象ポイントのセレクタを CLI から指定できないため、コレクション内のポイントをすべて対象に同じ payload を設定します。将来的に `point-id` や filter を追加する想定の作りになっています。
+`overwrite-payload` ではフィルタを指定しない場合、コレクション内の全ポイントが対象になります。`filter-*` フラグで payload 条件に基づくターゲットを段階的に絞り込めます。
 
 ## 使用例
 
@@ -123,4 +127,16 @@ go run ./cmd/cli/qdrant \
   -payload status=reviewed
 ```
 
-> ⚠️ 現状は対象ポイントを CLI から絞り込めないため、上記コマンドは `documents` コレクションの全ポイントに同一 payload を設定します。部分的に適用したい場合は、今後追加予定のセレクタフラグをお待ちください。
+```bash
+go run ./cmd/cli/qdrant \
+  -operation overwrite-payload \
+  -collection-name documents \
+  -db-host 127.0.0.1 -db-port 6334 \
+  -payload status=reviewed \
+  -filter-must topic=travel \
+  -filter-must-not status=archived \
+  -filter-should lang=ja \
+  -filter-min-should 1
+```
+
+> ℹ️ フィルタを指定しない場合はコレクション全体が対象です。`filter-should` と `filter-min-should` を併用すると、「should 条件を N 件以上満たすポイント」だけに payload を適用できます。

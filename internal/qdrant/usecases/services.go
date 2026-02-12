@@ -398,16 +398,7 @@ func buildFilters(filters []domain.PayloadFilter) []*qdrant.Condition {
 		if f.Key == "" || f.Value == "" {
 			continue
 		}
-		conditions = append(conditions, &qdrant.Condition{
-			ConditionOneOf: &qdrant.Condition_Field{
-				Field: &qdrant.FieldCondition{
-					Key: f.Key,
-					Match: &qdrant.Match{
-						MatchValue: &qdrant.Match_Text{Text: f.Value},
-					},
-				},
-			},
-		})
+		conditions = append(conditions, qdrant.NewMatch(f.Key, f.Value))
 	}
 	if len(conditions) == 0 {
 		return nil
@@ -415,12 +406,12 @@ func buildFilters(filters []domain.PayloadFilter) []*qdrant.Condition {
 	return conditions
 }
 
-func buildPointsSelector(ids []string, filters []domain.PayloadFilter) *qdrant.PointsSelector {
+func buildPointsSelector(ids []string, filters domain.OverwriteFilters) *qdrant.PointsSelector {
 	if pts := buildPointIDs(ids); len(pts) > 0 {
 		return qdrant.NewPointsSelectorIDs(pts)
 	}
-	if conds := buildFilters(filters); conds != nil {
-		return qdrant.NewPointsSelectorFilter(&qdrant.Filter{Must: conds})
+	if filter := buildOverwriteFilter(filters); filter != nil {
+		return qdrant.NewPointsSelectorFilter(filter)
 	}
 	return qdrant.NewPointsSelectorFilter(&qdrant.Filter{})
 }
@@ -438,6 +429,37 @@ func buildPointIDs(ids []string) []*qdrant.PointId {
 		result = append(result, &qdrant.PointId{PointIdOptions: &qdrant.PointId_Uuid{Uuid: trimmed}})
 	}
 	return result
+}
+
+func buildOverwriteFilter(filters domain.OverwriteFilters) *qdrant.Filter {
+	must := buildFilters(filters.Must)
+	mustNot := buildFilters(filters.MustNot)
+	should := buildFilters(filters.Should)
+	var minShould *qdrant.MinShould
+	if filters.MinShouldCount > 0 && len(should) > 0 {
+		minShould = &qdrant.MinShould{
+			Conditions: cloneConditions(should),
+			MinCount:   uint64(filters.MinShouldCount),
+		}
+	}
+	if len(must) == 0 && len(mustNot) == 0 && len(should) == 0 && minShould == nil {
+		return nil
+	}
+	return &qdrant.Filter{
+		Must:      must,
+		MustNot:   mustNot,
+		Should:    should,
+		MinShould: minShould,
+	}
+}
+
+func cloneConditions(src []*qdrant.Condition) []*qdrant.Condition {
+	if len(src) == 0 {
+		return nil
+	}
+	dup := make([]*qdrant.Condition, len(src))
+	copy(dup, src)
+	return dup
 }
 
 func timeoutOrDefault(seconds int) time.Duration {
