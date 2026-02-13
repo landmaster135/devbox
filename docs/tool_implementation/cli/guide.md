@@ -4,6 +4,14 @@
 
 ## 実装パターン
 
+### CLI固有の実装手順
+
+1. `cmd/cli/{tool_name}/main.go` を作成し、エントリーポイントを配置する
+2. フラグ解析（`config.ParseFlags()`）と操作分岐（`switch cfg.Operation`）を実装する
+3. 正常系の結果は標準出力（`fmt.Print`）に出力する
+4. 異常系は標準エラー出力（`fmt.Fprintf(os.Stderr, ...)`）と `os.Exit(1)` で終了する
+5. `-help` などの利用方法表示（`config.PrintUsage()`）を実装する
+
 ### CLIツールのmain.go構造
 
 ```go
@@ -51,14 +59,6 @@ func handleOperation1(cfg *config.Config) {
 	fmt.Print(result) // 重要: 結果を標準出力に表示
 }
 ```
-
-## 実装時のチェックリスト
-
-- [ ] `fmt.Print(result)` で結果を標準出力に表示している
-- [ ] エラー時は `fmt.Fprintf(os.Stderr, ...)` でエラーメッセージを出力
-- [ ] エラー時は `os.Exit(1)` でプロセスを終了
-- [ ] ヘルプ機能（`-help` フラグ）を実装
-- [ ] 操作タイプの switch 文で未対応操作をハンドリング
 
 ## よくある実装ミス
 

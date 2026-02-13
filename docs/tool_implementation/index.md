@@ -25,10 +25,7 @@
 7. **ドキュメント更新**: README と関連 docs を更新
 
 ## 3. CLI固有の実装手順
-1. `cmd/cli/{tool_name}/main.go` を実装し、フラグ解析・処理分岐を定義
-2. 正常結果は標準出力（`fmt.Print`）へ出力
-3. エラーは標準エラー出力（`fmt.Fprintf(os.Stderr, ...)`）で通知し `os.Exit(1)` で終了
-4. `-help` などの利用方法表示を実装
+実装手順は `docs/tool_implementation/cli/guide.md` を参照。
 
 ## 4. MCP固有の実装手順
 1. `cmd/mcp/{server_name}/` と必要なハンドラーを実装
