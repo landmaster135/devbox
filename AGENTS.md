@@ -7,9 +7,10 @@
 
 1. `docs/tool_implementation/index.md`
 2. `docs/docs_management/index.md`
-3. `docs/project_status/service_implementation_status.md`
-4. `docs/project_overview/project_overview.md`
-5. `docs/user_prompt/prompt_sample.md`
+3. `docs/exec_plans/index.md`
+4. `docs/project_status/service_implementation_status.md`
+5. `docs/project_overview/project_overview.md`
+6. `docs/user_prompt/prompt_sample.md`
 
 ## docs マップ
 
@@ -20,6 +21,10 @@
 - `docs/docs_management/index.md`
   - 用途: docs配置方針とAGENTSマップのリンク整合性確認
   - 読むタイミング: ドキュメント追加・移動・リネーム時
+
+- `docs/exec_plans/index.md`
+  - 用途: 実行計画ドキュメント（active/completed）の参照入口
+  - 読むタイミング: 拡張計画や実施計画の確認時
 
 - `docs/project_status/service_implementation_status.md`
   - 用途: サービス実装状況（CLI/MCP/gRPC/HTTP）の確認と重複実装の回避
