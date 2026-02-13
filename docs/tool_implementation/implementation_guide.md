@@ -148,6 +148,59 @@ output, err := executor.ExecuteInDir(absRootDir, "go", args...)
 
 このパターンを守れば、追加のエスケープ処理を実装せずにコマンドインジェクションを防げます。必要に応じて、許可するコマンド名や引数のホワイトリスト検証を組み合わせるとより堅牢になります。
 
+### 3. 特定の処理を infrastructure 層へ集約し、usecase から呼び出す
+
+infrastructure層で実装すべき主なリソース（シリアライズ境界は除く）:
+- HTTP通信: `http.Client`、認証ヘッダ、タイムアウト、リトライ
+- 外部APIアダプタ: Memos など外部サービス呼び出しの実装
+- 永続化: DBアクセス、トランザクション、Repository実装
+- メッセージ基盤: Queue/Kafka/PubSub への publish/consume
+- ファイル/OS操作: ファイルI/O、パス処理、MIME判定、ディレクトリ走査
+- 時刻/乱数/ID生成: `time.Now()`、UUID、乱数生成器
+- 設定/シークレット取得: 環境変数、設定ファイル、Secret Manager
+- 外部SDK連携: S3/GCS/GitHub/Notion などのSDKラッパ
+- プロセス実行: `exec.Command` による外部コマンド実行
+
+例えば、ファイル操作を含む操作を扱うときは、CLI で `os.ReadFile` せずに以下の責務分離を行います。
+
+- CLI層: フラグ解析と `service` 呼び出しのみ（パス文字列をそのまま渡す）
+- usecase層: ファイル読み込みを含む業務フロー（例: content 解決、添付作成、既存添付マージ）
+- infrastructure層: 実ファイルシステム実装（`os.ReadFile`、MIME 判定など）
+
+実装例:
+```go
+// infrastructure
+type FileSystem interface {
+  ReadFile(filePath string) ([]byte, error)
+  ReadAttachmentFile(filePath string) (*AttachmentFile, error)
+}
+
+type OSFileSystem struct{}
+
+// usecase
+type ServiceOptions struct {
+  FileSystem infrastructures.FileSystem
+}
+
+func NewService(opts ServiceOptions) *Service {
+  fs := opts.FileSystem
+  if fs == nil {
+    fs = infrastructures.NewOSFileSystem()
+  }
+  return &Service{fileSystem: fs}
+}
+
+func (s *Service) PatchFiles(ctx context.Context, memo string, filePaths []string, replaces bool) error {
+  // fileSystem 経由で読み込み
+  // CreateAttachment -> (必要なら ListMemoAttachments) -> SetMemoAttachments
+  return nil
+}
+```
+
+テスト方針:
+- usecase テストでは `mockFileSystem` を注入し、ファイルI/Oに依存せず分岐を検証する
+- CLI テストではファイル内容ではなく、`service` への引数委譲を検証する
+
 ## 実装時のチェックリスト
 
 CLIツール固有のチェックリストは `docs/tool_implementation/cli/guide.md` を参照してください。
