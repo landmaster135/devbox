@@ -21,7 +21,7 @@
 |---|---|
 | 共通 | `docs/tool_implementation/implementation_guide.md` |
 | CLI | `docs/tool_implementation/cli/index.md` |
-| MCP | `docs/tool_implementation/mcp/guide.md` |
+| MCP | `docs/tool_implementation/mcp/index.md` |
 
 ## 4. テスト戦略
 - **単体テスト**: 各レイヤーの独立したテスト

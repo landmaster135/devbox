@@ -2,14 +2,6 @@
 
 このドキュメントは、MCPツール実装に関する内容をまとめたものです。
 
-## MCP固有の実装手順
-
-1. `cmd/mcp/{server_name}/` と必要なハンドラーを実装する
-2. `mcp.NewTool(...)` でツール定義（説明・必須パラメータ・型）を追加する
-3. 必須入力は `request.Require*`、任意入力は `request.Get*` で取得する
-4. 処理結果は `mcp.CallToolResult` として返却し、標準出力は使用しない
-5. `cmd/mcp/router.go` にルーティングを追加する
-
 ## 実装時のチェックリスト
 
 - [ ] ハンドラーのエラーは `return nil, fmt.Errorf(...)` で文脈付きに返却する
