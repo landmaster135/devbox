@@ -201,6 +201,44 @@ func (s *Service) PatchFiles(ctx context.Context, memo string, filePaths []strin
 - usecase テストでは `mockFileSystem` を注入し、ファイルI/Oに依存せず分岐を検証する
 - CLI テストではファイル内容ではなく、`service` への引数委譲を検証する
 
+### 4. operation別サブディレクトリ + common分離
+
+operation が増えて `usecases/services.go` が肥大化する場合は、`usecases` 直下に処理をフラットに並べず、operationごとにサブディレクトリへ分割します。共通処理は `common` サブディレクトリへ集約します。
+
+ディレクトリ構成の例:
+```text
+internal/{tool}/usecases/
+├── services.go                      // Facadeと依存注入
+├── service_operations.go            // 公開メソッドの委譲
+├── service_contract.go              // 公開インターフェース + テスト用公開Mock
+├── common/
+│   ├── helpers.go                   // 正規化、共通バリデーション
+│   ├── http.go                      // JSON HTTPクライアント
+│   ├── models.go                    // 共通DTO
+│   └── requests.go                  // 共通request payload
+├── operations/
+│   ├── create_memo/
+│   │   ├── service.go
+│   │   └── service_test.go
+│   ├── get_memo/
+│   │   ├── service.go
+│   │   └── service_test.go
+│   └── ...
+└── testutil/
+    └── helpers.go                   // mock HTTP client / mock FS / 共通helper
+```
+
+実装ルール:
+- `services.go` は Facade として薄く保つ（公開APIと依存注入に限定）
+- 各 operation のロジックは `operations/{operation}/` に閉じ込める
+- operation 間で共有するロジック・DTO・HTTP処理は `common/` に移す
+- operation 専用テストは同じ operation ディレクトリに置く
+- operation 実装ファイル名は `service.go`、テストファイル名は `service_test.go` とする
+
+適用目安:
+- operation が 4 種類以上あり、単一 `services.go` の見通しが悪くなっている場合
+- operation ごとに依存（FileSystem/API client/補助関数）が異なり、責務分離が必要な場合
+
 ## 実装時のチェックリスト
 
 CLIツール固有のチェックリストは `docs/tool_implementation/cli/guide.md` を参照してください。
