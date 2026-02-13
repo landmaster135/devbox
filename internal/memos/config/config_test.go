@@ -278,6 +278,39 @@ func TestConfig_ParseFlagsFromArgs_UpdateMemoWithContentFile_Normal(t *testing.T
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_UpdateMemoUpdatesTimeDefaultFalse_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=update-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-content=updated",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.UpdatesTime {
+		t.Fatalf("updatesTime = %v, want false", cfg.UpdatesTime)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateMemoUpdatesTimeTrue_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=update-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-content=updated",
+		"-updates-time=true",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if !cfg.UpdatesTime {
+		t.Fatalf("updatesTime = %v, want true", cfg.UpdatesTime)
+	}
+}
+
 func TestConfig_ParseFlagsFromArgs_PatchFiles_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=patch-files",

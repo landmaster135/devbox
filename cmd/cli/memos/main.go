@@ -58,6 +58,11 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.OrderBy,
 		)
 	case cfg.OperationUpdateMemo:
+		displayTime := ""
+		if conf.UpdatesTime {
+			displayTime = currentUTCTimeRFC3339()
+		}
+
 		result, err = service.UpdateMemo(
 			ctx,
 			conf.Memo,
@@ -67,6 +72,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.State,
 			boolPointer(conf.Pinned, conf.PinnedSet),
 			splitByComma(conf.UpdateMask),
+			displayTime,
 		)
 	case cfg.OperationPatchFiles:
 		result, err = service.PatchFiles(ctx, conf.Memo, splitByComma(conf.Files), conf.Replaces)
@@ -128,4 +134,8 @@ func splitByComma(raw string) []string {
 		return nil
 	}
 	return out
+}
+
+func currentUTCTimeRFC3339() string {
+	return time.Now().UTC().Format(time.RFC3339)
 }

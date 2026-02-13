@@ -42,7 +42,7 @@ type listMemosOperation interface {
 }
 
 type updateMemoOperation interface {
-	Execute(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string) (*common.Memo, error)
+	Execute(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*common.Memo, error)
 }
 
 type patchFilesOperation interface {

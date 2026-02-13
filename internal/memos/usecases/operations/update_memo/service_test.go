@@ -34,6 +34,9 @@ func TestServiceOperationUpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
 			if got := body["pinned"]; got != false {
 				t.Fatalf("pinned = %v, want false", got)
 			}
+			if _, ok := body["displayTime"]; ok {
+				t.Fatalf("displayTime = %v, want absent", body["displayTime"])
+			}
 			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-xyz","content":"updated text","visibility":"PUBLIC","pinned":false}`), nil
 		},
 	}
@@ -54,6 +57,7 @@ func TestServiceOperationUpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
 		"",
 		&pinned,
 		nil,
+		"",
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -89,6 +93,7 @@ func TestServiceOperationUpdateMemo_CustomUpdateMask_Normal(t *testing.T) {
 		"ARCHIVED",
 		nil,
 		[]string{" visibility ", "content,content", "state"},
+		"",
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -98,8 +103,8 @@ func TestServiceOperationUpdateMemo_CustomUpdateMask_Normal(t *testing.T) {
 func TestServiceOperationUpdateMemo_ContentFile_Normal(t *testing.T) {
 	client := &testutil.MockHTTPClient{
 		DoFunc: func(r *http.Request) (*http.Response, error) {
-			if got := r.URL.Query().Get("updateMask"); got != "content,state" {
-				t.Fatalf("updateMask = %s, want content,state", got)
+			if got := r.URL.Query().Get("updateMask"); got != "content,state,display_time" {
+				t.Fatalf("updateMask = %s, want content,state,display_time", got)
 			}
 			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["content"]; got != "updated from file" {
@@ -107,6 +112,9 @@ func TestServiceOperationUpdateMemo_ContentFile_Normal(t *testing.T) {
 			}
 			if got := body["state"]; got != "ARCHIVED" {
 				t.Fatalf("state = %v, want ARCHIVED", got)
+			}
+			if got := body["displayTime"]; got != "2026-02-14T01:23:45Z" {
+				t.Fatalf("displayTime = %v, want 2026-02-14T01:23:45Z", got)
 			}
 			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-1","content":"updated from file","state":"ARCHIVED"}`), nil
 		},
@@ -136,6 +144,7 @@ func TestServiceOperationUpdateMemo_ContentFile_Normal(t *testing.T) {
 		"ARCHIVED",
 		nil,
 		nil,
+		"2026-02-14T01:23:45Z",
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -152,7 +161,7 @@ func TestServiceOperationUpdateMemo_EmptyMemo_Error(t *testing.T) {
 		HTTPClient: &testutil.MockHTTPClient{},
 	}), &testutil.MockFileSystem{})
 
-	_, err := service.Execute(context.Background(), "", "value", "", "", "", nil, nil)
+	_, err := service.Execute(context.Background(), "", "value", "", "", "", nil, nil, "")
 	if err == nil {
 		t.Fatal("Execute() error = nil, want error")
 	}
@@ -185,6 +194,7 @@ func TestServiceOperationUpdateMemo_EmptyUpdateMask_Error(t *testing.T) {
 		"",
 		nil,
 		[]string{" ", ","},
+		"",
 	)
 	if err == nil {
 		t.Fatal("Execute() error = nil, want error")
@@ -196,9 +206,17 @@ func TestServiceOperationUpdateMemo_EmptyUpdateMask_Error(t *testing.T) {
 
 func TestBuildUpdateMask_Normal(t *testing.T) {
 	pinned := true
-	mask := buildUpdateMask("value", "PRIVATE", "ARCHIVED", &pinned, nil)
+	mask := buildUpdateMask("value", "PRIVATE", "ARCHIVED", &pinned, nil, "")
 	got := strings.Join(mask, ",")
 	if got != "content,visibility,state,pinned" {
 		t.Fatalf("mask = %s, want content,visibility,state,pinned", got)
+	}
+}
+
+func TestBuildUpdateMask_WithDisplayTime_Normal(t *testing.T) {
+	mask := buildUpdateMask("value", "", "", nil, []string{"content"}, "2026-02-14T01:23:45Z")
+	got := strings.Join(mask, ",")
+	if got != "content,display_time" {
+		t.Fatalf("mask = %s, want content,display_time", got)
 	}
 }

@@ -64,9 +64,10 @@ type Config struct {
 	PageToken string
 	OrderBy   string
 
-	UpdateMask string
-	Files      string
-	Replaces   bool
+	UpdateMask  string
+	UpdatesTime bool
+	Files       string
+	Replaces    bool
 }
 
 // ParseFlags は CLI フラグを解析する。
@@ -106,6 +107,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.PageToken, "page-token", "", "list-memos のページトークン")
 	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos のソート指定（例: update_time desc）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
+	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
 	fs.StringVar(&cfg.Files, "files", "", "patch-files で添付するファイルパス（カンマ区切り）")
 	fs.BoolVar(&cfg.Replaces, "replaces", false, "patch-files で既存添付を置換するか（デフォルト: false）")
 
@@ -266,7 +268,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
-	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意)\n\n")
+	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意), -updates-time (任意: trueでdisplayTimeを現在日時に設定)\n\n")
 	fmt.Fprintf(os.Stderr, "  patch-files\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -files (必須), -replaces (任意: デフォルト false)\n\n")
 

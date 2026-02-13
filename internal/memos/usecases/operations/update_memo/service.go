@@ -31,6 +31,7 @@ func (s *Service) Execute(
 	state string,
 	pinned *bool,
 	updateMask []string,
+	displayTime string,
 ) (*common.Memo, error) {
 	memoID := common.NormalizeMemoIdentifier(memo)
 	if memoID == "" {
@@ -42,7 +43,7 @@ func (s *Service) Execute(
 		return nil, err
 	}
 
-	finalMask := buildUpdateMask(resolvedContent, visibility, state, pinned, updateMask)
+	finalMask := buildUpdateMask(resolvedContent, visibility, state, pinned, updateMask, displayTime)
 	if len(finalMask) == 0 {
 		return nil, fmt.Errorf("updateMask が空です")
 	}
@@ -51,10 +52,11 @@ func (s *Service) Execute(
 	query.Set("updateMask", strings.Join(finalMask, ","))
 
 	payload := common.MemoMutationRequest{
-		Content:    resolvedContent,
-		Visibility: visibility,
-		State:      state,
-		Pinned:     pinned,
+		Content:     resolvedContent,
+		Visibility:  visibility,
+		State:       state,
+		Pinned:      pinned,
+		DisplayTime: displayTime,
 	}
 
 	var result common.Memo
@@ -65,12 +67,16 @@ func (s *Service) Execute(
 	return &result, nil
 }
 
-func buildUpdateMask(content string, visibility string, state string, pinned *bool, updateMask []string) []string {
+func buildUpdateMask(content string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) []string {
 	if len(updateMask) > 0 {
-		return cleanMaskFields(updateMask)
+		mask := cleanMaskFields(updateMask)
+		if displayTime != "" {
+			mask = appendMaskFieldIfMissing(mask, "display_time")
+		}
+		return mask
 	}
 
-	mask := make([]string, 0, 4)
+	mask := make([]string, 0, 5)
 	if content != "" {
 		mask = append(mask, "content")
 	}
@@ -83,7 +89,19 @@ func buildUpdateMask(content string, visibility string, state string, pinned *bo
 	if pinned != nil {
 		mask = append(mask, "pinned")
 	}
+	if displayTime != "" {
+		mask = append(mask, "display_time")
+	}
 	return mask
+}
+
+func appendMaskFieldIfMissing(mask []string, field string) []string {
+	for _, item := range mask {
+		if item == field {
+			return mask
+		}
+	}
+	return append(mask, field)
 }
 
 func cleanMaskFields(raw []string) []string {

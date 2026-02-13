@@ -76,6 +76,7 @@ go run ./cmd/cli/memos \
 | `-state` | 更新後の状態 | 任意 |
 | `-pinned` | 更新後のピン留め（`true/false`） | 任意 |
 | `-update-mask` | 更新対象フィールド（例: `content,visibility`） | 任意 |
+| `-updates-time` | `true` のとき `displayTime` を現在日時（UTC/RFC3339）で更新（結果として `updateTime` も更新される） | 任意（デフォルト: `false`） |
 
 ### patch-files
 
@@ -130,6 +131,17 @@ go run ./cmd/cli/memos \
   -memo=memo-123 \
   -content="更新後の本文" \
   -visibility=PUBLIC
+```
+
+メモ更新（`displayTime` を現在日時へ設定し、`updateTime` も更新させる）
+```bash
+go run ./cmd/cli/memos \
+  -operation=update-memo \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123 \
+  -content="更新後の本文" \
+  -updates-time=true
 ```
 
 添付を追加（既存添付を保持: デフォルト `-replaces=false`）

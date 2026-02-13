@@ -42,8 +42,9 @@ func (s *Service) UpdateMemo(
 	state string,
 	pinned *bool,
 	updateMask []string,
+	displayTime string,
 ) (*Memo, error) {
-	return s.updateMemoOp.Execute(ctx, memo, content, contentFile, visibility, state, pinned, updateMask)
+	return s.updateMemoOp.Execute(ctx, memo, content, contentFile, visibility, state, pinned, updateMask, displayTime)
 }
 
 // PatchFiles はファイルを添付として作成し、メモに紐づける。
