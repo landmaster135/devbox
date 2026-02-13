@@ -1,5 +1,10 @@
 # ツール実装ガイド
 
+## ドキュメント更新ルール
+
+CLIツール実装完了後のドキュメント更新手順は、`docs/tool_implementation/documentation_guide.md` を参照してください。
+CLIツール実装完了後は、対応する `cmd/cli/<tool>/README.md` に使い方と実行例を必ず追記してください。
+
 ## 実装時の重要な注意点
 
 ### CLIツール vs MCPツールの出力制御

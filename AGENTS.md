@@ -6,15 +6,20 @@
 ## 参照優先順
 
 1. `docs/tool_implementation/implementation_guide.md`
-2. `docs/project_status/service_implementation_status.md`
-3. `docs/project_overview/project_overview.md`
-4. `docs/user_prompt/prompt_sample.md`
+2. `docs/tool_implementation/documentation_guide.md`
+3. `docs/project_status/service_implementation_status.md`
+4. `docs/project_overview/project_overview.md`
+5. `docs/user_prompt/prompt_sample.md`
 
 ## docs マップ
 
 - `docs/tool_implementation/implementation_guide.md`
   - 用途: CLI/MCP実装時の注意点、実装パターン、失敗しやすいポイントの確認
   - 読むタイミング: 新規ツール実装、既存実装の修正、MCP実装時
+
+- `docs/tool_implementation/documentation_guide.md`
+  - 用途: CLIツール実装完了後のドキュメント更新手順の確認
+  - 読むタイミング: README更新、実装状況ドキュメント更新、リンク整合性確認時
 
 - `docs/project_status/service_implementation_status.md`
   - 用途: サービス実装状況（CLI/MCP/gRPC/HTTP）の確認と重複実装の回避
@@ -31,7 +36,6 @@
 ## 最小運用ルール（このファイルに残す項目）
 
 - 回答は日本語で行うこと。
-- CLIツール実装完了後は、対応する `cmd/cli/<tool>/README.md` に使い方と実行例を追記すること（既存のREADMEを参照）。
 
 ## 更新ルール
 
