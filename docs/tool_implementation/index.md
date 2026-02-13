@@ -68,13 +68,13 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 2. **既存実装の確認**: `docs/project_status/service_implementation_status.md`を参照し、重複実装を回避
 3. **ディレクトリ作成**: `cmd/cli/{tool_name}` および `internal/{tool_name}`
 4. **Clean Architecture実装**:
-   - `internal/{tool_name}/domain/`: エンティティ・リポジトリインターフェース
-   - `internal/{tool_name}/usecases/`: ビジネスロジック
-   - `internal/{tool_name}/interfaces/`: 外部システム連携
-   - `cmd/cli/{tool_name}/main.go`: エントリーポイント
+  - `internal/{tool_name}/domain/`: エンティティ・リポジトリインターフェース
+  - `internal/{tool_name}/usecases/`: ビジネスロジック
+  - `internal/{tool_name}/infrastructures/`: 外部システム連携
+  - `cmd/cli/{tool_name}/main.go`: エントリーポイント
 5. **テスト実装**: TDD原則に基づくテストコード作成
-6. **ビルドスクリプト作成**: `scripts/build_{tool_name}.sh`
-7. **ドキュメント更新**: README.md および関連ドキュメントの更新
+6. **ドキュメント更新**: README.md および関連ドキュメントの更新
+7. **ビルドスクリプト作成**: `scripts/build_{tool_name}.sh`
 
 ### 7.2 テスト戦略
 - **単体テスト**: 各レイヤーの独立したテスト

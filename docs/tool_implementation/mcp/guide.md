@@ -1,11 +1,6 @@
 # MCPツール実装ガイド
 
-このドキュメントは、`docs/tool_implementation/implementation_guide.md` から MCPツール専用の内容を切り出したものです。
-
-## 関連ドキュメント
-
-- 共通実装ガイド: `docs/tool_implementation/implementation_guide.md`
-- ドキュメント更新手順: `docs/tool_implementation/documentation_guide.md`
+このドキュメントは、MCPツール実装に関する内容をまとめたものです。
 
 ## 実装パターン
 

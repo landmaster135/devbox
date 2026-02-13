@@ -2,11 +2,6 @@
 
 このドキュメントは、CLIツール実装に関する内容をまとめたものです。
 
-## ドキュメント更新ルール
-
-- `cmd/cli/<tool>/README.md` に「## 使用方法」と「## 使用例」を必ず追記する。
-- ドキュメント更新の全体手順は `docs/tool_implementation/documentation_guide.md` を参照する。
-
 ## 実装パターン
 
 ### CLIツールのmain.go構造
@@ -82,7 +77,7 @@ if err != nil {
 fmt.Print(result)
 ```
 
-### 2. フラグパーサーのモック実装の間違い
+### 2. フラグパーサーのモック実装の間違い（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
 
 ```go
 // ❌ 間違い: フラグ定義後に値を設定しても反映されない
@@ -100,5 +95,3 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
   m.stringVars[name] = p
 }
 ```
-
-**参考実装**: `devbox/internal/zip_compressor/config/config_test.go` の MockFlagParser を参照

@@ -1,11 +1,5 @@
 # ツール実装ガイド
 
-## ドキュメント更新ルール
-
-ドキュメント更新の全体手順は、`docs/tool_implementation/documentation_guide.md` を参照してください。
-CLIツール固有の実装ルールは、`docs/tool_implementation/cli/guide.md` を参照してください。
-MCPツール固有の実装ルールは、`docs/tool_implementation/mcp/guide.md` を参照してください。
-
 ## 実装時の重要な注意点
 
 ### ツール種別ごとの注意点
