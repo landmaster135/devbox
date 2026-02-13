@@ -5,22 +5,17 @@
 
 ## 参照優先順
 
-1. `docs/tool_implementation/implementation_guide.md`
-2. `docs/tool_implementation/documentation_guide.md`
-3. `docs/docs_management/index.md`
-4. `docs/project_status/service_implementation_status.md`
-5. `docs/project_overview/project_overview.md`
-6. `docs/user_prompt/prompt_sample.md`
+1. `docs/tool_implementation/index.md`
+2. `docs/docs_management/index.md`
+3. `docs/project_status/service_implementation_status.md`
+4. `docs/project_overview/project_overview.md`
+5. `docs/user_prompt/prompt_sample.md`
 
 ## docs マップ
 
-- `docs/tool_implementation/implementation_guide.md`
-  - 用途: CLI/MCP実装時の注意点、実装パターン、失敗しやすいポイントの確認
-  - 読むタイミング: 新規ツール実装、既存実装の修正、MCP実装時
-
-- `docs/tool_implementation/documentation_guide.md`
-  - 用途: `cmd/` 配下ツールの実装・改修後に必要なドキュメント更新手順の確認
-  - 読むタイミング: README更新や実装ガイド更新時
+- `docs/tool_implementation/index.md`
+  - 用途: `cmd/` 配下ツールの実装・改修に関する統合入口
+  - 読むタイミング: 実装作業前後、ビルド/運用方針確認時
 
 - `docs/docs_management/index.md`
   - 用途: docs配置方針とAGENTSマップのリンク整合性確認

@@ -2,6 +2,11 @@
 
 このドキュメントは、`docs/project_overview/project_overview.md` から `cmd/` 配下の実装作業に関する内容を切り出したものです。
 
+## 関連ガイド
+
+- 実装時の注意点・実装パターン: `docs/tool_implementation/implementation_guide.md`
+- 実装/改修後のドキュメント更新手順: `docs/tool_implementation/documentation_guide.md`
+
 ## 4. MCPサーバーシステム
 
 ### 4.1 アーキテクチャ概要
