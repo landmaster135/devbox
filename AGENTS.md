@@ -1,23 +1,39 @@
-# Repository Guidelines
+# AGENTS.md (docs マップ)
 
-## Project Structure & Module Organization
-Top-level layout centers around `cmd/`, `internal/`, `pkg/`, and `scripts/`. Each CLI tool lives in `cmd/cli/<tool>` with matching domain and usecase packages under `internal/<tool>/...`, following the Clean Architecture layering. Deployment artifacts land in `pkg/bin/<tool>/<platform>/`, while shared assets and sample fixtures stay in `assets/` and `sample_data/`. Review `docs/implementation_guide.md` before implementing a functionality to grasp the design patterns. Also, review `docs/service_implementation_status.md` before extending a tool to avoid duplicated work.
+このファイルは、エージェント向けの「入口（目次）」です。  
+実装・設計・運用の詳細は `docs/` を正本として参照してください。
 
-## Build, Test, and Development Commands
-Use `./scripts/create_project_files.sh <package>` to scaffold new tool packages. `./scripts/build.sh` orchestrates every tool-specific `build_*.sh` script (excluding MCP) and fills `pkg/bin/`. Run `./scripts/build_mcp_tools.sh` for MCP-only binaries. Service entry points run via `go run ./cmd/http/main.go` (REST) and `go run ./cmd/grpc/main.go` (gRPC). When iterating on a single CLI, call its dedicated script, e.g. `./scripts/build_image_converter.sh`.
+## 参照優先順
 
-## Coding Style & Naming Conventions
-Target Go 1.25 and format with `go fmt ./...` (or `goimports`) before committing. Keep command packages thin; business logic belongs in `internal/*/usecases`, with `domain` models and `interfaces` adapters separated. Directory names and scripts should stay hyphenated (`cmd/cli/git-diff-recorder`, `scripts/build_git_diff_recorder.sh`). Exported Go identifiers use PascalCase, private helpers lowerCamelCase. Shell scripts remain bash-compatible and include brief comments only for non-obvious flows.
+1. `docs/implementation/implementation_guide.md`
+2. `docs/project_status/service_implementation_status.md`
+3. `docs/project_overview/project_overview.md`
+4. `docs/user_prompt/prompt_sample.md`
 
-## Testing Guidelines
-Unit tests rely on standard tooling: `go test -v ./... -coverpkg=./... -covermode=count -coverprofile=coverage.out`. Inspect coverage with `go tool cover -html=coverage.out -o coverage.html` and keep the generated badge in sync. Scope tool-specific checks with commands such as `go test ./internal/git_diff_recorder/...`. Aim for ≥90% coverage. Multimedia and OCR paths depend on FFmpeg and Tesseract, mirroring the CI matrix.
+## docs マップ
 
-## Commit & Pull Request Guidelines
-Follow the Conventional Commit pattern seen in history (`feat:`, `fix:`, `refactor:`, `test:`), keeping subjects imperative and ≤72 characters. Include test evidence or updated artifacts (`coverage.out`, binaries) alongside code changes. PRs should summarize the change, list validation commands, link issues, and attach screenshots or sample outputs for I/O tools. Ensure coverage files and README badges reflect the latest run; the `pull-request-stats` workflow will publish diff metrics, so keep submissions focused.
+- `docs/implementation/implementation_guide.md`
+  - 用途: CLI/MCP実装時の注意点、実装パターン、失敗しやすいポイントの確認
+  - 読むタイミング: 新規ツール実装、既存実装の修正、MCP実装時
 
-## Environment & Dependencies
-Align with Go 1.25.x (`env.yml`, CI) and prefer module-managed dependencies. Install FFmpeg and Tesseract locally when working on conversion or OCR tools to match CI prerequisites. Provide configuration via environment variables, keeping secrets out of source control and using `sample_data/` for redacted fixtures.
+- `docs/project_status/service_implementation_status.md`
+  - 用途: サービス実装状況（CLI/MCP/gRPC/HTTP）の確認と重複実装の回避
+  - 読むタイミング: 新機能追加前、同名/類似ツール調査時
 
-## Implementation
-Remember replying in Japanese.
-After completing a CLI tool implementation, update the corresponding `cmd/cli/<tool>/README.md` with usage instructions and examples by referencing existing documents such as `cmd/cli/arithmetic-calculator/README.md` and `cmd/cli/service-implementing-viewer/README.md`.
+- `docs/project_overview/project_overview.md`
+  - 用途: 全体アーキテクチャ、ディレクトリ構成、ビルド/テスト/品質方針の確認
+  - 読むタイミング: 設計方針確認、ビルド/テスト手順確認、構成変更時
+
+- `docs/user_prompt/prompt_sample.md`
+  - 用途: 過去の依頼テンプレートやプロンプト例の参照
+  - 読むタイミング: 依頼文作成やワークフロー定義時の参考
+
+## 最小運用ルール（このファイルに残す項目）
+
+- 回答は日本語で行うこと。
+- CLIツール実装完了後は、対応する `cmd/cli/<tool>/README.md` に使い方と実行例を追記すること（既存のREADMEを参照）。
+
+## 更新ルール
+
+- 詳細ルールをこのファイルへ増やさないこと。詳細は `docs/` 側へ追記する。
+- `docs/` に新規ドキュメントを追加した場合は、このマップにリンクと用途を追加する。

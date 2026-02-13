@@ -188,8 +188,13 @@ MCPツール実行例：
 }
 ```
 
-### 4. 更新頻度の推奨
+### 3. 更新頻度の推奨
 
 - 新しいサービスを追加した際
 - 既存サービスのMCP化を完了した際
 - 月次での定期更新
+
+## 本ドキュメントのロケーションが変わった際の対応
+
+本ドキュメントのロケーションが変わった際は、以下の対応を行ってください：
+- [.github/workflows/test_integration.yml](../../.github/workflows/test_integration.yml)の`DOCS_FILE_FOR_SERVICE_IMPLEMENTATION_STATUS`変数を更新する
