@@ -190,6 +190,56 @@ func TestServiceOperationPatchFiles_ReadAttachmentError_Error(t *testing.T) {
 	}
 }
 
+func TestServiceOperationPatchFiles_MIMEFailure_AbortWithoutUpload_Error(t *testing.T) {
+	createCalled := 0
+	setCalled := 0
+
+	service := New(
+		&testutil.MockFileSystem{
+			ReadAttachmentFileFunc: func(filePath string) (*infrastructures.AttachmentFile, error) {
+				switch filePath {
+				case "./a.json":
+					return &infrastructures.AttachmentFile{
+						Filename:    "a.json",
+						Content:     []byte(`{"ok":true}`),
+						ContentType: "application/json",
+					}, nil
+				case "./memo":
+					return nil, fmt.Errorf("MIME type の判定に失敗しました (./memo): MIME type format が不正です: text/plain; charset=utf-8")
+				default:
+					return nil, fmt.Errorf("unexpected path: %s", filePath)
+				}
+			},
+		},
+		&mockAttachmentCreator{createFunc: func(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*common.Attachment, error) {
+			createCalled++
+			return &common.Attachment{Name: "attachments/new", Filename: filename}, nil
+		}},
+		&mockAttachmentLister{listFunc: func(ctx context.Context, memo string, pageSize int, pageToken string) (*common.ListMemoAttachmentsOutput, error) {
+			t.Fatal("List should not be called when file precheck fails")
+			return nil, nil
+		}},
+		&mockAttachmentSetter{setFunc: func(ctx context.Context, memo string, attachments []common.Attachment) (*common.SetMemoAttachmentsOutput, error) {
+			setCalled++
+			return &common.SetMemoAttachmentsOutput{}, nil
+		}},
+	)
+
+	_, err := service.Execute(context.Background(), "memo-1", []string{"./a.json", "./memo"}, true)
+	if err == nil {
+		t.Fatal("Execute() error = nil, want error")
+	}
+	if got := err.Error(); !strings.Contains(got, "files の読み込みに失敗しました (./memo)") {
+		t.Fatalf("error = %v, want files の読み込みに失敗しました (./memo)", err)
+	}
+	if createCalled != 0 {
+		t.Fatalf("createCalled = %d, want 0", createCalled)
+	}
+	if setCalled != 0 {
+		t.Fatalf("setCalled = %d, want 0", setCalled)
+	}
+}
+
 func TestMergeAttachmentsByName_Normal(t *testing.T) {
 	existing := []common.Attachment{
 		{Name: "attachments/existing-1"},

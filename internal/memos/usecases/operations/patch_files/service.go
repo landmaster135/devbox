@@ -52,12 +52,13 @@ func (s *Service) Execute(
 	filePaths []string,
 	replaces bool,
 ) (*common.SetMemoAttachmentsOutput, error) {
-	created := make([]common.Attachment, 0, len(filePaths))
-	for _, filePath := range filePaths {
-		attachmentFile, err := s.fileSystem.ReadAttachmentFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("files の読み込みに失敗しました (%s): %w", filePath, err)
-		}
+	attachmentFiles, err := s.readAttachmentFiles(filePaths)
+	if err != nil {
+		return nil, err
+	}
+
+	created := make([]common.Attachment, 0, len(attachmentFiles))
+	for _, attachmentFile := range attachmentFiles {
 		attachment, err := s.attachmentCreator.Create(
 			ctx,
 			attachmentFile.Filename,
@@ -84,6 +85,18 @@ func (s *Service) Execute(
 	}
 
 	return s.attachmentSetter.Set(ctx, memo, finalAttachments)
+}
+
+func (s *Service) readAttachmentFiles(filePaths []string) ([]*infrastructures.AttachmentFile, error) {
+	attachmentFiles := make([]*infrastructures.AttachmentFile, 0, len(filePaths))
+	for _, filePath := range filePaths {
+		attachmentFile, err := s.fileSystem.ReadAttachmentFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("files の読み込みに失敗しました (%s): %w", filePath, err)
+		}
+		attachmentFiles = append(attachmentFiles, attachmentFile)
+	}
+	return attachmentFiles, nil
 }
 
 func (s *Service) listAllMemoAttachments(ctx context.Context, memo string) ([]common.Attachment, error) {

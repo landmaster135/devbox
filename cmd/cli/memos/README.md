@@ -85,6 +85,10 @@ go run ./cmd/cli/memos \
 | `-files` | 添付するローカルファイルのパスをカンマ区切りで指定 | 必須 |
 | `-replaces` | `true` なら新規添付のみで置換。`false`（デフォルト）なら既存添付を `ListMemoAttachments` で取得して保持したまま追加 | 任意 |
 
+補足:
+- `patch-files` は、指定された全ファイルの読み込みと MIME type 判定が成功した場合にのみ `CreateAttachment` を開始します。
+- 1件でもファイル読み込みまたは MIME type 判定に失敗した場合、添付作成は一切行わずに中断します。
+
 ## 使用例
 
 メモ作成

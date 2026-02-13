@@ -53,11 +53,16 @@ func (fs *OSFileSystem) ReadAttachmentFile(filePath string) (*AttachmentFile, er
 	}
 
 	cleanPath := strings.TrimSpace(filePath)
+	contentType := detectContentType(cleanPath, data)
+	if err := validateContentType(contentType); err != nil {
+		return nil, fmt.Errorf("MIME type の判定に失敗しました (%s): %w", cleanPath, err)
+	}
+
 	return &AttachmentFile{
 		Path:        cleanPath,
 		Filename:    filepath.Base(cleanPath),
 		Content:     data,
-		ContentType: detectContentType(cleanPath, data),
+		ContentType: contentType,
 	}, nil
 }
 
@@ -70,4 +75,23 @@ func detectContentType(filePath string, content []byte) string {
 		return http.DetectContentType(content)
 	}
 	return "application/octet-stream"
+}
+
+func validateContentType(contentType string) error {
+	cleanType := strings.TrimSpace(contentType)
+	if cleanType == "" {
+		return fmt.Errorf("MIME type が空です")
+	}
+	if strings.Contains(cleanType, ";") {
+		return fmt.Errorf("MIME type format が不正です: %s", cleanType)
+	}
+
+	mediaType, _, err := mime.ParseMediaType(cleanType)
+	if err != nil {
+		return fmt.Errorf("MIME type の解析に失敗しました: %w", err)
+	}
+	if mediaType == "" {
+		return fmt.Errorf("MIME type が空です")
+	}
+	return nil
 }

@@ -3,6 +3,7 @@ package infrastructures
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -61,5 +62,55 @@ func TestOSFileSystem_ReadAttachmentFile_NotFound_Error(t *testing.T) {
 	_, err := fs.ReadAttachmentFile("/tmp/does-not-exist-memos-attachment")
 	if err == nil {
 		t.Fatal("ReadAttachmentFile() error = nil, want error")
+	}
+}
+
+func TestOSFileSystem_ReadAttachmentFile_InvalidMIMEType_Error(t *testing.T) {
+	fs := NewOSFileSystem()
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "memo")
+
+	if err := os.WriteFile(target, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	_, err := fs.ReadAttachmentFile(target)
+	if err == nil {
+		t.Fatal("ReadAttachmentFile() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "MIME type の判定に失敗しました") {
+		t.Fatalf("error = %v, want MIME type の判定に失敗しました", err)
+	}
+}
+
+func TestOSFileSystem_ReadAttachmentFile_EmptyFile_DefaultContentType_Normal(t *testing.T) {
+	fs := NewOSFileSystem()
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "empty")
+
+	if err := os.WriteFile(target, []byte{}, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	got, err := fs.ReadAttachmentFile(target)
+	if err != nil {
+		t.Fatalf("ReadAttachmentFile() error = %v", err)
+	}
+	if got.ContentType != "application/octet-stream" {
+		t.Fatalf("contentType = %s, want application/octet-stream", got.ContentType)
+	}
+}
+
+func TestValidateContentType_Empty_Error(t *testing.T) {
+	err := validateContentType("   ")
+	if err == nil {
+		t.Fatal("validateContentType() error = nil, want error")
+	}
+}
+
+func TestValidateContentType_ParseError_Error(t *testing.T) {
+	err := validateContentType("text/plain extra")
+	if err == nil {
+		t.Fatal("validateContentType() error = nil, want error")
 	}
 }
