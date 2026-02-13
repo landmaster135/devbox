@@ -76,6 +76,8 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			boolPointer(conf.Pinned, conf.PinnedSet),
 			splitByComma(conf.UpdateMask),
 		)
+	case cfg.OperationPatchFiles:
+		result, err = service.PatchFiles(ctx, conf.Memo, splitByComma(conf.Files), conf.Replaces)
 	default:
 		fmt.Fprintf(stderr, "エラー: 未対応の operation です: %s\n", conf.Operation)
 		return 1

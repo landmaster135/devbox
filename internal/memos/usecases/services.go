@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 )
 
 const defaultTimeout = 30 * time.Second
@@ -27,13 +29,15 @@ type ServiceOptions struct {
 	APIToken   string
 	Timeout    time.Duration
 	HTTPClient HTTPClient
+	FileSystem infrastructures.FileSystem
 }
 
 // Service は Memos API 呼び出しのユースケースを提供する。
 type Service struct {
-	baseURL  string
-	apiToken string
-	client   HTTPClient
+	baseURL    string
+	apiToken   string
+	client     HTTPClient
+	fileSystem infrastructures.FileSystem
 }
 
 // Memo は CLI/上位層に返すメモ情報。
@@ -57,12 +61,46 @@ type ListMemosOutput struct {
 	TotalSize     int64  `json:"totalSize,omitempty"`
 }
 
+// Attachment は Memos API の添付情報。
+type Attachment struct {
+	Name         string `json:"name,omitempty"`
+	Filename     string `json:"filename,omitempty"`
+	ExternalLink string `json:"externalLink,omitempty"`
+	Type         string `json:"type,omitempty"`
+	Memo         string `json:"memo,omitempty"`
+}
+
+// ListMemoAttachmentsOutput は ListMemoAttachments のレスポンス。
+type ListMemoAttachmentsOutput struct {
+	Attachments   []Attachment `json:"attachments,omitempty"`
+	NextPageToken string       `json:"nextPageToken,omitempty"`
+}
+
+// SetMemoAttachmentsOutput は SetMemoAttachments のレスポンス。
+type SetMemoAttachmentsOutput struct {
+	Name        string       `json:"name,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
+}
+
 type memoMutationRequest struct {
 	Content     string `json:"content,omitempty"`
 	Visibility  string `json:"visibility,omitempty"`
 	State       string `json:"state,omitempty"`
 	Pinned      *bool  `json:"pinned,omitempty"`
 	DisplayTime string `json:"displayTime,omitempty"`
+}
+
+type createAttachmentRequest struct {
+	Filename     string `json:"filename,omitempty"`
+	Content      []byte `json:"content,omitempty"`
+	ExternalLink string `json:"externalLink,omitempty"`
+	Type         string `json:"type,omitempty"`
+	Memo         string `json:"memo,omitempty"`
+}
+
+type setMemoAttachmentsRequest struct {
+	Name        string       `json:"name,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
 }
 
 // NewService は Service を生成する。
@@ -76,10 +114,16 @@ func NewService(opts ServiceOptions) *Service {
 		client = &http.Client{Timeout: timeout}
 	}
 
+	fileSystem := opts.FileSystem
+	if fileSystem == nil {
+		fileSystem = infrastructures.NewOSFileSystem()
+	}
+
 	return &Service{
-		baseURL:  normalizeBaseURL(opts.BaseURL),
-		apiToken: strings.TrimSpace(opts.APIToken),
-		client:   client,
+		baseURL:    normalizeBaseURL(opts.BaseURL),
+		apiToken:   strings.TrimSpace(opts.APIToken),
+		client:     client,
+		fileSystem: fileSystem,
 	}
 }
 
@@ -195,6 +239,155 @@ func (s *Service) UpdateMemo(
 	return &result, nil
 }
 
+// PatchFiles はファイルを添付として作成し、メモに紐づける。
+func (s *Service) PatchFiles(
+	ctx context.Context,
+	memo string,
+	filePaths []string,
+	replaces bool,
+) (*SetMemoAttachmentsOutput, error) {
+	created := make([]Attachment, 0, len(filePaths))
+	for _, filePath := range filePaths {
+		attachmentFile, err := s.fileSystem.ReadAttachmentFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("files の読み込みに失敗しました (%s): %w", filePath, err)
+		}
+		attachment, err := s.CreateAttachment(
+			ctx,
+			attachmentFile.Filename,
+			attachmentFile.Content,
+			attachmentFile.ContentType,
+			memo,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if attachment == nil {
+			return nil, fmt.Errorf("CreateAttachment の結果が空です")
+		}
+		created = append(created, *attachment)
+	}
+
+	finalAttachments := created
+	if !replaces {
+		existing, err := s.listAllMemoAttachments(ctx, memo)
+		if err != nil {
+			return nil, err
+		}
+		finalAttachments = mergeAttachmentsByName(existing, created)
+	}
+
+	return s.SetMemoAttachments(ctx, memo, finalAttachments)
+}
+
+// CreateAttachment は CreateAttachment API を呼び出す。
+func (s *Service) CreateAttachment(
+	ctx context.Context,
+	filename string,
+	content []byte,
+	attachmentType string,
+	memo string,
+) (*Attachment, error) {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return nil, fmt.Errorf("filename が空です")
+	}
+
+	attachmentType = strings.TrimSpace(attachmentType)
+	if attachmentType == "" {
+		return nil, fmt.Errorf("type が空です")
+	}
+
+	payload := createAttachmentRequest{
+		Filename: filename,
+		Content:  content,
+		Type:     attachmentType,
+	}
+	if memoName := buildMemoResourceName(memo); memoName != "" {
+		payload.Memo = memoName
+	}
+
+	var result Attachment
+	if err := s.doJSON(ctx, http.MethodPost, "/attachments", nil, payload, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// ListMemoAttachments は ListMemoAttachments API を呼び出す。
+func (s *Service) ListMemoAttachments(
+	ctx context.Context,
+	memo string,
+	pageSize int,
+	pageToken string,
+) (*ListMemoAttachmentsOutput, error) {
+	memoID := normalizeMemoIdentifier(memo)
+	if memoID == "" {
+		return nil, fmt.Errorf("memo が空です")
+	}
+
+	query := url.Values{}
+	if pageSize > 0 {
+		query.Set("pageSize", strconv.Itoa(pageSize))
+	}
+	if pageToken != "" {
+		query.Set("pageToken", pageToken)
+	}
+
+	requestPath := path.Join("/memos", url.PathEscape(memoID), "attachments")
+	var result ListMemoAttachmentsOutput
+	if err := s.doJSON(ctx, http.MethodGet, requestPath, query, nil, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// SetMemoAttachments は SetMemoAttachments API を呼び出す。
+func (s *Service) SetMemoAttachments(
+	ctx context.Context,
+	memo string,
+	attachments []Attachment,
+) (*SetMemoAttachmentsOutput, error) {
+	memoID := normalizeMemoIdentifier(memo)
+	if memoID == "" {
+		return nil, fmt.Errorf("memo が空です")
+	}
+
+	requestPath := path.Join("/memos", url.PathEscape(memoID), "attachments")
+	payload := setMemoAttachmentsRequest{
+		Name:        buildMemoResourceName(memoID),
+		Attachments: attachments,
+	}
+
+	var result SetMemoAttachmentsOutput
+	if err := s.doJSON(ctx, http.MethodPatch, requestPath, nil, payload, &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+func (s *Service) listAllMemoAttachments(ctx context.Context, memo string) ([]Attachment, error) {
+	const pageSize = 100
+
+	var all []Attachment
+	pageToken := ""
+
+	for {
+		result, err := s.ListMemoAttachments(ctx, memo, pageSize, pageToken)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			return all, nil
+		}
+		all = append(all, result.Attachments...)
+		if strings.TrimSpace(result.NextPageToken) == "" {
+			return all, nil
+		}
+		pageToken = result.NextPageToken
+	}
+}
+
 func (s *Service) doJSON(ctx context.Context, method, requestPath string, query url.Values, payload any, out any) error {
 	req, err := s.newRequest(ctx, method, requestPath, query, payload)
 	if err != nil {
@@ -281,6 +474,14 @@ func normalizeMemoIdentifier(memo string) string {
 	return strings.TrimSpace(trimmed)
 }
 
+func buildMemoResourceName(memo string) string {
+	memoID := normalizeMemoIdentifier(memo)
+	if memoID == "" {
+		return ""
+	}
+	return "memos/" + memoID
+}
+
 func buildUpdateMask(content string, visibility string, state string, pinned *bool, updateMask []string) []string {
 	if len(updateMask) > 0 {
 		return cleanMaskFields(updateMask)
@@ -319,4 +520,28 @@ func cleanMaskFields(raw []string) []string {
 		}
 	}
 	return fields
+}
+
+func mergeAttachmentsByName(existing []Attachment, created []Attachment) []Attachment {
+	createdByName := make(map[string]struct{}, len(created))
+	for _, attachment := range created {
+		name := strings.TrimSpace(attachment.Name)
+		if name == "" {
+			continue
+		}
+		createdByName[name] = struct{}{}
+	}
+
+	merged := make([]Attachment, 0, len(existing)+len(created))
+	for _, attachment := range existing {
+		name := strings.TrimSpace(attachment.Name)
+		if name != "" {
+			if _, exists := createdByName[name]; exists {
+				continue
+			}
+		}
+		merged = append(merged, attachment)
+	}
+	merged = append(merged, created...)
+	return merged
 }

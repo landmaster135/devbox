@@ -14,6 +14,7 @@ const (
 	OperationGetMemo    = "get-memo"
 	OperationListMemos  = "list-memos"
 	OperationUpdateMemo = "update-memo"
+	OperationPatchFiles = "patch-files"
 
 	defaultTimeoutSeconds = 30
 	defaultPageSize       = 20
@@ -24,6 +25,7 @@ var supportedOperations = []string{
 	OperationGetMemo,
 	OperationListMemos,
 	OperationUpdateMemo,
+	OperationPatchFiles,
 }
 
 var supportedVisibility = map[string]struct{}{
@@ -63,6 +65,8 @@ type Config struct {
 	OrderBy   string
 
 	UpdateMask string
+	Files      string
+	Replaces   bool
 }
 
 // ParseFlags は CLI フラグを解析する。
@@ -102,6 +106,8 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.PageToken, "page-token", "", "list-memos のページトークン")
 	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos のソート指定（例: update_time desc）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
+	fs.StringVar(&cfg.Files, "files", "", "patch-files で添付するファイルパス（カンマ区切り）")
+	fs.BoolVar(&cfg.Replaces, "replaces", false, "patch-files で既存添付を置換するか（デフォルト: false）")
 
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -127,6 +133,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.PageToken = strings.TrimSpace(cfg.PageToken)
 	cfg.OrderBy = strings.TrimSpace(cfg.OrderBy)
 	cfg.UpdateMask = strings.TrimSpace(cfg.UpdateMask)
+	cfg.Files = strings.TrimSpace(cfg.Files)
 	cfg.Pinned = pinnedValue.Value()
 	cfg.PinnedSet = pinnedValue.Changed()
 
@@ -187,6 +194,13 @@ func validateConfig(cfg *Config) error {
 		if err := validateContentInput(cfg.Content, cfg.ContentFile, "update-memo"); err != nil {
 			return err
 		}
+	case OperationPatchFiles:
+		if cfg.Memo == "" {
+			return fmt.Errorf("patch-files 操作には memo パラメータが必要です")
+		}
+		if !hasNonEmptyCSVEntries(cfg.Files) {
+			return fmt.Errorf("patch-files 操作には files パラメータが必要です")
+		}
 	}
 
 	return nil
@@ -219,6 +233,15 @@ func validateContentInput(content, contentFile, operation string) error {
 	return nil
 }
 
+func hasNonEmptyCSVEntries(raw string) bool {
+	for _, part := range strings.Split(raw, ",") {
+		if strings.TrimSpace(part) != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // PrintUsage は CLI の利用方法を表示する。
 func PrintUsage() {
 	ops := make([]string, len(supportedOperations))
@@ -244,6 +267,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意)\n\n")
+	fmt.Fprintf(os.Stderr, "  patch-files\n")
+	fmt.Fprintf(os.Stderr, "        -memo (必須), -files (必須), -replaces (任意: デフォルト false)\n\n")
 
 	fmt.Fprintf(os.Stderr, "例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content='hello'\n", os.Args[0])
@@ -251,6 +276,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=get-memo -base-url=https://memos.example.com -api-token=token -memo=abc123\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -page-size=20 -state=NORMAL\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=patch-files -base-url=https://memos.example.com -api-token=token -memo=abc123 -files=./a.png,./b.pdf -replaces=false\n", os.Args[0])
 }
 
 type trackedBoolValue struct {

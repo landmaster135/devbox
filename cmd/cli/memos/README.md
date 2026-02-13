@@ -8,6 +8,7 @@ Memos API（`/api/v1`）を操作するCLIツールです。
 - `get-memo`: 単一メモを取得
 - `list-memos`: メモ一覧を取得
 - `update-memo`: 既存メモを更新（UpdateMemo）
+- `patch-files`: ローカルファイルを添付として作成し、メモ添付を更新
 
 ## インストール
 
@@ -29,7 +30,7 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-operation` | 実行する操作（`create-memo`, `get-memo`, `list-memos`, `update-memo`） | 必須 |
+| `-operation` | 実行する操作（`create-memo`, `get-memo`, `list-memos`, `update-memo`, `patch-files`） | 必須 |
 | `-base-url` | Memos のベースURL（例: `https://memos.example.com`） | 必須 |
 | `-api-token` | Bearer トークン | 必須 |
 | `-timeout` | HTTPタイムアウト秒（デフォルト: 30） | 任意 |
@@ -76,6 +77,14 @@ go run ./cmd/cli/memos \
 | `-pinned` | 更新後のピン留め（`true/false`） | 任意 |
 | `-update-mask` | 更新対象フィールド（例: `content,visibility`） | 任意 |
 
+### patch-files
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-memo` | 添付対象の memo 識別子 | 必須 |
+| `-files` | 添付するローカルファイルのパスをカンマ区切りで指定 | 必須 |
+| `-replaces` | `true` なら新規添付のみで置換。`false`（デフォルト）なら既存添付を `ListMemoAttachments` で取得して保持したまま追加 | 任意 |
+
 ## 使用例
 
 メモ作成
@@ -119,6 +128,27 @@ go run ./cmd/cli/memos \
   -visibility=PUBLIC
 ```
 
+添付を追加（既存添付を保持: デフォルト `-replaces=false`）
+```bash
+go run ./cmd/cli/memos \
+  -operation=patch-files \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123 \
+  -files="./a.png,./b.pdf"
+```
+
+添付を置換（新規添付だけにする）
+```bash
+go run ./cmd/cli/memos \
+  -operation=patch-files \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123 \
+  -files="./a.png,./b.pdf" \
+  -replaces=true
+```
+
 メモ作成（改行を含む本文をファイルから渡す）
 ```bash
 go run ./cmd/cli/memos \
@@ -139,3 +169,6 @@ go run ./cmd/cli/memos \
 - GetMemo: https://usememos.com/docs/api/memoservice/GetMemo
 - ListMemos: https://usememos.com/docs/api/memoservice/ListMemos
 - UpdateMemo: https://usememos.com/docs/api/memoservice/UpdateMemo
+- CreateAttachment: https://usememos.com/docs/api/attachmentservice/CreateAttachment
+- ListMemoAttachments: https://usememos.com/docs/api/memoservice/ListMemoAttachments
+- SetMemoAttachments: https://usememos.com/docs/api/memoservice/SetMemoAttachments

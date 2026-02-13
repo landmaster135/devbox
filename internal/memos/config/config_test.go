@@ -278,6 +278,76 @@ func TestConfig_ParseFlagsFromArgs_UpdateMemoWithContentFile_Normal(t *testing.T
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_PatchFiles_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=patch-files",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-files=./a.png,./b.txt",
+		"-replaces=true",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Operation != OperationPatchFiles {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationPatchFiles)
+	}
+	if cfg.Files != "./a.png,./b.txt" {
+		t.Fatalf("files = %s, want ./a.png,./b.txt", cfg.Files)
+	}
+	if !cfg.Replaces {
+		t.Fatalf("replaces = %v, want true", cfg.Replaces)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_PatchFilesDefaultReplaces_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=patch-files",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-files=./a.png",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Replaces {
+		t.Fatalf("replaces = %v, want false", cfg.Replaces)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_PatchFilesMissingMemo_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=patch-files",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-files=./a.png",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "memo パラメータ") {
+		t.Fatalf("error = %v, want memo パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_PatchFilesMissingFiles_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=patch-files",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-files=, ,",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "files パラメータ") {
+		t.Fatalf("error = %v, want files パラメータ", err)
+	}
+}
+
 func TestConfig_PrintUsage_Normal(t *testing.T) {
 	originalArgs := os.Args
 	defer func() {
