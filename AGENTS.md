@@ -5,14 +5,14 @@
 
 ## 参照優先順
 
-1. `docs/implementation/implementation_guide.md`
+1. `docs/tool_implementation/implementation_guide.md`
 2. `docs/project_status/service_implementation_status.md`
 3. `docs/project_overview/project_overview.md`
 4. `docs/user_prompt/prompt_sample.md`
 
 ## docs マップ
 
-- `docs/implementation/implementation_guide.md`
+- `docs/tool_implementation/implementation_guide.md`
   - 用途: CLI/MCP実装時の注意点、実装パターン、失敗しやすいポイントの確認
   - 読むタイミング: 新規ツール実装、既存実装の修正、MCP実装時
 
