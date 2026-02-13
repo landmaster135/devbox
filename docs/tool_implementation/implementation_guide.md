@@ -2,8 +2,8 @@
 
 ## ドキュメント更新ルール
 
-CLIツール実装完了後のドキュメント更新手順は、`docs/tool_implementation/documentation_guide.md` を参照してください。
-CLIツール実装完了後は、対応する `cmd/cli/<tool>/README.md` に使い方と実行例を必ず追記してください。
+ドキュメント更新の全体手順は、`docs/tool_implementation/documentation_guide.md` を参照してください。
+CLIツール固有の実装ルールは、`docs/tool_implementation/cli/guide.md` を参照してください。
 
 ## 実装時の重要な注意点
 
@@ -167,55 +167,7 @@ mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []st
 
 ## 実装パターン
 
-### 1. CLIツールのmain.go構造
-
-```go
-package main
-
-import (
-	"fmt"
-	"os"
-	config "github.com/landmaster135/devbox/internal/{tool-name}/config"
-	usecases "github.com/landmaster135/devbox/internal/{tool-name}/usecases"
-)
-
-func main() {
-	cfg, err := config.ParseFlags()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		config.PrintUsage()
-		os.Exit(1)
-	}
-
-	if cfg.Help {
-		config.PrintUsage()
-		return
-	}
-
-	switch cfg.Operation {
-	case "operation1":
-		handleOperation1(cfg)
-	case "operation2":
-		handleOperation2(cfg)
-	default:
-		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
-		config.PrintUsage()
-		os.Exit(1)
-	}
-}
-
-func handleOperation1(cfg *config.Config) {
-	service := usecases.NewService()
-	result, err := service.HandleOperation1(cfg.Param1, cfg.Param2)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Print(result) // 重要: 結果を標準出力に表示
-}
-```
-
-### 2. MCPツールのmcp.go構造
+### 1. MCPツールのmcp.go構造
 
 ```go
 package tool_name
@@ -277,7 +229,7 @@ func BuildToolServer() {
 }
 ```
 
-### 3. 共通サービス層の実装
+### 2. 共通サービス層の実装
 
 ```go
 package usecases
@@ -300,7 +252,7 @@ func (s *Service) HandleOperation1(param1, param2 string) (string, error) {
 }
 ```
 
-### 4. コマンド実行ラッパーによる非シェル化
+### 3. コマンド実行ラッパーによる非シェル化
 
 外部入力を伴う処理で OS コマンドを実行する場合、`exec.Command` を直接 `name` と `args` に分割して呼び出すことで、シェル展開を回避しコマンドインジェクション対策を実装しなくても安全な構造を保てます。
 
@@ -334,13 +286,7 @@ output, err := executor.ExecuteInDir(absRootDir, "go", args...)
 
 ## 実装時のチェックリスト
 
-### CLIツール実装チェックリスト
-
-- [ ] `fmt.Print(result)`で結果を標準出力に表示している
-- [ ] エラー時は`fmt.Fprintf(os.Stderr, ...)`でエラーメッセージを出力
-- [ ] エラー時は`os.Exit(1)`でプロセスを終了
-- [ ] ヘルプ機能（`-help`フラグ）を実装
-- [ ] 操作タイプのswitch文で未対応操作をハンドリング
+CLIツール固有のチェックリストは `docs/tool_implementation/cli/guide.md` を参照してください。
 
 ### MCPツール実装チェックリスト
 
@@ -523,21 +469,7 @@ fmt.Print(result)
 return mcp.NewToolResultText(result), nil
 ```
 
-### 2. CLIツールで結果を表示しない
-```go
-// ❌ 間違い: 結果を表示しない
-service.HandleOperation(param)
-
-// ✅ 正しい: 結果を標準出力に表示
-result, err := service.HandleOperation(param)
-if err != nil {
-  fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-  os.Exit(1)
-}
-fmt.Print(result)
-```
-
-### 3. パラメータ取得の間違い
+### 2. パラメータ取得の間違い
 ```go
 // ❌ 間違い: 必須パラメータでGetStringを使用
 param := request.GetString("required_param", "")
@@ -549,7 +481,7 @@ if err != nil {
 }
 ```
 
-### 4. 任意パラメータ取得の間違い
+### 3. 任意パラメータ取得の間違い
 ```go
 // ❌ 間違い: GetStringでデフォルト値を設定していない
 param := request.GetString("required_param")
@@ -558,25 +490,7 @@ param := request.GetString("required_param")
 param := request.GetString("required_param", "")
 ```
 
-### 5. フラグパーサーのモック実装の間違い
-```go
-// ❌ 間違い: フラグ定義後に値を設定しても反映されない
-func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-  *p = value // デフォルト値のみ
-}
-
-// ✅ 正しい: 事前設定値をチェックして適用
-func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-  if presetValue, exists := m.stringValues[name]; exists {
-    *p = presetValue // 事前設定値を優先
-  } else {
-    *p = value // デフォルト値
-  }
-  m.stringVars[name] = p
-}
-```
-
-**参考実装**: `devbox/internal/zip_compressor/config/config_test.go`のMockFlagParserを参照
+CLIツール固有の実装ミスは `docs/tool_implementation/cli/guide.md` を参照してください。
 
 ## MCPツールのテスト
 1. `.config/cline/cline_mcp_settings.json`に設定追加
@@ -585,7 +499,7 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
 
 ## まとめ
 
-- **CLIツール**: 結果を`fmt.Print(result)`で標準出力に表示
 - **MCPツール**: 結果を`mcp.NewToolResultText(result)`でクライアントに返却
 - **共通**: ビジネスロジックはusecasesパッケージで共有
 - **重要**: MCPツールでは標準出力を一切使用しない（タイムアウト対策）
+- **CLI固有項目**: `docs/tool_implementation/cli/guide.md` を参照
