@@ -20,7 +20,7 @@
 | 区分 | 参照先 |
 |---|---|
 | 共通 | `docs/tool_implementation/implementation_guide.md` |
-| CLI | `docs/tool_implementation/cli/guide.md` |
+| CLI | `docs/tool_implementation/cli/index.md` |
 | MCP | `docs/tool_implementation/mcp/guide.md` |
 
 ## 4. テスト戦略
