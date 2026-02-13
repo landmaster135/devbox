@@ -4,56 +4,13 @@
 
 ドキュメント更新の全体手順は、`docs/tool_implementation/documentation_guide.md` を参照してください。
 CLIツール固有の実装ルールは、`docs/tool_implementation/cli/guide.md` を参照してください。
+MCPツール固有の実装ルールは、`docs/tool_implementation/mcp/guide.md` を参照してください。
 
 ## 実装時の重要な注意点
 
-### CLIツール vs MCPツールの出力制御
-
-**重要**: CLIツールとMCPツールでは出力の扱いが根本的に異なります。
-
-CLIツール
-```go
-// ✅ 正しい実装: 結果を標準出力に表示
-func handleOperation(cfg *config.Config) {
-  service := usecases.NewService()
-  result, err := service.HandleOperation(cfg.Param)
-  if err != nil {
-    fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-    os.Exit(1)
-  }
-  
-  // 必須: 結果を標準出力に表示
-  fmt.Print(result)
-}
-```
-
-MCPツール
-```go
-// ✅ 正しい実装: MCPクライアントに結果を返却
-func handleOperation(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-  service := usecases.NewService()
-  result, err := service.HandleOperation(param)
-  if err != nil {
-    return nil, fmt.Errorf("処理に失敗しました: %v", err)
-  }
-  
-  // 必須: MCPクライアントに結果を返却（標準出力は使用しない）
-  return mcp.NewToolResultText(result), nil
-}
-```
-
-### MCPツールでのタイムアウト対策
-
-MCPツールでは長大な標準出力を行うとタイムアウトが発生します。以下を厳守してください：
-
-```go
-// ❌ 悪い例: 標準出力への出力
-fmt.Printf("処理中...\n")
-fmt.Printf("実行コマンド: %s\n", cmd)
-
-// ✅ 良い例: 標準出力を抑制
-// 進捗表示や実行コマンドの出力は行わない
-```
+### ツール種別ごとの注意点
+- CLIツール固有の注意点: `docs/tool_implementation/cli/guide.md`
+- MCPツール固有の注意点: `docs/tool_implementation/mcp/guide.md`
 
 ### ディレクトリ操作の注意点
 - `cmd.Dir = dir` の設定は必須
@@ -167,69 +124,7 @@ mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []st
 
 ## 実装パターン
 
-### 1. MCPツールのmcp.go構造
-
-```go
-package tool_name
-
-import (
-	"context"
-	"fmt"
-	mcp "github.com/mark3labs/mcp-go/mcp"
-	server "github.com/mark3labs/mcp-go/server"
-	usecases "github.com/landmaster135/devbox/internal/{tool-name}/usecases"
-)
-
-// ハンドラー関数
-func handleOperation1(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	param1, err := request.RequireString("param1")
-	if err != nil {
-		return nil, err
-	}
-	
-	param2 := request.GetString("param2", "default")
-
-	service := usecases.NewService()
-	result, err := service.HandleOperation1(param1, param2)
-	if err != nil {
-		return nil, fmt.Errorf("操作1の実行に失敗しました: %v", err)
-	}
-
-	return mcp.NewToolResultText(result), nil
-}
-
-// サーバー設定
-func setToolServer(s *server.MCPServer) *server.MCPServer {
-	tool := mcp.NewTool(
-		"tool_name",
-		mcp.WithDescription("ツールの説明"),
-		mcp.WithString("param1", mcp.Required(), mcp.Description("必須パラメータ")),
-		mcp.WithString("param2", mcp.Description("オプションパラメータ")),
-	)
-	s.AddTool(tool, handleOperation1)
-	return s
-}
-
-func createToolServer() *server.MCPServer {
-	s := server.NewMCPServer(
-		"Tool Name",
-		"1.0.0",
-		server.WithResourceCapabilities(true, true),
-		server.WithPromptCapabilities(true),
-		server.WithLogging(),
-	)
-	return setToolServer(s)
-}
-
-func BuildToolServer() {
-	s := createToolServer()
-	if err := server.ServeStdio(s); err != nil {
-		fmt.Printf("Server error: %v\n", err)
-	}
-}
-```
-
-### 2. 共通サービス層の実装
+### 1. 共通サービス層の実装
 
 ```go
 package usecases
@@ -252,7 +147,7 @@ func (s *Service) HandleOperation1(param1, param2 string) (string, error) {
 }
 ```
 
-### 3. コマンド実行ラッパーによる非シェル化
+### 2. コマンド実行ラッパーによる非シェル化
 
 外部入力を伴う処理で OS コマンドを実行する場合、`exec.Command` を直接 `name` と `args` に分割して呼び出すことで、シェル展開を回避しコマンドインジェクション対策を実装しなくても安全な構造を保てます。
 
@@ -287,27 +182,7 @@ output, err := executor.ExecuteInDir(absRootDir, "go", args...)
 ## 実装時のチェックリスト
 
 CLIツール固有のチェックリストは `docs/tool_implementation/cli/guide.md` を参照してください。
-
-### MCPツール実装チェックリスト
-
-**ハンドラー関数**
-- [ ] `mcp.NewToolResultText(result)`で結果を返却
-- [ ] エラー時は`return nil, fmt.Errorf(...)`でエラーを返却
-- [ ] 標準出力への出力を一切行わない（タイムアウト対策）
-- [ ] `request.RequireString()`と`request.GetString()`を適切に使い分け
-- [ ] 必須パラメータは`request.RequireString()`でエラーハンドリング
-- [ ] オプションパラメータは`request.GetString()`でデフォルト値設定
-
-**サーバー設定**
-- [ ] `mcp.WithDescription()`でツールの説明を設定
-- [ ] 必須パラメータは`mcp.Required()`を設定
-- [ ] 各パラメータに`mcp.Description()`で説明を設定
-- [ ] `s.AddTool(tool, handler)`でツールとハンドラーを関連付け
-- [ ] `s.AddPrompt(prompt, handler)`でプロンプトとハンドラーを関連付け
-- [ ] `mcp.WithPromptDescription()`でプロンプトの説明を設定
-- [ ] `server.WithPromptCapabilities(true)`でプロンプト機能を有効化
-- [ ] `server.WithLogging()`でログ機能を有効化
-- [ ] `cmd/mcp/router.go`にサーバーを追加
+MCPツール固有のチェックリストは `docs/tool_implementation/mcp/guide.md` を参照してください。
 
 ### 共通チェックリスト
 
@@ -459,47 +334,16 @@ type expectedData struct {
 
 ## よくある実装ミス
 
-### 1. MCPツールで標準出力を使用
-```go
-// ❌ 間違い: MCPツールで標準出力を使用
-fmt.Printf("処理中...\n")
-fmt.Print(result)
-
-// ✅ 正しい: MCPクライアントに結果を返却
-return mcp.NewToolResultText(result), nil
-```
-
-### 2. パラメータ取得の間違い
-```go
-// ❌ 間違い: 必須パラメータでGetStringを使用
-param := request.GetString("required_param", "")
-
-// ✅ 正しい: 必須パラメータはRequireStringを使用
-param, err := request.RequireString("required_param")
-if err != nil {
-  return nil, err
-}
-```
-
-### 3. 任意パラメータ取得の間違い
-```go
-// ❌ 間違い: GetStringでデフォルト値を設定していない
-param := request.GetString("required_param")
-
-// ✅ 正しい: GetStringでデフォルト値を設定する
-param := request.GetString("required_param", "")
-```
-
 CLIツール固有の実装ミスは `docs/tool_implementation/cli/guide.md` を参照してください。
+MCPツール固有の実装ミスは `docs/tool_implementation/mcp/guide.md` を参照してください。
 
-## MCPツールのテスト
-1. `.config/cline/cline_mcp_settings.json`に設定追加
-2. Clineから実行してテスト
-3. エラーログを確認
+## ツール別テスト手順
+
+- CLIツール: `docs/tool_implementation/cli/guide.md`
+- MCPツール: `docs/tool_implementation/mcp/guide.md`
 
 ## まとめ
 
-- **MCPツール**: 結果を`mcp.NewToolResultText(result)`でクライアントに返却
 - **共通**: ビジネスロジックはusecasesパッケージで共有
-- **重要**: MCPツールでは標準出力を一切使用しない（タイムアウト対策）
 - **CLI固有項目**: `docs/tool_implementation/cli/guide.md` を参照
+- **MCP固有項目**: `docs/tool_implementation/mcp/guide.md` を参照
