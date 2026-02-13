@@ -9,28 +9,13 @@
 
 ## 4. MCPサーバーシステム
 
-### 4.1 アーキテクチャ概要
-MCPサーバーシステムは`cmd/mcp/router.go`を中心とした統一的なルーティングシステムを採用しています。
+アーキテクチャ概要と実装パターンは `docs/tool_implementation/mcp/guide.md` を参照してください。
 
-```go
-// router.goの主要構造
-func Router() {
-  args := os.Args
-  switch args[1] {
-  case "arith_calc":
-      arithmetic_calculator.BuildArithCalculatorServer()
-  case "github":
-      github.BuildGitHubServer()
-  // ... その他のサーバー定義
-  }
-}
-```
-
-### 4.2 提供MCPサーバー一覧
+### 4.1 提供MCPサーバー一覧
 
 [service_implementation_status.md](../project_status/service_implementation_status.md)を参照。
 
-### 4.3 拡張パターン
+### 4.2 拡張パターン
 新しいMCPサーバーを追加する際の標準的な手順：
 
 1. `cmd/mcp/{server_name}/` ディレクトリ作成
@@ -94,7 +79,7 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 ### 7.2 テスト戦略
 - **単体テスト**: 各レイヤーの独立したテスト
 - **統合テスト**: レイヤー間の連携テスト
-- **カバレッジ目標**: 90%以上（`.clinerules`準拠）
+- **カバレッジ目標**: 90%以上
 - **テストコマンド**: `go test -v ./... -coverpkg=./... -covermode=count -coverprofile=coverage.out`
 - **テストツール**: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
 

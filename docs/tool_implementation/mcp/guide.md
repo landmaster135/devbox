@@ -7,6 +7,91 @@
 - 共通実装ガイド: `docs/tool_implementation/implementation_guide.md`
 - ドキュメント更新手順: `docs/tool_implementation/documentation_guide.md`
 
+## 実装パターン
+
+### ルーター層
+
+MCPサーバーシステムは `cmd/mcp/router.go` を中心に、起動引数でサーバーを切り替える統一ルーティングを採用しています。
+
+```go
+func Router() {
+	args := os.Args
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "usage: go run main.go [arguments]")
+		os.Exit(1)
+	}
+
+	switch args[1] {
+	case "arith_calc":
+		arithmetic_calculator.BuildArithCalculatorServer()
+	case "github":
+		github.BuildGitHubServer()
+	default:
+		fmt.Fprintln(os.Stderr, "argument is invalid")
+		os.Exit(1)
+	}
+}
+```
+
+### MCPハンドラー層（`cmd/mcp/arithmetic_calculator/mcp.go` 参考）
+
+ハンドラーでは `request.Require*` で必須入力を取得し、usecase 呼び出し結果を `mcp.CallToolResult` として返却します。
+
+```go
+import (
+	"context"
+	"fmt"
+
+	mcp "github.com/mark3labs/mcp-go/mcp"
+	usecases "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases"
+)
+
+func handleToCalculate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	op, err := request.RequireString("operation")
+	if err != nil {
+		return nil, err
+	}
+
+	x, err := request.RequireFloat("x")
+	if err != nil {
+		return nil, err
+	}
+
+	y, err := request.RequireFloat("y")
+	if err != nil {
+		return nil, err
+	}
+
+	service := usecases.NewCalculatorService()
+	result, err := service.HandleToCalculate(op, x, y)
+	if err != nil {
+		return nil, fmt.Errorf("パラメータを用いた算術計算に失敗しました: %v", err)
+	}
+
+	return mcp.FormatNumberResult(result), nil
+}
+```
+
+### ツール定義とハンドラー関連付け
+
+```go
+func setTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
+	tool := mcp.NewTool(
+		"calculate",
+		mcp.WithDescription("Perform basic arithmetic calculations with two numbers"),
+		mcp.WithString("operation",
+			mcp.Required(),
+			mcp.Description("The arithmetic operation to perform"),
+			mcp.Enum("add", "subtract", "multiply", "divide"),
+		),
+		mcp.WithNumber("x", mcp.Required(), mcp.Description("First number")),
+		mcp.WithNumber("y", mcp.Required(), mcp.Description("Second number")),
+	)
+	s.AddTool(tool, handleToCalculate)
+	return s
+}
+```
+
 ## 実装時の重要な注意点
 
 ### 出力制御（標準出力を使わない）
@@ -43,71 +128,6 @@ fmt.Printf("実行コマンド: %s\n", cmd)
 
 - 必須パラメータは `request.RequireString()` を使用
 - 任意パラメータは `request.GetString("name", "default")` を使用
-
-## 実装パターン
-
-### MCPツールの `mcp.go` 構造
-
-```go
-package tool_name
-
-import (
-  "context"
-  "fmt"
-  "os"
-  mcp "github.com/mark3labs/mcp-go/mcp"
-  server "github.com/mark3labs/mcp-go/server"
-  usecases "github.com/landmaster135/devbox/internal/{tool-name}/usecases"
-)
-
-// ハンドラー関数
-func handleOperation1(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-  param1, err := request.RequireString("param1")
-  if err != nil {
-    return nil, err
-  }
-
-  param2 := request.GetString("param2", "default")
-
-  service := usecases.NewService()
-  result, err := service.HandleOperation1(param1, param2)
-  if err != nil {
-    return nil, fmt.Errorf("操作1の実行に失敗しました: %v", err)
-  }
-
-  return mcp.NewToolResultText(result), nil
-}
-
-// サーバー設定
-func setToolServer(s *server.MCPServer) *server.MCPServer {
-  tool := mcp.NewTool(
-    "tool_name",
-    mcp.WithDescription("ツールの説明"),
-    mcp.WithString("param1", mcp.Required(), mcp.Description("必須パラメータ")),
-    mcp.WithString("param2", mcp.Description("オプションパラメータ")),
-  )
-  s.AddTool(tool, handleOperation1)
-  return s
-}
-
-func createToolServer() *server.MCPServer {
-  s := server.NewMCPServer(
-    "Tool Name",
-    "1.0.0",
-    server.WithResourceCapabilities(true, true),
-    server.WithPromptCapabilities(true),
-    server.WithLogging(),
-  )
-  return setToolServer(s)
-}
-
-func BuildToolServer() {
-  s := createToolServer()
-  if err := server.ServeStdio(s); err != nil {
-    fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
-  }
-}
-```
 
 共通のサービス層実装やコマンド実行ラッパーは `docs/tool_implementation/implementation_guide.md` を参照してください。
 
