@@ -3,25 +3,17 @@
 ## 1. プロジェクト概要
 
 ### 1.1 プロジェクトの目的
-`devbox`は開発者向けの包括的なユーティリティツール集合体です。現在（2025年時点）で69個のCLIツールと22個のMCP（Model Context Protocol）サーバーを提供し、日常的な開発作業を効率化することを目的としています。
+`devbox`は開発者向けの包括的なユーティリティツール集合体です。様々なCLIツールとMCPを提供し、日常的な開発作業を効率化することを目的としています。
 
 ### 1.2 主要機能
-- **CLIツール群**: ファイル処理、画像変換、データ変換、コード解析、クラウド連携など69のコマンドラインユーティリティ
-- **MCPサーバー群**: AI開発環境との統合を可能にする22個の外部API連携サーバー
+- **CLIツール群**: コマンドラインユーティリティ
+- **MCPサーバー群**: AI開発環境との統合を可能にする外部API連携サーバー
 - **クロスプラットフォーム対応**: Linux、macOS、Windows環境での動作保証
-- **自動化ビルドシステム**: 効率的な開発・デプロイメントワークフロー
 
 ### 1.3 技術スタック
 - **言語**: Go
 - **アーキテクチャ**: Clean Architecture
 - **ビルドシステム**: Bash スクリプトベース
-- **主要依存関係**:
-  - MCP: `github.com/mark3labs/mcp-go`
-  - 画像・動画処理: `github.com/anthonynsimon/bild`, `github.com/gen2brain/webp`, `github.com/gen2brain/avif`, `github.com/u2takey/ffmpeg-go`
-  - 文書処理: `github.com/pdfcpu/pdfcpu`
-  - データストア: `github.com/lib/pq`, `github.com/valkey-io/valkey-go`
-  - 外部API/クラウド: `github.com/google/go-github`, `cloud.google.com/go/...`, `golang.org/x/oauth2`, `google.golang.org/api`, `google.golang.org/genai`
-  - テスト: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
 
 ## 2. アーキテクチャ設計
 
