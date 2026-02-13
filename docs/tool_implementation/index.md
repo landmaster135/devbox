@@ -2,18 +2,9 @@
 
 `cmd/` 配下の実装作業に関する内容をまとめたものです。
 
-## 関連ガイド
-
-- 実装時の注意点・実装パターン: `docs/tool_implementation/implementation_guide.md`
-- 実装/改修後のドキュメント更新手順: `docs/tool_implementation/documentation_guide.md`
-- CLI実装ガイド: `docs/tool_implementation/cli/guide.md`
-- MCP実装ガイド: `docs/tool_implementation/mcp/guide.md`
-- サービス実装状況一覧: `docs/project_status/service_implementation_status.md`
-
 ## 1. 実装方式の選定（CLI / MCP）
-1. **利用形態を決める**: 端末向け実行なら CLI、MCP クライアント連携なら MCP を選択
-2. **既存実装を確認する**: `docs/project_status/service_implementation_status.md` を参照し、重複を回避
-3. **参照ガイドを確定する**: CLI は `docs/tool_implementation/cli/guide.md`、MCP は `docs/tool_implementation/mcp/guide.md`
+1. 既存実装を確認する: `docs/project_status/service_implementation_status.md` を参照し、重複を回避
+2. 実装ガイドを確認する
 
 ## 2. 共通実装フロー（CLI / MCP共通）
 1. **要件定義**: 機能仕様、入出力、エラー設計を定義
@@ -22,15 +13,17 @@
 4. **エントリーポイント実装**: CLI または MCP から `usecases` を呼び出す構成に統一
 5. **テスト実装**: 単体テストと統合テストを追加
 6. **ビルドスクリプト作成**: `scripts/build_{tool_name}.sh` を追加
-7. **ドキュメント更新**: README と関連 docs を更新
+7. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
 
-## 3. CLI固有の実装手順
-実装手順は `docs/tool_implementation/cli/guide.md` を参照。
+## 3. 実装ガイド
 
-## 4. MCP固有の実装手順
-実装手順は `docs/tool_implementation/mcp/guide.md` を参照。
+| 区分 | 参照先 |
+|---|---|
+| 共通 | `docs/tool_implementation/implementation_guide.md` |
+| CLI | `docs/tool_implementation/cli/guide.md` |
+| MCP | `docs/tool_implementation/mcp/guide.md` |
 
-## 5. テスト戦略
+## 4. テスト戦略
 - **単体テスト**: 各レイヤーの独立したテスト
 - **統合テスト**: レイヤー間の連携テスト
 - **CLI観点**: フラグ解析、標準出力、標準エラー出力、終了コード
@@ -39,16 +32,16 @@
 - **テストコマンド**: `go test -v ./... -coverpkg=./... -covermode=count -coverprofile=coverage.out`
 - **テストツール**: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
 
-## 6. コード品質管理
+## 5. コード品質管理
 - **命名規則**: Go標準に準拠（PascalCase、camelCase、snake_case）
 - **コード整形**: `go fmt ./...` または `goimports` による自動整形
 - **SOLID原則**: 設計原則の遵守
 - **依存関係管理**: go.modによる明示的な依存関係管理
 - **静的解析**: `go vet` などの標準ツールを活用
 
-## 7. ビルドシステム
+## 6. ビルドシステム
 
-### 7.1 ビルドフロー概要
+### 6.1 ビルドフロー概要
 ```mermaid
 graph LR
     A[scripts/build.sh] --> B[run_all_sh_scripts]
@@ -60,7 +53,7 @@ graph LR
     G --> H[pkg/bin/mcp/ Output]
 ```
 
-### 7.2 主要ビルドスクリプト
+### 6.2 主要ビルドスクリプト
 
 **build.sh**
 - 全ビルドスクリプトの統合実行
@@ -72,7 +65,7 @@ graph LR
 - Linux/AMD64、macOS/ARM64、Windows/AMD64対応
 - バイナリサイズ最適化（`-ldflags="-s -w" -trimpath`）
 
-### 7.3 クロスプラットフォーム対応
+### 6.3 クロスプラットフォーム対応
 ```bash
 # 例: MCPツールのマルチプラットフォームビルド
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${LINUX_AMD64_DIR}/${output_name}" "${package}"
@@ -80,7 +73,7 @@ GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${WIN_AMD64_DI
 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR}/${output_name}" "${package}"
 ```
 
-## 8. デプロイメント戦略
+## 7. デプロイメント戦略
 - **バイナリ配布**: クロスプラットフォーム対応バイナリの提供
 - **バージョン管理**: セマンティックバージョニング
 - **リリースプロセス**: 自動化されたビルド・テスト・パッケージング
