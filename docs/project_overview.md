@@ -209,46 +209,7 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 ## 6. 主要CLIツール群
 
-### 6.1 ファイル・データ整備系
-- `file-processor`: 汎用ファイル処理
-- `file-maneuver`: ファイル操作・移動
-- `file-character-replacer`: 文字列置換処理
-- `json-file-merger`: JSONファイル統合
-- `json-modifier`: JSONデータ操作
-- `yaml-parser`: YAML解析処理
-- `zip-compressor`: アーカイブ生成
-
-### 6.2 画像・マルチメディア系
-- `image-converter`: 画像形式変換
-- `image-filterer`: 画像フィルタリング
-- `image-trimmer`: 画像トリミング
-- `image-renamer-with-exif`: EXIFを活用したリネーム
-- `movie-converter-for-gif`: GIF動画変換
-- `movie-converter-for-webm`: WebM動画変換
-- `ocr-executor-with-ai`: OCRとAI後処理
-
-### 6.3 データ連携・API操作系
-- `http-request`: 任意API呼び出し
-- `discord-webhook`: Webhook送信支援
-- `context7`: ライブラリドキュメント検索
-- `open-weather-map`: 天気情報取得
-- `notion-sync`: Notionコンテンツ同期
-- `gcloud-monitoring`: Cloud Monitoring クエリ
-
-### 6.4 開発支援・運用系
-- `code-analyzer`: コード解析
-- `depends-visualizer`: 依存関係可視化
-- `git-diff-recorder`: 差分記録
-- `git-commit-history-retriever`: Git履歴分析
-- `ops-for-golang`: Goプロジェクトのビルド・テスト補助
-- `service-implementing-viewer`: サービス実装状況確認
-
-### 6.5 その他のユーティリティ
-- `unit-converter`: 単位変換
-- `iso8601-converter`: 日時フォーマット変換
-- `weather-notificator`: 気象通知
-- `memory`: メモリ使用量調査
-- `script-generator-to-build`: ビルドスクリプト生成
+[service_implementation_status.md](./service_implementation_status.md)を参照。
 
 ## 7. 開発・運用指針
 
@@ -302,29 +263,6 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 - 自動テスト・デプロイメント
 - モニタリング・アラート機能
 - ドキュメント自動生成
-
----
-
-## 付録
-
-### A. 依存関係一覧
-主要な外部依存関係とその用途：
-
-- **MCP関連**: `github.com/mark3labs/mcp-go`
-- **画像・動画処理**: `github.com/anthonynsimon/bild`, `github.com/gen2brain/webp`, `github.com/gen2brain/avif`, `github.com/u2takey/ffmpeg-go`
-- **PDF処理**: `github.com/pdfcpu/pdfcpu`
-- **データストア**: `github.com/lib/pq`, `github.com/valkey-io/valkey-go`
-- **Webスクレイピング**: `github.com/PuerkitoBio/goquery`
-- **外部API/認証**: `github.com/google/go-github`, `cloud.google.com/go/...`, `golang.org/x/oauth2`, `google.golang.org/api`, `google.golang.org/genai`
-- **テスト**: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
-
-### B. 設定ファイル
-- `go.mod`: Go モジュール定義
-- `.gitignore`: Git除外設定
-- `LICENSE`: MITライセンス
-
-### C. サンプルデータ
-`sample_data/` ディレクトリに各ツールのテスト用サンプルファイルを配置。
 
 ---
 
