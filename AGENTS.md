@@ -1,47 +1,70 @@
 # AGENTS.md (docs マップ)
 
-このファイルは、エージェント向けの「入口（目次）」です。  
-実装・設計・運用の詳細は `docs/` を正本として参照してください。
+## Summary
 
-## 参照優先順
-
-1. `docs/tool_implementation/index.md`
-2. `docs/docs_management/index.md`
-3. `docs/exec_plans/index.md`
-4. `docs/project_status/service_implementation_status.md`
-5. `docs/project_overview/project_overview.md`
-6. `docs/user_prompt/prompt_sample.md`
-
-## docs マップ
+このファイルは、エージェント向けの入口です。  
+実装・設計・運用の詳細ルールは `docs/` 側を正本とします。
 
 - `docs/tool_implementation/index.md`
-  - 用途: `cmd/` 配下ツールの実装・改修に関する統合入口
-  - 読むタイミング: 実装作業前後、ビルド/運用方針確認時
-
+  - `cmd/` 配下ツールの実装・改修に関する統合入口
 - `docs/docs_management/index.md`
-  - 用途: docs配置方針とAGENTSマップのリンク整合性確認
-  - 読むタイミング: ドキュメント追加・移動・リネーム時
-
+  - docs配置方針とリンク整合性の管理
 - `docs/exec_plans/index.md`
-  - 用途: 実行計画ドキュメント（active/completed）の参照入口
-  - 読むタイミング: 拡張計画や実施計画の確認時
-
+  - 実行計画ドキュメント（active/completed）の入口
 - `docs/project_status/service_implementation_status.md`
-  - 用途: サービス実装状況（CLI/MCP/gRPC/HTTP）の確認と重複実装の回避
-  - 読むタイミング: 新機能追加前、同名/類似ツール調査時
-
+  - サービス実装状況（CLI/MCP/gRPC/HTTP）の確認
 - `docs/project_overview/project_overview.md`
-  - 用途: 全体アーキテクチャ、ディレクトリ構成、ビルド/テスト/品質方針の確認
-  - 読むタイミング: 設計方針確認、ビルド/テスト手順確認、構成変更時
-
+  - 全体アーキテクチャとディレクトリ構成の確認
 - `docs/user_prompt/prompt_sample.md`
-  - 用途: 過去の依頼テンプレートやプロンプト例の参照
-  - 読むタイミング: 依頼文作成やワークフロー定義時の参考
+  - 依頼テンプレートやプロンプト例の参照
 
-## 最小運用ルール（このファイルに残す項目）
+## Prerequisites
 
 - 回答は日本語で行うこと。
+- 詳細ルールをこのファイルへ増やさないこと。詳細は `docs/` 側へ追記すること。
 
-## 更新ルール
+## Quick Decision Trees
 
-- 詳細ルールをこのファイルへ増やさないこと。詳細は `docs/` 側へ追記する。
+### 「cmd配下ツールを実装・改修したい」
+
+```text
+cmd配下ツールを実装・改修したい
+├─ 実装方針/ビルド/運用の全体像を見たい → docs/tool_implementation/index.md
+├─ 実装パターンや注意点を確認したい → docs/tool_implementation/implementation_guide.md
+└─ 実装後のドキュメント更新手順を確認したい → docs/tool_implementation/documentation_guide.md
+```
+
+### 「ドキュメントを追加・移動・整理したい」
+
+```text
+ドキュメントを追加・移動・整理したい
+└─ docs管理ルールとリンク整合性を確認する → docs/docs_management/index.md
+```
+
+### 「実装済みサービスを調査したい」
+
+```text
+実装済みサービスを調査したい
+└─ 実装状況一覧（CLI/MCP/gRPC/HTTP）を確認する → docs/project_status/service_implementation_status.md
+```
+
+### 「計画（active/completed）を確認したい」
+
+```text
+計画を確認したい
+└─ 進行中および完了計画を見たい → docs/exec_plans/index.md
+```
+
+### 「全体設計を確認したい」
+
+```text
+全体設計を確認したい
+└─ アーキテクチャ/構成を参照する → docs/project_overview/project_overview.md
+```
+
+### 「依頼文の例を見たい」
+
+```text
+依頼文の例を見たい
+└─ プロンプトサンプルを参照する → docs/user_prompt/prompt_sample.md
+```
