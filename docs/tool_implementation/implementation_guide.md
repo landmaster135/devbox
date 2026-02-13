@@ -48,39 +48,14 @@ func (s *Service) ExecuteOperation(directory string) (string, error) {
 }
 ```
 
-### exec.ExitErrorのExitCode()による分岐処理
+### exec.ExitErrorのExitCode()によるエラーの区別
 - `err.(*exec.ExitError)` で型アサーション
-- `exitError.ExitCode()` で終了コードを取得
-- 終了コードに応じた適切な処理分岐
-
-実装例:
-```go
-// ✅ 正しい実装: ExitErrorの型アサーションと終了コード判定
-output, err := s.commandExecutor.ExecuteInDir(absDir, "go", "test", "-cover", "./...")
-if err != nil {
-  // エラーの種類を判定
-  if exitError, ok := err.(*exec.ExitError); ok {
-    // exec.ExitErrorの場合は終了コードを確認
-    if exitError.ExitCode() == 1 {
-      // exit status 1: テスト失敗（正常な動作として扱う）
-      // 何もしない - 出力を返却する
-    } else {
-      // exit status 1以外: 実際のエラー
-      return "", fmt.Errorf("コマンド実行でエラーが発生しました: %v\n出力: %s", err, string(output))
-    }
-  } else {
-    // exec.ExitError以外のエラー（コマンドが見つからない等）
-    return "", fmt.Errorf("コマンドの実行に失敗しました: %v", err)
-  }
-}
-```
-
-### テスト失敗（exit status 1）と実際のエラーの区別
+- `exitError.ExitCode()` で終了コードを取得し、終了コードに応じて分岐
 - **exit status 1**: テスト失敗 → 正常な動作として扱い、出力を返却
 - **exit status 2以上**: システムエラー → エラーとして処理
 - **その他のエラー**: コマンド未発見等 → エラーとして処理
 
-例えば、Goのテストコマンドでは、テスト失敗とシステムエラーを区別する必要があります：
+例えば、Goのテストコマンドでは、テスト失敗とシステムエラーを以下のように区別します。
 
 実装例:
 ```go
