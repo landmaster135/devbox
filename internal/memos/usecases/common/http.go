@@ -1,4 +1,4 @@
-package usecases
+package common
 
 import (
 	"bytes"
@@ -11,13 +11,40 @@ import (
 	"strings"
 )
 
-func (s *Service) doJSON(ctx context.Context, method, requestPath string, query url.Values, payload any, out any) error {
-	req, err := s.newRequest(ctx, method, requestPath, query, payload)
+// HTTPClient は http.Client と互換なインターフェース。
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// JSONClientOptions は JSONClient 生成時の入力。
+type JSONClientOptions struct {
+	BaseURL    string
+	APIToken   string
+	HTTPClient HTTPClient
+}
+
+// JSONClient は Memos API への JSON リクエストを扱う。
+type JSONClient struct {
+	baseURL  string
+	apiToken string
+	client   HTTPClient
+}
+
+func NewJSONClient(opts JSONClientOptions) *JSONClient {
+	return &JSONClient{
+		baseURL:  NormalizeBaseURL(opts.BaseURL),
+		apiToken: strings.TrimSpace(opts.APIToken),
+		client:   opts.HTTPClient,
+	}
+}
+
+func (c *JSONClient) DoJSON(ctx context.Context, method, requestPath string, query url.Values, payload any, out any) error {
+	req, err := c.NewRequest(ctx, method, requestPath, query, payload)
 	if err != nil {
 		return err
 	}
 
-	resp, err := s.client.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("Memos API %s %s の呼び出しに失敗しました: %w", method, requestPath, err)
 	}
@@ -39,7 +66,7 @@ func (s *Service) doJSON(ctx context.Context, method, requestPath string, query 
 	return nil
 }
 
-func (s *Service) newRequest(ctx context.Context, method, requestPath string, query url.Values, payload any) (*http.Request, error) {
+func (c *JSONClient) NewRequest(ctx context.Context, method, requestPath string, query url.Values, payload any) (*http.Request, error) {
 	var body io.Reader
 	if payload != nil {
 		buf := bytes.NewBuffer(nil)
@@ -49,7 +76,7 @@ func (s *Service) newRequest(ctx context.Context, method, requestPath string, qu
 		body = buf
 	}
 
-	requestURL := s.baseURL + requestPath
+	requestURL := c.baseURL + requestPath
 	if len(query) > 0 {
 		requestURL = requestURL + "?" + query.Encode()
 	}
@@ -62,8 +89,8 @@ func (s *Service) newRequest(ctx context.Context, method, requestPath string, qu
 	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if s.apiToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.apiToken)
+	if c.apiToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	}
 	return req, nil
 }

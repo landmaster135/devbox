@@ -1,4 +1,4 @@
-package usecases
+package creatememo
 
 import (
 	"context"
@@ -6,14 +6,16 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
 )
 
-func TestService_CreateMemo_Normal(t *testing.T) {
+func TestServiceOperationCreateMemo_Normal(t *testing.T) {
 	pinned := true
 
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if r.Method != http.MethodPost {
 				t.Fatalf("method = %s, want %s", r.Method, http.MethodPost)
 			}
@@ -26,7 +28,7 @@ func TestService_CreateMemo_Normal(t *testing.T) {
 			if got := r.Header.Get("Authorization"); got != "Bearer test-token" {
 				t.Fatalf("authorization = %s, want Bearer test-token", got)
 			}
-			body := readBodyAsMap(t, r.Body)
+			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["content"]; got != "hello memo" {
 				t.Fatalf("content = %v, want hello memo", got)
 			}
@@ -39,18 +41,18 @@ func TestService_CreateMemo_Normal(t *testing.T) {
 			if got := body["pinned"]; got != true {
 				t.Fatalf("pinned = %v, want true", got)
 			}
-			return jsonResponse(http.StatusOK, `{"name":"memos/memo-1","content":"hello memo"}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-1","content":"hello memo"}`), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "test-token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient, &testutil.MockFileSystem{})
 
-	result, err := service.CreateMemo(
+	result, err := service.Execute(
 		context.Background(),
 		"memo-1",
 		"hello memo",
@@ -61,25 +63,25 @@ func TestService_CreateMemo_Normal(t *testing.T) {
 		"2026-02-12T00:00:00Z",
 	)
 	if err != nil {
-		t.Fatalf("CreateMemo() error = %v", err)
+		t.Fatalf("Execute() error = %v", err)
 	}
 	if result.Name != "memos/memo-1" {
 		t.Fatalf("name = %s, want memos/memo-1", result.Name)
 	}
 }
 
-func TestService_CreateMemo_ContentFile_Normal(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
-			body := readBodyAsMap(t, r.Body)
+func TestServiceOperationCreateMemo_ContentFile_Normal(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
+			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["content"]; got != "memo from file" {
 				t.Fatalf("content = %v, want memo from file", got)
 			}
-			return jsonResponse(http.StatusOK, `{"name":"memos/memo-file","content":"memo from file"}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-file","content":"memo from file"}`), nil
 		},
 	}
-	fileSystem := &mockFileSystem{
-		readFileFunc: func(filePath string) ([]byte, error) {
+	fileSystem := &testutil.MockFileSystem{
+		ReadFileFunc: func(filePath string) ([]byte, error) {
 			if filePath != "./memo.md" {
 				t.Fatalf("filePath = %s, want ./memo.md", filePath)
 			}
@@ -87,15 +89,14 @@ func TestService_CreateMemo_ContentFile_Normal(t *testing.T) {
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "test-token",
-		Timeout:    time.Second,
 		HTTPClient: client,
-		FileSystem: fileSystem,
 	})
+	service := New(jsonClient, fileSystem)
 
-	result, err := service.CreateMemo(
+	result, err := service.Execute(
 		context.Background(),
 		"memo-file",
 		"",
@@ -106,35 +107,34 @@ func TestService_CreateMemo_ContentFile_Normal(t *testing.T) {
 		"",
 	)
 	if err != nil {
-		t.Fatalf("CreateMemo() error = %v", err)
+		t.Fatalf("Execute() error = %v", err)
 	}
 	if result.Name != "memos/memo-file" {
 		t.Fatalf("name = %s, want memos/memo-file", result.Name)
 	}
 }
 
-func TestService_CreateMemo_ContentFileReadError_Error(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationCreateMemo_ContentFileReadError_Error(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			t.Fatal("HTTP call should not be executed")
 			return nil, nil
 		},
 	}
-	fileSystem := &mockFileSystem{
-		readFileFunc: func(filePath string) ([]byte, error) {
+	fileSystem := &testutil.MockFileSystem{
+		ReadFileFunc: func(filePath string) ([]byte, error) {
 			return nil, fmt.Errorf("read failed")
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "test-token",
-		Timeout:    time.Second,
 		HTTPClient: client,
-		FileSystem: fileSystem,
 	})
+	service := New(jsonClient, fileSystem)
 
-	_, err := service.CreateMemo(
+	_, err := service.Execute(
 		context.Background(),
 		"memo-1",
 		"",
@@ -145,30 +145,30 @@ func TestService_CreateMemo_ContentFileReadError_Error(t *testing.T) {
 		"",
 	)
 	if err == nil {
-		t.Fatal("CreateMemo() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "content-file の読み込みに失敗しました") {
 		t.Fatalf("error = %v, want content-file の読み込みに失敗しました", err)
 	}
 }
 
-func TestService_CreateMemo_DecodeError_Error(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
-			return jsonResponse(http.StatusOK, "{invalid"), nil
+func TestServiceOperationCreateMemo_DecodeError_Error(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
+			return testutil.JSONResponse(http.StatusOK, "{invalid"), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient, &testutil.MockFileSystem{})
 
-	_, err := service.CreateMemo(context.Background(), "", "memo", "", "", "", nil, "")
+	_, err := service.Execute(context.Background(), "", "memo", "", "", "", nil, "")
 	if err == nil {
-		t.Fatal("CreateMemo() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "レスポンスデコード") {
 		t.Fatalf("error = %v, want レスポンスデコード", err)

@@ -1,23 +1,25 @@
-package usecases
+package attachments
 
 import (
 	"context"
 	"net/http"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
 )
 
-func TestService_CreateAttachment_Normal(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationCreateAttachment_Normal(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if r.Method != http.MethodPost {
 				t.Fatalf("method = %s, want %s", r.Method, http.MethodPost)
 			}
 			if r.URL.Path != "/api/v1/attachments" {
 				t.Fatalf("path = %s, want /api/v1/attachments", r.URL.Path)
 			}
-			body := readBodyAsMap(t, r.Body)
+			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["filename"]; got != "hello.txt" {
 				t.Fatalf("filename = %v, want hello.txt", got)
 			}
@@ -30,29 +32,29 @@ func TestService_CreateAttachment_Normal(t *testing.T) {
 			if got := body["content"]; got != "aGVsbG8=" {
 				t.Fatalf("content = %v, want aGVsbG8=", got)
 			}
-			return jsonResponse(http.StatusOK, `{"name":"attachments/1","filename":"hello.txt","type":"text/plain","memo":"memos/memo-1"}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"attachments/1","filename":"hello.txt","type":"text/plain","memo":"memos/memo-1"}`), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient)
 
-	result, err := service.CreateAttachment(context.Background(), "hello.txt", []byte("hello"), "text/plain", "memo-1")
+	result, err := service.Create(context.Background(), "hello.txt", []byte("hello"), "text/plain", "memo-1")
 	if err != nil {
-		t.Fatalf("CreateAttachment() error = %v", err)
+		t.Fatalf("Create() error = %v", err)
 	}
 	if result.Name != "attachments/1" {
 		t.Fatalf("name = %s, want attachments/1", result.Name)
 	}
 }
 
-func TestService_ListMemoAttachments_Normal(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationListMemoAttachments_Normal(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if r.Method != http.MethodGet {
 				t.Fatalf("method = %s, want %s", r.Method, http.MethodGet)
 			}
@@ -66,20 +68,20 @@ func TestService_ListMemoAttachments_Normal(t *testing.T) {
 			if got := query.Get("pageToken"); got != "next" {
 				t.Fatalf("pageToken = %s, want next", got)
 			}
-			return jsonResponse(http.StatusOK, `{"attachments":[{"name":"attachments/1"},{"name":"attachments/2"}],"nextPageToken":"next-2"}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"attachments":[{"name":"attachments/1"},{"name":"attachments/2"}],"nextPageToken":"next-2"}`), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient)
 
-	result, err := service.ListMemoAttachments(context.Background(), "memos/memo-123", 100, "next")
+	result, err := service.List(context.Background(), "memos/memo-123", 100, "next")
 	if err != nil {
-		t.Fatalf("ListMemoAttachments() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 	if len(result.Attachments) != 2 {
 		t.Fatalf("len(attachments) = %d, want 2", len(result.Attachments))
@@ -89,16 +91,16 @@ func TestService_ListMemoAttachments_Normal(t *testing.T) {
 	}
 }
 
-func TestService_SetMemoAttachments_Normal(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationSetMemoAttachments_Normal(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if r.Method != http.MethodPatch {
 				t.Fatalf("method = %s, want %s", r.Method, http.MethodPatch)
 			}
 			if r.URL.Path != "/api/v1/memos/memo-123/attachments" {
 				t.Fatalf("path = %s, want /api/v1/memos/memo-123/attachments", r.URL.Path)
 			}
-			body := readBodyAsMap(t, r.Body)
+			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["name"]; got != "memos/memo-123" {
 				t.Fatalf("name = %v, want memos/memo-123", got)
 			}
@@ -109,57 +111,55 @@ func TestService_SetMemoAttachments_Normal(t *testing.T) {
 			if len(attachments) != 2 {
 				t.Fatalf("len(attachments) = %d, want 2", len(attachments))
 			}
-			return jsonResponse(http.StatusOK, `{"name":"memos/memo-123","attachments":[{"name":"attachments/1"},{"name":"attachments/2"}]}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-123","attachments":[{"name":"attachments/1"},{"name":"attachments/2"}]}`), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient)
 
-	result, err := service.SetMemoAttachments(context.Background(), "memo-123", []Attachment{
+	result, err := service.Set(context.Background(), "memo-123", []common.Attachment{
 		{Name: "attachments/1"},
 		{Name: "attachments/2"},
 	})
 	if err != nil {
-		t.Fatalf("SetMemoAttachments() error = %v", err)
+		t.Fatalf("Set() error = %v", err)
 	}
 	if result.Name != "memos/memo-123" {
 		t.Fatalf("name = %s, want memos/memo-123", result.Name)
 	}
 }
 
-func TestService_ListMemoAttachments_EmptyMemo_Error(t *testing.T) {
-	service := NewService(ServiceOptions{
+func TestServiceOperationListMemoAttachments_EmptyMemo_Error(t *testing.T) {
+	service := New(common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
-		HTTPClient: &mockHTTPClient{},
-	})
+		HTTPClient: &testutil.MockHTTPClient{},
+	}))
 
-	_, err := service.ListMemoAttachments(context.Background(), "", 100, "")
+	_, err := service.List(context.Background(), "", 100, "")
 	if err == nil {
-		t.Fatal("ListMemoAttachments() error = nil, want error")
+		t.Fatal("List() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "memo が空") {
 		t.Fatalf("error = %v, want memo が空", err)
 	}
 }
 
-func TestService_SetMemoAttachments_EmptyMemo_Error(t *testing.T) {
-	service := NewService(ServiceOptions{
+func TestServiceOperationSetMemoAttachments_EmptyMemo_Error(t *testing.T) {
+	service := New(common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
-		HTTPClient: &mockHTTPClient{},
-	})
+		HTTPClient: &testutil.MockHTTPClient{},
+	}))
 
-	_, err := service.SetMemoAttachments(context.Background(), "", nil)
+	_, err := service.Set(context.Background(), "", nil)
 	if err == nil {
-		t.Fatal("SetMemoAttachments() error = nil, want error")
+		t.Fatal("Set() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "memo が空") {
 		t.Fatalf("error = %v, want memo が空", err)

@@ -1,73 +1,57 @@
 package usecases
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
-func TestNewService_DefaultClient_Normal(t *testing.T) {
+func TestNewService_DefaultDependencies_Normal(t *testing.T) {
 	service := NewService(ServiceOptions{
 		BaseURL:  "https://memos.example.com",
 		APIToken: "token",
 		Timeout:  0,
 	})
-	if service.client == nil {
-		t.Fatal("client is nil")
+
+	if service.createMemoOp == nil {
+		t.Fatal("createMemoOp is nil")
 	}
-	if service.baseURL != "https://memos.example.com/api/v1" {
-		t.Fatalf("baseURL = %s, want https://memos.example.com/api/v1", service.baseURL)
+	if service.getMemoOp == nil {
+		t.Fatal("getMemoOp is nil")
 	}
-	if service.fileSystem == nil {
-		t.Fatal("fileSystem is nil")
+	if service.listMemosOp == nil {
+		t.Fatal("listMemosOp is nil")
+	}
+	if service.updateMemoOp == nil {
+		t.Fatal("updateMemoOp is nil")
+	}
+	if service.patchFilesOp == nil {
+		t.Fatal("patchFilesOp is nil")
+	}
+	if service.createAttachmentOp == nil {
+		t.Fatal("createAttachmentOp is nil")
+	}
+	if service.listMemoAttachmentsOp == nil {
+		t.Fatal("listMemoAttachmentsOp is nil")
+	}
+	if service.setMemoAttachmentsOp == nil {
+		t.Fatal("setMemoAttachmentsOp is nil")
 	}
 }
 
-func TestNormalizeBaseURL_Normal(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{name: "plain", in: "https://example.com", want: "https://example.com/api/v1"},
-		{name: "with trailing slash", in: "https://example.com/", want: "https://example.com/api/v1"},
-		{name: "with api v1", in: "https://example.com/api/v1", want: "https://example.com/api/v1"},
-		{name: "empty", in: "", want: "/api/v1"},
-	}
+type stubGetMemoOperation struct{}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := normalizeBaseURL(tc.in)
-			if got != tc.want {
-				t.Fatalf("normalizeBaseURL(%q) = %q, want %q", tc.in, got, tc.want)
-			}
-		})
-	}
+func (s *stubGetMemoOperation) Execute(ctx context.Context, memo string) (*Memo, error) {
+	return &Memo{Name: memo}, nil
 }
 
-func TestNormalizeMemoIdentifier_Normal(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{name: "plain", in: "memo-1", want: "memo-1"},
-		{name: "with memos prefix", in: "memos/memo-1", want: "memo-1"},
-		{name: "with api prefix", in: "api/v1/memos/memo-1", want: "memo-1"},
-		{name: "with full url", in: "https://example.com/api/v1/memos/memo-1", want: "memo-1"},
-	}
+func TestService_GetMemo_DelegatesOperation(t *testing.T) {
+	service := &Service{getMemoOp: &stubGetMemoOperation{}}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := normalizeMemoIdentifier(tc.in)
-			if got != tc.want {
-				t.Fatalf("normalizeMemoIdentifier(%q) = %q, want %q", tc.in, got, tc.want)
-			}
-		})
+	result, err := service.GetMemo(context.Background(), "memos/memo-1")
+	if err != nil {
+		t.Fatalf("GetMemo() error = %v", err)
 	}
-}
-
-func TestBuildMemoResourceName_Normal(t *testing.T) {
-	if got := buildMemoResourceName("https://example.com/api/v1/memos/memo-1"); got != "memos/memo-1" {
-		t.Fatalf("buildMemoResourceName() = %s, want memos/memo-1", got)
-	}
-	if got := buildMemoResourceName("  "); got != "" {
-		t.Fatalf("buildMemoResourceName() = %q, want empty", got)
+	if result.Name != "memos/memo-1" {
+		t.Fatalf("name = %s, want memos/memo-1", result.Name)
 	}
 }

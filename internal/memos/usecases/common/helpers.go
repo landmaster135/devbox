@@ -1,4 +1,4 @@
-package usecases
+package common
 
 import (
 	"fmt"
@@ -6,7 +6,12 @@ import (
 	"strings"
 )
 
-func normalizeBaseURL(raw string) string {
+// ContentReader は content-file 解決で利用する最小契約。
+type ContentReader interface {
+	ReadFile(filePath string) ([]byte, error)
+}
+
+func NormalizeBaseURL(raw string) string {
 	baseURL := strings.TrimRight(strings.TrimSpace(raw), "/")
 	if baseURL == "" {
 		return "/api/v1"
@@ -17,7 +22,7 @@ func normalizeBaseURL(raw string) string {
 	return baseURL + "/api/v1"
 }
 
-func normalizeMemoIdentifier(memo string) string {
+func NormalizeMemoIdentifier(memo string) string {
 	trimmed := strings.TrimSpace(memo)
 	if trimmed == "" {
 		return ""
@@ -35,15 +40,15 @@ func normalizeMemoIdentifier(memo string) string {
 	return strings.TrimSpace(trimmed)
 }
 
-func buildMemoResourceName(memo string) string {
-	memoID := normalizeMemoIdentifier(memo)
+func BuildMemoResourceName(memo string) string {
+	memoID := NormalizeMemoIdentifier(memo)
 	if memoID == "" {
 		return ""
 	}
 	return "memos/" + memoID
 }
 
-func (s *Service) resolveContent(content string, contentFile string) (string, error) {
+func ResolveContent(content string, contentFile string, reader ContentReader) (string, error) {
 	hasContent := strings.TrimSpace(content) != ""
 	hasContentFile := strings.TrimSpace(contentFile) != ""
 
@@ -58,7 +63,7 @@ func (s *Service) resolveContent(content string, contentFile string) (string, er
 		return content, nil
 	}
 
-	data, err := s.fileSystem.ReadFile(contentFile)
+	data, err := reader.ReadFile(contentFile)
 	if err != nil {
 		return "", fmt.Errorf("content-file の読み込みに失敗しました: %w", err)
 	}

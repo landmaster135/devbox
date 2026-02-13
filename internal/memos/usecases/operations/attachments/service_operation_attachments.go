@@ -1,4 +1,4 @@
-package usecases
+package attachments
 
 import (
 	"context"
@@ -8,16 +8,26 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
-// CreateAttachment は CreateAttachment API を呼び出す。
-func (s *Service) CreateAttachment(
+// Service は attachments operation 群を扱う。
+type Service struct {
+	client *common.JSONClient
+}
+
+func New(client *common.JSONClient) *Service {
+	return &Service{client: client}
+}
+
+func (s *Service) Create(
 	ctx context.Context,
 	filename string,
 	content []byte,
 	attachmentType string,
 	memo string,
-) (*Attachment, error) {
+) (*common.Attachment, error) {
 	filename = strings.TrimSpace(filename)
 	if filename == "" {
 		return nil, fmt.Errorf("filename が空です")
@@ -28,30 +38,29 @@ func (s *Service) CreateAttachment(
 		return nil, fmt.Errorf("type が空です")
 	}
 
-	payload := createAttachmentRequest{
+	payload := common.CreateAttachmentRequest{
 		Filename: filename,
 		Content:  content,
 		Type:     attachmentType,
 	}
-	if memoName := buildMemoResourceName(memo); memoName != "" {
+	if memoName := common.BuildMemoResourceName(memo); memoName != "" {
 		payload.Memo = memoName
 	}
 
-	var result Attachment
-	if err := s.doJSON(ctx, http.MethodPost, "/attachments", nil, payload, &result); err != nil {
+	var result common.Attachment
+	if err := s.client.DoJSON(ctx, http.MethodPost, "/attachments", nil, payload, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// ListMemoAttachments は ListMemoAttachments API を呼び出す。
-func (s *Service) ListMemoAttachments(
+func (s *Service) List(
 	ctx context.Context,
 	memo string,
 	pageSize int,
 	pageToken string,
-) (*ListMemoAttachmentsOutput, error) {
-	memoID := normalizeMemoIdentifier(memo)
+) (*common.ListMemoAttachmentsOutput, error) {
+	memoID := common.NormalizeMemoIdentifier(memo)
 	if memoID == "" {
 		return nil, fmt.Errorf("memo が空です")
 	}
@@ -65,32 +74,31 @@ func (s *Service) ListMemoAttachments(
 	}
 
 	requestPath := path.Join("/memos", url.PathEscape(memoID), "attachments")
-	var result ListMemoAttachmentsOutput
-	if err := s.doJSON(ctx, http.MethodGet, requestPath, query, nil, &result); err != nil {
+	var result common.ListMemoAttachmentsOutput
+	if err := s.client.DoJSON(ctx, http.MethodGet, requestPath, query, nil, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// SetMemoAttachments は SetMemoAttachments API を呼び出す。
-func (s *Service) SetMemoAttachments(
+func (s *Service) Set(
 	ctx context.Context,
 	memo string,
-	attachments []Attachment,
-) (*SetMemoAttachmentsOutput, error) {
-	memoID := normalizeMemoIdentifier(memo)
+	attachments []common.Attachment,
+) (*common.SetMemoAttachmentsOutput, error) {
+	memoID := common.NormalizeMemoIdentifier(memo)
 	if memoID == "" {
 		return nil, fmt.Errorf("memo が空です")
 	}
 
 	requestPath := path.Join("/memos", url.PathEscape(memoID), "attachments")
-	payload := setMemoAttachmentsRequest{
-		Name:        buildMemoResourceName(memoID),
+	payload := common.SetMemoAttachmentsRequest{
+		Name:        common.BuildMemoResourceName(memoID),
 		Attachments: attachments,
 	}
 
-	var result SetMemoAttachmentsOutput
-	if err := s.doJSON(ctx, http.MethodPatch, requestPath, nil, payload, &result); err != nil {
+	var result common.SetMemoAttachmentsOutput
+	if err := s.client.DoJSON(ctx, http.MethodPatch, requestPath, nil, payload, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

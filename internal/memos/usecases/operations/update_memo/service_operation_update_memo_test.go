@@ -1,18 +1,20 @@
-package usecases
+package updatememo
 
 import (
 	"context"
 	"net/http"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
 )
 
-func TestService_UpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
+func TestServiceOperationUpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
 	pinned := false
 
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if r.Method != http.MethodPatch {
 				t.Fatalf("method = %s, want %s", r.Method, http.MethodPatch)
 			}
@@ -22,7 +24,7 @@ func TestService_UpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
 			if got := r.URL.Query().Get("updateMask"); got != "content,visibility,pinned" {
 				t.Fatalf("updateMask = %s, want content,visibility,pinned", got)
 			}
-			body := readBodyAsMap(t, r.Body)
+			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["content"]; got != "updated text" {
 				t.Fatalf("content = %v, want updated text", got)
 			}
@@ -32,18 +34,18 @@ func TestService_UpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
 			if got := body["pinned"]; got != false {
 				t.Fatalf("pinned = %v, want false", got)
 			}
-			return jsonResponse(http.StatusOK, `{"name":"memos/memo-xyz","content":"updated text","visibility":"PUBLIC","pinned":false}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-xyz","content":"updated text","visibility":"PUBLIC","pinned":false}`), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient, &testutil.MockFileSystem{})
 
-	result, err := service.UpdateMemo(
+	result, err := service.Execute(
 		context.Background(),
 		"memo-xyz",
 		"updated text",
@@ -54,31 +56,31 @@ func TestService_UpdateMemo_AutoUpdateMask_Normal(t *testing.T) {
 		nil,
 	)
 	if err != nil {
-		t.Fatalf("UpdateMemo() error = %v", err)
+		t.Fatalf("Execute() error = %v", err)
 	}
 	if result.Visibility != "PUBLIC" {
 		t.Fatalf("visibility = %s, want PUBLIC", result.Visibility)
 	}
 }
 
-func TestService_UpdateMemo_CustomUpdateMask_Normal(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationUpdateMemo_CustomUpdateMask_Normal(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if got := r.URL.Query().Get("updateMask"); got != "visibility,content,state" {
 				t.Fatalf("updateMask = %s, want visibility,content,state", got)
 			}
-			return jsonResponse(http.StatusOK, `{"name":"memos/memo-123","content":"new content","state":"ARCHIVED"}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-123","content":"new content","state":"ARCHIVED"}`), nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient, &testutil.MockFileSystem{})
 
-	_, err := service.UpdateMemo(
+	_, err := service.Execute(
 		context.Background(),
 		"memo-123",
 		"new content",
@@ -89,28 +91,28 @@ func TestService_UpdateMemo_CustomUpdateMask_Normal(t *testing.T) {
 		[]string{" visibility ", "content,content", "state"},
 	)
 	if err != nil {
-		t.Fatalf("UpdateMemo() error = %v", err)
+		t.Fatalf("Execute() error = %v", err)
 	}
 }
 
-func TestService_UpdateMemo_ContentFile_Normal(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationUpdateMemo_ContentFile_Normal(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			if got := r.URL.Query().Get("updateMask"); got != "content,state" {
 				t.Fatalf("updateMask = %s, want content,state", got)
 			}
-			body := readBodyAsMap(t, r.Body)
+			body := testutil.ReadBodyAsMap(t, r.Body)
 			if got := body["content"]; got != "updated from file" {
 				t.Fatalf("content = %v, want updated from file", got)
 			}
 			if got := body["state"]; got != "ARCHIVED" {
 				t.Fatalf("state = %v, want ARCHIVED", got)
 			}
-			return jsonResponse(http.StatusOK, `{"name":"memos/memo-1","content":"updated from file","state":"ARCHIVED"}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"name":"memos/memo-1","content":"updated from file","state":"ARCHIVED"}`), nil
 		},
 	}
-	fileSystem := &mockFileSystem{
-		readFileFunc: func(filePath string) ([]byte, error) {
+	fileSystem := &testutil.MockFileSystem{
+		ReadFileFunc: func(filePath string) ([]byte, error) {
 			if filePath != "./updated.md" {
 				t.Fatalf("filePath = %s, want ./updated.md", filePath)
 			}
@@ -118,15 +120,14 @@ func TestService_UpdateMemo_ContentFile_Normal(t *testing.T) {
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
-		FileSystem: fileSystem,
 	})
+	service := New(jsonClient, fileSystem)
 
-	result, err := service.UpdateMemo(
+	result, err := service.Execute(
 		context.Background(),
 		"memo-1",
 		"",
@@ -137,46 +138,45 @@ func TestService_UpdateMemo_ContentFile_Normal(t *testing.T) {
 		nil,
 	)
 	if err != nil {
-		t.Fatalf("UpdateMemo() error = %v", err)
+		t.Fatalf("Execute() error = %v", err)
 	}
 	if result.State != "ARCHIVED" {
 		t.Fatalf("state = %s, want ARCHIVED", result.State)
 	}
 }
 
-func TestService_UpdateMemo_EmptyMemo_Error(t *testing.T) {
-	service := NewService(ServiceOptions{
+func TestServiceOperationUpdateMemo_EmptyMemo_Error(t *testing.T) {
+	service := New(common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
-		HTTPClient: &mockHTTPClient{},
-	})
+		HTTPClient: &testutil.MockHTTPClient{},
+	}), &testutil.MockFileSystem{})
 
-	_, err := service.UpdateMemo(context.Background(), "", "value", "", "", "", nil, nil)
+	_, err := service.Execute(context.Background(), "", "value", "", "", "", nil, nil)
 	if err == nil {
-		t.Fatal("UpdateMemo() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "memo が空") {
 		t.Fatalf("error = %v, want memo が空", err)
 	}
 }
 
-func TestService_UpdateMemo_EmptyUpdateMask_Error(t *testing.T) {
-	client := &mockHTTPClient{
-		doFunc: func(r *http.Request) (*http.Response, error) {
+func TestServiceOperationUpdateMemo_EmptyUpdateMask_Error(t *testing.T) {
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
 			t.Fatal("HTTP call should not be executed")
 			return nil, nil
 		},
 	}
 
-	service := NewService(ServiceOptions{
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
 		BaseURL:    "https://memos.example.com",
 		APIToken:   "token",
-		Timeout:    time.Second,
 		HTTPClient: client,
 	})
+	service := New(jsonClient, &testutil.MockFileSystem{})
 
-	_, err := service.UpdateMemo(
+	_, err := service.Execute(
 		context.Background(),
 		"memo-1",
 		"value",
@@ -187,7 +187,7 @@ func TestService_UpdateMemo_EmptyUpdateMask_Error(t *testing.T) {
 		[]string{" ", ","},
 	)
 	if err == nil {
-		t.Fatal("UpdateMemo() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "updateMask が空") {
 		t.Fatalf("error = %v, want updateMask が空", err)

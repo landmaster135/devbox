@@ -1,4 +1,4 @@
-package usecases
+package updatememo
 
 import (
 	"context"
@@ -7,10 +7,22 @@ import (
 	"net/url"
 	"path"
 	"strings"
+
+	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
-// UpdateMemo は UpdateMemo API を呼び出す。
-func (s *Service) UpdateMemo(
+// Service は update_memo operation を扱う。
+type Service struct {
+	client     *common.JSONClient
+	fileSystem infrastructures.FileSystem
+}
+
+func New(client *common.JSONClient, fileSystem infrastructures.FileSystem) *Service {
+	return &Service{client: client, fileSystem: fileSystem}
+}
+
+func (s *Service) Execute(
 	ctx context.Context,
 	memo string,
 	content string,
@@ -19,13 +31,13 @@ func (s *Service) UpdateMemo(
 	state string,
 	pinned *bool,
 	updateMask []string,
-) (*Memo, error) {
-	memoID := normalizeMemoIdentifier(memo)
+) (*common.Memo, error) {
+	memoID := common.NormalizeMemoIdentifier(memo)
 	if memoID == "" {
 		return nil, fmt.Errorf("memo が空です")
 	}
 
-	resolvedContent, err := s.resolveContent(content, contentFile)
+	resolvedContent, err := common.ResolveContent(content, contentFile, s.fileSystem)
 	if err != nil {
 		return nil, err
 	}
@@ -38,16 +50,16 @@ func (s *Service) UpdateMemo(
 	query := url.Values{}
 	query.Set("updateMask", strings.Join(finalMask, ","))
 
-	payload := memoMutationRequest{
+	payload := common.MemoMutationRequest{
 		Content:    resolvedContent,
 		Visibility: visibility,
 		State:      state,
 		Pinned:     pinned,
 	}
 
-	var result Memo
+	var result common.Memo
 	requestPath := path.Join("/memos", url.PathEscape(memoID))
-	if err := s.doJSON(ctx, http.MethodPatch, requestPath, query, payload, &result); err != nil {
+	if err := s.client.DoJSON(ctx, http.MethodPatch, requestPath, query, payload, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

@@ -1,19 +1,24 @@
 package usecases
 
 import (
+	"context"
 	"net/http"
-	"strings"
 	"time"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	attachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/attachments"
+	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"
+	getmemo "github.com/landmaster135/devbox/internal/memos/usecases/operations/get_memo"
+	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
+	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
+	updatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_memo"
 )
 
 const defaultTimeout = 30 * time.Second
 
 // HTTPClient は http.Client と互換なインターフェース。
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
+type HTTPClient = common.HTTPClient
 
 // ServiceOptions は Service 生成時の入力。
 type ServiceOptions struct {
@@ -24,76 +29,64 @@ type ServiceOptions struct {
 	FileSystem infrastructures.FileSystem
 }
 
+type createMemoOperation interface {
+	Execute(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*common.Memo, error)
+}
+
+type getMemoOperation interface {
+	Execute(ctx context.Context, memo string) (*common.Memo, error)
+}
+
+type listMemosOperation interface {
+	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string) (*common.ListMemosOutput, error)
+}
+
+type updateMemoOperation interface {
+	Execute(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string) (*common.Memo, error)
+}
+
+type patchFilesOperation interface {
+	Execute(ctx context.Context, memo string, filePaths []string, replaces bool) (*common.SetMemoAttachmentsOutput, error)
+}
+
+type createAttachmentOperation interface {
+	Create(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*common.Attachment, error)
+}
+
+type listMemoAttachmentsOperation interface {
+	List(ctx context.Context, memo string, pageSize int, pageToken string) (*common.ListMemoAttachmentsOutput, error)
+}
+
+type setMemoAttachmentsOperation interface {
+	Set(ctx context.Context, memo string, attachments []common.Attachment) (*common.SetMemoAttachmentsOutput, error)
+}
+
 // Service は Memos API 呼び出しのユースケースを提供する。
 type Service struct {
-	baseURL    string
-	apiToken   string
-	client     HTTPClient
-	fileSystem infrastructures.FileSystem
+	createMemoOp          createMemoOperation
+	getMemoOp             getMemoOperation
+	listMemosOp           listMemosOperation
+	updateMemoOp          updateMemoOperation
+	patchFilesOp          patchFilesOperation
+	createAttachmentOp    createAttachmentOperation
+	listMemoAttachmentsOp listMemoAttachmentsOperation
+	setMemoAttachmentsOp  setMemoAttachmentsOperation
 }
 
 // Memo は CLI/上位層に返すメモ情報。
-type Memo struct {
-	Name        string `json:"name,omitempty"`
-	UID         string `json:"uid,omitempty"`
-	ID          int64  `json:"id,omitempty"`
-	CreateTime  string `json:"createTime,omitempty"`
-	UpdateTime  string `json:"updateTime,omitempty"`
-	DisplayTime string `json:"displayTime,omitempty"`
-	Content     string `json:"content,omitempty"`
-	Visibility  string `json:"visibility,omitempty"`
-	State       string `json:"state,omitempty"`
-	Pinned      bool   `json:"pinned,omitempty"`
-}
+type Memo = common.Memo
 
 // ListMemosOutput は ListMemos のレスポンス。
-type ListMemosOutput struct {
-	Memos         []Memo `json:"memos,omitempty"`
-	NextPageToken string `json:"nextPageToken,omitempty"`
-	TotalSize     int64  `json:"totalSize,omitempty"`
-}
+type ListMemosOutput = common.ListMemosOutput
 
 // Attachment は Memos API の添付情報。
-type Attachment struct {
-	Name         string `json:"name,omitempty"`
-	Filename     string `json:"filename,omitempty"`
-	ExternalLink string `json:"externalLink,omitempty"`
-	Type         string `json:"type,omitempty"`
-	Memo         string `json:"memo,omitempty"`
-}
+type Attachment = common.Attachment
 
 // ListMemoAttachmentsOutput は ListMemoAttachments のレスポンス。
-type ListMemoAttachmentsOutput struct {
-	Attachments   []Attachment `json:"attachments,omitempty"`
-	NextPageToken string       `json:"nextPageToken,omitempty"`
-}
+type ListMemoAttachmentsOutput = common.ListMemoAttachmentsOutput
 
 // SetMemoAttachmentsOutput は SetMemoAttachments のレスポンス。
-type SetMemoAttachmentsOutput struct {
-	Name        string       `json:"name,omitempty"`
-	Attachments []Attachment `json:"attachments,omitempty"`
-}
-
-type memoMutationRequest struct {
-	Content     string `json:"content,omitempty"`
-	Visibility  string `json:"visibility,omitempty"`
-	State       string `json:"state,omitempty"`
-	Pinned      *bool  `json:"pinned,omitempty"`
-	DisplayTime string `json:"displayTime,omitempty"`
-}
-
-type createAttachmentRequest struct {
-	Filename     string `json:"filename,omitempty"`
-	Content      []byte `json:"content,omitempty"`
-	ExternalLink string `json:"externalLink,omitempty"`
-	Type         string `json:"type,omitempty"`
-	Memo         string `json:"memo,omitempty"`
-}
-
-type setMemoAttachmentsRequest struct {
-	Name        string       `json:"name,omitempty"`
-	Attachments []Attachment `json:"attachments,omitempty"`
-}
+type SetMemoAttachmentsOutput = common.SetMemoAttachmentsOutput
 
 // NewService は Service を生成する。
 func NewService(opts ServiceOptions) *Service {
@@ -111,10 +104,22 @@ func NewService(opts ServiceOptions) *Service {
 		fileSystem = infrastructures.NewOSFileSystem()
 	}
 
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
+		BaseURL:    opts.BaseURL,
+		APIToken:   opts.APIToken,
+		HTTPClient: client,
+	})
+
+	attachmentsOp := attachments.New(jsonClient)
+
 	return &Service{
-		baseURL:    normalizeBaseURL(opts.BaseURL),
-		apiToken:   strings.TrimSpace(opts.APIToken),
-		client:     client,
-		fileSystem: fileSystem,
+		createMemoOp:          creatememo.New(jsonClient, fileSystem),
+		getMemoOp:             getmemo.New(jsonClient),
+		listMemosOp:           listmemos.New(jsonClient),
+		updateMemoOp:          updatememo.New(jsonClient, fileSystem),
+		patchFilesOp:          patchfiles.New(fileSystem, attachmentsOp, attachmentsOp, attachmentsOp),
+		createAttachmentOp:    attachmentsOp,
+		listMemoAttachmentsOp: attachmentsOp,
+		setMemoAttachmentsOp:  attachmentsOp,
 	}
 }
