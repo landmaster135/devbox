@@ -3,7 +3,6 @@ package infrastructures
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -65,7 +64,25 @@ func TestOSFileSystem_ReadAttachmentFile_NotFound_Error(t *testing.T) {
 	}
 }
 
-func TestOSFileSystem_ReadAttachmentFile_InvalidMIMEType_Error(t *testing.T) {
+func TestOSFileSystem_ReadAttachmentFile_Markdown_Normal(t *testing.T) {
+	fs := NewOSFileSystem()
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "memo.md")
+
+	if err := os.WriteFile(target, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	got, err := fs.ReadAttachmentFile(target)
+	if err != nil {
+		t.Fatalf("ReadAttachmentFile() error = %v", err)
+	}
+	if got.ContentType != "text/markdown" {
+		t.Fatalf("contentType = %s, want text/markdown", got.ContentType)
+	}
+}
+
+func TestOSFileSystem_ReadAttachmentFile_TextWithoutExtension_Normal(t *testing.T) {
 	fs := NewOSFileSystem()
 	tempDir := t.TempDir()
 	target := filepath.Join(tempDir, "memo")
@@ -74,12 +91,12 @@ func TestOSFileSystem_ReadAttachmentFile_InvalidMIMEType_Error(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	_, err := fs.ReadAttachmentFile(target)
-	if err == nil {
-		t.Fatal("ReadAttachmentFile() error = nil, want error")
+	got, err := fs.ReadAttachmentFile(target)
+	if err != nil {
+		t.Fatalf("ReadAttachmentFile() error = %v", err)
 	}
-	if !strings.Contains(err.Error(), "MIME type の判定に失敗しました") {
-		t.Fatalf("error = %v, want MIME type の判定に失敗しました", err)
+	if got.ContentType != "text/plain" {
+		t.Fatalf("contentType = %s, want text/plain", got.ContentType)
 	}
 }
 
@@ -101,16 +118,26 @@ func TestOSFileSystem_ReadAttachmentFile_EmptyFile_DefaultContentType_Normal(t *
 	}
 }
 
-func TestValidateContentType_Empty_Error(t *testing.T) {
-	err := validateContentType("   ")
+func TestNormalizeContentType_Empty_Error(t *testing.T) {
+	_, err := normalizeContentType("   ")
 	if err == nil {
-		t.Fatal("validateContentType() error = nil, want error")
+		t.Fatal("normalizeContentType() error = nil, want error")
 	}
 }
 
-func TestValidateContentType_ParseError_Error(t *testing.T) {
-	err := validateContentType("text/plain extra")
+func TestNormalizeContentType_ParseError_Error(t *testing.T) {
+	_, err := normalizeContentType("text/plain extra")
 	if err == nil {
-		t.Fatal("validateContentType() error = nil, want error")
+		t.Fatal("normalizeContentType() error = nil, want error")
+	}
+}
+
+func TestNormalizeContentType_WithParams_Normal(t *testing.T) {
+	got, err := normalizeContentType("text/plain; charset=utf-8")
+	if err != nil {
+		t.Fatalf("normalizeContentType() error = %v", err)
+	}
+	if got != "text/plain" {
+		t.Fatalf("normalizeContentType() = %s, want text/plain", got)
 	}
 }

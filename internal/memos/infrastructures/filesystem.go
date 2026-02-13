@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+var contentTypeByExtension = map[string]string{
+	".md":       "text/markdown",
+	".markdown": "text/markdown",
+}
+
 // AttachmentFile は添付対象ファイルの読み込み結果。
 type AttachmentFile struct {
 	Path        string
@@ -53,8 +58,8 @@ func (fs *OSFileSystem) ReadAttachmentFile(filePath string) (*AttachmentFile, er
 	}
 
 	cleanPath := strings.TrimSpace(filePath)
-	contentType := detectContentType(cleanPath, data)
-	if err := validateContentType(contentType); err != nil {
+	contentType, err := normalizeContentType(detectContentType(cleanPath, data))
+	if err != nil {
 		return nil, fmt.Errorf("MIME type の判定に失敗しました (%s): %w", cleanPath, err)
 	}
 
@@ -67,9 +72,14 @@ func (fs *OSFileSystem) ReadAttachmentFile(filePath string) (*AttachmentFile, er
 }
 
 func detectContentType(filePath string, content []byte) string {
-	extType := strings.TrimSpace(mime.TypeByExtension(strings.ToLower(filepath.Ext(filePath))))
+	ext := strings.ToLower(filepath.Ext(filePath))
+	if mappedType, ok := contentTypeByExtension[ext]; ok {
+		return mappedType
+	}
+
+	extType := strings.TrimSpace(mime.TypeByExtension(ext))
 	if extType != "" {
-		return strings.Split(extType, ";")[0]
+		return extType
 	}
 	if len(content) > 0 {
 		return http.DetectContentType(content)
@@ -77,21 +87,19 @@ func detectContentType(filePath string, content []byte) string {
 	return "application/octet-stream"
 }
 
-func validateContentType(contentType string) error {
+func normalizeContentType(contentType string) (string, error) {
 	cleanType := strings.TrimSpace(contentType)
 	if cleanType == "" {
-		return fmt.Errorf("MIME type が空です")
-	}
-	if strings.Contains(cleanType, ";") {
-		return fmt.Errorf("MIME type format が不正です: %s", cleanType)
+		return "", fmt.Errorf("MIME type が空です")
 	}
 
 	mediaType, _, err := mime.ParseMediaType(cleanType)
 	if err != nil {
-		return fmt.Errorf("MIME type の解析に失敗しました: %w", err)
+		return "", fmt.Errorf("MIME type の解析に失敗しました: %w", err)
 	}
-	if mediaType == "" {
-		return fmt.Errorf("MIME type が空です")
+	normalizedType := strings.TrimSpace(mediaType)
+	if normalizedType == "" {
+		return "", fmt.Errorf("MIME type が空です")
 	}
-	return nil
+	return normalizedType, nil
 }

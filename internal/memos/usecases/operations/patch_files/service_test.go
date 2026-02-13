@@ -104,6 +104,49 @@ func TestServiceOperationPatchFiles_ReplacesTrue_Normal(t *testing.T) {
 	}
 }
 
+func TestServiceOperationPatchFiles_MarkdownFile_Normal(t *testing.T) {
+	createCalled := 0
+	setCalled := 0
+
+	service := New(
+		&testutil.MockFileSystem{
+			ReadAttachmentFileFunc: func(filePath string) (*infrastructures.AttachmentFile, error) {
+				if filePath != "./memo.md" {
+					t.Fatalf("filePath = %s, want ./memo.md", filePath)
+				}
+				return &infrastructures.AttachmentFile{
+					Filename:    "memo.md",
+					Content:     []byte("# hello"),
+					ContentType: "text/markdown",
+				}, nil
+			},
+		},
+		&mockAttachmentCreator{createFunc: func(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*common.Attachment, error) {
+			createCalled++
+			if attachmentType != "text/markdown" {
+				t.Fatalf("type = %s, want text/markdown", attachmentType)
+			}
+			return &common.Attachment{Name: "attachments/new-md", Filename: filename}, nil
+		}},
+		&mockAttachmentLister{},
+		&mockAttachmentSetter{setFunc: func(ctx context.Context, memo string, attachments []common.Attachment) (*common.SetMemoAttachmentsOutput, error) {
+			setCalled++
+			return &common.SetMemoAttachmentsOutput{Name: "memos/memo-1", Attachments: attachments}, nil
+		}},
+	)
+
+	_, err := service.Execute(context.Background(), "memo-1", []string{"./memo.md"}, true)
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if createCalled != 1 {
+		t.Fatalf("createCalled = %d, want 1", createCalled)
+	}
+	if setCalled != 1 {
+		t.Fatalf("setCalled = %d, want 1", setCalled)
+	}
+}
+
 func TestServiceOperationPatchFiles_ReplacesFalse_Normal(t *testing.T) {
 	listCalled := 0
 
