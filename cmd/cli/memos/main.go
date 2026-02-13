@@ -37,15 +37,11 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 
 	switch conf.Operation {
 	case cfg.OperationCreateMemo:
-		content, contentErr := resolveContent(conf.Content, conf.ContentFile)
-		if contentErr != nil {
-			fmt.Fprintf(stderr, "エラー: %v\n", contentErr)
-			return 1
-		}
 		result, err = service.CreateMemo(
 			ctx,
 			conf.MemoID,
-			content,
+			conf.Content,
+			conf.ContentFile,
 			conf.Visibility,
 			conf.State,
 			boolPointer(conf.Pinned, conf.PinnedSet),
@@ -62,15 +58,11 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.OrderBy,
 		)
 	case cfg.OperationUpdateMemo:
-		content, contentErr := resolveContent(conf.Content, conf.ContentFile)
-		if contentErr != nil {
-			fmt.Fprintf(stderr, "エラー: %v\n", contentErr)
-			return 1
-		}
 		result, err = service.UpdateMemo(
 			ctx,
 			conf.Memo,
-			content,
+			conf.Content,
+			conf.ContentFile,
 			conf.Visibility,
 			conf.State,
 			boolPointer(conf.Pinned, conf.PinnedSet),
@@ -136,26 +128,4 @@ func splitByComma(raw string) []string {
 		return nil
 	}
 	return out
-}
-
-func resolveContent(content, contentFile string) (string, error) {
-	if content != "" && contentFile != "" {
-		return "", fmt.Errorf("content と content-file は同時に指定できません")
-	}
-	if content != "" {
-		return content, nil
-	}
-	if contentFile == "" {
-		return "", fmt.Errorf("content または content-file の指定が必要です")
-	}
-
-	data, err := os.ReadFile(contentFile)
-	if err != nil {
-		return "", fmt.Errorf("content-file の読み込みに失敗しました: %w", err)
-	}
-	fileContent := string(data)
-	if strings.TrimSpace(fileContent) == "" {
-		return "", fmt.Errorf("content-file が空です: %s", contentFile)
-	}
-	return fileContent, nil
 }

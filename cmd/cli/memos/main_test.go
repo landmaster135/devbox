@@ -26,10 +26,13 @@ func TestRun_CreateMemo_Normal(t *testing.T) {
 		"-visibility=PRIVATE",
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
-			CreateMemoFunc: func(ctx context.Context, memoID string, content string, visibility string, state string, pinned *bool, displayTime string) (*usecases.Memo, error) {
+			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*usecases.Memo, error) {
 				called = true
 				if content != "hello" {
 					t.Fatalf("content = %s, want hello", content)
+				}
+				if contentFile != "" {
+					t.Fatalf("contentFile = %s, want empty", contentFile)
 				}
 				return &usecases.Memo{Name: "memos/1", Content: content}, nil
 			},
@@ -53,9 +56,9 @@ func TestRun_CreateMemoWithContentFile_Normal(t *testing.T) {
 	called := false
 
 	tempDir := t.TempDir()
-	contentFile := filepath.Join(tempDir, "memo.md")
+	contentPath := filepath.Join(tempDir, "memo.md")
 	fileContent := "# title\n\n- [ ] task\n"
-	if err := os.WriteFile(contentFile, []byte(fileContent), 0o644); err != nil {
+	if err := os.WriteFile(contentPath, []byte(fileContent), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
@@ -63,16 +66,19 @@ func TestRun_CreateMemoWithContentFile_Normal(t *testing.T) {
 		"-operation=create-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
-		"-content-file=" + contentFile,
+		"-content-file=" + contentPath,
 		"-visibility=PRIVATE",
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
-			CreateMemoFunc: func(ctx context.Context, memoID string, content string, visibility string, state string, pinned *bool, displayTime string) (*usecases.Memo, error) {
+			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*usecases.Memo, error) {
 				called = true
-				if content != fileContent {
-					t.Fatalf("content = %q, want %q", content, fileContent)
+				if content != "" {
+					t.Fatalf("content = %q, want empty", content)
 				}
-				return &usecases.Memo{Name: "memos/2", Content: content}, nil
+				if contentFile != contentPath {
+					t.Fatalf("contentFile = %q, want %q", contentFile, contentPath)
+				}
+				return &usecases.Memo{Name: "memos/2", Content: fileContent}, nil
 			},
 		}
 	})
@@ -143,9 +149,12 @@ func TestRun_UpdateMemo_Normal(t *testing.T) {
 		"-update-mask=content,visibility",
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
-			UpdateMemoFunc: func(ctx context.Context, memo string, content string, visibility string, state string, pinned *bool, updateMask []string) (*usecases.Memo, error) {
+			UpdateMemoFunc: func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string) (*usecases.Memo, error) {
 				if strings.Join(updateMask, ",") != "content,visibility" {
 					t.Fatalf("updateMask = %v, want [content visibility]", updateMask)
+				}
+				if contentFile != "" {
+					t.Fatalf("contentFile = %s, want empty", contentFile)
 				}
 				return &usecases.Memo{Name: "memos/memo-1", Content: content}, nil
 			},
@@ -278,7 +287,11 @@ func TestRun_CreateMemoWithMissingContentFile_Error(t *testing.T) {
 		"-api-token=test-token",
 		"-content-file=/tmp/not-found-memo.md",
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
-		return &usecases.MockMemoService{}
+		return &usecases.MockMemoService{
+			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*usecases.Memo, error) {
+				return nil, errors.New("content-file の読み込みに失敗しました")
+			},
+		}
 	})
 
 	if exitCode != 1 {
@@ -331,52 +344,5 @@ func TestPrintJSON_MarshalError_Error(t *testing.T) {
 	err := printJSON(&out, map[string]any{"invalid": make(chan int)})
 	if err == nil {
 		t.Fatal("printJSON() error = nil, want error")
-	}
-}
-
-func TestResolveContent_Normal(t *testing.T) {
-	got, err := resolveContent("hello", "")
-	if err != nil {
-		t.Fatalf("resolveContent() error = %v", err)
-	}
-	if got != "hello" {
-		t.Fatalf("content = %s, want hello", got)
-	}
-}
-
-func TestResolveContent_FromFile_Normal(t *testing.T) {
-	tempDir := t.TempDir()
-	contentFile := filepath.Join(tempDir, "memo.md")
-	want := "# memo\n\nbody\n"
-	if err := os.WriteFile(contentFile, []byte(want), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	got, err := resolveContent("", contentFile)
-	if err != nil {
-		t.Fatalf("resolveContent() error = %v", err)
-	}
-	if got != want {
-		t.Fatalf("content = %q, want %q", got, want)
-	}
-}
-
-func TestResolveContent_BothSpecified_Error(t *testing.T) {
-	_, err := resolveContent("x", "/tmp/memo.md")
-	if err == nil {
-		t.Fatal("resolveContent() error = nil, want error")
-	}
-}
-
-func TestResolveContent_EmptyFile_Error(t *testing.T) {
-	tempDir := t.TempDir()
-	contentFile := filepath.Join(tempDir, "empty.md")
-	if err := os.WriteFile(contentFile, []byte("  \n"), 0o644); err != nil {
-		t.Fatalf("WriteFile() error = %v", err)
-	}
-
-	_, err := resolveContent("", contentFile)
-	if err == nil {
-		t.Fatal("resolveContent() error = nil, want error")
 	}
 }

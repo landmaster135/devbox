@@ -132,18 +132,24 @@ func (s *Service) CreateMemo(
 	ctx context.Context,
 	memoID string,
 	content string,
+	contentFile string,
 	visibility string,
 	state string,
 	pinned *bool,
 	displayTime string,
 ) (*Memo, error) {
+	resolvedContent, err := s.resolveContent(content, contentFile)
+	if err != nil {
+		return nil, err
+	}
+
 	query := url.Values{}
 	if memoID != "" {
 		query.Set("memoId", memoID)
 	}
 
 	payload := memoMutationRequest{
-		Content:     content,
+		Content:     resolvedContent,
 		Visibility:  visibility,
 		State:       state,
 		Pinned:      pinned,
@@ -206,6 +212,7 @@ func (s *Service) UpdateMemo(
 	ctx context.Context,
 	memo string,
 	content string,
+	contentFile string,
 	visibility string,
 	state string,
 	pinned *bool,
@@ -216,7 +223,12 @@ func (s *Service) UpdateMemo(
 		return nil, fmt.Errorf("memo が空です")
 	}
 
-	finalMask := buildUpdateMask(content, visibility, state, pinned, updateMask)
+	resolvedContent, err := s.resolveContent(content, contentFile)
+	if err != nil {
+		return nil, err
+	}
+
+	finalMask := buildUpdateMask(resolvedContent, visibility, state, pinned, updateMask)
 	if len(finalMask) == 0 {
 		return nil, fmt.Errorf("updateMask が空です")
 	}
@@ -225,7 +237,7 @@ func (s *Service) UpdateMemo(
 	query.Set("updateMask", strings.Join(finalMask, ","))
 
 	payload := memoMutationRequest{
-		Content:    content,
+		Content:    resolvedContent,
 		Visibility: visibility,
 		State:      state,
 		Pinned:     pinned,
@@ -520,6 +532,32 @@ func cleanMaskFields(raw []string) []string {
 		}
 	}
 	return fields
+}
+
+func (s *Service) resolveContent(content string, contentFile string) (string, error) {
+	hasContent := strings.TrimSpace(content) != ""
+	hasContentFile := strings.TrimSpace(contentFile) != ""
+
+	if hasContent && hasContentFile {
+		return "", fmt.Errorf("content と content-file は同時に指定できません")
+	}
+	if !hasContent && !hasContentFile {
+		return "", fmt.Errorf("content または content-file の指定が必要です")
+	}
+
+	if hasContent {
+		return content, nil
+	}
+
+	data, err := s.fileSystem.ReadFile(contentFile)
+	if err != nil {
+		return "", fmt.Errorf("content-file の読み込みに失敗しました: %w", err)
+	}
+	fileContent := string(data)
+	if strings.TrimSpace(fileContent) == "" {
+		return "", fmt.Errorf("content-file が空です: %s", contentFile)
+	}
+	return fileContent, nil
 }
 
 func mergeAttachmentsByName(existing []Attachment, created []Attachment) []Attachment {
