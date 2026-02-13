@@ -2,15 +2,15 @@
 
 このドキュメントは、CLIツール実装に関する内容をまとめたものです。
 
-## 実装パターン
-
-### CLI固有の実装手順
+## CLI固有の実装手順
 
 1. `cmd/cli/{tool_name}/main.go` を作成し、エントリーポイントを配置する
 2. フラグ解析（`config.ParseFlags()`）と操作分岐（`switch cfg.Operation`）を実装する
 3. 正常系の結果は標準出力（`fmt.Print`）に出力する
 4. 異常系は標準エラー出力（`fmt.Fprintf(os.Stderr, ...)`）と `os.Exit(1)` で終了する
 5. `-help` などの利用方法表示（`config.PrintUsage()`）を実装する
+
+## 実装パターン
 
 ### CLIツールのmain.go構造
 
@@ -60,9 +60,9 @@ func handleOperation1(cfg *config.Config) {
 }
 ```
 
-## よくある実装ミス
+## 実装アンチパターン
 
-### 1. CLIツールで結果を表示しない
+### CLIツールで結果を表示しない
 
 ```go
 // ❌ 間違い: 結果を表示しない
@@ -77,7 +77,7 @@ if err != nil {
 fmt.Print(result)
 ```
 
-### 2. フラグパーサーのモック実装の間違い（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
+### フラグパーサーのモック実装の間違い（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
 
 ```go
 // ❌ 間違い: フラグ定義後に値を設定しても反映されない

@@ -28,11 +28,7 @@
 実装手順は `docs/tool_implementation/cli/guide.md` を参照。
 
 ## 4. MCP固有の実装手順
-1. `cmd/mcp/{server_name}/` と必要なハンドラーを実装
-2. `mcp.NewTool(...)` でツール定義（説明・必須パラメータ・型）を追加
-3. 必須入力は `request.Require*`、任意入力は `request.Get*` で取得
-4. 処理結果は `mcp.CallToolResult` として返却し、標準出力は使用しない
-5. `cmd/mcp/router.go` にルーティングを追加
+実装手順は `docs/tool_implementation/mcp/guide.md` を参照。
 
 ## 5. テスト戦略
 - **単体テスト**: 各レイヤーの独立したテスト

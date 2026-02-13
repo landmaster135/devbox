@@ -2,6 +2,24 @@
 
 このドキュメントは、MCPツール実装に関する内容をまとめたものです。
 
+## MCP固有の実装手順
+
+1. `cmd/mcp/{server_name}/` と必要なハンドラーを実装する
+2. `mcp.NewTool(...)` でツール定義（説明・必須パラメータ・型）を追加する
+3. 必須入力は `request.Require*`、任意入力は `request.Get*` で取得する
+4. 処理結果は `mcp.CallToolResult` として返却し、標準出力は使用しない
+5. `cmd/mcp/router.go` にルーティングを追加する
+
+## 実装時のチェックリスト
+
+- [ ] ハンドラーのエラーは `return nil, fmt.Errorf(...)` で文脈付きに返却する
+- [ ] 各パラメータに `mcp.WithDescription()` でツールの説明を設定する
+- [ ] `s.AddTool(tool, handler)` でツールとハンドラーを関連付け
+- [ ] `s.AddPrompt(prompt, handler)` でプロンプトとハンドラーを関連付け
+- [ ] `mcp.WithPromptDescription()` でプロンプトの説明を設定
+- [ ] `server.WithPromptCapabilities(true)` でプロンプト機能を有効化
+- [ ] `server.WithLogging()` で診断用ログを有効化する
+
 ## 実装パターン
 
 ### ルーター層
@@ -87,7 +105,7 @@ func setTwoNumbersInputtingCalcServer(s *server.MCPServer) *server.MCPServer {
 }
 ```
 
-## 実装時の重要な注意点
+## 実装時の注意点
 
 ### 出力制御（標準出力を使わない）
 
@@ -126,32 +144,9 @@ fmt.Printf("実行コマンド: %s\n", cmd)
 
 共通のサービス層実装やコマンド実行ラッパーは `docs/tool_implementation/implementation_guide.md` を参照してください。
 
-## 実装時のチェックリスト
+## 実装アンチパターン
 
-### ハンドラー関数
-
-- [ ] `mcp.NewToolResultText(result)` で結果を返却
-- [ ] エラー時は `return nil, fmt.Errorf(...)` でエラーを返却
-- [ ] 標準出力への出力を一切行わない（タイムアウト対策）
-- [ ] `request.RequireString()` と `request.GetString()` を適切に使い分け
-- [ ] 必須パラメータは `request.RequireString()` でエラーハンドリング
-- [ ] オプションパラメータは `request.GetString()` でデフォルト値設定
-
-### サーバー設定
-
-- [ ] `mcp.WithDescription()` でツールの説明を設定
-- [ ] 必須パラメータに `mcp.Required()` を設定
-- [ ] 各パラメータに `mcp.Description()` で説明を設定
-- [ ] `s.AddTool(tool, handler)` でツールとハンドラーを関連付け
-- [ ] `s.AddPrompt(prompt, handler)` でプロンプトとハンドラーを関連付け
-- [ ] `mcp.WithPromptDescription()` でプロンプトの説明を設定
-- [ ] `server.WithPromptCapabilities(true)` でプロンプト機能を有効化
-- [ ] `server.WithLogging()` でログ機能を有効化
-- [ ] `cmd/mcp/router.go` にサーバーを追加
-
-## よくある実装ミス
-
-### 1. MCPツールで標準出力を使用
+### MCPツールで標準出力を使用
 
 ```go
 // ❌ 間違い: MCPツールで標準出力を使用
@@ -162,7 +157,7 @@ fmt.Print(result)
 return mcp.NewToolResultText(result), nil
 ```
 
-### 2. 必須パラメータ取得の間違い
+### 必須パラメータ取得の間違い
 
 ```go
 // ❌ 間違い: 必須パラメータでGetStringを使用
@@ -175,7 +170,7 @@ if err != nil {
 }
 ```
 
-### 3. 任意パラメータ取得の間違い
+### 任意パラメータ取得の間違い
 
 ```go
 // ❌ 間違い: GetStringでデフォルト値を設定していない
@@ -195,4 +190,4 @@ param := request.GetString("required_param", "")
 
 - 結果は `mcp.NewToolResultText(...)` で返却し、標準出力は使わない
 - 必須/任意パラメータで `RequireString` と `GetString` を使い分ける
-- チェックリストに沿ってサーバー設定とルーティング登録漏れを防ぐ
+- 実装手順に沿ってサーバー設定とルーティング登録漏れを防ぐ
