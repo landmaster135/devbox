@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -90,7 +91,7 @@ func (s *Service) NormalizeToKeyValueList(content []byte, format string) (*Norma
 // SerializeFromKeyValueList は key-value リストを指定形式へ変換します。
 func (s *Service) SerializeFromKeyValueList(data *NormalizedData, format string) ([]byte, error) {
 	if data == nil {
-		return nil, fmt.Errorf("変換元データが nil です")
+		return nil, errors.New("変換元データが nil です")
 	}
 
 	keys := data.Keys

@@ -3,6 +3,7 @@ package csvfmt
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,7 +18,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 		return nil, fmt.Errorf("CSVの解析に失敗しました: %w", err)
 	}
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("CSVが空です")
+		return nil, errors.New("CSVが空です")
 	}
 
 	headers := make([]string, 0, len(rows[0]))
@@ -51,7 +52,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 // Serialize は key-value リストを CSV へ変換します。
 func Serialize(records []map[string]string, keys []string) ([]byte, error) {
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("CSV出力に必要なキー情報がありません")
+		return nil, errors.New("CSV出力に必要なキー情報がありません")
 	}
 
 	var buf bytes.Buffer

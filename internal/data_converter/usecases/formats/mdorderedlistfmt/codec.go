@@ -1,6 +1,7 @@
 package mdorderedlistfmt
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -35,7 +36,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 	}
 
 	if len(records) == 0 {
-		return nil, fmt.Errorf("Markdown ordered-listが空です")
+		return nil, errors.New("Markdown ordered-listが空です")
 	}
 
 	return common.NewNormalizedData(records, []string{itemKey}), nil

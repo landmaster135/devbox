@@ -1,6 +1,7 @@
 package mdtablefmt
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -11,7 +12,7 @@ import (
 func Parse(content []byte) (*common.NormalizedData, error) {
 	lines := collectNonEmptyLines(normalizeLineBreaks(string(content)))
 	if len(lines) < 2 {
-		return nil, fmt.Errorf("Markdown tableの行が不足しています")
+		return nil, errors.New("Markdown tableの行が不足しています")
 	}
 
 	headers, err := parseHeaderRow(lines[0])
@@ -24,7 +25,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 		return nil, fmt.Errorf("Markdown tableの区切り行が不正です: %w", err)
 	}
 	if len(separatorCells) != len(headers) {
-		return nil, fmt.Errorf("Markdown tableの区切り行の列数がヘッダーと一致しません")
+		return nil, errors.New("Markdown tableの区切り行の列数がヘッダーと一致しません")
 	}
 	for i, cell := range separatorCells {
 		if !isValidSeparatorCell(cell) {
@@ -50,7 +51,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 // Serialize は key-value リストを Markdown table へ変換します。
 func Serialize(records []map[string]string, keys []string) ([]byte, error) {
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("md-table出力に必要なキー情報がありません")
+		return nil, errors.New("md-table出力に必要なキー情報がありません")
 	}
 
 	var builder strings.Builder
@@ -70,7 +71,7 @@ func parseHeaderRow(line string) ([]string, error) {
 		return nil, fmt.Errorf("Markdown tableのヘッダー行が不正です: %w", err)
 	}
 	if len(headers) == 0 {
-		return nil, fmt.Errorf("Markdown tableのヘッダーが空です")
+		return nil, errors.New("Markdown tableのヘッダーが空です")
 	}
 
 	seen := map[string]struct{}{}
@@ -89,15 +90,11 @@ func parseHeaderRow(line string) ([]string, error) {
 func splitTableRow(line string) ([]string, error) {
 	trimmed := strings.TrimSpace(line)
 	if !strings.Contains(trimmed, "|") {
-		return nil, fmt.Errorf("区切り文字 | がありません")
+		return nil, errors.New("区切り文字 | がありません")
 	}
 
-	if strings.HasPrefix(trimmed, "|") {
-		trimmed = strings.TrimSpace(trimmed[1:])
-	}
-	if strings.HasSuffix(trimmed, "|") {
-		trimmed = strings.TrimSpace(trimmed[:len(trimmed)-1])
-	}
+	trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "|"))
+	trimmed = strings.TrimSpace(strings.TrimSuffix(trimmed, "|"))
 
 	cells := make([]string, 0)
 	var cellBuilder strings.Builder
@@ -125,12 +122,8 @@ func isValidSeparatorCell(cell string) bool {
 	if trimmed == "" {
 		return false
 	}
-	if strings.HasPrefix(trimmed, ":") {
-		trimmed = trimmed[1:]
-	}
-	if strings.HasSuffix(trimmed, ":") {
-		trimmed = trimmed[:len(trimmed)-1]
-	}
+	trimmed = strings.TrimPrefix(trimmed, ":")
+	trimmed = strings.TrimSuffix(trimmed, ":")
 	if len(trimmed) < 3 {
 		return false
 	}

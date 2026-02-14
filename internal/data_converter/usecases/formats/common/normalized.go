@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 )
@@ -108,11 +109,11 @@ func parseRecordObjects(raw any) ([]map[string]any, error) {
 	case map[string]any, map[any]any:
 		record, ok := toStringKeyMap(value)
 		if !ok {
-			return nil, fmt.Errorf("オブジェクト形式として解釈できません")
+			return nil, errors.New("オブジェクト形式として解釈できません")
 		}
 		return []map[string]any{record}, nil
 	default:
-		return nil, fmt.Errorf("配列またはオブジェクト形式を指定してください")
+		return nil, errors.New("配列またはオブジェクト形式を指定してください")
 	}
 }
 

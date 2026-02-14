@@ -2,6 +2,7 @@ package htmlfmt
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	stdhtml "html"
 	"strings"
@@ -19,17 +20,17 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 
 	table := findFirstElementByTag(doc, "table")
 	if table == nil {
-		return nil, fmt.Errorf("HTML内に table 要素がありません")
+		return nil, errors.New("HTML内に table 要素がありません")
 	}
 
 	rows := collectTableRows(table)
 	if len(rows) == 0 {
-		return nil, fmt.Errorf("HTMLテーブルに行がありません")
+		return nil, errors.New("HTMLテーブルに行がありません")
 	}
 
 	firstCells, firstRowHasHeader := extractRowCells(rows[0])
 	if len(firstCells) == 0 {
-		return nil, fmt.Errorf("HTMLテーブルの先頭行にセルがありません")
+		return nil, errors.New("HTMLテーブルの先頭行にセルがありません")
 	}
 
 	headers := make([]string, 0, len(firstCells))
@@ -61,7 +62,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 // Serialize は key-value リストを HTML テーブルへ変換します。
 func Serialize(records []map[string]string, keys []string) ([]byte, error) {
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("HTML出力に必要なキー情報がありません")
+		return nil, errors.New("HTML出力に必要なキー情報がありません")
 	}
 
 	var builder strings.Builder

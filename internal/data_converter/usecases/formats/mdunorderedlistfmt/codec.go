@@ -1,6 +1,7 @@
 package mdunorderedlistfmt
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -28,7 +29,7 @@ func Parse(content []byte) (*common.NormalizedData, error) {
 	}
 
 	if len(records) == 0 {
-		return nil, fmt.Errorf("Markdown unordered-listが空です")
+		return nil, errors.New("Markdown unordered-listが空です")
 	}
 
 	return common.NewNormalizedData(records, []string{itemKey}), nil

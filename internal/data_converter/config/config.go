@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -75,10 +76,10 @@ func ParseFlags(args []string) (*Config, error) {
 	cfg.OutputFormat = normalizeFormat(cfg.OutputFormat)
 
 	if cfg.InputFilePath == "" {
-		return nil, fmt.Errorf("-input-file-path を指定してください")
+		return nil, errors.New("-input-file-path を指定してください")
 	}
 	if cfg.OutputFilePath == "" {
-		return nil, fmt.Errorf("-output-file-path を指定してください")
+		return nil, errors.New("-output-file-path を指定してください")
 	}
 
 	if cfg.InputFormat == "" {

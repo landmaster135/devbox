@@ -85,6 +85,7 @@ Go code review and refactor support focused on anti-pattern detection and concre
 | **Slice Operations** | Manual slice concatenation and deletion | Error-prone and inefficient | Use `slices.Concat()`, `slices.Delete()` etc. (Go 1.21+) |
 | **Slice Sorting** | Verbose use of `sort.Slice()` | Lack of type safety, performance issues | `slices.Sort()`, `slices.SortFunc()` (Go 1.21+) |
 | **String Operations** | `if strings.HasPrefix(str, prefix) { str = str[len(prefix):] }` | Conditional prefix removal is verbose and error-prone | `str = strings.TrimPrefix(str, prefix)` |
+| **String Operations** | `if strings.HasSuffix(str, suffix) { str = str[:len(str)-len(suffix)] }` | Conditional suffix removal is verbose and error-prone | `str = strings.TrimSuffix(str, suffix)` |
 | **Function Signature** | `func process() (error, string)` | Error should be the last return value by Go convention | `func process() (string, error)` |
 | **Code Formatting** | `fmt.Printf("long format string with many args", arg1, arg2, arg3, arg4)` | Long function calls with multiple arguments on single line reduce readability | Break arguments into multiple lines with proper indentation |
 | **Static Analysis Warning** | Continuing execution after nil check in tests | Checking for nil but not stopping execution can cause nil pointer dereference | Use `t.Fatal()` or `require.NotNil()` to stop execution after nil check |
