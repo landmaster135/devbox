@@ -18,14 +18,15 @@
 3. **レイヤー実装**: `domain/`、`usecases/`、`infrastructures/` を実装
 4. **エントリーポイント実装**: CLI または MCP から `usecases` を呼び出す構成に統一
 5. **テスト実装**: 単体テストと統合テストを追加
-6. **ビルドスクリプト作成**: `scripts/build_{tool_name}.sh` を追加
-7. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
+6. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
+7. **ビルドスクリプト作成**: `docs/tool_implementation/build_guide.md` を参照
 
 ## 4. 実装ガイド
 
 | 区分 | 参照先 |
 |---|---|
 | 共通 | `docs/tool_implementation/implementation_guide.md` |
+| ビルド | `docs/tool_implementation/build_guide.md` |
 | CLI | `docs/tool_implementation/cli/index.md` |
 | MCP | `docs/tool_implementation/mcp/index.md` |
 
@@ -45,41 +46,7 @@
 - **依存関係管理**: go.modによる明示的な依存関係管理
 - **静的解析**: `go vet` などの標準ツールを活用
 
-## 7. ビルドシステム
-
-### 7.1 ビルドフロー概要
-```mermaid
-graph LR
-    A[scripts/build.sh] --> B[run_all_sh_scripts]
-    B --> C[Individual Build Scripts]
-    C --> D[Cross-platform Compilation]
-    D --> E[pkg/bin/ Output]
-    
-    F[scripts/build_mcp_tools.sh] --> G[MCP Tools Build]
-    G --> H[pkg/bin/mcp/ Output]
-```
-
-### 7.2 主要ビルドスクリプト
-
-**build.sh**
-- 全ビルドスクリプトの統合実行
-- エラーハンドリングと実行結果レポート
-- スキップ機能による柔軟な実行制御
-
-**build_mcp_tools.sh**
-- MCPツール専用のクロスプラットフォームビルド
-- Linux/AMD64、macOS/ARM64、Windows/AMD64対応
-- バイナリサイズ最適化（`-ldflags="-s -w" -trimpath`）
-
-### 7.3 クロスプラットフォーム対応
-```bash
-# 例: MCPツールのマルチプラットフォームビルド
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${LINUX_AMD64_DIR}/${output_name}" "${package}"
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${WIN_AMD64_DIR}/${WIN_OUTPUT_NAME}" "${package}"
-GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR}/${output_name}" "${package}"
-```
-
-## 8. デプロイメント戦略
+## 7. デプロイメント戦略
 - **バイナリ配布**: クロスプラットフォーム対応バイナリの提供
 - **バージョン管理**: セマンティックバージョニング
 - **リリースプロセス**: 自動化されたビルド・テスト・パッケージング
