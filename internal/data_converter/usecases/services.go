@@ -9,16 +9,22 @@ import (
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/csvfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/htmlfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/jsonfmt"
+	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/mdorderedlistfmt"
+	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/mdtablefmt"
+	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/mdunorderedlistfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/tsvfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/yamlfmt"
 )
 
 const (
-	formatJSON = "json"
-	formatYAML = "yaml"
-	formatCSV  = "csv"
-	formatTSV  = "tsv"
-	formatHTML = "html"
+	formatJSON            = "json"
+	formatYAML            = "yaml"
+	formatCSV             = "csv"
+	formatTSV             = "tsv"
+	formatHTML            = "html"
+	formatMDOrderedList   = "md-ordered-list"
+	formatMDUnorderedList = "md-unordered-list"
+	formatMDTable         = "md-table"
 )
 
 // NormalizedData は全入力形式を統一した key-value リスト表現です。
@@ -70,6 +76,12 @@ func (s *Service) NormalizeToKeyValueList(content []byte, format string) (*Norma
 		return tsvfmt.Parse(content)
 	case formatHTML:
 		return htmlfmt.Parse(content)
+	case formatMDOrderedList:
+		return mdorderedlistfmt.Parse(content)
+	case formatMDUnorderedList:
+		return mdunorderedlistfmt.Parse(content)
+	case formatMDTable:
+		return mdtablefmt.Parse(content)
 	default:
 		return nil, fmt.Errorf("未対応の入力形式です: %s", format)
 	}
@@ -97,6 +109,12 @@ func (s *Service) SerializeFromKeyValueList(data *NormalizedData, format string)
 		return tsvfmt.Serialize(data.KeyValueList, keys)
 	case formatHTML:
 		return htmlfmt.Serialize(data.KeyValueList, keys)
+	case formatMDOrderedList:
+		return mdorderedlistfmt.Serialize(data.KeyValueList, keys)
+	case formatMDUnorderedList:
+		return mdunorderedlistfmt.Serialize(data.KeyValueList, keys)
+	case formatMDTable:
+		return mdtablefmt.Serialize(data.KeyValueList, keys)
 	default:
 		return nil, fmt.Errorf("未対応の出力形式です: %s", format)
 	}

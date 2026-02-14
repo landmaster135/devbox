@@ -68,6 +68,37 @@ func TestNormalizeToKeyValueList_SupportedFormats(t *testing.T) {
 				{"name": "Alice", "age": "30"},
 			},
 		},
+		{
+			name:     "md-ordered-list",
+			format:   "md-ordered-list",
+			input:    "1. Alice\n2. Bob\n",
+			wantKeys: []string{"item"},
+			wantRecords: []map[string]string{
+				{"item": "Alice"},
+				{"item": "Bob"},
+			},
+		},
+		{
+			name:     "md-unordered-list",
+			format:   "md-unordered-list",
+			input:    "- Alice\n- Bob\n",
+			wantKeys: []string{"item"},
+			wantRecords: []map[string]string{
+				{"item": "Alice"},
+				{"item": "Bob"},
+			},
+		},
+		{
+			name:   "md-table",
+			format: "md-table",
+			input: `| name | age |
+| --- | --- |
+| Alice | 30 |`,
+			wantKeys: []string{"name", "age"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -100,7 +131,7 @@ func TestSerializeFromKeyValueList_AllFormats(t *testing.T) {
 		},
 	}
 
-	formats := []string{"json", "yaml", "csv", "tsv", "html"}
+	formats := []string{"json", "yaml", "csv", "tsv", "html", "md-table"}
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {
 			t.Parallel()
@@ -115,6 +146,39 @@ func TestSerializeFromKeyValueList_AllFormats(t *testing.T) {
 				t.Fatalf("reparse failed: %v", err)
 			}
 
+			if !reflect.DeepEqual(reparsed.KeyValueList, source.KeyValueList) {
+				t.Fatalf("reparsed records mismatch: got=%v want=%v", reparsed.KeyValueList, source.KeyValueList)
+			}
+		})
+	}
+}
+
+func TestSerializeFromKeyValueList_ListFormats(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
+	source := &NormalizedData{
+		Keys: []string{"item"},
+		KeyValueList: []map[string]string{
+			{"item": "Alice"},
+			{"item": "Bob"},
+		},
+	}
+
+	formats := []string{"md-ordered-list", "md-unordered-list"}
+	for _, format := range formats {
+		t.Run(format, func(t *testing.T) {
+			t.Parallel()
+
+			out, err := svc.SerializeFromKeyValueList(source, format)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			reparsed, err := svc.NormalizeToKeyValueList(out, format)
+			if err != nil {
+				t.Fatalf("reparse failed: %v", err)
+			}
 			if !reflect.DeepEqual(reparsed.KeyValueList, source.KeyValueList) {
 				t.Fatalf("reparsed records mismatch: got=%v want=%v", reparsed.KeyValueList, source.KeyValueList)
 			}
@@ -171,5 +235,28 @@ func TestNormalizeToKeyValueList_ErrorCases(t *testing.T) {
 
 	if _, err := svc.NormalizeToKeyValueList([]byte("<div>no table</div>"), "html"); err == nil {
 		t.Fatal("expected html table error")
+	}
+
+	if _, err := svc.NormalizeToKeyValueList([]byte("| name |"), "md-table"); err == nil {
+		t.Fatal("expected md-table parse error")
+	}
+}
+
+func TestSerializeFromKeyValueList_ListFormatsRejectMultiKeys(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
+	source := &NormalizedData{
+		Keys: []string{"name", "age"},
+		KeyValueList: []map[string]string{
+			{"name": "Alice", "age": "30"},
+		},
+	}
+
+	if _, err := svc.SerializeFromKeyValueList(source, "md-ordered-list"); err == nil {
+		t.Fatal("expected md-ordered-list error but got nil")
+	}
+	if _, err := svc.SerializeFromKeyValueList(source, "md-unordered-list"); err == nil {
+		t.Fatal("expected md-unordered-list error but got nil")
 	}
 }

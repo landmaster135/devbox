@@ -23,18 +23,34 @@ func TestParseFlags_ExplicitFormats(t *testing.T) {
 	cfg, err := ParseFlags([]string{
 		"-input-file-path", "./input.data",
 		"-output-file-path", "./output.data",
-		"-input-format", "JSON",
-		"-output-format", "tsv",
+		"-input-format", "md-ordered-list",
+		"-output-format", "md-table",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if cfg.InputFormat != FormatJSON {
-		t.Fatalf("input format mismatch: got=%s want=%s", cfg.InputFormat, FormatJSON)
+	if cfg.InputFormat != FormatMDOrderedList {
+		t.Fatalf("input format mismatch: got=%s want=%s", cfg.InputFormat, FormatMDOrderedList)
 	}
-	if cfg.OutputFormat != FormatTSV {
-		t.Fatalf("output format mismatch: got=%s want=%s", cfg.OutputFormat, FormatTSV)
+	if cfg.OutputFormat != FormatMDTable {
+		t.Fatalf("output format mismatch: got=%s want=%s", cfg.OutputFormat, FormatMDTable)
+	}
+}
+
+func TestParseFlags_ExplicitFormats_MDUnorderedList(t *testing.T) {
+	cfg, err := ParseFlags([]string{
+		"-input-file-path", "./input.data",
+		"-output-file-path", "./output.data",
+		"-input-format", "json",
+		"-output-format", "md-unordered-list",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.OutputFormat != FormatMDUnorderedList {
+		t.Fatalf("output format mismatch: got=%s want=%s", cfg.OutputFormat, FormatMDUnorderedList)
 	}
 }
 
@@ -63,5 +79,15 @@ func TestParseFlags_HelpBypassesValidation(t *testing.T) {
 	}
 	if !cfg.Help {
 		t.Fatal("expected help=true")
+	}
+}
+
+func TestParseFlags_MDPathInferenceIsUnsupported(t *testing.T) {
+	_, err := ParseFlags([]string{
+		"-input-file-path", "./input.md",
+		"-output-file-path", "./output.json",
+	})
+	if err == nil {
+		t.Fatal("expected error but got nil")
 	}
 }
