@@ -34,7 +34,7 @@ func TestServiceOperationListMemos_Normal(t *testing.T) {
 			if got := query.Get("filter"); got != `created_ts > 1672578000 && visibility == "PUBLIC"` {
 				t.Fatalf("filter = %s, want filter condition", got)
 			}
-			return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/1"},{"name":"memos/2"}],"nextPageToken":"next-token","totalSize":2}`), nil
+			return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/1","attachments":[{"name":"attachments/1"}]},{"name":"memos/2"}],"nextPageToken":"next-token","totalSize":2}`), nil
 		},
 	}
 
@@ -58,6 +58,12 @@ func TestServiceOperationListMemos_Normal(t *testing.T) {
 	}
 	if len(result.Memos) != 2 {
 		t.Fatalf("len(memos) = %d, want 2", len(result.Memos))
+	}
+	if len(result.Memos[0].Attachments) != 1 {
+		t.Fatalf("len(memos[0].attachments) = %d, want 1", len(result.Memos[0].Attachments))
+	}
+	if result.Memos[0].Attachments[0].Name != "attachments/1" {
+		t.Fatalf("memos[0].attachments[0].name = %q, want attachments/1", result.Memos[0].Attachments[0].Name)
 	}
 }
 

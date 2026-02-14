@@ -2,16 +2,17 @@ package common
 
 // Memo は CLI/上位層に返すメモ情報。
 type Memo struct {
-	Name        string `json:"name,omitempty"`
-	UID         string `json:"uid,omitempty"`
-	ID          int64  `json:"id,omitempty"`
-	CreateTime  string `json:"createTime,omitempty"`
-	UpdateTime  string `json:"updateTime,omitempty"`
-	DisplayTime string `json:"displayTime,omitempty"`
-	Content     string `json:"content,omitempty"`
-	Visibility  string `json:"visibility,omitempty"`
-	State       string `json:"state,omitempty"`
-	Pinned      bool   `json:"pinned,omitempty"`
+	Name        string       `json:"name,omitempty"`
+	UID         string       `json:"uid,omitempty"`
+	ID          int64        `json:"id,omitempty"`
+	CreateTime  string       `json:"createTime,omitempty"`
+	UpdateTime  string       `json:"updateTime,omitempty"`
+	DisplayTime string       `json:"displayTime,omitempty"`
+	Content     string       `json:"content,omitempty"`
+	Attachments []Attachment `json:"attachments,omitempty"`
+	Visibility  string       `json:"visibility,omitempty"`
+	State       string       `json:"state,omitempty"`
+	Pinned      bool         `json:"pinned,omitempty"`
 }
 
 // DeleteMemoOutput は DeleteMemo のレスポンス。

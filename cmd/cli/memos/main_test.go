@@ -128,7 +128,12 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 				}
 				return &usecases.ListMemosOutput{
 					Memos: []usecases.Memo{
-						{Name: "memos/1"},
+						{
+							Name: "memos/1",
+							Attachments: []usecases.Attachment{
+								{Name: "attachments/1"},
+							},
+						},
 					},
 				}, nil
 			},
@@ -143,6 +148,12 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "\"name\": \"memos/1\"") {
 		t.Fatalf("stdout = %s, want memo json", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"attachments\": [") {
+		t.Fatalf("stdout = %s, want attachments json", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"name\": \"attachments/1\"") {
+		t.Fatalf("stdout = %s, want attachment name", stdout.String())
 	}
 }
 
