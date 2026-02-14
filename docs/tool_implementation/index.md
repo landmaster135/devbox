@@ -21,6 +21,11 @@
 6. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
 7. **ビルドスクリプト作成**: `docs/tool_implementation/build_guide.md` を参照
 8. **最終チェック**: 作業漏れが無いことを確認
+  - コードフォーマッティング
+  - 静的解析
+  - テスト
+  - ドキュメント
+  - ビルドスクリプト
 
 ## 4. 実装ガイド
 
