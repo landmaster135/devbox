@@ -6,6 +6,7 @@ Memos API（`/api/v1`）を操作するCLIツールです。
 
 - `create-memo`: メモを作成
 - `get-memo`: 単一メモを取得
+- `delete-memo`: 単一メモを削除
 - `list-memos`: メモ一覧を取得
 - `update-memo`: 既存メモを更新（UpdateMemo）
 - `patch-files`: ローカルファイルを添付として作成し、メモ添付を更新
@@ -30,7 +31,7 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-operation` | 実行する操作（`create-memo`, `get-memo`, `list-memos`, `update-memo`, `patch-files`） | 必須 |
+| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `update-memo`, `patch-files`） | 必須 |
 | `-base-url` | Memos のベースURL（例: `https://memos.example.com`） | 必須 |
 | `-api-token` | Bearer トークン | 必須 |
 | `-timeout` | HTTPタイムアウト秒（デフォルト: 30） | 任意 |
@@ -55,6 +56,13 @@ go run ./cmd/cli/memos \
 | オプション | 説明 | 必須 |
 |---|---|---|
 | `-memo` | 取得対象の memo 識別子（例: `memo-123` / `memos/memo-123`） | 必須 |
+
+### delete-memo
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-memo` | 削除対象の memo 識別子（例: `memo-123` / `memos/memo-123`） | 必須 |
+| `-force` | `true` のとき強制削除を要求する（デフォルト: `false`） | 任意 |
 
 ### list-memos
 
@@ -133,6 +141,16 @@ go run ./cmd/cli/memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
   -memo=memo-123
+```
+
+メモ削除
+```bash
+go run ./cmd/cli/memos \
+  -operation=delete-memo \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123 \
+  -force=true
 ```
 
 メモ一覧
@@ -229,6 +247,7 @@ go run ./cmd/cli/memos \
 
 - CreateMemo: https://usememos.com/docs/api/memoservice/CreateMemo
 - GetMemo: https://usememos.com/docs/api/memoservice/GetMemo
+- DeleteMemo: https://usememos.com/docs/api/memoservice/DeleteMemo
 - ListMemos: https://usememos.com/docs/api/memoservice/ListMemos
 - Filtering (ListMemos query): https://www.usememos.com/docs/api/v1#tag/memo/GET/api/v1/memos
 - Filter fields reference: https://www.usememos.com/docs/api/v1#tag/shortcut/field/filter

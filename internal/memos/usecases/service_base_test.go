@@ -18,6 +18,9 @@ func TestNewService_DefaultDependencies_Normal(t *testing.T) {
 	if service.getMemoOp == nil {
 		t.Fatal("getMemoOp is nil")
 	}
+	if service.deleteMemoOp == nil {
+		t.Fatal("deleteMemoOp is nil")
+	}
 	if service.listMemosOp == nil {
 		t.Fatal("listMemosOp is nil")
 	}
@@ -53,5 +56,23 @@ func TestService_GetMemo_DelegatesOperation(t *testing.T) {
 	}
 	if result.Name != "memos/memo-1" {
 		t.Fatalf("name = %s, want memos/memo-1", result.Name)
+	}
+}
+
+type stubDeleteMemoOperation struct{}
+
+func (s *stubDeleteMemoOperation) Execute(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error) {
+	return &DeleteMemoOutput{}, nil
+}
+
+func TestService_DeleteMemo_DelegatesOperation(t *testing.T) {
+	service := &Service{deleteMemoOp: &stubDeleteMemoOperation{}}
+
+	result, err := service.DeleteMemo(context.Background(), "memos/memo-1", true)
+	if err != nil {
+		t.Fatalf("DeleteMemo() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("result = nil, want non-nil")
 	}
 }

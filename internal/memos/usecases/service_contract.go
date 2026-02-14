@@ -6,6 +6,7 @@ import "context"
 type MemoService interface {
 	CreateMemo(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*Memo, error)
 	GetMemo(ctx context.Context, memo string) (*Memo, error)
+	DeleteMemo(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error)
 	ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
 	UpdateMemo(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
 	PatchFiles(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
@@ -18,6 +19,7 @@ type MemoService interface {
 type MockMemoService struct {
 	CreateMemoFunc func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*Memo, error)
 	GetMemoFunc    func(ctx context.Context, memo string) (*Memo, error)
+	DeleteMemoFunc func(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error)
 	ListMemosFunc  func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
 	UpdateMemoFunc func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
 	PatchFilesFunc func(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
@@ -37,6 +39,13 @@ func (m *MockMemoService) CreateMemo(ctx context.Context, memoID string, content
 func (m *MockMemoService) GetMemo(ctx context.Context, memo string) (*Memo, error) {
 	if m.GetMemoFunc != nil {
 		return m.GetMemoFunc(ctx, memo)
+	}
+	return nil, nil
+}
+
+func (m *MockMemoService) DeleteMemo(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error) {
+	if m.DeleteMemoFunc != nil {
+		return m.DeleteMemoFunc(ctx, memo, force)
 	}
 	return nil, nil
 }

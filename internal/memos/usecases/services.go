@@ -9,6 +9,7 @@ import (
 	"github.com/landmaster135/devbox/internal/memos/usecases/common"
 	attachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/attachments"
 	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"
+	deletememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/delete_memo"
 	getmemo "github.com/landmaster135/devbox/internal/memos/usecases/operations/get_memo"
 	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
 	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
@@ -35,6 +36,10 @@ type createMemoOperation interface {
 
 type getMemoOperation interface {
 	Execute(ctx context.Context, memo string) (*common.Memo, error)
+}
+
+type deleteMemoOperation interface {
+	Execute(ctx context.Context, memo string, force bool) (*common.DeleteMemoOutput, error)
 }
 
 type listMemosOperation interface {
@@ -65,6 +70,7 @@ type setMemoAttachmentsOperation interface {
 type Service struct {
 	createMemoOp          createMemoOperation
 	getMemoOp             getMemoOperation
+	deleteMemoOp          deleteMemoOperation
 	listMemosOp           listMemosOperation
 	updateMemoOp          updateMemoOperation
 	patchFilesOp          patchFilesOperation
@@ -75,6 +81,9 @@ type Service struct {
 
 // Memo は CLI/上位層に返すメモ情報。
 type Memo = common.Memo
+
+// DeleteMemoOutput は DeleteMemo のレスポンス。
+type DeleteMemoOutput = common.DeleteMemoOutput
 
 // ListMemosOutput は ListMemos のレスポンス。
 type ListMemosOutput = common.ListMemosOutput
@@ -115,6 +124,7 @@ func NewService(opts ServiceOptions) *Service {
 	return &Service{
 		createMemoOp:          creatememo.New(jsonClient, fileSystem),
 		getMemoOp:             getmemo.New(jsonClient),
+		deleteMemoOp:          deletememo.New(jsonClient),
 		listMemosOp:           listmemos.New(jsonClient),
 		updateMemoOp:          updatememo.New(jsonClient, fileSystem),
 		patchFilesOp:          patchfiles.New(fileSystem, attachmentsOp, attachmentsOp, attachmentsOp),

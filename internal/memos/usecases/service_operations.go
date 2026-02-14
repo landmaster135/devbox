@@ -21,6 +21,11 @@ func (s *Service) GetMemo(ctx context.Context, memo string) (*Memo, error) {
 	return s.getMemoOp.Execute(ctx, memo)
 }
 
+// DeleteMemo は DeleteMemo API を呼び出す。
+func (s *Service) DeleteMemo(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error) {
+	return s.deleteMemoOp.Execute(ctx, memo, force)
+}
+
 // ListMemos は ListMemos API を呼び出す。
 func (s *Service) ListMemos(
 	ctx context.Context,

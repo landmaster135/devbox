@@ -49,6 +49,8 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 		)
 	case cfg.OperationGetMemo:
 		result, err = service.GetMemo(ctx, conf.Memo)
+	case cfg.OperationDeleteMemo:
+		result, err = service.DeleteMemo(ctx, conf.Memo, conf.Force)
 	case cfg.OperationListMemos:
 		result, err = service.ListMemos(
 			ctx,

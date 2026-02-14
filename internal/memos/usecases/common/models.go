@@ -14,6 +14,9 @@ type Memo struct {
 	Pinned      bool   `json:"pinned,omitempty"`
 }
 
+// DeleteMemoOutput は DeleteMemo のレスポンス。
+type DeleteMemoOutput struct{}
+
 // ListMemosOutput は ListMemos のレスポンス。
 type ListMemosOutput struct {
 	Memos         []Memo `json:"memos,omitempty"`

@@ -265,6 +265,57 @@ func TestConfig_ParseFlagsFromArgs_GetMemoMissingMemo_Error(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_DeleteMemo_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=delete-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-force=true",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Operation != OperationDeleteMemo {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationDeleteMemo)
+	}
+	if cfg.Memo != "memo-1" {
+		t.Fatalf("memo = %s, want memo-1", cfg.Memo)
+	}
+	if !cfg.Force {
+		t.Fatalf("force = %v, want true", cfg.Force)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_DeleteMemoMissingMemo_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=delete-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "memo パラメータ") {
+		t.Fatalf("error = %v, want memo パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_DeleteMemoDefaultForceFalse_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=delete-memo",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Force {
+		t.Fatalf("force = %v, want false", cfg.Force)
+	}
+}
+
 func TestConfig_ParseFlagsFromArgs_UpdateMemoMissingContent_Error(t *testing.T) {
 	_, err := ParseFlagsFromArgs([]string{
 		"-operation=update-memo",

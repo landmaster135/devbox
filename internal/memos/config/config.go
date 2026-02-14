@@ -12,6 +12,7 @@ import (
 const (
 	OperationCreateMemo = "create-memo"
 	OperationGetMemo    = "get-memo"
+	OperationDeleteMemo = "delete-memo"
 	OperationListMemos  = "list-memos"
 	OperationUpdateMemo = "update-memo"
 	OperationPatchFiles = "patch-files"
@@ -23,6 +24,7 @@ const (
 var supportedOperations = []string{
 	OperationCreateMemo,
 	OperationGetMemo,
+	OperationDeleteMemo,
 	OperationListMemos,
 	OperationUpdateMemo,
 	OperationPatchFiles,
@@ -69,6 +71,7 @@ type Config struct {
 	UpdatesTime bool
 	Files       string
 	Replaces    bool
+	Force       bool
 }
 
 // ParseFlags は CLI フラグを解析する。
@@ -96,7 +99,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.BoolVar(&cfg.Help, "h", false, "ヘルプを表示（短縮）")
 
 	fs.StringVar(&cfg.MemoID, "memo-id", "", "create-memo で作成する memoId（任意）")
-	fs.StringVar(&cfg.Memo, "memo", "", "get-memo/update-memo で対象にする memo 識別子")
+	fs.StringVar(&cfg.Memo, "memo", "", "get-memo/delete-memo/update-memo/patch-files で対象にする memo 識別子")
 	fs.StringVar(&cfg.Content, "content", "", "create-memo/update-memo で設定する本文")
 	fs.StringVar(&cfg.ContentFile, "content-file", "", "create-memo/update-memo で設定する本文ファイルのパス")
 	fs.StringVar(&cfg.Visibility, "visibility", "", "visibility（PRIVATE/PROTECTED/PUBLIC）")
@@ -112,6 +115,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
 	fs.StringVar(&cfg.Files, "files", "", "patch-files で添付するファイルパス（カンマ区切り）")
 	fs.BoolVar(&cfg.Replaces, "replaces", false, "patch-files で既存添付を置換するか（デフォルト: false）")
+	fs.BoolVar(&cfg.Force, "force", false, "delete-memo で強制削除するか（デフォルト: false）")
 
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -187,6 +191,10 @@ func validateConfig(cfg *Config) error {
 	case OperationGetMemo:
 		if cfg.Memo == "" {
 			return fmt.Errorf("get-memo 操作には memo パラメータが必要です")
+		}
+	case OperationDeleteMemo:
+		if cfg.Memo == "" {
+			return fmt.Errorf("delete-memo 操作には memo パラメータが必要です")
 		}
 	case OperationListMemos:
 		if cfg.PageSize == 0 {
@@ -268,6 +276,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        -content または -content-file (どちらか必須), -memo-id (任意), -visibility (任意), -state (任意), -pinned (任意), -display-time (任意)\n")
 	fmt.Fprintf(os.Stderr, "  get-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須)\n")
+	fmt.Fprintf(os.Stderr, "  delete-memo\n")
+	fmt.Fprintf(os.Stderr, "        -memo (必須), -force (任意: デフォルト false)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
@@ -279,6 +289,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content='hello'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content-file=./memo.md\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=get-memo -base-url=https://memos.example.com -api-token=token -memo=abc123\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=delete-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -force=false\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -page-size=20 -state=NORMAL\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > \"2023-01-01T13:00:00Z\" && visibility == \"PUBLIC\"'\n", os.Args[0])
