@@ -41,6 +41,7 @@ type ListMemosParams struct {
 	PageToken string
 	State     string
 	OrderBy   string
+	Filter    string
 }
 
 // UpdateMemoParams は UpdateMemo の入力。

@@ -24,6 +24,7 @@ func (s *Service) Execute(
 	pageToken string,
 	state string,
 	orderBy string,
+	filter string,
 ) (*common.ListMemosOutput, error) {
 	query := url.Values{}
 	if pageSize > 0 {
@@ -37,6 +38,9 @@ func (s *Service) Execute(
 	}
 	if orderBy != "" {
 		query.Set("orderBy", orderBy)
+	}
+	if filter != "" {
+		query.Set("filter", filter)
 	}
 
 	var result common.ListMemosOutput

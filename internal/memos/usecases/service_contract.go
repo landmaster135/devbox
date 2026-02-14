@@ -6,7 +6,7 @@ import "context"
 type MemoService interface {
 	CreateMemo(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*Memo, error)
 	GetMemo(ctx context.Context, memo string) (*Memo, error)
-	ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string) (*ListMemosOutput, error)
+	ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
 	UpdateMemo(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
 	PatchFiles(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
 	CreateAttachment(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*Attachment, error)
@@ -18,7 +18,7 @@ type MemoService interface {
 type MockMemoService struct {
 	CreateMemoFunc func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*Memo, error)
 	GetMemoFunc    func(ctx context.Context, memo string) (*Memo, error)
-	ListMemosFunc  func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string) (*ListMemosOutput, error)
+	ListMemosFunc  func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
 	UpdateMemoFunc func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
 	PatchFilesFunc func(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
 
@@ -41,9 +41,9 @@ func (m *MockMemoService) GetMemo(ctx context.Context, memo string) (*Memo, erro
 	return nil, nil
 }
 
-func (m *MockMemoService) ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string) (*ListMemosOutput, error) {
+func (m *MockMemoService) ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error) {
 	if m.ListMemosFunc != nil {
-		return m.ListMemosFunc(ctx, pageSize, pageToken, state, orderBy)
+		return m.ListMemosFunc(ctx, pageSize, pageToken, state, orderBy, filter)
 	}
 	return nil, nil
 }

@@ -30,6 +30,7 @@
 ```text
 cmd配下ツールを実装・改修したい
 ├─ 実装方針/ビルド/運用の全体像を見たい → docs/tool_implementation/index.md
+├─ 実装計画を立てたい → docs/tool_implementation/index.md
 ├─ 実装パターンや注意点を確認したい → docs/tool_implementation/implementation_guide.md
 └─ 実装後のドキュメント更新手順を確認したい → docs/tool_implementation/documentation_guide.md
 ```

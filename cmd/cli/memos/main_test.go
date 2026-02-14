@@ -92,6 +92,60 @@ func TestRun_CreateMemoWithContentFile_Normal(t *testing.T) {
 	}
 }
 
+func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	exitCode := run([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-page-token=next-token",
+		"-state=NORMAL",
+		"-order-by=update_time desc",
+		`-filter=create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]`,
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
+		return &usecases.MockMemoService{
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*usecases.ListMemosOutput, error) {
+				called = true
+				if pageSize != 10 {
+					t.Fatalf("pageSize = %d, want 10", pageSize)
+				}
+				if pageToken != "next-token" {
+					t.Fatalf("pageToken = %s, want next-token", pageToken)
+				}
+				if state != "NORMAL" {
+					t.Fatalf("state = %s, want NORMAL", state)
+				}
+				if orderBy != "update_time desc" {
+					t.Fatalf("orderBy = %s, want update_time desc", orderBy)
+				}
+				wantFilter := `create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]`
+				if filter != wantFilter {
+					t.Fatalf("filter = %q, want %q", filter, wantFilter)
+				}
+				return &usecases.ListMemosOutput{
+					Memos: []usecases.Memo{
+						{Name: "memos/1"},
+					},
+				}, nil
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if !called {
+		t.Fatal("ListMemosFunc was not called")
+	}
+	if !strings.Contains(stdout.String(), "\"name\": \"memos/1\"") {
+		t.Fatalf("stdout = %s, want memo json", stdout.String())
+	}
+}
+
 func TestRun_GetMemoError_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

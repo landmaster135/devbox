@@ -31,6 +31,9 @@ func TestServiceOperationListMemos_Normal(t *testing.T) {
 			if got := query.Get("orderBy"); got != "update_time desc" {
 				t.Fatalf("orderBy = %s, want update_time desc", got)
 			}
+			if got := query.Get("filter"); got != `create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]` {
+				t.Fatalf("filter = %s, want filter condition", got)
+			}
 			return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/1"},{"name":"memos/2"}],"nextPageToken":"next-token","totalSize":2}`), nil
 		},
 	}
@@ -48,6 +51,7 @@ func TestServiceOperationListMemos_Normal(t *testing.T) {
 		"next-token",
 		"NORMAL",
 		"update_time desc",
+		`create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]`,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)

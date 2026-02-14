@@ -28,8 +28,9 @@ func (s *Service) ListMemos(
 	pageToken string,
 	state string,
 	orderBy string,
+	filter string,
 ) (*ListMemosOutput, error) {
-	return s.listMemosOp.Execute(ctx, pageSize, pageToken, state, orderBy)
+	return s.listMemosOp.Execute(ctx, pageSize, pageToken, state, orderBy, filter)
 }
 
 // UpdateMemo は UpdateMemo API を呼び出す。

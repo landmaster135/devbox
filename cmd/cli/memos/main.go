@@ -56,6 +56,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.PageToken,
 			conf.State,
 			conf.OrderBy,
+			conf.Filter,
 		)
 	case cfg.OperationUpdateMemo:
 		displayTime := ""

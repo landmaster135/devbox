@@ -38,7 +38,7 @@ type getMemoOperation interface {
 }
 
 type listMemosOperation interface {
-	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string) (*common.ListMemosOutput, error)
+	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*common.ListMemosOutput, error)
 }
 
 type updateMemoOperation interface {

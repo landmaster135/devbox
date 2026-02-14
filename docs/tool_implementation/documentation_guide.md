@@ -16,6 +16,8 @@
   - 使用方法
   - 使用例
   - 出力例（成功時/エラー時）
+- 記法ルール
+  - README の見出しは `#` 〜 `###`（見出し3）までを使用し、`####` 以降は使用しない
 - 参考:
   - `cmd/cli/arithmetic-calculator/README.md`
   - `cmd/cli/service-implementing-viewer/README.md`

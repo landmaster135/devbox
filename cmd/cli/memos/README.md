@@ -64,6 +64,29 @@ go run ./cmd/cli/memos \
 | `-page-token` | ページトークン | 任意 |
 | `-state` | 状態フィルタ（`NORMAL`, `ARCHIVED`） | 任意 |
 | `-order-by` | 並び順（例: `update_time desc`） | 任意 |
+| `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`） | 任意 |
+
+**filter で利用可能な主なフィールド**
+
+Memos の `filter` は CEL 形式です。公式ドキュメント上で確認できる主なフィールドは以下です（インスタンスのバージョン差で一部差異あり）。
+
+| フィールド | 型 | 例 |
+|---|---|---|
+| `content` | `string` | `content.contains("meeting")` |
+| `visibility` | `string` | `visibility == "PUBLIC"` |
+| `tag` / `tags` | `string` / `[]string` | `tag in ["work","project"]`, `"work" in tags` |
+| `created_ts` | `int` (Unix timestamp) | `created_ts > now() - 86400` |
+| `updated_ts` | `int` (Unix timestamp) | `updated_ts > now() - 86400` |
+| `pinned` | `bool` | `pinned` |
+| `has_task_list` | `bool` | `has_task_list` |
+| `has_incomplete_tasks` | `bool` | `has_incomplete_tasks` |
+| `has_link` | `bool` | `has_link` |
+| `has_code` | `bool` | `has_code` |
+| `creator_id` | `int` | `creator_id == 101` |
+
+注意:
+- `create_time_after(...)` や `visibilities` は、少なくとも一部環境では未サポートで `undeclared reference` エラーになります。
+- まず `visibility == "PUBLIC"` のような単純な式で確認してから条件を増やすのが安全です。
 
 ### update-memo
 
@@ -121,6 +144,28 @@ go run ./cmd/cli/memos \
   -state=NORMAL \
   -order-by="update_time desc"
 ```
+
+メモ一覧（CELフィルタ）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"'
+```
+
+メモ一覧（CELフィルタ: 作成時刻＋公開範囲）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='created_ts > now() - 1440 * 60 && visibility == "PUBLIC"'
+```
+
+補足（Windows のクォート）:
+- `cmd.exe` では `'` が文字列クォートとして機能しないため、`-filter` の値は `"` で囲って指定してください。
+- 例: `-filter="visibility == 'PUBLIC'"` または `-filter="visibility == \"PUBLIC\""`
 
 メモ更新
 ```bash
@@ -184,6 +229,8 @@ go run ./cmd/cli/memos \
 - CreateMemo: https://usememos.com/docs/api/memoservice/CreateMemo
 - GetMemo: https://usememos.com/docs/api/memoservice/GetMemo
 - ListMemos: https://usememos.com/docs/api/memoservice/ListMemos
+- Filtering (ListMemos query): https://www.usememos.com/docs/api/v1#tag/memo/GET/api/v1/memos
+- Filter fields reference: https://www.usememos.com/docs/api/v1#tag/shortcut/field/filter
 - UpdateMemo: https://usememos.com/docs/api/memoservice/UpdateMemo
 - CreateAttachment: https://usememos.com/docs/api/attachmentservice/CreateAttachment
 - ListMemoAttachments: https://usememos.com/docs/api/memoservice/ListMemoAttachments

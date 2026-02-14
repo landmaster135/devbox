@@ -63,6 +63,7 @@ type Config struct {
 	PageSize  int
 	PageToken string
 	OrderBy   string
+	Filter    string
 
 	UpdateMask  string
 	UpdatesTime bool
@@ -106,6 +107,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.IntVar(&cfg.PageSize, "page-size", cfg.PageSize, "list-memos の取得件数")
 	fs.StringVar(&cfg.PageToken, "page-token", "", "list-memos のページトークン")
 	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos のソート指定（例: update_time desc）")
+	fs.StringVar(&cfg.Filter, "filter", "", "list-memos のフィルタ条件（CEL形式、例: visibility == \"PUBLIC\"）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
 	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
 	fs.StringVar(&cfg.Files, "files", "", "patch-files で添付するファイルパス（カンマ区切り）")
@@ -134,6 +136,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.DisplayTime = strings.TrimSpace(cfg.DisplayTime)
 	cfg.PageToken = strings.TrimSpace(cfg.PageToken)
 	cfg.OrderBy = strings.TrimSpace(cfg.OrderBy)
+	cfg.Filter = strings.TrimSpace(cfg.Filter)
 	cfg.UpdateMask = strings.TrimSpace(cfg.UpdateMask)
 	cfg.Files = strings.TrimSpace(cfg.Files)
 	cfg.Pinned = pinnedValue.Value()
@@ -266,7 +269,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  get-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
-	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意)\n")
+	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意), -updates-time (任意: trueでdisplayTimeを現在日時に設定)\n\n")
 	fmt.Fprintf(os.Stderr, "  patch-files\n")
@@ -277,6 +280,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content-file=./memo.md\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=get-memo -base-url=https://memos.example.com -api-token=token -memo=abc123\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -page-size=20 -state=NORMAL\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='visibility == \"PUBLIC\"'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > now() - 1440 * 60 && visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=patch-files -base-url=https://memos.example.com -api-token=token -memo=abc123 -files=./a.png,./b.pdf -replaces=false\n", os.Args[0])
 }
