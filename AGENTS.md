@@ -25,6 +25,13 @@
 
 ## Quick Decision Trees
 
+### 「タスクに着手したい」
+
+```text
+タスクに着手したい
+└─ タスクの指示書を確認したい → `.agents/tmp/instructions.md`
+```
+
 ### 「cmd配下ツールを実装・改修したい」
 
 ```text
