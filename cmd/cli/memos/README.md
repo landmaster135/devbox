@@ -105,7 +105,7 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 | `-page-size` | 取得件数（デフォルト: 20） | 任意 |
 | `-page-token` | ページトークン | 任意 |
 | `-order-by` | 並び順（例: `create_time desc`） | 任意 |
-| `-filter` | フィルタ条件（CEL形式。例: `memo == "memos/memo-123"`） | 任意 |
+| `-filter` | フィルタ条件（CEL形式） | 任意 |
 
 ### update-memo
 
@@ -200,15 +200,6 @@ go run ./cmd/cli/memos \
   -api-token=$MEMOS_TOKEN \
   -page-size=50 \
   -order-by="create_time desc"
-```
-
-添付一覧（memo フィルタ）
-```bash
-go run ./cmd/cli/memos \
-  -operation=list-attachments \
-  -base-url=$MEMOS_BASE_URL \
-  -api-token=$MEMOS_TOKEN \
-  -filter='memo == "memos/memo-123"'
 ```
 
 補足（Windows のクォート）:
