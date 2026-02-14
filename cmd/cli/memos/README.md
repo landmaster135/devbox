@@ -8,6 +8,7 @@ Memos API（`/api/v1`）を操作するCLIツールです。
 - `get-memo`: 単一メモを取得
 - `delete-memo`: 単一メモを削除
 - `list-memos`: メモ一覧を取得
+- `list-attachments`: 添付一覧を取得
 - `update-memo`: 既存メモを更新（UpdateMemo）
 - `patch-files`: ローカルファイルを添付として作成し、メモ添付を更新
 
@@ -31,7 +32,7 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `update-memo`, `patch-files`） | 必須 |
+| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `patch-files`） | 必須 |
 | `-base-url` | Memos のベースURL（例: `https://memos.example.com`） | 必須 |
 | `-api-token` | Bearer トークン | 必須 |
 | `-timeout` | HTTPタイムアウト秒（デフォルト: 30） | 任意 |
@@ -96,6 +97,15 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 - `create_time_after(...)` や `visibilities` は、少なくとも一部環境では未サポートで `undeclared reference` エラーになります。
 - `created_ts` / `updated_ts` の日時文字列は RFC3339/RFC3339Nano（タイムゾーン必須）で指定してください。例: `2023-01-01T13:00:00Z`
 - まず `visibility == "PUBLIC"` のような単純な式で確認してから条件を増やすのが安全です。
+
+### list-attachments
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-page-size` | 取得件数（デフォルト: 20） | 任意 |
+| `-page-token` | ページトークン | 任意 |
+| `-order-by` | 並び順（例: `create_time desc`） | 任意 |
+| `-filter` | フィルタ条件（CEL形式。例: `memo == "memos/memo-123"`） | 任意 |
 
 ### update-memo
 
@@ -182,6 +192,25 @@ go run ./cmd/cli/memos \
   -filter='created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"'
 ```
 
+添付一覧
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-attachments \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -page-size=50 \
+  -order-by="create_time desc"
+```
+
+添付一覧（memo フィルタ）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-attachments \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='memo == "memos/memo-123"'
+```
+
 補足（Windows のクォート）:
 - `cmd.exe` では `'` が文字列クォートとして機能しないため、`-filter` の値は `"` で囲って指定してください。
 - 例: `-filter="visibility == 'PUBLIC'"`、`-filter="created_ts > '2023-01-01T13:00:00Z'"`、`-filter="visibility == \"PUBLIC\""`
@@ -253,5 +282,6 @@ go run ./cmd/cli/memos \
 - Filter fields reference: https://www.usememos.com/docs/api/v1#tag/shortcut/field/filter
 - UpdateMemo: https://usememos.com/docs/api/memoservice/UpdateMemo
 - CreateAttachment: https://usememos.com/docs/api/attachmentservice/CreateAttachment
+- ListAttachments: https://usememos.com/docs/api/attachmentservice/ListAttachments
 - ListMemoAttachments: https://usememos.com/docs/api/memoservice/ListMemoAttachments
 - SetMemoAttachments: https://usememos.com/docs/api/memoservice/SetMemoAttachments

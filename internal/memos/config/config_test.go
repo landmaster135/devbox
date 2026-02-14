@@ -113,6 +113,52 @@ func TestConfig_ParseFlags_ListMemosWithFilter_Normal(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlags_ListAttachments_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=list-attachments",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=25",
+		"-page-token=next-1",
+		"-order-by=create_time desc",
+		`-filter=memo == "memos/memo-1"`,
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationListAttachments {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationListAttachments)
+	}
+	if cfg.PageSize != 25 {
+		t.Fatalf("pageSize = %d, want 25", cfg.PageSize)
+	}
+	if cfg.PageToken != "next-1" {
+		t.Fatalf("pageToken = %s, want next-1", cfg.PageToken)
+	}
+	if cfg.OrderBy != "create_time desc" {
+		t.Fatalf("orderBy = %s, want create_time desc", cfg.OrderBy)
+	}
+	if cfg.Filter != `memo == "memos/memo-1"` {
+		t.Fatalf("filter = %q, want memo filter", cfg.Filter)
+	}
+}
+
+func TestConfig_ParseFlags_ListAttachmentsPageSizeZero_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-attachments",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=0",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "page-size") {
+		t.Fatalf("error = %v, want page-size", err)
+	}
+}
+
 func TestConfig_ParseFlags_InvalidOperation_Error(t *testing.T) {
 	_, err := ParseFlagsFromArgs([]string{
 		"-operation=unknown",

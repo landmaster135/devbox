@@ -8,6 +8,7 @@ type MemoService interface {
 	GetMemo(ctx context.Context, memo string) (*Memo, error)
 	DeleteMemo(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error)
 	ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
+	ListAttachments(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*ListAttachmentsOutput, error)
 	UpdateMemo(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
 	PatchFiles(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
 	CreateAttachment(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*Attachment, error)
@@ -17,12 +18,13 @@ type MemoService interface {
 
 // MockMemoService はテスト用モック。
 type MockMemoService struct {
-	CreateMemoFunc func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*Memo, error)
-	GetMemoFunc    func(ctx context.Context, memo string) (*Memo, error)
-	DeleteMemoFunc func(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error)
-	ListMemosFunc  func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
-	UpdateMemoFunc func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
-	PatchFilesFunc func(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
+	CreateMemoFunc      func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*Memo, error)
+	GetMemoFunc         func(ctx context.Context, memo string) (*Memo, error)
+	DeleteMemoFunc      func(ctx context.Context, memo string, force bool) (*DeleteMemoOutput, error)
+	ListMemosFunc       func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
+	ListAttachmentsFunc func(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*ListAttachmentsOutput, error)
+	UpdateMemoFunc      func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
+	PatchFilesFunc      func(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
 
 	CreateAttachmentFunc    func(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*Attachment, error)
 	ListMemoAttachmentsFunc func(ctx context.Context, memo string, pageSize int, pageToken string) (*ListMemoAttachmentsOutput, error)
@@ -53,6 +55,13 @@ func (m *MockMemoService) DeleteMemo(ctx context.Context, memo string, force boo
 func (m *MockMemoService) ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error) {
 	if m.ListMemosFunc != nil {
 		return m.ListMemosFunc(ctx, pageSize, pageToken, state, orderBy, filter)
+	}
+	return nil, nil
+}
+
+func (m *MockMemoService) ListAttachments(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*ListAttachmentsOutput, error) {
+	if m.ListAttachmentsFunc != nil {
+		return m.ListAttachmentsFunc(ctx, pageSize, pageToken, orderBy, filter)
 	}
 	return nil, nil
 }

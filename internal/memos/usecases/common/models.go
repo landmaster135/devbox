@@ -24,6 +24,13 @@ type ListMemosOutput struct {
 	TotalSize     int64  `json:"totalSize,omitempty"`
 }
 
+// ListAttachmentsOutput は ListAttachments のレスポンス。
+type ListAttachmentsOutput struct {
+	Attachments   []Attachment `json:"attachments,omitempty"`
+	NextPageToken string       `json:"nextPageToken,omitempty"`
+	TotalSize     int64        `json:"totalSize,omitempty"`
+}
+
 // Attachment は Memos API の添付情報。
 type Attachment struct {
 	Name         string `json:"name,omitempty"`

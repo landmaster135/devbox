@@ -60,6 +60,14 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.OrderBy,
 			conf.Filter,
 		)
+	case cfg.OperationListAttachments:
+		result, err = service.ListAttachments(
+			ctx,
+			conf.PageSize,
+			conf.PageToken,
+			conf.OrderBy,
+			conf.Filter,
+		)
 	case cfg.OperationUpdateMemo:
 		displayTime := ""
 		if conf.UpdatesTime {

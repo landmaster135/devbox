@@ -11,6 +11,7 @@ import (
 	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"
 	deletememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/delete_memo"
 	getmemo "github.com/landmaster135/devbox/internal/memos/usecases/operations/get_memo"
+	listattachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_attachments"
 	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
 	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
 	updatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_memo"
@@ -46,6 +47,10 @@ type listMemosOperation interface {
 	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*common.ListMemosOutput, error)
 }
 
+type listAttachmentsOperation interface {
+	Execute(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*common.ListAttachmentsOutput, error)
+}
+
 type updateMemoOperation interface {
 	Execute(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*common.Memo, error)
 }
@@ -72,6 +77,7 @@ type Service struct {
 	getMemoOp             getMemoOperation
 	deleteMemoOp          deleteMemoOperation
 	listMemosOp           listMemosOperation
+	listAttachmentsOp     listAttachmentsOperation
 	updateMemoOp          updateMemoOperation
 	patchFilesOp          patchFilesOperation
 	createAttachmentOp    createAttachmentOperation
@@ -87,6 +93,9 @@ type DeleteMemoOutput = common.DeleteMemoOutput
 
 // ListMemosOutput は ListMemos のレスポンス。
 type ListMemosOutput = common.ListMemosOutput
+
+// ListAttachmentsOutput は ListAttachments のレスポンス。
+type ListAttachmentsOutput = common.ListAttachmentsOutput
 
 // Attachment は Memos API の添付情報。
 type Attachment = common.Attachment
@@ -126,6 +135,7 @@ func NewService(opts ServiceOptions) *Service {
 		getMemoOp:             getmemo.New(jsonClient),
 		deleteMemoOp:          deletememo.New(jsonClient),
 		listMemosOp:           listmemos.New(jsonClient),
+		listAttachmentsOp:     listattachments.New(jsonClient),
 		updateMemoOp:          updatememo.New(jsonClient, fileSystem),
 		patchFilesOp:          patchfiles.New(fileSystem, attachmentsOp, attachmentsOp, attachmentsOp),
 		createAttachmentOp:    attachmentsOp,

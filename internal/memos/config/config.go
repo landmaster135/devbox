@@ -10,12 +10,13 @@ import (
 )
 
 const (
-	OperationCreateMemo = "create-memo"
-	OperationGetMemo    = "get-memo"
-	OperationDeleteMemo = "delete-memo"
-	OperationListMemos  = "list-memos"
-	OperationUpdateMemo = "update-memo"
-	OperationPatchFiles = "patch-files"
+	OperationCreateMemo      = "create-memo"
+	OperationGetMemo         = "get-memo"
+	OperationDeleteMemo      = "delete-memo"
+	OperationListMemos       = "list-memos"
+	OperationListAttachments = "list-attachments"
+	OperationUpdateMemo      = "update-memo"
+	OperationPatchFiles      = "patch-files"
 
 	defaultTimeoutSeconds = 30
 	defaultPageSize       = 20
@@ -26,6 +27,7 @@ var supportedOperations = []string{
 	OperationGetMemo,
 	OperationDeleteMemo,
 	OperationListMemos,
+	OperationListAttachments,
 	OperationUpdateMemo,
 	OperationPatchFiles,
 }
@@ -107,10 +109,10 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.Var(pinnedValue, "pinned", "pinned の設定値（true/false）")
 	fs.StringVar(&cfg.DisplayTime, "display-time", "", "create-memo で設定する表示日時（RFC3339）")
 
-	fs.IntVar(&cfg.PageSize, "page-size", cfg.PageSize, "list-memos の取得件数")
-	fs.StringVar(&cfg.PageToken, "page-token", "", "list-memos のページトークン")
-	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos のソート指定（例: update_time desc）")
-	fs.StringVar(&cfg.Filter, "filter", "", "list-memos のフィルタ条件（CEL形式。created_ts/updated_ts の RFC3339 比較値は Unix 秒に自動変換）")
+	fs.IntVar(&cfg.PageSize, "page-size", cfg.PageSize, "list-memos/list-attachments の取得件数")
+	fs.StringVar(&cfg.PageToken, "page-token", "", "list-memos/list-attachments のページトークン")
+	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos/list-attachments のソート指定（例: update_time desc）")
+	fs.StringVar(&cfg.Filter, "filter", "", "list-memos/list-attachments のフィルタ条件（CEL形式。list-memos では created_ts/updated_ts の RFC3339 比較値を Unix 秒に自動変換）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
 	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
 	fs.StringVar(&cfg.Files, "files", "", "patch-files で添付するファイルパス（カンマ区切り）")
@@ -200,6 +202,10 @@ func validateConfig(cfg *Config) error {
 		if cfg.PageSize == 0 {
 			return fmt.Errorf("list-memos 操作では page-size に 1 以上を指定してください")
 		}
+	case OperationListAttachments:
+		if cfg.PageSize == 0 {
+			return fmt.Errorf("list-attachments 操作では page-size に 1 以上を指定してください")
+		}
 	case OperationUpdateMemo:
 		if cfg.Memo == "" {
 			return fmt.Errorf("update-memo 操作には memo パラメータが必要です")
@@ -280,6 +286,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -force (任意: デフォルト false)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換)\n")
+	fmt.Fprintf(os.Stderr, "  list-attachments\n")
+	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -order-by (任意), -filter (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意), -updates-time (任意: trueでdisplayTimeを現在日時に設定)\n\n")
 	fmt.Fprintf(os.Stderr, "  patch-files\n")
@@ -293,6 +301,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -page-size=20 -state=NORMAL\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > \"2023-01-01T13:00:00Z\" && visibility == \"PUBLIC\"'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-attachments -base-url=https://memos.example.com -api-token=token -page-size=50 -order-by=create_time desc\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=patch-files -base-url=https://memos.example.com -api-token=token -memo=abc123 -files=./a.png,./b.pdf -replaces=false\n", os.Args[0])
 }

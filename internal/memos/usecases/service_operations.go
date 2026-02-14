@@ -38,6 +38,17 @@ func (s *Service) ListMemos(
 	return s.listMemosOp.Execute(ctx, pageSize, pageToken, state, orderBy, filter)
 }
 
+// ListAttachments は ListAttachments API を呼び出す。
+func (s *Service) ListAttachments(
+	ctx context.Context,
+	pageSize int,
+	pageToken string,
+	orderBy string,
+	filter string,
+) (*ListAttachmentsOutput, error) {
+	return s.listAttachmentsOp.Execute(ctx, pageSize, pageToken, orderBy, filter)
+}
+
 // UpdateMemo は UpdateMemo API を呼び出す。
 func (s *Service) UpdateMemo(
 	ctx context.Context,

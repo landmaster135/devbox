@@ -24,6 +24,9 @@ func TestNewService_DefaultDependencies_Normal(t *testing.T) {
 	if service.listMemosOp == nil {
 		t.Fatal("listMemosOp is nil")
 	}
+	if service.listAttachmentsOp == nil {
+		t.Fatal("listAttachmentsOp is nil")
+	}
 	if service.updateMemoOp == nil {
 		t.Fatal("updateMemoOp is nil")
 	}
@@ -74,5 +77,29 @@ func TestService_DeleteMemo_DelegatesOperation(t *testing.T) {
 	}
 	if result == nil {
 		t.Fatal("result = nil, want non-nil")
+	}
+}
+
+type stubListAttachmentsOperation struct{}
+
+func (s *stubListAttachmentsOperation) Execute(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*ListAttachmentsOutput, error) {
+	return &ListAttachmentsOutput{
+		Attachments: []Attachment{{Name: "attachments/1"}},
+		TotalSize:   1,
+	}, nil
+}
+
+func TestService_ListAttachments_DelegatesOperation(t *testing.T) {
+	service := &Service{listAttachmentsOp: &stubListAttachmentsOperation{}}
+
+	result, err := service.ListAttachments(context.Background(), 20, "next-token", "create_time desc", `memo == "memos/memo-1"`)
+	if err != nil {
+		t.Fatalf("ListAttachments() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("result = nil, want non-nil")
+	}
+	if result.TotalSize != 1 {
+		t.Fatalf("totalSize = %d, want 1", result.TotalSize)
 	}
 }
