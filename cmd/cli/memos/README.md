@@ -64,7 +64,7 @@ go run ./cmd/cli/memos \
 | `-page-token` | ページトークン | 任意 |
 | `-state` | 状態フィルタ（`NORMAL`, `ARCHIVED`） | 任意 |
 | `-order-by` | 並び順（例: `update_time desc`） | 任意 |
-| `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`） | 任意 |
+| `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`。`created_ts` / `updated_ts` の RFC3339 比較値は内部で Unix 秒へ変換） | 任意 |
 
 **filter で利用可能な主なフィールド**
 
@@ -75,8 +75,8 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 | `content` | `string` | `content.contains("meeting")` |
 | `visibility` | `string` | `visibility == "PUBLIC"` |
 | `tag` / `tags` | `string` / `[]string` | `tag in ["work","project"]`, `"work" in tags` |
-| `created_ts` | `int` (Unix timestamp) | `created_ts > now() - 86400` |
-| `updated_ts` | `int` (Unix timestamp) | `updated_ts > now() - 86400` |
+| `created_ts` | `int` (Unix timestamp) | `created_ts > 1700000000`, `created_ts > "2023-01-01T13:00:00Z"` |
+| `updated_ts` | `int` (Unix timestamp) | `updated_ts > 1700000000`, `updated_ts >= "2023-01-01T13:00:00+09:00"` |
 | `pinned` | `bool` | `pinned` |
 | `has_task_list` | `bool` | `has_task_list` |
 | `has_incomplete_tasks` | `bool` | `has_incomplete_tasks` |
@@ -86,6 +86,7 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 
 注意:
 - `create_time_after(...)` や `visibilities` は、少なくとも一部環境では未サポートで `undeclared reference` エラーになります。
+- `created_ts` / `updated_ts` の日時文字列は RFC3339/RFC3339Nano（タイムゾーン必須）で指定してください。例: `2023-01-01T13:00:00Z`
 - まず `visibility == "PUBLIC"` のような単純な式で確認してから条件を増やすのが安全です。
 
 ### update-memo
@@ -160,12 +161,12 @@ go run ./cmd/cli/memos \
   -operation=list-memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
-  -filter='created_ts > now() - 1440 * 60 && visibility == "PUBLIC"'
+  -filter='created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"'
 ```
 
 補足（Windows のクォート）:
 - `cmd.exe` では `'` が文字列クォートとして機能しないため、`-filter` の値は `"` で囲って指定してください。
-- 例: `-filter="visibility == 'PUBLIC'"` または `-filter="visibility == \"PUBLIC\""`
+- 例: `-filter="visibility == 'PUBLIC'"`、`-filter="created_ts > '2023-01-01T13:00:00Z'"`、`-filter="visibility == \"PUBLIC\""`
 
 メモ更新
 ```bash

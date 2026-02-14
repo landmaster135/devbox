@@ -105,7 +105,7 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 		"-page-token=next-token",
 		"-state=NORMAL",
 		"-order-by=update_time desc",
-		`-filter=create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]`,
+		`-filter=created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
 			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*usecases.ListMemosOutput, error) {
@@ -122,7 +122,7 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 				if orderBy != "update_time desc" {
 					t.Fatalf("orderBy = %s, want update_time desc", orderBy)
 				}
-				wantFilter := `create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]`
+				wantFilter := `created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`
 				if filter != wantFilter {
 					t.Fatalf("filter = %q, want %q", filter, wantFilter)
 				}

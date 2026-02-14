@@ -39,6 +39,7 @@ pkg/win_dos/Taskfile.env.yml
 ### log ###
 *.log
 .gocache/
+.cache/
 
 ### Docker ###
 # .dockerignore

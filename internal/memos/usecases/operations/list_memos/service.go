@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	commonfilter "github.com/landmaster135/devbox/internal/memos/usecases/common/filter"
 )
 
 // Service は list_memos operation を扱う。
@@ -40,7 +41,11 @@ func (s *Service) Execute(
 		query.Set("orderBy", orderBy)
 	}
 	if filter != "" {
-		query.Set("filter", filter)
+		normalizedFilter, err := commonfilter.NormalizeFilter(filter)
+		if err != nil {
+			return nil, err
+		}
+		query.Set("filter", normalizedFilter)
 	}
 
 	var result common.ListMemosOutput

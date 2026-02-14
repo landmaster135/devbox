@@ -101,13 +101,13 @@ func TestConfig_ParseFlags_ListMemosWithFilter_Normal(t *testing.T) {
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
 		"-page-size=10",
-		`-filter=  create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]  `,
+		`-filter=  created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"  `,
 	})
 	if err != nil {
 		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
 	}
 
-	want := `create_time_after("2023-01-01T13:00:00") && visibilities == ["PUBLIC"]`
+	want := `created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`
 	if cfg.Filter != want {
 		t.Fatalf("filter = %q, want %q", cfg.Filter, want)
 	}
