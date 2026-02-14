@@ -4,15 +4,15 @@ import "testing"
 
 func TestParseFlags_FormatsInferredFromExtensions(t *testing.T) {
 	cfg, err := ParseFlags([]string{
-		"-input-file-path", "./input.yml",
+		"-input-file-path", "./input.tsv",
 		"-output-file-path", "./output.html",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if cfg.InputFormat != FormatYAML {
-		t.Fatalf("input format mismatch: got=%s want=%s", cfg.InputFormat, FormatYAML)
+	if cfg.InputFormat != FormatTSV {
+		t.Fatalf("input format mismatch: got=%s want=%s", cfg.InputFormat, FormatTSV)
 	}
 	if cfg.OutputFormat != FormatHTML {
 		t.Fatalf("output format mismatch: got=%s want=%s", cfg.OutputFormat, FormatHTML)
@@ -24,7 +24,7 @@ func TestParseFlags_ExplicitFormats(t *testing.T) {
 		"-input-file-path", "./input.data",
 		"-output-file-path", "./output.data",
 		"-input-format", "JSON",
-		"-output-format", "csv",
+		"-output-format", "tsv",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -33,8 +33,8 @@ func TestParseFlags_ExplicitFormats(t *testing.T) {
 	if cfg.InputFormat != FormatJSON {
 		t.Fatalf("input format mismatch: got=%s want=%s", cfg.InputFormat, FormatJSON)
 	}
-	if cfg.OutputFormat != FormatCSV {
-		t.Fatalf("output format mismatch: got=%s want=%s", cfg.OutputFormat, FormatCSV)
+	if cfg.OutputFormat != FormatTSV {
+		t.Fatalf("output format mismatch: got=%s want=%s", cfg.OutputFormat, FormatTSV)
 	}
 }
 

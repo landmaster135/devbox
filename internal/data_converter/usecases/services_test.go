@@ -48,6 +48,15 @@ func TestNormalizeToKeyValueList_SupportedFormats(t *testing.T) {
 			},
 		},
 		{
+			name:     "tsv",
+			format:   "tsv",
+			input:    "name\tage\nAlice\t30\n",
+			wantKeys: []string{"name", "age"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
+			},
+		},
+		{
 			name:   "html",
 			format: "html",
 			input: `<table>
@@ -91,7 +100,7 @@ func TestSerializeFromKeyValueList_AllFormats(t *testing.T) {
 		},
 	}
 
-	formats := []string{"json", "yaml", "csv", "html"}
+	formats := []string{"json", "yaml", "csv", "tsv", "html"}
 	for _, format := range formats {
 		t.Run(format, func(t *testing.T) {
 			t.Parallel()

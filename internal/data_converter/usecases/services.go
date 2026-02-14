@@ -9,6 +9,7 @@ import (
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/csvfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/htmlfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/jsonfmt"
+	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/tsvfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/yamlfmt"
 )
 
@@ -16,6 +17,7 @@ const (
 	formatJSON = "json"
 	formatYAML = "yaml"
 	formatCSV  = "csv"
+	formatTSV  = "tsv"
 	formatHTML = "html"
 )
 
@@ -64,6 +66,8 @@ func (s *Service) NormalizeToKeyValueList(content []byte, format string) (*Norma
 		return yamlfmt.Parse(content)
 	case formatCSV:
 		return csvfmt.Parse(content)
+	case formatTSV:
+		return tsvfmt.Parse(content)
 	case formatHTML:
 		return htmlfmt.Parse(content)
 	default:
@@ -89,6 +93,8 @@ func (s *Service) SerializeFromKeyValueList(data *NormalizedData, format string)
 		return yamlfmt.Serialize(data.KeyValueList)
 	case formatCSV:
 		return csvfmt.Serialize(data.KeyValueList, keys)
+	case formatTSV:
+		return tsvfmt.Serialize(data.KeyValueList, keys)
 	case formatHTML:
 		return htmlfmt.Serialize(data.KeyValueList, keys)
 	default:
