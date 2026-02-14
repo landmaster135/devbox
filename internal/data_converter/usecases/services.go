@@ -10,6 +10,7 @@ import (
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/csvfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/htmlfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/jsonfmt"
+	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/katextablefmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/mdorderedlistfmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/mdtablefmt"
 	"github.com/landmaster135/devbox/internal/data_converter/usecases/formats/mdunorderedlistfmt"
@@ -26,6 +27,7 @@ const (
 	formatMDOrderedList   = "md-ordered-list"
 	formatMDUnorderedList = "md-unordered-list"
 	formatMDTable         = "md-table"
+	formatKaTeXTable      = "katex-table"
 )
 
 // NormalizedData は全入力形式を統一した key-value リスト表現です。
@@ -83,6 +85,8 @@ func (s *Service) NormalizeToKeyValueList(content []byte, format string) (*Norma
 		return mdunorderedlistfmt.Parse(content)
 	case formatMDTable:
 		return mdtablefmt.Parse(content)
+	case formatKaTeXTable:
+		return katextablefmt.Parse(content)
 	default:
 		return nil, fmt.Errorf("未対応の入力形式です: %s", format)
 	}
@@ -116,6 +120,8 @@ func (s *Service) SerializeFromKeyValueList(data *NormalizedData, format string)
 		return mdunorderedlistfmt.Serialize(data.KeyValueList, keys)
 	case formatMDTable:
 		return mdtablefmt.Serialize(data.KeyValueList, keys)
+	case formatKaTeXTable:
+		return katextablefmt.Serialize(data.KeyValueList, keys)
 	default:
 		return nil, fmt.Errorf("未対応の出力形式です: %s", format)
 	}

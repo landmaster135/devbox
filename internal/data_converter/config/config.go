@@ -18,6 +18,7 @@ const (
 	FormatMDOrderedList   = "md-ordered-list"
 	FormatMDUnorderedList = "md-unordered-list"
 	FormatMDTable         = "md-table"
+	FormatKaTeXTable      = "katex-table"
 )
 
 // Config は data-converter のCLI設定です。
@@ -38,6 +39,7 @@ var supportedFormats = map[string]struct{}{
 	FormatMDOrderedList:   {},
 	FormatMDUnorderedList: {},
 	FormatMDTable:         {},
+	FormatKaTeXTable:      {},
 }
 
 var extensionToFormat = map[string]string{
@@ -58,8 +60,8 @@ func ParseFlags(args []string) (*Config, error) {
 	cfg := &Config{}
 	fs.StringVar(&cfg.InputFilePath, "input-file-path", "", "入力ファイルパス")
 	fs.StringVar(&cfg.OutputFilePath, "output-file-path", "", "出力ファイルパス")
-	fs.StringVar(&cfg.InputFormat, "input-format", "", "入力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table)")
-	fs.StringVar(&cfg.OutputFormat, "output-format", "", "出力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table)")
+	fs.StringVar(&cfg.InputFormat, "input-format", "", "入力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table|katex-table)")
+	fs.StringVar(&cfg.OutputFormat, "output-format", "", "出力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table|katex-table)")
 	fs.BoolVar(&cfg.Help, "help", false, "ヘルプを表示")
 
 	if err := fs.Parse(args); err != nil {
@@ -121,8 +123,8 @@ func PrintUsage(w io.Writer) {
 	fmt.Fprintln(w, "フラグ:")
 	fmt.Fprintln(w, "  -input-file-path   入力ファイルパス (必須)")
 	fmt.Fprintln(w, "  -output-file-path  出力ファイルパス (必須)")
-	fmt.Fprintln(w, "  -input-format      入力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table) 省略時は拡張子推定")
-	fmt.Fprintln(w, "  -output-format     出力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table) 省略時は拡張子推定")
+	fmt.Fprintln(w, "  -input-format      入力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table|katex-table) 省略時は拡張子推定")
+	fmt.Fprintln(w, "  -output-format     出力形式 (json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table|katex-table) 省略時は拡張子推定")
 	fmt.Fprintln(w, "  -help              ヘルプ表示")
 }
 

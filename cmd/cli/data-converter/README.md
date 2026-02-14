@@ -12,6 +12,7 @@
 - `md-ordered-list`
 - `md-unordered-list`
 - `md-table`
+- `katex-table`
 
 ## インストール
 
@@ -43,8 +44,8 @@ go run ./cmd/cli/data-converter \
 | --- | --- | --- | --- |
 | `-input-file-path` | 必須 | なし | 入力ファイルパス |
 | `-output-file-path` | 必須 | なし | 出力ファイルパス |
-| `-input-format` | 任意 | 入力ファイル拡張子から推定 | 入力形式（`json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table`） |
-| `-output-format` | 任意 | 出力ファイル拡張子から推定 | 出力形式（`json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table`） |
+| `-input-format` | 任意 | 入力ファイル拡張子から推定 | 入力形式（`json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table|katex-table`） |
+| `-output-format` | 任意 | 出力ファイル拡張子から推定 | 出力形式（`json|yaml|csv|tsv|html|md-ordered-list|md-unordered-list|md-table|katex-table`） |
 | `-help` | 任意 | `false` | ヘルプを表示 |
 
 ## 使用例
@@ -116,10 +117,21 @@ go run ./cmd/cli/data-converter \
   -output-format md-table
 ```
 
+### Markdown table から KaTeX table へ変換
+
+```bash
+go run ./cmd/cli/data-converter \
+  -input-file-path ./users.md \
+  -output-file-path ./users.tex \
+  -input-format md-table \
+  -output-format katex-table
+```
+
 ## 注意事項
 
 - `md-ordered-list` / `md-unordered-list` へ出力する場合、単一キーのデータ（または `item` キーが含まれるデータ）を指定してください。
 - Markdown系形式（`md-ordered-list` / `md-unordered-list` / `md-table`）は `.md` 拡張子だけでは自動判定できないため、必要に応じて `-input-format` / `-output-format` を明示してください。
+- `katex-table` は拡張子から自動判定されないため、`-input-format` / `-output-format` を明示してください。
 
 ## 出力例
 
