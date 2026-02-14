@@ -167,6 +167,8 @@ infrastructure層で実装すべき主なリソース（シリアライズ境界
 - usecase層: ファイル読み込みを含む業務フロー（例: content 解決、添付作成、既存添付マージ）
 - infrastructure層: 実ファイルシステム実装（`os.ReadFile`、MIME 判定など）
 
+**重要**: infrastructure層は、他の層に依存してはならない。
+
 実装例:
 ```go
 // infrastructure

@@ -20,13 +20,13 @@
 5. **テスト実装**: 単体テストと統合テストを追加
 6. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
 7. **ビルドスクリプト作成**: `docs/tool_implementation/build_guide.md` を参照
+8. **最終チェック**: 作業漏れが無いことを確認
 
 ## 4. 実装ガイド
 
 | 区分 | 参照先 |
 |---|---|
 | 共通 | `docs/tool_implementation/implementation_guide.md` |
-| ビルド | `docs/tool_implementation/build_guide.md` |
 | CLI | `docs/tool_implementation/cli/index.md` |
 | MCP | `docs/tool_implementation/mcp/index.md` |
 
