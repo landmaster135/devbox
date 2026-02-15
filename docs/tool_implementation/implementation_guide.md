@@ -9,25 +9,9 @@
 CLIツール固有のチェックリストは `docs/tool_implementation/cli/guide.md` を参照してください。
 MCPツール固有のチェックリストは `docs/tool_implementation/mcp/guide.md` を参照してください。
 
-### 共通チェックリスト
-
-- [ ] ビジネスロジックはusecasesパッケージに実装
-- [ ] エラーメッセージは日本語で分かりやすく
-- [ ] パラメータの妥当性検証を実装
-- [ ] テストコードを作成
-
 ## テストコードでのハードコード削減
 
 テストコードでのハードコード削減は `docs/tool_implementation/common/testing.md` を参照してください。
-
-### テストコード実装チェックリスト
-
-- [ ] テスト固有の定数は各テスト関数内で定義
-- [ ] 複数のテストケースはテーブル駆動テストで実装
-- [ ] 共通処理はヘルパー関数として抽出
-- [ ] 複雑なテストデータは構造体で管理
-- [ ] モック生成処理は関数化
-- [ ] テスト名は「機能_条件」の形式で命名
 
 **参考実装**: `devbox/internal/gcloud_monitoring/usecases/services_test.go`
 
