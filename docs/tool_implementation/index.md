@@ -16,7 +16,9 @@
 ## 3. 共通実装フロー（CLI / MCP共通）
 1. **要件定義**: 機能仕様、入出力、エラー設計を定義
 2. **ディレクトリ作成**: `internal/{tool_name}` を作成して共通ロジックを配置
-3. **レイヤー実装**: `domain/`、`usecases/`、`infrastructures/` を実装
+3. **レイヤー実装**:
+  - `domain/`、`usecases/`、`infrastructures/` を実装。
+  - **infrastructure層は、domain層だろうが、usecases層だろうが、他のいかなる層にも依存してはならない。**
 4. **エントリーポイント実装**: CLI または MCP から `usecases` を呼び出す構成に統一
 5. **テスト実装**: 単体テストと統合テストを追加
 6. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
