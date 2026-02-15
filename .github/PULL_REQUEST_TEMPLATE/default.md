@@ -1,33 +1,27 @@
-## 概要
-<!-- 取り込む背景と変更内容を1-2文で端的に記載 -->
+## Summary
+<!-- Briefly describe the background and changes in 1-2 sentences. -->
 
-## 主な変更内容
-<!--基本的な見出しは下記とするが、特別な対応があった場合は追加しても良い -->
+## Key Changes
+<!-- Use the headings below by default; add more if special handling is needed. -->
 
-### 新機能
-<!-- **<見出し>**: <簡潔な説明> の形式で順序なしリストで箇条書き -->
+### Features
+<!-- Use unordered bullets in the format: **<Heading>**: <Brief description>. -->
 
-### リファクタリング
-<!-- **<見出し>**: <簡潔な説明> の形式で順序なしリストで箇条書き -->
+### Improvements
+<!-- Use unordered bullets in the format: **<Heading>**: <Brief description>. -->
 
-### テスト強化
-<!-- **<見出し>**: <簡潔な説明> の形式で順序なしリストで箇条書き -->
+### Refactoring
+<!-- Use unordered bullets in the format: **<Heading>**: <Brief description>. -->
 
-## 技術的詳細
-<!--基本的な見出しは下記とするが、特別な対応があった場合は追加しても良い -->
+### Bug Fixes
+<!-- Use unordered bullets in the format: **<Heading>**: <Brief description>. -->
 
-### 新しいCLIツール
-<!-- **<見出し>**: <簡潔な説明> の形式で順序付きリストで箇条書き -->
-
-### 改修したCLIツール
-<!-- **<見出し>**: <簡潔な説明> の形式で順序付きリストで箇条書き -->
-
-## ドキュメント & カバレッジ
+## Documentation & Coverage
 - [ ] 関連ドキュメント (README / docs) を更新
 - [ ] READMEのカバレッジバッジを最新化
 - [ ] CLI実装時は `cmd/cli/<tool>/README.md` を更新
 
-## 動作確認
+## Verification
 - [ ] テストスイートの実行確認
 - [ ] 全CLIツールのビルド確認
 - [ ] 全MCPツールのビルド確認
@@ -35,5 +29,5 @@
 - [ ] HTTPサーバーの起動確認
 - [ ] 秘匿情報が含まれていないことを確認
 
-## 関連Issue
-<!-- closes #123 のように記載。 -->
+## Related Issues
+<!-- Use a format such as closes #123. -->
