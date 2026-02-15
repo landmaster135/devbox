@@ -6,40 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	filesystem "github.com/landmaster135/devbox/internal/service_implementing_viewer/infrastructures/filesystem"
 )
-
-type mockDocumentUpdaterRepository struct {
-	readFileFunc        func(path string) ([]byte, error)
-	writeFileFunc       func(path string, data []byte, perm os.FileMode) error
-	lastWritePath       string
-	lastWriteContent    []byte
-	lastWritePermission os.FileMode
-}
-
-func (m *mockDocumentUpdaterRepository) ReadFile(path string) ([]byte, error) {
-	if m.readFileFunc != nil {
-		return m.readFileFunc(path)
-	}
-	return nil, nil
-}
-
-func (m *mockDocumentUpdaterRepository) WriteFile(path string, data []byte, perm os.FileMode) error {
-	m.lastWritePath = path
-	m.lastWriteContent = append([]byte(nil), data...)
-	m.lastWritePermission = perm
-	if m.writeFileFunc != nil {
-		return m.writeFileFunc(path, data, perm)
-	}
-	return nil
-}
-
-func (m *mockDocumentUpdaterRepository) ListDirectories(path string) ([]string, error) {
-	return []string{}, nil
-}
-
-func (m *mockDocumentUpdaterRepository) Join(elem ...string) string {
-	return filepath.Join(elem...)
-}
 
 func TestBuildUpdatedDocument(t *testing.T) {
 	original := "# Title\n\n" + implementationHeading + "\n\n" + "| old | table |\n\n" + statisticsHeading + "\n\n- old stats\n\n## 次章\n内容\n"
@@ -82,8 +51,8 @@ func TestUpdateDocumentationFileWithRepository_Normal(t *testing.T) {
 	original := "# Title\n\n" + implementationHeading + "\n\n" + "| old | table |\n\n" + statisticsHeading + "\n\n- old stats\n"
 	stats := &ServiceStatistics{TotalServices: 2, CLICount: 1}
 	table := "| service | cli |\n| alpha | ✅ |"
-	mockRepo := &mockDocumentUpdaterRepository{
-		readFileFunc: func(path string) ([]byte, error) {
+	mockRepo := &filesystem.MockRepository{
+		ReadFileFunc: func(path string) ([]byte, error) {
 			return []byte(original), nil
 		},
 	}
@@ -93,14 +62,14 @@ func TestUpdateDocumentationFileWithRepository_Normal(t *testing.T) {
 		t.Fatalf("予期せぬエラー: %v", err)
 	}
 
-	if mockRepo.lastWritePath != "docs/status.md" {
-		t.Fatalf("書き込みパスが期待値と異なります。期待値: %s, 実際: %s", "docs/status.md", mockRepo.lastWritePath)
+	if mockRepo.LastWritePath != "docs/status.md" {
+		t.Fatalf("書き込みパスが期待値と異なります。期待値: %s, 実際: %s", "docs/status.md", mockRepo.LastWritePath)
 	}
-	if mockRepo.lastWritePermission != 0o644 {
-		t.Fatalf("書き込みパーミッションが期待値と異なります。期待値: %o, 実際: %o", 0o644, mockRepo.lastWritePermission)
+	if mockRepo.LastWritePermission != 0o644 {
+		t.Fatalf("書き込みパーミッションが期待値と異なります。期待値: %o, 実際: %o", 0o644, mockRepo.LastWritePermission)
 	}
 
-	updated := string(mockRepo.lastWriteContent)
+	updated := string(mockRepo.LastWriteContent)
 	if !containsLine(updated, "| alpha | ✅ |") {
 		t.Fatalf("テーブルが更新されていません: %s", updated)
 	}
@@ -110,8 +79,8 @@ func TestUpdateDocumentationFileWithRepository_Normal(t *testing.T) {
 }
 
 func TestUpdateDocumentationFileWithRepository_ReadError(t *testing.T) {
-	mockRepo := &mockDocumentUpdaterRepository{
-		readFileFunc: func(path string) ([]byte, error) {
+	mockRepo := &filesystem.MockRepository{
+		ReadFileFunc: func(path string) ([]byte, error) {
 			return nil, errors.New("read failed")
 		},
 	}
@@ -124,11 +93,11 @@ func TestUpdateDocumentationFileWithRepository_ReadError(t *testing.T) {
 
 func TestUpdateDocumentationFileWithRepository_WriteError(t *testing.T) {
 	original := "# Title\n\n" + implementationHeading + "\n\n" + statisticsHeading + "\n"
-	mockRepo := &mockDocumentUpdaterRepository{
-		readFileFunc: func(path string) ([]byte, error) {
+	mockRepo := &filesystem.MockRepository{
+		ReadFileFunc: func(path string) ([]byte, error) {
 			return []byte(original), nil
 		},
-		writeFileFunc: func(path string, data []byte, perm os.FileMode) error {
+		WriteFileFunc: func(path string, data []byte, perm os.FileMode) error {
 			return errors.New("write failed")
 		},
 	}

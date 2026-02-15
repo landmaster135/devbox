@@ -6,39 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	filesystem "github.com/landmaster135/devbox/internal/service_implementing_viewer/infrastructures/filesystem"
 )
 
 // TestServiceImplementingViewerService はServiceImplementingViewerServiceのテストクラス
 type TestServiceImplementingViewerService struct {
 	service *ServiceImplementingViewerService
 	tempDir string
-}
-
-type mockServiceImplementingViewerRepository struct {
-	listDirectoriesFunc func(path string) ([]string, error)
-	joinFunc            func(elem ...string) string
-}
-
-func (m *mockServiceImplementingViewerRepository) ReadFile(path string) ([]byte, error) {
-	return nil, nil
-}
-
-func (m *mockServiceImplementingViewerRepository) WriteFile(path string, data []byte, perm os.FileMode) error {
-	return nil
-}
-
-func (m *mockServiceImplementingViewerRepository) ListDirectories(path string) ([]string, error) {
-	if m.listDirectoriesFunc != nil {
-		return m.listDirectoriesFunc(path)
-	}
-	return []string{}, nil
-}
-
-func (m *mockServiceImplementingViewerRepository) Join(elem ...string) string {
-	if m.joinFunc != nil {
-		return m.joinFunc(elem...)
-	}
-	return filepath.Join(elem...)
 }
 
 // setupTestEnvironment はテスト環境をセットアップする
@@ -142,7 +117,7 @@ func TestNewServiceImplementingViewerService_Normal(t *testing.T) {
 func TestNewServiceImplementingViewerServiceWithDependencies_Normal(t *testing.T) {
 	rootDir := "/test/root"
 	targetDirs := []string{"cli", "mcp"}
-	mockRepo := &mockServiceImplementingViewerRepository{}
+	mockRepo := &filesystem.MockRepository{}
 
 	service := NewServiceImplementingViewerServiceWithDependencies(rootDir, targetDirs, mockRepo)
 
@@ -442,8 +417,8 @@ func TestFormatAsTable_Normal(t *testing.T) {
 }
 
 func TestGetServiceImplementingStatus_ListDirectoriesError(t *testing.T) {
-	mockRepo := &mockServiceImplementingViewerRepository{
-		listDirectoriesFunc: func(path string) ([]string, error) {
+	mockRepo := &filesystem.MockRepository{
+		ListDirectoriesFunc: func(path string) ([]string, error) {
 			if path == filepath.Join("/root", "cli") {
 				return nil, errors.New("read dir failed")
 			}
