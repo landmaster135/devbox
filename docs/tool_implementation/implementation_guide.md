@@ -11,8 +11,8 @@ MCPツール固有のチェックリストは `docs/tool_implementation/mcp/guid
 
 ### 共通チェックリスト
 
+- [ ] **infrastructure層は、domain層だろうが、usecases層だろうが、他のいかなる層にも依存してはならない。**
 - [ ] ビジネスロジックはusecasesパッケージに実装
-- [ ] **infrastructure層は、他の層に依存してはならない。**
 - [ ] エラーメッセージは日本語で分かりやすく
 - [ ] パラメータの妥当性検証を実装
 - [ ] テストコードを作成
