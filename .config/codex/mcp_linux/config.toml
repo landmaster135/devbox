@@ -1,4 +1,4 @@
-model = "gpt-5-codex"
+model = "gpt-5.3-codex"
 model_reasoning_effort = "high"
 
 model_reasoning_summary = "auto"
@@ -14,8 +14,13 @@ notify = [
 [shell_environment_policy]
 exclude = ["env.yml"]
 
-[tools]
-web_search = true
+[notice.model_migrations]
+gpt-5-codex = "gpt-5.3-codex"
+
+web_search = "live"
+
+[features]
+skills = true
 
 [projects."/home/user/devbox"]
 trust_level = "trusted"

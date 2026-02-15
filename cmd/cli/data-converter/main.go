@@ -2,37 +2,50 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
-	config "github.com/landmaster135/devbox/internal/data_converter/config"
-	usecases "github.com/landmaster135/devbox/internal/data_converter/usecases"
+	"github.com/landmaster135/devbox/internal/data_converter/config"
+	"github.com/landmaster135/devbox/internal/data_converter/usecases"
 )
 
-func main() {
-	// コマンドライン引数を解析
-	cfg, err := config.ParseFlags()
+type exitCode int
+
+const (
+	exitCodeOK exitCode = iota
+	exitCodeError
+)
+
+func run(args []string, stdout, stderr io.Writer) exitCode {
+	cfg, err := config.ParseFlags(args)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		config.PrintUsage()
-		os.Exit(1)
+		fmt.Fprintf(stderr, "エラー: %v\n", err)
+		config.PrintUsage(stderr)
+		return exitCodeError
 	}
 
-	// ヘルプが要求された場合
 	if cfg.Help {
-		config.PrintUsage()
-		return
+		config.PrintUsage(stdout)
+		return exitCodeOK
 	}
 
-	// データ変換サービスを初期化
-	service := usecases.NewDataConverterService()
-
-	// データ変換を実行
-	result, err := service.ConvertData(cfg.InputFormat, cfg.OutputFormat, cfg.Input, cfg.InputFilePath)
+	service := usecases.NewService()
+	message, err := service.ConvertFile(
+		cfg.InputFilePath,
+		cfg.OutputFilePath,
+		cfg.InputFormat,
+		cfg.OutputFormat,
+	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
+		fmt.Fprintf(stderr, "エラー: %v\n", err)
+		return exitCodeError
 	}
 
-	// 結果を出力
-	fmt.Print(result)
+	fmt.Fprintln(stdout, message)
+	return exitCodeOK
+}
+
+func main() {
+	code := run(os.Args[1:], os.Stdout, os.Stderr)
+	os.Exit(int(code))
 }

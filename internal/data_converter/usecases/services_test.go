@@ -1,526 +1,262 @@
 package usecases
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	yaml "gopkg.in/yaml.v3"
 )
 
-func TestDataConverterService_ConvertToHTML_Normal(t *testing.T) {
-	service := NewDataConverterService()
+func TestNormalizeToKeyValueList_SupportedFormats(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
 
 	tests := []struct {
-		name                 string
-		input                [][]string
-		isTheadContained     bool
-		textReplacingIfBlank string
-		expected             string
+		name        string
+		format      string
+		input       string
+		wantKeys    []string
+		wantRecords []map[string]string
 	}{
 		{
-			name: "NormalCase_WithHeader",
-			input: [][]string{
-				{"Name", "Age", "City"},
-				{"Alice", "25", "New York"},
-				{"Bob", "30", "London"},
-				{"Charlie", "", "Tokyo"},
+			name:     "json",
+			format:   "json",
+			input:    `[{"name":"Alice","age":30}]`,
+			wantKeys: []string{"age", "name"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
 			},
-			isTheadContained:     true,
-			textReplacingIfBlank: "💩",
-			expected:             "<table>\n<thead>\n<tr><th>Name</th><th>Age</th><th>City</th></tr>\n</thead>\n<tbody>\n<tr><td>Alice</td><td>25</td><td>New York</td></tr>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n<tr><td>Charlie</td><td>💩</td><td>Tokyo</td></tr>\n</tbody>\n</table>",
 		},
 		{
-			name: "NormalCase_WithoutHeader",
-			input: [][]string{
-				{"Alice", "25", "New York"},
-				{"Bob", "30", "London"},
+			name:     "yaml",
+			format:   "yaml",
+			input:    "- name: Alice\n  age: \"30\"\n",
+			wantKeys: []string{"age", "name"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
 			},
-			isTheadContained:     false,
-			textReplacingIfBlank: "💩",
-			expected:             "<table>\n<thead>\n<tr><th>Alice</th><th>25</th><th>New York</th></tr>\n</thead>\n<tbody>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n</tbody>\n</table>",
 		},
 		{
-			name:                 "EmptyCase",
-			input:                [][]string{},
-			isTheadContained:     true,
-			textReplacingIfBlank: "💩",
-			expected:             "<table></table>",
+			name:     "csv",
+			format:   "csv",
+			input:    "name,age\nAlice,30\n",
+			wantKeys: []string{"name", "age"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
+			},
+		},
+		{
+			name:     "tsv",
+			format:   "tsv",
+			input:    "name\tage\nAlice\t30\n",
+			wantKeys: []string{"name", "age"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
+			},
+		},
+		{
+			name:   "html",
+			format: "html",
+			input: `<table>
+  <thead><tr><th>name</th><th>age</th></tr></thead>
+  <tbody><tr><td>Alice</td><td>30</td></tr></tbody>
+</table>`,
+			wantKeys: []string{"name", "age"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
+			},
+		},
+		{
+			name:     "md-ordered-list",
+			format:   "md-ordered-list",
+			input:    "1. Alice\n2. Bob\n",
+			wantKeys: []string{"item"},
+			wantRecords: []map[string]string{
+				{"item": "Alice"},
+				{"item": "Bob"},
+			},
+		},
+		{
+			name:     "md-unordered-list",
+			format:   "md-unordered-list",
+			input:    "- Alice\n- Bob\n",
+			wantKeys: []string{"item"},
+			wantRecords: []map[string]string{
+				{"item": "Alice"},
+				{"item": "Bob"},
+			},
+		},
+		{
+			name:   "md-table",
+			format: "md-table",
+			input: `| name | age |
+| --- | --- |
+| Alice | 30 |`,
+			wantKeys: []string{"name", "age"},
+			wantRecords: []map[string]string{
+				{"name": "Alice", "age": "30"},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToHTML(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
+			t.Parallel()
+			got, err := svc.NormalizeToKeyValueList([]byte(tt.input), tt.format)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 
-func TestDataConverterService_ConvertData_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name          string
-		inputFormat   string
-		outputFormat  string
-		input         string
-		inputFilePath string
-		expected      string
-	}{
-		{
-			name:          "JSONToHTML_Normal",
-			inputFormat:   "json",
-			outputFormat:  "html",
-			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-			inputFilePath: "",
-			expected:      "<table>\n<thead>\n<tr><th>Name</th><th>Age</th><th>City</th></tr>\n</thead>\n<tbody>\n<tr><td>Alice</td><td>25</td><td>New York</td></tr>\n<tr><td>Bob</td><td>30</td><td>London</td></tr>\n</tbody>\n</table>",
-		},
-		{
-			name:          "JSONToCSV_Normal",
-			inputFormat:   "json",
-			outputFormat:  "csv",
-			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-			inputFilePath: "",
-			expected:      "Name,Age,City\nAlice,25,New York\nBob,30,London",
-		},
-		{
-			name:          "JSONToTSV_Normal",
-			inputFormat:   "json",
-			outputFormat:  "tsv",
-			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-			inputFilePath: "",
-			expected:      "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tLondon",
-		},
-		{
-			name:          "JSONToArray_Normal",
-			inputFormat:   "json",
-			outputFormat:  "array",
-			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-			inputFilePath: "",
-			expected:      "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-		},
-		{
-			name:          "JSONToJSON_Normal",
-			inputFormat:   "json",
-			outputFormat:  "json",
-			input:         "[[\"Name\",\"Age\",\"Score\"],[\"Alice\",\"25\",\"85.5\"],[\"Bob\",\"30\",\"92\"],[\"Charlie\",\"\",\"78\"]]",
-			inputFilePath: "",
-			expected:      "[{\"Age\":25,\"Name\":\"Alice\",\"Score\":85.5},{\"Age\":30,\"Name\":\"Bob\",\"Score\":92},{\"Age\":null,\"Name\":\"Charlie\",\"Score\":78}]",
-		},
-		{
-			name:         "YAMLToCSV_Normal",
-			inputFormat:  "yaml",
-			outputFormat: "csv",
-			input: `- Name: Alice
-  Age: "25"
-  City: New York
-- Name: Bob
-  Age: "30"
-  City: London
-`,
-			inputFilePath: "",
-			expected:      "Name,Age,City\nAlice,25,New York\nBob,30,London",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.ConvertData(tt.inputFormat, tt.outputFormat, tt.input, tt.inputFilePath)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertData_Error(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name          string
-		inputFormat   string
-		outputFormat  string
-		input         string
-		inputFilePath string
-		expectedError string
-	}{
-		{
-			name:          "UnsupportedInputFormat_Error",
-			inputFormat:   "xml",
-			outputFormat:  "html",
-			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-			inputFilePath: "",
-			expectedError: "入力データの解析に失敗しました: 未対応の入力形式です: xml",
-		},
-		{
-			name:          "UnsupportedOutputFormat_Error",
-			inputFormat:   "json",
-			outputFormat:  "xml",
-			input:         "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-			inputFilePath: "",
-			expectedError: "未対応の出力形式です: xml",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.ConvertData(tt.inputFormat, tt.outputFormat, tt.input, tt.inputFilePath)
-			assert.Error(t, err)
-			assert.Equal(t, tt.expectedError, err.Error())
-			assert.Equal(t, "", result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertToArray_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "NormalCase",
-			input: [][]string{
-				{"Name", "Age", "City"},
-				{"Alice", "25", "New York"},
-				{"Bob", "30", "London"},
-			},
-			expected: "[[\"Name\",\"Age\",\"City\"],[\"Alice\",\"25\",\"New York\"],[\"Bob\",\"30\",\"London\"]]",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "[]",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToArray(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertToYAML_Normal(t *testing.T) {
-	service := NewDataConverterService()
-	input := [][]string{
-		{"Name", "Age", "City"},
-		{"Alice", "25", "New York"},
-	}
-
-	result, err := service.convertToYAML(input)
-	assert.NoError(t, err)
-
-	var decoded []map[string]any
-	decodeErr := yaml.Unmarshal([]byte(result), &decoded)
-	assert.NoError(t, decodeErr)
-	assert.Equal(t, []map[string]any{{"Age": 25, "City": "New York", "Name": "Alice"}}, decoded)
-}
-
-func TestDataConverterService_ConvertToJSON_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "NormalCase",
-			input: [][]string{
-				{"Name", "Age", "Score"},
-				{"Alice", "25", "85.5"},
-				{"Bob", "30", "92"},
-				{"Charlie", "", "78"},
-			},
-			expected: "[{\"Age\":25,\"Name\":\"Alice\",\"Score\":85.5},{\"Age\":30,\"Name\":\"Bob\",\"Score\":92},{\"Age\":null,\"Name\":\"Charlie\",\"Score\":78}]",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "[]",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToJSON(tt.input)
-			assert.NoError(t, err)
-
-			// JSONの比較は文字列比較ではなく、構造体の比較の方が適切
-			// ここでは文字列比較で実装するが、実際には構造体の比較の方が望ましい
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertData_OutputYAML(t *testing.T) {
-	service := NewDataConverterService()
-	input := "[[\"Name\",\"Age\"],[\"Alice\",\"25\"],[\"Bob\",\"30\"]]"
-
-	result, err := service.ConvertData("json", "yaml", input, "")
-	assert.NoError(t, err)
-
-	var decoded []map[string]any
-	decodeErr := yaml.Unmarshal([]byte(result), &decoded)
-	assert.NoError(t, decodeErr)
-	assert.Equal(t, []map[string]any{
-		{"Age": 25, "Name": "Alice"},
-		{"Age": 30, "Name": "Bob"},
-	}, decoded)
-}
-
-func TestDataConverterService_ConvertToCSV_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "NormalCase",
-			input: [][]string{
-				{"Name", "Age", "City"},
-				{"Alice", "25", "New York"},
-				{"Bob", "30", "London"},
-			},
-			expected: "Name,Age,City\nAlice,25,New York\nBob,30,London",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToCSV(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertToTSV_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "NormalCase",
-			input: [][]string{
-				{"Name", "Age", "City"},
-				{"Alice", "25", "New York"},
-				{"Bob", "30", "London"},
-			},
-			expected: "Name\tAge\tCity\nAlice\t25\tNew York\nBob\t30\tLondon",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToTSV(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertToTable_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "MultiColumnTable",
-			input: [][]string{
-				{"名前", "年齢", "職業"},
-				{"田中", "25", "エンジニア"},
-				{"佐藤", "30", "デザイナー"},
-			},
-			expected: "| 名前 | 年齢 | 職業          |\n|--------|--------|-----------------|\n| 田中 | 25     | エンジニア |\n| 佐藤 | 30     | デザイナー |\n",
-		},
-		{
-			name: "SingleColumnTable",
-			input: [][]string{
-				{"項目"},
-				{"項目1"},
-				{"項目2"},
-			},
-			expected: "|     | 項目  |\n|-----|---------|\n|     | 項目1 |\n|     | 項目2 |\n",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToTable(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertToList_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "SingleColumnList",
-			input: [][]string{
-				{"項目"},
-				{"項目1"},
-				{"項目2"},
-				{"項目3"},
-			},
-			expected: "- 項目1\n- 項目2\n- 項目3\n",
-		},
-		{
-			name: "MultiColumnList",
-			input: [][]string{
-				{"名前", "年齢"},
-				{"田中", "25"},
-				{"佐藤", "30"},
-			},
-			expected: "- 名前: 田中, 年齢: 25\n- 名前: 佐藤, 年齢: 30\n",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToList(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertToOrderedList_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name     string
-		input    [][]string
-		expected string
-	}{
-		{
-			name: "SingleColumnOrderedList",
-			input: [][]string{
-				{"項目"},
-				{"項目1"},
-				{"項目2"},
-				{"項目3"},
-			},
-			expected: "1. 項目1\n2. 項目2\n3. 項目3\n",
-		},
-		{
-			name: "MultiColumnOrderedList",
-			input: [][]string{
-				{"名前", "年齢"},
-				{"田中", "25"},
-				{"佐藤", "30"},
-			},
-			expected: "1. 名前: 田中, 年齢: 25\n2. 名前: 佐藤, 年齢: 30\n",
-		},
-		{
-			name:     "EmptyCase",
-			input:    [][]string{},
-			expected: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.convertToOrderedList(tt.input)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestDataConverterService_ConvertData_TableFormat_Normal(t *testing.T) {
-	service := NewDataConverterService()
-
-	tests := []struct {
-		name             string
-		inputFormat      string
-		outputFormat     string
-		input            string
-		inputFilePath    string
-		expectedContains []string
-	}{
-		{
-			name:             "JSONToTable_Normal",
-			inputFormat:      "json",
-			outputFormat:     "table",
-			input:            "[[\"名前\",\"年齢\",\"職業\"],[\"田中\",\"25\",\"エンジニア\"],[\"佐藤\",\"30\",\"デザイナー\"]]",
-			inputFilePath:    "",
-			expectedContains: []string{"名前", "年齢", "職業", "田中", "25", "エンジニア", "佐藤", "30", "デザイナー", "|", "---"},
-		},
-		{
-			name:             "TableToJSON_Normal",
-			inputFormat:      "table",
-			outputFormat:     "json",
-			input:            "| 名前 | 年齢 | 職業 |\n|------|------|------|\n| 田中 | 25   | エンジニア |\n| 佐藤 | 30   | デザイナー |",
-			inputFilePath:    "",
-			expectedContains: []string{"名前", "年齢", "職業", "田中", "25", "エンジニア", "佐藤", "30", "デザイナー"},
-		},
-		{
-			name:             "ListToTable_Normal",
-			inputFormat:      "list",
-			outputFormat:     "table",
-			input:            "- 項目1\n- 項目2\n- 項目3",
-			inputFilePath:    "",
-			expectedContains: []string{"項目1", "項目2", "項目3", "|", "---"},
-		},
-		{
-			name:             "TableToList_Normal",
-			inputFormat:      "table",
-			outputFormat:     "list",
-			input:            "| 項目 |\n|------|\n| 項目1 |\n| 項目2 |",
-			inputFilePath:    "",
-			expectedContains: []string{"- 項目1", "- 項目2"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := service.ConvertData(tt.inputFormat, tt.outputFormat, tt.input, tt.inputFilePath)
-			assert.NoError(t, err)
-
-			for _, expected := range tt.expectedContains {
-				assert.Contains(t, result, expected, "Result should contain: %s", expected)
+			if !reflect.DeepEqual(got.Keys, tt.wantKeys) {
+				t.Fatalf("keys mismatch: got=%v want=%v", got.Keys, tt.wantKeys)
+			}
+			if !reflect.DeepEqual(got.KeyValueList, tt.wantRecords) {
+				t.Fatalf("records mismatch: got=%v want=%v", got.KeyValueList, tt.wantRecords)
 			}
 		})
+	}
+}
+
+func TestSerializeFromKeyValueList_AllFormats(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
+	source := &NormalizedData{
+		Keys: []string{"name", "age"},
+		KeyValueList: []map[string]string{
+			{"name": "Alice", "age": "30"},
+			{"name": "Bob", "age": "28"},
+		},
+	}
+
+	formats := []string{"json", "yaml", "csv", "tsv", "html", "md-table"}
+	for _, format := range formats {
+		t.Run(format, func(t *testing.T) {
+			t.Parallel()
+
+			out, err := svc.SerializeFromKeyValueList(source, format)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			reparsed, err := svc.NormalizeToKeyValueList(out, format)
+			if err != nil {
+				t.Fatalf("reparse failed: %v", err)
+			}
+
+			if !reflect.DeepEqual(reparsed.KeyValueList, source.KeyValueList) {
+				t.Fatalf("reparsed records mismatch: got=%v want=%v", reparsed.KeyValueList, source.KeyValueList)
+			}
+		})
+	}
+}
+
+func TestSerializeFromKeyValueList_ListFormats(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
+	source := &NormalizedData{
+		Keys: []string{"item"},
+		KeyValueList: []map[string]string{
+			{"item": "Alice"},
+			{"item": "Bob"},
+		},
+	}
+
+	formats := []string{"md-ordered-list", "md-unordered-list"}
+	for _, format := range formats {
+		t.Run(format, func(t *testing.T) {
+			t.Parallel()
+
+			out, err := svc.SerializeFromKeyValueList(source, format)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			reparsed, err := svc.NormalizeToKeyValueList(out, format)
+			if err != nil {
+				t.Fatalf("reparse failed: %v", err)
+			}
+			if !reflect.DeepEqual(reparsed.KeyValueList, source.KeyValueList) {
+				t.Fatalf("reparsed records mismatch: got=%v want=%v", reparsed.KeyValueList, source.KeyValueList)
+			}
+		})
+	}
+}
+
+func TestConvertFile_WritesOutputFile(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "input.json")
+	outputPath := filepath.Join(tmpDir, "output.csv")
+	input := `[{"name":"Alice","age":30},{"name":"Bob","age":28}]`
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("failed to write input file: %v", err)
+	}
+
+	svc := NewService()
+	message, err := svc.ConvertFile(inputPath, outputPath, "json", "csv")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(message, "変換完了") {
+		t.Fatalf("unexpected message: %s", message)
+	}
+
+	out, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+
+	normalized, err := svc.NormalizeToKeyValueList(out, "csv")
+	if err != nil {
+		t.Fatalf("failed to parse output csv: %v", err)
+	}
+
+	want := []map[string]string{
+		{"name": "Alice", "age": "30"},
+		{"name": "Bob", "age": "28"},
+	}
+	if !reflect.DeepEqual(normalized.KeyValueList, want) {
+		t.Fatalf("output mismatch: got=%v want=%v", normalized.KeyValueList, want)
+	}
+}
+
+func TestNormalizeToKeyValueList_ErrorCases(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
+	if _, err := svc.NormalizeToKeyValueList([]byte("x"), "txt"); err == nil {
+		t.Fatal("expected unsupported format error")
+	}
+
+	if _, err := svc.NormalizeToKeyValueList([]byte("<div>no table</div>"), "html"); err == nil {
+		t.Fatal("expected html table error")
+	}
+
+	if _, err := svc.NormalizeToKeyValueList([]byte("| name |"), "md-table"); err == nil {
+		t.Fatal("expected md-table parse error")
+	}
+}
+
+func TestSerializeFromKeyValueList_ListFormatsRejectMultiKeys(t *testing.T) {
+	t.Parallel()
+
+	svc := NewService()
+	source := &NormalizedData{
+		Keys: []string{"name", "age"},
+		KeyValueList: []map[string]string{
+			{"name": "Alice", "age": "30"},
+		},
+	}
+
+	if _, err := svc.SerializeFromKeyValueList(source, "md-ordered-list"); err == nil {
+		t.Fatal("expected md-ordered-list error but got nil")
+	}
+	if _, err := svc.SerializeFromKeyValueList(source, "md-unordered-list"); err == nil {
+		t.Fatal("expected md-unordered-list error but got nil")
 	}
 }

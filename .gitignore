@@ -39,6 +39,7 @@ pkg/win_dos/Taskfile.env.yml
 ### log ###
 *.log
 .gocache/
+.cache/
 
 ### Docker ###
 # .dockerignore
@@ -53,8 +54,8 @@ docker-compose.yml
 target*
 # .clinerules
 .clinerules/*
-.agents/*
-!.agents/.gitkeep
+.agents/tmp/*
+!.agents/tmp/.gitkeep
 .config/cagent/config_linux/**/*_prod.yml
 
 ### Cloud Functions ###
@@ -67,6 +68,7 @@ mypkg/go.sum
 downloads/
 *.zip
 *.tar
+qdrant_storage/
 
 ### binary ###
 pkg/bin/*
