@@ -1,7 +1,17 @@
 # テストコード実装ガイド
 
+## テスト戦略
+- **単体テスト**: 各レイヤーの独立したテスト
+- **統合テスト**: レイヤー間の連携テスト
+- **CLI観点**: フラグ解析、標準出力、標準エラー出力、終了コード
+- **MCP観点**: ツール定義、必須/任意パラメータ取得、`CallToolResult` 返却
+- **カバレッジ目標**: 90%以上
+- **テストコマンド**: `go test -v ./... -coverpkg=./... -covermode=count -coverprofile=coverage.out`
+- **テストツール**: `github.com/stretchr/testify`, `github.com/DATA-DOG/go-sqlmock`
+
 ## テストコード実装チェックリスト
 
+- [ ] 単体テストと統合テストを追加
 - [ ] テスト固有の定数は各テスト関数内で定義
 - [ ] 複数のテストケースはテーブル駆動テストで実装
 - [ ] 共通処理はヘルパー関数として抽出
@@ -128,3 +138,7 @@ type expectedData struct {
   resultMessage string
 }
 ```
+
+## 付録
+
+参考実装: `devbox/internal/gcloud_monitoring/usecases/services_test.go`

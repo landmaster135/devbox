@@ -1,5 +1,10 @@
 # 共通実装ガイド
 
+## 実装戦略
+
+- `domain/`、`usecases/`、`infrastructures/` を実装。
+- **infrastructure層は、他のいかなる層からも独立していなければならない。**
+
 ## 実装パターン
 
 ### 1. 共通サービス層の実装
@@ -238,3 +243,13 @@ exitError, _ := err.(*exec.ExitError)
 // モックでExitErrorを返却
 mockCommandExecutor.On("ExecuteInDir", mock.AnythingOfType("string"), "go", []string{"test", "-cover", "./..."}).Return(expectedOutput, exitError)
 ```
+
+## 付録: 具体的な実装例の比較
+
+### arithmetic-calculator の実装例
+- **CLIツール** (`cmd/cli/arithmetic-calculator/main.go`)
+- **MCPツール** (`cmd/mcp/arithmetic_calculator/mcp.go`)
+
+### ops-for-golang の実装例
+- **CLIツール** (`cmd/cli/ops-for-golang/main.go`)
+- **MCPツール** (`cmd/mcp/ops_for_golang/mcp.go`)
