@@ -2,8 +2,9 @@ package usecases
 
 import (
 	"fmt"
-	"os"
 	"strings"
+
+	filesystem "github.com/landmaster135/devbox/internal/service_implementing_viewer/infrastructures/filesystem"
 )
 
 const (
@@ -13,9 +14,17 @@ const (
 
 // UpdateDocumentationFile はMarkdownドキュメント内の対象セクションを書き換える
 func UpdateDocumentationFile(filePath, table string, stats *ServiceStatistics) error {
-	content, err := os.ReadFile(filePath)
+	return updateDocumentationFileWithRepository(filesystem.NewRepository(), filePath, table, stats)
+}
+
+func updateDocumentationFileWithRepository(fileSystem filesystem.Repository, filePath, table string, stats *ServiceStatistics) error {
+	if fileSystem == nil {
+		fileSystem = filesystem.NewRepository()
+	}
+
+	content, err := fileSystem.ReadFile(filePath)
 	if err != nil {
-		return fmt.Errorf("ファイルの読み込みに失敗しました (%s): %w", filePath, err)
+		return err
 	}
 
 	updated, err := buildUpdatedDocument(string(content), table, stats)
@@ -23,8 +32,8 @@ func UpdateDocumentationFile(filePath, table string, stats *ServiceStatistics) e
 		return err
 	}
 
-	if err := os.WriteFile(filePath, []byte(updated), 0o644); err != nil {
-		return fmt.Errorf("ファイルの書き込みに失敗しました (%s): %w", filePath, err)
+	if err := fileSystem.WriteFile(filePath, []byte(updated), 0o644); err != nil {
+		return err
 	}
 	return nil
 }

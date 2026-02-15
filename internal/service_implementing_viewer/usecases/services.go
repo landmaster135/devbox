@@ -2,10 +2,10 @@ package usecases
 
 import (
 	"fmt"
-	"io/fs"
-	"path/filepath"
 	"sort"
 	"strings"
+
+	filesystem "github.com/landmaster135/devbox/internal/service_implementing_viewer/infrastructures/filesystem"
 )
 
 // ServiceStatus はサービスの実装状況を表す構造体
@@ -33,13 +33,24 @@ type ServiceStatistics struct {
 type ServiceImplementingViewerService struct {
 	rootDir    string
 	targetDirs []string
+	fileSystem filesystem.Repository
 }
 
 // NewServiceImplementingViewerService は新しいサービスを作成する
 func NewServiceImplementingViewerService(rootDir string, targetDirs []string) *ServiceImplementingViewerService {
+	return NewServiceImplementingViewerServiceWithDependencies(rootDir, targetDirs, filesystem.NewRepository())
+}
+
+// NewServiceImplementingViewerServiceWithDependencies は依存性注入付きで新しいサービスを作成する
+func NewServiceImplementingViewerServiceWithDependencies(rootDir string, targetDirs []string, fileSystem filesystem.Repository) *ServiceImplementingViewerService {
+	if fileSystem == nil {
+		fileSystem = filesystem.NewRepository()
+	}
+
 	return &ServiceImplementingViewerService{
 		rootDir:    rootDir,
 		targetDirs: targetDirs,
+		fileSystem: fileSystem,
 	}
 }
 
@@ -50,10 +61,10 @@ func (s *ServiceImplementingViewerService) GetServiceImplementingStatus() (strin
 	servicesByDir := make(map[string][]string)
 
 	for _, targetDir := range s.targetDirs {
-		dirPath := filepath.Join(s.rootDir, targetDir)
+		dirPath := s.fileSystem.Join(s.rootDir, targetDir)
 		services, err := s.getServicesInDirectory(dirPath)
 		if err != nil {
-			return "", nil, fmt.Errorf("ディレクトリ %s の読み取りに失敗しました: %v", dirPath, err)
+			return "", nil, fmt.Errorf("ディレクトリ %s の読み取りに失敗しました: %w", dirPath, err)
 		}
 
 		servicesByDir[targetDir] = services
@@ -94,35 +105,7 @@ func (s *ServiceImplementingViewerService) GetServiceImplementingStatus() (strin
 
 // getServicesInDirectory は指定されたディレクトリ内のサービス名を取得する
 func (s *ServiceImplementingViewerService) getServicesInDirectory(dirPath string) ([]string, error) {
-	var services []string
-
-	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			// ディレクトリが存在しない場合は空のスライスを返す
-			if strings.Contains(err.Error(), "no such file or directory") {
-				return filepath.SkipDir
-			}
-			return err
-		}
-
-		// ルートディレクトリ自体はスキップ
-		if path == dirPath {
-			return nil
-		}
-
-		// ディレクトリのみを対象とし、1階層のみ
-		if d.IsDir() && filepath.Dir(path) == dirPath {
-			services = append(services, d.Name())
-		}
-
-		return nil
-	})
-
-	if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
-		return nil, err
-	}
-
-	return services, nil
+	return s.fileSystem.ListDirectories(dirPath)
 }
 
 // normalizeServiceName はサービス名を正規化する（「_」と「-」を統一）
@@ -167,7 +150,7 @@ func (s *ServiceImplementingViewerService) formatAsTable(serviceStatuses []Servi
 
 	// セパレーター行を作成
 	result.WriteString("| :")
-	for i := 1; i < maxServiceNameLen - 1; i++ {
+	for i := 1; i < maxServiceNameLen-1; i++ {
 		result.WriteString("-")
 	}
 	result.WriteString(": ")

@@ -106,9 +106,16 @@ internal/service_implementing_viewer/
 │   ├── config_test.go        # 設定のテストコード
 │   ├── flag_parser.go        # フラグパーサー実装
 │   └── interfaces.go         # インターフェース定義
+├── infrastructures/          # 外部依存実装
+│   └── filesystem/
+│       ├── impl.go           # OSファイルシステム実装
+│       ├── impl_test.go      # filesystem実装のテストコード
+│       └── repository.go     # filesystem抽象インターフェース
 └── usecases/                 # ビジネスロジック
     ├── services.go           # サービス実装状況確認ロジック
-    └── services_test.go      # ビジネスロジックのテストコード
+    ├── services_test.go      # サービス実装状況確認ロジックのテスト
+    ├── document_updater.go   # ドキュメント更新ロジック
+    └── document_updater_test.go # ドキュメント更新ロジックのテスト
 ```
 
 ## 主要コンポーネント
@@ -123,6 +130,10 @@ internal/service_implementing_viewer/
 - **ServiceImplementingViewerService**: メインのサービスクラス
 - **ServiceStatus**: サービスの実装状況を表す構造体
 - **ServiceStatistics**: サービス実装の統計情報を表す構造体
+
+### Infrastructures パッケージ
+- **filesystem.Repository**: usecases層から利用するファイルシステム操作の抽象
+- **filesystem.osRepository**: `os.ReadFile`/`os.WriteFile`/`os.ReadDir` を扱う実装
 
 ## 主要メソッド
 
