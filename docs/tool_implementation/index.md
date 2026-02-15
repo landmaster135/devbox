@@ -18,12 +18,11 @@
 2. **ディレクトリ作成**: `internal/{tool_name}` を作成して共通ロジックを配置
 3. **レイヤー実装**:
   - `domain/`、`usecases/`、`infrastructures/` を実装。
-  - **infrastructure層は、domain層だろうが、usecases層だろうが、他のいかなる層にも依存してはならない。**
+  - **infrastructure層は、他のいかなる層からも独立していなければならない。**
 4. **エントリーポイント実装**: CLI または MCP から `usecases` を呼び出す構成に統一
 5. **テスト実装**: 単体テストと統合テストを追加
 6. **ドキュメント更新**: `docs/tool_implementation/documentation_guide.md` を参照
 7. **ビルドスクリプト作成**: `docs/tool_implementation/build_guide.md` を参照
-8. **実装計画の再確認**: 実装計画に則って実装している場合、実装計画内の項目を再度確認して、作業漏れが無いかどうかを確認する。
 
 ## 4. 実装ガイド
 

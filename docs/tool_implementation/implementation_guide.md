@@ -13,7 +13,7 @@ MCPツール固有のチェックリストは `docs/tool_implementation/mcp/guid
 
 テストコードでのハードコード削減は `docs/tool_implementation/common/testing.md` を参照してください。
 
-**参考実装**: `devbox/internal/gcloud_monitoring/usecases/services_test.go`
+参考実装: `devbox/internal/gcloud_monitoring/usecases/services_test.go`
 
 ## 具体的な実装例の比較
 
