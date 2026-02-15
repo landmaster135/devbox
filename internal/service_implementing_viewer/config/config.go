@@ -10,10 +10,10 @@ type Config struct {
 	RootDir    string   // ルートディレクトリ（必須）
 	TargetDirs []string // 対象ディレクトリ（必須、カンマ区切り）
 	Operation  string   // 実行する操作（必須）
-	WriteFile  string   // operation=write の場合に必須
+	WriteFile  string   // operation=write / aggregate-summary の場合に必須
 }
 
-var allowedOperations = []string{"output", "write"}
+var allowedOperations = []string{"output", "write", "aggregate-summary"}
 
 // NewConfig は新しいConfigを作成する
 func NewConfig(rootDir, targetDirs, operation, writeFile string) (*Config, error) {
@@ -70,8 +70,8 @@ func validateConfig(config *Config) (*Config, error) {
 		return nil, fmt.Errorf("--operation は次のいずれかを指定してください: %s", strings.Join(allowedOperations, ", "))
 	}
 
-	if config.Operation == "write" && config.WriteFile == "" {
-		return nil, fmt.Errorf("--write-file は operation=write の場合に必須です")
+	if (config.Operation == "write" || config.Operation == "aggregate-summary") && config.WriteFile == "" {
+		return nil, fmt.Errorf("--write-file は operation=write / aggregate-summary の場合に必須です")
 	}
 
 	return config, nil
@@ -107,7 +107,7 @@ func (cp *ConfigParser) ParseFlags() (*Config, error) {
 	cp.flagParser.StringVar(&rootDir, "root-dir", "", "ルートディレクトリ（必須）")
 	cp.flagParser.StringVar(&targetDirs, "target-dirs", "", "対象ディレクトリ（必須、カンマ区切り）")
 	cp.flagParser.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作（必須: %s）", strings.Join(allowedOperations, ", ")))
-	cp.flagParser.StringVar(&writeFile, "write-file", "", "書き込み先ファイルパス（operation=write で必須）")
+	cp.flagParser.StringVar(&writeFile, "write-file", "", "書き込み先ファイルパス（operation=write / aggregate-summary で必須）")
 
 	if err := cp.flagParser.Parse(); err != nil {
 		return nil, err
@@ -137,9 +137,10 @@ func PrintUsage() {
 	fmt.Printf("  -operation string\n")
 	fmt.Printf("        実行する操作（必須: %s）\n", strings.Join(allowedOperations, ", "))
 	fmt.Printf("  -write-file string\n")
-	fmt.Printf("        operation=write で必須: 更新対象のMarkdownファイル\n")
+	fmt.Printf("        operation=write / aggregate-summary で必須: 更新対象のMarkdownファイル\n")
 	fmt.Printf("\n使用例:\n")
 	fmt.Printf("  %s -root-dir=$HOME/devbox -target-dirs=cli,mcp -operation=output\n", osArgs.Args()[0])
 	fmt.Printf("  %s -root-dir=/path/to/project -target-dirs=\"cli,mcp,powershell\" -operation=output\n", osArgs.Args()[0])
 	fmt.Printf("  %s -root-dir=$HOME/devbox -target-dirs=cli,mcp,grpc/handlers,http/handlers -operation=write -write-file=docs/service_implementation_status.md\n", osArgs.Args()[0])
+	fmt.Printf("  %s -root-dir=$HOME/devbox/cmd -target-dirs=cli,mcp,grpc/handlers,http/handlers -operation=aggregate-summary -write-file=docs/service_summary.md\n", osArgs.Args()[0])
 }

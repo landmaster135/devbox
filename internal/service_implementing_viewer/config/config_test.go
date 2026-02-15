@@ -107,9 +107,44 @@ func TestNewConfig_WriteOperationWithoutFile(t *testing.T) {
 	if config != nil {
 		t.Error("configがnilではありません")
 	}
-	expected := "設定の初期化に失敗しました: --write-file は operation=write の場合に必須です"
+	expected := "設定の初期化に失敗しました: --write-file は operation=write / aggregate-summary の場合に必須です"
 	if err.Error() != expected {
 		t.Errorf("エラーメッセージが期待値と異なります。期待値: %s, 実際: %s", expected, err.Error())
+	}
+}
+
+func TestNewConfig_AggregateSummaryOperationWithoutFile(t *testing.T) {
+	rootDir := "/test/root"
+	targetDirs := "cli,mcp"
+
+	config, err := NewConfig(rootDir, targetDirs, "aggregate-summary", "")
+
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if config != nil {
+		t.Error("configがnilではありません")
+	}
+	expected := "設定の初期化に失敗しました: --write-file は operation=write / aggregate-summary の場合に必須です"
+	if err.Error() != expected {
+		t.Errorf("エラーメッセージが期待値と異なります。期待値: %s, 実際: %s", expected, err.Error())
+	}
+}
+
+func TestNewConfig_AggregateSummaryOperationWithFile(t *testing.T) {
+	rootDir := "/test/root"
+	targetDirs := "cli,mcp,grpc/handlers,http/handlers"
+
+	config, err := NewConfig(rootDir, targetDirs, "aggregate-summary", "docs/service_summary.md")
+
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if config == nil {
+		t.Fatal("configがnilです")
+	}
+	if config.WriteFile != "docs/service_summary.md" {
+		t.Errorf("WriteFileが期待値と異なります。期待値: docs/service_summary.md, 実際: %s", config.WriteFile)
 	}
 }
 
@@ -286,7 +321,7 @@ func TestValidateConfig_WriteOperationRequiresFile(t *testing.T) {
 	if result != nil {
 		t.Error("結果がnilではありません")
 	}
-	expected := "--write-file は operation=write の場合に必須です"
+	expected := "--write-file は operation=write / aggregate-summary の場合に必須です"
 	if err.Error() != expected {
 		t.Errorf("エラーメッセージが期待値と異なります: %v", err)
 	}
@@ -299,6 +334,45 @@ func TestValidateConfig_WriteOperationWithFile(t *testing.T) {
 		TargetDirs: []string{"cli", "mcp"},
 		Operation:  "write",
 		WriteFile:  "docs/service_implementation_status.md",
+	}
+
+	result, err := validateConfig(config)
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if result == nil {
+		t.Fatal("結果がnilです")
+	}
+}
+
+func TestValidateConfig_AggregateSummaryOperationRequiresFile(t *testing.T) {
+	config := &Config{
+		RootDir:    "/test/root",
+		TargetDirs: []string{"cli", "mcp"},
+		Operation:  "aggregate-summary",
+		WriteFile:  "",
+	}
+
+	result, err := validateConfig(config)
+
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if result != nil {
+		t.Error("結果がnilではありません")
+	}
+	expected := "--write-file は operation=write / aggregate-summary の場合に必須です"
+	if err.Error() != expected {
+		t.Errorf("エラーメッセージが期待値と異なります: %v", err)
+	}
+}
+
+func TestValidateConfig_AggregateSummaryOperationWithFile(t *testing.T) {
+	config := &Config{
+		RootDir:    "/test/root",
+		TargetDirs: []string{"cli", "mcp", "grpc/handlers", "http/handlers"},
+		Operation:  "aggregate-summary",
+		WriteFile:  "docs/service_summary.md",
 	}
 
 	result, err := validateConfig(config)
@@ -417,6 +491,31 @@ func TestConfigParser_ParseFlags_WriteOperation(t *testing.T) {
 		t.Errorf("WriteFileが期待値と異なります: %s", config.WriteFile)
 	}
 	if config.Operation != "write" {
+		t.Errorf("Operationが期待値と異なります: %s", config.Operation)
+	}
+}
+
+func TestConfigParser_ParseFlags_AggregateSummaryOperation(t *testing.T) {
+	mockFlagParser := &MockFlagParser{
+		rootDir:    "/test/root",
+		targetDirs: "cli,mcp,grpc/handlers,http/handlers",
+		operation:  "aggregate-summary",
+		writeFile:  "docs/service_summary.md",
+		parseError: nil,
+	}
+	mockOSArgs := &MockOSArgs{
+		args: []string{"program", "-root-dir=/test/root", "-target-dirs=cli,mcp,grpc/handlers,http/handlers", "-operation=aggregate-summary", "-write-file=docs/service_summary.md"},
+	}
+	configParser := NewConfigParser(mockFlagParser, mockOSArgs)
+
+	config, err := configParser.ParseFlags()
+	if err != nil {
+		t.Fatalf("エラーが発生しました: %v", err)
+	}
+	if config.WriteFile != "docs/service_summary.md" {
+		t.Errorf("WriteFileが期待値と異なります: %s", config.WriteFile)
+	}
+	if config.Operation != "aggregate-summary" {
 		t.Errorf("Operationが期待値と異なります: %s", config.Operation)
 	}
 }
@@ -599,10 +698,11 @@ func TestPrintUsage(t *testing.T) {
 		"-operation string",
 		"実行する操作（必須: output",
 		"-write-file string",
-		"operation=write で必須",
+		"operation=write / aggregate-summary で必須",
 		"使用例:",
 		"-operation=output",
 		"-operation=write",
+		"-operation=aggregate-summary",
 	}
 
 	for _, fragment := range expectedFragments {
