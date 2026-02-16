@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/landmaster135/devbox/internal/markdown_crafter/config"
-	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
 	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases"
 )
 
@@ -26,11 +25,11 @@ func main() {
 
 	var result string
 	switch cfg.Operation {
-	case domain.OperationSplitHeadings:
+	case config.OperationSplitHeadings:
 		result, err = service.SplitHeadings(cfg.FilePath, cfg.HeadingLevel, cfg.OutputDir)
-	case domain.OperationAddFrontMatter:
+	case config.OperationAddFrontMatter:
 		result, err = service.AddFrontMatter(cfg.FilePath, cfg.KVPairs)
-	case domain.OperationAddTags:
+	case config.OperationAddTags:
 		result, err = service.AddTags(cfg.FilePath, cfg.Tags)
 	default:
 		err = fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)

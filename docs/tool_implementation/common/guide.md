@@ -2,6 +2,7 @@
 
 ## 実装戦略
 
+- ユーザーから特別に指示が無い限り、後方互換性は考慮しない。
 - `domain/`、`usecases/`、`infrastructures/` を実装。
 - **infrastructure層は、他のいかなる層からも独立していなければならない。**
 

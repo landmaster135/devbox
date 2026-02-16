@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
 )
 
 func withArgs(args []string, fn func()) {
@@ -21,7 +19,7 @@ func withArgs(args []string, fn func()) {
 func TestParseFlags_SplitHeadings_Normal(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
-		"--operation", domain.OperationSplitHeadings,
+		"--operation", OperationSplitHeadings,
 		"--file-path", "./sample.md",
 		"--heading-level", "2",
 		"--output-dir", "./out",
@@ -30,7 +28,7 @@ func TestParseFlags_SplitHeadings_Normal(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseFlags returned error: %v", err)
 		}
-		if cfg.Operation != domain.OperationSplitHeadings {
+		if cfg.Operation != OperationSplitHeadings {
 			t.Fatalf("unexpected operation: %s", cfg.Operation)
 		}
 	})
@@ -39,7 +37,7 @@ func TestParseFlags_SplitHeadings_Normal(t *testing.T) {
 func TestParseFlags_AddFrontMatter_Normal(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
-		"--operation", domain.OperationAddFrontMatter,
+		"--operation", OperationAddFrontMatter,
 		"--file-path", "./sample.md",
 		"--kv", "title=doc",
 		"--kv", "author=nov",
@@ -57,7 +55,7 @@ func TestParseFlags_AddFrontMatter_Normal(t *testing.T) {
 func TestParseFlags_AddTags_Normal(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
-		"--operation", domain.OperationAddTags,
+		"--operation", OperationAddTags,
 		"--file-path", "./sample.md",
 		"--tags", "go,markdown",
 	}, func() {
@@ -86,7 +84,7 @@ func TestParseFlags_Help_Normal(t *testing.T) {
 func TestParseFlags_Invalid(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
-		"--operation", domain.OperationSplitHeadings,
+		"--operation", OperationSplitHeadings,
 		"--file-path", "./sample.md",
 		"--heading-level", "0",
 		"--output-dir", "./out",

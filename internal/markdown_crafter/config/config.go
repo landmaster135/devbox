@@ -5,14 +5,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
+)
 
-	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+const (
+	OperationSplitHeadings  = "split-headings"
+	OperationAddFrontMatter = "add-front-matter"
+	OperationAddTags        = "add-tags"
 )
 
 var allowedOperations = []string{
-	domain.OperationSplitHeadings,
-	domain.OperationAddFrontMatter,
-	domain.OperationAddTags,
+	OperationSplitHeadings,
+	OperationAddFrontMatter,
+	OperationAddTags,
 }
 
 type Config struct {
@@ -58,18 +62,18 @@ func (c *Config) validate() error {
 	}
 
 	switch c.Operation {
-	case domain.OperationSplitHeadings:
+	case OperationSplitHeadings:
 		if c.HeadingLevel < 1 || c.HeadingLevel > 6 {
 			return fmt.Errorf("--heading-level は 1 から 6 の範囲で指定してください")
 		}
 		if strings.TrimSpace(c.OutputDir) == "" {
 			return fmt.Errorf("--output-dir は必須です (--operation=split-headings)")
 		}
-	case domain.OperationAddFrontMatter:
+	case OperationAddFrontMatter:
 		if len(c.KVPairs) == 0 {
 			return fmt.Errorf("--kv は1件以上指定してください (--operation=add-front-matter)")
 		}
-	case domain.OperationAddTags:
+	case OperationAddTags:
 		if strings.TrimSpace(c.Tags) == "" {
 			return fmt.Errorf("--tags は必須です (--operation=add-tags)")
 		}
