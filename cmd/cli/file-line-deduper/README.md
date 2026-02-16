@@ -10,6 +10,7 @@
 
 ```bash
 file-line-deduper -file <ファイルパス> -start <開始位置> -end <終了位置>
+file-line-deduper -help
 ```
 
 ## オプション
@@ -17,6 +18,7 @@ file-line-deduper -file <ファイルパス> -start <開始位置> -end <終了�
 - `-file` (string): 処理対象のファイルパスを指定します。（必須）
 - `-start` (int): 各行から文字列を抽出する開始位置（0ベース）を指定します。（必須）
 - `-end` (int): 各行から文字列を抽出する終了位置を指定します。（必須）
+- `-help` (bool): 使い方を表示します。（任意）
 
 ## 使用例
 

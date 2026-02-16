@@ -139,3 +139,15 @@ func TestRun_InvalidArgs(t *testing.T) {
 		t.Error("エラーメッセージが出力されていません")
 	}
 }
+
+// TestRun_Help はヘルプオプション指定時のテスト
+func TestRun_Help(t *testing.T) {
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	code := run([]string{"-help"}, stdout, stderr)
+
+	if code != exitCodeOK {
+		t.Errorf("期待する終了コード %d, 取得した終了コード %d", exitCodeOK, code)
+	}
+}
