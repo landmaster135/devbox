@@ -1,4 +1,4 @@
-package repositories
+package filesystem
 
 import (
 	"os"
@@ -10,23 +10,18 @@ import (
 
 // テスト用の一時ディレクトリとファイルを作成する
 func setupTestFiles(t *testing.T) (string, string, func()) {
-	// 一時ディレクトリを作成
 	tempDir, err := os.MkdirTemp("", "file_repository_test")
 	if err != nil {
 		t.Fatalf("一時ディレクトリの作成に失敗しました: %v", err)
 	}
 
-	// テスト用のファイルパス
 	testFilePath := filepath.Join(tempDir, "test_file.txt")
-
-	// テスト用のファイル内容
 	testContent := []string{
 		"これはテスト用のファイルです。",
 		"2行目のテキスト",
 		"3行目のテキスト",
 	}
 
-	// ファイルを作成して内容を書き込む
 	file, err := os.Create(testFilePath)
 	if err != nil {
 		t.Fatalf("テストファイルの作成に失敗しました: %v", err)
@@ -39,7 +34,6 @@ func setupTestFiles(t *testing.T) (string, string, func()) {
 		}
 	}
 
-	// クリーンアップ関数を返す
 	cleanup := func() {
 		os.RemoveAll(tempDir)
 	}
@@ -47,31 +41,25 @@ func setupTestFiles(t *testing.T) (string, string, func()) {
 	return tempDir, testFilePath, cleanup
 }
 
-// TestNewFileRepository は NewFileRepository 関数をテストします
-func TestNewFileRepository(t *testing.T) {
-	repo := NewFileRepository()
+func TestNewRepository(t *testing.T) {
+	repo := NewRepository()
 	if repo == nil {
-		t.Error("NewFileRepository() がnilを返しました")
+		t.Error("NewRepository() がnilを返しました")
 	}
 }
 
-// TestFileRepositoryImpl_ReadFile は ReadFile メソッドをテストします
-func TestFileRepositoryImpl_ReadFile(t *testing.T) {
-	// テスト用のファイルをセットアップ
+func TestOSRepository_ReadFile(t *testing.T) {
 	_, testFilePath, cleanup := setupTestFiles(t)
 	defer cleanup()
 
-	// テスト対象のインスタンスを作成
-	repo := NewFileRepository()
+	repo := NewRepository()
 
-	// テスト実行
 	content, err := repo.ReadFile(testFilePath)
 	if err != nil {
 		t.Errorf("ReadFile() エラー = %v", err)
 		return
 	}
 
-	// 結果の検証
 	expectedLines := []string{
 		"これはテスト用のファイルです。",
 		"2行目のテキスト",
@@ -88,26 +76,19 @@ func TestFileRepositoryImpl_ReadFile(t *testing.T) {
 		}
 	}
 
-	// 存在しないファイルの場合のテスト
 	_, err = repo.ReadFile("存在しないファイル.txt")
 	if err == nil {
 		t.Error("存在しないファイルを読み込もうとしたときにエラーが発生しませんでした")
 	}
 }
 
-// TestFileRepositoryImpl_WriteFile は WriteFile メソッドをテストします
-func TestFileRepositoryImpl_WriteFile(t *testing.T) {
-	// テスト用のディレクトリをセットアップ
+func TestOSRepository_WriteFile(t *testing.T) {
 	tempDir, _, cleanup := setupTestFiles(t)
 	defer cleanup()
 
-	// 書き込み先のファイルパス
 	outputPath := filepath.Join(tempDir, "output.txt")
+	repo := NewRepository()
 
-	// テスト対象のインスタンスを作成
-	repo := NewFileRepository()
-
-	// テスト用のFileContentを作成
 	lines := []string{
 		"これは書き込みテスト用の1行目です。",
 		"これは書き込みテスト用の2行目です。",
@@ -115,14 +96,12 @@ func TestFileRepositoryImpl_WriteFile(t *testing.T) {
 	}
 	content := models.NewFileContent(lines)
 
-	// テスト実行
 	err := repo.WriteFile(outputPath, content)
 	if err != nil {
 		t.Errorf("WriteFile() エラー = %v", err)
 		return
 	}
 
-	// 書き込まれたファイルを読み込んで検証
 	readContent, err := repo.ReadFile(outputPath)
 	if err != nil {
 		t.Errorf("検証のためのファイル読み込みに失敗しました: %v", err)
@@ -139,7 +118,6 @@ func TestFileRepositoryImpl_WriteFile(t *testing.T) {
 		}
 	}
 
-	// 無効なパスへの書き込みテスト
 	invalidPath := filepath.Join(tempDir, "invalid_dir", "invalid.txt")
 	err = repo.WriteFile(invalidPath, content)
 	if err == nil {
@@ -147,61 +125,46 @@ func TestFileRepositoryImpl_WriteFile(t *testing.T) {
 	}
 }
 
-// TestFileRepositoryImpl_FileExists は FileExists メソッドをテストします
-func TestFileRepositoryImpl_FileExists(t *testing.T) {
-	// テスト用のファイルをセットアップ
+func TestOSRepository_FileExists(t *testing.T) {
 	_, testFilePath, cleanup := setupTestFiles(t)
 	defer cleanup()
 
-	// テスト対象のインスタンスを作成
-	repo := NewFileRepository()
+	repo := NewRepository()
 
-	// 存在するファイルのテスト
 	if !repo.FileExists(testFilePath) {
 		t.Errorf("FileExists() が存在するファイル %s に対して false を返しました", testFilePath)
 	}
 
-	// 存在しないファイルのテスト
 	if repo.FileExists("存在しないファイル.txt") {
 		t.Error("FileExists() が存在しないファイルに対して true を返しました")
 	}
 }
 
-// TestFileRepositoryImpl_ReadJSONFile_WithBOM は BOMを含むJSONファイルを読み込むテストです
-func TestFileRepositoryImpl_ReadJSONFile_WithBOM(t *testing.T) {
-	// テスト対象のインスタンスを作成
-	repo := NewFileRepository()
-
-	// BOMを含むJSONファイルのパス
+func TestOSRepository_ReadJSONFile_WithBOM(t *testing.T) {
+	repo := NewRepository()
 	testFilePath := "./test_data/org/sample_request_with_crlf_02.json"
 
-	// 絶対パスに変換（テスト実行環境によって相対パスが変わる可能性があるため）
 	absPath, err := filepath.Abs(testFilePath)
 	if err != nil {
 		t.Fatalf("絶対パスへの変換に失敗しました: %v", err)
 	}
 
-	// ファイルが存在することを確認
 	if !repo.FileExists(absPath) {
 		t.Fatalf("テスト用のJSONファイルが存在しません: %s", absPath)
 	}
 
-	// テスト実行
 	jsonData, err := repo.ReadJSONFile(absPath)
 	if err != nil {
 		t.Errorf("ReadJSONFile() エラー = %v", err)
 		return
 	}
 
-	// 結果の検証
-	// 型アサーションでマップに変換
 	jsonMap, ok := jsonData.(map[string]interface{})
 	if !ok {
 		t.Errorf("JSONデータが期待した型ではありません。got = %T", jsonData)
 		return
 	}
 
-	// 各フィールドの検証
 	expectedName := "テストユーザー"
 	if name, ok := jsonMap["name"].(string); !ok || name != expectedName {
 		t.Errorf("name フィールドが期待と異なります。got = %v, want = %v", jsonMap["name"], expectedName)
@@ -212,12 +175,11 @@ func TestFileRepositoryImpl_ReadJSONFile_WithBOM(t *testing.T) {
 		t.Errorf("email フィールドが期待と異なります。got = %v, want = %v", jsonMap["email"], expectedEmail)
 	}
 
-	expectedAge := float64(30) // JSONのnumberはfloat64として解析される
+	expectedAge := float64(30)
 	if age, ok := jsonMap["age"].(float64); !ok || age != expectedAge {
 		t.Errorf("age フィールドが期待と異なります。got = %v, want = %v", jsonMap["age"], expectedAge)
 	}
 
-	// interestsフィールド（配列）の検証
 	interests, ok := jsonMap["interests"].([]interface{})
 	if !ok {
 		t.Errorf("interests フィールドが配列ではありません。got = %T", jsonMap["interests"])
@@ -235,7 +197,6 @@ func TestFileRepositoryImpl_ReadJSONFile_WithBOM(t *testing.T) {
 		}
 	}
 
-	// addressフィールド（オブジェクト）の検証
 	address, ok := jsonMap["address"].(map[string]interface{})
 	if !ok {
 		t.Errorf("address フィールドがオブジェクトではありません。got = %T", jsonMap["address"])
@@ -258,45 +219,27 @@ func TestFileRepositoryImpl_ReadJSONFile_WithBOM(t *testing.T) {
 	}
 }
 
-// TestFileRepositoryImpl_ReadJSONFile_FileNotFound はファイルが存在しない場合のテストです
-func TestFileRepositoryImpl_ReadJSONFile_FileNotFound(t *testing.T) {
-	// テスト対象のインスタンスを作成
-	repo := NewFileRepository()
+func TestOSRepository_ReadJSONFile_FileNotFound(t *testing.T) {
+	repo := NewRepository()
 
-	// 存在しないファイルパス
-	nonExistentPath := "存在しないファイル.json"
-
-	// テスト実行
-	_, err := repo.ReadJSONFile(nonExistentPath)
-
-	// エラーが発生することを確認
+	_, err := repo.ReadJSONFile("存在しないファイル.json")
 	if err == nil {
 		t.Error("存在しないファイルを読み込もうとしたときにエラーが発生しませんでした")
 	}
 }
 
-// TestFileRepositoryImpl_ReadJSONFile_InvalidJSON は無効なJSONファイルを読み込む場合のテストです
-func TestFileRepositoryImpl_ReadJSONFile_InvalidJSON(t *testing.T) {
-	// テスト用の一時ディレクトリをセットアップ
+func TestOSRepository_ReadJSONFile_InvalidJSON(t *testing.T) {
 	tempDir, _, cleanup := setupTestFiles(t)
 	defer cleanup()
 
-	// 無効なJSONファイルのパス
 	invalidJSONPath := filepath.Join(tempDir, "invalid.json")
-
-	// 無効なJSONファイルを作成
 	invalidJSON := "{ これは無効なJSONです }"
 	if err := os.WriteFile(invalidJSONPath, []byte(invalidJSON), 0644); err != nil {
 		t.Fatalf("無効なJSONファイルの作成に失敗しました: %v", err)
 	}
 
-	// テスト対象のインスタンスを作成
-	repo := NewFileRepository()
-
-	// テスト実行
+	repo := NewRepository()
 	_, err := repo.ReadJSONFile(invalidJSONPath)
-
-	// エラーが発生することを確認
 	if err == nil {
 		t.Error("無効なJSONファイルを読み込もうとしたときにエラーが発生しませんでした")
 	}

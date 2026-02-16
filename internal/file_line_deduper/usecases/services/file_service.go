@@ -5,16 +5,16 @@ import (
 	"strings"
 
 	"github.com/landmaster135/devbox/internal/file_line_deduper/domain/models"
-	"github.com/landmaster135/devbox/internal/file_line_deduper/domain/repositories"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/infrastructures/filesystem"
 )
 
 // FileService はファイル操作のユースケースを実装するサービスです
 type FileService struct {
-	fileRepo repositories.FileRepository
+	fileRepo filesystem.Repository
 }
 
 // NewFileService は新しいFileServiceインスタンスを作成します
-func NewFileService(fileRepo repositories.FileRepository) *FileService {
+func NewFileService(fileRepo filesystem.Repository) *FileService {
 	return &FileService{
 		fileRepo: fileRepo,
 	}

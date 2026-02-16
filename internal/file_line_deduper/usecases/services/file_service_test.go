@@ -6,67 +6,8 @@ import (
 	"testing"
 
 	"github.com/landmaster135/devbox/internal/file_line_deduper/domain/models"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/infrastructures/filesystem"
 )
-
-// ///////////////////////
-// MockFileRepository はFileRepositoryインターフェースのモック実装です
-// ///////////////////////
-type MockFileRepository struct {
-	ReadFileFunc         func(path string) (*models.FileContent, error)
-	WriteFileFunc        func(path string, content *models.FileContent) error
-	FileExistsFunc       func(path string) bool
-	FindFilesByExtFunc   func(dirPath, ext string) ([]string, error)
-	HasFilesWithExtFunc  func(dirPath, ext string) (bool, error)
-	ReadJSONFileFunc     func(path string) (interface{}, error)
-	GetDirectoryPathFunc func(path string) string
-	CreateDirectoryFunc  func(dirPath string) error
-	ReadDirFunc          func(dirPath string) ([]*models.DirEntry, error)
-}
-
-// ReadFile はモックの実装です
-func (m *MockFileRepository) ReadFile(path string) (*models.FileContent, error) {
-	return m.ReadFileFunc(path)
-}
-
-// WriteFile はモックの実装です
-func (m *MockFileRepository) WriteFile(path string, content *models.FileContent) error {
-	return m.WriteFileFunc(path, content)
-}
-
-// FileExists はモックの実装です
-func (m *MockFileRepository) FileExists(path string) bool {
-	return m.FileExistsFunc(path)
-}
-
-// FindFilesByExt はモックの実装です
-func (m *MockFileRepository) FindFilesByExt(dirPath, ext string) ([]string, error) {
-	return m.FindFilesByExtFunc(dirPath, ext)
-}
-
-// HasFilesWithExt はモックの実装です
-func (m *MockFileRepository) HasFilesWithExt(dirPath, ext string) (bool, error) {
-	return m.HasFilesWithExtFunc(dirPath, ext)
-}
-
-// ReadJSONFile はモックの実装です
-func (m *MockFileRepository) ReadJSONFile(path string) (interface{}, error) {
-	return m.ReadJSONFileFunc(path)
-}
-
-// GetDirectoryPath はモックの実装です
-func (m *MockFileRepository) GetDirectoryPath(path string) string {
-	return m.GetDirectoryPathFunc(path)
-}
-
-// CreateDirectory はモックの実装です
-func (m *MockFileRepository) CreateDirectory(dirPath string) error {
-	return m.CreateDirectoryFunc(dirPath)
-}
-
-// ReadDir はモックの実装です
-func (m *MockFileRepository) ReadDir(dirPath string) ([]*models.DirEntry, error) {
-	return m.ReadDirFunc(dirPath)
-}
 
 func TestFileService_CreateRequestBodyFromDir(t *testing.T) {
 	tests := []struct {
@@ -178,7 +119,7 @@ func TestFileService_CreateRequestBodyFromDir(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockFileRepository{
+			mockRepo := &filesystem.MockRepository{
 				FindFilesByExtFunc: func(dirPath, ext string) ([]string, error) {
 					return tt.findFilesResult, tt.findFilesErr
 				},
@@ -285,7 +226,7 @@ func TestFileService_RemoveMatchingLines(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// モックリポジトリの設定
-			mockRepo := &MockFileRepository{
+			mockRepo := &filesystem.MockRepository{
 				FileExistsFunc: func(path string) bool {
 					return tt.fileExists
 				},

@@ -3,7 +3,7 @@ package services
 import (
 	"fmt"
 
-	"github.com/landmaster135/devbox/internal/file_line_deduper/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/infrastructures/filesystem"
 )
 
 type lineDeduper interface {
@@ -17,7 +17,7 @@ type CLIService struct {
 
 // NewCLIService はCLI向けサービスを生成します。
 func NewCLIService() *CLIService {
-	fileRepo := repositories.NewFileRepository()
+	fileRepo := filesystem.NewRepository()
 	fileService := NewFileService(fileRepo)
 
 	return &CLIService{
