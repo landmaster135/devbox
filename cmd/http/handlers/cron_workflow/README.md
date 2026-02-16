@@ -1,6 +1,6 @@
 # Cron Workflow HTTP Handler
 
-Serves GUI for CRON workflow.
+Provides GUI for CRON workflow.
 
 ## Prerequisites
 - Go 1.25.5 or later

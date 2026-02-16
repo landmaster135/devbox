@@ -1,17 +1,20 @@
-# Arithmetic Calculator
+# Google Drive
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides Google Drive file access and content retrieval tools.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "google_drive": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "gdrive"
       ],
+      "env": {
+        "GDRIVE_CREDENTIALS_PATH": "YOUR_PATH"
+      },
       "disabled": false,
       "autoApprove": []
     }

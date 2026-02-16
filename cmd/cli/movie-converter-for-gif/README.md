@@ -1,6 +1,6 @@
 # Movie Converter
 
-GIFとMP4を相互に変換するCLIツールです。PowerShellスクリプト（Z5-5_convert_mp4_to_gif.ps1、Z5-10_convert_gif_to_mp4.ps1）と同等の機能を提供します。
+GIFとMP4を相互に変換するCLIツールです。
 
 ## 機能
 

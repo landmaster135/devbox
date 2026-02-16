@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Persona Extraction
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Extracts and summarizes structured persona information for characters.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "persona_extraction": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "persona_extraction"
       ],
       "disabled": false,
       "autoApprove": []

@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Shell
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides a shell execution tool compatible with Codex CLI shell-style command execution.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "shell": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "shell"
       ],
       "disabled": false,
       "autoApprove": []

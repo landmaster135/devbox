@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Filesystem
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides filesystem read, write, list, search, move, and metadata operations within allowed directories.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "filesystem": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "filesystem"
       ],
       "disabled": false,
       "autoApprove": []

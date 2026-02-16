@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# YouTube Transcript
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Extracts transcript text from a YouTube video URL or ID.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "get_youtube_transcript": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "youtube_transcript"
       ],
       "disabled": false,
       "autoApprove": []

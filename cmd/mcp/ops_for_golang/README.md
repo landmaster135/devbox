@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Ops for Golang
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides Go development helpers for test coverage, coverage reports, and `go run` execution.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "ops_for_golang": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "ops_for_golang"
       ],
       "disabled": false,
       "autoApprove": []

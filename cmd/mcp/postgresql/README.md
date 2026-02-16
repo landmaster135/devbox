@@ -1,17 +1,20 @@
-# Arithmetic Calculator
+# PostgreSQL
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides PostgreSQL tools for read-only queries, schema inspection, table listing, and table dump operations.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "postgresql": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "postgresql"
       ],
+      "env": {
+        "POSTGRESQL_DATABASE_URL": "YOUR_URL"
+      },
       "disabled": false,
       "autoApprove": []
     }

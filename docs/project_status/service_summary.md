@@ -7,26 +7,25 @@
 *code-analyzer*: コードベースを分析し、複雑度、コメント率、コードクローンなどの重要なメトリクスを収集・可視化するツールです。
 *color-code-converter*: 任意のカラーコード形式から別のカラーコード形式に変換するためのCLIツールです。
 *context7*: Context7 CLIは、最新のライブラリドキュメントを取得するためのコマンドラインツールです。Context7 APIを使用して、ライブラリの検索とドキュメントの取得を行います。
-*cron-workflow*: [github.com/go-co-op/gocron/v2](https://github.com/go-co-op/gocron) を使い、あらかじめ定義したバックグラウンドジョブを継続的に動かし続ける CLI ツールです。バイナリは単一のスケジューラを起動し、`workflow/core.go` に宣言されたワークフローを登録してから `SIGINT` もしくは `SIGTERM` を受け取るまで待機します。
-*data-converter*: 入力ファイルをいったん **key-value 型リスト（`[]map[string]string`）** に正規化してから、別形式ファイルへ変換する CLI ツールです。
+*cron-workflow*: あらかじめ定義したバックグラウンドジョブを継続的に動かし続ける CLI ツールです。バイナリは単一のスケジューラを起動し、`workflow/core.go` に宣言されたワークフローを登録してから `SIGINT` もしくは `SIGTERM` を受け取るまで待機します。
+*data-converter*: 入力ファイルを別形式ファイルへ変換する CLI ツールです。
 *datetime-calculator*: 日時計算を行うCLIツールです。指定された基準日時に対して年月日時分秒の加算・減算を行い、結果を表示します。
 *db-server-sync*: AniListデータをデータベースサーバー用のリクエストボディ形式に変換するCLIツールです。
 *depends-visualizer*: プログラムファイル内の関数間の依存関係を解析して可視化するツールです。
-*diff-dreamer*: Diff Dreamerは、difff《ﾃﾞｭﾌﾌ》と同様のUIを提供するテキスト比較ツールです。CLIからHTMLファイルを生成し、ブラウザで差分を可視化できます。
+*diff-dreamer*: テキスト比較用のGUIをHTMLページで提供します。
 *discord-webhook*: Discord WebhookでメッセージやEmbed付き通知を送信するためのCLIツールです。
 *docker*: env.yml に定義した情報を `docker-compose.yml` へ同期するユーティリティです。`npm run docker:env` 相当の環境変数反映に加え、指定サービスのポート番号やボリューム定義を env.yml ベースで更新できます。
 *env-loader*: 
-*exif-mirror*: PowerShellの`Copy-ExifFromSrc`コマンドレットと同じ機能を提供するGo製CLIツールです。指定されたソースフォルダ内の画像ファイルから、ターゲットフォルダ内の同名ファイルにEXIFデータをコピーします。
+*exif-mirror*: 指定されたソースフォルダ内の画像ファイルから、ターゲットフォルダ内の同名ファイルにEXIFデータをコピーするCLIツールです。
 *exif-modifier*: 任意のディレクトリ内にある画像・動画ファイルのExifプロパティを編集するCLIツールです。
 *exif-viewer*: 画像ファイルのEXIF・メタデータ情報を参照・表示するためのCLIツールです。
 *file-character-replacer*: ファイルまたはディレクトリ内のファイルに対して、指定した文字列を別の文字列に置換するCLIツールです。
 *file-maneuver*: 複数のディレクトリから指定した拡張子やファイル名部分一致条件に合致するファイルを検索し、単一の宛先ディレクトリに移動またはコピーするCLIツールです。
 *file-processor*: `file-processor` は、指定されたファイルの各行から指定範囲の文字列を抽出し、その文字列が重複する行を削除するコマンドラインツールです。
-*filesystem*: ファイル読み書きや検索、移動などの基本操作を安全に行うCLIツールです。MCP版と同じ `internal/filesystem/usecases` を利用し、許可したディレクトリの範囲内で各操作を実行します。
-*filesystem-v2*: 
+*filesystem*: ファイル読み書きや検索、移動などの基本操作を安全に行うCLIツールです。
 *gcloud-genset-ai*: Document AI の運用で利用する `gcloud`/`curl` コマンドを整形して出力する CLI ツールです。手動入力時に煩雑になりがちなアクセストークン取得やエンドポイントの組み立てを安全に自動化します。
 *gcloud-genset-billing*: Google Cloud Billing の運用で利用する `gcloud billing` コマンドを安全に組み立てる CLI ツールです。請求アカウントや予算、プロジェクトに関する情報取得コマンドを素早く生成できます。
-*gcloud-genset-cloudsql*: Cloud SQL インスタンスの運用で利用する `gcloud sql` コマンドを安全に組み立てて提示する CLI ツールです。`dotfiles/iac/gcloud/db.sh` に定義されている運用フローを Go で再現し、入力値の検証やコマンド整形をサポートします。
+*gcloud-genset-cloudsql*: Cloud SQL インスタンスの運用で利用する `gcloud sql` コマンドを安全に組み立てて提示する CLI ツールです。
 *gcloud-genset-container*: Cloud Run コンテナ／Cloud Functions (Gen2)／Pub/Sub の日常運用コマンドを生成するgcloud コマンドジェネレーターです。
 *gcloud-genset-deployment*: Google Cloud Deployment Manager の運用で利用する `gcloud deployment-manager` コマンドを安全に組み立てて実行する CLI ツールです。
 *gcloud-genset-dns*: Google Cloud DNS の `gcloud dns` コマンドを組み立てる CLI ツールです。
@@ -47,7 +46,7 @@
 *github*: GitHubのイシューを取得するCLIツールです。
 *goo-scraper*: 
 *grpc-request*: gRPCサーバーにリクエストを送信するためのコマンドラインツールです。
-*html-sanitizer*: `internal/html_sanitizer/usecases/sanitizer` に実装されている `SanitizeHTMLBody` をCLIから呼び出し、main/article要素を基点にHTMLをサニタイズします。
+*html-sanitizer*: main/article要素を基点にHTMLをサニタイズするCLIツールです。
 *http-request*: 任意のURLのAPIにリクエストを送信するコマンドラインツールです。
 *image-converter*: 複数の画像ファイルを一括で別のフォーマットに変換するコマンドラインツールです。
 *image-filterer*: 画像の指定領域にフィルター効果を適用するためのコマンドラインツールです。複数の画像ファイルを一括処理することができます。
@@ -68,69 +67,69 @@
 *json-timestamp-modifier*: 
 *kana-converter*: カタカナを含む文字列を全角または半角に変換するコマンドラインツールです。また、濁音・半濁音の追加や除去、濁音と半濁音の変換ペア処理も行えます。
 *machine-info*: Ubuntu系LinuxでPCのハードウェア／ネットワーク情報を収集し、JSONとして保存するCLIツールです。
-*mcp-remote*: Node.js版[mcp-remote](https://github.com/mark3labs/mcp-remote)を参考にしたGoでのMCP Remote CLIツール実装です。
+*mcp-remote*: MCP Remote CLIツールです。
 *memory*: 知識グラフを使用したメモリ管理を行うCLIツールです。エンティティ、リレーション、観察事項を管理し、永続的なメモリ機能を提供します。
 *memos*: Memos API（`/api/v1`）を操作するCLIツールです。
-*movie-converter-for-gif*: GIFとMP4を相互に変換するCLIツールです。PowerShellスクリプト（Z5-5_convert_mp4_to_gif.ps1、Z5-10_convert_gif_to_mp4.ps1）と同等の機能を提供します。
+*movie-converter-for-gif*: GIFとMP4を相互に変換するCLIツールです。
 *movie-converter-for-webm*: WEBMとMP4の相互変換を行うCLIツールです。
 *notion-blog-content-extractor*: Markdownファイルからブログコンテンツを抽出するCLIツールです。特定のマーカーで区切られたコンテンツ部分のみを抽出し、新しいファイルとして保存します。
 *notion-sync*: Notionのページにブロックを追加するためのCLIツールです。notion-synchronizerサーバーのページパッチAPIエンドポイントにHTTPリクエストを送信します。
 *ocr-executor*: TesseractOCRを使用して画像ファイルからテキストを抽出するCLIツールです。
 *ocr-executor-with-ai*: AI（Gemini API / Vertex AI / Ollama）を使用して画像からテキストを抽出するCLIツールです。
-*ollama*: Ollama ローカルサーバーの HTTP API を手元から叩くための CLI です。`version`/`list-models`/`embed`/`generate`/`pull`/`describe`/`delete` といった代表的なエンドポイント（[公式ドキュメント](https://docs.ollama.com/api)）をカバーし、簡単に API の結果を確認できます。
+*ollama*: Ollama サーバーの HTTP API を手元から叩くための CLI です。
 *open-weather-map*: OpenWeather APIを使用して天気予報を取得するコマンドラインツールです。
 *ops-for-golang*: Go開発でよく実行するコマンドを自動化するCLIツールです。テストカバレッジの取得、カバレッジ分析、CLIツールの実行を効率化し、出力フィルタリング機能も提供します。
 *pdf-encrypter*: 
 *pdf-merger*: このツールは、画像からPDFを作成したり、PDFファイルから画像を抽出したりするためのコマンドラインツールです。
 *postgresql*: PostgreSQLデータベースのテーブルダンプ機能を提供するCLIツールです。
-*qdrant*: Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert / 検索を行う CLI です。`github.com/qdrant/go-client/qdrant` を利用し、埋め込み生成には既存の `vector-embedding` ツールと同じユースケース層を再利用しています。
+*qdrant*: Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert / 検索を行う CLI です。
 *script-generator-to-build*: このツールは、指定されたGoパッケージのビルドスクリプトを生成するためのコマンドラインツールです。
 *service-implementing-viewer*: 複数のディレクトリ内にあるサービスの実装状況を表形式で表示するCLIツールです。
-*shell*: Codexの`shell`ツール互換でコマンドを安全に実行するCLIです。`command: Vec<String>`の形で引数を受け取り、ベースディレクトリやサンドボックス権限を厳密に制御しながらコマンドを起動できます。
+*shell*: Codexの`shell`ツール互換でコマンドを安全に実行するCLIです。
 *sqlite*: SQLite ファイルに対して操作を行う CLI です。
 *steam*: Steam Web APIを使用してユーザーのゲーム情報を取得し、JSONファイルに出力するCLIツールです。
-*taskfile*: Taskfile を検証・補完・新規作成するための CLI ツールです。指定した Taskfile が、プロジェクト標準 (`internal/taskfile/usecases/taskfiles/root.yml`) に含まれるフィールドを欠けなく定義しているかを確認し、空欄フィールドをテンプレートの値で埋めたり、テンプレートそのものを任意のパスへ複製して新規作成できます。
+*taskfile*: Taskfile を検証・補完・新規作成するための CLI ツールです。指定した Taskfile が、プロジェクト標準 (`internal/taskfile/usecases/taskfiles/root.yml`) に含まれるフィールドと乖離しているかどうかを確認できます。
 *unit-converter*: 物理量を **長さ・質量（重さ）・温度・面積・体積** の 5 カテゴリで相互変換できる高速 CLI ツールです。SI 接頭語 **yotta 〜 yocto** を自動解釈するため、`µm`, `nm2`, `pL` など自由に記述できます。
 *valkey*: Valkey データベースを操作するためのコマンドラインツールです。高性能なキー・バリューストアであるValkeyに対して、包括的なデータ操作機能を提供します。
-*vector-embedding*: 任意のテキストを埋め込みベクトルに変換する CLI ツールです。Ollama (`--operation=ollama`) に加えて OpenAI Embeddings API (`--operation=openai`) を利用できます。
+*vector-embedding*: 任意のテキストを埋め込みベクトルに変換する CLI ツールです。
 *weather-notificator*: 指定した都市の天気予報をDiscord Webhookを通じて通知するCLIツールです。
-*web-scraper*: `github.com/go-rod/rod` を利用してブラウザを自動操作し、WebページのDOMツリーのうち`<main>`要素のみを取得するCLIツールです。
+*web-scraper*: ブラウザを自動操作し、WebページのDOMツリーを取得するCLIツールです。
 *withings*: Withings Public Health Data API の OAuth フローに沿って認可 URL の生成、アクセストークン／リフレッシュトークンの取得、そして日次のヘルスデータ取得を行う CLI ツールです。
 *yaml-parser*: YAMLファイルや直接指定したYAML文字列を解析して、構造化データをJSONとして出力するCLIツールです。設定値の確認やテストデータの検証に利用できます。
 *youtube-downloader*: YouTube動画やプレイリストをダウンロードするためのCLIツールです。
-*zip-compressor*: ファイルやディレクトリをZip形式で圧縮・展開するCLIツールです。セキュリティを重視した設計で、パストラバーサル攻撃対策を含む安全な圧縮・展開機能を提供します。
+*zip-compressor*: ファイルやディレクトリをZip形式で圧縮・展開するCLIツールです。
 
 ## MCP tools
-*arithmetic_calculator*: 
-*brave_search*: 
-*context7*: 
-*datetime_calculator*: 
-*duckduckgo_search*: このドキュメントでは、DuckDuckGo Search MCPサーバの実装内容と使用方法について説明します。
-*everart*: 
-*figma*: 
-*filesystem*: 
-*gdrive*: 
-*git_commit_history_retriever*: 
-*git_diff_recorder*: 
-*github*: 
-*http_request*: 
-*notion_sync*: 
-*open_weather_map*: 
-*ops_for_golang*: 
-*persona_extraction*: 
-*plan*: 
-*postgresql*: 
-*sequentialthinking*: 
-*service_implementing_viewer*: 
-*shell*: 
-*timezone*: 
+*arithmetic_calculator*: Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+*brave_search*: Provides Brave Web Search and Brave Local Search tools.
+*context7*: Searches Context7 libraries and fetches documentation by Context7-compatible library ID.
+*datetime_calculator*: Provides datetime calculation, time value extraction, and unit-converted summation tools.
+*duckduckgo_search*: Provides DuckDuckGo web search and instant answer tools.
+*everart*: Generates images via EverArt models and returns links to view generated images.
+*figma*: Provides tools to inspect Figma node data and download node images.
+*filesystem*: Provides filesystem read, write, list, search, move, and metadata operations within allowed directories.
+*gdrive*: Provides Google Drive file access and content retrieval tools.
+*git_commit_history_retriever*: Retrieves Git commit history, with optional detailed commit metadata.
+*git_diff_recorder*: Provides a tool to retrieve Git diff output from a target repository.
+*github*: Provides GitHub repository, issue, pull request, and search operations.
+*http_request*: Provides a tool to make HTTP requests to external APIs.
+*notion_sync*: Provides tools to patch Markdown content and web clips into Notion pages.
+*open_weather_map*: Provides weather forecast retrieval for a specified city using OpenWeather API.
+*ops_for_golang*: Provides Go development helpers for test coverage, coverage reports, and `go run` execution.
+*persona_extraction*: Extracts and summarizes structured persona information for characters.
+*plan*: Provides a structured planning helper tool to update multi-step plans.
+*postgresql*: Provides PostgreSQL tools for read-only queries, schema inspection, table listing, and table dump operations.
+*sequentialthinking*: Provides a structured sequential-thinking tool for dynamic, revisable problem solving.
+*service_implementing_viewer*: Provides a tool to inspect service implementation status across target directories.
+*shell*: Provides a shell execution tool compatible with Codex CLI shell-style command execution.
+*timezone*: Provides timezone utilities to get current time, convert timezones, and list available timezones.
 *util*: 
-*weather_notificator*: 
-*youtube_transcript*: 
+*weather_notificator*: Sends weather forecast notifications to Discord for a specified city.
+*youtube_transcript*: Extracts transcript text from a YouTube video URL or ID.
 
 ## GRPC/HANDLERS tools
-*weather_notificator*: このディレクトリには、天気通知サービスのgRPCハンドラーが含まれています。
+*weather_notificator*: 天気予報をDiscordに通知するgRPCハンドラーを提供します。
 
 ## HTTP/HANDLERS tools
-*cron_workflow*: Serves GUI for CRON workflow.
-*weather_notificator*: 天気予報をDiscordに通知するHTTPハンドラです。
+*cron_workflow*: Provides GUI for CRON workflow.
+*weather_notificator*: 天気予報をDiscordに通知するHTTPハンドラを提供します。

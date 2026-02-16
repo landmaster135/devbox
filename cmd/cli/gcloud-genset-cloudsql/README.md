@@ -1,6 +1,6 @@
 # Gcloud Genset CloudSQL
 
-Cloud SQL インスタンスの運用で利用する `gcloud sql` コマンドを安全に組み立てて提示する CLI ツールです。`dotfiles/iac/gcloud/db.sh` に定義されている運用フローを Go で再現し、入力値の検証やコマンド整形をサポートします。
+Cloud SQL インスタンスの運用で利用する `gcloud sql` コマンドを安全に組み立てて提示する CLI ツールです。
 
 ## 概要
 

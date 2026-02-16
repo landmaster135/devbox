@@ -1,6 +1,6 @@
 # Weather Notificator gRPC Handler
 
-このディレクトリには、天気通知サービスのgRPCハンドラーが含まれています。
+天気予報をDiscordに通知するgRPCハンドラーを提供します。
 
 ## 概要
 

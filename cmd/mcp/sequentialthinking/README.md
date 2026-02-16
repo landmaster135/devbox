@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Sequential Thinking
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides a structured sequential-thinking tool for dynamic, revisable problem solving.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "sequentialthinking": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "sequentialthinking"
       ],
       "disabled": false,
       "autoApprove": []

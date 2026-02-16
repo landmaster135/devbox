@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Git Commit History Retriever
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Retrieves Git commit history, with optional detailed commit metadata.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "git_commit_history_retriever": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "git_commit_history_retriever"
       ],
       "disabled": false,
       "autoApprove": []

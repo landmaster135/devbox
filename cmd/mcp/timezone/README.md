@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Timezone
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides timezone utilities to get current time, convert timezones, and list available timezones.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "get-current-timezone": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "timezone"
       ],
       "disabled": false,
       "autoApprove": []

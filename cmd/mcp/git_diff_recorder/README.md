@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Git Diff Recorder
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Provides a tool to retrieve Git diff output from a target repository.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "git_commit_message_generator": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "git_diff_recorder"
       ],
       "disabled": false,
       "autoApprove": []

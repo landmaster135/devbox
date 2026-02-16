@@ -1,6 +1,6 @@
 # Vector Embedding CLI
 
-任意のテキストを埋め込みベクトルに変換する CLI ツールです。Ollama (`--operation=ollama`) に加えて OpenAI Embeddings API (`--operation=openai`) を利用できます。
+任意のテキストを埋め込みベクトルに変換する CLI ツールです。
 
 ## 主な特徴
 - Ollama の `/api/embed` エンドポイントや OpenAI の `POST /v1/embeddings` をラップして複数テキストを一括ベクトル化

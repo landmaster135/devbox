@@ -1,17 +1,20 @@
-# Arithmetic Calculator
+# EverArt
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Generates images via EverArt models and returns links to view generated images.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "everart": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "everart"
       ],
+      "env": {
+        "EVERART_API_KEY": "YOUR_KEY"
+      },
       "disabled": false,
       "autoApprove": []
     }

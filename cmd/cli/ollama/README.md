@@ -1,6 +1,6 @@
 # Ollama CLI
 
-Ollama ローカルサーバーの HTTP API を手元から叩くための CLI です。`version`/`list-models`/`embed`/`generate`/`pull`/`describe`/`delete` といった代表的なエンドポイント（[公式ドキュメント](https://docs.ollama.com/api)）をカバーし、簡単に API の結果を確認できます。
+Ollama サーバーの HTTP API を手元から叩くための CLI です。
 
 ## 主な機能
 

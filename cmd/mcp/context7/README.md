@@ -1,16 +1,16 @@
-# Arithmetic Calculator
+# Context7
 
-Performs arithmetic operations for two or multiple numbers, and evaluates whether a file line count exceeds a threshold.
+Searches Context7 libraries and fetches documentation by Context7-compatible library ID.
 
 ## Installation
 
 ```json
 {
   "mcpServers": {
-    "arithmetic_calculator": {
+    "context7": {
       "command": "/home/user/devbox/pkg/bin/mcp/linux_amd64/devbox-mcp-tools",
       "args": [
-        "arith_calc"
+        "context7"
       ],
       "disabled": false,
       "autoApprove": []

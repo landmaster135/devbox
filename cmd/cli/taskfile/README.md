@@ -1,6 +1,6 @@
 # Taskfile CLI
 
-Taskfile を検証・補完・新規作成するための CLI ツールです。指定した Taskfile が、プロジェクト標準 (`internal/taskfile/usecases/taskfiles/root.yml`) に含まれるフィールドを欠けなく定義しているかを確認し、空欄フィールドをテンプレートの値で埋めたり、テンプレートそのものを任意のパスへ複製して新規作成できます。
+Taskfile を検証・補完・新規作成するための CLI ツールです。指定した Taskfile が、プロジェクト標準 (`internal/taskfile/usecases/taskfiles/root.yml`) に含まれるフィールドと乖離しているかどうかを確認できます。
 
 ## 主な機能
 - **inspect**: 参照 Taskfile と照合し、存在しないフィールドを一覧化
