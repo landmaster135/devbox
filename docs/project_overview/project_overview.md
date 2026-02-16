@@ -59,7 +59,7 @@ graph TD
 cmd/
 ├── cli/          # CLIツール群（69ツール、カテゴリ毎に整理）
 │   ├── arithmetic-calculator/
-│   ├── file-processor/
+│   ├── file-line-deduper/
 │   ├── image-converter/
 │   ├── ops-for-golang/
 │   ├── ocr-executor/

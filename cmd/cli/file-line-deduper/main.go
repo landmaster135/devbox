@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/file_processor/interfaces/repositories"
-	"github.com/landmaster135/devbox/internal/file_processor/usecases/services"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/interfaces/repositories"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/usecases/services"
 )
 
 // exitCode はプログラムの終了コードを表します
@@ -21,7 +21,7 @@ const (
 // run はファイル処理の主要なロジックを実行します
 func run(args []string, stdout, stderr io.Writer) exitCode {
 	// フラグセットを作成
-	fs := flag.NewFlagSet("file-processor", flag.ContinueOnError)
+	fs := flag.NewFlagSet("file-line-deduper", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
 	// コマンドライン引数の定義

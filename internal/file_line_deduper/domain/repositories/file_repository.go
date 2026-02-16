@@ -1,7 +1,7 @@
 package repositories
 
 import (
-	"github.com/landmaster135/devbox/internal/file_processor/domain/models"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/domain/models"
 )
 
 // FileRepository はファイル操作を行うインターフェースです

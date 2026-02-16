@@ -40,7 +40,7 @@
 | figma                                       | ❌️  | ✅  | ❌️  | ❌️ |
 | file-character-replacer                     | ✅  | ❌️  | ❌️  | ❌️ |
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
-| file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
+| file-line-deduper                              | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |

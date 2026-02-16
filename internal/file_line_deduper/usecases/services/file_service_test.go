@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/file_processor/domain/models"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/domain/models"
 )
 
 // ///////////////////////

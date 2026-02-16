@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/landmaster135/devbox/internal/file_processor/domain/models"
-	domainRepo "github.com/landmaster135/devbox/internal/file_processor/domain/repositories"
+	"github.com/landmaster135/devbox/internal/file_line_deduper/domain/models"
+	domainRepo "github.com/landmaster135/devbox/internal/file_line_deduper/domain/repositories"
 )
 
 // FileRepositoryImpl はFileRepositoryインターフェースの実装です

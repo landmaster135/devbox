@@ -59,7 +59,7 @@ func TestRun_InvalidFile(t *testing.T) {
 // TestRun_ValidFile は有効なファイルと引数を指定した場合のテスト
 func TestRun_ValidFile(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
-	tempDir, err := os.MkdirTemp("", "file-processor-test")
+	tempDir, err := os.MkdirTemp("", "file-line-deduper-test")
 	if err != nil {
 		t.Fatalf("一時ディレクトリの作成に失敗しました: %v", err)
 	}

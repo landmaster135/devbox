@@ -4,7 +4,7 @@
 set -e
 
 # ビルド対象のディレクトリ
-CMD_DIR="cmd/cli/file-processor"
+CMD_DIR="cmd/cli/file-line-deduper"
 
 # 出力先ディレクトリ
 OUTPUT_DIR="./pkg/bin/cli"
@@ -16,7 +16,7 @@ MAC_ARM64_DIR="${OUTPUT_DIR}/darwin_arm64"
 
 # ビルド情報
 PACKAGE="github.com/landmaster135/devbox/${CMD_DIR}"
-OUTPUT_NAME="file-processor"
+OUTPUT_NAME="file-line-deduper"
 WIN_OUTPUT_NAME="${OUTPUT_NAME}.exe"
 
 echo "Building ${OUTPUT_NAME}..."
@@ -38,5 +38,5 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./pkg/bin/linux_amd64/file-processor -file data.txt -start 5 -end 200"
-echo "  ./pkg/bin/win_amd64/file-processor.exe -file data.txt -start 5 -end 200"
+echo "  ./pkg/bin/linux_amd64/file-line-deduper -file data.txt -start 5 -end 200"
+echo "  ./pkg/bin/win_amd64/file-line-deduper.exe -file data.txt -start 5 -end 200"
