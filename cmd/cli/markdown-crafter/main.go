@@ -1,5 +1,46 @@
 package main
 
+import (
+	"fmt"
+	"os"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/config"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases"
+)
+
 func main() {
-  // TODO: implement
+	cfg, err := config.ParseFlags()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+
+	if cfg.Help {
+		config.PrintUsage()
+		return
+	}
+
+	service := usecases.NewService(nil)
+
+	var result string
+	switch cfg.Operation {
+	case domain.OperationSplitHeadings:
+		result, err = service.SplitHeadings(cfg.FilePath, cfg.HeadingLevel, cfg.OutputDir)
+	case domain.OperationAddFrontMatter:
+		result, err = service.AddFrontMatter(cfg.FilePath, cfg.KVPairs)
+	case domain.OperationAddTags:
+		result, err = service.AddTags(cfg.FilePath, cfg.Tags)
+	default:
+		err = fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+
+	fmt.Print(result)
 }

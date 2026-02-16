@@ -1,0 +1,103 @@
+# markdown-crafter
+
+Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 3 操作を切り替えます。
+
+- `split-headings`: 指定見出しレベルごとに分割して複数ファイル出力
+- `add-front-matter`: `--kv` で指定した key-value をフロントマターへ追加
+- `add-tags`: `--tags` で指定したタグを `#tag1 #tag2` 形式で追加
+
+## フラグ一覧
+
+| フラグ | 必須 | デフォルト | 説明 |
+| --- | --- | --- | --- |
+| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` |
+| `--file-path` | 必須 | なし | 対象の Markdown ファイル |
+| `--heading-level` | `split-headings` で必須 | `0` | 分割対象の見出しレベル（1-6） |
+| `--output-dir` | `split-headings` で必須 | なし | 分割ファイルの出力先ディレクトリ |
+| `--kv` | `add-front-matter` で必須（1件以上） | なし | 追加する key-value（`key=value`）複数指定可 |
+| `--tags` | `add-tags` で必須 | なし | カンマ区切りタグ（例: `go,markdown`） |
+| `--help`, `-h` | 任意 | `false` | ヘルプ表示 |
+
+## 使用方法
+
+```bash
+go run ./cmd/cli/markdown-crafter --operation <operation> --file-path <path> [flags...]
+```
+
+## 使用例
+
+### split-headings
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation split-headings \
+  --file-path ./sample.md \
+  --heading-level 2 \
+  --output-dir ./out
+```
+
+`sample.md`:
+
+```md
+# aaa
+
+## bbb
+
+test1
+
+## ccc
+
+test2
+```
+
+出力:
+
+- `./out/001.md`
+- `./out/002.md`
+
+### add-front-matter
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation add-front-matter \
+  --file-path ./sample.md \
+  --kv title=example \
+  --kv author=alice
+```
+
+### add-tags
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation add-tags \
+  --file-path ./sample.md \
+  --tags go,markdown
+```
+
+## 出力例
+
+### 成功時
+
+```text
+split-headings: 2 ファイルを出力しました
+- out/001.md
+- out/002.md
+```
+
+```text
+add-front-matter: ./sample.md を更新しました (3 キー)
+```
+
+```text
+add-tags: ./sample.md にタグを追加しました (#go #markdown)
+```
+
+### エラー時
+
+```text
+エラー: --heading-level は 1 から 6 の範囲で指定してください
+```
+
+```text
+エラー: --kv の形式が不正です: title (key=value 形式で指定してください)
+```
