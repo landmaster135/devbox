@@ -39,8 +39,8 @@
 | exif-viewer                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | figma                                       | ❌️  | ✅  | ❌️  | ❌️ |
 | file-character-replacer                     | ✅  | ❌️  | ❌️  | ❌️ |
+| file-line-deduper                           | ✅  | ❌️  | ❌️  | ❌️ |
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
-| file-line-deduper                              | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
@@ -87,6 +87,7 @@
 | json-timestamp-modifier                     | ✅  | ❌️  | ❌️  | ❌️ |
 | kana-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | machine-info                                | ✅  | ❌️  | ❌️  | ❌️ |
+| markdown-crafter                            | ✅  | ❌️  | ❌️  | ❌️ |
 | mcp-remote                                  | ✅  | ❌️  | ❌️  | ❌️ |
 | memory                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | memos                                       | ✅  | ❌️  | ❌️  | ❌️ |
@@ -127,12 +128,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 110
-- **CLIツール実装数**: 99
+- **総サービス数**: 111
+- **CLIツール実装数**: 100
 - **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 2
-- **CLIのみ実装**: 83
+- **CLIのみ実装**: 84
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
