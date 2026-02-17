@@ -41,6 +41,9 @@ pkg/win_dos/Taskfile.env.yml
 .gocache/
 .cache/
 
+### tmp ###
+**/tmp/**
+
 ### Docker ###
 # .dockerignore
 # Dockerfile
