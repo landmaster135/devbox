@@ -38,4 +38,8 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run ./cmd/cli/markdown-crafter --operation split-headings --file-path ./sample.md --heading-level 2 --output-dir ./out"
+echo '  go run ./cmd/cli/markdown-crafter \'
+echo '  --operation split-headings \'
+echo '  --file-path ./sample.md \'
+echo '  --heading-level 2 \'
+echo "  --output-dir ./out"

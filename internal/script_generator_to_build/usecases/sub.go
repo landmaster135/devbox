@@ -194,8 +194,7 @@ func (p *DefaultREADMEParser) ParseUsageExamples(content []byte) ([]string, erro
 		// コードブロック内の行を追加
 		if inCodeBlock {
 			if trimmedLine != "" {
-				escapedLine := escapeUsageExampleLine(trimmedLine)
-				usageLines = append(usageLines, fmt.Sprintf("echo \"  %s\"", escapedLine))
+				usageLines = append(usageLines, formatUsageExampleLine(trimmedLine))
 			}
 		}
 	}
@@ -204,13 +203,28 @@ func (p *DefaultREADMEParser) ParseUsageExamples(content []byte) ([]string, erro
 }
 
 var usageExampleEscaper = strings.NewReplacer(
-	"\\", "\\\\",
 	"\"", "\\\"",
 )
 
-// escapeUsageExampleLine は使用例行をシェルスクリプト内の echo コマンドに安全に埋め込めるようエスケープします。
+var usageExampleSingleQuoteEscaper = strings.NewReplacer(
+	"'", "'\"'\"'",
+)
+
+// escapeUsageExampleLine はダブルクォート文字列へ埋め込むための最小限エスケープを行います。
 func escapeUsageExampleLine(line string) string {
 	return usageExampleEscaper.Replace(line)
+}
+
+// formatUsageExampleLine は使用例を echo 行へ整形します。
+// バックスラッシュを含む行はシングルクォートで囲み、`\` が `\\` に増えることを防ぎます。
+func formatUsageExampleLine(line string) string {
+	if strings.Contains(line, "\\") {
+		escapedLine := usageExampleSingleQuoteEscaper.Replace("  " + line)
+		return fmt.Sprintf("echo '%s'", escapedLine)
+	}
+
+	escapedLine := escapeUsageExampleLine(line)
+	return fmt.Sprintf("echo \"  %s\"", escapedLine)
 }
 
 // ScriptGenerator はスクリプト生成のインターフェースです

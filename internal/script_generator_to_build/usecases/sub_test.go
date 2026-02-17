@@ -332,8 +332,8 @@ $ go run ./cmd/cli/sample-tool \
 			t.Fatalf("ParseUsageExamples() returned error: %v", err)
 		}
 		expected := []string{
-			`echo "  $ go run ./cmd/cli/sample-tool \\"`,
-			`echo "  -flag1 value \\"`,
+			`echo '  $ go run ./cmd/cli/sample-tool \'`,
+			`echo '  -flag1 value \'`,
 			`echo "  -additional-args \"--format=json\""`,
 		}
 		if len(result) != len(expected) {
