@@ -85,6 +85,27 @@ func TestParseFlags_DeleteEmptyFiles_Normal(t *testing.T) {
 	})
 }
 
+func TestParseFlags_AddHeading1_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationAddHeading1,
+		"--file-path", "./sample.md",
+		"--heading-text", "概要",
+		"--heading-position", HeadingPositionTail,
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.HeadingText != "概要" {
+			t.Fatalf("unexpected heading text: %s", cfg.HeadingText)
+		}
+		if cfg.HeadingPosition != HeadingPositionTail {
+			t.Fatalf("unexpected heading position: %s", cfg.HeadingPosition)
+		}
+	})
+}
+
 func TestParseFlags_Help_Normal(t *testing.T) {
 	withArgs([]string{"markdown-crafter", "--help"}, func() {
 		cfg, err := ParseFlags()

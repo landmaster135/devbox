@@ -1,20 +1,23 @@
 # markdown-crafter
 
-Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 4 操作を切り替えます。
+Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 5 操作を切り替えます。
 
 - `split-headings`: 指定見出しレベルごとに分割して複数ファイル出力
 - `add-front-matter`: `--kv` で指定した key-value をフロントマターへ追加
 - `add-tags`: `--tags` で指定したタグを `#tag1 #tag2` 形式で追加
 - `delete-empty-files`: 指定ディレクトリ内の条件一致 Markdown ファイルを削除
+- `add-heading1`: 本文の先頭または末尾へ見出し1を追加
 
 ## フラグ一覧
 
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` |
-| `--file-path` | 必須 | なし | 対象の Markdown ファイル |
+| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` |
+| `--file-path` | `split-headings` / `add-front-matter` / `add-tags` / `add-heading1` で必須 | なし | 対象の Markdown ファイル |
 | `--directory-path` | `delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ |
 | `--heading-level` | `split-headings` で必須 | `0` | 分割対象の見出しレベル（1-6） |
+| `--heading-text` | `add-heading1` で必須 | なし | 追加する見出し1のテキスト |
+| `--heading-position` | `add-heading1` で必須 | なし | 追加位置（`head` または `tail`） |
 | `--output-dir` | `split-headings` で必須 | なし | 分割ファイルの出力先ディレクトリ |
 | `--kv` | `add-front-matter` で必須（1件以上） | なし | 追加する key-value（`key=value`）複数指定可 |
 | `--tags` | `add-tags` で必須 | なし | カンマ区切りタグ（例: `go,markdown`） |
@@ -89,6 +92,16 @@ go run ./cmd/cli/markdown-crafter \
 - 空文字
 - `# Miscellaneous notes\n- `
 
+### add-heading1
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation add-heading1 \
+  --file-path ./sample.md \
+  --heading-text 概要 \
+  --heading-position head
+```
+
 ## 出力例
 
 ### 成功時
@@ -113,6 +126,10 @@ delete-empty-files: 2 ファイルを削除しました
 - ./notes/b.md
 ```
 
+```text
+add-heading1: ./sample.md に見出しを追加しました (head)
+```
+
 ### エラー時
 
 ```text
@@ -121,4 +138,8 @@ delete-empty-files: 2 ファイルを削除しました
 
 ```text
 エラー: --kv の形式が不正です: title (key=value 形式で指定してください)
+```
+
+```text
+エラー: --heading-position には head, tail のいずれかを指定してください
 ```
