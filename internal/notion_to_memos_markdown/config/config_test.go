@@ -80,6 +80,7 @@ func TestNewConfig(t *testing.T) {
 		name           string
 		operation      string
 		pageType       string
+		category       string
 		srcJSONFile    string
 		srcBodyDir     string
 		outDir         string
@@ -211,6 +212,7 @@ func TestNewConfig(t *testing.T) {
 			got, err := NewConfig(
 				tt.operation,
 				tt.pageType,
+				tt.category,
 				tt.srcJSONFile,
 				tt.srcBodyDir,
 				tt.outDir,
@@ -274,6 +276,26 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if cfg.ConNumberStart != 100 || cfg.ConNumberEnd != 200 {
 			t.Fatalf("con range = (%d,%d), want (100,200)", cfg.ConNumberStart, cfg.ConNumberEnd)
+		}
+	})
+
+	t.Run("craft with category", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationCraftMarkdown)
+		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("category", "software")
+		parser.SetString("src-json-file", "/tmp/contents.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("out-dir", "/tmp/out")
+		parser.SetInt("con_number_start", 1)
+		parser.SetInt("con_number_end", 100)
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Category != "software" {
+			t.Fatalf("Category = %q, want software", cfg.Category)
 		}
 	})
 

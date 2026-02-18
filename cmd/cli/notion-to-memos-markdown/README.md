@@ -11,6 +11,7 @@
   - `category` が空の場合は `uncategorized` に振り分け
 - `--operation=craft-markdown`
   - `con_id` の数値範囲（`--con_number_start` から `--con_number_end`）を対象に処理
+  - `--category` 指定時は一致する category の Content のみ処理
   - `page_title` を H1 見出しとして先頭に追加
   - front matter（`bought_at`, `score_of_100`, `price_yen`, `con_id`）を追加
   - `tags.md` の `## Frequent Tags` セクションを使ってタグを解決し、分類タグ群を追加
@@ -21,6 +22,7 @@
 | --- | --- | --- |
 | `--operation` | 必須 | 操作タイプ。`distribute-files` または `craft-markdown` |
 | `--page-type` | 必須 | ページタイプ。`content` を指定 |
+| `--category` | `craft-markdown`で任意 | 対象 category。指定時は一致する Content のみ処理 |
 | `--con_number_start` | `craft-markdown`で必須 | 対象 `con_id` 範囲の開始番号（1以上） |
 | `--con_number_end` | `craft-markdown`で必須 | 対象 `con_id` 範囲の終了番号（1以上） |
 | `--src-json-file` | 必須 | Content JSON ファイルのパス |
@@ -47,6 +49,7 @@ go run ./cmd/cli/notion-to-memos-markdown \
 go run ./cmd/cli/notion-to-memos-markdown \
   --operation=craft-markdown \
   --page-type=content \
+  --category=software \
   --con_number_start=2000 \
   --con_number_end=2200 \
   --src-json-file=$HOME/devbox/cmd/cli/notion-to-memos-markdown/tmp/contents.json \

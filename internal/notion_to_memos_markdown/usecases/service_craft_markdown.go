@@ -20,11 +20,13 @@ const requiredBackupTag = "91-backup/tool-migration/202602-notion"
 
 var conNumberRegexp = regexp.MustCompile(`\d+`)
 
-func (s *Service) CraftMarkdown(pageType string, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
+func (s *Service) CraftMarkdown(pageType, category string, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	if trimmedPageType != supportedPageType {
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}
+	trimmedCategory := strings.TrimSpace(category)
+	normalizedCategoryFilter := normalizeKey(trimmedCategory)
 	if conNumberStart <= 0 || conNumberEnd <= 0 {
 		return "", fmt.Errorf("con_number_start と con_number_end は1以上で指定してください")
 	}
@@ -74,6 +76,9 @@ func (s *Service) CraftMarkdown(pageType string, conNumberStart, conNumberEnd in
 		if conNumber < conNumberStart || conNumber > conNumberEnd {
 			continue
 		}
+		if normalizedCategoryFilter != "" && normalizeKey(content.Category) != normalizedCategoryFilter {
+			continue
+		}
 		totalTarget++
 
 		srcPath := filepath.Join(srcBodyDir, conID+".md")
@@ -81,13 +86,16 @@ func (s *Service) CraftMarkdown(pageType string, conNumberStart, conNumberEnd in
 		if err != nil {
 			return "", fmt.Errorf("コピー元ファイルの確認に失敗しました (%s): %w", srcPath, err)
 		}
-		if !exists {
-			continue
-		}
 
 		outPath := filepath.Join(outDir, conID+".md")
-		if err := s.fileSystem.CopyFile(srcPath, outPath); err != nil {
-			return "", fmt.Errorf("Markdownのコピーに失敗しました (%s -> %s): %w", srcPath, outPath, err)
+		if exists {
+			if err := s.fileSystem.CopyFile(srcPath, outPath); err != nil {
+				return "", fmt.Errorf("Markdownのコピーに失敗しました (%s -> %s): %w", srcPath, outPath, err)
+			}
+		} else {
+			if err := s.fileSystem.WriteFile(outPath, []byte("")); err != nil {
+				return "", fmt.Errorf("空Markdownの作成に失敗しました (%s): %w", outPath, err)
+			}
 		}
 
 		headingText := strings.TrimSpace(content.PageTitle)
@@ -248,7 +256,22 @@ func resolveFrequentTag(tagName string, frequentTags []string) string {
 
 	for _, frequentTag := range frequentTags {
 		normalizedFrequentTag := strings.TrimSpace(strings.TrimPrefix(strings.ToLower(frequentTag), "#"))
-		if strings.Contains(normalizedFrequentTag, normalizedTagName) {
+		if normalizedFrequentTag == "" {
+			continue
+		}
+
+		if !strings.Contains(normalizedFrequentTag, "/") {
+			if normalizedFrequentTag == normalizedTagName {
+				return strings.TrimPrefix(strings.TrimSpace(frequentTag), "#")
+			}
+			continue
+		}
+
+		lastSlash := strings.LastIndex(normalizedFrequentTag, "/")
+		if lastSlash < 0 || lastSlash+1 >= len(normalizedFrequentTag) {
+			continue
+		}
+		if normalizedFrequentTag[lastSlash+1:] == normalizedTagName {
 			return strings.TrimPrefix(strings.TrimSpace(frequentTag), "#")
 		}
 	}

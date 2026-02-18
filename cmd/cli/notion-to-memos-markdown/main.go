@@ -30,6 +30,7 @@ func main() {
 	case config.OperationCraftMarkdown:
 		result, err = service.CraftMarkdown(
 			cfg.PageType,
+			cfg.Category,
 			cfg.ConNumberStart,
 			cfg.ConNumberEnd,
 			cfg.SrcJSONFile,

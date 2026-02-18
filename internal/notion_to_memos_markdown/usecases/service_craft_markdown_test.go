@@ -68,7 +68,7 @@ func TestService_CraftMarkdown_Normal(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestService_CraftMarkdown_InvalidCategory(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	_, err := service.CraftMarkdown("content", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err == nil || !strings.Contains(err.Error(), "未対応のcategoryです") {
 		t.Fatalf("error = %v", err)
 	}
@@ -207,13 +207,13 @@ func TestService_CraftMarkdown_FrequentTagsNotFound(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	_, err := service.CraftMarkdown("content", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err == nil || !strings.Contains(err.Error(), "## Frequent Tags") {
 		t.Fatalf("error = %v", err)
 	}
 }
 
-func TestService_CraftMarkdown_MissingSourceFileIsSkipped(t *testing.T) {
+func TestService_CraftMarkdown_MissingSourceFileCreatesEmptyMarkdown(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
@@ -262,19 +262,99 @@ func TestService_CraftMarkdown_MissingSourceFileIsSkipped(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", 10, 11, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", 10, 11, srcJSONFile, srcBodyDir, outDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=1") {
+	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=2") {
 		t.Fatalf("unexpected result: %s", result)
 	}
 
 	if _, err := os.Stat(filepath.Join(outDir, "CO000000010.md")); err != nil {
 		t.Fatalf("existing source should be crafted: %v", err)
 	}
+	missingPath := filepath.Join(outDir, "CO000000011.md")
+	missingData, err := os.ReadFile(missingPath)
+	if err != nil {
+		t.Fatalf("missing source output should exist: %v", err)
+	}
+	missingContent := string(missingData)
+	if !strings.Contains(missingContent, "con_id: CO000000011") {
+		t.Fatalf("front matter should be applied to empty markdown: %s", missingContent)
+	}
+	if !strings.Contains(missingContent, "# Missing") {
+		t.Fatalf("heading should be applied to empty markdown: %s", missingContent)
+	}
+	if !strings.Contains(missingContent, "#91-backup/tool-migration/202602-notion") {
+		t.Fatalf("tags should be applied to empty markdown: %s", missingContent)
+	}
+}
+
+func TestService_CraftMarkdown_FilterByCategory(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "contents.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	jsonContent := `[
+		{
+			"con_id": "CO000000010",
+			"page_title": "Software item",
+			"category": "software",
+			"owning_status": "already",
+			"color": "gray",
+			"bought_at": "2024-01-01T09:00:00+09:00",
+			"score": 88,
+			"price": 1200,
+			"tags": [{"page_title": "JavaScript"}]
+		},
+		{
+			"con_id": "CO000000011",
+			"page_title": "Book item",
+			"category": "book",
+			"owning_status": "already",
+			"color": "gray",
+			"bought_at": "2024-01-01T09:00:00+09:00",
+			"score": 88,
+			"price": 1200,
+			"tags": [{"page_title": "JavaScript"}]
+		}
+	]`
+	if err := os.WriteFile(srcJSONFile, []byte(jsonContent), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	tagsMarkdown := "## Frequent Tags\n#31-programming/language/javascript\n"
+	if err := os.WriteFile(tagsFile, []byte(tagsMarkdown), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000010.md"), []byte("本文です。\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000011.md"), []byte("本文です。\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(nil)
+	result, err := service.CraftMarkdown("content", "software", 10, 11, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "CO000000010.md")); err != nil {
+		t.Fatalf("software file should be output: %v", err)
+	}
 	if _, err := os.Stat(filepath.Join(outDir, "CO000000011.md")); !os.IsNotExist(err) {
-		t.Fatalf("missing source should be skipped")
+		t.Fatalf("book file should be filtered out")
 	}
 }
 
@@ -390,5 +470,53 @@ func TestParseConNumber(t *testing.T) {
 	_, err = parseConNumber("invalid")
 	if err == nil {
 		t.Fatalf("expected error")
+	}
+}
+
+func TestResolveFrequentTag(t *testing.T) {
+	t.Parallel()
+
+	frequentTags := []string{
+		"chromeextension",
+		"31-programming/language/javascript",
+		"31-programming/language/typescript",
+	}
+
+	tests := []struct {
+		name string
+		tag  string
+		want string
+	}{
+		{
+			name: "no slash exact match",
+			tag:  "chromeextension",
+			want: "chromeextension",
+		},
+		{
+			name: "no slash partial not match",
+			tag:  "chrome",
+			want: "chrome",
+		},
+		{
+			name: "with slash match by suffix exact",
+			tag:  "javascript",
+			want: "31-programming/language/javascript",
+		},
+		{
+			name: "with slash partial not match",
+			tag:  "java",
+			want: "java",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := resolveFrequentTag(tt.tag, frequentTags)
+			if got != tt.want {
+				t.Fatalf("resolveFrequentTag(%q) = %q, want %q", tt.tag, got, tt.want)
+			}
+		})
 	}
 }
