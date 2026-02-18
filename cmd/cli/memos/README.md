@@ -96,7 +96,7 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 注意:
 - `create_time_after(...)` や `visibilities` は、少なくとも一部環境では未サポートで `undeclared reference` エラーになります。
 - `created_ts` / `updated_ts` の日時文字列は RFC3339/RFC3339Nano（タイムゾーン必須）で指定してください。例: `2023-01-01T13:00:00Z`
-- まず `visibility == "PUBLIC"` のような単純な式で確認してから条件を増やすのが安全です。
+- CEL 形式記法は [CEL documentation](https://github.com/google/cel-spec) を参照してください。
 
 ### list-attachments
 
@@ -190,6 +190,15 @@ go run ./cmd/cli/memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
   -filter='created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"'
+```
+
+メモ一覧（CELフィルタ: 複数タグのAND検索）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='"work" in tags && "project" in tags'
 ```
 
 添付一覧
