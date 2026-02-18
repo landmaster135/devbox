@@ -15,6 +15,7 @@ import (
 	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
 	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
 	updatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_memo"
+	updatetag "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_tag"
 )
 
 const defaultTimeout = 30 * time.Second
@@ -55,6 +56,10 @@ type updateMemoOperation interface {
 	Execute(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*common.Memo, error)
 }
 
+type updateTagOperation interface {
+	Execute(ctx context.Context, srcTag string, destTag string) (*common.UpdateTagOutput, error)
+}
+
 type patchFilesOperation interface {
 	Execute(ctx context.Context, memo string, filePaths []string, replaces bool) (*common.SetMemoAttachmentsOutput, error)
 }
@@ -79,6 +84,7 @@ type Service struct {
 	listMemosOp           listMemosOperation
 	listAttachmentsOp     listAttachmentsOperation
 	updateMemoOp          updateMemoOperation
+	updateTagOp           updateTagOperation
 	patchFilesOp          patchFilesOperation
 	createAttachmentOp    createAttachmentOperation
 	listMemoAttachmentsOp listMemoAttachmentsOperation
@@ -96,6 +102,9 @@ type ListMemosOutput = common.ListMemosOutput
 
 // ListAttachmentsOutput は ListAttachments のレスポンス。
 type ListAttachmentsOutput = common.ListAttachmentsOutput
+
+// UpdateTagOutput は update-tag のレスポンス。
+type UpdateTagOutput = common.UpdateTagOutput
 
 // Attachment は Memos API の添付情報。
 type Attachment = common.Attachment
@@ -129,14 +138,17 @@ func NewService(opts ServiceOptions) *Service {
 	})
 
 	attachmentsOp := attachments.New(jsonClient)
+	listMemosOp := listmemos.New(jsonClient)
+	updateMemoOp := updatememo.New(jsonClient, fileSystem)
 
 	return &Service{
 		createMemoOp:          creatememo.New(jsonClient, fileSystem),
 		getMemoOp:             getmemo.New(jsonClient),
 		deleteMemoOp:          deletememo.New(jsonClient),
-		listMemosOp:           listmemos.New(jsonClient),
+		listMemosOp:           listMemosOp,
 		listAttachmentsOp:     listattachments.New(jsonClient),
-		updateMemoOp:          updatememo.New(jsonClient, fileSystem),
+		updateMemoOp:          updateMemoOp,
+		updateTagOp:           updatetag.New(listMemosOp, updateMemoOp),
 		patchFilesOp:          patchfiles.New(fileSystem, attachmentsOp, attachmentsOp, attachmentsOp),
 		createAttachmentOp:    attachmentsOp,
 		listMemoAttachmentsOp: attachmentsOp,

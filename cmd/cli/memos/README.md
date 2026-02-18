@@ -10,6 +10,7 @@ Memos API（`/api/v1`）を操作するCLIツールです。
 - `list-memos`: メモ一覧を取得
 - `list-attachments`: 添付一覧を取得
 - `update-memo`: 既存メモを更新（UpdateMemo）
+- `update-tag`: 既存タグを新しいタグへ一括置換
 - `patch-files`: ローカルファイルを添付として作成し、メモ添付を更新
 
 ## インストール
@@ -32,7 +33,7 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `patch-files`） | 必須 |
+| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `update-tag`, `patch-files`） | 必須 |
 | `-base-url` | Memos のベースURL（例: `https://memos.example.com`） | 必須 |
 | `-api-token` | Bearer トークン | 必須 |
 | `-timeout` | HTTPタイムアウト秒（デフォルト: 30） | 任意 |
@@ -119,6 +120,17 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 | `-pinned` | 更新後のピン留め（`true/false`） | 任意 |
 | `-update-mask` | 更新対象フィールド（例: `content,visibility`） | 任意 |
 | `-updates-time` | `true` のとき `displayTime` を現在日時（UTC/RFC3339）で更新（結果として `updateTime` も更新される） | 任意（デフォルト: `false`） |
+
+### update-tag
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-src-tag` | 置換元タグ（例: `work` または `#work`） | 必須 |
+| `-dest-tag` | 置換先タグ（例: `project` または `#project`） | 必須 |
+
+補足:
+- `update-tag` は `ListMemos` で `"<src-tag>" in tags` を満たすメモを取得し、本文中の `#src-tag` を `#dest-tag` に置換して `UpdateMemo`（`updateMask=content`）で更新します。
+- `#tag-xxx` のように `src-tag` が接頭辞として含まれる別タグは置換しません（完全一致のみ置換）。
 
 ### patch-files
 
@@ -235,6 +247,16 @@ go run ./cmd/cli/memos \
   -memo=memo-123 \
   -content="更新後の本文" \
   -updates-time=true
+```
+
+タグ更新（`#work` を `#project` に一括置換）
+```bash
+go run ./cmd/cli/memos \
+  -operation=update-tag \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -src-tag=work \
+  -dest-tag=project
 ```
 
 添付を追加（既存添付を保持: デフォルト `-replaces=false`）

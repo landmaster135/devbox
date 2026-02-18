@@ -52,3 +52,12 @@ type SetMemoAttachmentsOutput struct {
 	Name        string       `json:"name,omitempty"`
 	Attachments []Attachment `json:"attachments,omitempty"`
 }
+
+// UpdateTagOutput は update-tag 操作のレスポンス。
+type UpdateTagOutput struct {
+	SourceTag        string   `json:"sourceTag"`
+	DestinationTag   string   `json:"destinationTag"`
+	MatchedCount     int      `json:"matchedCount"`
+	UpdatedCount     int      `json:"updatedCount"`
+	UpdatedMemoNames []string `json:"updatedMemoNames,omitempty"`
+}

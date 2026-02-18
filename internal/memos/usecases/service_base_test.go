@@ -30,6 +30,9 @@ func TestNewService_DefaultDependencies_Normal(t *testing.T) {
 	if service.updateMemoOp == nil {
 		t.Fatal("updateMemoOp is nil")
 	}
+	if service.updateTagOp == nil {
+		t.Fatal("updateTagOp is nil")
+	}
 	if service.patchFilesOp == nil {
 		t.Fatal("patchFilesOp is nil")
 	}
@@ -101,5 +104,34 @@ func TestService_ListAttachments_DelegatesOperation(t *testing.T) {
 	}
 	if result.TotalSize != 1 {
 		t.Fatalf("totalSize = %d, want 1", result.TotalSize)
+	}
+}
+
+type stubUpdateTagOperation struct{}
+
+func (s *stubUpdateTagOperation) Execute(ctx context.Context, srcTag string, destTag string) (*UpdateTagOutput, error) {
+	return &UpdateTagOutput{
+		SourceTag:      srcTag,
+		DestinationTag: destTag,
+		MatchedCount:   3,
+		UpdatedCount:   2,
+	}, nil
+}
+
+func TestService_UpdateTag_DelegatesOperation(t *testing.T) {
+	service := &Service{updateTagOp: &stubUpdateTagOperation{}}
+
+	result, err := service.UpdateTag(context.Background(), "work", "project")
+	if err != nil {
+		t.Fatalf("UpdateTag() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("result = nil, want non-nil")
+	}
+	if result.SourceTag != "work" {
+		t.Fatalf("sourceTag = %s, want work", result.SourceTag)
+	}
+	if result.DestinationTag != "project" {
+		t.Fatalf("destinationTag = %s, want project", result.DestinationTag)
 	}
 }

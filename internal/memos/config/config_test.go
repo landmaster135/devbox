@@ -426,6 +426,58 @@ func TestConfig_ParseFlagsFromArgs_UpdateMemoUpdatesTimeTrue_Normal(t *testing.T
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_UpdateTag_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=update-tag",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-src-tag=#work",
+		"-dest-tag=#project",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Operation != OperationUpdateTag {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationUpdateTag)
+	}
+	if cfg.SrcTag != "work" {
+		t.Fatalf("srcTag = %s, want work", cfg.SrcTag)
+	}
+	if cfg.DestTag != "project" {
+		t.Fatalf("destTag = %s, want project", cfg.DestTag)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateTagMissingSrcTag_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=update-tag",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-dest-tag=project",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "src-tag") {
+		t.Fatalf("error = %v, want src-tag", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateTagMissingDestTag_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=update-tag",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-src-tag=work",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "dest-tag") {
+		t.Fatalf("error = %v, want dest-tag", err)
+	}
+}
+
 func TestConfig_ParseFlagsFromArgs_PatchFiles_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=patch-files",

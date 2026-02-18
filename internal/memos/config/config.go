@@ -16,6 +16,7 @@ const (
 	OperationListMemos       = "list-memos"
 	OperationListAttachments = "list-attachments"
 	OperationUpdateMemo      = "update-memo"
+	OperationUpdateTag       = "update-tag"
 	OperationPatchFiles      = "patch-files"
 
 	defaultTimeoutSeconds = 30
@@ -29,6 +30,7 @@ var supportedOperations = []string{
 	OperationListMemos,
 	OperationListAttachments,
 	OperationUpdateMemo,
+	OperationUpdateTag,
 	OperationPatchFiles,
 }
 
@@ -71,6 +73,8 @@ type Config struct {
 
 	UpdateMask  string
 	UpdatesTime bool
+	SrcTag      string
+	DestTag     string
 	Files       string
 	Replaces    bool
 	Force       bool
@@ -115,6 +119,8 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.Filter, "filter", "", "list-memos/list-attachments のフィルタ条件（CEL形式。list-memos では created_ts/updated_ts の RFC3339 比較値を Unix 秒に自動変換）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
 	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
+	fs.StringVar(&cfg.SrcTag, "src-tag", "", "update-tag で置換元のタグ（例: work または #work）")
+	fs.StringVar(&cfg.DestTag, "dest-tag", "", "update-tag で置換先のタグ（例: project または #project）")
 	fs.StringVar(&cfg.Files, "files", "", "patch-files で添付するファイルパス（カンマ区切り）")
 	fs.BoolVar(&cfg.Replaces, "replaces", false, "patch-files で既存添付を置換するか（デフォルト: false）")
 	fs.BoolVar(&cfg.Force, "force", false, "delete-memo で強制削除するか（デフォルト: false）")
@@ -144,6 +150,8 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.OrderBy = strings.TrimSpace(cfg.OrderBy)
 	cfg.Filter = strings.TrimSpace(cfg.Filter)
 	cfg.UpdateMask = strings.TrimSpace(cfg.UpdateMask)
+	cfg.SrcTag = normalizeTagValue(strings.TrimSpace(cfg.SrcTag))
+	cfg.DestTag = normalizeTagValue(strings.TrimSpace(cfg.DestTag))
 	cfg.Files = strings.TrimSpace(cfg.Files)
 	cfg.Pinned = pinnedValue.Value()
 	cfg.PinnedSet = pinnedValue.Changed()
@@ -212,6 +220,13 @@ func validateConfig(cfg *Config) error {
 		}
 		if err := validateContentInput(cfg.Content, cfg.ContentFile, "update-memo"); err != nil {
 			return err
+		}
+	case OperationUpdateTag:
+		if cfg.SrcTag == "" {
+			return fmt.Errorf("update-tag 操作には src-tag パラメータが必要です")
+		}
+		if cfg.DestTag == "" {
+			return fmt.Errorf("update-tag 操作には dest-tag パラメータが必要です")
 		}
 	case OperationPatchFiles:
 		if cfg.Memo == "" {
@@ -290,6 +305,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -order-by (任意), -filter (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -content または -content-file (どちらか必須), -visibility (任意), -state (任意), -pinned (任意), -update-mask (任意), -updates-time (任意: trueでdisplayTimeを現在日時に設定)\n\n")
+	fmt.Fprintf(os.Stderr, "  update-tag\n")
+	fmt.Fprintf(os.Stderr, "        -src-tag (必須), -dest-tag (必須)\n\n")
 	fmt.Fprintf(os.Stderr, "  patch-files\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -files (必須), -replaces (任意: デフォルト false)\n\n")
 
@@ -303,7 +320,12 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > \"2023-01-01T13:00:00Z\" && visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-attachments -base-url=https://memos.example.com -api-token=token -page-size=50 -order-by=create_time desc\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=update-tag -base-url=https://memos.example.com -api-token=token -src-tag=work -dest-tag=project\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=patch-files -base-url=https://memos.example.com -api-token=token -memo=abc123 -files=./a.png,./b.pdf -replaces=false\n", os.Args[0])
+}
+
+func normalizeTagValue(tag string) string {
+	return strings.TrimPrefix(tag, "#")
 }
 
 type trackedBoolValue struct {

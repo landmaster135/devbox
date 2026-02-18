@@ -64,6 +64,15 @@ func (s *Service) UpdateMemo(
 	return s.updateMemoOp.Execute(ctx, memo, content, contentFile, visibility, state, pinned, updateMask, displayTime)
 }
 
+// UpdateTag は srcTag を含むメモのタグを destTag に置換して更新する。
+func (s *Service) UpdateTag(
+	ctx context.Context,
+	srcTag string,
+	destTag string,
+) (*UpdateTagOutput, error) {
+	return s.updateTagOp.Execute(ctx, srcTag, destTag)
+}
+
 // PatchFiles はファイルを添付として作成し、メモに紐づける。
 func (s *Service) PatchFiles(
 	ctx context.Context,

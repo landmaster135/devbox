@@ -10,6 +10,7 @@ type MemoService interface {
 	ListMemos(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
 	ListAttachments(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*ListAttachmentsOutput, error)
 	UpdateMemo(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
+	UpdateTag(ctx context.Context, srcTag string, destTag string) (*UpdateTagOutput, error)
 	PatchFiles(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
 	CreateAttachment(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*Attachment, error)
 	ListMemoAttachments(ctx context.Context, memo string, pageSize int, pageToken string) (*ListMemoAttachmentsOutput, error)
@@ -24,6 +25,7 @@ type MockMemoService struct {
 	ListMemosFunc       func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*ListMemosOutput, error)
 	ListAttachmentsFunc func(ctx context.Context, pageSize int, pageToken string, orderBy string, filter string) (*ListAttachmentsOutput, error)
 	UpdateMemoFunc      func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error)
+	UpdateTagFunc       func(ctx context.Context, srcTag string, destTag string) (*UpdateTagOutput, error)
 	PatchFilesFunc      func(ctx context.Context, memo string, filePaths []string, replaces bool) (*SetMemoAttachmentsOutput, error)
 
 	CreateAttachmentFunc    func(ctx context.Context, filename string, content []byte, attachmentType string, memo string) (*Attachment, error)
@@ -69,6 +71,13 @@ func (m *MockMemoService) ListAttachments(ctx context.Context, pageSize int, pag
 func (m *MockMemoService) UpdateMemo(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*Memo, error) {
 	if m.UpdateMemoFunc != nil {
 		return m.UpdateMemoFunc(ctx, memo, content, contentFile, visibility, state, pinned, updateMask, displayTime)
+	}
+	return nil, nil
+}
+
+func (m *MockMemoService) UpdateTag(ctx context.Context, srcTag string, destTag string) (*UpdateTagOutput, error) {
+	if m.UpdateTagFunc != nil {
+		return m.UpdateTagFunc(ctx, srcTag, destTag)
 	}
 	return nil, nil
 }
