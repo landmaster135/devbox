@@ -70,6 +70,13 @@ cmd配下ツールを実装・改修したい
 └─ アーキテクチャ/構成を参照する → docs/project_overview/project_overview.md
 ```
 
+### 「インストール可能なエントリポイントを確認したい」
+
+```text
+インストール可能なエントリポイントを確認したい
+└─ インストール可能なエントリポイント一覧を参照する → docs/project_status/entrypoint_overview.md
+```
+
 ### 「依頼文の例を見たい」
 
 ```text
