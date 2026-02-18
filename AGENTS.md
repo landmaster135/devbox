@@ -46,40 +46,22 @@ cmd配下ツールを実装・改修したい
 
 ```text
 ドキュメントを追加・移動・整理したい
-└─ docs管理ルールとリンク整合性を確認する → docs/docs_management/index.md
+└─ docs管理ルールとリンク整合性を確認したい → docs/docs_management/index.md
 ```
 
-### 「実装済みサービスを調査したい」
-
+### 「プロジェクトの状況を確認したい」
 ```text
-実装済みサービスを調査したい
-└─ 実装状況一覧（CLI/MCP/gRPC/HTTP）を確認する → docs/project_status/service_implementation_status.md
-```
-
-### 「計画（active/completed）を確認したい」
-
-```text
-計画を確認したい
-└─ 進行中および完了計画を見たい → docs/exec_plans/index.md
-```
-
-### 「全体設計を確認したい」
-
-```text
-全体設計を確認したい
-└─ アーキテクチャ/構成を参照する → docs/project_overview/project_overview.md
-```
-
-### 「インストール可能なエントリポイントを確認したい」
-
-```text
-インストール可能なエントリポイントを確認したい
-└─ インストール可能なエントリポイント一覧を参照する → docs/project_status/entrypoint_overview.md
+プロジェクトの状況を確認したい
+├─ 実装済みサービス一覧（CLI/MCP/gRPC/HTTP）を確認したい → docs/project_status/service_implementation_status.md
+├─ 実装済みサービスの概要を確認したい → docs/project_status/service_overview.md
+├─ 全体のアーキテクチャ/構成を確認したい → docs/project_overview/project_overview.md
+├─ 計画（active/completed）を確認したい → docs/exec_plans/index.md
+└─ インストール可能なエントリポイント一覧を確認したい → docs/project_status/entrypoint_overview.md
 ```
 
 ### 「依頼文の例を見たい」
 
 ```text
 依頼文の例を見たい
-└─ プロンプトサンプルを参照する → docs/user_prompt/prompt_sample.md
+└─ プロンプトサンプルを参照したい → docs/user_prompt/prompt_sample.md
 ```
