@@ -4,13 +4,18 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	"golang.org/x/sync/errgroup"
 )
 
-const listMemosPageSize = 100
+const (
+	listMemosPageSize       = 100
+	updateTagMaxConcurrency = 8
+)
 
 // MemoLister は対象メモ取得の契約。
 type MemoLister interface {
@@ -26,6 +31,11 @@ type MemoUpdater interface {
 type Service struct {
 	memoLister  MemoLister
 	memoUpdater MemoUpdater
+}
+
+type memoUpdateTarget struct {
+	memoName string
+	content  string
 }
 
 func New(memoLister MemoLister, memoUpdater MemoUpdater) *Service {
@@ -68,21 +78,68 @@ func (s *Service) Execute(ctx context.Context, srcTag string, destTag string) (*
 			return output, nil
 		}
 
-		for _, memo := range listResult.Memos {
-			output.MatchedCount++
-			if strings.TrimSpace(memo.Name) == "" {
-				return nil, fmt.Errorf("更新対象の memo name が空です")
-			}
+		output.MatchedCount += len(listResult.Memos)
 
-			updatedContent, changed := replacer.Replace(memo.Content)
-			if !changed {
-				continue
+		targets, err := buildMemoUpdateTargets(replacer, listResult.Memos)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.updateMemosInParallel(ctx, targets, output); err != nil {
+			return nil, err
+		}
+
+		if strings.TrimSpace(listResult.NextPageToken) == "" {
+			return output, nil
+		}
+		pageToken = listResult.NextPageToken
+	}
+}
+
+func buildMemoUpdateTargets(replacer *tagReplacer, memos []common.Memo) ([]memoUpdateTarget, error) {
+	targets := make([]memoUpdateTarget, 0, len(memos))
+	for _, memo := range memos {
+		if strings.TrimSpace(memo.Name) == "" {
+			return nil, fmt.Errorf("更新対象の memo name が空です")
+		}
+
+		updatedContent, changed := replacer.Replace(memo.Content)
+		if !changed {
+			continue
+		}
+
+		targets = append(targets, memoUpdateTarget{
+			memoName: memo.Name,
+			content:  updatedContent,
+		})
+	}
+	return targets, nil
+}
+
+func (s *Service) updateMemosInParallel(ctx context.Context, targets []memoUpdateTarget, output *common.UpdateTagOutput) error {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	group, groupCtx := errgroup.WithContext(ctx)
+	sem := make(chan struct{}, updateTagMaxConcurrency)
+	var mu sync.Mutex
+
+	for _, target := range targets {
+		currentTarget := target
+		group.Go(func() error {
+			select {
+			case sem <- struct{}{}:
+			case <-groupCtx.Done():
+				return groupCtx.Err()
 			}
+			defer func() {
+				<-sem
+			}()
 
 			updatedMemo, err := s.memoUpdater.Execute(
-				ctx,
-				memo.Name,
-				updatedContent,
+				groupCtx,
+				currentTarget.memoName,
+				currentTarget.content,
 				"",
 				"",
 				"",
@@ -91,10 +148,10 @@ func (s *Service) Execute(ctx context.Context, srcTag string, destTag string) (*
 				"",
 			)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
-			updatedName := memo.Name
+			updatedName := currentTarget.memoName
 			if updatedMemo != nil {
 				name := strings.TrimSpace(updatedMemo.Name)
 				if name != "" {
@@ -102,15 +159,15 @@ func (s *Service) Execute(ctx context.Context, srcTag string, destTag string) (*
 				}
 			}
 
+			mu.Lock()
 			output.UpdatedCount++
 			output.UpdatedMemoNames = append(output.UpdatedMemoNames, updatedName)
-		}
-
-		if strings.TrimSpace(listResult.NextPageToken) == "" {
-			return output, nil
-		}
-		pageToken = listResult.NextPageToken
+			mu.Unlock()
+			return nil
+		})
 	}
+
+	return group.Wait()
 }
 
 func normalizeTagValue(raw string) string {

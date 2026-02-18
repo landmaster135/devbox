@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
@@ -180,6 +182,85 @@ func TestServiceOperationUpdateTag_SourceTagWithVariationSelector_Normal(t *test
 	}
 	if result.UpdatedCount != 1 {
 		t.Fatalf("updatedCount = %d, want 1", result.UpdatedCount)
+	}
+}
+
+func TestServiceOperationUpdateTag_ParallelUpdate_Normal(t *testing.T) {
+	started := make(chan struct{}, 3)
+	release := make(chan struct{})
+	var current int32
+	var maxConcurrent int32
+
+	service := New(
+		&mockMemoLister{
+			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*common.ListMemosOutput, error) {
+				return &common.ListMemosOutput{
+					Memos: []common.Memo{
+						{Name: "memos/1", Content: "#work"},
+						{Name: "memos/2", Content: "#work"},
+						{Name: "memos/3", Content: "#work"},
+					},
+				}, nil
+			},
+		},
+		&mockMemoUpdater{
+			executeFunc: func(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*common.Memo, error) {
+				working := atomic.AddInt32(&current, 1)
+				for {
+					prev := atomic.LoadInt32(&maxConcurrent)
+					if working <= prev {
+						break
+					}
+					if atomic.CompareAndSwapInt32(&maxConcurrent, prev, working) {
+						break
+					}
+				}
+
+				started <- struct{}{}
+				<-release
+				atomic.AddInt32(&current, -1)
+				return &common.Memo{Name: memo}, nil
+			},
+		},
+	)
+
+	resultCh := make(chan *common.UpdateTagOutput, 1)
+	errCh := make(chan error, 1)
+	go func() {
+		result, err := service.Execute(context.Background(), "work", "project")
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resultCh <- result
+	}()
+
+	for i := 0; i < 3; i++ {
+		select {
+		case <-started:
+		case err := <-errCh:
+			t.Fatalf("Execute() error = %v", err)
+		case <-time.After(2 * time.Second):
+			t.Fatal("timeout waiting for updater starts")
+		}
+	}
+
+	close(release)
+
+	var result *common.UpdateTagOutput
+	select {
+	case err := <-errCh:
+		t.Fatalf("Execute() error = %v", err)
+	case result = <-resultCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for Execute()")
+	}
+
+	if result.UpdatedCount != 3 {
+		t.Fatalf("updatedCount = %d, want 3", result.UpdatedCount)
+	}
+	if atomic.LoadInt32(&maxConcurrent) < 2 {
+		t.Fatalf("maxConcurrent = %d, want >= 2", atomic.LoadInt32(&maxConcurrent))
 	}
 }
 
