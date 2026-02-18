@@ -30,6 +30,7 @@ func TestService_CraftMarkdown_Normal(t *testing.T) {
 			"bought_at": "2024-01-01T09:00:00+09:00",
 			"score": 88,
 			"price": 1200,
+			"url": "https://example.com/gas",
 			"tags": [
 				{"page_title": "JavaScript"},
 				{"page_title": "CustomTag"}
@@ -87,6 +88,9 @@ func TestService_CraftMarkdown_Normal(t *testing.T) {
 	}
 	if !strings.Contains(crafted, "score_of_100: 88") || !strings.Contains(crafted, "price_yen: 1200") {
 		t.Fatalf("front matter values missing: %s", crafted)
+	}
+	if !strings.Contains(crafted, "url: https://example.com/gas") {
+		t.Fatalf("front matter url missing: %s", crafted)
 	}
 	if !strings.Contains(crafted, "# Google Apps Script") {
 		t.Fatalf("heading missing: %s", crafted)
@@ -358,6 +362,69 @@ func TestService_CraftMarkdown_FilterByCategory(t *testing.T) {
 	}
 }
 
+func TestService_CraftMarkdown_NullColorSkipsColorTag(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "contents.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	jsonContent := `[
+		{
+			"con_id": "CO000000010",
+			"page_title": "No color content",
+			"category": "software",
+			"owning_status": "already",
+			"color": null,
+			"bought_at": "2024-01-01T09:00:00+09:00",
+			"score": 88,
+			"price": 1200,
+			"tags": [{"page_title": "JavaScript"}]
+		}
+	]`
+	if err := os.WriteFile(srcJSONFile, []byte(jsonContent), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	tagsMarkdown := "## Frequent Tags\n#31-programming/language/javascript\n"
+	if err := os.WriteFile(tagsFile, []byte(tagsMarkdown), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000010.md"), []byte("本文です。\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(nil)
+	result, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	outPath := filepath.Join(outDir, "CO000000010.md")
+	outData, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("read output failed: %v", err)
+	}
+	outText := string(outData)
+	if strings.Contains(outText, "#01-p/color/") {
+		t.Fatalf("color tag should not be added: %s", outText)
+	}
+	if !strings.Contains(outText, `url: ""`) {
+		t.Fatalf("empty url should be explicit empty string: %s", outText)
+	}
+	if !strings.Contains(outText, "#0a-content/software") || !strings.Contains(outText, "#01-p/own-status/2-already") {
+		t.Fatalf("required tags missing: %s", outText)
+	}
+}
+
 func TestMapCategoryTag(t *testing.T) {
 	t.Parallel()
 
@@ -516,6 +583,32 @@ func TestResolveFrequentTag(t *testing.T) {
 			got := resolveFrequentTag(tt.tag, frequentTags)
 			if got != tt.want {
 				t.Fatalf("resolveFrequentTag(%q) = %q, want %q", tt.tag, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeFrontMatterURL(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "normal", input: "https://example.com", want: "https://example.com"},
+		{name: "empty", input: "", want: `""`},
+		{name: "spaces", input: "   ", want: `""`},
+		{name: "trim", input: "  https://example.com/path  ", want: "https://example.com/path"},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := normalizeFrontMatterURL(tt.input)
+			if got != tt.want {
+				t.Fatalf("normalizeFrontMatterURL(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}

@@ -13,7 +13,7 @@
   - `con_id` の数値範囲（`--con_number_start` から `--con_number_end`）を対象に処理
   - `--category` 指定時は一致する category の Content のみ処理
   - `page_title` を H1 見出しとして先頭に追加
-  - front matter（`bought_at`, `score_of_100`, `price_yen`, `con_id`）を追加
+  - front matter（`bought_at`, `score_of_100`, `price_yen`, `con_id`, `url`）を追加
   - `tags.md` の `## Frequent Tags` セクションを使ってタグを解決し、分類タグ群を追加
 
 ## フラグ

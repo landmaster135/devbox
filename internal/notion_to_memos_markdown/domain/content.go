@@ -9,6 +9,7 @@ type Content struct {
 	BoughtAt     string       `json:"bought_at"`
 	Score        int          `json:"score"`
 	Price        int          `json:"price"`
+	URL          string       `json:"url"`
 	Tags         []ContentTag `json:"tags"`
 }
 

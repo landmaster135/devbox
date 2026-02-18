@@ -127,12 +127,22 @@ func (s *Service) CraftMarkdown(pageType, category string, conNumberStart, conNu
 
 func buildFrontMatterPairs(content domain.Content) []string {
 	conID := strings.TrimSpace(content.ConID)
+	url := normalizeFrontMatterURL(content.URL)
 	return []string{
 		fmt.Sprintf("bought_at=%s", strings.TrimSpace(content.BoughtAt)),
 		fmt.Sprintf("score_of_100=%d", content.Score),
 		fmt.Sprintf("price_yen=%d", content.Price),
 		fmt.Sprintf("con_id=%s", conID),
+		fmt.Sprintf("url=%s", url),
 	}
+}
+
+func normalizeFrontMatterURL(url string) string {
+	trimmed := strings.TrimSpace(url)
+	if trimmed == "" {
+		return `""`
+	}
+	return trimmed
 }
 
 func buildTagsForContent(content domain.Content, frequentTags []string) ([]string, error) {
@@ -146,12 +156,17 @@ func buildTagsForContent(content domain.Content, frequentTags []string) ([]strin
 	if err != nil {
 		return nil, err
 	}
-	colorTag, err := mapColorTag(content.Color)
-	if err != nil {
-		return nil, err
-	}
 
-	tags = append(tags, requiredBackupTag, categoryTag, owningStatusTag, colorTag)
+	tags = append(tags, requiredBackupTag, categoryTag, owningStatusTag)
+
+	trimmedColor := strings.TrimSpace(content.Color)
+	if trimmedColor != "" {
+		colorTag, err := mapColorTag(trimmedColor)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, colorTag)
+	}
 	for _, contentTag := range content.Tags {
 		name := strings.ToLower(strings.TrimSpace(contentTag.PageTitle))
 		if name == "" {
