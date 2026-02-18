@@ -26,7 +26,16 @@ func main() {
 	var result string
 	switch cfg.Operation {
 	case config.OperationDistributeFiles:
-		result, err = service.DistributeFiles(cfg.PageType, cfg.SrcJSONPath, cfg.SrcBodyDir, cfg.OutDir)
+		result, err = service.DistributeFiles(cfg.PageType, cfg.SrcJSONFile, cfg.SrcBodyDir, cfg.OutDir)
+	case config.OperationCraftMarkdown:
+		result, err = service.CraftMarkdown(
+			cfg.PageType,
+			cfg.ConNumberStart,
+			cfg.ConNumberEnd,
+			cfg.SrcJSONFile,
+			cfg.SrcBodyDir,
+			cfg.OutDir,
+		)
 	default:
 		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}

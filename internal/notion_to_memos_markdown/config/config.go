@@ -8,24 +8,27 @@ import (
 
 const (
 	OperationDistributeFiles = "distribute-files"
+	OperationCraftMarkdown   = "craft-markdown"
 	PageTypeContent          = "content"
 )
 
 type Config struct {
-	Operation   string
-	PageType    string
-	SrcJSONPath string
-	SrcBodyDir  string
-	OutDir      string
-	Help        bool
+	Operation      string
+	PageType       string
+	SrcJSONFile    string
+	SrcBodyDir     string
+	OutDir         string
+	ConNumberStart int
+	ConNumberEnd   int
+	Help           bool
 }
 
-func NewConfig(operation, pageType, srcJSONPath, srcBodyDir, outDir string) (*Config, error) {
+func NewConfig(operation, pageType, srcJSONFile, srcBodyDir, outDir string, conNumberStart, conNumberEnd int) (*Config, error) {
 	trimmedOperation := strings.TrimSpace(operation)
 	if trimmedOperation == "" {
 		return nil, fmt.Errorf("operation パラメータは必須です")
 	}
-	if trimmedOperation != OperationDistributeFiles {
+	if trimmedOperation != OperationDistributeFiles && trimmedOperation != OperationCraftMarkdown {
 		return nil, fmt.Errorf("未対応のoperationです: %s", trimmedOperation)
 	}
 
@@ -37,9 +40,9 @@ func NewConfig(operation, pageType, srcJSONPath, srcBodyDir, outDir string) (*Co
 		return nil, fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}
 
-	trimmedSrcJSONPath := strings.TrimSpace(srcJSONPath)
-	if trimmedSrcJSONPath == "" {
-		return nil, fmt.Errorf("src-json-path パラメータは必須です")
+	trimmedSrcJSONFile := strings.TrimSpace(srcJSONFile)
+	if trimmedSrcJSONFile == "" {
+		return nil, fmt.Errorf("src-json-file パラメータは必須です")
 	}
 
 	trimmedSrcBodyDir := strings.TrimSpace(srcBodyDir)
@@ -52,12 +55,26 @@ func NewConfig(operation, pageType, srcJSONPath, srcBodyDir, outDir string) (*Co
 		return nil, fmt.Errorf("out-dir パラメータは必須です")
 	}
 
+	if trimmedOperation == OperationCraftMarkdown {
+		if conNumberStart <= 0 {
+			return nil, fmt.Errorf("con_number_start パラメータは1以上で必須です")
+		}
+		if conNumberEnd <= 0 {
+			return nil, fmt.Errorf("con_number_end パラメータは1以上で必須です")
+		}
+		if conNumberStart > conNumberEnd {
+			return nil, fmt.Errorf("con_number_start は con_number_end 以下である必要があります")
+		}
+	}
+
 	return &Config{
-		Operation:   trimmedOperation,
-		PageType:    trimmedPageType,
-		SrcJSONPath: trimmedSrcJSONPath,
-		SrcBodyDir:  trimmedSrcBodyDir,
-		OutDir:      trimmedOutDir,
+		Operation:      trimmedOperation,
+		PageType:       trimmedPageType,
+		SrcJSONFile:    trimmedSrcJSONFile,
+		SrcBodyDir:     trimmedSrcBodyDir,
+		OutDir:         trimmedOutDir,
+		ConNumberStart: conNumberStart,
+		ConNumberEnd:   conNumberEnd,
 	}, nil
 }
 
@@ -67,19 +84,24 @@ func ParseFlags() (*Config, error) {
 
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
-		operation   string
-		pageType    string
-		srcJSONPath string
-		srcBodyDir  string
-		outDir      string
-		help        bool
+		operation      string
+		pageType       string
+		srcJSONFile    string
+		srcBodyDir     string
+		outDir         string
+		conNumberStart int
+		conNumberEnd   int
+		help           bool
 	)
 
 	parser.StringVar(&operation, "operation", "", "操作タイプ（必須）")
 	parser.StringVar(&pageType, "page-type", "", "ページタイプ（必須）")
-	parser.StringVar(&srcJSONPath, "src-json-path", "", "Content JSONファイルのパス（必須）")
+	parser.StringVar(&srcJSONFile, "src-json-file", "", "Content JSONファイルのパス（必須）")
+	parser.StringVar(&srcJSONFile, "src-json-path", "", "Content JSONファイルのパス（後方互換）")
 	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（必須）")
 	parser.StringVar(&outDir, "out-dir", "", "カテゴリ別出力先ディレクトリ（必須）")
+	parser.IntVar(&conNumberStart, "con_number_start", 0, "con_id範囲の開始番号（craft-markdownで必須）")
+	parser.IntVar(&conNumberEnd, "con_number_end", 0, "con_id範囲の終了番号（craft-markdownで必須）")
 	parser.BoolVar(&help, "help", false, "ヘルプを表示")
 	parser.BoolVar(&help, "h", false, "ヘルプを表示")
 
@@ -91,21 +113,24 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, pageType, srcJSONPath, srcBodyDir, outDir)
+	return NewConfig(operation, pageType, srcJSONFile, srcBodyDir, outDir, conNumberStart, conNumberEnd)
 }
 
 func PrintUsage() {
 	fmt.Fprintf(os.Stderr, `notion-to-memos-markdown CLI
 
 使用方法:
-  %s --operation=distribute-files --page-type=content --src-json-path=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
+  %s --operation=distribute-files --page-type=content --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
+  %s --operation=craft-markdown --page-type=content --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
 
 オプション:
-  --operation      操作タイプ（必須: distribute-files）
+  --operation        操作タイプ（必須: distribute-files, craft-markdown）
   --page-type      ページタイプ（必須: content）
-  --src-json-path  Content JSONファイルのパス（必須）
+  --con_number_start craft-markdown時の開始con番号（必須）
+  --con_number_end   craft-markdown時の終了con番号（必須）
+  --src-json-file  Content JSONファイルのパス（必須）
   --src-body-dir   con_id.md が配置されているディレクトリ（必須）
-  --out-dir        カテゴリごとの出力先ルートディレクトリ（必須）
+  --out-dir        出力先ルートディレクトリ（必須）
   -help, -h        このヘルプを表示
-`, os.Args[0])
+`, os.Args[0], os.Args[0])
 }

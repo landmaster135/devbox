@@ -7,6 +7,7 @@ import (
 
 type MockFlagParser struct {
 	stringValues map[string]string
+	intValues    map[string]int
 	boolValues   map[string]bool
 	parseError   error
 }
@@ -14,6 +15,7 @@ type MockFlagParser struct {
 func NewMockFlagParser() *MockFlagParser {
 	return &MockFlagParser{
 		stringValues: map[string]string{},
+		intValues:    map[string]int{},
 		boolValues:   map[string]bool{},
 	}
 }
@@ -24,6 +26,17 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
 		return
 	}
 	if *p != "" {
+		return
+	}
+	*p = value
+}
+
+func (m *MockFlagParser) IntVar(p *int, name string, value int, usage string) {
+	if v, ok := m.intValues[name]; ok {
+		*p = v
+		return
+	}
+	if *p != 0 {
 		return
 	}
 	*p = value
@@ -48,6 +61,10 @@ func (m *MockFlagParser) SetString(name, value string) {
 	m.stringValues[name] = value
 }
 
+func (m *MockFlagParser) SetInt(name string, value int) {
+	m.intValues[name] = value
+}
+
 func (m *MockFlagParser) SetBool(name string, value bool) {
 	m.boolValues[name] = value
 }
@@ -60,84 +77,129 @@ func TestNewConfig(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name      string
-		operation string
-		pageType  string
-		srcJSON   string
-		srcBody   string
-		outDir    string
-		wantErr   string
+		name           string
+		operation      string
+		pageType       string
+		srcJSONFile    string
+		srcBodyDir     string
+		outDir         string
+		conNumberStart int
+		conNumberEnd   int
+		wantErr        string
 	}{
 		{
-			name:      "normal",
-			operation: OperationDistributeFiles,
-			pageType:  PageTypeContent,
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "/tmp/body",
-			outDir:    "/tmp/out",
+			name:        "distribute normal",
+			operation:   OperationDistributeFiles,
+			pageType:    PageTypeContent,
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "/tmp/out",
 		},
 		{
-			name:      "missing operation",
-			operation: "",
-			pageType:  PageTypeContent,
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "/tmp/body",
-			outDir:    "/tmp/out",
-			wantErr:   "operation パラメータは必須です",
+			name:           "craft normal",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			conNumberStart: 1,
+			conNumberEnd:   10,
 		},
 		{
-			name:      "invalid operation",
-			operation: "unknown",
-			pageType:  PageTypeContent,
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "/tmp/body",
-			outDir:    "/tmp/out",
-			wantErr:   "未対応のoperationです: unknown",
+			name:        "missing operation",
+			operation:   "",
+			pageType:    PageTypeContent,
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "/tmp/out",
+			wantErr:     "operation パラメータは必須です",
 		},
 		{
-			name:      "missing page type",
-			operation: OperationDistributeFiles,
-			pageType:  "",
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "/tmp/body",
-			outDir:    "/tmp/out",
-			wantErr:   "page-type パラメータは必須です",
+			name:        "invalid operation",
+			operation:   "unknown",
+			pageType:    PageTypeContent,
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "/tmp/out",
+			wantErr:     "未対応のoperationです: unknown",
 		},
 		{
-			name:      "invalid page type",
-			operation: OperationDistributeFiles,
-			pageType:  "artifact",
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "/tmp/body",
-			outDir:    "/tmp/out",
-			wantErr:   "未対応のpage-typeです: artifact",
+			name:        "missing page type",
+			operation:   OperationDistributeFiles,
+			pageType:    "",
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "/tmp/out",
+			wantErr:     "page-type パラメータは必須です",
 		},
 		{
-			name:      "missing src json",
-			operation: OperationDistributeFiles,
-			pageType:  PageTypeContent,
-			srcJSON:   "",
-			srcBody:   "/tmp/body",
-			outDir:    "/tmp/out",
-			wantErr:   "src-json-path パラメータは必須です",
+			name:        "invalid page type",
+			operation:   OperationDistributeFiles,
+			pageType:    "artifact",
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "/tmp/out",
+			wantErr:     "未対応のpage-typeです: artifact",
 		},
 		{
-			name:      "missing src body dir",
-			operation: OperationDistributeFiles,
-			pageType:  PageTypeContent,
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "",
-			outDir:    "/tmp/out",
-			wantErr:   "src-body-dir パラメータは必須です",
+			name:        "missing src json file",
+			operation:   OperationDistributeFiles,
+			pageType:    PageTypeContent,
+			srcJSONFile: "",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "/tmp/out",
+			wantErr:     "src-json-file パラメータは必須です",
 		},
 		{
-			name:      "missing out dir",
-			operation: OperationDistributeFiles,
-			pageType:  PageTypeContent,
-			srcJSON:   "/tmp/contents.json",
-			srcBody:   "/tmp/body",
-			outDir:    "",
-			wantErr:   "out-dir パラメータは必須です",
+			name:        "missing src body dir",
+			operation:   OperationDistributeFiles,
+			pageType:    PageTypeContent,
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "",
+			outDir:      "/tmp/out",
+			wantErr:     "src-body-dir パラメータは必須です",
+		},
+		{
+			name:        "missing out dir",
+			operation:   OperationDistributeFiles,
+			pageType:    PageTypeContent,
+			srcJSONFile: "/tmp/contents.json",
+			srcBodyDir:  "/tmp/body",
+			outDir:      "",
+			wantErr:     "out-dir パラメータは必須です",
+		},
+		{
+			name:           "craft missing con number start",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			conNumberStart: 0,
+			conNumberEnd:   10,
+			wantErr:        "con_number_start パラメータは1以上で必須です",
+		},
+		{
+			name:           "craft missing con number end",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			conNumberStart: 1,
+			conNumberEnd:   0,
+			wantErr:        "con_number_end パラメータは1以上で必須です",
+		},
+		{
+			name:           "craft invalid range",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			conNumberStart: 10,
+			conNumberEnd:   1,
+			wantErr:        "con_number_start は con_number_end 以下である必要があります",
 		},
 	}
 
@@ -146,7 +208,15 @@ func TestNewConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			got, err := NewConfig(tt.operation, tt.pageType, tt.srcJSON, tt.srcBody, tt.outDir)
+			got, err := NewConfig(
+				tt.operation,
+				tt.pageType,
+				tt.srcJSONFile,
+				tt.srcBodyDir,
+				tt.outDir,
+				tt.conNumberStart,
+				tt.conNumberEnd,
+			)
 			if tt.wantErr != "" {
 				if err == nil || err.Error() != tt.wantErr {
 					t.Fatalf("error = %v, want %q", err, tt.wantErr)
@@ -157,8 +227,8 @@ func TestNewConfig(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got.Operation != OperationDistributeFiles {
-				t.Fatalf("Operation = %q", got.Operation)
+			if got.Operation != tt.operation {
+				t.Fatalf("Operation = %q, want %q", got.Operation, tt.operation)
 			}
 			if got.PageType != PageTypeContent {
 				t.Fatalf("PageType = %q", got.PageType)
@@ -170,7 +240,44 @@ func TestNewConfig(t *testing.T) {
 func TestParseFlagsWithParser(t *testing.T) {
 	t.Parallel()
 
-	t.Run("normal", func(t *testing.T) {
+	t.Run("distribute normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationDistributeFiles)
+		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("src-json-file", "/tmp/contents.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("out-dir", "/tmp/out")
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if cfg.Operation != OperationDistributeFiles {
+			t.Fatalf("Operation = %q", cfg.Operation)
+		}
+	})
+
+	t.Run("craft normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationCraftMarkdown)
+		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("src-json-file", "/tmp/contents.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("out-dir", "/tmp/out")
+		parser.SetInt("con_number_start", 100)
+		parser.SetInt("con_number_end", 200)
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.ConNumberStart != 100 || cfg.ConNumberEnd != 200 {
+			t.Fatalf("con range = (%d,%d), want (100,200)", cfg.ConNumberStart, cfg.ConNumberEnd)
+		}
+	})
+
+	t.Run("src json path alias", func(t *testing.T) {
 		parser := NewMockFlagParser()
 		parser.SetString("operation", OperationDistributeFiles)
 		parser.SetString("page-type", PageTypeContent)
@@ -182,9 +289,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-
-		if cfg.Operation != OperationDistributeFiles {
-			t.Fatalf("Operation = %q", cfg.Operation)
+		if cfg.SrcJSONFile != "/tmp/contents.json" {
+			t.Fatalf("SrcJSONFile = %q", cfg.SrcJSONFile)
 		}
 	})
 

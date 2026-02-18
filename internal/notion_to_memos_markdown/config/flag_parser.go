@@ -8,6 +8,7 @@ import (
 type FlagParser interface {
 	StringVar(p *string, name string, value string, usage string)
 	BoolVar(p *bool, name string, value bool, usage string)
+	IntVar(p *int, name string, value int, usage string)
 	Parse() error
 }
 
@@ -27,6 +28,10 @@ func (s *StandardFlagParser) StringVar(p *string, name string, value string, usa
 
 func (s *StandardFlagParser) BoolVar(p *bool, name string, value bool, usage string) {
 	s.flagSet.BoolVar(p, name, value, usage)
+}
+
+func (s *StandardFlagParser) IntVar(p *int, name string, value int, usage string) {
+	s.flagSet.IntVar(p, name, value, usage)
 }
 
 func (s *StandardFlagParser) Parse() error {

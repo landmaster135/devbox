@@ -25,6 +25,18 @@ func (r *osRepository) ReadFile(path string) ([]byte, error) {
 	return data, nil
 }
 
+func (r *osRepository) WriteFile(path string, data []byte) error {
+	cleanPath, err := sanitizePath(path)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(cleanPath, data, 0644); err != nil {
+		return fmt.Errorf("ファイルの書き込みに失敗しました (%s): %w", cleanPath, err)
+	}
+	return nil
+}
+
 func (r *osRepository) MkdirAll(path string, perm os.FileMode) error {
 	cleanPath, err := sanitizePath(path)
 	if err != nil {

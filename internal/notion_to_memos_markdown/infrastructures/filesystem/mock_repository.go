@@ -14,16 +14,23 @@ type CopyFileCall struct {
 
 type MockRepository struct {
 	ReadFileFunc          func(path string) ([]byte, error)
+	WriteFileFunc         func(path string, data []byte) error
 	MkdirAllFunc          func(path string, perm os.FileMode) error
 	FileExistsFunc        func(path string) (bool, error)
 	CopyFileFunc          func(srcPath, dstPath string) error
 	ListMarkdownFilesFunc func(dirPath string) ([]string, error)
 
 	ReadFileCalls          []string
+	WriteFileCalls         []WriteFileCall
 	MkdirAllCalls          []MkdirAllCall
 	FileExistsCalls        []string
 	CopyFileCalls          []CopyFileCall
 	ListMarkdownFilesCalls []string
+}
+
+type WriteFileCall struct {
+	Path string
+	Data []byte
 }
 
 func (m *MockRepository) ReadFile(path string) ([]byte, error) {
@@ -32,6 +39,18 @@ func (m *MockRepository) ReadFile(path string) ([]byte, error) {
 		return m.ReadFileFunc(path)
 	}
 	return nil, nil
+}
+
+func (m *MockRepository) WriteFile(path string, data []byte) error {
+	cloned := append([]byte(nil), data...)
+	m.WriteFileCalls = append(m.WriteFileCalls, WriteFileCall{
+		Path: path,
+		Data: cloned,
+	})
+	if m.WriteFileFunc != nil {
+		return m.WriteFileFunc(path, cloned)
+	}
+	return nil
 }
 
 func (m *MockRepository) MkdirAll(path string, perm os.FileMode) error {

@@ -32,15 +32,15 @@ func NewService(fileSystem filesystem.Repository) *Service {
 	}
 }
 
-func (s *Service) DistributeFiles(pageType, srcJSONPath, srcBodyDir, outDir string) (string, error) {
+func (s *Service) DistributeFiles(pageType, srcJSONFile, srcBodyDir, outDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	if trimmedPageType != supportedPageType {
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}
 
-	rawJSON, err := s.fileSystem.ReadFile(srcJSONPath)
+	rawJSON, err := s.fileSystem.ReadFile(srcJSONFile)
 	if err != nil {
-		return "", fmt.Errorf("src-json-path の読み込みに失敗しました: %w", err)
+		return "", fmt.Errorf("src-json-file の読み込みに失敗しました: %w", err)
 	}
 
 	var contents []domain.Content
