@@ -95,6 +95,7 @@
 | movie-converter-for-webm                    | ✅  | ❌️  | ❌️  | ❌️ |
 | notion-blog-content-extractor               | ✅  | ❌️  | ❌️  | ❌️ |
 | notion-sync                                 | ✅  | ✅  | ❌️  | ❌️ |
+| notion-to-memos-markdown                    | ✅  | ❌️  | ❌️  | ❌️ |
 | ocr-executor                                | ✅  | ❌️  | ❌️  | ❌️ |
 | ocr-executor-with-ai                        | ✅  | ❌️  | ❌️  | ❌️ |
 | ollama                                      | ✅  | ❌️  | ❌️  | ❌️ |
@@ -128,12 +129,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 111
-- **CLIツール実装数**: 100
+- **総サービス数**: 112
+- **CLIツール実装数**: 101
 - **MCPツール実装数**: 26
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 2
-- **CLIのみ実装**: 84
+- **CLIのみ実装**: 85
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
