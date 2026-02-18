@@ -81,6 +81,7 @@ func TestNewConfig(t *testing.T) {
 		operation      string
 		pageType       string
 		category       string
+		skipsNoSrcBody bool
 		srcJSONFile    string
 		srcBodyDir     string
 		outDir         string
@@ -213,6 +214,7 @@ func TestNewConfig(t *testing.T) {
 				tt.operation,
 				tt.pageType,
 				tt.category,
+				tt.skipsNoSrcBody,
 				tt.srcJSONFile,
 				tt.srcBodyDir,
 				tt.outDir,
@@ -234,6 +236,9 @@ func TestNewConfig(t *testing.T) {
 			}
 			if got.PageType != PageTypeContent {
 				t.Fatalf("PageType = %q", got.PageType)
+			}
+			if got.SkipsNoSrcBody != tt.skipsNoSrcBody {
+				t.Fatalf("SkipsNoSrcBody = %v, want %v", got.SkipsNoSrcBody, tt.skipsNoSrcBody)
 			}
 		})
 	}
@@ -277,6 +282,9 @@ func TestParseFlagsWithParser(t *testing.T) {
 		if cfg.ConNumberStart != 100 || cfg.ConNumberEnd != 200 {
 			t.Fatalf("con range = (%d,%d), want (100,200)", cfg.ConNumberStart, cfg.ConNumberEnd)
 		}
+		if cfg.SkipsNoSrcBody {
+			t.Fatalf("SkipsNoSrcBody = true, want false")
+		}
 	})
 
 	t.Run("craft with category", func(t *testing.T) {
@@ -289,6 +297,7 @@ func TestParseFlagsWithParser(t *testing.T) {
 		parser.SetString("out-dir", "/tmp/out")
 		parser.SetInt("con_number_start", 1)
 		parser.SetInt("con_number_end", 100)
+		parser.SetBool("skips-no-src-body", true)
 
 		cfg, err := ParseFlagsWithParser(parser)
 		if err != nil {
@@ -296,6 +305,9 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if cfg.Category != "software" {
 			t.Fatalf("Category = %q, want software", cfg.Category)
+		}
+		if !cfg.SkipsNoSrcBody {
+			t.Fatalf("SkipsNoSrcBody = false, want true")
 		}
 	})
 

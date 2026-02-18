@@ -31,6 +31,7 @@ func main() {
 		result, err = service.CraftMarkdown(
 			cfg.PageType,
 			cfg.Category,
+			cfg.SkipsNoSrcBody,
 			cfg.ConNumberStart,
 			cfg.ConNumberEnd,
 			cfg.SrcJSONFile,

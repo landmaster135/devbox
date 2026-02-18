@@ -16,6 +16,7 @@ type Config struct {
 	Operation      string
 	PageType       string
 	Category       string
+	SkipsNoSrcBody bool
 	SrcJSONFile    string
 	SrcBodyDir     string
 	OutDir         string
@@ -24,7 +25,7 @@ type Config struct {
 	Help           bool
 }
 
-func NewConfig(operation, pageType, category, srcJSONFile, srcBodyDir, outDir string, conNumberStart, conNumberEnd int) (*Config, error) {
+func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, outDir string, conNumberStart, conNumberEnd int) (*Config, error) {
 	trimmedOperation := strings.TrimSpace(operation)
 	if trimmedOperation == "" {
 		return nil, fmt.Errorf("operation パラメータは必須です")
@@ -72,6 +73,7 @@ func NewConfig(operation, pageType, category, srcJSONFile, srcBodyDir, outDir st
 		Operation:      trimmedOperation,
 		PageType:       trimmedPageType,
 		Category:       strings.TrimSpace(category),
+		SkipsNoSrcBody: skipsNoSrcBody,
 		SrcJSONFile:    trimmedSrcJSONFile,
 		SrcBodyDir:     trimmedSrcBodyDir,
 		OutDir:         trimmedOutDir,
@@ -89,6 +91,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		operation      string
 		pageType       string
 		category       string
+		skipsNoSrcBody bool
 		srcJSONFile    string
 		srcBodyDir     string
 		outDir         string
@@ -100,6 +103,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&operation, "operation", "", "操作タイプ（必須）")
 	parser.StringVar(&pageType, "page-type", "", "ページタイプ（必須）")
 	parser.StringVar(&category, "category", "", "対象category（craft-markdownで任意）")
+	parser.BoolVar(&skipsNoSrcBody, "skips-no-src-body", false, "コピー元MarkdownがないContentをスキップする（craft-markdownで任意）")
 	parser.StringVar(&srcJSONFile, "src-json-file", "", "Content JSONファイルのパス（必須）")
 	parser.StringVar(&srcJSONFile, "src-json-path", "", "Content JSONファイルのパス（後方互換）")
 	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（必須）")
@@ -117,7 +121,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, pageType, category, srcJSONFile, srcBodyDir, outDir, conNumberStart, conNumberEnd)
+	return NewConfig(operation, pageType, category, skipsNoSrcBody, srcJSONFile, srcBodyDir, outDir, conNumberStart, conNumberEnd)
 }
 
 func PrintUsage() {
@@ -125,12 +129,13 @@ func PrintUsage() {
 
 使用方法:
   %s --operation=distribute-files --page-type=content --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
-  %s --operation=craft-markdown --page-type=content --category=software --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
+  %s --operation=craft-markdown --page-type=content --category=software --skips-no-src-body=false --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
 
 オプション:
   --operation        操作タイプ（必須: distribute-files, craft-markdown）
   --page-type      ページタイプ（必須: content）
   --category       対象category（craft-markdownで任意。指定時は一致するContentのみ処理）
+  --skips-no-src-body コピー元Markdownなしをスキップするか（craft-markdownで任意。デフォルト:false）
   --con_number_start craft-markdown時の開始con番号（必須）
   --con_number_end   craft-markdown時の終了con番号（必須）
   --src-json-file  Content JSONファイルのパス（必須）

@@ -20,7 +20,7 @@ const requiredBackupTag = "91-backup/tool-migration/202602-notion"
 
 var conNumberRegexp = regexp.MustCompile(`\d+`)
 
-func (s *Service) CraftMarkdown(pageType, category string, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
+func (s *Service) CraftMarkdown(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	if trimmedPageType != supportedPageType {
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
@@ -93,6 +93,9 @@ func (s *Service) CraftMarkdown(pageType, category string, conNumberStart, conNu
 				return "", fmt.Errorf("Markdownのコピーに失敗しました (%s -> %s): %w", srcPath, outPath, err)
 			}
 		} else {
+			if skipsNoSrcBody {
+				continue
+			}
 			if err := s.fileSystem.WriteFile(outPath, []byte("")); err != nil {
 				return "", fmt.Errorf("空Markdownの作成に失敗しました (%s): %w", outPath, err)
 			}

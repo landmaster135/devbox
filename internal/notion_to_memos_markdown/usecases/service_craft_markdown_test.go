@@ -69,7 +69,7 @@ func TestService_CraftMarkdown_Normal(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestService_CraftMarkdown_InvalidCategory(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	_, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err == nil || !strings.Contains(err.Error(), "未対応のcategoryです") {
 		t.Fatalf("error = %v", err)
 	}
@@ -211,7 +211,7 @@ func TestService_CraftMarkdown_FrequentTagsNotFound(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	_, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err == nil || !strings.Contains(err.Error(), "## Frequent Tags") {
 		t.Fatalf("error = %v", err)
 	}
@@ -266,7 +266,7 @@ func TestService_CraftMarkdown_MissingSourceFileCreatesEmptyMarkdown(t *testing.
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", 10, 11, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", false, 10, 11, srcJSONFile, srcBodyDir, outDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -291,6 +291,71 @@ func TestService_CraftMarkdown_MissingSourceFileCreatesEmptyMarkdown(t *testing.
 	}
 	if !strings.Contains(missingContent, "#91-backup/tool-migration/202602-notion") {
 		t.Fatalf("tags should be applied to empty markdown: %s", missingContent)
+	}
+}
+
+func TestService_CraftMarkdown_MissingSourceFileCanSkipByFlag(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "contents.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	jsonContent := `[
+		{
+			"con_id": "CO000000010",
+			"page_title": "Exists",
+			"category": "software",
+			"owning_status": "already",
+			"color": "gray",
+			"bought_at": "2024-01-01T09:00:00+09:00",
+			"score": 88,
+			"price": 1200,
+			"tags": [{"page_title": "JavaScript"}]
+		},
+		{
+			"con_id": "CO000000011",
+			"page_title": "Missing",
+			"category": "software",
+			"owning_status": "already",
+			"color": "gray",
+			"bought_at": "2024-01-01T09:00:00+09:00",
+			"score": 88,
+			"price": 1200,
+			"tags": [{"page_title": "JavaScript"}]
+		}
+	]`
+	if err := os.WriteFile(srcJSONFile, []byte(jsonContent), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	tagsMarkdown := "## Frequent Tags\n#31-programming/language/javascript\n"
+	if err := os.WriteFile(tagsFile, []byte(tagsMarkdown), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000010.md"), []byte("本文です。\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(nil)
+	result, err := service.CraftMarkdown("content", "", true, 10, 11, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "CO000000010.md")); err != nil {
+		t.Fatalf("existing source should be crafted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outDir, "CO000000011.md")); !os.IsNotExist(err) {
+		t.Fatalf("missing source should be skipped when --skips-no-src-body=true")
 	}
 }
 
@@ -346,7 +411,7 @@ func TestService_CraftMarkdown_FilterByCategory(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "software", 10, 11, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "software", false, 10, 11, srcJSONFile, srcBodyDir, outDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -400,7 +465,7 @@ func TestService_CraftMarkdown_NullColorSkipsColorTag(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
