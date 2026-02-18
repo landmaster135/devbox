@@ -69,6 +69,22 @@ func TestParseFlags_AddTags_Normal(t *testing.T) {
 	})
 }
 
+func TestParseFlags_DeleteEmptyFiles_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationDeleteEmptyFiles,
+		"--directory-path", "./notes",
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.DirectoryPath != "./notes" {
+			t.Fatalf("unexpected directory path: %s", cfg.DirectoryPath)
+		}
+	})
+}
+
 func TestParseFlags_Help_Normal(t *testing.T) {
 	withArgs([]string{"markdown-crafter", "--help"}, func() {
 		cfg, err := ParseFlags()

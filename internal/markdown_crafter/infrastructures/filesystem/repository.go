@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
 type Repository struct{}
@@ -31,6 +33,35 @@ func (r *Repository) CreateDir(dirPath string) error {
 	cleaned := filepath.Clean(dirPath)
 	if err := os.MkdirAll(cleaned, 0755); err != nil {
 		return fmt.Errorf("ディレクトリ作成に失敗しました: %s: %w", cleaned, err)
+	}
+	return nil
+}
+
+func (r *Repository) ListMarkdownFiles(dirPath string) ([]string, error) {
+	cleaned := filepath.Clean(dirPath)
+	entries, err := os.ReadDir(cleaned)
+	if err != nil {
+		return nil, fmt.Errorf("ディレクトリの読み込みに失敗しました: %s: %w", cleaned, err)
+	}
+
+	markdownFiles := make([]string, 0)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		if strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
+			markdownFiles = append(markdownFiles, filepath.Join(cleaned, entry.Name()))
+		}
+	}
+
+	sort.Strings(markdownFiles)
+	return markdownFiles, nil
+}
+
+func (r *Repository) RemoveFile(filePath string) error {
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("ファイルの削除に失敗しました: %s: %w", filePath, err)
 	}
 	return nil
 }

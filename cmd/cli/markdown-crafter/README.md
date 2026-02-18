@@ -1,17 +1,19 @@
 # markdown-crafter
 
-Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 3 操作を切り替えます。
+Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 4 操作を切り替えます。
 
 - `split-headings`: 指定見出しレベルごとに分割して複数ファイル出力
 - `add-front-matter`: `--kv` で指定した key-value をフロントマターへ追加
 - `add-tags`: `--tags` で指定したタグを `#tag1 #tag2` 形式で追加
+- `delete-empty-files`: 指定ディレクトリ内の条件一致 Markdown ファイルを削除
 
 ## フラグ一覧
 
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` |
+| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` |
 | `--file-path` | 必須 | なし | 対象の Markdown ファイル |
+| `--directory-path` | `delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ |
 | `--heading-level` | `split-headings` で必須 | `0` | 分割対象の見出しレベル（1-6） |
 | `--output-dir` | `split-headings` で必須 | なし | 分割ファイルの出力先ディレクトリ |
 | `--kv` | `add-front-matter` で必須（1件以上） | なし | 追加する key-value（`key=value`）複数指定可 |
@@ -74,6 +76,19 @@ go run ./cmd/cli/markdown-crafter \
   --tags go,markdown
 ```
 
+### delete-empty-files
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation delete-empty-files \
+  --directory-path ./notes
+```
+
+次のいずれかに一致する `.md` ファイルを削除します。
+
+- 空文字
+- `# Miscellaneous notes\n- `
+
 ## 出力例
 
 ### 成功時
@@ -90,6 +105,12 @@ add-front-matter: ./sample.md を更新しました (3 キー)
 
 ```text
 add-tags: ./sample.md にタグを追加しました (#go #markdown)
+```
+
+```text
+delete-empty-files: 2 ファイルを削除しました
+- ./notes/a.md
+- ./notes/b.md
 ```
 
 ### エラー時

@@ -19,6 +19,14 @@ func (r *stubRepository) CreateDir(dirPath string) error {
 	return nil
 }
 
+func (r *stubRepository) ListMarkdownFiles(dirPath string) ([]string, error) {
+	return nil, nil
+}
+
+func (r *stubRepository) RemoveFile(filePath string) error {
+	return nil
+}
+
 func TestNewService_Normal(t *testing.T) {
 	customRepo := &stubRepository{}
 	service := NewService(customRepo)

@@ -8,36 +8,40 @@ import (
 )
 
 const (
-	OperationSplitHeadings  = "split-headings"
-	OperationAddFrontMatter = "add-front-matter"
-	OperationAddTags        = "add-tags"
+	OperationSplitHeadings    = "split-headings"
+	OperationAddFrontMatter   = "add-front-matter"
+	OperationAddTags          = "add-tags"
+	OperationDeleteEmptyFiles = "delete-empty-files"
 )
 
 var allowedOperations = []string{
 	OperationSplitHeadings,
 	OperationAddFrontMatter,
 	OperationAddTags,
+	OperationDeleteEmptyFiles,
 }
 
 type Config struct {
-	Operation    string
-	FilePath     string
-	HeadingLevel int
-	OutputDir    string
-	KVPairs      []string
-	Tags         string
-	Help         bool
+	Operation     string
+	FilePath      string
+	DirectoryPath string
+	HeadingLevel  int
+	OutputDir     string
+	KVPairs       []string
+	Tags          string
+	Help          bool
 }
 
-func NewConfig(operation, filePath string, headingLevel int, outputDir string, kvPairs []string, tags string, help bool) (*Config, error) {
+func NewConfig(operation, filePath, directoryPath string, headingLevel int, outputDir string, kvPairs []string, tags string, help bool) (*Config, error) {
 	cfg := &Config{
-		Operation:    operation,
-		FilePath:     filePath,
-		HeadingLevel: headingLevel,
-		OutputDir:    outputDir,
-		KVPairs:      kvPairs,
-		Tags:         tags,
-		Help:         help,
+		Operation:     operation,
+		FilePath:      filePath,
+		DirectoryPath: directoryPath,
+		HeadingLevel:  headingLevel,
+		OutputDir:     outputDir,
+		KVPairs:       kvPairs,
+		Tags:          tags,
+		Help:          help,
 	}
 
 	if cfg.Help {
@@ -57,12 +61,11 @@ func (c *Config) validate() error {
 	if !isAllowed(c.Operation, allowedOperations) {
 		return fmt.Errorf("--operation には %s のいずれかを指定してください", strings.Join(allowedOperations, ", "))
 	}
-	if strings.TrimSpace(c.FilePath) == "" {
-		return fmt.Errorf("--file-path は必須です")
-	}
-
 	switch c.Operation {
 	case OperationSplitHeadings:
+		if strings.TrimSpace(c.FilePath) == "" {
+			return fmt.Errorf("--file-path は必須です (--operation=split-headings)")
+		}
 		if c.HeadingLevel < 1 || c.HeadingLevel > 6 {
 			return fmt.Errorf("--heading-level は 1 から 6 の範囲で指定してください")
 		}
@@ -70,12 +73,22 @@ func (c *Config) validate() error {
 			return fmt.Errorf("--output-dir は必須です (--operation=split-headings)")
 		}
 	case OperationAddFrontMatter:
+		if strings.TrimSpace(c.FilePath) == "" {
+			return fmt.Errorf("--file-path は必須です (--operation=add-front-matter)")
+		}
 		if len(c.KVPairs) == 0 {
 			return fmt.Errorf("--kv は1件以上指定してください (--operation=add-front-matter)")
 		}
 	case OperationAddTags:
+		if strings.TrimSpace(c.FilePath) == "" {
+			return fmt.Errorf("--file-path は必須です (--operation=add-tags)")
+		}
 		if strings.TrimSpace(c.Tags) == "" {
 			return fmt.Errorf("--tags は必須です (--operation=add-tags)")
+		}
+	case OperationDeleteEmptyFiles:
+		if strings.TrimSpace(c.DirectoryPath) == "" {
+			return fmt.Errorf("--directory-path は必須です (--operation=delete-empty-files)")
 		}
 	}
 
@@ -110,17 +123,19 @@ func ParseFlags() (*Config, error) {
 	}
 
 	var (
-		operation    string
-		filePath     string
-		headingLevel int
-		outputDir    string
-		tags         string
-		help         bool
-		kvPairs      stringSliceValue
+		operation     string
+		filePath      string
+		directoryPath string
+		headingLevel  int
+		outputDir     string
+		tags          string
+		help          bool
+		kvPairs       stringSliceValue
 	)
 
 	flagSet.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作 (%s)", strings.Join(allowedOperations, ", ")))
 	flagSet.StringVar(&filePath, "file-path", "", "対象のMarkdownファイルパス")
+	flagSet.StringVar(&directoryPath, "directory-path", "", "対象のMarkdownディレクトリパス (delete-empty-filesで必須)")
 	flagSet.IntVar(&headingLevel, "heading-level", 0, "分割対象の見出しレベル (1-6, split-headingsで必須)")
 	flagSet.StringVar(&outputDir, "output-dir", "", "分割後ファイルの出力先ディレクトリ (split-headingsで必須)")
 	flagSet.Var(&kvPairs, "kv", "front matter に追加する key=value (add-front-matter で複数指定可)")
@@ -132,7 +147,7 @@ func ParseFlags() (*Config, error) {
 		return nil, err
 	}
 
-	return NewConfig(operation, filePath, headingLevel, outputDir, []string(kvPairs), tags, help)
+	return NewConfig(operation, filePath, directoryPath, headingLevel, outputDir, []string(kvPairs), tags, help)
 }
 
 func PrintUsage() {
@@ -141,13 +156,16 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "使用方法:\n")
 	fmt.Fprintf(os.Stderr, "  %s --operation split-headings --file-path ./note.md --heading-level 2 --output-dir ./out\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-front-matter --file-path ./note.md --kv title=記事 --kv author=nov\n", exeName)
-	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --file-path ./note.md --tags go,markdown\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --file-path ./note.md --tags go,markdown\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation delete-empty-files --directory-path ./notes\n\n", exeName)
 
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --operation string\n")
 	fmt.Fprintf(os.Stderr, "        実行する操作 (%s)\n", strings.Join(allowedOperations, ", "))
 	fmt.Fprintf(os.Stderr, "  --file-path string\n")
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownファイルパス\n")
+	fmt.Fprintf(os.Stderr, "  --directory-path string\n")
+	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (delete-empty-filesで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --heading-level int\n")
 	fmt.Fprintf(os.Stderr, "        分割対象の見出しレベル (1-6, split-headingsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --output-dir string\n")

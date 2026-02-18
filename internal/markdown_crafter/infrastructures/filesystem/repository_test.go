@@ -70,3 +70,59 @@ func TestRepository_WriteFile_InvalidPath(t *testing.T) {
 		t.Fatal("expected WriteFile error for missing directory")
 	}
 }
+
+func TestRepository_ListMarkdownFiles_Normal(t *testing.T) {
+	t.Parallel()
+
+	repo := NewRepository()
+	dirPath := t.TempDir()
+
+	files := map[string]string{
+		"a.md":  "a",
+		"b.MD":  "b",
+		"c.txt": "c",
+	}
+	for fileName, content := range files {
+		if err := os.WriteFile(filepath.Join(dirPath, fileName), []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write file: %v", err)
+		}
+	}
+	if err := os.Mkdir(filepath.Join(dirPath, "nested"), 0755); err != nil {
+		t.Fatalf("failed to create nested dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dirPath, "nested", "in_nested.md"), []byte("x"), 0644); err != nil {
+		t.Fatalf("failed to write nested file: %v", err)
+	}
+
+	markdownFiles, err := repo.ListMarkdownFiles(dirPath)
+	if err != nil {
+		t.Fatalf("ListMarkdownFiles returned error: %v", err)
+	}
+	if len(markdownFiles) != 2 {
+		t.Fatalf("unexpected markdown file count: %d", len(markdownFiles))
+	}
+	if markdownFiles[0] != filepath.Join(dirPath, "a.md") {
+		t.Fatalf("unexpected first file: %s", markdownFiles[0])
+	}
+	if markdownFiles[1] != filepath.Join(dirPath, "b.MD") {
+		t.Fatalf("unexpected second file: %s", markdownFiles[1])
+	}
+}
+
+func TestRepository_RemoveFile_Normal(t *testing.T) {
+	t.Parallel()
+
+	repo := NewRepository()
+	dirPath := t.TempDir()
+	filePath := filepath.Join(dirPath, "target.md")
+	if err := os.WriteFile(filePath, []byte("x"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	if err := repo.RemoveFile(filePath); err != nil {
+		t.Fatalf("RemoveFile returned error: %v", err)
+	}
+	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
+		t.Fatalf("file should be deleted: %s", filePath)
+	}
+}

@@ -31,6 +31,8 @@ func main() {
 		result, err = service.AddFrontMatter(cfg.FilePath, cfg.KVPairs)
 	case config.OperationAddTags:
 		result, err = service.AddTags(cfg.FilePath, cfg.Tags)
+	case config.OperationDeleteEmptyFiles:
+		result, err = service.DeleteEmptyFiles(cfg.DirectoryPath)
 	default:
 		err = fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
 	}
