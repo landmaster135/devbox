@@ -20,9 +20,8 @@ Provides utilities for development.
 ## Generate shell scripts to build
 ```bash
 cd devbox
-./pkg/bin/cli/linux_amd64/script-generator-to-build <TOOL_NAME>
+./scripts/initialize/script_generator_to_build.sh <TOOL_NAME>
 ```
-
 # Build
 
 ## Common Tools
@@ -43,7 +42,7 @@ go tool dist list
 ## Git Hooks
 Set Git hooks with built binary files
 ```bash
-cd /path/to/dir
+cd /path/to/project
 $HOME/devbox/pkg/bash/setup-git-pre-commit-hooks.sh
 ```
 
