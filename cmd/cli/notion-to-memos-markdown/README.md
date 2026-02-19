@@ -21,18 +21,23 @@
   - ファイル本文の文字数をルーン数でカウントする
   - `--threshold` より大きい文字数のファイルを列挙する
   - 閾値超過ファイルの総数を表示する
+- `--operation=grep-str`
+  - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
+  - `--target-str` を含むファイルを列挙する
+  - 該当ファイルの総数を表示する
 
 ## フラグ
 
 | フラグ | 必須 | 説明 |
 | --- | --- | --- |
-| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length` |
+| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length`、`grep-str` |
 | `--page-type` | `distribute-files`/`craft-markdown`で必須 | ページタイプ。`content` を指定 |
 | `--category` | `craft-markdown`で任意 | 対象 category。指定時は一致する Content のみ処理 |
 | `--skips-no-src-body` | `craft-markdown`で任意 | `true` ならコピー元Markdown未存在の Content をスキップ（デフォルト: `false`） |
 | `--con_number_start` | `craft-markdown`で必須 | 対象 `con_id` 範囲の開始番号（1以上） |
 | `--con_number_end` | `craft-markdown`で必須 | 対象 `con_id` 範囲の終了番号（1以上） |
 | `--threshold` | `check-body-length`で必須 | 文字数の閾値（0以上） |
+| `--target-str` | `grep-str`で必須 | 検索対象の文字列 |
 | `--src-json-file` | `distribute-files`/`craft-markdown`で必須 | Content JSON ファイルのパス |
 | `--src-body-dir` | 必須 | 入力ディレクトリ |
 | `--out-dir` | `distribute-files`/`craft-markdown`で必須 | 出力先ルートディレクトリ |
@@ -75,6 +80,15 @@ go run ./cmd/cli/notion-to-memos-markdown \
   --threshold=1000
 ```
 
+`grep-str`:
+
+```bash
+go run ./cmd/cli/notion-to-memos-markdown \
+  --operation=grep-str \
+  --src-body-dir=$HOME/path/to/dir \
+  --target-str=TODO
+```
+
 ## 出力例
 
 成功時:
@@ -97,6 +111,15 @@ src-body-dir基準: 総md件数=130, JSON対応=110, JSON未対応=20
 閾値超過ファイル一覧:
 /tmp/notion-body/CO0001.md: 1201
 /tmp/notion-body/nested/notes.txt: 1490
+```
+
+```text
+処理完了
+対象ファイル総数=4
+該当ファイル総数=2
+該当ファイル一覧:
+/tmp/notion-body/CO0001.md
+/tmp/notion-body/nested/notes.txt
 ```
 
 エラー時:

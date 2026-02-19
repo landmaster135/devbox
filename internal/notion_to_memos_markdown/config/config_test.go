@@ -85,10 +85,12 @@ func TestNewConfig(t *testing.T) {
 		srcJSONFile    string
 		srcBodyDir     string
 		outDir         string
+		targetStr      string
 		conNumberStart int
 		conNumberEnd   int
 		threshold      int
 		wantPageType   string
+		wantTargetStr  string
 		wantErr        string
 	}{
 		{
@@ -117,6 +119,14 @@ func TestNewConfig(t *testing.T) {
 			srcBodyDir:   "/tmp/body",
 			threshold:    1000,
 			wantPageType: "",
+		},
+		{
+			name:          "grep str normal",
+			operation:     OperationGrepStr,
+			srcBodyDir:    "/tmp/body",
+			targetStr:     "  TODO  ",
+			wantPageType:  "",
+			wantTargetStr: "TODO",
 		},
 		{
 			name:        "missing operation",
@@ -195,6 +205,13 @@ func TestNewConfig(t *testing.T) {
 			wantErr:    "threshold パラメータは0以上で必須です",
 		},
 		{
+			name:       "grep str missing target str",
+			operation:  OperationGrepStr,
+			srcBodyDir: "/tmp/body",
+			targetStr:  " ",
+			wantErr:    "target-str パラメータは必須です",
+		},
+		{
 			name:           "craft missing con number start",
 			operation:      OperationCraftMarkdown,
 			pageType:       PageTypeContent,
@@ -245,6 +262,7 @@ func TestNewConfig(t *testing.T) {
 				tt.srcJSONFile,
 				tt.srcBodyDir,
 				tt.outDir,
+				tt.targetStr,
 				tt.conNumberStart,
 				tt.conNumberEnd,
 				tt.threshold,
@@ -267,6 +285,9 @@ func TestNewConfig(t *testing.T) {
 			}
 			if got.SkipsNoSrcBody != tt.skipsNoSrcBody {
 				t.Fatalf("SkipsNoSrcBody = %v, want %v", got.SkipsNoSrcBody, tt.skipsNoSrcBody)
+			}
+			if tt.wantTargetStr != "" && got.TargetStr != tt.wantTargetStr {
+				t.Fatalf("TargetStr = %q, want %q", got.TargetStr, tt.wantTargetStr)
 			}
 		})
 	}
@@ -381,6 +402,35 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 		_, err := ParseFlagsWithParser(parser)
 		if err == nil || err.Error() != "threshold パラメータは0以上で必須です" {
+			t.Fatalf("error = %v", err)
+		}
+	})
+
+	t.Run("grep str normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationGrepStr)
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("target-str", "TODO")
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Operation != OperationGrepStr {
+			t.Fatalf("Operation = %q", cfg.Operation)
+		}
+		if cfg.TargetStr != "TODO" {
+			t.Fatalf("TargetStr = %q, want TODO", cfg.TargetStr)
+		}
+	})
+
+	t.Run("grep str missing target str", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationGrepStr)
+		parser.SetString("src-body-dir", "/tmp/body")
+
+		_, err := ParseFlagsWithParser(parser)
+		if err == nil || err.Error() != "target-str パラメータは必須です" {
 			t.Fatalf("error = %v", err)
 		}
 	})

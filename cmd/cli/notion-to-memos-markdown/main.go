@@ -40,6 +40,8 @@ func main() {
 		)
 	case config.OperationCheckBodyLength:
 		result, err = service.CheckBodyLength(cfg.SrcBodyDir, cfg.Threshold)
+	case config.OperationGrepStr:
+		result, err = service.GrepStr(cfg.SrcBodyDir, cfg.TargetStr)
 	default:
 		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}

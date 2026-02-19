@@ -12,10 +12,15 @@ type checkBodyLengthOperation interface {
 	Execute(srcBodyDir string, threshold int) (string, error)
 }
 
-func newServiceWithOperations(distributeFilesOp distributeFilesOperation, craftMarkdownOp craftMarkdownOperation, checkBodyLengthOp checkBodyLengthOperation) *Service {
+type grepStrOperation interface {
+	Execute(srcBodyDir, targetStr string) (string, error)
+}
+
+func newServiceWithOperations(distributeFilesOp distributeFilesOperation, craftMarkdownOp craftMarkdownOperation, checkBodyLengthOp checkBodyLengthOperation, grepStrOp grepStrOperation) *Service {
 	return &Service{
 		distributeFilesOperation: distributeFilesOp,
 		craftMarkdownOperation:   craftMarkdownOp,
 		checkBodyLengthOperation: checkBodyLengthOp,
+		grepStrOperation:         grepStrOp,
 	}
 }

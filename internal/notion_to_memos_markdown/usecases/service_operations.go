@@ -11,3 +11,7 @@ func (s *Service) CraftMarkdown(pageType, category string, skipsNoSrcBody bool, 
 func (s *Service) CheckBodyLength(srcBodyDir string, threshold int) (string, error) {
 	return s.checkBodyLengthOperation.Execute(srcBodyDir, threshold)
 }
+
+func (s *Service) GrepStr(srcBodyDir, targetStr string) (string, error) {
+	return s.grepStrOperation.Execute(srcBodyDir, targetStr)
+}

@@ -228,3 +228,38 @@ func TestCountSrcBodyMetrics(t *testing.T) {
 		t.Fatalf("metrics = (%d,%d,%d), want (3,2,1)", total, mapped, unmapped)
 	}
 }
+
+func TestGrepStr(t *testing.T) {
+	t.Parallel()
+
+	mockRepo := &filesystem.MockRepository{}
+	mockRepo.ListFilesRecursiveFunc = func(dirPath string) ([]string, error) {
+		return []string{
+			"/tmp/body/a.md",
+			"/tmp/body/b.md",
+		}, nil
+	}
+	mockRepo.ReadFileFunc = func(path string) ([]byte, error) {
+		switch path {
+		case "/tmp/body/a.md":
+			return []byte("TODO: sample"), nil
+		case "/tmp/body/b.md":
+			return []byte("done"), nil
+		default:
+			return []byte(""), nil
+		}
+	}
+
+	service := NewService(mockRepo)
+	result, err := service.GrepStr("/tmp/body", "TODO")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(result, "対象ファイル総数=2") || !strings.Contains(result, "該当ファイル総数=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+	if !strings.Contains(result, "/tmp/body/a.md") || strings.Contains(result, "/tmp/body/b.md") {
+		t.Fatalf("unexpected matched files: %s", result)
+	}
+}
