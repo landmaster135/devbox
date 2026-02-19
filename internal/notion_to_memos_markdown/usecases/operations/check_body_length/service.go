@@ -1,9 +1,11 @@
-package usecases
+package checkbodylength
 
 import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
 )
 
 type bodyLengthResult struct {
@@ -11,7 +13,17 @@ type bodyLengthResult struct {
 	runeCount int
 }
 
-func (s *Service) CheckBodyLength(srcBodyDir string, threshold int) (string, error) {
+type Service struct {
+	fileSystem filesystem.Repository
+}
+
+func NewService(fileSystem filesystem.Repository) *Service {
+	return &Service{
+		fileSystem: fileSystem,
+	}
+}
+
+func (s *Service) Execute(srcBodyDir string, threshold int) (string, error) {
 	trimmedSrcBodyDir := strings.TrimSpace(srcBodyDir)
 	if trimmedSrcBodyDir == "" {
 		return "", fmt.Errorf("src-body-dir パラメータは必須です")

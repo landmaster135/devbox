@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	common"github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/common"
 )
 
 func TestService_CraftMarkdown_Normal(t *testing.T) {
@@ -509,7 +511,7 @@ func TestMapCategoryTag(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got, err := mapCategoryTag(tt.input)
+			got, err := common.MapCategoryTag(tt.input)
 			if tt.wantFail {
 				if err == nil {
 					t.Fatalf("expected error")
@@ -541,7 +543,7 @@ func TestMapOwningStatusTag(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := mapOwningStatusTag(tt.input)
+		got, err := common.MapOwningStatusTag(tt.input)
 		if tt.wantFail {
 			if err == nil {
 				t.Fatalf("expected error for %q", tt.input)
@@ -572,7 +574,7 @@ func TestMapColorTag(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := mapColorTag(tt.input)
+		got, err := common.MapColorTag(tt.input)
 		if tt.wantFail {
 			if err == nil {
 				t.Fatalf("expected error for %q", tt.input)
@@ -591,7 +593,7 @@ func TestMapColorTag(t *testing.T) {
 func TestParseConNumber(t *testing.T) {
 	t.Parallel()
 
-	number, err := parseConNumber("CO000012345")
+	number, err := common.ParseConNumber("CO000012345")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -599,7 +601,7 @@ func TestParseConNumber(t *testing.T) {
 		t.Fatalf("number = %d, want 12345", number)
 	}
 
-	_, err = parseConNumber("invalid")
+	_, err = common.ParseConNumber("invalid")
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -645,7 +647,7 @@ func TestResolveFrequentTag(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := resolveFrequentTag(tt.tag, frequentTags)
+			got := common.ResolveFrequentTag(tt.tag, frequentTags)
 			if got != tt.want {
 				t.Fatalf("resolveFrequentTag(%q) = %q, want %q", tt.tag, got, tt.want)
 			}
@@ -671,7 +673,7 @@ func TestNormalizeFrontMatterURL(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := normalizeFrontMatterURL(tt.input)
+			got := common.NormalizeFrontMatterURL(tt.input)
 			if got != tt.want {
 				t.Fatalf("normalizeFrontMatterURL(%q) = %q, want %q", tt.input, got, tt.want)
 			}

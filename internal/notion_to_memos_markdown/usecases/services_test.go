@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
+	common "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/common"
 )
 
 func TestDistributeFiles(t *testing.T) {
@@ -201,7 +202,7 @@ func TestSanitizeCategory(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := sanitizeCategory(tt.category)
+			got := common.SanitizeCategory(tt.category)
 			if got != tt.want {
 				t.Fatalf("sanitizeCategory(%q) = %q, want %q", tt.category, got, tt.want)
 			}
@@ -222,7 +223,7 @@ func TestCountSrcBodyMetrics(t *testing.T) {
 		"CO0003": {},
 	}
 
-	total, mapped, unmapped := countSrcBodyMetrics(srcBodyFiles, jsonConIDSet)
+	total, mapped, unmapped := common.CountSrcBodyMetrics(srcBodyFiles, jsonConIDSet)
 	if total != 3 || mapped != 2 || unmapped != 1 {
 		t.Fatalf("metrics = (%d,%d,%d), want (3,2,1)", total, mapped, unmapped)
 	}
