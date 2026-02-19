@@ -87,15 +87,18 @@ func TestNewConfig(t *testing.T) {
 		outDir         string
 		conNumberStart int
 		conNumberEnd   int
+		threshold      int
+		wantPageType   string
 		wantErr        string
 	}{
 		{
-			name:        "distribute normal",
-			operation:   OperationDistributeFiles,
-			pageType:    PageTypeContent,
-			srcJSONFile: "/tmp/contents.json",
-			srcBodyDir:  "/tmp/body",
-			outDir:      "/tmp/out",
+			name:         "distribute normal",
+			operation:    OperationDistributeFiles,
+			pageType:     PageTypeContent,
+			srcJSONFile:  "/tmp/contents.json",
+			srcBodyDir:   "/tmp/body",
+			outDir:       "/tmp/out",
+			wantPageType: PageTypeContent,
 		},
 		{
 			name:           "craft normal",
@@ -106,6 +109,14 @@ func TestNewConfig(t *testing.T) {
 			outDir:         "/tmp/out",
 			conNumberStart: 1,
 			conNumberEnd:   10,
+			wantPageType:   PageTypeContent,
+		},
+		{
+			name:         "check body length normal",
+			operation:    OperationCheckBodyLength,
+			srcBodyDir:   "/tmp/body",
+			threshold:    1000,
+			wantPageType: "",
 		},
 		{
 			name:        "missing operation",
@@ -171,6 +182,19 @@ func TestNewConfig(t *testing.T) {
 			wantErr:     "out-dir パラメータは必須です",
 		},
 		{
+			name:      "check body length missing src body dir",
+			operation: OperationCheckBodyLength,
+			threshold: 1000,
+			wantErr:   "src-body-dir パラメータは必須です",
+		},
+		{
+			name:       "check body length invalid threshold",
+			operation:  OperationCheckBodyLength,
+			srcBodyDir: "/tmp/body",
+			threshold:  -1,
+			wantErr:    "threshold パラメータは0以上で必須です",
+		},
+		{
 			name:           "craft missing con number start",
 			operation:      OperationCraftMarkdown,
 			pageType:       PageTypeContent,
@@ -179,6 +203,7 @@ func TestNewConfig(t *testing.T) {
 			outDir:         "/tmp/out",
 			conNumberStart: 0,
 			conNumberEnd:   10,
+			wantPageType:   PageTypeContent,
 			wantErr:        "con_number_start パラメータは1以上で必須です",
 		},
 		{
@@ -190,6 +215,7 @@ func TestNewConfig(t *testing.T) {
 			outDir:         "/tmp/out",
 			conNumberStart: 1,
 			conNumberEnd:   0,
+			wantPageType:   PageTypeContent,
 			wantErr:        "con_number_end パラメータは1以上で必須です",
 		},
 		{
@@ -201,6 +227,7 @@ func TestNewConfig(t *testing.T) {
 			outDir:         "/tmp/out",
 			conNumberStart: 10,
 			conNumberEnd:   1,
+			wantPageType:   PageTypeContent,
 			wantErr:        "con_number_start は con_number_end 以下である必要があります",
 		},
 	}
@@ -220,6 +247,7 @@ func TestNewConfig(t *testing.T) {
 				tt.outDir,
 				tt.conNumberStart,
 				tt.conNumberEnd,
+				tt.threshold,
 			)
 			if tt.wantErr != "" {
 				if err == nil || err.Error() != tt.wantErr {
@@ -234,8 +262,8 @@ func TestNewConfig(t *testing.T) {
 			if got.Operation != tt.operation {
 				t.Fatalf("Operation = %q, want %q", got.Operation, tt.operation)
 			}
-			if got.PageType != PageTypeContent {
-				t.Fatalf("PageType = %q", got.PageType)
+			if got.PageType != tt.wantPageType {
+				t.Fatalf("PageType = %q, want %q", got.PageType, tt.wantPageType)
 			}
 			if got.SkipsNoSrcBody != tt.skipsNoSrcBody {
 				t.Fatalf("SkipsNoSrcBody = %v, want %v", got.SkipsNoSrcBody, tt.skipsNoSrcBody)
@@ -325,6 +353,35 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if cfg.SrcJSONFile != "/tmp/contents.json" {
 			t.Fatalf("SrcJSONFile = %q", cfg.SrcJSONFile)
+		}
+	})
+
+	t.Run("check body length normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationCheckBodyLength)
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetInt("threshold", 120)
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Operation != OperationCheckBodyLength {
+			t.Fatalf("Operation = %q", cfg.Operation)
+		}
+		if cfg.Threshold != 120 {
+			t.Fatalf("Threshold = %d, want 120", cfg.Threshold)
+		}
+	})
+
+	t.Run("check body length missing threshold", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationCheckBodyLength)
+		parser.SetString("src-body-dir", "/tmp/body")
+
+		_, err := ParseFlagsWithParser(parser)
+		if err == nil || err.Error() != "threshold パラメータは0以上で必須です" {
+			t.Fatalf("error = %v", err)
 		}
 	})
 

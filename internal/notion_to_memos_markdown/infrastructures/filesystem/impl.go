@@ -118,6 +118,30 @@ func (r *osRepository) ListMarkdownFiles(dirPath string) ([]string, error) {
 	return files, nil
 }
 
+func (r *osRepository) ListFilesRecursive(dirPath string) ([]string, error) {
+	cleanDirPath, err := sanitizePath(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make([]string, 0)
+	if err := filepath.WalkDir(cleanDirPath, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("ディレクトリの再帰読み取りに失敗しました (%s): %w", cleanDirPath, err)
+	}
+
+	sort.Strings(files)
+	return files, nil
+}
+
 func sanitizePath(path string) (string, error) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {

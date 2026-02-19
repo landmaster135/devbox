@@ -9,6 +9,7 @@ type Repository interface {
 	FileExists(path string) (bool, error)
 	CopyFile(srcPath, dstPath string) error
 	ListMarkdownFiles(dirPath string) ([]string, error)
+	ListFilesRecursive(dirPath string) ([]string, error)
 }
 
 func NewRepository() Repository {

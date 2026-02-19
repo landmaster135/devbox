@@ -16,20 +16,26 @@
   - `page_title` を H1 見出しとして先頭に追加
   - front matter（`bought_at`, `score_of_100`, `price_yen`, `con_id`, `url`）を追加
   - `tags.md` の `## Frequent Tags` セクションを使ってタグを解決し、分類タグ群を追加
+- `--operation=check-body-length`
+  - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
+  - ファイル本文の文字数をルーン数でカウントする
+  - `--threshold` より大きい文字数のファイルを列挙する
+  - 閾値超過ファイルの総数を表示する
 
 ## フラグ
 
 | フラグ | 必須 | 説明 |
 | --- | --- | --- |
-| `--operation` | 必須 | 操作タイプ。`distribute-files` または `craft-markdown` |
-| `--page-type` | 必須 | ページタイプ。`content` を指定 |
+| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length` |
+| `--page-type` | `distribute-files`/`craft-markdown`で必須 | ページタイプ。`content` を指定 |
 | `--category` | `craft-markdown`で任意 | 対象 category。指定時は一致する Content のみ処理 |
 | `--skips-no-src-body` | `craft-markdown`で任意 | `true` ならコピー元Markdown未存在の Content をスキップ（デフォルト: `false`） |
 | `--con_number_start` | `craft-markdown`で必須 | 対象 `con_id` 範囲の開始番号（1以上） |
 | `--con_number_end` | `craft-markdown`で必須 | 対象 `con_id` 範囲の終了番号（1以上） |
-| `--src-json-file` | 必須 | Content JSON ファイルのパス |
-| `--src-body-dir` | 必須 | `con_id.md` があるディレクトリ |
-| `--out-dir` | 必須 | 出力先ルートディレクトリ |
+| `--threshold` | `check-body-length`で必須 | 文字数の閾値（0以上） |
+| `--src-json-file` | `distribute-files`/`craft-markdown`で必須 | Content JSON ファイルのパス |
+| `--src-body-dir` | 必須 | 入力ディレクトリ |
+| `--out-dir` | `distribute-files`/`craft-markdown`で必須 | 出力先ルートディレクトリ |
 | `-help`, `-h` | 任意 | ヘルプ表示 |
 
 ## 使用例
@@ -60,6 +66,15 @@ go run ./cmd/cli/notion-to-memos-markdown \
   --out-dir=/tmp/notion-memos-crafted
 ```
 
+`check-body-length`:
+
+```bash
+go run ./cmd/cli/notion-to-memos-markdown \
+  --operation=check-body-length \
+  --src-body-dir=$HOME/path/to/dir \
+  --threshold=1000
+```
+
 ## 出力例
 
 成功時:
@@ -73,6 +88,15 @@ src-body-dir基準: 総md件数=130, JSON対応=110, JSON未対応=20
 ```text
 処理完了
 対象件数=42, 加工成功=42
+```
+
+```text
+処理完了
+対象ファイル総数=4
+閾値超過ファイル総数=2
+閾値超過ファイル一覧:
+/tmp/notion-body/CO0001.md: 1201
+/tmp/notion-body/nested/notes.txt: 1490
 ```
 
 エラー時:

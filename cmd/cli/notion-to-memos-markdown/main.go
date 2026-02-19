@@ -38,6 +38,8 @@ func main() {
 			cfg.SrcBodyDir,
 			cfg.OutDir,
 		)
+	case config.OperationCheckBodyLength:
+		result, err = service.CheckBodyLength(cfg.SrcBodyDir, cfg.Threshold)
 	default:
 		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}

@@ -13,19 +13,21 @@ type CopyFileCall struct {
 }
 
 type MockRepository struct {
-	ReadFileFunc          func(path string) ([]byte, error)
-	WriteFileFunc         func(path string, data []byte) error
-	MkdirAllFunc          func(path string, perm os.FileMode) error
-	FileExistsFunc        func(path string) (bool, error)
-	CopyFileFunc          func(srcPath, dstPath string) error
-	ListMarkdownFilesFunc func(dirPath string) ([]string, error)
+	ReadFileFunc           func(path string) ([]byte, error)
+	WriteFileFunc          func(path string, data []byte) error
+	MkdirAllFunc           func(path string, perm os.FileMode) error
+	FileExistsFunc         func(path string) (bool, error)
+	CopyFileFunc           func(srcPath, dstPath string) error
+	ListMarkdownFilesFunc  func(dirPath string) ([]string, error)
+	ListFilesRecursiveFunc func(dirPath string) ([]string, error)
 
-	ReadFileCalls          []string
-	WriteFileCalls         []WriteFileCall
-	MkdirAllCalls          []MkdirAllCall
-	FileExistsCalls        []string
-	CopyFileCalls          []CopyFileCall
-	ListMarkdownFilesCalls []string
+	ReadFileCalls           []string
+	WriteFileCalls          []WriteFileCall
+	MkdirAllCalls           []MkdirAllCall
+	FileExistsCalls         []string
+	CopyFileCalls           []CopyFileCall
+	ListMarkdownFilesCalls  []string
+	ListFilesRecursiveCalls []string
 }
 
 type WriteFileCall struct {
@@ -87,6 +89,14 @@ func (m *MockRepository) ListMarkdownFiles(dirPath string) ([]string, error) {
 	m.ListMarkdownFilesCalls = append(m.ListMarkdownFilesCalls, dirPath)
 	if m.ListMarkdownFilesFunc != nil {
 		return m.ListMarkdownFilesFunc(dirPath)
+	}
+	return []string{}, nil
+}
+
+func (m *MockRepository) ListFilesRecursive(dirPath string) ([]string, error) {
+	m.ListFilesRecursiveCalls = append(m.ListFilesRecursiveCalls, dirPath)
+	if m.ListFilesRecursiveFunc != nil {
+		return m.ListFilesRecursiveFunc(dirPath)
 	}
 	return []string{}, nil
 }
