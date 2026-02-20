@@ -50,6 +50,14 @@ func main() {
 			cfg.SrcJSONFile,
 			cfg.SrcResourceDir,
 		)
+	case config.OperationMigrateToMemos:
+		result, err = service.MigrateToMemos(
+			cfg.PageType,
+			cfg.BaseURL,
+			cfg.APIToken,
+			cfg.SrcBodyDir,
+			cfg.SrcResourceDir,
+		)
 	default:
 		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}

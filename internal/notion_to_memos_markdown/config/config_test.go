@@ -80,6 +80,8 @@ func TestNewConfig(t *testing.T) {
 		name           string
 		operation      string
 		pageType       string
+		baseURL        string
+		apiToken       string
 		category       string
 		skipsNoSrcBody bool
 		srcJSONFile    string
@@ -278,6 +280,56 @@ func TestNewConfig(t *testing.T) {
 			conNumberEnd:   1,
 			wantErr:        "con_number_start は con_number_end 以下である必要があります",
 		},
+		{
+			name:           "migrate to memos normal",
+			operation:      OperationMigrateToMemos,
+			pageType:       PageTypeContent,
+			baseURL:        "https://memos.example.com",
+			apiToken:       "token",
+			srcBodyDir:     "/tmp/body",
+			srcResourceDir: "/tmp/resource",
+			wantPageType:   PageTypeContent,
+		},
+		{
+			name:           "migrate to memos missing base url",
+			operation:      OperationMigrateToMemos,
+			pageType:       PageTypeContent,
+			baseURL:        " ",
+			apiToken:       "token",
+			srcBodyDir:     "/tmp/body",
+			srcResourceDir: "/tmp/resource",
+			wantErr:        "base-url パラメータは必須です",
+		},
+		{
+			name:           "migrate to memos missing api token",
+			operation:      OperationMigrateToMemos,
+			pageType:       PageTypeContent,
+			baseURL:        "https://memos.example.com",
+			apiToken:       " ",
+			srcBodyDir:     "/tmp/body",
+			srcResourceDir: "/tmp/resource",
+			wantErr:        "api-token パラメータは必須です",
+		},
+		{
+			name:           "migrate to memos missing src body dir",
+			operation:      OperationMigrateToMemos,
+			pageType:       PageTypeContent,
+			baseURL:        "https://memos.example.com",
+			apiToken:       "token",
+			srcBodyDir:     " ",
+			srcResourceDir: "/tmp/resource",
+			wantErr:        "src-body-dir パラメータは必須です",
+		},
+		{
+			name:           "migrate to memos missing src resource dir",
+			operation:      OperationMigrateToMemos,
+			pageType:       PageTypeContent,
+			baseURL:        "https://memos.example.com",
+			apiToken:       "token",
+			srcBodyDir:     "/tmp/body",
+			srcResourceDir: " ",
+			wantErr:        "src-resource-dir パラメータは必須です",
+		},
 	}
 
 	for _, tt := range tests {
@@ -288,6 +340,8 @@ func TestNewConfig(t *testing.T) {
 			got, err := NewConfig(
 				tt.operation,
 				tt.pageType,
+				tt.baseURL,
+				tt.apiToken,
 				tt.category,
 				tt.skipsNoSrcBody,
 				tt.srcJSONFile,
@@ -314,6 +368,12 @@ func TestNewConfig(t *testing.T) {
 			}
 			if got.PageType != tt.wantPageType {
 				t.Fatalf("PageType = %q, want %q", got.PageType, tt.wantPageType)
+			}
+			if tt.baseURL != "" && got.BaseURL != tt.baseURL {
+				t.Fatalf("BaseURL = %q, want %q", got.BaseURL, tt.baseURL)
+			}
+			if tt.apiToken != "" && got.APIToken != tt.apiToken {
+				t.Fatalf("APIToken = %q, want %q", got.APIToken, tt.apiToken)
 			}
 			if got.SkipsNoSrcBody != tt.skipsNoSrcBody {
 				t.Fatalf("SkipsNoSrcBody = %v, want %v", got.SkipsNoSrcBody, tt.skipsNoSrcBody)
@@ -501,6 +561,50 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if cfg.ConNumberStart != 100 || cfg.ConNumberEnd != 200 {
 			t.Fatalf("con range = (%d,%d), want (100,200)", cfg.ConNumberStart, cfg.ConNumberEnd)
+		}
+	})
+
+	t.Run("migrate to memos normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationMigrateToMemos)
+		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("base-url", "https://memos.example.com")
+		parser.SetString("api-token", "token")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("src-resource-dir", "/tmp/resource")
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Operation != OperationMigrateToMemos {
+			t.Fatalf("Operation = %q", cfg.Operation)
+		}
+		if cfg.BaseURL != "https://memos.example.com" {
+			t.Fatalf("BaseURL = %q, want https://memos.example.com", cfg.BaseURL)
+		}
+		if cfg.APIToken != "token" {
+			t.Fatalf("APIToken = %q, want token", cfg.APIToken)
+		}
+		if cfg.SrcBodyDir != "/tmp/body" {
+			t.Fatalf("SrcBodyDir = %q, want /tmp/body", cfg.SrcBodyDir)
+		}
+		if cfg.SrcResourceDir != "/tmp/resource" {
+			t.Fatalf("SrcResourceDir = %q, want /tmp/resource", cfg.SrcResourceDir)
+		}
+	})
+
+	t.Run("migrate to memos missing api token", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationMigrateToMemos)
+		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("base-url", "https://memos.example.com")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("src-resource-dir", "/tmp/resource")
+
+		_, err := ParseFlagsWithParser(parser)
+		if err == nil || err.Error() != "api-token パラメータは必須です" {
+			t.Fatalf("error = %v", err)
 		}
 	})
 

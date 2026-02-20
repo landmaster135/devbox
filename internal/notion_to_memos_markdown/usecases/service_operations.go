@@ -19,3 +19,7 @@ func (s *Service) GrepStr(srcBodyDir, targetStr string) (string, error) {
 func (s *Service) RenameBodiesByCategoryID(pageType string, conNumberStart, conNumberEnd int, srcJSONFile, srcResourceDir string) (string, error) {
 	return s.renameBodiesOperation.Execute(pageType, conNumberStart, conNumberEnd, srcJSONFile, srcResourceDir)
 }
+
+func (s *Service) MigrateToMemos(pageType, baseURL, apiToken, srcBodyDir, srcResourceDir string) (string, error) {
+	return s.migrateToMemosOperation.Execute(pageType, baseURL, apiToken, srcBodyDir, srcResourceDir)
+}

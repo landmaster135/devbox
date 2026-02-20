@@ -30,13 +30,21 @@
   - `--src-resource-dir` 配下を再帰的に走査して全ファイルを対象にする
   - ファイル名の先頭プレフィックスが `category_id` と一致する場合、同じ部分を `con_id` へ置換してリネームする
   - 処理件数（対象Content件数、対象ファイル総数、リネーム成功数、スキップ数）を表示する
+- `--operation=migrate-to-memos`
+  - `--src-body-dir` 配下を再帰走査して Markdown ファイル（`.md`）を対象にする
+  - body ファイルごとに Memos API でメモを作成し、レスポンスから `memo.name` を取得する
+  - body ファイル名（拡張子除去）を `con_id` として扱う
+  - `--src-resource-dir` 配下を再帰走査し、ファイル名が同じ `con_id` プレフィックスのリソースを作成・添付する
+  - 一致リソースが 0 件の場合は添付 API を呼ばずにスキップする
 
 ## フラグ
 
 | フラグ | 必須 | 説明 |
 | --- | --- | --- |
-| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length`、`grep-str`、`rename-bodies-by-category-id` |
-| `--page-type` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`で必須 | ページタイプ。`content` を指定 |
+| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length`、`grep-str`、`rename-bodies-by-category-id`、`migrate-to-memos` |
+| `--page-type` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`/`migrate-to-memos`で必須 | ページタイプ。`content` を指定 |
+| `--base-url` | `migrate-to-memos`で必須 | Memos API のベースURL（例: `https://memos.example.com`） |
+| `--api-token` | `migrate-to-memos`で必須 | Memos API の Bearer トークン |
 | `--category` | `craft-markdown`で任意 | 対象 category。指定時は一致する Content のみ処理 |
 | `--skips-no-src-body` | `craft-markdown`で任意 | `true` ならコピー元Markdown未存在の Content をスキップ（デフォルト: `false`） |
 | `--con_number_start` | `craft-markdown`/`rename-bodies-by-category-id`で必須 | 対象 `con_id` 範囲の開始番号（1以上） |
@@ -44,8 +52,8 @@
 | `--threshold` | `check-body-length`で必須 | 文字数の閾値（0以上） |
 | `--target-str` | `grep-str`で必須 | 検索対象の文字列 |
 | `--src-json-file` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`で必須 | Content JSON ファイルのパス |
-| `--src-body-dir` | `distribute-files`/`craft-markdown`/`check-body-length`/`grep-str`で必須 | 入力ディレクトリ |
-| `--src-resource-dir` | `rename-bodies-by-category-id`で必須 | リネーム対象リソースの入力ディレクトリ |
+| `--src-body-dir` | `distribute-files`/`craft-markdown`/`check-body-length`/`grep-str`/`migrate-to-memos`で必須 | 入力ディレクトリ |
+| `--src-resource-dir` | `rename-bodies-by-category-id`/`migrate-to-memos`で必須 | リソース入力ディレクトリ |
 | `--out-dir` | `distribute-files`/`craft-markdown`で必須 | 出力先ルートディレクトリ |
 | `-help`, `-h` | 任意 | ヘルプ表示 |
 
@@ -107,6 +115,18 @@ go run ./cmd/cli/notion-to-memos-markdown \
   --src-resource-dir=$HOME/path/to/resource_dir
 ```
 
+`migrate-to-memos`:
+
+```bash
+go run ./cmd/cli/notion-to-memos-markdown \
+  --operation=migrate-to-memos \
+  --page-type=content \
+  --base-url=https://memos.example.com \
+  --api-token=$MEMOS_TOKEN \
+  --src-body-dir=$HOME/path/to/body_dir \
+  --src-resource-dir=$HOME/path/to/resource_dir
+```
+
 ## 出力例
 
 成功時:
@@ -147,6 +167,14 @@ src-body-dir基準: 総md件数=130, JSON対応=110, JSON未対応=20
 リネーム成功=31
 スキップ(プレフィックスなし)=2
 スキップ(マップ未対応)=42
+```
+
+```text
+処理完了
+対象body件数=120
+メモ作成成功=120
+添付ファイル総数=245
+添付スキップ(リソースなし)=18
 ```
 
 エラー時:

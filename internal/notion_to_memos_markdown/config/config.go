@@ -12,12 +12,15 @@ const (
 	OperationCheckBodyLength          = "check-body-length"
 	OperationGrepStr                  = "grep-str"
 	OperationRenameBodiesByCategoryID = "rename-bodies-by-category-id"
+	OperationMigrateToMemos           = "migrate-to-memos"
 	PageTypeContent                   = "content"
 )
 
 type Config struct {
 	Operation      string
 	PageType       string
+	BaseURL        string
+	APIToken       string
 	Category       string
 	SkipsNoSrcBody bool
 	SrcJSONFile    string
@@ -31,7 +34,7 @@ type Config struct {
 	Help           bool
 }
 
-func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, srcResourceDir, outDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
+func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, srcResourceDir, outDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
 	trimmedOperation := strings.TrimSpace(operation)
 	if trimmedOperation == "" {
 		return nil, fmt.Errorf("operation パラメータは必須です")
@@ -40,11 +43,14 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 		trimmedOperation != OperationCraftMarkdown &&
 		trimmedOperation != OperationCheckBodyLength &&
 		trimmedOperation != OperationGrepStr &&
-		trimmedOperation != OperationRenameBodiesByCategoryID {
+		trimmedOperation != OperationRenameBodiesByCategoryID &&
+		trimmedOperation != OperationMigrateToMemos {
 		return nil, fmt.Errorf("未対応のoperationです: %s", trimmedOperation)
 	}
 
 	trimmedPageType := strings.TrimSpace(pageType)
+	trimmedBaseURL := strings.TrimSpace(baseURL)
+	trimmedAPIToken := strings.TrimSpace(apiToken)
 	trimmedSrcJSONFile := strings.TrimSpace(srcJSONFile)
 	trimmedSrcBodyDir := strings.TrimSpace(srcBodyDir)
 	trimmedSrcResourceDir := strings.TrimSpace(srcResourceDir)
@@ -95,6 +101,25 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 		if trimmedTargetStr == "" {
 			return nil, fmt.Errorf("target-str パラメータは必須です")
 		}
+	case OperationMigrateToMemos:
+		if trimmedPageType == "" {
+			return nil, fmt.Errorf("page-type パラメータは必須です")
+		}
+		if trimmedPageType != PageTypeContent {
+			return nil, fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
+		}
+		if trimmedBaseURL == "" {
+			return nil, fmt.Errorf("base-url パラメータは必須です")
+		}
+		if trimmedAPIToken == "" {
+			return nil, fmt.Errorf("api-token パラメータは必須です")
+		}
+		if trimmedSrcBodyDir == "" {
+			return nil, fmt.Errorf("src-body-dir パラメータは必須です")
+		}
+		if trimmedSrcResourceDir == "" {
+			return nil, fmt.Errorf("src-resource-dir パラメータは必須です")
+		}
 	}
 
 	if trimmedOperation == OperationCraftMarkdown || trimmedOperation == OperationRenameBodiesByCategoryID {
@@ -112,6 +137,8 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 	return &Config{
 		Operation:      trimmedOperation,
 		PageType:       trimmedPageType,
+		BaseURL:        trimmedBaseURL,
+		APIToken:       trimmedAPIToken,
 		Category:       strings.TrimSpace(category),
 		SkipsNoSrcBody: skipsNoSrcBody,
 		SrcJSONFile:    trimmedSrcJSONFile,
@@ -133,6 +160,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
 		operation      string
 		pageType       string
+		baseURL        string
+		apiToken       string
 		category       string
 		skipsNoSrcBody bool
 		srcJSONFile    string
@@ -148,12 +177,14 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	parser.StringVar(&operation, "operation", "", "操作タイプ（必須）")
 	parser.StringVar(&pageType, "page-type", "", "ページタイプ（必須）")
+	parser.StringVar(&baseURL, "base-url", "", "Memos API のベースURL（migrate-to-memosで必須）")
+	parser.StringVar(&apiToken, "api-token", "", "Memos API のトークン（migrate-to-memosで必須）")
 	parser.StringVar(&category, "category", "", "対象category（craft-markdownで任意）")
 	parser.BoolVar(&skipsNoSrcBody, "skips-no-src-body", false, "コピー元MarkdownがないContentをスキップする（craft-markdownで任意）")
 	parser.StringVar(&srcJSONFile, "src-json-file", "", "Content JSONファイルのパス（必須）")
 	parser.StringVar(&srcJSONFile, "src-json-path", "", "Content JSONファイルのパス（後方互換）")
-	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（distribute-files/craft-markdown/check-body-length/grep-strで必須）")
-	parser.StringVar(&srcResourceDir, "src-resource-dir", "", "リソースファイル群のディレクトリ（rename-bodies-by-category-idで必須）")
+	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（distribute-files/craft-markdown/check-body-length/grep-str/migrate-to-memosで必須）")
+	parser.StringVar(&srcResourceDir, "src-resource-dir", "", "リソースファイル群のディレクトリ（rename-bodies-by-category-id/migrate-to-memosで必須）")
 	parser.StringVar(&targetStr, "target-str", "", "検索文字列（grep-strで必須）")
 	parser.StringVar(&outDir, "out-dir", "", "カテゴリ別出力先ディレクトリ（必須）")
 	parser.IntVar(&conNumberStart, "con_number_start", 0, "con_id範囲の開始番号（craft-markdown/rename-bodies-by-category-idで必須）")
@@ -173,6 +204,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	return NewConfig(
 		operation,
 		pageType,
+		baseURL,
+		apiToken,
 		category,
 		skipsNoSrcBody,
 		srcJSONFile,
@@ -195,10 +228,13 @@ func PrintUsage() {
   %s --operation=check-body-length --src-body-dir=./tmp/body --threshold=1000
   %s --operation=grep-str --src-body-dir=./tmp/body --target-str=TODO
   %s --operation=rename-bodies-by-category-id --page-type=content --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-resource-dir=./tmp/resources
+  %s --operation=migrate-to-memos --page-type=content --base-url=https://memos.example.com --api-token=token --src-body-dir=./tmp/body --src-resource-dir=./tmp/resources
 
 オプション:
-  --operation        操作タイプ（必須: distribute-files, craft-markdown, check-body-length, grep-str, rename-bodies-by-category-id）
-  --page-type        ページタイプ（distribute-files/craft-markdown/rename-bodies-by-category-idで必須: content）
+  --operation        操作タイプ（必須: distribute-files, craft-markdown, check-body-length, grep-str, rename-bodies-by-category-id, migrate-to-memos）
+  --page-type        ページタイプ（distribute-files/craft-markdown/rename-bodies-by-category-id/migrate-to-memosで必須: content）
+  --base-url         Memos API のベースURL（migrate-to-memosで必須）
+  --api-token        Memos API のトークン（migrate-to-memosで必須）
   --category         対象category（craft-markdownで任意。指定時は一致するContentのみ処理）
   --skips-no-src-body コピー元Markdownなしをスキップするか（craft-markdownで任意。デフォルト:false）
   --con_number_start craft-markdown/rename-bodies-by-category-id時の開始con番号（必須）
@@ -206,9 +242,9 @@ func PrintUsage() {
   --threshold        文字数の閾値（check-body-lengthで必須、0以上）
   --target-str       検索文字列（grep-strで必須）
   --src-json-file    Content JSONファイルのパス（distribute-files/craft-markdown/rename-bodies-by-category-idで必須）
-  --src-body-dir     入力ディレクトリ（distribute-files/craft-markdown/check-body-length/grep-strで必須）
-  --src-resource-dir リソース入力ディレクトリ（rename-bodies-by-category-idで必須）
+  --src-body-dir     入力ディレクトリ（distribute-files/craft-markdown/check-body-length/grep-str/migrate-to-memosで必須）
+  --src-resource-dir リソース入力ディレクトリ（rename-bodies-by-category-id/migrate-to-memosで必須）
   --out-dir          出力先ルートディレクトリ（distribute-files/craft-markdownで必須）
   -help, -h          このヘルプを表示
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
