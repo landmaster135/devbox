@@ -401,6 +401,121 @@ func TestLoadFrequentTags(t *testing.T) {
 	})
 }
 
+func TestLoadArtifactTags(t *testing.T) {
+	t.Parallel()
+
+	t.Run("normal and dedupe", func(t *testing.T) {
+		t.Parallel()
+
+		mockRepo := &filesystem.MockRepository{}
+		mockRepo.ReadFileFunc = func(path string) ([]byte, error) {
+			return []byte("# tags\n## Artifact\n#06-af/life #06-af/movie #06-af/life\n### ignored\n#06-af/product\n## Frequent Tags\n#alpha\n"), nil
+		}
+
+		got, err := LoadArtifactTags(mockRepo, "/tmp/tags.md")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		want := []string{"06-af/life", "06-af/movie", "06-af/product"}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("LoadArtifactTags() = %#v, want %#v", got, want)
+		}
+	})
+
+	t.Run("section not found", func(t *testing.T) {
+		t.Parallel()
+
+		mockRepo := &filesystem.MockRepository{}
+		mockRepo.ReadFileFunc = func(path string) ([]byte, error) {
+			return []byte("# tags\n## Frequent Tags\n#alpha\n"), nil
+		}
+
+		_, err := LoadArtifactTags(mockRepo, "/tmp/tags.md")
+		if err == nil || !strings.Contains(err.Error(), "## Artifact") {
+			t.Fatalf("error = %v", err)
+		}
+	})
+}
+
+func TestBuildTagsForArtifact(t *testing.T) {
+	t.Parallel()
+
+	artifact := domain.Artifact{
+		PageTitle: "devbox helper",
+		Category:  "system",
+		Tags: []domain.ArtifactTag{
+			{PageTitle: "Golang"},
+			{PageTitle: "programming"},
+			{PageTitle: "Google"},
+			{PageTitle: "CustomTag"},
+		},
+	}
+	frequentTags := []string{"31-programming/language/golang"}
+	artifactTags := []string{"06-af/life", "06-af/system/devbox"}
+
+	got := BuildTagsForArtifact(artifact, frequentTags, artifactTags)
+	want := []string{
+		RequiredBackupTag,
+		"31-programming/language/golang",
+		"customtag",
+		"06-af/system/devbox",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("BuildTagsForArtifact() = %#v, want %#v", got, want)
+	}
+	for _, tag := range got {
+		if tag == "programming" {
+			t.Fatalf("ignored tag should not be included: %#v", got)
+		}
+		if tag == "google" {
+			t.Fatalf("ignored tag should not be included: %#v", got)
+		}
+	}
+}
+
+func TestBuildTagsForArtifact_ArticleAndOtherCategory(t *testing.T) {
+	t.Parallel()
+
+	article := domain.Artifact{
+		PageTitle: "note活動（投稿部）",
+		Category:  "article",
+	}
+	articleTags := BuildTagsForArtifact(article, nil, nil)
+	if !reflect.DeepEqual(articleTags, []string{RequiredBackupTag, "06-af/article/note"}) {
+		t.Fatalf("article tags = %#v", articleTags)
+	}
+
+	other := domain.Artifact{
+		PageTitle: "movie sample",
+		Category:  "movie",
+	}
+	otherTags := BuildTagsForArtifact(other, nil, []string{"06-af/life", "06-af/movie"})
+	if !reflect.DeepEqual(otherTags, []string{RequiredBackupTag, "06-af/movie"}) {
+		t.Fatalf("other tags = %#v", otherTags)
+	}
+}
+
+func TestResolveFrequentTagByPartialMatch(t *testing.T) {
+	t.Parallel()
+
+	frequentTags := []string{
+		"31-programming/language/golang",
+		"31-programming/language/typescript",
+		"36-tool/utility/epicgames",
+	}
+
+	if got := ResolveFrequentTagByPartialMatch("golang", frequentTags); got != "31-programming/language/golang" {
+		t.Fatalf("got = %q", got)
+	}
+	if got := ResolveFrequentTagByPartialMatch("custom", frequentTags); got != "custom" {
+		t.Fatalf("got = %q", got)
+	}
+	if got := ResolveFrequentTagByPartialMatch("game", frequentTags); got != "game" {
+		t.Fatalf("got = %q", got)
+	}
+}
+
 func TestUniqueTags(t *testing.T) {
 	t.Parallel()
 

@@ -117,6 +117,17 @@ func TestNewConfig(t *testing.T) {
 			wantPageType:   PageTypeContent,
 		},
 		{
+			name:           "craft artifact normal",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeArtifact,
+			srcJSONFile:    "/tmp/artifacts.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			conNumberStart: 1,
+			conNumberEnd:   10,
+			wantPageType:   PageTypeArtifact,
+		},
+		{
 			name:           "rename bodies by category id normal",
 			operation:      OperationRenameBodiesByCategoryID,
 			pageType:       PageTypeContent,
@@ -281,6 +292,16 @@ func TestNewConfig(t *testing.T) {
 			wantErr:        "con_number_start は con_number_end 以下である必要があります",
 		},
 		{
+			name:           "rename invalid page type",
+			operation:      OperationRenameBodiesByCategoryID,
+			pageType:       PageTypeArtifact,
+			srcJSONFile:    "/tmp/contents.json",
+			srcResourceDir: "/tmp/resource",
+			conNumberStart: 1,
+			conNumberEnd:   10,
+			wantErr:        "未対応のpage-typeです: artifact",
+		},
+		{
 			name:           "migrate to memos normal",
 			operation:      OperationMigrateToMemos,
 			pageType:       PageTypeContent,
@@ -329,6 +350,16 @@ func TestNewConfig(t *testing.T) {
 			srcBodyDir:     "/tmp/body",
 			srcResourceDir: " ",
 			wantErr:        "src-resource-dir パラメータは必須です",
+		},
+		{
+			name:           "migrate to memos invalid page type",
+			operation:      OperationMigrateToMemos,
+			pageType:       PageTypeArtifact,
+			baseURL:        "https://memos.example.com",
+			apiToken:       "token",
+			srcBodyDir:     "/tmp/body",
+			srcResourceDir: "/tmp/resource",
+			wantErr:        "未対応のpage-typeです: artifact",
 		},
 	}
 
@@ -425,6 +456,31 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if cfg.SkipsNoSrcBody {
 			t.Fatalf("SkipsNoSrcBody = true, want false")
+		}
+	})
+
+	t.Run("craft artifact normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationCraftMarkdown)
+		parser.SetString("page-type", PageTypeArtifact)
+		parser.SetString("src-json-path", "/tmp/artifacts.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("out-dir", "/tmp/out")
+		parser.SetInt("con_number_start", 10)
+		parser.SetInt("con_number_end", 20)
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.PageType != PageTypeArtifact {
+			t.Fatalf("PageType = %q, want %q", cfg.PageType, PageTypeArtifact)
+		}
+		if cfg.SrcJSONFile != "/tmp/artifacts.json" {
+			t.Fatalf("SrcJSONFile = %q, want /tmp/artifacts.json", cfg.SrcJSONFile)
+		}
+		if cfg.ConNumberStart != 10 || cfg.ConNumberEnd != 20 {
+			t.Fatalf("con range = (%d,%d), want (10,20)", cfg.ConNumberStart, cfg.ConNumberEnd)
 		}
 	})
 

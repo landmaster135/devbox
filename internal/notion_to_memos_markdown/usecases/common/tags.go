@@ -12,6 +12,44 @@ import (
 
 var conNumberRegexp = regexp.MustCompile(`\d+`)
 
+var artifactSystemTagMatchers = []struct {
+	keyword string
+	tag     string
+}{
+	{keyword: "devbox", tag: "06-af/system/devbox"},
+	{keyword: "dotfiles", tag: "06-af/system/dotfiles"},
+	{keyword: "db-server-brewery", tag: "06-af/system/db-server-brewery"},
+	{keyword: "notion-synchronizer", tag: "06-af/system/notion-synchronizer"},
+	{keyword: "chrome-forge", tag: "06-af/system/chrome-forge"},
+	{keyword: "others", tag: "06-af/system/others"},
+}
+
+var artifactArticleTagByPageTitle = map[string]string{
+	"ブログ活動（投稿部）：エンドルフィン風呂に浸かる": "06-af/article/blog",
+	"note活動（投稿部）": "06-af/article/note",
+	"INTPなワイは100話で3年勤めたサラリーマンを辞める（マンガ）": "06-af/article/comic",
+	"Palworldプレイ日記":                        "06-af/diary/game",
+	"Azur Laneプレイ日記かつ作業記録":                 "06-af/diary/game",
+	"World of Warshipsプレイ日記":               "06-af/diary/game",
+	"Epistory_プレイ日記":                       "06-af/diary/game",
+	"Monster Hunter World: Ice Borneプレイ日記": "06-af/diary/game",
+	"原神（Genshin Impact）_ゲームプレイ日記":          "06-af/diary/game",
+	"Monster Hunter Wildsプレイ日記":            "06-af/diary/game",
+	"ワインを飲んだり勉強するムーヴメント":                   "06-af/diary/hobby",
+	"料理のレシピのまとめ集":                          "06-af/diary/hobby",
+	"ペンギンを愛でたり勉強するムーヴメント":                  "06-af/diary/hobby",
+	"サバ缶を食ったり鯖缶を勉強するムーヴメント":                "06-af/diary/hobby",
+	"旅行日程プラン計画まとめ集":                        "06-af/diary/hobby",
+	"画像生成AIによるイラストで同人活動":                   "06-af/diary/hobby",
+	"生け花を学ぶムーヴメント":                         "06-af/diary/hobby",
+	"過去のメールのやり取りまとめ集":                      "mail",
+}
+
+var ignoredArtifactTagTitles = map[string]struct{}{
+	"programming": {},
+	"google":      {},
+}
+
 func BuildFrontMatterPairs(content domain.Content) []string {
 	conID := strings.TrimSpace(content.ConID)
 	url := NormalizeFrontMatterURL(content.URL)
@@ -63,6 +101,104 @@ func BuildTagsForContent(content domain.Content, frequentTags []string) ([]strin
 	}
 
 	return uniqueTags(tags), nil
+}
+
+func BuildTagsForArtifact(artifact domain.Artifact, frequentTags, artifactTags []string) []string {
+	tags := make([]string, 0, len(artifact.Tags)+2)
+	tags = append(tags, RequiredBackupTag)
+
+	for _, artifactTag := range artifact.Tags {
+		name := strings.ToLower(strings.TrimSpace(artifactTag.PageTitle))
+		if name == "" {
+			continue
+		}
+		if _, shouldIgnore := ignoredArtifactTagTitles[name]; shouldIgnore {
+			continue
+		}
+		tags = append(tags, ResolveFrequentTagByPartialMatch(name, frequentTags))
+	}
+
+	normalizedCategory := NormalizeKey(artifact.Category)
+	switch normalizedCategory {
+	case "system":
+		if systemTag := MapArtifactSystemTagByPageTitle(artifact.PageTitle); systemTag != "" {
+			tags = append(tags, systemTag)
+		}
+	case "article":
+		if articleTag := MapArtifactArticleTagByPageTitle(artifact.PageTitle); articleTag != "" {
+			tags = append(tags, articleTag)
+		}
+	default:
+		if categoryTag := ResolveArtifactCategoryTag(artifact.Category, artifactTags); categoryTag != "" {
+			tags = append(tags, categoryTag)
+		}
+	}
+
+	return uniqueTags(tags)
+}
+
+func MapArtifactSystemTagByPageTitle(pageTitle string) string {
+	normalizedPageTitle := NormalizeKey(pageTitle)
+	if normalizedPageTitle == "" {
+		return ""
+	}
+
+	for _, matcher := range artifactSystemTagMatchers {
+		if strings.Contains(normalizedPageTitle, NormalizeKey(matcher.keyword)) {
+			return matcher.tag
+		}
+	}
+	return ""
+}
+
+func MapArtifactArticleTagByPageTitle(pageTitle string) string {
+	return artifactArticleTagByPageTitle[strings.TrimSpace(pageTitle)]
+}
+
+func ResolveArtifactCategoryTag(category string, artifactTags []string) string {
+	normalizedCategory := NormalizeKey(category)
+	if normalizedCategory == "" {
+		return ""
+	}
+
+	for _, artifactTag := range artifactTags {
+		trimmedTag := strings.TrimPrefix(strings.TrimSpace(artifactTag), "#")
+		if trimmedTag == "" {
+			continue
+		}
+		normalizedTag := NormalizeKey(trimmedTag)
+		if strings.Contains(normalizedTag, normalizedCategory) || strings.Contains(normalizedCategory, normalizedTag) {
+			return trimmedTag
+		}
+	}
+	return ""
+}
+
+func ResolveFrequentTagByPartialMatch(tagName string, frequentTags []string) string {
+	resolved := ResolveFrequentTag(tagName, frequentTags)
+	if resolved != strings.TrimSpace(strings.TrimPrefix(strings.ToLower(tagName), "#")) {
+		return resolved
+	}
+
+	normalizedTagName := strings.TrimSpace(strings.TrimPrefix(strings.ToLower(tagName), "#"))
+	if normalizedTagName == "" {
+		return normalizedTagName
+	}
+	if len(normalizedTagName) < 5 {
+		return normalizedTagName
+	}
+
+	for _, frequentTag := range frequentTags {
+		trimmedFrequentTag := strings.TrimPrefix(strings.TrimSpace(frequentTag), "#")
+		if trimmedFrequentTag == "" {
+			continue
+		}
+		normalizedFrequentTag := strings.ToLower(trimmedFrequentTag)
+		if strings.Contains(normalizedFrequentTag, normalizedTagName) || strings.Contains(normalizedTagName, normalizedFrequentTag) {
+			return trimmedFrequentTag
+		}
+	}
+	return normalizedTagName
 }
 
 func MapCategoryTag(category string) (string, error) {
@@ -177,6 +313,14 @@ func ParseConNumber(conID string) (int, error) {
 }
 
 func LoadFrequentTags(fileSystem filesystem.Repository, tagsPath string) ([]string, error) {
+	return loadTagsBySection(fileSystem, tagsPath, "## Frequent Tags")
+}
+
+func LoadArtifactTags(fileSystem filesystem.Repository, tagsPath string) ([]string, error) {
+	return loadTagsBySection(fileSystem, tagsPath, "## Artifact")
+}
+
+func loadTagsBySection(fileSystem filesystem.Repository, tagsPath, targetSection string) ([]string, error) {
 	data, err := fileSystem.ReadFile(tagsPath)
 	if err != nil {
 		return nil, fmt.Errorf("tags.md の読み込みに失敗しました (%s): %w", tagsPath, err)
@@ -191,7 +335,7 @@ func LoadFrequentTags(fileSystem filesystem.Repository, tagsPath string) ([]stri
 		trimmed := strings.TrimSpace(line)
 
 		if strings.HasPrefix(trimmed, "## ") {
-			if trimmed == "## Frequent Tags" {
+			if trimmed == targetSection {
 				inFrequentSection = true
 				continue
 			}
@@ -222,7 +366,7 @@ func LoadFrequentTags(fileSystem filesystem.Repository, tagsPath string) ([]stri
 	}
 
 	if len(result) == 0 {
-		return nil, fmt.Errorf("tags.md の ## Frequent Tags セクションにタグが見つかりません (%s)", tagsPath)
+		return nil, fmt.Errorf("tags.md の %s セクションにタグが見つかりません (%s)", targetSection, tagsPath)
 	}
 	return result, nil
 }

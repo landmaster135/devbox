@@ -14,6 +14,7 @@ const (
 	OperationRenameBodiesByCategoryID = "rename-bodies-by-category-id"
 	OperationMigrateToMemos           = "migrate-to-memos"
 	PageTypeContent                   = "content"
+	PageTypeArtifact                  = "artifact"
 )
 
 type Config struct {
@@ -58,11 +59,27 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 	trimmedTargetStr := strings.TrimSpace(targetStr)
 
 	switch trimmedOperation {
-	case OperationDistributeFiles, OperationCraftMarkdown:
+	case OperationDistributeFiles:
 		if trimmedPageType == "" {
 			return nil, fmt.Errorf("page-type パラメータは必須です")
 		}
 		if trimmedPageType != PageTypeContent {
+			return nil, fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
+		}
+		if trimmedSrcJSONFile == "" {
+			return nil, fmt.Errorf("src-json-file パラメータは必須です")
+		}
+		if trimmedSrcBodyDir == "" {
+			return nil, fmt.Errorf("src-body-dir パラメータは必須です")
+		}
+		if trimmedOutDir == "" {
+			return nil, fmt.Errorf("out-dir パラメータは必須です")
+		}
+	case OperationCraftMarkdown:
+		if trimmedPageType == "" {
+			return nil, fmt.Errorf("page-type パラメータは必須です")
+		}
+		if trimmedPageType != PageTypeContent && trimmedPageType != PageTypeArtifact {
 			return nil, fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 		}
 		if trimmedSrcJSONFile == "" {
@@ -181,8 +198,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&apiToken, "api-token", "", "Memos API のトークン（migrate-to-memosで必須）")
 	parser.StringVar(&category, "category", "", "対象category（craft-markdownで任意）")
 	parser.BoolVar(&skipsNoSrcBody, "skips-no-src-body", false, "コピー元MarkdownがないContentをスキップする（craft-markdownで任意）")
-	parser.StringVar(&srcJSONFile, "src-json-file", "", "Content JSONファイルのパス（必須）")
-	parser.StringVar(&srcJSONFile, "src-json-path", "", "Content JSONファイルのパス（後方互換）")
+	parser.StringVar(&srcJSONFile, "src-json-file", "", "入力JSONファイルのパス（必須）")
+	parser.StringVar(&srcJSONFile, "src-json-path", "", "入力JSONファイルのパス（後方互換）")
 	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（distribute-files/craft-markdown/check-body-length/grep-str/migrate-to-memosで必須）")
 	parser.StringVar(&srcResourceDir, "src-resource-dir", "", "リソースファイル群のディレクトリ（rename-bodies-by-category-id/migrate-to-memosで必須）")
 	parser.StringVar(&targetStr, "target-str", "", "検索文字列（grep-strで必須）")
@@ -225,6 +242,7 @@ func PrintUsage() {
 使用方法:
   %s --operation=distribute-files --page-type=content --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
   %s --operation=craft-markdown --page-type=content --category=software --skips-no-src-body=false --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
+  %s --operation=craft-markdown --page-type=artifact --con_number_start=1 --con_number_end=9999 --src-json-path=./tmp/artifacts.json --src-body-dir=./tmp/body --out-dir=./tmp/out
   %s --operation=check-body-length --src-body-dir=./tmp/body --threshold=1000
   %s --operation=grep-str --src-body-dir=./tmp/body --target-str=TODO
   %s --operation=rename-bodies-by-category-id --page-type=content --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-resource-dir=./tmp/resources
@@ -232,7 +250,7 @@ func PrintUsage() {
 
 オプション:
   --operation        操作タイプ（必須: distribute-files, craft-markdown, check-body-length, grep-str, rename-bodies-by-category-id, migrate-to-memos）
-  --page-type        ページタイプ（distribute-files/craft-markdown/rename-bodies-by-category-id/migrate-to-memosで必須: content）
+  --page-type        ページタイプ（distribute-files/rename-bodies-by-category-id/migrate-to-memos: content, craft-markdown: content|artifact）
   --base-url         Memos API のベースURL（migrate-to-memosで必須）
   --api-token        Memos API のトークン（migrate-to-memosで必須）
   --category         対象category（craft-markdownで任意。指定時は一致するContentのみ処理）
@@ -241,10 +259,10 @@ func PrintUsage() {
   --con_number_end   craft-markdown/rename-bodies-by-category-id時の終了con番号（必須）
   --threshold        文字数の閾値（check-body-lengthで必須、0以上）
   --target-str       検索文字列（grep-strで必須）
-  --src-json-file    Content JSONファイルのパス（distribute-files/craft-markdown/rename-bodies-by-category-idで必須）
+  --src-json-file    入力JSONファイルのパス（distribute-files/craft-markdown/rename-bodies-by-category-idで必須）
   --src-body-dir     入力ディレクトリ（distribute-files/craft-markdown/check-body-length/grep-str/migrate-to-memosで必須）
   --src-resource-dir リソース入力ディレクトリ（rename-bodies-by-category-id/migrate-to-memosで必須）
   --out-dir          出力先ルートディレクトリ（distribute-files/craft-markdownで必須）
   -help, -h          このヘルプを表示
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }

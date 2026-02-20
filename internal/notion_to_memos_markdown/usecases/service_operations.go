@@ -1,11 +1,29 @@
 package usecases
 
+import (
+	"fmt"
+	"strings"
+
+	common "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/common"
+)
+
 func (s *Service) DistributeFiles(pageType, srcJSONFile, srcBodyDir, outDir string) (string, error) {
 	return s.distributeFilesOperation.Execute(pageType, srcJSONFile, srcBodyDir, outDir)
 }
 
 func (s *Service) CraftMarkdown(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
-	return s.craftMarkdownOperation.Execute(pageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+	trimmedPageType := strings.TrimSpace(pageType)
+	switch trimmedPageType {
+	case common.SupportedPageTypeContent:
+		return s.craftMarkdownOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+	case common.SupportedPageTypeArtifact:
+		if s.artifactCraftOperation == nil {
+			return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
+		}
+		return s.artifactCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+	default:
+		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
+	}
 }
 
 func (s *Service) CheckBodyLength(srcBodyDir string, threshold int) (string, error) {

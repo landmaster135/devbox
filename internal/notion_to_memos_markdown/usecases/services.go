@@ -2,8 +2,9 @@ package usecases
 
 import (
 	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
+	artifactcraftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/artifact_craft_markdown"
 	checkbodylength "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_check_body_length"
-	craftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_craft_markdown"
+	contentcraftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_craft_markdown"
 	distributefiles "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_distribute_files"
 	grepstr "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_grep_str"
 	migratetomemos "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_migrate_to_memos"
@@ -13,6 +14,7 @@ import (
 type Service struct {
 	distributeFilesOperation distributeFilesOperation
 	craftMarkdownOperation   craftMarkdownOperation
+	artifactCraftOperation   craftMarkdownOperation
 	checkBodyLengthOperation checkBodyLengthOperation
 	grepStrOperation         grepStrOperation
 	renameBodiesOperation    renameBodiesByCategoryIDOperation
@@ -31,7 +33,8 @@ func NewServiceWithReporter(fileSystem filesystem.Repository, reporter migrateto
 
 	return newServiceWithOperations(
 		distributefiles.NewService(repo),
-		craftmarkdown.NewService(repo),
+		contentcraftmarkdown.NewService(repo),
+		artifactcraftmarkdown.NewService(repo),
 		checkbodylength.NewService(repo),
 		grepstr.NewService(repo),
 		renamebodiesbycategoryid.NewService(repo),

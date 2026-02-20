@@ -24,10 +24,19 @@ type migrateToMemosOperation interface {
 	Execute(pageType, baseURL, apiToken, srcBodyDir, srcResourceDir string) (string, error)
 }
 
-func newServiceWithOperations(distributeFilesOp distributeFilesOperation, craftMarkdownOp craftMarkdownOperation, checkBodyLengthOp checkBodyLengthOperation, grepStrOp grepStrOperation, renameBodiesOp renameBodiesByCategoryIDOperation, migrateToMemosOp migrateToMemosOperation) *Service {
+func newServiceWithOperations(
+	distributeFilesOp distributeFilesOperation,
+	craftMarkdownOp craftMarkdownOperation,
+	artifactCraftMarkdownOp craftMarkdownOperation,
+	checkBodyLengthOp checkBodyLengthOperation,
+	grepStrOp grepStrOperation,
+	renameBodiesOp renameBodiesByCategoryIDOperation,
+	migrateToMemosOp migrateToMemosOperation,
+) *Service {
 	return &Service{
 		distributeFilesOperation: distributeFilesOp,
 		craftMarkdownOperation:   craftMarkdownOp,
+		artifactCraftOperation:   artifactCraftMarkdownOp,
 		checkBodyLengthOperation: checkBodyLengthOp,
 		grepStrOperation:         grepStrOp,
 		renameBodiesOperation:    renameBodiesOp,
