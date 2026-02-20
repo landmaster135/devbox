@@ -2,12 +2,12 @@ package usecases
 
 import (
 	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
-	checkbodylength "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/check_body_length"
-	craftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/craft_markdown"
-	distributefiles "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/distribute_files"
-	grepstr "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/grep_str"
-	migratetomemos "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/migrate_to_memos"
-	renamebodiesbycategoryid "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/rename_bodies_by_category_id"
+	checkbodylength "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_check_body_length"
+	craftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_craft_markdown"
+	distributefiles "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_distribute_files"
+	grepstr "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_grep_str"
+	migratetomemos "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_migrate_to_memos"
+	renamebodiesbycategoryid "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_rename_bodies_by_category_id"
 )
 
 type Service struct {
