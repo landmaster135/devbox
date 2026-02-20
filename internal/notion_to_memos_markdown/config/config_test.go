@@ -84,6 +84,7 @@ func TestNewConfig(t *testing.T) {
 		skipsNoSrcBody bool
 		srcJSONFile    string
 		srcBodyDir     string
+		srcResourceDir string
 		outDir         string
 		targetStr      string
 		conNumberStart int
@@ -111,6 +112,16 @@ func TestNewConfig(t *testing.T) {
 			outDir:         "/tmp/out",
 			conNumberStart: 1,
 			conNumberEnd:   10,
+			wantPageType:   PageTypeContent,
+		},
+		{
+			name:           "rename bodies by category id normal",
+			operation:      OperationRenameBodiesByCategoryID,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcResourceDir: "/tmp/resource",
+			conNumberStart: 100,
+			conNumberEnd:   200,
 			wantPageType:   PageTypeContent,
 		},
 		{
@@ -247,6 +258,26 @@ func TestNewConfig(t *testing.T) {
 			wantPageType:   PageTypeContent,
 			wantErr:        "con_number_start は con_number_end 以下である必要があります",
 		},
+		{
+			name:           "rename missing src resource dir",
+			operation:      OperationRenameBodiesByCategoryID,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcResourceDir: "",
+			conNumberStart: 1,
+			conNumberEnd:   10,
+			wantErr:        "src-resource-dir パラメータは必須です",
+		},
+		{
+			name:           "rename invalid range",
+			operation:      OperationRenameBodiesByCategoryID,
+			pageType:       PageTypeContent,
+			srcJSONFile:    "/tmp/contents.json",
+			srcResourceDir: "/tmp/resource",
+			conNumberStart: 10,
+			conNumberEnd:   1,
+			wantErr:        "con_number_start は con_number_end 以下である必要があります",
+		},
 	}
 
 	for _, tt := range tests {
@@ -261,6 +292,7 @@ func TestNewConfig(t *testing.T) {
 				tt.skipsNoSrcBody,
 				tt.srcJSONFile,
 				tt.srcBodyDir,
+				tt.srcResourceDir,
 				tt.outDir,
 				tt.targetStr,
 				tt.conNumberStart,
@@ -445,6 +477,30 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if !cfg.Help {
 			t.Fatalf("Help = false, want true")
+		}
+	})
+
+	t.Run("rename bodies by category id normal", func(t *testing.T) {
+		parser := NewMockFlagParser()
+		parser.SetString("operation", OperationRenameBodiesByCategoryID)
+		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("src-json-file", "/tmp/contents.json")
+		parser.SetString("src-resource-dir", "/tmp/resource")
+		parser.SetInt("con_number_start", 100)
+		parser.SetInt("con_number_end", 200)
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Operation != OperationRenameBodiesByCategoryID {
+			t.Fatalf("Operation = %q", cfg.Operation)
+		}
+		if cfg.SrcResourceDir != "/tmp/resource" {
+			t.Fatalf("SrcResourceDir = %q, want /tmp/resource", cfg.SrcResourceDir)
+		}
+		if cfg.ConNumberStart != 100 || cfg.ConNumberEnd != 200 {
+			t.Fatalf("con range = (%d,%d), want (100,200)", cfg.ConNumberStart, cfg.ConNumberEnd)
 		}
 	})
 

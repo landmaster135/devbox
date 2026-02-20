@@ -2,6 +2,7 @@ package domain
 
 type Content struct {
 	ConID        string       `json:"con_id"`
+	CategoryID   string       `json:"category_id"`
 	Category     string       `json:"category"`
 	PageTitle    string       `json:"page_title"`
 	OwningStatus string       `json:"owning_status"`

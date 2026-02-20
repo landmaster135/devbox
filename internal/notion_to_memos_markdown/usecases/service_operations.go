@@ -15,3 +15,7 @@ func (s *Service) CheckBodyLength(srcBodyDir string, threshold int) (string, err
 func (s *Service) GrepStr(srcBodyDir, targetStr string) (string, error) {
 	return s.grepStrOperation.Execute(srcBodyDir, targetStr)
 }
+
+func (s *Service) RenameBodiesByCategoryID(pageType string, conNumberStart, conNumberEnd int, srcJSONFile, srcResourceDir string) (string, error) {
+	return s.renameBodiesOperation.Execute(pageType, conNumberStart, conNumberEnd, srcJSONFile, srcResourceDir)
+}

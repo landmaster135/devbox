@@ -18,6 +18,7 @@ type MockRepository struct {
 	MkdirAllFunc           func(path string, perm os.FileMode) error
 	FileExistsFunc         func(path string) (bool, error)
 	CopyFileFunc           func(srcPath, dstPath string) error
+	RenameFileFunc         func(srcPath, dstPath string) error
 	ListMarkdownFilesFunc  func(dirPath string) ([]string, error)
 	ListFilesRecursiveFunc func(dirPath string) ([]string, error)
 
@@ -26,6 +27,7 @@ type MockRepository struct {
 	MkdirAllCalls           []MkdirAllCall
 	FileExistsCalls         []string
 	CopyFileCalls           []CopyFileCall
+	RenameFileCalls         []CopyFileCall
 	ListMarkdownFilesCalls  []string
 	ListFilesRecursiveCalls []string
 }
@@ -81,6 +83,17 @@ func (m *MockRepository) CopyFile(srcPath, dstPath string) error {
 	})
 	if m.CopyFileFunc != nil {
 		return m.CopyFileFunc(srcPath, dstPath)
+	}
+	return nil
+}
+
+func (m *MockRepository) RenameFile(srcPath, dstPath string) error {
+	m.RenameFileCalls = append(m.RenameFileCalls, CopyFileCall{
+		SrcPath: srcPath,
+		DstPath: dstPath,
+	})
+	if m.RenameFileFunc != nil {
+		return m.RenameFileFunc(srcPath, dstPath)
 	}
 	return nil
 }

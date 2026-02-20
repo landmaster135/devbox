@@ -25,21 +25,27 @@
   - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
   - `--target-str` を含むファイルを列挙する
   - 該当ファイルの総数を表示する
+- `--operation=rename-bodies-by-category-id`
+  - `--page-type=content` の Content JSON を読み込み、`--con_number_start`〜`--con_number_end` の範囲にある Content の `category_id -> con_id` マップを作成
+  - `--src-resource-dir` 配下を再帰的に走査して全ファイルを対象にする
+  - ファイル名の先頭プレフィックスが `category_id` と一致する場合、同じ部分を `con_id` へ置換してリネームする
+  - 処理件数（対象Content件数、対象ファイル総数、リネーム成功数、スキップ数）を表示する
 
 ## フラグ
 
 | フラグ | 必須 | 説明 |
 | --- | --- | --- |
-| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length`、`grep-str` |
-| `--page-type` | `distribute-files`/`craft-markdown`で必須 | ページタイプ。`content` を指定 |
+| `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length`、`grep-str`、`rename-bodies-by-category-id` |
+| `--page-type` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`で必須 | ページタイプ。`content` を指定 |
 | `--category` | `craft-markdown`で任意 | 対象 category。指定時は一致する Content のみ処理 |
 | `--skips-no-src-body` | `craft-markdown`で任意 | `true` ならコピー元Markdown未存在の Content をスキップ（デフォルト: `false`） |
-| `--con_number_start` | `craft-markdown`で必須 | 対象 `con_id` 範囲の開始番号（1以上） |
-| `--con_number_end` | `craft-markdown`で必須 | 対象 `con_id` 範囲の終了番号（1以上） |
+| `--con_number_start` | `craft-markdown`/`rename-bodies-by-category-id`で必須 | 対象 `con_id` 範囲の開始番号（1以上） |
+| `--con_number_end` | `craft-markdown`/`rename-bodies-by-category-id`で必須 | 対象 `con_id` 範囲の終了番号（1以上） |
 | `--threshold` | `check-body-length`で必須 | 文字数の閾値（0以上） |
 | `--target-str` | `grep-str`で必須 | 検索対象の文字列 |
-| `--src-json-file` | `distribute-files`/`craft-markdown`で必須 | Content JSON ファイルのパス |
-| `--src-body-dir` | 必須 | 入力ディレクトリ |
+| `--src-json-file` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`で必須 | Content JSON ファイルのパス |
+| `--src-body-dir` | `distribute-files`/`craft-markdown`/`check-body-length`/`grep-str`で必須 | 入力ディレクトリ |
+| `--src-resource-dir` | `rename-bodies-by-category-id`で必須 | リネーム対象リソースの入力ディレクトリ |
 | `--out-dir` | `distribute-files`/`craft-markdown`で必須 | 出力先ルートディレクトリ |
 | `-help`, `-h` | 任意 | ヘルプ表示 |
 
@@ -89,6 +95,18 @@ go run ./cmd/cli/notion-to-memos-markdown \
   --target-str=TODO
 ```
 
+`rename-bodies-by-category-id`:
+
+```bash
+go run ./cmd/cli/notion-to-memos-markdown \
+  --operation=rename-bodies-by-category-id \
+  --page-type=content \
+  --con_number_start=2000 \
+  --con_number_end=2200 \
+  --src-json-file=$HOME/devbox/cmd/cli/notion-to-memos-markdown/tmp/contents.json \
+  --src-resource-dir=$HOME/path/to/resource_dir
+```
+
 ## 出力例
 
 成功時:
@@ -120,6 +138,15 @@ src-body-dir基準: 総md件数=130, JSON対応=110, JSON未対応=20
 該当ファイル一覧:
 /tmp/notion-body/CO0001.md
 /tmp/notion-body/nested/notes.txt
+```
+
+```text
+処理完了
+対象Content件数=23
+対象ファイル総数=75
+リネーム成功=31
+スキップ(プレフィックスなし)=2
+スキップ(マップ未対応)=42
 ```
 
 エラー時:

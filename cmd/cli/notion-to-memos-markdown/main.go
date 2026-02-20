@@ -42,6 +42,14 @@ func main() {
 		result, err = service.CheckBodyLength(cfg.SrcBodyDir, cfg.Threshold)
 	case config.OperationGrepStr:
 		result, err = service.GrepStr(cfg.SrcBodyDir, cfg.TargetStr)
+	case config.OperationRenameBodiesByCategoryID:
+		result, err = service.RenameBodiesByCategoryID(
+			cfg.PageType,
+			cfg.ConNumberStart,
+			cfg.ConNumberEnd,
+			cfg.SrcJSONFile,
+			cfg.SrcResourceDir,
+		)
 	default:
 		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}

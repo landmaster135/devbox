@@ -94,6 +94,22 @@ func (r *osRepository) CopyFile(srcPath, dstPath string) error {
 	return nil
 }
 
+func (r *osRepository) RenameFile(srcPath, dstPath string) error {
+	cleanSrcPath, err := sanitizePath(srcPath)
+	if err != nil {
+		return err
+	}
+	cleanDstPath, err := sanitizePath(dstPath)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Rename(cleanSrcPath, cleanDstPath); err != nil {
+		return fmt.Errorf("ファイル名の変更に失敗しました (%s -> %s): %w", cleanSrcPath, cleanDstPath, err)
+	}
+	return nil
+}
+
 func (r *osRepository) ListMarkdownFiles(dirPath string) ([]string, error) {
 	cleanDirPath, err := sanitizePath(dirPath)
 	if err != nil {

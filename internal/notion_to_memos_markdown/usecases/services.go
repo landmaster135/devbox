@@ -6,6 +6,7 @@ import (
 	craftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/craft_markdown"
 	distributefiles "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/distribute_files"
 	grepstr "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/grep_str"
+	renamebodiesbycategoryid "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/rename_bodies_by_category_id"
 )
 
 type Service struct {
@@ -13,6 +14,7 @@ type Service struct {
 	craftMarkdownOperation   craftMarkdownOperation
 	checkBodyLengthOperation checkBodyLengthOperation
 	grepStrOperation         grepStrOperation
+	renameBodiesOperation    renameBodiesByCategoryIDOperation
 }
 
 func NewService(fileSystem filesystem.Repository) *Service {
@@ -26,5 +28,6 @@ func NewService(fileSystem filesystem.Repository) *Service {
 		craftmarkdown.NewService(repo),
 		checkbodylength.NewService(repo),
 		grepstr.NewService(repo),
+		renamebodiesbycategoryid.NewService(repo),
 	)
 }

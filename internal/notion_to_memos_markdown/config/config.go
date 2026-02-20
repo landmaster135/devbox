@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	OperationDistributeFiles = "distribute-files"
-	OperationCraftMarkdown   = "craft-markdown"
-	OperationCheckBodyLength = "check-body-length"
-	OperationGrepStr         = "grep-str"
-	PageTypeContent          = "content"
+	OperationDistributeFiles          = "distribute-files"
+	OperationCraftMarkdown            = "craft-markdown"
+	OperationCheckBodyLength          = "check-body-length"
+	OperationGrepStr                  = "grep-str"
+	OperationRenameBodiesByCategoryID = "rename-bodies-by-category-id"
+	PageTypeContent                   = "content"
 )
 
 type Config struct {
@@ -21,6 +22,7 @@ type Config struct {
 	SkipsNoSrcBody bool
 	SrcJSONFile    string
 	SrcBodyDir     string
+	SrcResourceDir string
 	OutDir         string
 	TargetStr      string
 	ConNumberStart int
@@ -29,7 +31,7 @@ type Config struct {
 	Help           bool
 }
 
-func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, outDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
+func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, srcResourceDir, outDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
 	trimmedOperation := strings.TrimSpace(operation)
 	if trimmedOperation == "" {
 		return nil, fmt.Errorf("operation パラメータは必須です")
@@ -37,13 +39,15 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 	if trimmedOperation != OperationDistributeFiles &&
 		trimmedOperation != OperationCraftMarkdown &&
 		trimmedOperation != OperationCheckBodyLength &&
-		trimmedOperation != OperationGrepStr {
+		trimmedOperation != OperationGrepStr &&
+		trimmedOperation != OperationRenameBodiesByCategoryID {
 		return nil, fmt.Errorf("未対応のoperationです: %s", trimmedOperation)
 	}
 
 	trimmedPageType := strings.TrimSpace(pageType)
 	trimmedSrcJSONFile := strings.TrimSpace(srcJSONFile)
 	trimmedSrcBodyDir := strings.TrimSpace(srcBodyDir)
+	trimmedSrcResourceDir := strings.TrimSpace(srcResourceDir)
 	trimmedOutDir := strings.TrimSpace(outDir)
 	trimmedTargetStr := strings.TrimSpace(targetStr)
 
@@ -64,6 +68,19 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 		if trimmedOutDir == "" {
 			return nil, fmt.Errorf("out-dir パラメータは必須です")
 		}
+	case OperationRenameBodiesByCategoryID:
+		if trimmedPageType == "" {
+			return nil, fmt.Errorf("page-type パラメータは必須です")
+		}
+		if trimmedPageType != PageTypeContent {
+			return nil, fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
+		}
+		if trimmedSrcJSONFile == "" {
+			return nil, fmt.Errorf("src-json-file パラメータは必須です")
+		}
+		if trimmedSrcResourceDir == "" {
+			return nil, fmt.Errorf("src-resource-dir パラメータは必須です")
+		}
 	case OperationCheckBodyLength:
 		if trimmedSrcBodyDir == "" {
 			return nil, fmt.Errorf("src-body-dir パラメータは必須です")
@@ -80,7 +97,7 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 		}
 	}
 
-	if trimmedOperation == OperationCraftMarkdown {
+	if trimmedOperation == OperationCraftMarkdown || trimmedOperation == OperationRenameBodiesByCategoryID {
 		if conNumberStart <= 0 {
 			return nil, fmt.Errorf("con_number_start パラメータは1以上で必須です")
 		}
@@ -99,6 +116,7 @@ func NewConfig(operation, pageType, category string, skipsNoSrcBody bool, srcJSO
 		SkipsNoSrcBody: skipsNoSrcBody,
 		SrcJSONFile:    trimmedSrcJSONFile,
 		SrcBodyDir:     trimmedSrcBodyDir,
+		SrcResourceDir: trimmedSrcResourceDir,
 		OutDir:         trimmedOutDir,
 		TargetStr:      trimmedTargetStr,
 		ConNumberStart: conNumberStart,
@@ -119,6 +137,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		skipsNoSrcBody bool
 		srcJSONFile    string
 		srcBodyDir     string
+		srcResourceDir string
 		outDir         string
 		targetStr      string
 		conNumberStart int
@@ -133,11 +152,12 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.BoolVar(&skipsNoSrcBody, "skips-no-src-body", false, "コピー元MarkdownがないContentをスキップする（craft-markdownで任意）")
 	parser.StringVar(&srcJSONFile, "src-json-file", "", "Content JSONファイルのパス（必須）")
 	parser.StringVar(&srcJSONFile, "src-json-path", "", "Content JSONファイルのパス（後方互換）")
-	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（必須）")
+	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（distribute-files/craft-markdown/check-body-length/grep-strで必須）")
+	parser.StringVar(&srcResourceDir, "src-resource-dir", "", "リソースファイル群のディレクトリ（rename-bodies-by-category-idで必須）")
 	parser.StringVar(&targetStr, "target-str", "", "検索文字列（grep-strで必須）")
 	parser.StringVar(&outDir, "out-dir", "", "カテゴリ別出力先ディレクトリ（必須）")
-	parser.IntVar(&conNumberStart, "con_number_start", 0, "con_id範囲の開始番号（craft-markdownで必須）")
-	parser.IntVar(&conNumberEnd, "con_number_end", 0, "con_id範囲の終了番号（craft-markdownで必須）")
+	parser.IntVar(&conNumberStart, "con_number_start", 0, "con_id範囲の開始番号（craft-markdown/rename-bodies-by-category-idで必須）")
+	parser.IntVar(&conNumberEnd, "con_number_end", 0, "con_id範囲の終了番号（craft-markdown/rename-bodies-by-category-idで必須）")
 	parser.IntVar(&threshold, "threshold", -1, "文字数の閾値（check-body-lengthで必須、0以上）")
 	parser.BoolVar(&help, "help", false, "ヘルプを表示")
 	parser.BoolVar(&help, "h", false, "ヘルプを表示")
@@ -157,6 +177,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		skipsNoSrcBody,
 		srcJSONFile,
 		srcBodyDir,
+		srcResourceDir,
 		outDir,
 		targetStr,
 		conNumberStart,
@@ -173,19 +194,21 @@ func PrintUsage() {
   %s --operation=craft-markdown --page-type=content --category=software --skips-no-src-body=false --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-body-dir=./tmp/body --out-dir=./tmp/out
   %s --operation=check-body-length --src-body-dir=./tmp/body --threshold=1000
   %s --operation=grep-str --src-body-dir=./tmp/body --target-str=TODO
+  %s --operation=rename-bodies-by-category-id --page-type=content --con_number_start=1 --con_number_end=9999 --src-json-file=./tmp/contents.json --src-resource-dir=./tmp/resources
 
 オプション:
-  --operation        操作タイプ（必須: distribute-files, craft-markdown, check-body-length, grep-str）
-  --page-type        ページタイプ（distribute-files/craft-markdownで必須: content）
+  --operation        操作タイプ（必須: distribute-files, craft-markdown, check-body-length, grep-str, rename-bodies-by-category-id）
+  --page-type        ページタイプ（distribute-files/craft-markdown/rename-bodies-by-category-idで必須: content）
   --category         対象category（craft-markdownで任意。指定時は一致するContentのみ処理）
   --skips-no-src-body コピー元Markdownなしをスキップするか（craft-markdownで任意。デフォルト:false）
-  --con_number_start craft-markdown時の開始con番号（必須）
-  --con_number_end   craft-markdown時の終了con番号（必須）
+  --con_number_start craft-markdown/rename-bodies-by-category-id時の開始con番号（必須）
+  --con_number_end   craft-markdown/rename-bodies-by-category-id時の終了con番号（必須）
   --threshold        文字数の閾値（check-body-lengthで必須、0以上）
   --target-str       検索文字列（grep-strで必須）
-  --src-json-file    Content JSONファイルのパス（distribute-files/craft-markdownで必須）
-  --src-body-dir     入力ディレクトリ（全operationで必須）
+  --src-json-file    Content JSONファイルのパス（distribute-files/craft-markdown/rename-bodies-by-category-idで必須）
+  --src-body-dir     入力ディレクトリ（distribute-files/craft-markdown/check-body-length/grep-strで必須）
+  --src-resource-dir リソース入力ディレクトリ（rename-bodies-by-category-idで必須）
   --out-dir          出力先ルートディレクトリ（distribute-files/craft-markdownで必須）
   -help, -h          このヘルプを表示
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }
