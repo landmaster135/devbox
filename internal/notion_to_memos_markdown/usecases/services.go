@@ -20,6 +20,10 @@ type Service struct {
 }
 
 func NewService(fileSystem filesystem.Repository) *Service {
+	return NewServiceWithReporter(fileSystem, nil)
+}
+
+func NewServiceWithReporter(fileSystem filesystem.Repository, reporter migratetomemos.ProgressReporter) *Service {
 	repo := fileSystem
 	if repo == nil {
 		repo = filesystem.NewRepository()
@@ -31,6 +35,6 @@ func NewService(fileSystem filesystem.Repository) *Service {
 		checkbodylength.NewService(repo),
 		grepstr.NewService(repo),
 		renamebodiesbycategoryid.NewService(repo),
-		migratetomemos.NewService(repo, nil),
+		migratetomemos.NewService(repo, nil, reporter),
 	)
 }

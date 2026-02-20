@@ -12,13 +12,17 @@ import (
 )
 
 type ClientFactory func(baseURL, apiToken string) memos.Client
+type ProgressReporter interface {
+	Report(message string)
+}
 
 type Service struct {
 	fileSystem    filesystem.Repository
 	clientFactory ClientFactory
+	reporter      ProgressReporter
 }
 
-func NewService(fileSystem filesystem.Repository, clientFactory ClientFactory) *Service {
+func NewService(fileSystem filesystem.Repository, clientFactory ClientFactory, reporter ProgressReporter) *Service {
 	factory := clientFactory
 	if factory == nil {
 		factory = memos.NewClient
@@ -27,6 +31,7 @@ func NewService(fileSystem filesystem.Repository, clientFactory ClientFactory) *
 	return &Service{
 		fileSystem:    fileSystem,
 		clientFactory: factory,
+		reporter:      reporter,
 	}
 }
 
@@ -75,11 +80,13 @@ func (s *Service) Execute(pageType, baseURL, apiToken, srcBodyDir, srcResourceDi
 	attachedFiles := 0
 	skippedNoResources := 0
 
+	s.reportProgress("[migrate-to-memos] 開始: 対象body件数=%d", len(bodyFiles))
 	for _, bodyFile := range bodyFiles {
 		conID := common.ExtractConIDFromPath(bodyFile)
 		if conID == "" {
 			return "", fmt.Errorf("con_id の抽出に失敗しました: %s", bodyFile)
 		}
+		s.reportProgress("[migrate-to-memos] con_id=%s メモ作成開始", conID)
 
 		bodyData, err := s.fileSystem.ReadFile(bodyFile)
 		if err != nil {
@@ -91,10 +98,12 @@ func (s *Service) Execute(pageType, baseURL, apiToken, srcBodyDir, srcResourceDi
 			return "", fmt.Errorf("メモ作成に失敗しました (con_id=%s): %w", conID, err)
 		}
 		createdMemos++
+		s.reportProgress("[migrate-to-memos] con_id=%s メモ作成完了: memo=%s", conID, memoName)
 
 		matchedResources := collectResourceFilesByConID(resourceFiles, conID)
 		if len(matchedResources) == 0 {
 			skippedNoResources++
+			s.reportProgress("[migrate-to-memos] con_id=%s 添付対象なしのためスキップ", conID)
 			continue
 		}
 
@@ -102,8 +111,16 @@ func (s *Service) Execute(pageType, baseURL, apiToken, srcBodyDir, srcResourceDi
 			return "", fmt.Errorf("添付ファイルの登録に失敗しました (con_id=%s): %w", conID, err)
 		}
 		attachedFiles += len(matchedResources)
+		s.reportProgress("[migrate-to-memos] con_id=%s 添付完了: files=%d", conID, len(matchedResources))
 	}
 
+	s.reportProgress(
+		"[migrate-to-memos] 完了: 対象body件数=%d メモ作成成功=%d 添付ファイル総数=%d 添付スキップ(リソースなし)=%d",
+		len(bodyFiles),
+		createdMemos,
+		attachedFiles,
+		skippedNoResources,
+	)
 	return fmt.Sprintf(
 		"処理完了\n対象body件数=%d\nメモ作成成功=%d\n添付ファイル総数=%d\n添付スキップ(リソースなし)=%d",
 		len(bodyFiles),
@@ -111,6 +128,13 @@ func (s *Service) Execute(pageType, baseURL, apiToken, srcBodyDir, srcResourceDi
 		attachedFiles,
 		skippedNoResources,
 	), nil
+}
+
+func (s *Service) reportProgress(format string, args ...any) {
+	if s.reporter == nil {
+		return
+	}
+	s.reporter.Report(fmt.Sprintf(format, args...))
 }
 
 func filterMarkdownFiles(paths []string) []string {

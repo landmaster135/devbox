@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/landmaster135/devbox/internal/notion_to_memos_markdown/config"
+	progress "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/progress"
 	"github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases"
 )
 
@@ -21,7 +22,7 @@ func main() {
 		return
 	}
 
-	service := usecases.NewService(nil)
+	service := usecases.NewServiceWithReporter(nil, progress.NewWriterReporter(os.Stderr))
 
 	var result string
 	switch cfg.Operation {

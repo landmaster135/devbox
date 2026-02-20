@@ -60,7 +60,7 @@ func TestService_Execute_Normal(t *testing.T) {
 			t.Fatalf("apiToken = %q, want token", apiToken)
 		}
 		return mockClient
-	})
+	}, nil)
 
 	result, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 	if err != nil {
@@ -95,7 +95,7 @@ func TestService_Execute_Error(t *testing.T) {
 		t.Parallel()
 		service := NewService(&filesystem.MockRepository{}, func(baseURL, apiToken string) memos.Client {
 			return &memos.MockClient{}
-		})
+		}, nil)
 		_, err := service.Execute("artifact", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || err.Error() != "未対応のpage-typeです: artifact" {
 			t.Fatalf("error = %v", err)
@@ -104,7 +104,7 @@ func TestService_Execute_Error(t *testing.T) {
 
 	t.Run("missing base url", func(t *testing.T) {
 		t.Parallel()
-		service := NewService(&filesystem.MockRepository{}, nil)
+		service := NewService(&filesystem.MockRepository{}, nil, nil)
 		_, err := service.Execute("content", " ", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || err.Error() != "base-url パラメータは必須です" {
 			t.Fatalf("error = %v", err)
@@ -113,7 +113,7 @@ func TestService_Execute_Error(t *testing.T) {
 
 	t.Run("missing api token", func(t *testing.T) {
 		t.Parallel()
-		service := NewService(&filesystem.MockRepository{}, nil)
+		service := NewService(&filesystem.MockRepository{}, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", " ", "/tmp/body", "/tmp/resources")
 		if err == nil || err.Error() != "api-token パラメータは必須です" {
 			t.Fatalf("error = %v", err)
@@ -122,7 +122,7 @@ func TestService_Execute_Error(t *testing.T) {
 
 	t.Run("missing src body dir", func(t *testing.T) {
 		t.Parallel()
-		service := NewService(&filesystem.MockRepository{}, nil)
+		service := NewService(&filesystem.MockRepository{}, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", " ", "/tmp/resources")
 		if err == nil || err.Error() != "src-body-dir パラメータは必須です" {
 			t.Fatalf("error = %v", err)
@@ -131,7 +131,7 @@ func TestService_Execute_Error(t *testing.T) {
 
 	t.Run("missing src resource dir", func(t *testing.T) {
 		t.Parallel()
-		service := NewService(&filesystem.MockRepository{}, nil)
+		service := NewService(&filesystem.MockRepository{}, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", " ")
 		if err == nil || err.Error() != "src-resource-dir パラメータは必須です" {
 			t.Fatalf("error = %v", err)
@@ -145,7 +145,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return nil, errors.New("read body failed")
 		}
 
-		service := NewService(mockRepo, nil)
+		service := NewService(mockRepo, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || !strings.Contains(err.Error(), "src-body-dir の読み取りに失敗しました") {
 			t.Fatalf("error = %v", err)
@@ -162,7 +162,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return nil, errors.New("read resources failed")
 		}
 
-		service := NewService(mockRepo, nil)
+		service := NewService(mockRepo, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || !strings.Contains(err.Error(), "src-resource-dir の読み取りに失敗しました") {
 			t.Fatalf("error = %v", err)
@@ -179,7 +179,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return []string{}, nil
 		}
 
-		service := NewService(mockRepo, nil)
+		service := NewService(mockRepo, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || !strings.Contains(err.Error(), "con_id の抽出に失敗しました") {
 			t.Fatalf("error = %v", err)
@@ -199,7 +199,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return nil, errors.New("read file failed")
 		}
 
-		service := NewService(mockRepo, nil)
+		service := NewService(mockRepo, nil, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || !strings.Contains(err.Error(), "body ファイルの読み込みに失敗しました") {
 			t.Fatalf("error = %v", err)
@@ -226,7 +226,7 @@ func TestService_Execute_Error(t *testing.T) {
 
 		service := NewService(mockRepo, func(baseURL, apiToken string) memos.Client {
 			return mockClient
-		})
+		}, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || !strings.Contains(err.Error(), "メモ作成に失敗しました (con_id=CO000000001)") {
 			t.Fatalf("error = %v", err)
@@ -256,7 +256,7 @@ func TestService_Execute_Error(t *testing.T) {
 
 		service := NewService(mockRepo, func(baseURL, apiToken string) memos.Client {
 			return mockClient
-		})
+		}, nil)
 		_, err := service.Execute("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 		if err == nil || !strings.Contains(err.Error(), "添付ファイルの登録に失敗しました (con_id=CO000000001)") {
 			t.Fatalf("error = %v", err)
