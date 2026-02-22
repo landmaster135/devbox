@@ -75,6 +75,7 @@ jobs:
         run: |
           go run ./cmd/cli/coverage-badge/main.go \
             -operation=patch-badge \
+            -badge-title=coverage \
             -target-file=${{ github.workspace }}/README.md \
             -coverage-file=${{ env.COV_FILE }}
       - name: Update service implementation doc
