@@ -13,9 +13,8 @@ description: Web記事を取得して日本語の学習用サマリーを作成�
   - 出力ディレクトリ
 3. Web検索とページ取得で記事本文を収集する。
 4. 記事内容を読み取り、`Thinking Lens` に沿って要点を整理する。
-5. 指定ディレクトリに新規Markdownファイルを作成し、要約を出力する。
-6. `web_clipper` の `patch_markdown` ツールを実行し、手順5で作成したMarkdownファイルを更新する（`target_title`/`target_url`/`src_markdown_file`/`out_file_path`/`top_heading_level=2` を指定）。
-7. 出力前に「構成・言語・表の扱い・固有名詞説明・記事リンク挿入」を検証する。
+5. `web_clipper` の `patch_markdown` ツールを実行し、指定ディレクトリに新規Markdownファイルを作成し、要約を出力する（`target_title`/`target_url`/`src_markdown_content`/`out_file_path`/`top_heading_level=2` を指定）。
+6. 出力前に「構成・言語・表の扱い・固有名詞説明・記事リンク挿入」を検証する。
 
 ## Thinking Lens
 
