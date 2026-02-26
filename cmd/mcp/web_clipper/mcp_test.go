@@ -7,16 +7,15 @@ import (
 	"strings"
 	"testing"
 
-	mcp "github.com/mark3labs/mcp-go/mcp"
-	server "github.com/mark3labs/mcp-go/server"
+	mcpInfraUsecases "github.com/landmaster135/devbox/internal/mcp_infra_mark3labs/usecases"
 )
 
-func createMockCallToolRequest(arguments map[string]interface{}) mcp.CallToolRequest {
-	return mcp.CallToolRequest{
-		Request: mcp.Request{
+func createMockCallToolRequest(arguments map[string]interface{}) mcpInfraUsecases.CallToolRequest {
+	return mcpInfraUsecases.CallToolRequest{
+		Request: mcpInfraUsecases.Request{
 			Method: "tools/call",
 		},
-		Params: mcp.CallToolParams{
+		Params: mcpInfraUsecases.CallToolParams{
 			Name:      "patch_markdown",
 			Arguments: arguments,
 		},
@@ -120,7 +119,7 @@ func TestHandlePatchMarkdown_Normal(t *testing.T) {
 		t.Fatal("result content is empty")
 	}
 
-	textContent, ok := result.Content[0].(mcp.TextContent)
+	textContent, ok := result.Content[0].(mcpInfraUsecases.TextContent)
 	if !ok {
 		t.Fatalf("unexpected content type: %T", result.Content[0])
 	}
@@ -161,11 +160,11 @@ func TestHandlePatchMarkdown_Error(t *testing.T) {
 func TestAddPromptIntoServer_Normal(t *testing.T) {
 	t.Parallel()
 
-	s := server.NewMCPServer(
+	s := mcpInfra.NewMCPServer(
 		"Test Web Clipper",
 		"1.0.0",
-		server.WithResourceCapabilities(true, true),
-		server.WithPromptCapabilities(true),
+		mcpInfra.WithResourceCapabilities(true, true),
+		mcpInfra.WithPromptCapabilities(true),
 	)
 
 	result := addPromptIntoServer(s)

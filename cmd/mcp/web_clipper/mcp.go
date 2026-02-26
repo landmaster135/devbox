@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	mcp "github.com/mark3labs/mcp-go/mcp"
-	server "github.com/mark3labs/mcp-go/server"
-
-	"github.com/landmaster135/devbox/internal/web_clipper/config"
-	"github.com/landmaster135/devbox/internal/web_clipper/usecases"
+	mcpInfraUsecases "github.com/landmaster135/devbox/internal/mcp_infra_mark3labs/usecases"
+	webClipperConfig "github.com/landmaster135/devbox/internal/web_clipper/config"
+	webClipperUsecases "github.com/landmaster135/devbox/internal/web_clipper/usecases"
 )
 
-func createConfigFromRequest(request mcp.CallToolRequest) (*config.Config, error) {
+var mcpInfra = mcpInfraUsecases.NewService(nil).Mark3labs()
+
+func createConfigFromRequest(request mcpInfraUsecases.CallToolRequest) (*webClipperConfig.Config, error) {
 	targetTitle, err := request.RequireString("target_title")
 	if err != nil {
 		return nil, err
@@ -35,8 +35,8 @@ func createConfigFromRequest(request mcp.CallToolRequest) (*config.Config, error
 	srcMarkdownContent := request.GetString("src_markdown_content", "")
 	srcMarkdownFile := request.GetString("src_markdown_file", "")
 
-	cfg, err := config.NewConfig(
-		config.OperationPatchMarkdown,
+	cfg, err := webClipperConfig.NewConfig(
+		webClipperConfig.OperationPatchMarkdown,
 		targetTitle,
 		targetURL,
 		srcMarkdownContent,
@@ -52,13 +52,13 @@ func createConfigFromRequest(request mcp.CallToolRequest) (*config.Config, error
 	return cfg, nil
 }
 
-func handlePatchMarkdown(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handlePatchMarkdown(ctx context.Context, request mcpInfraUsecases.CallToolRequest) (*mcpInfraUsecases.CallToolResult, error) {
 	cfg, err := createConfigFromRequest(request)
 	if err != nil {
 		return nil, err
 	}
 
-	service := usecases.NewService(nil)
+	service := webClipperUsecases.NewService(nil)
 	result, err := service.PatchMarkdown(
 		cfg.TargetTitle,
 		cfg.TargetURL,
@@ -71,44 +71,48 @@ func handlePatchMarkdown(ctx context.Context, request mcp.CallToolRequest) (*mcp
 		return nil, fmt.Errorf("MarkdownへのWeb記事リンク挿入に失敗しました: %v", err)
 	}
 
-	return mcp.NewToolResultText(result), nil
+	return mcpInfra.NewToolResultText(result), nil
 }
 
-func addPromptIntoServer(s *server.MCPServer) *server.MCPServer {
-	prompt := mcp.NewPrompt(
+func addPromptIntoServer(s *mcpInfraUsecases.MCPServer) *mcpInfraUsecases.MCPServer {
+	prompt := mcpInfra.NewPrompt(
 		"web_clipper_prompt",
-		mcp.WithPromptDescription("Prompt for the web clipper tool."),
+		mcpInfra.WithPromptDescription("Prompt for the web clipper tool."),
 	)
-	s.AddPrompt(prompt, func(ctx context.Context, request mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
-		return &mcp.GetPromptResult{
-			Description: "System prompt for web clipping markdown patch.",
-			Messages: []mcp.PromptMessage{
-				{
-					Role: mcp.RoleAssistant,
-					Content: mcp.NewTextContent(
-						"You can patch markdown by inserting a web article link under a specific heading level.",
-					),
+	s = mcpInfra.AddPrompt(
+		s,
+		prompt,
+		func(ctx context.Context, request mcpInfraUsecases.GetPromptRequest) (*mcpInfraUsecases.GetPromptResult, error) {
+			return &mcpInfraUsecases.GetPromptResult{
+				Description: "System prompt for web clipping markdown patch.",
+				Messages: []mcpInfraUsecases.PromptMessage{
+					{
+						Role: mcpInfraUsecases.RoleAssistant,
+						Content: mcpInfra.NewTextContent(
+							"You can patch markdown by inserting a web article link under a specific heading level.",
+						),
+					},
 				},
-			},
-		}, nil
-	})
+			}, nil
+		},
+	)
 	return s
 }
 
 func BuildWebClipperServer() {
 	s := createWebClipperServer()
-	if err := server.ServeStdio(s); err != nil {
+	if err := mcpInfra.ServeStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 	}
 }
 
-func createWebClipperServer() *server.MCPServer {
-	s := server.NewMCPServer(
+func createWebClipperServer() *mcpInfraUsecases.MCPServer {
+	s := mcpInfra.NewMCPServer(
 		"Web Clipper",
 		"1.0.0",
-		server.WithResourceCapabilities(true, true),
-		server.WithPromptCapabilities(true),
-		server.WithLogging(),
+		mcpInfra.WithResourceCapabilities(true, true),
+		mcpInfra.WithPromptCapabilities(true),
+		mcpInfra.WithLogging(),
 	)
 
 	s = setWebClipperTool(s)
@@ -116,40 +120,39 @@ func createWebClipperServer() *server.MCPServer {
 	return s
 }
 
-func setWebClipperTool(s *server.MCPServer) *server.MCPServer {
-	tool := mcp.NewTool(
+func setWebClipperTool(s *mcpInfraUsecases.MCPServer) *mcpInfraUsecases.MCPServer {
+	tool := mcpInfra.NewTool(
 		"patch_markdown",
-		mcp.WithDescription("Patch markdown with a web article link for summary documents"),
-		mcp.WithString(
+		mcpInfra.WithDescription("Patch markdown with a web article link for summary documents"),
+		mcpInfra.WithString(
 			"target_title",
-			mcp.Required(),
-			mcp.Description("The article title for the markdown link"),
+			mcpInfra.Required(),
+			mcpInfra.Description("The article title for the markdown link"),
 		),
-		mcp.WithString(
+		mcpInfra.WithString(
 			"target_url",
-			mcp.Required(),
-			mcp.Description("The article URL for the markdown link"),
+			mcpInfra.Required(),
+			mcpInfra.Description("The article URL for the markdown link"),
 		),
-		mcp.WithString(
+		mcpInfra.WithString(
 			"src_markdown_content",
-			mcp.Description("Source markdown content. Cannot be specified with src_markdown_file"),
+			mcpInfra.Description("Source markdown content. Cannot be specified with src_markdown_file"),
 		),
-		mcp.WithString(
+		mcpInfra.WithString(
 			"src_markdown_file",
-			mcp.Description("Source markdown file path. Cannot be specified with src_markdown_content"),
+			mcpInfra.Description("Source markdown file path. Cannot be specified with src_markdown_content"),
 		),
-		mcp.WithString(
+		mcpInfra.WithString(
 			"out_file_path",
-			mcp.Required(),
-			mcp.Description("Output markdown file path"),
+			mcpInfra.Required(),
+			mcpInfra.Description("Output markdown file path"),
 		),
-		mcp.WithNumber(
+		mcpInfra.WithNumber(
 			"top_heading_level",
-			mcp.Required(),
-			mcp.Description("Heading level (>=1) where the link line is inserted below the first heading"),
+			mcpInfra.Required(),
+			mcpInfra.Description("Heading level (>=1) where the link line is inserted below the first heading"),
 		),
 	)
 
-	s.AddTool(tool, handlePatchMarkdown)
-	return s
+	return mcpInfra.AddTool(s, tool, handlePatchMarkdown)
 }
