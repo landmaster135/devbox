@@ -12,14 +12,16 @@ Web記事要約用のMarkdownに、指定URLのリンク行を挿入して出力
 
 ## フラグ
 
-- `--operation`（必須）: 実行する操作。現状は `patch-markdown` のみ対応。
-- `--target-title`（必須）: 追加するリンク表示テキスト。
-- `--target-url`（必須）: 追加するリンクURL。
-- `--src-markdown-content`: 処理対象のMarkdown本文（`--src-markdown-file` と同時指定不可）。
-- `--src-markdown-file`: 処理対象のMarkdownファイルパス（`--src-markdown-content` と同時指定不可）。
-- `--out-file-path`（必須）: 出力先Markdownファイルパス。
-- `--top-heading-level`（必須）: 追加位置の基準となる見出しレベル（`1` 以上）。
-- `-help`, `-h`: ヘルプ表示。
+| フラグ | 必須 | 説明 |
+| --- | --- | --- |
+| `--operation` | はい | 実行する操作。現状は `patch-markdown` のみ対応。 |
+| `--target-title` | はい | 追加するリンク表示テキスト。 |
+| `--target-url` | はい | 追加するリンクURL。 |
+| `--src-markdown-content` | いいえ | 処理対象のMarkdown本文（`--src-markdown-file` と同時指定不可）。 |
+| `--src-markdown-file` | いいえ | 処理対象のMarkdownファイルパス（`--src-markdown-content` と同時指定不可）。 |
+| `--out-file-path` | はい | 出力先Markdownファイルパス。 |
+| `--top-heading-level` | はい | 追加位置の基準となる見出しレベル（`1` 以上）。 |
+| `-help`, `-h` | いいえ | ヘルプ表示。 |
 
 ## 使用方法
 
