@@ -110,6 +110,18 @@ func TestPatchMarkdown(t *testing.T) {
 			expectedWriteCalls: 0,
 		},
 		{
+			name:               "異常系_outFilePathにカンマを含む",
+			targetTitle:        "OpenAI Blog",
+			targetURL:          "https://openai.com/blog",
+			srcMarkdownContent: "## 見出し\n本文\n",
+			outFilePath:        "/tmp/out,invalid.md",
+			topHeadingLevel:    2,
+			expectError:        true,
+			errorMessage:       "--out-file-path にカンマは使用できません",
+			expectedReadCalls:  0,
+			expectedWriteCalls: 0,
+		},
+		{
 			name:               "異常系_topHeadingLevelが0以下",
 			targetTitle:        "OpenAI Blog",
 			targetURL:          "https://openai.com/blog",

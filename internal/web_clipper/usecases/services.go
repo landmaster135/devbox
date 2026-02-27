@@ -43,6 +43,9 @@ func (s *Service) PatchMarkdown(targetTitle, targetURL, srcMarkdownContent, srcM
 	if trimmedOutFilePath == "" {
 		return "", fmt.Errorf("--out-file-path は必須です")
 	}
+	if strings.Contains(trimmedOutFilePath, ",") {
+		return "", fmt.Errorf("--out-file-path にカンマは使用できません")
+	}
 	if topHeadingLevel < 1 {
 		return "", fmt.Errorf("--top-heading-level は 1 以上で指定してください")
 	}
