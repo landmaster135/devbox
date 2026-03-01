@@ -439,3 +439,60 @@ func TestProcessImageRename_CustomDelimiterAndDigits(t *testing.T) {
 		t.Errorf("期待される出力メッセージが見つかりません: %s", stdoutStr)
 	}
 }
+
+// TestProcessImageRename_WithExtensions は拡張子フィルタが適用されることをテストします
+func TestProcessImageRename_WithExtensions(t *testing.T) {
+	tempDir := t.TempDir()
+
+	testFiles := []string{"target1.heic", "target2.HEIC", "skip.jpg", "skip.png"}
+	for _, filename := range testFiles {
+		filePath := filepath.Join(tempDir, filename)
+		if err := os.WriteFile(filePath, []byte("test image content"), 0644); err != nil {
+			t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+		}
+	}
+
+	config := Config{
+		SrcDir:     tempDir,
+		SortByName: true,
+		SortByTime: false,
+		Prefix:     "EXT",
+		Delimiter:  "_",
+		Digits:     3,
+		StartCount: 1,
+		Recursive:  false,
+		Workers:    1,
+		Extensions: []string{"heic"},
+	}
+
+	var stdout, stderr bytes.Buffer
+	successCount, errorCount, err := ProcessImageRename(config, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("ProcessImageRename() が予期せず失敗しました: %v", err)
+	}
+
+	if successCount != 2 {
+		t.Errorf("成功数が期待値と異なります。期待値: 2, 実際: %d", successCount)
+	}
+	if errorCount != 0 {
+		t.Errorf("エラー数が期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	expectedFiles := []string{"EXT_001.heic", "EXT_002.HEIC"}
+	for _, expectedFile := range expectedFiles {
+		if _, err := os.Stat(filepath.Join(tempDir, expectedFile)); os.IsNotExist(err) {
+			t.Errorf("期待されるリネーム後ファイルが存在しません: %s", expectedFile)
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join(tempDir, "skip.jpg")); err != nil {
+		t.Errorf("対象外ファイルは残る想定です: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "skip.png")); err != nil {
+		t.Errorf("対象外ファイルは残る想定です: %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), "画像ファイルが 2 件見つかりました") {
+		t.Errorf("期待される出力メッセージが見つかりません: %s", stdout.String())
+	}
+}

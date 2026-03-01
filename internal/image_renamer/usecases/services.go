@@ -56,6 +56,7 @@ type Config struct {
 	StartCount int
 	Recursive  bool
 	Workers    int
+	Extensions []string
 }
 
 // validateConfig は設定の妥当性を検証します
@@ -90,18 +91,76 @@ func validateConfig(config Config, stderr io.Writer) error {
 	return nil
 }
 
-func isImageExt(ext string) bool {
-	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".avif":
-		return true
-	default:
-		return false
+var defaultImageExtensions = []string{".jpg", ".jpeg", ".png", ".webp", ".avif"}
+var defaultImageExtensionSet = extensionSet(defaultImageExtensions)
+
+func normalizeExtension(ext string) string {
+	normalized := strings.TrimSpace(strings.ToLower(ext))
+	if normalized == "" {
+		return ""
 	}
+	if !strings.HasPrefix(normalized, ".") {
+		normalized = "." + normalized
+	}
+	return normalized
+}
+
+func normalizeExtensions(extensions []string) []string {
+	if len(extensions) == 0 {
+		defaults := make([]string, len(defaultImageExtensions))
+		copy(defaults, defaultImageExtensions)
+		return defaults
+	}
+
+	normalized := make([]string, 0, len(extensions))
+	seen := make(map[string]struct{}, len(extensions))
+
+	for _, extension := range extensions {
+		for _, token := range strings.Split(extension, ",") {
+			normalizedExt := normalizeExtension(token)
+			if normalizedExt == "" {
+				continue
+			}
+			if _, ok := seen[normalizedExt]; ok {
+				continue
+			}
+			seen[normalizedExt] = struct{}{}
+			normalized = append(normalized, normalizedExt)
+		}
+	}
+
+	if len(normalized) == 0 {
+		defaults := make([]string, len(defaultImageExtensions))
+		copy(defaults, defaultImageExtensions)
+		return defaults
+	}
+
+	return normalized
+}
+
+func extensionSet(extensions []string) map[string]struct{} {
+	normalized := normalizeExtensions(extensions)
+	set := make(map[string]struct{}, len(normalized))
+	for _, ext := range normalized {
+		set[ext] = struct{}{}
+	}
+	return set
+}
+
+func isImageExt(ext string) bool {
+	_, ok := defaultImageExtensionSet[normalizeExtension(ext)]
+	return ok
+}
+
+func isTargetExt(ext string, targetExts map[string]struct{}) bool {
+	_, ok := targetExts[normalizeExtension(ext)]
+	return ok
 }
 
 // findImageFiles は指定されたディレクトリから画像ファイルを検索します
-func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]string, error) {
+func findImageFiles(srcDir string, recursive bool, extensions []string, stdout, stderr io.Writer) ([]string, error) {
 	var files []string
+	targetExts := extensionSet(extensions)
 
 	if recursive {
 		err := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
@@ -109,8 +168,8 @@ func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]
 				return err
 			}
 			if !d.IsDir() {
-				ext := strings.ToLower(filepath.Ext(d.Name()))
-				if isImageExt(ext) {
+				ext := filepath.Ext(d.Name())
+				if isTargetExt(ext, targetExts) {
 					files = append(files, path)
 				}
 			}
@@ -129,8 +188,8 @@ func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]
 
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				ext := strings.ToLower(filepath.Ext(entry.Name()))
-				if isImageExt(ext) {
+				ext := filepath.Ext(entry.Name())
+				if isTargetExt(ext, targetExts) {
 					files = append(files, filepath.Join(srcDir, entry.Name()))
 				}
 			}
@@ -315,7 +374,7 @@ func ProcessImageRename(config Config, stdout, stderr io.Writer) (int, int, erro
 	}
 
 	// 画像ファイルの検索
-	files, err := findImageFiles(config.SrcDir, config.Recursive, stdout, stderr)
+	files, err := findImageFiles(config.SrcDir, config.Recursive, config.Extensions, stdout, stderr)
 	if err != nil {
 		return 0, 0, err
 	}

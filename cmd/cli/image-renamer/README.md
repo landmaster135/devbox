@@ -29,6 +29,7 @@
 | -start     | 1            | リネーム操作の開始番号 |
 | -r         | false        | サブディレクトリを再帰的にスキャン |
 | -workers   | CPU数        | 並行ワーカー数 |
+| -extensions | (未指定)    | リネーム対象拡張子（カンマ区切り）。未指定時は `jpg,jpeg,png,webp,avif` |
 
 **注意**: `-time` または `-name` のいずれかを指定する必要があります。両方指定した場合は `-name` が優先されます。
 
@@ -65,6 +66,9 @@ go run ./cmd/cli/image-renamer -src ./photos -prefix "article01" -time -r
 ```bash
 # ワーカー数を8に設定
 go run ./cmd/cli/image-renamer -prefix "article01" -time -workers 8
+
+# HEICとPNGのみを対象にリネーム
+go run ./cmd/cli/image-renamer -prefix "article01" -name -extensions ".heic,.png"
 ```
 
 ## ビルド方法
