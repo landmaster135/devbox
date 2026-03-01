@@ -69,6 +69,23 @@ func TestParseFlags_AddTags_Normal(t *testing.T) {
 	})
 }
 
+func TestParseFlags_AddTagsByDir_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationAddTags,
+		"--dir-path", "./notes",
+		"--tags", "go,markdown",
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.DirPath != "./notes" {
+			t.Fatalf("unexpected dir path: %s", cfg.DirPath)
+		}
+	})
+}
+
 func TestParseFlags_DeleteEmptyFiles_Normal(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
@@ -125,6 +142,34 @@ func TestParseFlags_Invalid(t *testing.T) {
 		"--file-path", "./sample.md",
 		"--heading-level", "0",
 		"--output-dir", "./out",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidAddTagsMissingTarget(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationAddTags,
+		"--tags", "go,markdown",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidAddTagsWithBothTargets(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationAddTags,
+		"--file-path", "./sample.md",
+		"--dir-path", "./notes",
+		"--tags", "go,markdown",
 	}, func() {
 		_, err := ParseFlags()
 		if err == nil {

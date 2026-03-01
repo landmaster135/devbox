@@ -7,7 +7,7 @@ import (
 func TestNewConfig_SplitHeadings_Normal(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := NewConfig(OperationSplitHeadings, "./doc.md", "", 2, "./out", nil, "", "", "", false)
+	cfg, err := NewConfig(OperationSplitHeadings, "./doc.md", "", "", 2, "./out", nil, "", "", "", false)
 	if err != nil {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
@@ -19,7 +19,7 @@ func TestNewConfig_SplitHeadings_Normal(t *testing.T) {
 func TestNewConfig_AddFrontMatter_Normal(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewConfig(OperationAddFrontMatter, "./doc.md", "", 0, "", []string{"title=test"}, "", "", "", false)
+	_, err := NewConfig(OperationAddFrontMatter, "./doc.md", "", "", 0, "", []string{"title=test"}, "", "", "", false)
 	if err != nil {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
@@ -28,7 +28,16 @@ func TestNewConfig_AddFrontMatter_Normal(t *testing.T) {
 func TestNewConfig_AddTags_Normal(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewConfig(OperationAddTags, "./doc.md", "", 0, "", nil, "go,markdown", "", "", false)
+	_, err := NewConfig(OperationAddTags, "./doc.md", "", "", 0, "", nil, "go,markdown", "", "", false)
+	if err != nil {
+		t.Fatalf("NewConfig returned error: %v", err)
+	}
+}
+
+func TestNewConfig_AddTagsByDir_Normal(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewConfig(OperationAddTags, "", "./docs", "", 0, "", nil, "go,markdown", "", "", false)
 	if err != nil {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
@@ -37,7 +46,7 @@ func TestNewConfig_AddTags_Normal(t *testing.T) {
 func TestNewConfig_DeleteEmptyFiles_Normal(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewConfig(OperationDeleteEmptyFiles, "", "./docs", 0, "", nil, "", "", "", false)
+	_, err := NewConfig(OperationDeleteEmptyFiles, "", "", "./docs", 0, "", nil, "", "", "", false)
 	if err != nil {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
@@ -46,7 +55,7 @@ func TestNewConfig_DeleteEmptyFiles_Normal(t *testing.T) {
 func TestNewConfig_AddHeading1_Normal(t *testing.T) {
 	t.Parallel()
 
-	cfg, err := NewConfig(OperationAddHeading1, "./doc.md", "", 0, "", nil, "", "概要", HeadingPositionHead, false)
+	cfg, err := NewConfig(OperationAddHeading1, "./doc.md", "", "", 0, "", nil, "", "概要", HeadingPositionHead, false)
 	if err != nil {
 		t.Fatalf("NewConfig returned error: %v", err)
 	}
@@ -58,7 +67,7 @@ func TestNewConfig_AddHeading1_Normal(t *testing.T) {
 func TestNewConfig_InvalidSplitHeadings(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewConfig(OperationSplitHeadings, "./doc.md", "", 7, "./out", nil, "", "", "", false)
+	_, err := NewConfig(OperationSplitHeadings, "./doc.md", "", "", 7, "./out", nil, "", "", "", false)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}
@@ -67,7 +76,7 @@ func TestNewConfig_InvalidSplitHeadings(t *testing.T) {
 func TestNewConfig_InvalidDeleteEmptyFiles(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewConfig(OperationDeleteEmptyFiles, "", "", 0, "", nil, "", "", "", false)
+	_, err := NewConfig(OperationDeleteEmptyFiles, "", "", "", 0, "", nil, "", "", "", false)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}
@@ -76,12 +85,26 @@ func TestNewConfig_InvalidDeleteEmptyFiles(t *testing.T) {
 func TestNewConfig_InvalidAddHeading1(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewConfig(OperationAddHeading1, "./doc.md", "", 0, "", nil, "", "", HeadingPositionHead, false)
+	_, err := NewConfig(OperationAddHeading1, "./doc.md", "", "", 0, "", nil, "", "", HeadingPositionHead, false)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}
 
-	_, err = NewConfig(OperationAddHeading1, "./doc.md", "", 0, "", nil, "", "概要", "middle", false)
+	_, err = NewConfig(OperationAddHeading1, "./doc.md", "", "", 0, "", nil, "", "概要", "middle", false)
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func TestNewConfig_InvalidAddTags(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewConfig(OperationAddTags, "", "", "", 0, "", nil, "go,markdown", "", "", false)
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+
+	_, err = NewConfig(OperationAddTags, "./doc.md", "./docs", "", 0, "", nil, "go,markdown", "", "", false)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}

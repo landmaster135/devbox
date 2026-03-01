@@ -4,7 +4,7 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 
 - `split-headings`: 指定見出しレベルごとに分割して複数ファイル出力
 - `add-front-matter`: `--kv` で指定した key-value をフロントマターへ追加
-- `add-tags`: `--tags` で指定したタグを `#tag1 #tag2` 形式で追加
+- `add-tags`: `--tags` で指定したタグを `#tag1 #tag2` 形式で追加（`--file-path` または `--dir-path`）
 - `delete-empty-files`: 指定ディレクトリ内の条件一致 Markdown ファイルを削除
 - `add-heading1`: 本文の先頭または末尾へ見出し1を追加
 
@@ -13,7 +13,8 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
 | `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` |
-| `--file-path` | `split-headings` / `add-front-matter` / `add-tags` / `add-heading1` で必須 | なし | 対象の Markdown ファイル |
+| `--file-path` | `split-headings` / `add-front-matter` / `add-heading1` で必須、`add-tags` で `--dir-path` と排他で必須 | なし | 対象の Markdown ファイル |
+| `--dir-path` | `add-tags` で `--file-path` と排他で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
 | `--directory-path` | `delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ |
 | `--heading-level` | `split-headings` で必須 | `0` | 分割対象の見出しレベル（1-6） |
 | `--heading-text` | `add-heading1` で必須 | なし | 追加する見出し1のテキスト |
@@ -26,7 +27,7 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 ## 使用方法
 
 ```bash
-go run ./cmd/cli/markdown-crafter --operation <operation> --file-path <path> [flags...]
+go run ./cmd/cli/markdown-crafter --operation <operation> [--file-path <path> | --dir-path <dir>] [flags...]
 ```
 
 ## 使用例
@@ -79,6 +80,13 @@ go run ./cmd/cli/markdown-crafter \
   --tags go,markdown
 ```
 
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation add-tags \
+  --dir-path ./notes \
+  --tags go,markdown
+```
+
 ### delete-empty-files
 
 ```bash
@@ -118,6 +126,12 @@ add-front-matter: ./sample.md を更新しました (3 キー)
 
 ```text
 add-tags: ./sample.md にタグを追加しました (#go #markdown)
+```
+
+```text
+add-tags: 2 ファイルにタグを追加しました (#go #markdown)
+- ./notes/a.md
+- ./notes/b.md
 ```
 
 ```text

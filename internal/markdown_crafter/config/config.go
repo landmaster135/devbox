@@ -29,6 +29,7 @@ var allowedOperations = []string{
 type Config struct {
 	Operation       string
 	FilePath        string
+	DirPath         string
 	DirectoryPath   string
 	HeadingLevel    int
 	OutputDir       string
@@ -39,10 +40,11 @@ type Config struct {
 	Help            bool
 }
 
-func NewConfig(operation, filePath, directoryPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition string, help bool) (*Config, error) {
+func NewConfig(operation, filePath, dirPath, directoryPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition string, help bool) (*Config, error) {
 	cfg := &Config{
 		Operation:       operation,
 		FilePath:        filePath,
+		DirPath:         dirPath,
 		DirectoryPath:   directoryPath,
 		HeadingLevel:    headingLevel,
 		OutputDir:       outputDir,
@@ -89,8 +91,13 @@ func (c *Config) validate() error {
 			return fmt.Errorf("--kv は1件以上指定してください (--operation=add-front-matter)")
 		}
 	case OperationAddTags:
-		if strings.TrimSpace(c.FilePath) == "" {
-			return fmt.Errorf("--file-path は必須です (--operation=add-tags)")
+		hasFilePath := strings.TrimSpace(c.FilePath) != ""
+		hasDirPath := strings.TrimSpace(c.DirPath) != ""
+		if !hasFilePath && !hasDirPath {
+			return fmt.Errorf("--file-path または --dir-path のいずれかは必須です (--operation=add-tags)")
+		}
+		if hasFilePath && hasDirPath {
+			return fmt.Errorf("--file-path と --dir-path は同時に指定できません (--operation=add-tags)")
 		}
 		if strings.TrimSpace(c.Tags) == "" {
 			return fmt.Errorf("--tags は必須です (--operation=add-tags)")
@@ -147,6 +154,7 @@ func ParseFlags() (*Config, error) {
 	var (
 		operation       string
 		filePath        string
+		dirPath         string
 		directoryPath   string
 		headingLevel    int
 		outputDir       string
@@ -159,6 +167,7 @@ func ParseFlags() (*Config, error) {
 
 	flagSet.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作 (%s)", strings.Join(allowedOperations, ", ")))
 	flagSet.StringVar(&filePath, "file-path", "", "対象のMarkdownファイルパス")
+	flagSet.StringVar(&dirPath, "dir-path", "", "対象のMarkdownディレクトリパス (add-tagsで必須条件あり)")
 	flagSet.StringVar(&directoryPath, "directory-path", "", "対象のMarkdownディレクトリパス (delete-empty-filesで必須)")
 	flagSet.IntVar(&headingLevel, "heading-level", 0, "分割対象の見出しレベル (1-6, split-headingsで必須)")
 	flagSet.StringVar(&outputDir, "output-dir", "", "分割後ファイルの出力先ディレクトリ (split-headingsで必須)")
@@ -173,7 +182,7 @@ func ParseFlags() (*Config, error) {
 		return nil, err
 	}
 
-	return NewConfig(operation, filePath, directoryPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, help)
+	return NewConfig(operation, filePath, dirPath, directoryPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, help)
 }
 
 func PrintUsage() {
@@ -183,6 +192,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s --operation split-headings --file-path ./note.md --heading-level 2 --output-dir ./out\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-front-matter --file-path ./note.md --kv title=記事 --kv author=nov\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --file-path ./note.md --tags go,markdown\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --dir-path ./notes --tags go,markdown\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation delete-empty-files --directory-path ./notes\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-heading1 --file-path ./note.md --heading-text 概要 --heading-position head\n\n", exeName)
 
@@ -191,6 +201,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        実行する操作 (%s)\n", strings.Join(allowedOperations, ", "))
 	fmt.Fprintf(os.Stderr, "  --file-path string\n")
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownファイルパス\n")
+	fmt.Fprintf(os.Stderr, "  --dir-path string\n")
+	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (add-tagsで file-path の代わりに指定)\n")
 	fmt.Fprintf(os.Stderr, "  --directory-path string\n")
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (delete-empty-filesで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --heading-level int\n")

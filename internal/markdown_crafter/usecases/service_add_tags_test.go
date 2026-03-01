@@ -152,3 +152,78 @@ func TestService_AddTags_EmptyBody_NoFrontMatter(t *testing.T) {
 		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, string(got))
 	}
 }
+
+func TestService_AddTagsByDir_Normal(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	filePathA := filepath.Join(tmpDir, "a.md")
+	filePathB := filepath.Join(tmpDir, "b.md")
+	filePathC := filepath.Join(tmpDir, "c.txt")
+	if err := os.WriteFile(filePathA, []byte("body-a\n"), 0644); err != nil {
+		t.Fatalf("failed to write file a: %v", err)
+	}
+	if err := os.WriteFile(filePathB, []byte("---\ntitle: b\n---\n\nbody-b\n"), 0644); err != nil {
+		t.Fatalf("failed to write file b: %v", err)
+	}
+	if err := os.WriteFile(filePathC, []byte("plain text"), 0644); err != nil {
+		t.Fatalf("failed to write file c: %v", err)
+	}
+
+	service := NewService(nil)
+	result, err := service.AddTagsByDir(tmpDir, "go,markdown")
+	if err != nil {
+		t.Fatalf("AddTagsByDir returned error: %v", err)
+	}
+	if !strings.Contains(result, "2 ファイルにタグを追加しました") {
+		t.Fatalf("unexpected result: %q", result)
+	}
+	if !strings.Contains(result, filePathA) || !strings.Contains(result, filePathB) {
+		t.Fatalf("result does not contain updated file paths: %q", result)
+	}
+
+	gotA, err := os.ReadFile(filePathA)
+	if err != nil {
+		t.Fatalf("failed to read file a: %v", err)
+	}
+	expectedA := "#go #markdown\n\nbody-a\n"
+	if string(gotA) != expectedA {
+		t.Fatalf("unexpected content a:\nexpected:\n%q\ngot:\n%q", expectedA, string(gotA))
+	}
+
+	gotB, err := os.ReadFile(filePathB)
+	if err != nil {
+		t.Fatalf("failed to read file b: %v", err)
+	}
+	expectedB := "---\ntitle: b\n---\n\n#go #markdown\n\nbody-b\n"
+	if string(gotB) != expectedB {
+		t.Fatalf("unexpected content b:\nexpected:\n%q\ngot:\n%q", expectedB, string(gotB))
+	}
+
+	gotC, err := os.ReadFile(filePathC)
+	if err != nil {
+		t.Fatalf("failed to read file c: %v", err)
+	}
+	if string(gotC) != "plain text" {
+		t.Fatalf("unexpected content c: %q", string(gotC))
+	}
+}
+
+func TestService_AddTagsByDir_NoMarkdownFiles_Normal(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	txtPath := filepath.Join(tmpDir, "notes.txt")
+	if err := os.WriteFile(txtPath, []byte("plain text"), 0644); err != nil {
+		t.Fatalf("failed to write txt file: %v", err)
+	}
+
+	service := NewService(nil)
+	result, err := service.AddTagsByDir(tmpDir, "go")
+	if err != nil {
+		t.Fatalf("AddTagsByDir returned error: %v", err)
+	}
+	if !strings.Contains(result, "0件") {
+		t.Fatalf("unexpected result: %q", result)
+	}
+}
