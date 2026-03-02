@@ -125,9 +125,8 @@ operation が増えて `usecases/services.go` が肥大化する場合は、`use
 ディレクトリ構成の例:
 ```text
 internal/{tool}/usecases/
-├── services.go                      // Facadeと依存注入
-├── service_operations.go            // 公開メソッドの委譲
-├── service_contract.go              // 公開インターフェース + テスト用公開Mock
+├── services.go                      // Facade、依存注入、公開メソッドを同居
+├── service_contract.go              // operationインターフェース定義 + 組み立て
 ├── common/
 │   ├── helpers.go                   // 正規化、共通バリデーション
 │   ├── models.go                    // 共通DTO
@@ -154,13 +153,19 @@ internal/{tool}/infrastructures/
 ```
 
 実装ルール:
-- `services.go` は Facade として薄く保つ（公開APIと依存注入に限定）
+- `services.go` に **初期化（依存注入）と公開メソッドを必ず同居** させる
 - 各 operation のロジックは `operations/{operation}/` に閉じ込める
 - operation 間で共有する業務ロジック・DTO・request payload は `common/` に移す
 - HTTPクライアントやファイル操作などの外部I/Oは `infrastructures/` に実装する
 - `infrastructures` 層の `Repository` モックは `infrastructures/{resource}/` 直下に置く
 - operation 専用テストは同じ operation ディレクトリに置く
 - operation 実装ファイル名は `service.go`、テストファイル名は `service_test.go` とする
+- 薄い委譲ファイルを作らない
+
+参照実装:
+- `internal/markdown_crafter/usecases/services.go`
+- `internal/markdown_crafter/usecases/service_contract.go`
+- `internal/markdown_crafter/usecases/operations/`
 
 適用目安:
 - operation が 4 種類以上あり、単一 `services.go` の見通しが悪くなっている場合
