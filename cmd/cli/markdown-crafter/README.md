@@ -1,6 +1,6 @@
 # markdown-crafter
 
-Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 6 操作を切り替えます。
+Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 7 操作を切り替えます。
 
 - `split-headings`: 指定見出しレベルごとに分割して複数ファイル出力
 - `add-front-matter`: `--kv` で指定した key-value をフロントマターへ追加
@@ -8,11 +8,12 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 - `delete-empty-files`: 指定ディレクトリ内の条件一致 Markdown ファイルを削除
 - `add-heading1`: 本文の先頭または末尾へ見出し1を追加
 - `replace-images`: Markdown 画像記法 `![alt](url)` を指定文字列へ置換
+- `remove-heading-annotations`: 指定見出しレベルの `**見出し**` 注釈を `見出し` へ変換
 
 ## 内部構成
 
 - CLI エントリーポイントは `cmd/cli/markdown-crafter/main.go` に集約。
-- operation の振り分けは `internal/markdown_crafter/usecases/service_operations.go` が担当。
+- operation の振り分けは `internal/markdown_crafter/usecases/services.go` が担当。
 - 各 operation の実処理は `internal/markdown_crafter/usecases/operations/*/service.go` に分離。
 - front matter / tag などの共通ロジックは `internal/markdown_crafter/usecases/common/helpers.go` に集約。
 
@@ -20,11 +21,11 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` / `replace-images` |
-| `--file-path` | `split-headings` / `add-front-matter` / `add-heading1` / `replace-images` で必須、`add-tags` で `--dir-path` と排他で必須 | なし | 対象の Markdown ファイル |
+| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` / `replace-images` / `remove-heading-annotations` |
+| `--file-path` | `split-headings` / `add-front-matter` / `add-heading1` / `replace-images` / `remove-heading-annotations` で必須、`add-tags` で `--dir-path` と排他で必須 | なし | 対象の Markdown ファイル |
 | `--dir-path` | `add-tags` で `--file-path` と排他で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
 | `--directory-path` | `delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ |
-| `--heading-level` | `split-headings` で必須 | `0` | 分割対象の見出しレベル（1-6） |
+| `--heading-level` | `split-headings` / `remove-heading-annotations` で必須 | `0` | 対象の見出しレベル（1-6） |
 | `--heading-text` | `add-heading1` で必須 | なし | 追加する見出し1のテキスト |
 | `--heading-position` | `add-heading1` で必須 | なし | 追加位置（`head` または `tail`） |
 | `--replacement-text` | `replace-images` で必須 | なし | 画像記法を置換する文字列（例: `(添付画像)`） |
@@ -128,6 +129,15 @@ go run ./cmd/cli/markdown-crafter \
   --replacement-text "(添付画像)"
 ```
 
+### remove-heading-annotations
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation remove-heading-annotations \
+  --file-path ./sample.md \
+  --heading-level 3
+```
+
 ## 出力例
 
 ### 成功時
@@ -164,6 +174,10 @@ add-heading1: ./sample.md に見出しを追加しました (head)
 
 ```text
 replace-images: ./sample.md の画像記法 2 件を置換しました
+```
+
+```text
+remove-heading-annotations: ./sample.md の見出し注釈 2 件を除去しました
 ```
 
 ### エラー時

@@ -43,7 +43,7 @@ func TestNewService_Normal(t *testing.T) {
 	if service.splitHeadingsOperation == nil || service.addFrontMatterOperation == nil || service.addTagsOperation == nil {
 		t.Fatal("operations should be initialized")
 	}
-	if service.deleteEmptyFilesOperation == nil || service.addHeading1Operation == nil || service.replaceImagesOperation == nil {
+	if service.deleteEmptyFilesOperation == nil || service.addHeading1Operation == nil || service.replaceImagesOperation == nil || service.removeHeadingAnnotationsOperation == nil {
 		t.Fatal("operations should be initialized")
 	}
 
@@ -57,7 +57,7 @@ func TestNewService_Normal(t *testing.T) {
 	if defaultService.splitHeadingsOperation == nil || defaultService.addFrontMatterOperation == nil || defaultService.addTagsOperation == nil {
 		t.Fatal("default operations should be initialized")
 	}
-	if defaultService.deleteEmptyFilesOperation == nil || defaultService.addHeading1Operation == nil || defaultService.replaceImagesOperation == nil {
+	if defaultService.deleteEmptyFilesOperation == nil || defaultService.addHeading1Operation == nil || defaultService.replaceImagesOperation == nil || defaultService.removeHeadingAnnotationsOperation == nil {
 		t.Fatal("default operations should be initialized")
 	}
 }

@@ -122,10 +122,36 @@ func TestNewConfig_ReplaceImages_Normal(t *testing.T) {
 	}
 }
 
+func TestNewConfig_RemoveHeadingAnnotations_Normal(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := NewConfig(OperationRemoveHeadingAnnotations, "./doc.md", "", "", 3, "", nil, "", "", "", "", false)
+	if err != nil {
+		t.Fatalf("NewConfig returned error: %v", err)
+	}
+	if cfg.HeadingLevel != 3 {
+		t.Fatalf("unexpected heading level: %d", cfg.HeadingLevel)
+	}
+}
+
 func TestNewConfig_InvalidReplaceImages(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewConfig(OperationReplaceImages, "./doc.md", "", "", 0, "", nil, "", "", "", "", false)
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func TestNewConfig_InvalidRemoveHeadingAnnotations(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewConfig(OperationRemoveHeadingAnnotations, "", "", "", 3, "", nil, "", "", "", "", false)
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+
+	_, err = NewConfig(OperationRemoveHeadingAnnotations, "./doc.md", "", "", 0, "", nil, "", "", "", "", false)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}

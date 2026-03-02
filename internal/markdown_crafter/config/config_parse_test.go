@@ -140,6 +140,23 @@ func TestParseFlags_ReplaceImages_Normal(t *testing.T) {
 	})
 }
 
+func TestParseFlags_RemoveHeadingAnnotations_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveHeadingAnnotations,
+		"--file-path", "./sample.md",
+		"--heading-level", "3",
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.HeadingLevel != 3 {
+			t.Fatalf("unexpected heading level: %d", cfg.HeadingLevel)
+		}
+	})
+}
+
 func TestParseFlags_Help_Normal(t *testing.T) {
 	withArgs([]string{"markdown-crafter", "--help"}, func() {
 		cfg, err := ParseFlags()
@@ -199,6 +216,19 @@ func TestParseFlags_InvalidReplaceImagesMissingReplacement(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
 		"--operation", OperationReplaceImages,
+		"--file-path", "./sample.md",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidRemoveHeadingAnnotationsMissingHeadingLevel(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveHeadingAnnotations,
 		"--file-path", "./sample.md",
 	}, func() {
 		_, err := ParseFlags()

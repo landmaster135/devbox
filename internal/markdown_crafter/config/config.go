@@ -8,12 +8,13 @@ import (
 )
 
 const (
-	OperationSplitHeadings    = "split-headings"
-	OperationAddFrontMatter   = "add-front-matter"
-	OperationAddTags          = "add-tags"
-	OperationDeleteEmptyFiles = "delete-empty-files"
-	OperationAddHeading1      = "add-heading1"
-	OperationReplaceImages    = "replace-images"
+	OperationSplitHeadings            = "split-headings"
+	OperationAddFrontMatter           = "add-front-matter"
+	OperationAddTags                  = "add-tags"
+	OperationDeleteEmptyFiles         = "delete-empty-files"
+	OperationAddHeading1              = "add-heading1"
+	OperationReplaceImages            = "replace-images"
+	OperationRemoveHeadingAnnotations = "remove-heading-annotations"
 
 	HeadingPositionHead = "head"
 	HeadingPositionTail = "tail"
@@ -26,6 +27,7 @@ var allowedOperations = []string{
 	OperationDeleteEmptyFiles,
 	OperationAddHeading1,
 	OperationReplaceImages,
+	OperationRemoveHeadingAnnotations,
 }
 
 type Config struct {
@@ -130,6 +132,13 @@ func (c *Config) validate() error {
 		if strings.TrimSpace(c.ReplacementText) == "" {
 			return fmt.Errorf("--replacement-text は必須です (--operation=replace-images)")
 		}
+	case OperationRemoveHeadingAnnotations:
+		if strings.TrimSpace(c.FilePath) == "" {
+			return fmt.Errorf("--file-path は必須です (--operation=remove-heading-annotations)")
+		}
+		if c.HeadingLevel < 1 || c.HeadingLevel > 6 {
+			return fmt.Errorf("--heading-level は 1 から 6 の範囲で指定してください")
+		}
 	}
 
 	return nil
@@ -181,7 +190,7 @@ func ParseFlags() (*Config, error) {
 	flagSet.StringVar(&filePath, "file-path", "", "対象のMarkdownファイルパス")
 	flagSet.StringVar(&dirPath, "dir-path", "", "対象のMarkdownディレクトリパス (add-tagsで必須条件あり)")
 	flagSet.StringVar(&directoryPath, "directory-path", "", "対象のMarkdownディレクトリパス (delete-empty-filesで必須)")
-	flagSet.IntVar(&headingLevel, "heading-level", 0, "分割対象の見出しレベル (1-6, split-headingsで必須)")
+	flagSet.IntVar(&headingLevel, "heading-level", 0, "対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)")
 	flagSet.StringVar(&outputDir, "output-dir", "", "分割後ファイルの出力先ディレクトリ (split-headingsで必須)")
 	flagSet.Var(&kvPairs, "kv", "front matter に追加する key=value (add-front-matter で複数指定可)")
 	flagSet.StringVar(&tags, "tags", "", "追加するタグ（カンマ区切り, 例: go,markdown）")
@@ -209,6 +218,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s --operation delete-empty-files --directory-path ./notes\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-heading1 --file-path ./note.md --heading-text 概要 --heading-position head\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation replace-images --file-path ./note.md --replacement-text \"(添付画像)\"\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation remove-heading-annotations --file-path ./note.md --heading-level 3\n\n", exeName)
 
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --operation string\n")
@@ -220,7 +230,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --directory-path string\n")
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (delete-empty-filesで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --heading-level int\n")
-	fmt.Fprintf(os.Stderr, "        分割対象の見出しレベル (1-6, split-headingsで必須)\n")
+	fmt.Fprintf(os.Stderr, "        対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --output-dir string\n")
 	fmt.Fprintf(os.Stderr, "        分割後ファイルの出力先ディレクトリ (split-headingsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --kv key=value\n")

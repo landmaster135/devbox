@@ -200,6 +200,26 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "RemoveHeadingAnnotations",
+			cfg: &config.Config{
+				Operation:    config.OperationRemoveHeadingAnnotations,
+				FilePath:     "note.md",
+				HeadingLevel: 3,
+			},
+			setup: func(repo *operationDispatchRepository) {
+				repo.readFileContents["note.md"] = "### **注釈付き見出し**\n本文\n"
+			},
+			assert: func(t *testing.T, result string, repo *operationDispatchRepository) {
+				t.Helper()
+				if !strings.Contains(repo.writtenFiles["note.md"], "### 注釈付き見出し") {
+					t.Fatalf("heading annotations were not removed: %q", repo.writtenFiles["note.md"])
+				}
+				if !strings.Contains(result, "remove-heading-annotations: note.md の見出し注釈 1 件を除去しました") {
+					t.Fatalf("unexpected result: %s", result)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

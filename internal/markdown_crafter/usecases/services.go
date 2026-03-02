@@ -12,18 +12,20 @@ import (
 	addheading1 "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/add_heading1"
 	addtags "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/add_tags"
 	deleteemptyfiles "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/delete_empty_files"
+	removeheadingannotations "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/remove_heading_annotations"
 	replaceimages "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/replace_images"
 	splitheadings "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/split_headings"
 )
 
 type Service struct {
-	repository                domain.Repository
-	splitHeadingsOperation    splitHeadingsOperation
-	addFrontMatterOperation   addFrontMatterOperation
-	addTagsOperation          addTagsOperation
-	deleteEmptyFilesOperation deleteEmptyFilesOperation
-	addHeading1Operation      addHeading1Operation
-	replaceImagesOperation    replaceImagesOperation
+	repository                        domain.Repository
+	splitHeadingsOperation            splitHeadingsOperation
+	addFrontMatterOperation           addFrontMatterOperation
+	addTagsOperation                  addTagsOperation
+	deleteEmptyFilesOperation         deleteEmptyFilesOperation
+	addHeading1Operation              addHeading1Operation
+	replaceImagesOperation            replaceImagesOperation
+	removeHeadingAnnotationsOperation removeHeadingAnnotationsOperation
 }
 
 func NewService(repository domain.Repository) *Service {
@@ -40,6 +42,7 @@ func NewService(repository domain.Repository) *Service {
 		deleteemptyfiles.NewService(repo),
 		addheading1.NewService(repo),
 		replaceimages.NewService(repo),
+		removeheadingannotations.NewService(repo),
 	)
 }
 
@@ -71,6 +74,10 @@ func (s *Service) ReplaceImages(filePath, replacementText string) (string, error
 	return s.replaceImagesOperation.Execute(filePath, replacementText)
 }
 
+func (s *Service) RemoveHeadingAnnotations(filePath string, headingLevel int) (string, error) {
+	return s.removeHeadingAnnotationsOperation.Execute(filePath, headingLevel)
+}
+
 func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 	switch cfg.Operation {
 	case config.OperationSplitHeadings:
@@ -88,6 +95,8 @@ func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 		return s.AddHeading1(cfg.FilePath, cfg.HeadingText, cfg.HeadingPosition)
 	case config.OperationReplaceImages:
 		return s.ReplaceImages(cfg.FilePath, cfg.ReplacementText)
+	case config.OperationRemoveHeadingAnnotations:
+		return s.RemoveHeadingAnnotations(cfg.FilePath, cfg.HeadingLevel)
 	default:
 		return "", fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
 	}

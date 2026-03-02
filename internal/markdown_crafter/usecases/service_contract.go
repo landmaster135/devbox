@@ -27,6 +27,10 @@ type replaceImagesOperation interface {
 	Execute(filePath, replacementText string) (string, error)
 }
 
+type removeHeadingAnnotationsOperation interface {
+	Execute(filePath string, headingLevel int) (string, error)
+}
+
 func newServiceWithOperations(
 	repository domain.Repository,
 	splitHeadingsOp splitHeadingsOperation,
@@ -35,14 +39,16 @@ func newServiceWithOperations(
 	deleteEmptyFilesOp deleteEmptyFilesOperation,
 	addHeading1Op addHeading1Operation,
 	replaceImagesOp replaceImagesOperation,
+	removeHeadingAnnotationsOp removeHeadingAnnotationsOperation,
 ) *Service {
 	return &Service{
-		repository:                repository,
-		splitHeadingsOperation:    splitHeadingsOp,
-		addFrontMatterOperation:   addFrontMatterOp,
-		addTagsOperation:          addTagsOp,
-		deleteEmptyFilesOperation: deleteEmptyFilesOp,
-		addHeading1Operation:      addHeading1Op,
-		replaceImagesOperation:    replaceImagesOp,
+		repository:                        repository,
+		splitHeadingsOperation:            splitHeadingsOp,
+		addFrontMatterOperation:           addFrontMatterOp,
+		addTagsOperation:                  addTagsOp,
+		deleteEmptyFilesOperation:         deleteEmptyFilesOp,
+		addHeading1Operation:              addHeading1Op,
+		replaceImagesOperation:            replaceImagesOp,
+		removeHeadingAnnotationsOperation: removeHeadingAnnotationsOp,
 	}
 }
