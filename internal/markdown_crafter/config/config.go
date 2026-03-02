@@ -13,6 +13,7 @@ const (
 	OperationAddTags          = "add-tags"
 	OperationDeleteEmptyFiles = "delete-empty-files"
 	OperationAddHeading1      = "add-heading1"
+	OperationReplaceImages    = "replace-images"
 
 	HeadingPositionHead = "head"
 	HeadingPositionTail = "tail"
@@ -24,6 +25,7 @@ var allowedOperations = []string{
 	OperationAddTags,
 	OperationDeleteEmptyFiles,
 	OperationAddHeading1,
+	OperationReplaceImages,
 }
 
 type Config struct {
@@ -37,10 +39,11 @@ type Config struct {
 	Tags            string
 	HeadingText     string
 	HeadingPosition string
+	ReplacementText string
 	Help            bool
 }
 
-func NewConfig(operation, filePath, dirPath, directoryPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition string, help bool) (*Config, error) {
+func NewConfig(operation, filePath, dirPath, directoryPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
 	cfg := &Config{
 		Operation:       operation,
 		FilePath:        filePath,
@@ -52,6 +55,7 @@ func NewConfig(operation, filePath, dirPath, directoryPath string, headingLevel 
 		Tags:            tags,
 		HeadingText:     headingText,
 		HeadingPosition: headingPosition,
+		ReplacementText: replacementText,
 		Help:            help,
 	}
 
@@ -119,6 +123,13 @@ func (c *Config) validate() error {
 		if !isAllowed(c.HeadingPosition, []string{HeadingPositionHead, HeadingPositionTail}) {
 			return fmt.Errorf("--heading-position には %s のいずれかを指定してください", strings.Join([]string{HeadingPositionHead, HeadingPositionTail}, ", "))
 		}
+	case OperationReplaceImages:
+		if strings.TrimSpace(c.FilePath) == "" {
+			return fmt.Errorf("--file-path は必須です (--operation=replace-images)")
+		}
+		if strings.TrimSpace(c.ReplacementText) == "" {
+			return fmt.Errorf("--replacement-text は必須です (--operation=replace-images)")
+		}
 	}
 
 	return nil
@@ -161,6 +172,7 @@ func ParseFlags() (*Config, error) {
 		tags            string
 		headingText     string
 		headingPosition string
+		replacementText string
 		help            bool
 		kvPairs         stringSliceValue
 	)
@@ -175,6 +187,7 @@ func ParseFlags() (*Config, error) {
 	flagSet.StringVar(&tags, "tags", "", "追加するタグ（カンマ区切り, 例: go,markdown）")
 	flagSet.StringVar(&headingText, "heading-text", "", "追加する見出し1のテキスト（add-heading1で必須）")
 	flagSet.StringVar(&headingPosition, "heading-position", "", "見出し追加位置（head または tail, add-heading1で必須）")
+	flagSet.StringVar(&replacementText, "replacement-text", "", "画像記法の置換文字列（replace-imagesで必須）")
 	flagSet.BoolVar(&help, "help", false, "ヘルプを表示")
 	flagSet.BoolVar(&help, "h", false, "ヘルプを表示 (短縮形)")
 
@@ -182,7 +195,7 @@ func ParseFlags() (*Config, error) {
 		return nil, err
 	}
 
-	return NewConfig(operation, filePath, dirPath, directoryPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, help)
+	return NewConfig(operation, filePath, dirPath, directoryPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
 }
 
 func PrintUsage() {
@@ -195,6 +208,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --dir-path ./notes --tags go,markdown\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation delete-empty-files --directory-path ./notes\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-heading1 --file-path ./note.md --heading-text 概要 --heading-position head\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation replace-images --file-path ./note.md --replacement-text \"(添付画像)\"\n\n", exeName)
 
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --operation string\n")
@@ -217,6 +231,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        追加する見出し1のテキスト（add-heading1で必須）\n")
 	fmt.Fprintf(os.Stderr, "  --heading-position string\n")
 	fmt.Fprintf(os.Stderr, "        見出し追加位置（head または tail, add-heading1で必須）\n")
+	fmt.Fprintf(os.Stderr, "  --replacement-text string\n")
+	fmt.Fprintf(os.Stderr, "        画像記法の置換文字列（replace-imagesで必須）\n")
 	fmt.Fprintf(os.Stderr, "  --help\n")
 	fmt.Fprintf(os.Stderr, "        このヘルプを表示\n")
 }

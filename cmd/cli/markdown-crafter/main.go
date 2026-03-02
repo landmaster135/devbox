@@ -39,6 +39,8 @@ func main() {
 		result, err = service.DeleteEmptyFiles(cfg.DirectoryPath)
 	case config.OperationAddHeading1:
 		result, err = service.AddHeading1(cfg.FilePath, cfg.HeadingText, cfg.HeadingPosition)
+	case config.OperationReplaceImages:
+		result, err = service.ReplaceImages(cfg.FilePath, cfg.ReplacementText)
 	default:
 		err = fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
 	}

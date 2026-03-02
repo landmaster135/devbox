@@ -123,6 +123,23 @@ func TestParseFlags_AddHeading1_Normal(t *testing.T) {
 	})
 }
 
+func TestParseFlags_ReplaceImages_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationReplaceImages,
+		"--file-path", "./sample.md",
+		"--replacement-text", "(添付画像)",
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.ReplacementText != "(添付画像)" {
+			t.Fatalf("unexpected replacement text: %s", cfg.ReplacementText)
+		}
+	})
+}
+
 func TestParseFlags_Help_Normal(t *testing.T) {
 	withArgs([]string{"markdown-crafter", "--help"}, func() {
 		cfg, err := ParseFlags()
@@ -170,6 +187,19 @@ func TestParseFlags_InvalidAddTagsWithBothTargets(t *testing.T) {
 		"--file-path", "./sample.md",
 		"--dir-path", "./notes",
 		"--tags", "go,markdown",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidReplaceImagesMissingReplacement(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationReplaceImages,
+		"--file-path", "./sample.md",
 	}, func() {
 		_, err := ParseFlags()
 		if err == nil {
