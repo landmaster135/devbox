@@ -1,18 +1,31 @@
-package usecases
+package splitheadings
 
 import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
 )
 
-func (s *Service) SplitHeadings(filePath string, headingLevel int, outputDir string) (string, error) {
+type Service struct {
+	repository domain.Repository
+}
+
+func NewService(repository domain.Repository) *Service {
+	return &Service{
+		repository: repository,
+	}
+}
+
+func (s *Service) Execute(filePath string, headingLevel int, outputDir string) (string, error) {
 	content, err := s.repository.ReadFile(filePath)
 	if err != nil {
 		return "", err
 	}
 
-	sections := extractSectionsByHeadingLevel(content, headingLevel)
+	sections := ExtractSectionsByHeadingLevel(content, headingLevel)
 	if len(sections) == 0 {
 		return "", fmt.Errorf("見出しレベル %d のセクションが見つかりませんでした", headingLevel)
 	}
@@ -39,8 +52,8 @@ func (s *Service) SplitHeadings(filePath string, headingLevel int, outputDir str
 	return builder.String(), nil
 }
 
-func extractSectionsByHeadingLevel(content string, headingLevel int) []string {
-	normalized := normalizeNewlines(content)
+func ExtractSectionsByHeadingLevel(content string, headingLevel int) []string {
+	normalized := common.NormalizeNewlines(content)
 	lines := strings.SplitAfter(normalized, "\n")
 
 	sections := make([]string, 0)

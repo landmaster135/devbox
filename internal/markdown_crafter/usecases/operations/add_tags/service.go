@@ -1,13 +1,26 @@
-package usecases
+package addtags
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
 )
 
-func (s *Service) AddTags(filePath string, tagsCSV string) (string, error) {
-	tags := uniqueTrimmedTags(tagsCSV)
-	tagLine, err := buildTagLine(tags)
+type Service struct {
+	repository domain.Repository
+}
+
+func NewService(repository domain.Repository) *Service {
+	return &Service{
+		repository: repository,
+	}
+}
+
+func (s *Service) ExecuteByFile(filePath string, tagsCSV string) (string, error) {
+	tags := common.UniqueTrimmedTags(tagsCSV)
+	tagLine, err := common.BuildTagLine(tags)
 	if err != nil {
 		return "", err
 	}
@@ -19,9 +32,9 @@ func (s *Service) AddTags(filePath string, tagsCSV string) (string, error) {
 	return fmt.Sprintf("add-tags: %s にタグを追加しました (%s)\n", filePath, tagLine), nil
 }
 
-func (s *Service) AddTagsByDir(dirPath string, tagsCSV string) (string, error) {
-	tags := uniqueTrimmedTags(tagsCSV)
-	tagLine, err := buildTagLine(tags)
+func (s *Service) ExecuteByDir(dirPath string, tagsCSV string) (string, error) {
+	tags := common.UniqueTrimmedTags(tagsCSV)
+	tagLine, err := common.BuildTagLine(tags)
 	if err != nil {
 		return "", err
 	}
@@ -56,13 +69,13 @@ func (s *Service) addTagsToFile(filePath string, tagLine string) error {
 		return err
 	}
 
-	hasFrontMatter, block, body, err := splitFrontMatterBlock(content)
+	hasFrontMatter, block, body, err := common.SplitFrontMatterBlock(content)
 	if err != nil {
 		return err
 	}
 
 	body = strings.TrimPrefix(body, "\n")
-	normalized := normalizeNewlines(content)
+	normalized := common.NormalizeNewlines(content)
 
 	var updated strings.Builder
 	if hasFrontMatter {

@@ -1,13 +1,25 @@
-package usecases
+package addheading1
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/landmaster135/devbox/internal/markdown_crafter/config"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
 )
 
-func (s *Service) AddHeading1(filePath, headingText, headingPosition string) (string, error) {
+type Service struct {
+	repository domain.Repository
+}
+
+func NewService(repository domain.Repository) *Service {
+	return &Service{
+		repository: repository,
+	}
+}
+
+func (s *Service) Execute(filePath, headingText, headingPosition string) (string, error) {
 	content, err := s.repository.ReadFile(filePath)
 	if err != nil {
 		return "", err
@@ -21,7 +33,7 @@ func (s *Service) AddHeading1(filePath, headingText, headingPosition string) (st
 	}
 	headingLine := "# " + trimmedHeading
 
-	hasFrontMatter, block, body, err := splitFrontMatterBlock(content)
+	hasFrontMatter, block, body, err := common.SplitFrontMatterBlock(content)
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +60,7 @@ func (s *Service) AddHeading1(filePath, headingText, headingPosition string) (st
 }
 
 func insertHeadingByPosition(body, headingLine, headingPosition string) (string, error) {
-	normalizedBody := strings.TrimPrefix(normalizeNewlines(body), "\n")
+	normalizedBody := strings.TrimPrefix(common.NormalizeNewlines(body), "\n")
 
 	switch headingPosition {
 	case config.HeadingPositionHead:

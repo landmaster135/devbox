@@ -1,10 +1,12 @@
-package usecases
+package splitheadings
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
 )
 
 func TestService_SplitHeadings_Normal(t *testing.T) {
@@ -19,8 +21,8 @@ func TestService_SplitHeadings_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	result, err := service.SplitHeadings(sourcePath, 2, outputDir)
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute(sourcePath, 2, outputDir)
 	if err != nil {
 		t.Fatalf("SplitHeadings returned error: %v", err)
 	}
@@ -56,8 +58,8 @@ func TestService_SplitHeadings_HeadingNotFound(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.SplitHeadings(sourcePath, 2, outputDir)
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute(sourcePath, 2, outputDir)
 	if err == nil {
 		t.Fatal("expected error when heading level does not exist")
 	}
@@ -67,7 +69,7 @@ func TestExtractSectionsByHeadingLevel_Normal(t *testing.T) {
 	t.Parallel()
 
 	content := "## a\ntext-a\n## b\ntext-b"
-	sections := extractSectionsByHeadingLevel(content, 2)
+	sections := ExtractSectionsByHeadingLevel(content, 2)
 	if len(sections) != 2 {
 		t.Fatalf("expected 2 sections, got %d", len(sections))
 	}

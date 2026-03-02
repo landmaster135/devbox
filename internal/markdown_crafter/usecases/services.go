@@ -4,12 +4,26 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/landmaster135/devbox/internal/markdown_crafter/config"
 	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
 	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
+	addfrontmatter "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/add_front_matter"
+	addheading1 "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/add_heading1"
+	addtags "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/add_tags"
+	deleteemptyfiles "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/delete_empty_files"
+	replaceimages "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/replace_images"
+	splitheadings "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/split_headings"
 )
 
 type Service struct {
-	repository domain.Repository
+	repository                domain.Repository
+	splitHeadingsOperation    splitHeadingsOperation
+	addFrontMatterOperation   addFrontMatterOperation
+	addTagsOperation          addTagsOperation
+	deleteEmptyFilesOperation deleteEmptyFilesOperation
+	addHeading1Operation      addHeading1Operation
+	replaceImagesOperation    replaceImagesOperation
 }
 
 func NewService(repository domain.Repository) *Service {
@@ -18,136 +32,91 @@ func NewService(repository domain.Repository) *Service {
 		repo = filesystem.NewRepository()
 	}
 
-	return &Service{
-		repository: repo,
+	return newServiceWithOperations(
+		repo,
+		splitheadings.NewService(repo),
+		addfrontmatter.NewService(repo),
+		addtags.NewService(repo),
+		deleteemptyfiles.NewService(repo),
+		addheading1.NewService(repo),
+		replaceimages.NewService(repo),
+	)
+}
+
+func (s *Service) SplitHeadings(filePath string, headingLevel int, outputDir string) (string, error) {
+	return s.splitHeadingsOperation.Execute(filePath, headingLevel, outputDir)
+}
+
+func (s *Service) AddFrontMatter(filePath string, kvPairs []string) (string, error) {
+	return s.addFrontMatterOperation.Execute(filePath, kvPairs)
+}
+
+func (s *Service) AddTags(filePath string, tagsCSV string) (string, error) {
+	return s.addTagsOperation.ExecuteByFile(filePath, tagsCSV)
+}
+
+func (s *Service) AddTagsByDir(dirPath string, tagsCSV string) (string, error) {
+	return s.addTagsOperation.ExecuteByDir(dirPath, tagsCSV)
+}
+
+func (s *Service) DeleteEmptyFiles(directoryPath string) (string, error) {
+	return s.deleteEmptyFilesOperation.Execute(directoryPath)
+}
+
+func (s *Service) AddHeading1(filePath, headingText, headingPosition string) (string, error) {
+	return s.addHeading1Operation.Execute(filePath, headingText, headingPosition)
+}
+
+func (s *Service) ReplaceImages(filePath, replacementText string) (string, error) {
+	return s.replaceImagesOperation.Execute(filePath, replacementText)
+}
+
+func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
+	switch cfg.Operation {
+	case config.OperationSplitHeadings:
+		return s.SplitHeadings(cfg.FilePath, cfg.HeadingLevel, cfg.OutputDir)
+	case config.OperationAddFrontMatter:
+		return s.AddFrontMatter(cfg.FilePath, cfg.KVPairs)
+	case config.OperationAddTags:
+		if strings.TrimSpace(cfg.DirPath) != "" {
+			return s.AddTagsByDir(cfg.DirPath, cfg.Tags)
+		}
+		return s.AddTags(cfg.FilePath, cfg.Tags)
+	case config.OperationDeleteEmptyFiles:
+		return s.DeleteEmptyFiles(cfg.DirectoryPath)
+	case config.OperationAddHeading1:
+		return s.AddHeading1(cfg.FilePath, cfg.HeadingText, cfg.HeadingPosition)
+	case config.OperationReplaceImages:
+		return s.ReplaceImages(cfg.FilePath, cfg.ReplacementText)
+	default:
+		return "", fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
 	}
 }
 
 func normalizeNewlines(content string) string {
-	return strings.ReplaceAll(content, "\r\n", "\n")
+	return common.NormalizeNewlines(content)
 }
 
 func splitFrontMatterBlock(content string) (bool, string, string, error) {
-	normalized := normalizeNewlines(content)
-	if !strings.HasPrefix(normalized, "---\n") {
-		return false, "", normalized, nil
-	}
-
-	rest := strings.TrimPrefix(normalized, "---\n")
-	endIdx := strings.Index(rest, "\n---\n")
-	if endIdx >= 0 {
-		block := "---\n" + rest[:endIdx] + "\n---\n"
-		body := rest[endIdx+len("\n---\n"):]
-		return true, block, body, nil
-	}
-
-	if strings.HasSuffix(rest, "\n---") {
-		block := "---\n" + strings.TrimSuffix(rest, "\n---") + "\n---\n"
-		return true, block, "", nil
-	}
-
-	return false, "", "", fmt.Errorf("front matter の終端 '---' が見つかりません")
+	return common.SplitFrontMatterBlock(content)
 }
 
 func parseFrontMatterMap(block string) ([]string, map[string]string, error) {
-	values := map[string]string{}
-	keys := make([]string, 0)
-
-	trimmed := strings.TrimPrefix(block, "---\n")
-	trimmed = strings.TrimSuffix(trimmed, "\n---\n")
-	if strings.TrimSpace(trimmed) == "" {
-		return keys, values, nil
-	}
-
-	lines := strings.Split(trimmed, "\n")
-	for _, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			return nil, nil, fmt.Errorf("front matter の書式が不正です: %s", line)
-		}
-
-		key := strings.TrimSpace(parts[0])
-		if key == "" {
-			return nil, nil, fmt.Errorf("front matter のキーが空です: %s", line)
-		}
-		value := strings.TrimSpace(parts[1])
-
-		if _, exists := values[key]; !exists {
-			keys = append(keys, key)
-		}
-		values[key] = value
-	}
-
-	return keys, values, nil
+	return common.ParseFrontMatterMap(block)
 }
 
 func parseKVPairs(kvPairs []string) ([]string, map[string]string, error) {
-	values := map[string]string{}
-	keys := make([]string, 0, len(kvPairs))
-
-	for _, kv := range kvPairs {
-		parts := strings.SplitN(kv, "=", 2)
-		if len(parts) != 2 {
-			return nil, nil, fmt.Errorf("--kv の形式が不正です: %s (key=value 形式で指定してください)", kv)
-		}
-
-		key := strings.TrimSpace(parts[0])
-		if key == "" {
-			return nil, nil, fmt.Errorf("--kv のキーが空です: %s", kv)
-		}
-		value := strings.TrimSpace(parts[1])
-
-		if _, exists := values[key]; !exists {
-			keys = append(keys, key)
-		}
-		values[key] = value
-	}
-
-	return keys, values, nil
+	return common.ParseKVPairs(kvPairs)
 }
 
 func buildFrontMatter(keys []string, values map[string]string) string {
-	var builder strings.Builder
-	builder.WriteString("---\n")
-	for _, key := range keys {
-		builder.WriteString(fmt.Sprintf("%s: %s\n", key, values[key]))
-	}
-	builder.WriteString("---\n")
-	return builder.String()
+	return common.BuildFrontMatter(keys, values)
 }
 
 func uniqueTrimmedTags(tagsCSV string) []string {
-	rawTags := strings.Split(tagsCSV, ",")
-	seen := map[string]struct{}{}
-	tags := make([]string, 0, len(rawTags))
-
-	for _, tag := range rawTags {
-		trimmed := strings.TrimSpace(tag)
-		trimmed = strings.TrimPrefix(trimmed, "#")
-		if trimmed == "" {
-			continue
-		}
-		if _, exists := seen[trimmed]; exists {
-			continue
-		}
-		seen[trimmed] = struct{}{}
-		tags = append(tags, trimmed)
-	}
-	return tags
+	return common.UniqueTrimmedTags(tagsCSV)
 }
 
 func buildTagLine(tags []string) (string, error) {
-	if len(tags) == 0 {
-		return "", fmt.Errorf("有効なタグが見つかりません")
-	}
-
-	prefixed := make([]string, len(tags))
-	for i, tag := range tags {
-		prefixed[i] = "#" + tag
-	}
-
-	return strings.Join(prefixed, " "), nil
+	return common.BuildTagLine(tags)
 }

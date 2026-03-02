@@ -1,10 +1,12 @@
-package usecases
+package deleteemptyfiles
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
 )
 
 func TestService_DeleteEmptyFiles_Normal(t *testing.T) {
@@ -33,9 +35,9 @@ func TestService_DeleteEmptyFiles_Normal(t *testing.T) {
 		t.Fatalf("failed to write txt file: %v", err)
 	}
 
-	service := NewService(nil)
+	service := NewService(filesystem.NewRepository())
 
-	result, err := service.DeleteEmptyFiles(dirPath)
+	result, err := service.Execute(dirPath)
 	if err != nil {
 		t.Fatalf("DeleteEmptyFiles returned error: %v", err)
 	}
@@ -66,8 +68,8 @@ func TestService_DeleteEmptyFiles_NoTarget_Normal(t *testing.T) {
 		t.Fatalf("failed to write keep markdown: %v", err)
 	}
 
-	service := NewService(nil)
-	result, err := service.DeleteEmptyFiles(dirPath)
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute(dirPath)
 	if err != nil {
 		t.Fatalf("DeleteEmptyFiles returned error: %v", err)
 	}

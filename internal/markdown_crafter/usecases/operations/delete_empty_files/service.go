@@ -1,13 +1,26 @@
-package usecases
+package deleteemptyfiles
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
 )
 
 const miscellaneousNotesTemplate = "# Miscellaneous notes\n- "
 
-func (s *Service) DeleteEmptyFiles(directoryPath string) (string, error) {
+type Service struct {
+	repository domain.Repository
+}
+
+func NewService(repository domain.Repository) *Service {
+	return &Service{
+		repository: repository,
+	}
+}
+
+func (s *Service) Execute(directoryPath string) (string, error) {
 	markdownFiles, err := s.repository.ListMarkdownFiles(directoryPath)
 	if err != nil {
 		return "", err
@@ -40,7 +53,7 @@ func (s *Service) DeleteEmptyFiles(directoryPath string) (string, error) {
 }
 
 func isDeleteTarget(content string) bool {
-	normalized := normalizeNewlines(content)
+	normalized := common.NormalizeNewlines(content)
 	if normalized == "" {
 		return true
 	}

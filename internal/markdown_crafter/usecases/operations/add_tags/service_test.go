@@ -1,10 +1,12 @@
-package usecases
+package addtags
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
 )
 
 func TestService_AddTags_WithoutFrontMatter_Normal(t *testing.T) {
@@ -16,8 +18,8 @@ func TestService_AddTags_WithoutFrontMatter_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddTags(filePath, "go,markdown")
+	service := NewService(filesystem.NewRepository())
+	_, err := service.ExecuteByFile(filePath, "go,markdown")
 	if err != nil {
 		t.Fatalf("AddTags returned error: %v", err)
 	}
@@ -43,8 +45,8 @@ func TestService_AddTags_WithFrontMatter_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddTags(filePath, "go, markdown")
+	service := NewService(filesystem.NewRepository())
+	_, err := service.ExecuteByFile(filePath, "go, markdown")
 	if err != nil {
 		t.Fatalf("AddTags returned error: %v", err)
 	}
@@ -69,8 +71,8 @@ func TestService_AddTags_Deduplicate_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddTags(filePath, "go,#go,md, md ")
+	service := NewService(filesystem.NewRepository())
+	_, err := service.ExecuteByFile(filePath, "go,#go,md, md ")
 	if err != nil {
 		t.Fatalf("AddTags returned error: %v", err)
 	}
@@ -93,8 +95,8 @@ func TestService_AddTags_InvalidTags(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddTags(filePath, ",,")
+	service := NewService(filesystem.NewRepository())
+	_, err := service.ExecuteByFile(filePath, ",,")
 	if err == nil {
 		t.Fatal("expected error for empty tags")
 	}
@@ -110,8 +112,8 @@ func TestService_AddTags_WithFrontMatter_NoBody(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddTags(filePath, "go,markdown")
+	service := NewService(filesystem.NewRepository())
+	_, err := service.ExecuteByFile(filePath, "go,markdown")
 	if err != nil {
 		t.Fatalf("AddTags returned error: %v", err)
 	}
@@ -136,8 +138,8 @@ func TestService_AddTags_EmptyBody_NoFrontMatter(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddTags(filePath, "go")
+	service := NewService(filesystem.NewRepository())
+	_, err := service.ExecuteByFile(filePath, "go")
 	if err != nil {
 		t.Fatalf("AddTags returned error: %v", err)
 	}
@@ -170,8 +172,8 @@ func TestService_AddTagsByDir_Normal(t *testing.T) {
 		t.Fatalf("failed to write file c: %v", err)
 	}
 
-	service := NewService(nil)
-	result, err := service.AddTagsByDir(tmpDir, "go,markdown")
+	service := NewService(filesystem.NewRepository())
+	result, err := service.ExecuteByDir(tmpDir, "go,markdown")
 	if err != nil {
 		t.Fatalf("AddTagsByDir returned error: %v", err)
 	}
@@ -218,8 +220,8 @@ func TestService_AddTagsByDir_NoMarkdownFiles_Normal(t *testing.T) {
 		t.Fatalf("failed to write txt file: %v", err)
 	}
 
-	service := NewService(nil)
-	result, err := service.AddTagsByDir(tmpDir, "go")
+	service := NewService(filesystem.NewRepository())
+	result, err := service.ExecuteByDir(tmpDir, "go")
 	if err != nil {
 		t.Fatalf("AddTagsByDir returned error: %v", err)
 	}

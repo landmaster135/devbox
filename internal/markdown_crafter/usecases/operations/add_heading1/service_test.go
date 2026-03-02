@@ -1,9 +1,11 @@
-package usecases
+package addheading1
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
 )
 
 func TestService_AddHeading1_WithoutFrontMatterHead_Normal(t *testing.T) {
@@ -15,8 +17,8 @@ func TestService_AddHeading1_WithoutFrontMatterHead_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.AddHeading1(filePath, "Overview", "head"); err != nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "Overview", "head"); err != nil {
 		t.Fatalf("AddHeading1 returned error: %v", err)
 	}
 
@@ -40,8 +42,8 @@ func TestService_AddHeading1_WithoutFrontMatterTail_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.AddHeading1(filePath, "Overview", "tail"); err != nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "Overview", "tail"); err != nil {
 		t.Fatalf("AddHeading1 returned error: %v", err)
 	}
 
@@ -66,8 +68,8 @@ func TestService_AddHeading1_WithFrontMatterHead_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.AddHeading1(filePath, "Overview", "head"); err != nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "Overview", "head"); err != nil {
 		t.Fatalf("AddHeading1 returned error: %v", err)
 	}
 
@@ -92,8 +94,8 @@ func TestService_AddHeading1_WithFrontMatterTail_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.AddHeading1(filePath, "Overview", "tail"); err != nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "Overview", "tail"); err != nil {
 		t.Fatalf("AddHeading1 returned error: %v", err)
 	}
 
@@ -117,8 +119,8 @@ func TestService_AddHeading1_EmptyBody_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.AddHeading1(filePath, "Overview", "tail"); err != nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "Overview", "tail"); err != nil {
 		t.Fatalf("AddHeading1 returned error: %v", err)
 	}
 
@@ -142,8 +144,8 @@ func TestService_AddHeading1_InvalidPosition(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.AddHeading1(filePath, "Overview", "middle"); err == nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "Overview", "middle"); err == nil {
 		t.Fatal("expected error for invalid position")
 	}
 }

@@ -1,10 +1,12 @@
-package usecases
+package addfrontmatter
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
 )
 
 func TestService_AddFrontMatter_New_Normal(t *testing.T) {
@@ -16,8 +18,8 @@ func TestService_AddFrontMatter_New_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddFrontMatter(filePath, []string{"title=New Doc", "author=nov"})
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute(filePath, []string{"title=New Doc", "author=nov"})
 	if err != nil {
 		t.Fatalf("AddFrontMatter returned error: %v", err)
 	}
@@ -43,8 +45,8 @@ func TestService_AddFrontMatter_MergeOverwrite_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddFrontMatter(filePath, []string{"title=new", "category=dev"})
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute(filePath, []string{"title=new", "category=dev"})
 	if err != nil {
 		t.Fatalf("AddFrontMatter returned error: %v", err)
 	}
@@ -69,8 +71,8 @@ func TestService_AddFrontMatter_InvalidKV(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddFrontMatter(filePath, []string{"invalid-kv"})
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute(filePath, []string{"invalid-kv"})
 	if err == nil {
 		t.Fatal("expected error for invalid kv format")
 	}
@@ -89,8 +91,8 @@ func TestService_AddFrontMatter_OnlyFrontMatter_NoBody(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	_, err := service.AddFrontMatter(filePath, []string{"title=new", "author=nov"})
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute(filePath, []string{"title=new", "author=nov"})
 	if err != nil {
 		t.Fatalf("AddFrontMatter returned error: %v", err)
 	}

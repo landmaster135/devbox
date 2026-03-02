@@ -1,4 +1,4 @@
-package usecases
+package replaceimages
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/infrastructures/filesystem"
 )
 
 type replaceImagesMockRepository struct {
@@ -49,8 +51,8 @@ func TestService_ReplaceImages_MultipleImages_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	result, err := service.ReplaceImages(filePath, "(添付画像)")
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute(filePath, "(添付画像)")
 	if err != nil {
 		t.Fatalf("ReplaceImages returned error: %v", err)
 	}
@@ -78,8 +80,8 @@ func TestService_ReplaceImages_NoImage_Normal(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	result, err := service.ReplaceImages(filePath, "(添付画像)")
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute(filePath, "(添付画像)")
 	if err != nil {
 		t.Fatalf("ReplaceImages returned error: %v", err)
 	}
@@ -105,8 +107,8 @@ func TestService_ReplaceImages_EmptyReplacement(t *testing.T) {
 		t.Fatalf("failed to write source file: %v", err)
 	}
 
-	service := NewService(nil)
-	if _, err := service.ReplaceImages(filePath, "   "); err == nil {
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute(filePath, "   "); err == nil {
 		t.Fatal("expected error for empty replacement text")
 	}
 }
@@ -117,7 +119,7 @@ func TestService_ReplaceImages_ReadError(t *testing.T) {
 	service := NewService(&replaceImagesMockRepository{
 		readErr: errors.New("read error"),
 	})
-	if _, err := service.ReplaceImages("dummy.md", "(添付画像)"); err == nil {
+	if _, err := service.Execute("dummy.md", "(添付画像)"); err == nil {
 		t.Fatal("expected read error")
 	}
 }
@@ -130,7 +132,7 @@ func TestService_ReplaceImages_WriteError(t *testing.T) {
 		writeErr:    errors.New("write error"),
 	}
 	service := NewService(repo)
-	if _, err := service.ReplaceImages("dummy.md", "(添付画像)"); err == nil {
+	if _, err := service.Execute("dummy.md", "(添付画像)"); err == nil {
 		t.Fatal("expected write error")
 	}
 	if repo.writeValue != "(添付画像)\n" {

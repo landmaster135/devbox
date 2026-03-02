@@ -1,14 +1,26 @@
-package usecases
+package replaceimages
 
 import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
 )
 
 var markdownImagePattern = regexp.MustCompile(`!\[[^\]]*]\([^)]+\)`)
 
-func (s *Service) ReplaceImages(filePath, replacementText string) (string, error) {
+type Service struct {
+	repository domain.Repository
+}
+
+func NewService(repository domain.Repository) *Service {
+	return &Service{
+		repository: repository,
+	}
+}
+
+func (s *Service) Execute(filePath, replacementText string) (string, error) {
 	trimmedReplacement := strings.TrimSpace(replacementText)
 	if trimmedReplacement == "" {
 		return "", fmt.Errorf("置換文字列が空です")

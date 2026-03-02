@@ -9,6 +9,13 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 - `add-heading1`: 本文の先頭または末尾へ見出し1を追加
 - `replace-images`: Markdown 画像記法 `![alt](url)` を指定文字列へ置換
 
+## 内部構成
+
+- CLI エントリーポイントは `cmd/cli/markdown-crafter/main.go` に集約。
+- operation の振り分けは `internal/markdown_crafter/usecases/service_operations.go` が担当。
+- 各 operation の実処理は `internal/markdown_crafter/usecases/operations/*/service.go` に分離。
+- front matter / tag などの共通ロジックは `internal/markdown_crafter/usecases/common/helpers.go` に集約。
+
 ## フラグ一覧
 
 | フラグ | 必須 | デフォルト | 説明 |

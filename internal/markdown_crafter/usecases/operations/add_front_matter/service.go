@@ -1,17 +1,30 @@
-package usecases
+package addfrontmatter
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/markdown_crafter/domain"
+	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
 )
 
-func (s *Service) AddFrontMatter(filePath string, kvPairs []string) (string, error) {
+type Service struct {
+	repository domain.Repository
+}
+
+func NewService(repository domain.Repository) *Service {
+	return &Service{
+		repository: repository,
+	}
+}
+
+func (s *Service) Execute(filePath string, kvPairs []string) (string, error) {
 	content, err := s.repository.ReadFile(filePath)
 	if err != nil {
 		return "", err
 	}
 
-	hasFrontMatter, block, body, err := splitFrontMatterBlock(content)
+	hasFrontMatter, block, body, err := common.SplitFrontMatterBlock(content)
 	if err != nil {
 		return "", err
 	}
@@ -19,13 +32,13 @@ func (s *Service) AddFrontMatter(filePath string, kvPairs []string) (string, err
 	existingKeys := make([]string, 0)
 	existingValues := map[string]string{}
 	if hasFrontMatter {
-		existingKeys, existingValues, err = parseFrontMatterMap(block)
+		existingKeys, existingValues, err = common.ParseFrontMatterMap(block)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	newKeys, newValues, err := parseKVPairs(kvPairs)
+	newKeys, newValues, err := common.ParseKVPairs(kvPairs)
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +50,7 @@ func (s *Service) AddFrontMatter(filePath string, kvPairs []string) (string, err
 		existingValues[key] = newValues[key]
 	}
 
-	frontMatter := buildFrontMatter(existingKeys, existingValues)
+	frontMatter := common.BuildFrontMatter(existingKeys, existingValues)
 	body = strings.TrimPrefix(body, "\n")
 
 	var updated strings.Builder

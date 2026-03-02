@@ -40,6 +40,12 @@ func TestNewService_Normal(t *testing.T) {
 	if service.repository != customRepo {
 		t.Fatal("repository should use injected repository")
 	}
+	if service.splitHeadingsOperation == nil || service.addFrontMatterOperation == nil || service.addTagsOperation == nil {
+		t.Fatal("operations should be initialized")
+	}
+	if service.deleteEmptyFilesOperation == nil || service.addHeading1Operation == nil || service.replaceImagesOperation == nil {
+		t.Fatal("operations should be initialized")
+	}
 
 	defaultService := NewService(nil)
 	if defaultService == nil {
@@ -47,6 +53,12 @@ func TestNewService_Normal(t *testing.T) {
 	}
 	if defaultService.repository == nil {
 		t.Fatal("default repository should not be nil")
+	}
+	if defaultService.splitHeadingsOperation == nil || defaultService.addFrontMatterOperation == nil || defaultService.addTagsOperation == nil {
+		t.Fatal("default operations should be initialized")
+	}
+	if defaultService.deleteEmptyFilesOperation == nil || defaultService.addHeading1Operation == nil || defaultService.replaceImagesOperation == nil {
+		t.Fatal("default operations should be initialized")
 	}
 }
 
