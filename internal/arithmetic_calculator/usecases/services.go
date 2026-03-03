@@ -2,14 +2,14 @@ package usecases
 
 import (
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
-	basiccalculation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/basic_calculation"
-	calculateexpression "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/calculate_expression"
-	evaluatelinecount "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/evaluate_line_count"
+	basicCalculation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/basic_calculation"
+	calculateExpression "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/calculate_expression"
+	evaluateLineCount "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/evaluate_line_count"
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/factorial"
-	getconstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
-	parseapicost "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/parse_api_cost"
+	getConstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
+	parseAPICost "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/parse_api_cost"
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/power"
-	squareroot "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/square_root"
+	squareRoot "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/square_root"
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/trigonometry"
 )
 
@@ -22,51 +22,51 @@ func NewCalculatorService() *CalculatorService {
 }
 
 func (c *CalculatorService) add(x float64, y float64) float64 {
-	return basiccalculation.Add(x, y)
+	return basicCalculation.Add(x, y)
 }
 
 func (c *CalculatorService) subtract(x float64, y float64) float64 {
-	return basiccalculation.Subtract(x, y)
+	return basicCalculation.Subtract(x, y)
 }
 
 func (c *CalculatorService) multiply(x float64, y float64) float64 {
-	return basiccalculation.Multiply(x, y)
+	return basicCalculation.Multiply(x, y)
 }
 
 func (c *CalculatorService) divide(x float64, y float64) float64 {
-	return basiccalculation.Divide(x, y)
+	return basicCalculation.Divide(x, y)
 }
 
 func (c *CalculatorService) sum(numbers []float64) float64 {
-	return basiccalculation.Sum(numbers)
+	return basicCalculation.Sum(numbers)
 }
 
 func (c *CalculatorService) HandleToCalculate(op string, x, y float64) (float64, error) {
-	return basiccalculation.HandleToCalculate(op, x, y)
+	return basicCalculation.HandleToCalculate(op, x, y)
 }
 
 func (c *CalculatorService) HandleToCalculateWithArray(op string, numbers []float64) (float64, error) {
-	return basiccalculation.HandleToCalculateWithArray(op, numbers)
+	return basicCalculation.HandleToCalculateWithArray(op, numbers)
 }
 
-type FileOpener = evaluatelinecount.FileOpener
-type DefaultFileOpener = evaluatelinecount.DefaultFileOpener
-type BufioScanner = evaluatelinecount.BufioScanner
-type JSONMarshaler = evaluatelinecount.JSONMarshaler
-type DefaultJSONMarshaler = evaluatelinecount.DefaultJSONMarshaler
+type FileOpener = evaluateLineCount.FileOpener
+type DefaultFileOpener = evaluateLineCount.DefaultFileOpener
+type BufioScanner = evaluateLineCount.BufioScanner
+type JSONMarshaler = evaluateLineCount.JSONMarshaler
+type DefaultJSONMarshaler = evaluateLineCount.DefaultJSONMarshaler
 
 // FileEvaluatorService はファイル行数評価サービスです。
 // 実処理は operations/evaluate_line_count へ委譲します。
 type FileEvaluatorService struct {
-	service *evaluatelinecount.Service
+	service *evaluateLineCount.Service
 }
 
 func NewFileEvaluatorService() *FileEvaluatorService {
-	return &FileEvaluatorService{service: evaluatelinecount.NewService()}
+	return &FileEvaluatorService{service: evaluateLineCount.NewService()}
 }
 
 func NewFileEvaluatorServiceWithDependencies(fileOpener FileOpener, bufioScanner BufioScanner, jsonMarshaler JSONMarshaler) *FileEvaluatorService {
-	return &FileEvaluatorService{service: evaluatelinecount.NewServiceWithDependencies(fileOpener, bufioScanner, jsonMarshaler)}
+	return &FileEvaluatorService{service: evaluateLineCount.NewServiceWithDependencies(fileOpener, bufioScanner, jsonMarshaler)}
 }
 
 func (e *FileEvaluatorService) CountLines(filePath string) (int, error) {
@@ -78,7 +78,7 @@ func (e *FileEvaluatorService) IsLineCountGreaterThan(filePath string, threshold
 }
 
 func isGreaterDescription(isGreater bool) string {
-	return evaluatelinecount.IsGreaterDescription(isGreater)
+	return evaluateLineCount.IsGreaterDescription(isGreater)
 }
 
 func (e *FileEvaluatorService) HandleToEvaluateLineCount(filePath string, threshold int) (string, error) {
@@ -88,15 +88,15 @@ func (e *FileEvaluatorService) HandleToEvaluateLineCount(filePath string, thresh
 // ApiCostExtractorService はAPI料金抽出サービスです。
 // 実処理は operations/parse_api_cost へ委譲します。
 type ApiCostExtractorService struct {
-	service *parseapicost.Service
+	service *parseAPICost.Service
 }
 
 func NewApiCostExtractorService() *ApiCostExtractorService {
-	return &ApiCostExtractorService{service: parseapicost.NewService()}
+	return &ApiCostExtractorService{service: parseAPICost.NewService()}
 }
 
 func NewApiCostExtractorServiceWithFileReader(fileReader config.FileReader) *ApiCostExtractorService {
-	return &ApiCostExtractorService{service: parseapicost.NewServiceWithFileReader(fileReader)}
+	return &ApiCostExtractorService{service: parseAPICost.NewServiceWithFileReader(fileReader)}
 }
 
 func (s *ApiCostExtractorService) extractApiCostFromText(text string) (float64, error) {
@@ -120,7 +120,7 @@ func (a *AdvancedMathService) power(base, exponent float64) float64 {
 }
 
 func (a *AdvancedMathService) squareRoot(number float64) (float64, error) {
-	return squareroot.Calculate(number)
+	return squareRoot.Calculate(number)
 }
 
 func (a *AdvancedMathService) factorial(n int) (float64, error) {
@@ -132,7 +132,7 @@ func (a *AdvancedMathService) HandleToPower(base, exponent float64) (float64, er
 }
 
 func (a *AdvancedMathService) HandleToSquareRoot(number float64) (float64, error) {
-	return squareroot.HandleToSquareRoot(number)
+	return squareRoot.HandleToSquareRoot(number)
 }
 
 func (a *AdvancedMathService) HandleToFactorial(n int) (float64, error) {
@@ -164,25 +164,25 @@ func NewMathConstantsService() *MathConstantsService {
 }
 
 func (m *MathConstantsService) getConstants() map[string]float64 {
-	return getconstants.GetConstants()
+	return getConstants.GetConstants()
 }
 
 func (m *MathConstantsService) HandleToGetConstants() (string, error) {
-	return getconstants.HandleToGetConstants()
+	return getConstants.HandleToGetConstants()
 }
 
 // ExpressionEvaluatorService は安全な数式評価サービスです。
 // 実処理は operations/calculate_expression へ委譲します。
 type ExpressionEvaluatorService struct {
 	mathConstants *MathConstantsService
-	service       *calculateexpression.Service
+	service       *calculateExpression.Service
 }
 
 func NewExpressionEvaluatorService() *ExpressionEvaluatorService {
 	mathConstants := NewMathConstantsService()
 	return &ExpressionEvaluatorService{
 		mathConstants: mathConstants,
-		service:       calculateexpression.NewServiceWithConstantsGetter(mathConstants.getConstants),
+		service:       calculateExpression.NewServiceWithConstantsGetter(mathConstants.getConstants),
 	}
 }
 

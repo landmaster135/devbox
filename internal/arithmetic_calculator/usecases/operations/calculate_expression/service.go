@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	getconstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
-	reversepolishnotation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/reverse_polish_notation"
+	getConstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
+	reversePolishNotation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/reverse_polish_notation"
 )
 
 type constantsGetter func() map[string]float64
@@ -15,12 +15,12 @@ type Service struct {
 }
 
 func NewService() *Service {
-	return &Service{getConstants: getconstants.GetConstants}
+	return &Service{getConstants: getConstants.GetConstants}
 }
 
 func NewServiceWithConstantsGetter(getter constantsGetter) *Service {
 	if getter == nil {
-		getter = getconstants.GetConstants
+		getter = getConstants.GetConstants
 	}
 	return &Service{getConstants: getter}
 }
@@ -68,7 +68,7 @@ func (s *Service) evaluateUsingReversePolish(expression string) (float64, error)
 	if cleaned == "" {
 		return 0, fmt.Errorf("無効な数式です: %s", expression)
 	}
-	return reversepolishnotation.Evaluate(cleaned)
+	return reversePolishNotation.Evaluate(cleaned)
 }
 
 func (s *Service) CheckOSPattern(expression string) error {

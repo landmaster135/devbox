@@ -4,31 +4,31 @@ import (
 	"fmt"
 
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
-	arraysum "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/array_sum"
-	basiccalculation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/basic_calculation"
-	calculateexpression "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/calculate_expression"
-	evaluatelinecount "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/evaluate_line_count"
+	arraySum "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/array_sum"
+	basicCalculation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/basic_calculation"
+	calculateExpression "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/calculate_expression"
+	evaluateLineCount "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/evaluate_line_count"
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/factorial"
-	getconstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
-	parseapicost "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/parse_api_cost"
+	getConstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
+	parseAPICost "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/parse_api_cost"
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/power"
-	squareroot "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/square_root"
+	squareRoot "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/square_root"
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/trigonometry"
 )
 
 // NewService はCLIから利用するoperation集約サービスを生成する
 func NewService() *Service {
 	return newServiceWithOperations(
-		basiccalculation.NewService(),
-		arraysum.NewService(),
-		evaluatelinecount.NewService(),
-		parseapicost.NewService(),
+		basicCalculation.NewService(),
+		arraySum.NewService(),
+		evaluateLineCount.NewService(),
+		parseAPICost.NewService(),
 		power.NewService(),
-		squareroot.NewService(),
+		squareRoot.NewService(),
 		factorial.NewService(),
 		trigonometry.NewService(),
-		calculateexpression.NewService(),
-		getconstants.NewService(),
+		calculateExpression.NewService(),
+		getConstants.NewService(),
 	)
 }
 

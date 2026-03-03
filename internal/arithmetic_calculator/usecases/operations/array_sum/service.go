@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
-	basiccalculation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/basic_calculation"
+	basicCalculation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/basic_calculation"
 )
 
 type Service struct{}
@@ -14,7 +14,7 @@ func NewService() *Service {
 }
 
 func (s *Service) Execute(operation string, numbers []float64) (string, error) {
-	result, err := basiccalculation.HandleToCalculateWithArray(operation, numbers)
+	result, err := basicCalculation.HandleToCalculateWithArray(operation, numbers)
 	if err != nil {
 		return "", err
 	}
