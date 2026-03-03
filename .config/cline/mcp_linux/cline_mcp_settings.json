@@ -209,6 +209,19 @@
       ],
       "disabled": false,
       "autoApprove": []
+    },
+    "google-developer-knowledge": {
+      "httpUrl": "https://developerknowledge.googleapis.com/mcp",
+      "authProviderType": "google_credentials",
+      "oauth": {
+        "scopes": [
+          "https://www.googleapis.com/auth/cloud-platform"
+        ]
+      },
+      "timeout": 30000,
+      "headers": {
+        "X-goog-user-project": "PROJECT_ID"
+      }
     }
   }
 }
