@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	reversePolishNotation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/common/reverse_polish_notation"
 	getConstants "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/operations/get_constants"
-	reversePolishNotation "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases/reverse_polish_notation"
 )
 
 type constantsGetter func() map[string]float64
