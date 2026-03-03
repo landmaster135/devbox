@@ -1,24 +1,32 @@
 package factorial
 
-import "testing"
+import (
+	"testing"
 
-func TestService_Execute_Normal(t *testing.T) {
-	service := NewService()
+	"github.com/stretchr/testify/assert"
+)
 
-	result, err := service.Execute(5)
-	if err != nil {
-		t.Fatalf("Execute returned error: %v", err)
-	}
-	if result != "5! = 120\n" {
-		t.Fatalf("unexpected result: %q", result)
-	}
+func TestCalculate(t *testing.T) {
+	result, err := Calculate(5)
+	assert.NoError(t, err)
+	assert.Equal(t, 120.0, result)
+
+	_, err = Calculate(-1)
+	assert.Error(t, err)
+
+	_, err = Calculate(171)
+	assert.Error(t, err)
 }
 
-func TestService_Execute_Error(t *testing.T) {
-	service := NewService()
+func TestHandleToFactorial(t *testing.T) {
+	result, err := HandleToFactorial(6)
+	assert.NoError(t, err)
+	assert.Equal(t, 720.0, result)
+}
 
-	_, err := service.Execute(-1)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+func TestServiceExecute(t *testing.T) {
+	service := NewService()
+	result, err := service.Execute(5)
+	assert.NoError(t, err)
+	assert.Equal(t, "5! = 120\n", result)
 }

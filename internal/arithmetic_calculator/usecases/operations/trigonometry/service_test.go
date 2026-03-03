@@ -1,24 +1,49 @@
 package trigonometry
 
-import "testing"
+import (
+	"math"
+	"testing"
 
-func TestService_Execute_Normal(t *testing.T) {
-	service := NewService()
+	"github.com/stretchr/testify/assert"
+)
 
-	result, err := service.Execute("sin", 90, "degrees")
-	if err != nil {
-		t.Fatalf("Execute returned error: %v", err)
+func TestCalculate(t *testing.T) {
+	tests := []struct {
+		name        string
+		function    string
+		angle       float64
+		unit        string
+		expected    float64
+		expectError bool
+	}{
+		{name: "sin degrees", function: "sin", angle: 30, unit: "degrees", expected: 0.5},
+		{name: "cos radians", function: "cos", angle: math.Pi, unit: "radians", expected: -1},
+		{name: "tan degrees", function: "tan", angle: 45, unit: "degrees", expected: 1},
+		{name: "invalid", function: "bad", angle: 0, unit: "degrees", expectError: true},
 	}
-	if result != "sin(90.00 degrees) = 1.000000\n" {
-		t.Fatalf("unexpected result: %q", result)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := Calculate(tt.function, tt.angle, tt.unit)
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.InDelta(t, tt.expected, result, 1e-10)
+		})
 	}
 }
 
-func TestService_Execute_Error(t *testing.T) {
-	service := NewService()
+func TestHandleToTrigonometry(t *testing.T) {
+	result, err := HandleToTrigonometry("sin", math.Pi/2, "radians")
+	assert.NoError(t, err)
+	assert.InDelta(t, 1.0, result, 1e-10)
+}
 
-	_, err := service.Execute("bad", 90, "degrees")
-	if err == nil {
-		t.Fatal("expected error")
-	}
+func TestServiceExecute(t *testing.T) {
+	service := NewService()
+	result, err := service.Execute("sin", 90, "degrees")
+	assert.NoError(t, err)
+	assert.Equal(t, "sin(90.00 degrees) = 1.000000\n", result)
 }

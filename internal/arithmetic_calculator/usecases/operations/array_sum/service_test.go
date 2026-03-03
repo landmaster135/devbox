@@ -1,24 +1,23 @@
 package arraysum
 
-import "testing"
+import (
+	"testing"
 
-func TestService_Execute_Normal(t *testing.T) {
+	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestServiceExecuteSum(t *testing.T) {
 	service := NewService()
 
-	result, err := service.Execute("sum", []float64{1, 2, 3})
-	if err != nil {
-		t.Fatalf("Execute returned error: %v", err)
-	}
-	if result != "sum([1 2 3]) = 6.00\n" {
-		t.Fatalf("unexpected result: %q", result)
-	}
+	result, err := service.Execute(config.OperationSum, []float64{1, 2, 3, 4, 5})
+	assert.NoError(t, err)
+	assert.Equal(t, "sum([1 2 3 4 5]) = 15.00\n", result)
 }
 
-func TestService_Execute_UnsupportedOperation(t *testing.T) {
+func TestServiceExecuteUnsupportedOperation(t *testing.T) {
 	service := NewService()
 
-	_, err := service.Execute("unknown", []float64{1, 2, 3})
-	if err == nil {
-		t.Fatal("expected error")
-	}
+	_, err := service.Execute("invalid", []float64{1, 2, 3})
+	assert.Error(t, err)
 }

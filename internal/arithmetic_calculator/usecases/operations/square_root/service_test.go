@@ -1,24 +1,29 @@
 package squareroot
 
-import "testing"
+import (
+	"testing"
 
-func TestService_Execute_Normal(t *testing.T) {
-	service := NewService()
+	"github.com/stretchr/testify/assert"
+)
 
-	result, err := service.Execute(64)
-	if err != nil {
-		t.Fatalf("Execute returned error: %v", err)
-	}
-	if result != "√64.00 = 8.00\n" {
-		t.Fatalf("unexpected result: %q", result)
-	}
+func TestCalculate(t *testing.T) {
+	result, err := Calculate(16)
+	assert.NoError(t, err)
+	assert.Equal(t, 4.0, result)
+
+	_, err = Calculate(-1)
+	assert.Error(t, err)
 }
 
-func TestService_Execute_Error(t *testing.T) {
-	service := NewService()
+func TestHandleToSquareRoot(t *testing.T) {
+	result, err := HandleToSquareRoot(25)
+	assert.NoError(t, err)
+	assert.Equal(t, 5.0, result)
+}
 
-	_, err := service.Execute(-1)
-	if err == nil {
-		t.Fatal("expected error")
-	}
+func TestServiceExecute(t *testing.T) {
+	service := NewService()
+	result, err := service.Execute(64)
+	assert.NoError(t, err)
+	assert.Equal(t, "√64.00 = 8.00\n", result)
 }
