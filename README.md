@@ -1,6 +1,6 @@
 # devbox
 ![Go](https://img.shields.io/badge/Go-1.25.5-%2300ADD8?logo=go)
-![coverage](https://img.shields.io/badge/coverage-58.8%25-yellow)
+![coverage](https://img.shields.io/badge/coverage-59.2%25-yellow)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ![thumbnail](assets/thumbnail.webp)
