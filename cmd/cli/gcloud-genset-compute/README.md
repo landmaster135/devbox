@@ -15,7 +15,7 @@ Google Compute Engine 向けの CLI ツールです。
 | `create-gce-ingress-ssh-firewall-rule` | VPC 内 SSH 用 firewall rule 作成コマンドを生成 |
 | `list-gcloud-instances` | インスタンス一覧取得コマンドを生成 |
 | `list-disk-types` | ディスクタイプ一覧を取得して表示（サイズ条件付き絞り込み対応） |
-| `list-machine-types` | マシンタイプ一覧を取得して表示（最大永続ディスクサイズ条件付き絞り込み対応） |
+| `list-machine-types` | マシンタイプ一覧を取得して表示（最大永続ディスクサイズ/メモリサイズ条件付き絞り込み対応） |
 | `start-gce-instance` | インスタンス起動コマンドを生成 |
 | `stop-gce-instance` | インスタンス停止コマンドを生成 |
 | `reboot-gce-instance` | インスタンス再起動コマンドを生成 |
@@ -117,6 +117,8 @@ Google Compute Engine 向けの CLI ツールです。
 | フラグ | 必須 | デフォルト | 説明 |
 |---|---|---|---|
 | `-zones` | 任意 | なし | 対象ゾーン（カンマ区切り） |
+| `-min-memory-size-mib` | 任意 | `0` | `memoryMb` の下限 |
+| `-max-memory-size-mib` | 任意 | `0` | `memoryMb` の上限 |
 | `-min-disk-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の下限 |
 | `-max-disk-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の上限 |
 
@@ -260,8 +262,10 @@ pd-standard           asia-southeast3-a  10GB-65536GB
 go run ./cmd/cli/gcloud-genset-compute \
   -operation=list-machine-types \
   -zones=asia-southeast3-a,asia-southeast3-b \
+  -min-memory-size-mib=8192 \
+  -max-memory-size-mib=65536 \
   -min-disk-size-gib=1024 \
-  -max-disk-size-gib=65536
+  -max-disk-size-gib=524288
 ```
 
 出力例:

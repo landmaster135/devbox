@@ -12,9 +12,11 @@ import (
 
 // Params はマシンタイプ一覧処理に必要な値。
 type Params struct {
-	Zones          []string
-	MinDiskSizeGiB int
-	MaxDiskSizeGiB int
+	Zones            []string
+	MinDiskSizeGiB   int
+	MaxDiskSizeGiB   int
+	MinMemorySizeMiB int
+	MaxMemorySizeMiB int
 }
 
 type machineType struct {
@@ -44,7 +46,10 @@ func newServiceWithCommandExecutor(commandExecutor infrastructures.CommandExecut
 
 // Execute は gcloud を実行してマシンタイプ一覧を表形式で返す。
 func (s *Service) Execute(params Params) (string, error) {
-	if err := validateSizeRange(params.MinDiskSizeGiB, params.MaxDiskSizeGiB); err != nil {
+	if err := validateDiskSizeRange(params.MinDiskSizeGiB, params.MaxDiskSizeGiB); err != nil {
+		return "", err
+	}
+	if err := validateMemorySizeRange(params.MinMemorySizeMiB, params.MaxMemorySizeMiB); err != nil {
 		return "", err
 	}
 
@@ -71,7 +76,14 @@ func (s *Service) Execute(params Params) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if !shouldIncludeMachineType(maxPersistentDiskSizeGB, params.MinDiskSizeGiB, params.MaxDiskSizeGiB) {
+		if !shouldIncludeMachineType(
+			item.MemoryMB,
+			maxPersistentDiskSizeGB,
+			params.MinMemorySizeMiB,
+			params.MaxMemorySizeMiB,
+			params.MinDiskSizeGiB,
+			params.MaxDiskSizeGiB,
+		) {
 			continue
 		}
 
@@ -90,7 +102,7 @@ func (s *Service) Execute(params Params) (string, error) {
 	), nil
 }
 
-func validateSizeRange(minSizeGiB, maxSizeGiB int) error {
+func validateDiskSizeRange(minSizeGiB, maxSizeGiB int) error {
 	if minSizeGiB < 0 {
 		return fmt.Errorf("min-disk-size-gib は0以上で指定してください")
 	}
@@ -99,6 +111,19 @@ func validateSizeRange(minSizeGiB, maxSizeGiB int) error {
 	}
 	if minSizeGiB > 0 && maxSizeGiB > 0 && minSizeGiB > maxSizeGiB {
 		return fmt.Errorf("min-disk-size-gib は max-disk-size-gib 以下で指定してください")
+	}
+	return nil
+}
+
+func validateMemorySizeRange(minMemorySizeMiB, maxMemorySizeMiB int) error {
+	if minMemorySizeMiB < 0 {
+		return fmt.Errorf("min-memory-size-mib は0以上で指定してください")
+	}
+	if maxMemorySizeMiB < 0 {
+		return fmt.Errorf("max-memory-size-mib は0以上で指定してください")
+	}
+	if minMemorySizeMiB > 0 && maxMemorySizeMiB > 0 && minMemorySizeMiB > maxMemorySizeMiB {
+		return fmt.Errorf("min-memory-size-mib は max-memory-size-mib 以下で指定してください")
 	}
 	return nil
 }
@@ -115,14 +140,27 @@ func normalizeZones(zones []string) []string {
 	return normalized
 }
 
-func shouldIncludeMachineType(maxPersistentDiskSizeGB int64, minFilter, maxFilter int) bool {
+func shouldIncludeMachineType(
+	memoryMB int,
+	maxPersistentDiskSizeGB int64,
+	minMemorySizeMiB int,
+	maxMemorySizeMiB int,
+	minDiskSizeGiB int,
+	maxDiskSizeGiB int,
+) bool {
+	memoryMatched := shouldIncludeByRange(int64(memoryMB), minMemorySizeMiB, maxMemorySizeMiB)
+	diskMatched := shouldIncludeByRange(maxPersistentDiskSizeGB, minDiskSizeGiB, maxDiskSizeGiB)
+	return memoryMatched && diskMatched
+}
+
+func shouldIncludeByRange(value int64, minFilter int, maxFilter int) bool {
 	switch {
 	case minFilter > 0 && maxFilter > 0:
-		return maxPersistentDiskSizeGB >= int64(minFilter) && maxPersistentDiskSizeGB <= int64(maxFilter)
+		return value >= int64(minFilter) && value <= int64(maxFilter)
 	case minFilter > 0:
-		return maxPersistentDiskSizeGB >= int64(minFilter)
+		return value >= int64(minFilter)
 	case maxFilter > 0:
-		return maxPersistentDiskSizeGB <= int64(maxFilter)
+		return value <= int64(maxFilter)
 	default:
 		return true
 	}

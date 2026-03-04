@@ -245,6 +245,7 @@ func TestParseFlagsWithParser_ListMachineTypes_Normal(t *testing.T) {
 	parser.setString("operation", OperationListMachineTypes)
 	parser.setString("zones", "asia-southeast3-a")
 	parser.setInt("min-disk-size-gib", 1024)
+	parser.setInt("max-memory-size-mib", 65536)
 
 	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
@@ -259,6 +260,12 @@ func TestParseFlagsWithParser_ListMachineTypes_Normal(t *testing.T) {
 	}
 	if cfg.MaxDiskSizeGiB != 0 {
 		t.Fatalf("max-disk-size-gib mismatch: %d", cfg.MaxDiskSizeGiB)
+	}
+	if cfg.MinMemorySizeMiB != 0 {
+		t.Fatalf("min-memory-size-mib mismatch: %d", cfg.MinMemorySizeMiB)
+	}
+	if cfg.MaxMemorySizeMiB != 65536 {
+		t.Fatalf("max-memory-size-mib mismatch: %d", cfg.MaxMemorySizeMiB)
 	}
 }
 
@@ -556,6 +563,25 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 			}
 		})
 
+		t.Run("list machine types negative min memory", func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", OperationListMachineTypes)
+			parser.setInt("min-memory-size-mib", -1)
+			if _, err := ParseFlagsWithParser(parser); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+
+		t.Run("list machine types min memory greater than max memory", func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", OperationListMachineTypes)
+			parser.setInt("min-memory-size-mib", 8192)
+			parser.setInt("max-memory-size-mib", 4096)
+			if _, err := ParseFlagsWithParser(parser); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+
 		t.Run("list disk types invalid zone", func(t *testing.T) {
 			parser := newMockFlagParser()
 			parser.setString("operation", OperationListDiskTypes)
@@ -676,6 +702,8 @@ func TestPrintUsage(t *testing.T) {
 		"list-gcloud-instances",
 		"list-disk-types",
 		"list-machine-types",
+		"min-memory-size-mib",
+		"max-memory-size-mib",
 		"start-gce-instance",
 		"stop-gce-instance",
 		"reboot-gce-instance",

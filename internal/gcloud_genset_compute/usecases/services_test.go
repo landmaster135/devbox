@@ -662,9 +662,11 @@ func TestServiceExecuteListMachineTypes_Normal(t *testing.T) {
 	)
 
 	result, err := service.ExecuteListMachineTypes(ListMachineTypesParams{
-		Zones:          []string{"asia-southeast3-a"},
-		MinDiskSizeGiB: 1024,
-		MaxDiskSizeGiB: 65536,
+		Zones:            []string{"asia-southeast3-a"},
+		MinDiskSizeGiB:   1024,
+		MaxDiskSizeGiB:   65536,
+		MinMemorySizeMiB: 8192,
+		MaxMemorySizeMiB: 65536,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -674,6 +676,12 @@ func TestServiceExecuteListMachineTypes_Normal(t *testing.T) {
 	}
 	if !listMachineTypesOp.executeCalled {
 		t.Fatal("execute was not called")
+	}
+	if listMachineTypesOp.executeGot.MinMemorySizeMiB != 8192 {
+		t.Fatalf("min-memory-size-mib mismatch: %d", listMachineTypesOp.executeGot.MinMemorySizeMiB)
+	}
+	if listMachineTypesOp.executeGot.MaxMemorySizeMiB != 65536 {
+		t.Fatalf("max-memory-size-mib mismatch: %d", listMachineTypesOp.executeGot.MaxMemorySizeMiB)
 	}
 }
 

@@ -36,9 +36,11 @@ func main() {
 		fmt.Println(result)
 	case cfg.OperationListMachineTypes:
 		result, err := service.ExecuteListMachineTypes(usecases.ListMachineTypesParams{
-			Zones:          config.Zones,
-			MinDiskSizeGiB: config.MinDiskSizeGiB,
-			MaxDiskSizeGiB: config.MaxDiskSizeGiB,
+			Zones:            config.Zones,
+			MinDiskSizeGiB:   config.MinDiskSizeGiB,
+			MaxDiskSizeGiB:   config.MaxDiskSizeGiB,
+			MinMemorySizeMiB: config.MinMemorySizeMiB,
+			MaxMemorySizeMiB: config.MaxMemorySizeMiB,
 		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
