@@ -2,56 +2,48 @@ package usecases
 
 import (
 	"fmt"
-	"strings"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_compute/config"
+	creategceiapsshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_iap_ssh_firewall_rule"
+	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
+	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
+	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
+	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 )
 
 // Service は GCE 向け gcloud コマンド生成を担当する。
-type Service struct{}
-
-// NewService は Service のインスタンスを返す。
-func NewService() *Service {
-	return &Service{}
+type Service struct {
+	createGCEInstanceOperation               createGCEInstanceOperation
+	createGCERouterAndNATOperation           createGCERouterAndNATOperation
+	createGCEIAPSSHFirewallRuleOperation     createGCEIAPSSHFirewallRuleOperation
+	createGCEIngressSSHFirewallRuleOperation createGCEIngressSSHFirewallRuleOperation
+	listGCloudInstancesOperation             listGCloudInstancesOperation
 }
 
 // CreateGCEInstanceParams はインスタンス作成コマンド生成に必要な値。
-type CreateGCEInstanceParams struct {
-	InstanceName string
-	Zone         string
-	MachineType  string
-	BootDiskSize string
-	BootDiskType string
-}
+type CreateGCEInstanceParams = creategceinstance.Params
 
 // CreateGCERouterAndNATParams は Router/NAT 作成コマンド生成に必要な値。
-type CreateGCERouterAndNATParams struct {
-	RouterName string
-	Region     string
-	Network    string
-	NATName    string
-}
+type CreateGCERouterAndNATParams = creategcerouterandnat.Params
 
 // CreateGCEIAPSSHFirewallRuleParams は IAP SSH 用 firewall rule 作成コマンド生成に必要な値。
-type CreateGCEIAPSSHFirewallRuleParams struct {
-	RuleName     string
-	Direction    string
-	Action       string
-	Rules        string
-	SourceRanges string
-}
+type CreateGCEIAPSSHFirewallRuleParams = creategceiapsshfirewallrule.Params
 
 // CreateGCEIngressSSHFirewallRuleParams は VPC 内 SSH 用 firewall rule 作成コマンド生成に必要な値。
-type CreateGCEIngressSSHFirewallRuleParams struct {
-	RuleName     string
-	AllowRule    string
-	SourceRanges string
-}
+type CreateGCEIngressSSHFirewallRuleParams = creategceingresssshfirewallrule.Params
 
 // ListGCloudInstancesParams はインスタンス一覧コマンド生成に必要な値。
-type ListGCloudInstancesParams struct {
-	Filter string
-	Format string
+type ListGCloudInstancesParams = listgcloudinstances.Params
+
+// NewService は Service のインスタンスを返す。
+func NewService() *Service {
+	return newServiceWithOperations(
+		creategceinstance.NewService(),
+		creategcerouterandnat.NewService(),
+		creategceiapsshfirewallrule.NewService(),
+		creategceingresssshfirewallrule.NewService(),
+		listgcloudinstances.NewService(),
+	)
 }
 
 // BuildCommand は operation に応じた gcloud コマンドを生成する。
@@ -98,125 +90,27 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 
 // BuildCreateGCEInstanceCommand はインスタンス作成コマンドを生成する。
 func (s *Service) BuildCreateGCEInstanceCommand(params CreateGCEInstanceParams) (string, error) {
-	if strings.TrimSpace(params.InstanceName) == "" {
-		return "", fmt.Errorf("instance-name は必須です")
-	}
-	if strings.TrimSpace(params.Zone) == "" {
-		return "", fmt.Errorf("zone は必須です")
-	}
-	if strings.TrimSpace(params.MachineType) == "" {
-		return "", fmt.Errorf("machine-type は必須です")
-	}
-	if strings.TrimSpace(params.BootDiskSize) == "" {
-		return "", fmt.Errorf("boot-disk-size は必須です")
-	}
-	if strings.TrimSpace(params.BootDiskType) == "" {
-		return "", fmt.Errorf("boot-disk-type は必須です")
-	}
-
-	return fmt.Sprintf(
-		"gcloud compute instances create %s --zone=%s --machine-type=%s --no-address --boot-disk-size=%s --boot-disk-type=%s",
-		shellQuote(params.InstanceName),
-		shellQuote(params.Zone),
-		shellQuote(params.MachineType),
-		shellQuote(params.BootDiskSize),
-		shellQuote(params.BootDiskType),
-	), nil
+	return s.createGCEInstanceOperation.Build(params)
 }
 
 // BuildCreateGCERouterAndNATCommand は Router/NAT 作成コマンドを生成する。
 func (s *Service) BuildCreateGCERouterAndNATCommand(params CreateGCERouterAndNATParams) (string, error) {
-	if strings.TrimSpace(params.RouterName) == "" {
-		return "", fmt.Errorf("router-name は必須です")
-	}
-	if strings.TrimSpace(params.Region) == "" {
-		return "", fmt.Errorf("region は必須です")
-	}
-	if strings.TrimSpace(params.Network) == "" {
-		return "", fmt.Errorf("network は必須です")
-	}
-	if strings.TrimSpace(params.NATName) == "" {
-		return "", fmt.Errorf("nat-name は必須です")
-	}
-
-	routerCommand := fmt.Sprintf(
-		"gcloud compute routers create %s --region=%s --network=%s",
-		shellQuote(params.RouterName),
-		shellQuote(params.Region),
-		shellQuote(params.Network),
-	)
-
-	natCommand := fmt.Sprintf(
-		"gcloud compute routers nats create %s --router=%s --region=%s --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges",
-		shellQuote(params.NATName),
-		shellQuote(params.RouterName),
-		shellQuote(params.Region),
-	)
-
-	return fmt.Sprintf("%s && \\\n%s", routerCommand, natCommand), nil
+	return s.createGCERouterAndNATOperation.Build(params)
 }
 
 // BuildCreateGCEIAPSSHFirewallRuleCommand は IAP SSH 用 firewall rule 作成コマンドを生成する。
 func (s *Service) BuildCreateGCEIAPSSHFirewallRuleCommand(params CreateGCEIAPSSHFirewallRuleParams) (string, error) {
-	if strings.TrimSpace(params.RuleName) == "" {
-		return "", fmt.Errorf("rule-name は必須です")
-	}
-	if strings.TrimSpace(params.Direction) == "" {
-		return "", fmt.Errorf("direction は必須です")
-	}
-	if strings.TrimSpace(params.Action) == "" {
-		return "", fmt.Errorf("action は必須です")
-	}
-	if strings.TrimSpace(params.Rules) == "" {
-		return "", fmt.Errorf("rules は必須です")
-	}
-	if strings.TrimSpace(params.SourceRanges) == "" {
-		return "", fmt.Errorf("source-ranges は必須です")
-	}
-
-	return fmt.Sprintf(
-		"gcloud compute firewall-rules create %s --direction=%s --action=%s --rules=%s --source-ranges=%s",
-		shellQuote(params.RuleName),
-		shellQuote(params.Direction),
-		shellQuote(params.Action),
-		shellQuote(params.Rules),
-		shellQuote(params.SourceRanges),
-	), nil
+	return s.createGCEIAPSSHFirewallRuleOperation.Build(params)
 }
 
 // BuildCreateGCEIngressSSHFirewallRuleCommand は VPC 内 SSH 用 firewall rule 作成コマンドを生成する。
 func (s *Service) BuildCreateGCEIngressSSHFirewallRuleCommand(params CreateGCEIngressSSHFirewallRuleParams) (string, error) {
-	if strings.TrimSpace(params.RuleName) == "" {
-		return "", fmt.Errorf("rule-name は必須です")
-	}
-	if strings.TrimSpace(params.AllowRule) == "" {
-		return "", fmt.Errorf("allow-rule は必須です")
-	}
-	if strings.TrimSpace(params.SourceRanges) == "" {
-		return "", fmt.Errorf("source-ranges は必須です")
-	}
-
-	return fmt.Sprintf(
-		"gcloud compute firewall-rules create %s --allow=%s --source-ranges=%s",
-		shellQuote(params.RuleName),
-		shellQuote(params.AllowRule),
-		shellQuote(params.SourceRanges),
-	), nil
+	return s.createGCEIngressSSHFirewallRuleOperation.Build(params)
 }
 
 // BuildListGCloudInstancesCommand はインスタンス一覧コマンドを生成する。
 func (s *Service) BuildListGCloudInstancesCommand(params ListGCloudInstancesParams) (string, error) {
-	if strings.TrimSpace(params.Format) == "" {
-		return "", fmt.Errorf("format は必須です")
-	}
-
-	parts := []string{"gcloud", "compute", "instances", "list"}
-	if strings.TrimSpace(params.Filter) != "" {
-		parts = append(parts, "--filter="+shellQuote(params.Filter))
-	}
-	parts = append(parts, "--format="+shellQuote(params.Format))
-
-	return strings.Join(parts, " "), nil
+	return s.listGCloudInstancesOperation.Build(params)
 }
 
 // PrintHighlightedCommand は生成されたコマンドを見やすい形式で出力する。
@@ -227,9 +121,4 @@ func (s *Service) PrintHighlightedCommand(command string) {
 	fmt.Println("==============================")
 	fmt.Println(command)
 	fmt.Println("==============================")
-}
-
-func shellQuote(value string) string {
-	escaped := strings.ReplaceAll(value, "'", "'\"'\"'")
-	return "'" + escaped + "'"
 }

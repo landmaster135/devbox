@@ -2,32 +2,181 @@ package usecases
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"strings"
 	"testing"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_compute/config"
+	creategceiapsshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_iap_ssh_firewall_rule"
+	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
+	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
+	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
+	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 )
 
-func TestServiceBuildCommand_CreateGCEInstance_Normal(t *testing.T) {
-	service := NewService()
+type createGCEInstanceOperationStub struct {
+	called bool
+	got    creategceinstance.Params
+	result string
+	err    error
+}
 
-	command, err := service.BuildCommand(&cfg.Config{
-		Operation:    cfg.OperationCreateGCEInstance,
-		InstanceName: "vm-1",
-		Zone:         "us-central1-a",
-		MachineType:  "e2-medium",
-		BootDiskSize: "100GB",
-		BootDiskType: "pd-balanced",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func (s *createGCEInstanceOperationStub) Build(params creategceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type createGCERouterAndNATOperationStub struct {
+	called bool
+	got    creategcerouterandnat.Params
+	result string
+	err    error
+}
+
+func (s *createGCERouterAndNATOperationStub) Build(params creategcerouterandnat.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type createGCEIAPSSHFirewallRuleOperationStub struct {
+	called bool
+	got    creategceiapsshfirewallrule.Params
+	result string
+	err    error
+}
+
+func (s *createGCEIAPSSHFirewallRuleOperationStub) Build(params creategceiapsshfirewallrule.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type createGCEIngressSSHFirewallRuleOperationStub struct {
+	called bool
+	got    creategceingresssshfirewallrule.Params
+	result string
+	err    error
+}
+
+func (s *createGCEIngressSSHFirewallRuleOperationStub) Build(params creategceingresssshfirewallrule.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type listGCloudInstancesOperationStub struct {
+	called bool
+	got    listgcloudinstances.Params
+	result string
+	err    error
+}
+
+func (s *listGCloudInstancesOperationStub) Build(params listgcloudinstances.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
+	instanceOp := &createGCEInstanceOperationStub{result: "instance-command"}
+	routerNATOp := &createGCERouterAndNATOperationStub{result: "router-nat-command"}
+	iapSSHOp := &createGCEIAPSSHFirewallRuleOperationStub{result: "iap-ssh-command"}
+	ingressSSHOp := &createGCEIngressSSHFirewallRuleOperationStub{result: "ingress-ssh-command"}
+	listOp := &listGCloudInstancesOperationStub{result: "list-command"}
+
+	service := newServiceWithOperations(instanceOp, routerNATOp, iapSSHOp, ingressSSHOp, listOp)
+
+	tests := []struct {
+		name     string
+		config   *cfg.Config
+		expected string
+	}{
+		{
+			name: "create-gce-instance",
+			config: &cfg.Config{
+				Operation:    cfg.OperationCreateGCEInstance,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+				MachineType:  "e2-medium",
+				BootDiskSize: "100GB",
+				BootDiskType: "pd-balanced",
+			},
+			expected: "instance-command",
+		},
+		{
+			name: "create-gce-router-and-nat",
+			config: &cfg.Config{
+				Operation:  cfg.OperationCreateGCERouterAndNAT,
+				RouterName: "router-1",
+				Region:     "us-central1",
+				Network:    "default",
+				NATName:    "nat1",
+			},
+			expected: "router-nat-command",
+		},
+		{
+			name: "create-gce-iap-ssh-firewall-rule",
+			config: &cfg.Config{
+				Operation:    cfg.OperationCreateGCEIAPSSHFirewallRule,
+				RuleName:     "allow-ssh-ingress-from-iap",
+				Direction:    "INGRESS",
+				Action:       "allow",
+				Rules:        "tcp:22",
+				SourceRanges: "35.235.240.0/20",
+			},
+			expected: "iap-ssh-command",
+		},
+		{
+			name: "create-gce-ingress-ssh-firewall-rule",
+			config: &cfg.Config{
+				Operation:    cfg.OperationCreateGCEIngressSSHFirewallRule,
+				RuleName:     "allow-ingress-ssh",
+				AllowRule:    "tcp:22",
+				SourceRanges: "10.0.0.0/8",
+			},
+			expected: "ingress-ssh-command",
+		},
+		{
+			name: "list-gcloud-instances",
+			config: &cfg.Config{
+				Operation: cfg.OperationListGCloudInstances,
+				Filter:    "zone:us-central1-a",
+				Format:    "table(name,status)",
+			},
+			expected: "list-command",
+		},
 	}
 
-	expected := "gcloud compute instances create 'vm-1' --zone='us-central1-a' --machine-type='e2-medium' --no-address --boot-disk-size='100GB' --boot-disk-type='pd-balanced'"
-	if command != expected {
-		t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", expected, command)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			command, err := service.BuildCommand(tt.config)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if command != tt.expected {
+				t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", tt.expected, command)
+			}
+		})
+	}
+
+	if !instanceOp.called {
+		t.Fatal("instance operation was not called")
+	}
+	if !routerNATOp.called {
+		t.Fatal("router and nat operation was not called")
+	}
+	if !iapSSHOp.called {
+		t.Fatal("iap ssh operation was not called")
+	}
+	if !ingressSSHOp.called {
+		t.Fatal("ingress ssh operation was not called")
+	}
+	if !listOp.called {
+		t.Fatal("list operation was not called")
 	}
 }
 
@@ -38,260 +187,29 @@ func TestServiceBuildCommand_UnknownOperation(t *testing.T) {
 	}
 }
 
-func TestServiceBuildCommand_OtherOperations_Normal(t *testing.T) {
-	service := NewService()
+func TestServiceBuildCommand_OperationError(t *testing.T) {
+	expectedErr := fmt.Errorf("operation error")
+	service := newServiceWithOperations(
+		&createGCEInstanceOperationStub{err: expectedErr},
+		&createGCERouterAndNATOperationStub{},
+		&createGCEIAPSSHFirewallRuleOperationStub{},
+		&createGCEIngressSSHFirewallRuleOperationStub{},
+		&listGCloudInstancesOperationStub{},
+	)
 
-	tests := []struct {
-		name   string
-		config *cfg.Config
-	}{
-		{
-			name: "create router and nat",
-			config: &cfg.Config{
-				Operation:  cfg.OperationCreateGCERouterAndNAT,
-				RouterName: "router-1",
-				Region:     "us-central1",
-				Network:    "default",
-				NATName:    "nat1",
-			},
-		},
-		{
-			name: "create iap firewall",
-			config: &cfg.Config{
-				Operation:    cfg.OperationCreateGCEIAPSSHFirewallRule,
-				RuleName:     "allow-ssh-ingress-from-iap",
-				Direction:    "INGRESS",
-				Action:       "allow",
-				Rules:        "tcp:22",
-				SourceRanges: "35.235.240.0/20",
-			},
-		},
-		{
-			name: "create ingress firewall",
-			config: &cfg.Config{
-				Operation:    cfg.OperationCreateGCEIngressSSHFirewallRule,
-				RuleName:     "allow-ingress-ssh",
-				AllowRule:    "tcp:22",
-				SourceRanges: "10.0.0.0/8",
-			},
-		},
-		{
-			name: "list instances",
-			config: &cfg.Config{
-				Operation: cfg.OperationListGCloudInstances,
-				Format:    "table(name,status)",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			command, err := service.BuildCommand(tt.config)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if strings.TrimSpace(command) == "" {
-				t.Fatal("command should not be empty")
-			}
-		})
-	}
-}
-
-func TestServiceBuildCreateGCEInstanceCommand_QuoteEscape_Normal(t *testing.T) {
-	service := NewService()
-
-	command, err := service.BuildCreateGCEInstanceCommand(CreateGCEInstanceParams{
-		InstanceName: "vm'o",
+	_, err := service.BuildCommand(&cfg.Config{
+		Operation:    cfg.OperationCreateGCEInstance,
+		InstanceName: "vm-1",
 		Zone:         "us-central1-a",
 		MachineType:  "e2-medium",
 		BootDiskSize: "100GB",
 		BootDiskType: "pd-balanced",
 	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	if err == nil {
+		t.Fatal("expected error")
 	}
-
-	if !strings.Contains(command, "'vm'\"'\"'o'") {
-		t.Fatalf("quote escaping is not applied: %s", command)
-	}
-}
-
-func TestServiceBuildCreateGCEInstanceCommand_ValidationError(t *testing.T) {
-	service := NewService()
-
-	if _, err := service.BuildCreateGCEInstanceCommand(CreateGCEInstanceParams{}); err == nil {
-		t.Fatal("expected validation error")
-	}
-}
-
-func TestServiceBuildCreateGCEInstanceCommand_ValidationDetails(t *testing.T) {
-	service := NewService()
-
-	tests := []CreateGCEInstanceParams{
-		{InstanceName: "vm-1", MachineType: "e2-medium", BootDiskSize: "100GB", BootDiskType: "pd-balanced"},
-		{InstanceName: "vm-1", Zone: "us-central1-a", BootDiskSize: "100GB", BootDiskType: "pd-balanced"},
-		{InstanceName: "vm-1", Zone: "us-central1-a", MachineType: "e2-medium", BootDiskType: "pd-balanced"},
-		{InstanceName: "vm-1", Zone: "us-central1-a", MachineType: "e2-medium", BootDiskSize: "100GB"},
-	}
-
-	for i, params := range tests {
-		if _, err := service.BuildCreateGCEInstanceCommand(params); err == nil {
-			t.Fatalf("expected validation error at case %d", i)
-		}
-	}
-}
-
-func TestServiceBuildCreateGCERouterAndNATCommand_Normal(t *testing.T) {
-	service := NewService()
-
-	command, err := service.BuildCreateGCERouterAndNATCommand(CreateGCERouterAndNATParams{
-		RouterName: "router-1",
-		Region:     "us-central1",
-		Network:    "default",
-		NATName:    "nat1",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	expectedParts := []string{
-		"gcloud compute routers create 'router-1' --region='us-central1' --network='default'",
-		"gcloud compute routers nats create 'nat1' --router='router-1' --region='us-central1' --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges",
-	}
-	for _, expected := range expectedParts {
-		if !strings.Contains(command, expected) {
-			t.Fatalf("command should contain %q: %s", expected, command)
-		}
-	}
-	if !strings.Contains(command, "&&") {
-		t.Fatalf("command should include conditional chain: %s", command)
-	}
-}
-
-func TestServiceBuildCreateGCERouterAndNATCommand_ValidationError(t *testing.T) {
-	service := NewService()
-
-	tests := []CreateGCERouterAndNATParams{
-		{Region: "us-central1", Network: "default", NATName: "nat1"},
-		{RouterName: "router-1", Network: "default", NATName: "nat1"},
-		{RouterName: "router-1", Region: "us-central1", NATName: "nat1"},
-		{RouterName: "router-1", Region: "us-central1", Network: "default"},
-	}
-
-	for i, params := range tests {
-		if _, err := service.BuildCreateGCERouterAndNATCommand(params); err == nil {
-			t.Fatalf("expected validation error at case %d", i)
-		}
-	}
-}
-
-func TestServiceBuildCreateGCEIAPSSHFirewallRuleCommand_Normal(t *testing.T) {
-	service := NewService()
-
-	command, err := service.BuildCreateGCEIAPSSHFirewallRuleCommand(CreateGCEIAPSSHFirewallRuleParams{
-		RuleName:     "allow-ssh-ingress-from-iap",
-		Direction:    "INGRESS",
-		Action:       "allow",
-		Rules:        "tcp:22",
-		SourceRanges: "35.235.240.0/20",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	expected := "gcloud compute firewall-rules create 'allow-ssh-ingress-from-iap' --direction='INGRESS' --action='allow' --rules='tcp:22' --source-ranges='35.235.240.0/20'"
-	if command != expected {
-		t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", expected, command)
-	}
-}
-
-func TestServiceBuildCreateGCEIAPSSHFirewallRuleCommand_ValidationError(t *testing.T) {
-	service := NewService()
-
-	tests := []CreateGCEIAPSSHFirewallRuleParams{
-		{Direction: "INGRESS", Action: "allow", Rules: "tcp:22", SourceRanges: "35.235.240.0/20"},
-		{RuleName: "r", Action: "allow", Rules: "tcp:22", SourceRanges: "35.235.240.0/20"},
-		{RuleName: "r", Direction: "INGRESS", Rules: "tcp:22", SourceRanges: "35.235.240.0/20"},
-		{RuleName: "r", Direction: "INGRESS", Action: "allow", SourceRanges: "35.235.240.0/20"},
-		{RuleName: "r", Direction: "INGRESS", Action: "allow", Rules: "tcp:22"},
-	}
-
-	for i, params := range tests {
-		if _, err := service.BuildCreateGCEIAPSSHFirewallRuleCommand(params); err == nil {
-			t.Fatalf("expected validation error at case %d", i)
-		}
-	}
-}
-
-func TestServiceBuildCreateGCEIngressSSHFirewallRuleCommand_Normal(t *testing.T) {
-	service := NewService()
-
-	command, err := service.BuildCreateGCEIngressSSHFirewallRuleCommand(CreateGCEIngressSSHFirewallRuleParams{
-		RuleName:     "allow-ingress-ssh",
-		AllowRule:    "tcp:22",
-		SourceRanges: "10.0.0.0/8",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	expected := "gcloud compute firewall-rules create 'allow-ingress-ssh' --allow='tcp:22' --source-ranges='10.0.0.0/8'"
-	if command != expected {
-		t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", expected, command)
-	}
-}
-
-func TestServiceBuildCreateGCEIngressSSHFirewallRuleCommand_ValidationError(t *testing.T) {
-	service := NewService()
-
-	tests := []CreateGCEIngressSSHFirewallRuleParams{
-		{AllowRule: "tcp:22", SourceRanges: "10.0.0.0/8"},
-		{RuleName: "allow-ingress-ssh", SourceRanges: "10.0.0.0/8"},
-		{RuleName: "allow-ingress-ssh", AllowRule: "tcp:22"},
-	}
-
-	for i, params := range tests {
-		if _, err := service.BuildCreateGCEIngressSSHFirewallRuleCommand(params); err == nil {
-			t.Fatalf("expected validation error at case %d", i)
-		}
-	}
-}
-
-func TestServiceBuildListGCloudInstancesCommand_Normal(t *testing.T) {
-	service := NewService()
-
-	command, err := service.BuildListGCloudInstancesCommand(ListGCloudInstancesParams{
-		Filter: "zone:us-central1-a",
-		Format: "table(name,status)",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	expected := "gcloud compute instances list --filter='zone:us-central1-a' --format='table(name,status)'"
-	if command != expected {
-		t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", expected, command)
-	}
-}
-
-func TestServiceBuildListGCloudInstancesCommand_WithoutFilter_Normal(t *testing.T) {
-	service := NewService()
-
-	command, err := service.BuildListGCloudInstancesCommand(ListGCloudInstancesParams{Format: "json"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	expected := "gcloud compute instances list --format='json'"
-	if command != expected {
-		t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", expected, command)
-	}
-}
-
-func TestServiceBuildListGCloudInstancesCommand_ValidationError(t *testing.T) {
-	service := NewService()
-	if _, err := service.BuildListGCloudInstancesCommand(ListGCloudInstancesParams{}); err == nil {
-		t.Fatal("expected validation error")
+	if err.Error() != expectedErr.Error() {
+		t.Fatalf("error mismatch:\nexpected: %v\nactual:   %v", expectedErr, err)
 	}
 }
 
