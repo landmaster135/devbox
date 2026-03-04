@@ -332,6 +332,38 @@ function setup_vscode() {
   sudo apt install code
 }
 
+function install_docker() {
+  if command -v docker >/dev/null 2>&1; then
+    echo "[INFO] Docker is already installed. skip installation."
+    return 0
+  fi
+
+  local docker_repo_os
+  docker_repo_os="$(. /etc/os-release && echo "${ID}")"
+  if [ "$docker_repo_os" != "debian" ] && [ "$docker_repo_os" != "ubuntu" ]; then
+    docker_repo_os="debian"
+  fi
+
+  sudo DEBIAN_FRONTEND=noninteractive apt-get update
+  sudo DEBIAN_FRONTEND=noninteractive \
+    apt-get install --assume-yes ca-certificates curl gnupg lsb-release
+
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo rm -f /etc/apt/keyrings/docker.gpg
+  curl -fsSL "https://download.docker.com/linux/${docker_repo_os}/gpg" \
+    | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${docker_repo_os} \
+    $(lsb_release -cs) stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+  sudo DEBIAN_FRONTEND=noninteractive apt-get update
+  sudo DEBIAN_FRONTEND=noninteractive \
+    apt-get install --assume-yes docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  echo "[INFO] Docker installation completed successfully."
+}
+
 # Configure the following environmental variables as required:
 INSTALL_XFCE=yes
 INSTALL_CINNAMON=yes
@@ -387,6 +419,13 @@ send_discord_notification "VMのIMEの設定が完了したよ！"
 setup_dev_resources
 echo "[INFO] Setup development resources completed"
 send_discord_notification "VMの開発リソースの設定が完了したよ！"
+
+if ! install_docker; then
+  send_discord_notification_about_gce "失敗…" "VMのDockerの設定に失敗したよ…" "red"
+  echo "[ERROR] Docker installation failed"
+  exit 1
+fi
+send_discord_notification "VMのDockerの設定が完了したよ！"
 
 setup_vscode
 echo "[INFO] Setup for VSCode completed"
