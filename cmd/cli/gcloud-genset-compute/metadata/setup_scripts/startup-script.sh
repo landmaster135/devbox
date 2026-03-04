@@ -9,7 +9,7 @@ function send_discord_notification() {
   # --helpオプションの確認
   if [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     cat <<EOF
-Usage: ${FUNCNAME[0]} <通知テキスト> <Embedのテキスト> <Embedのフッターテキスト> <EmbedのアイコンのURL> <Embedの色> [DISCORD_WEBHOOK_URL]
+Usage: ${FUNCNAME[0]} <通知テキスト> <Embedのテキスト> <Embedのフッターテキスト> <EmbedのアイコンのURL> <Embedの色> [WEBHOOK_URL]
 
 Parameters:
   通知テキスト           : 通知内容のテキスト
@@ -17,7 +17,7 @@ Parameters:
   Embedのフッターテキスト : Embedフッターに表示するテキスト
   EmbedのアイコンのURL   : Embedフッターに表示するアイコンのURL
   Embedの色             : Embedの色（10進数の数値または以下の文字列指定が可能）
-  DISCORD_WEBHOOK_URL    : (任意) DiscordのWebhook URL。省略した場合は環境変数DISCORD_WEBHOOK_URLを使用します。
+  WEBHOOK_URL            : (任意) DiscordのWebhook URL。省略した場合は環境変数 DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD を使用します。
 
 Color Samples:
   green     : 4569935   (0x45BB4F)
@@ -33,10 +33,10 @@ Color Samples:
   black     : 3355443   (0x333333)
 
 Examples:
-  # Using environment variable DISCORD_WEBHOOK_URL (5 arguments)
+  # Using environment variable DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD (5 arguments)
   ${FUNCNAME[0]} "通知テキスト" "Embedのテキスト" "Embedのフッターテキスト" "https://example.com/footer_icon.png" green
 
-  # Explicitly specifying DISCORD_WEBHOOK_URL as the last argument (6 arguments)
+  # Explicitly specifying WEBHOOK_URL as the last argument (6 arguments)
   ${FUNCNAME[0]} "通知テキスト" "Embedのテキスト" "Embedのフッターテキスト" "https://example.com/footer_icon.png" red "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"
 EOF
     return 0
@@ -48,7 +48,11 @@ EOF
   # 引数の個数チェック
   if [ "$#" -eq 1 ]; then
     message="$1"
-    webhook_url="${DISCORD_WEBHOOK_URL}"
+    webhook_url="${DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD}"
+    if [ -z "$webhook_url" ]; then
+      echo "[WARN] DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD is empty. skip notification."
+      return 0
+    fi
     # JSONペイロードの作成
     local payload=$(cat <<EOF
 {
@@ -57,7 +61,7 @@ EOF
 EOF
     )
     # curlでDiscordのWebhookにPOSTリクエストを送信
-    curl -H "Content-Type: application/json" \
+    curl -fsS -H "Content-Type: application/json" \
       -X POST \
       -d "$payload" \
       "$webhook_url"
@@ -72,7 +76,7 @@ EOF
     embed_footer_text="$3"
     embed_icon_url="$4"
     embed_color="$5"
-    webhook_url="${DISCORD_WEBHOOK_URL}"
+    webhook_url="${DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD}"
   elif [ "$#" -eq 6 ]; then
     message="$1"
     embed_text="$2"
@@ -83,7 +87,7 @@ EOF
   else
     echo "Error: 引数の数が正しくありません。"
     cat <<EOF
-Usage: ${FUNCNAME[0]} <通知テキスト> <Embedのテキスト> <Embedのフッターテキスト> <EmbedのアイコンのURL> <Embedの色> [DISCORD_WEBHOOK_URL];
+Usage: ${FUNCNAME[0]} <通知テキスト> <Embedのテキスト> <Embedのフッターテキスト> <EmbedのアイコンのURL> <Embedの色> [WEBHOOK_URL];
 EOF
     return 1
   fi
@@ -92,7 +96,7 @@ EOF
   if [ -z "$message" ] || [ -z "$embed_text" ] || [ -z "$embed_icon_url" ] || [ -z "$embed_color" ] || [ -z "$webhook_url" ]; then
     echo "Error: 引数に空文字が含まれています。"
     cat <<EOF
-Usage: ${FUNCNAME[0]} <通知テキスト> <Embedのテキスト> <Embedのフッターテキスト> <EmbedのアイコンのURL> <Embedの色> [DISCORD_WEBHOOK_URL];
+Usage: ${FUNCNAME[0]} <通知テキスト> <Embedのテキスト> <Embedのフッターテキスト> <EmbedのアイコンのURL> <Embedの色> [WEBHOOK_URL];
 EOF
     return 1
   fi
@@ -157,7 +161,7 @@ EOF
   )
 
   # curlでDiscordのWebhookにPOSTリクエストを送信
-  curl -H "Content-Type: application/json" \
+  curl -fsS -H "Content-Type: application/json" \
     -X POST \
     -d "$payload" \
     "$webhook_url"
@@ -171,7 +175,7 @@ function send_discord_notification_about_gce() {
   local embed_color="$3"
   local embed_footer_text="GoogleComputeEngine"
   local embed_icon_url=$GCE_ICON_URL
-  local webhook_url=$DISCORD_WEBHOOK_URL
+  local webhook_url=$DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD
 
   # webhook_url が空でないかチェックし、あれば最後の引数として渡す
   if [ -n "$webhook_url" ]; then
@@ -183,13 +187,23 @@ function send_discord_notification_about_gce() {
 
 function set_env_var_from_custom_metadata() {
   local key=$1
-  local MY_CUSTOM_VALUE=$(curl -s -H "Metadata-Flavor: Google" \
-    http://metadata.google.internal/computeMetadata/v1/instance/attributes/$key)
-  export $key="$MY_CUSTOM_VALUE"
+  local value=""
+  value=$(curl -fsS -H "Metadata-Flavor: Google" \
+    "http://metadata.google.internal/computeMetadata/v1/instance/attributes/$key" 2>/dev/null || true)
+  if [ -z "$value" ]; then
+    value=$(curl -fsS -H "Metadata-Flavor: Google" \
+      "http://metadata.google.internal/computeMetadata/v1/project/attributes/$key" 2>/dev/null || true)
+  fi
+
+  # Remove wrapping single/double quotes for values like "https://..." or ''.
+  if [[ "$value" =~ ^\".*\"$ ]] || [[ "$value" =~ ^\'.*\'$ ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  export "$key"="$value"
 }
 
 function install_chrome_remote_desktop() {
-  curl https://dl.google.com/linux/linux_signing_key.pub \
+  curl --fail --show-error --location --retry 3 --max-time 120 https://dl.google.com/linux/linux_signing_key.pub \
     | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/chrome-remote-desktop.gpg
   echo "deb [arch=amd64] https://dl.google.com/linux/chrome-remote-desktop/deb stable main" \
     | sudo tee /etc/apt/sources.list.d/chrome-remote-desktop.list
@@ -206,9 +220,9 @@ function install_xfce_desktop_env() {
   # Xfce デスクトップ環境をデフォルトへ設定
   sudo bash -c 'echo "exec /etc/X11/Xsession /usr/bin/xfce4-session" > /etc/chrome-remote-desktop-session'
   # Chrome ブラウザをインストール
-  curl -L -o google-chrome-stable_current_amd64.deb \
+  curl --fail --show-error --location --retry 3 --max-time 300 -o google-chrome-stable_current_amd64.deb \
   https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-  sudo apt install --assume-yes --fix-broken ./google-chrome-stable_current_amd64.deb
+  sudo DEBIAN_FRONTEND=noninteractive apt install --assume-yes --fix-broken ./google-chrome-stable_current_amd64.deb
   # Color Manager を停止
   sudo systemctl stop colord
   sudo systemctl disable colord
@@ -227,9 +241,9 @@ function install_lxqt_desktop_env() {
   # LXQt デスクトップ環境をデフォルトへ設定
   echo "exec startlxqt" > /etc/chrome-remote-desktop-session
   # Chrome ブラウザをインストール
-  curl -L -o google-chrome-stable_current_amd64.deb \
+  curl --fail --show-error --location --retry 3 --max-time 300 -o google-chrome-stable_current_amd64.deb \
     https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-  sudo apt install --assume-yes --fix-broken ./google-chrome-stable_current_amd64.deb
+  sudo DEBIAN_FRONTEND=noninteractive apt install --assume-yes --fix-broken ./google-chrome-stable_current_amd64.deb
   # Color Manager を停止
   sudo systemctl stop colord 2>/dev/null
   sudo systemctl disable colord 2>/dev/null
@@ -328,7 +342,7 @@ INSTALL_FULL_DESKTOP=yes
 EXTRA_PACKAGES="less bzip2 zip unzip tasksel wget"
 
 set_env_var_from_custom_metadata VSC_PROFILE_URL
-set_env_var_from_custom_metadata DISCORD_WEBHOOK_URL
+set_env_var_from_custom_metadata DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD
 set_env_var_from_custom_metadata GCE_ICON_URL
 send_discord_notification "VMのカスタムメタデータを環境変数に反映したよ！"
 
@@ -339,7 +353,11 @@ apt-get update
 # Install X Windows desktop system
 if ! is_installed chrome-remote-desktop; then
   # install_desktop_env_with_xfce
-  install_desktop_env_with_lxqt
+  if ! install_desktop_env_with_lxqt; then
+    send_discord_notification_about_gce "失敗…" "VMのデスクトップ環境の設定に失敗したよ…" "red"
+    echo "[ERROR] Desktop environment setup failed"
+    exit 1
+  fi
 fi
 
 # install_desktop_env_with_xfce

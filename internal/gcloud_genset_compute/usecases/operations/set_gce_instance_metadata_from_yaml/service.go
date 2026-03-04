@@ -75,7 +75,7 @@ func (s *Service) buildMetadataValue(path string) (string, error) {
 		}
 
 		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+		value := normalizeMetadataValue(parts[1])
 		if key == "" {
 			continue
 		}
@@ -85,4 +85,14 @@ func (s *Service) buildMetadataValue(path string) (string, error) {
 		return "", fmt.Errorf("metadata-yaml-path の解析に失敗しました: %w", err)
 	}
 	return strings.Join(pairs, ","), nil
+}
+
+func normalizeMetadataValue(raw string) string {
+	value := strings.TrimSpace(raw)
+	if len(value) >= 2 {
+		if (value[0] == '"' && value[len(value)-1] == '"') || (value[0] == '\'' && value[len(value)-1] == '\'') {
+			return value[1 : len(value)-1]
+		}
+	}
+	return value
 }

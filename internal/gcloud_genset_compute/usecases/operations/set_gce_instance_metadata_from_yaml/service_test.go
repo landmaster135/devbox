@@ -12,7 +12,7 @@ func TestServiceBuild_Normal(t *testing.T) {
 
 	tmpDir := t.TempDir()
 	yamlPath := filepath.Join(tmpDir, "env.yml")
-	content := "# comment\nFOO: bar\nEMPTY:    \nINVALID\nBAZ: qux\n"
+	content := "# comment\nFOO: bar\nEMPTY:    \nINVALID\nBAZ: qux\nQUOTED: \"quoted-value\"\nSINGLE: 'single-value'\n"
 	if err := os.WriteFile(yamlPath, []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write yaml file: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestServiceBuild_Normal(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	expected := "gcloud compute instances add-metadata 'vm-1' --zone='us-central1-a' --metadata='FOO=bar,EMPTY=,BAZ=qux'"
+	expected := "gcloud compute instances add-metadata 'vm-1' --zone='us-central1-a' --metadata='FOO=bar,EMPTY=,BAZ=qux,QUOTED=quoted-value,SINGLE=single-value'"
 	if command != expected {
 		t.Fatalf("command mismatch:\nexpected: %s\nactual:   %s", expected, command)
 	}
