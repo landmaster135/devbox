@@ -218,8 +218,8 @@ func TestParseFlagsWithParser_ListDiskTypes_Normal(t *testing.T) {
 	parser := newMockFlagParser()
 	parser.setString("operation", OperationListDiskTypes)
 	parser.setString("zones", " asia-southeast3-a , asia-southeast3-b ")
-	parser.setInt("min-size-gib", 4)
-	parser.setInt("max-size-gib", 65536)
+	parser.setInt("min-disk-size-gib", 4)
+	parser.setInt("max-disk-size-gib", 65536)
 
 	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
@@ -232,11 +232,11 @@ func TestParseFlagsWithParser_ListDiskTypes_Normal(t *testing.T) {
 	if cfg.Zones[0] != "asia-southeast3-a" || cfg.Zones[1] != "asia-southeast3-b" {
 		t.Fatalf("zones mismatch: %v", cfg.Zones)
 	}
-	if cfg.MinSizeGiB != 4 {
-		t.Fatalf("min-size-gib mismatch: %d", cfg.MinSizeGiB)
+	if cfg.MinDiskSizeGiB != 4 {
+		t.Fatalf("min-disk-size-gib mismatch: %d", cfg.MinDiskSizeGiB)
 	}
-	if cfg.MaxSizeGiB != 65536 {
-		t.Fatalf("max-size-gib mismatch: %d", cfg.MaxSizeGiB)
+	if cfg.MaxDiskSizeGiB != 65536 {
+		t.Fatalf("max-disk-size-gib mismatch: %d", cfg.MaxDiskSizeGiB)
 	}
 }
 
@@ -244,7 +244,7 @@ func TestParseFlagsWithParser_ListMachineTypes_Normal(t *testing.T) {
 	parser := newMockFlagParser()
 	parser.setString("operation", OperationListMachineTypes)
 	parser.setString("zones", "asia-southeast3-a")
-	parser.setInt("min-size-gib", 1024)
+	parser.setInt("min-disk-size-gib", 1024)
 
 	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
@@ -254,11 +254,11 @@ func TestParseFlagsWithParser_ListMachineTypes_Normal(t *testing.T) {
 	if len(cfg.Zones) != 1 || cfg.Zones[0] != "asia-southeast3-a" {
 		t.Fatalf("zones mismatch: %v", cfg.Zones)
 	}
-	if cfg.MinSizeGiB != 1024 {
-		t.Fatalf("min-size-gib mismatch: %d", cfg.MinSizeGiB)
+	if cfg.MinDiskSizeGiB != 1024 {
+		t.Fatalf("min-disk-size-gib mismatch: %d", cfg.MinDiskSizeGiB)
 	}
-	if cfg.MaxSizeGiB != 0 {
-		t.Fatalf("max-size-gib mismatch: %d", cfg.MaxSizeGiB)
+	if cfg.MaxDiskSizeGiB != 0 {
+		t.Fatalf("max-disk-size-gib mismatch: %d", cfg.MaxDiskSizeGiB)
 	}
 }
 
@@ -540,8 +540,8 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 		t.Run("list disk types min greater than max", func(t *testing.T) {
 			parser := newMockFlagParser()
 			parser.setString("operation", OperationListDiskTypes)
-			parser.setInt("min-size-gib", 200)
-			parser.setInt("max-size-gib", 100)
+			parser.setInt("min-disk-size-gib", 200)
+			parser.setInt("max-disk-size-gib", 100)
 			if _, err := ParseFlagsWithParser(parser); err == nil {
 				t.Fatal("expected validation error")
 			}
@@ -550,7 +550,7 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 		t.Run("list machine types negative min", func(t *testing.T) {
 			parser := newMockFlagParser()
 			parser.setString("operation", OperationListMachineTypes)
-			parser.setInt("min-size-gib", -1)
+			parser.setInt("min-disk-size-gib", -1)
 			if _, err := ParseFlagsWithParser(parser); err == nil {
 				t.Fatal("expected validation error")
 			}

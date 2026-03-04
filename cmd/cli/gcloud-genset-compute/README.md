@@ -107,18 +107,18 @@ Google Compute Engine 向けの CLI ツールです。
 | フラグ | 必須 | デフォルト | 説明 |
 |---|---|---|---|
 | `-zones` | 任意 | なし | 対象ゾーン（カンマ区切り） |
-| `-min-size-gib` | 任意 | `0` | 必要な最小ディスクサイズ（GiB） |
-| `-max-size-gib` | 任意 | `0` | 必要な最大ディスクサイズ（GiB） |
+| `-min-disk-size-gib` | 任意 | `0` | 必要な最小ディスクサイズ（GiB） |
+| `-max-disk-size-gib` | 任意 | `0` | 必要な最大ディスクサイズ（GiB） |
 
-`-min-size-gib` と `-max-size-gib` を同時指定した場合、指定レンジ全体を扱える disk type のみを抽出するコマンドを生成します。
+`-min-disk-size-gib` と `-max-disk-size-gib` を同時指定した場合、指定レンジ全体を扱える disk type のみを抽出するコマンドを生成します。
 
 ### list-machine-types
 
 | フラグ | 必須 | デフォルト | 説明 |
 |---|---|---|---|
 | `-zones` | 任意 | なし | 対象ゾーン（カンマ区切り） |
-| `-min-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の下限 |
-| `-max-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の上限 |
+| `-min-disk-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の下限 |
+| `-max-disk-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の上限 |
 
 ### start-gce-instance
 
@@ -235,8 +235,8 @@ gcloud compute instances list --filter='zone:us-central1-a' --format='table(name
 go run ./cmd/cli/gcloud-genset-compute \
   -operation=list-disk-types \
   -zones=asia-southeast3-a \
-  -min-size-gib=4 \
-  -max-size-gib=65536
+  -min-disk-size-gib=4 \
+  -max-disk-size-gib=65536
 ```
 
 出力例:
@@ -260,8 +260,8 @@ pd-standard           asia-southeast3-a  10GB-65536GB
 go run ./cmd/cli/gcloud-genset-compute \
   -operation=list-machine-types \
   -zones=asia-southeast3-a,asia-southeast3-b \
-  -min-size-gib=1024 \
-  -max-size-gib=65536
+  -min-disk-size-gib=1024 \
+  -max-disk-size-gib=65536
 ```
 
 出力例:

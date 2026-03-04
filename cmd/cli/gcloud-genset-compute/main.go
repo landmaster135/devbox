@@ -25,9 +25,9 @@ func main() {
 	switch config.Operation {
 	case cfg.OperationListDiskTypes:
 		result, err := service.ExecuteListDiskTypes(usecases.ListDiskTypesParams{
-			Zones:      config.Zones,
-			MinSizeGiB: config.MinSizeGiB,
-			MaxSizeGiB: config.MaxSizeGiB,
+			Zones:          config.Zones,
+			MinDiskSizeGiB: config.MinDiskSizeGiB,
+			MaxDiskSizeGiB: config.MaxDiskSizeGiB,
 		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
@@ -36,9 +36,9 @@ func main() {
 		fmt.Println(result)
 	case cfg.OperationListMachineTypes:
 		result, err := service.ExecuteListMachineTypes(usecases.ListMachineTypesParams{
-			Zones:      config.Zones,
-			MinSizeGiB: config.MinSizeGiB,
-			MaxSizeGiB: config.MaxSizeGiB,
+			Zones:          config.Zones,
+			MinDiskSizeGiB: config.MinDiskSizeGiB,
+			MaxDiskSizeGiB: config.MaxDiskSizeGiB,
 		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)

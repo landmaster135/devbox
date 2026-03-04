@@ -15,9 +15,9 @@ var validDiskSizePattern = regexp.MustCompile(`^(\d+)GB-(\d+)GB$`)
 
 // Params はディスクタイプ一覧処理に必要な値。
 type Params struct {
-	Zones      []string
-	MinSizeGiB int
-	MaxSizeGiB int
+	Zones          []string
+	MinDiskSizeGiB int
+	MaxDiskSizeGiB int
 }
 
 type diskType struct {
@@ -45,7 +45,7 @@ func newServiceWithCommandExecutor(commandExecutor infrastructures.CommandExecut
 
 // Execute は gcloud を実行してディスクタイプ一覧を表形式で返す。
 func (s *Service) Execute(params Params) (string, error) {
-	if err := validateSizeRange(params.MinSizeGiB, params.MaxSizeGiB); err != nil {
+	if err := validateSizeRange(params.MinDiskSizeGiB, params.MaxDiskSizeGiB); err != nil {
 		return "", err
 	}
 
@@ -72,7 +72,7 @@ func (s *Service) Execute(params Params) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if !shouldIncludeDiskType(minSize, maxSize, params.MinSizeGiB, params.MaxSizeGiB) {
+		if !shouldIncludeDiskType(minSize, maxSize, params.MinDiskSizeGiB, params.MaxDiskSizeGiB) {
 			continue
 		}
 
@@ -88,13 +88,13 @@ func (s *Service) Execute(params Params) (string, error) {
 
 func validateSizeRange(minSizeGiB, maxSizeGiB int) error {
 	if minSizeGiB < 0 {
-		return fmt.Errorf("min-size-gib は0以上で指定してください")
+		return fmt.Errorf("min-disk-size-gib は0以上で指定してください")
 	}
 	if maxSizeGiB < 0 {
-		return fmt.Errorf("max-size-gib は0以上で指定してください")
+		return fmt.Errorf("max-disk-size-gib は0以上で指定してください")
 	}
 	if minSizeGiB > 0 && maxSizeGiB > 0 && minSizeGiB > maxSizeGiB {
-		return fmt.Errorf("min-size-gib は max-size-gib 以下で指定してください")
+		return fmt.Errorf("min-disk-size-gib は max-disk-size-gib 以下で指定してください")
 	}
 	return nil
 }

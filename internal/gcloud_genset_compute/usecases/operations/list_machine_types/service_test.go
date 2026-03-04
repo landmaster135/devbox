@@ -23,8 +23,8 @@ func TestServiceExecute_Normal(t *testing.T) {
 	service := newServiceWithCommandExecutor(mockExecutor)
 
 	result, err := service.Execute(Params{
-		MinSizeGiB: 1024,
-		MaxSizeGiB: 70000,
+		MinDiskSizeGiB: 1024,
+		MaxDiskSizeGiB: 70000,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -61,8 +61,8 @@ func TestServiceExecute_StringDiskSizeField_Normal(t *testing.T) {
 	service := newServiceWithCommandExecutor(mockExecutor)
 
 	result, err := service.Execute(Params{
-		MinSizeGiB: 1024,
-		MaxSizeGiB: 600000,
+		MinDiskSizeGiB: 1024,
+		MaxDiskSizeGiB: 600000,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -92,7 +92,7 @@ func TestServiceExecute_ValidationError(t *testing.T) {
 	t.Parallel()
 
 	service := newServiceWithCommandExecutor(&infrastructures.MockCommandExecutor{})
-	if _, err := service.Execute(Params{MinSizeGiB: 1000, MaxSizeGiB: 500}); err == nil {
+	if _, err := service.Execute(Params{MinDiskSizeGiB: 1000, MaxDiskSizeGiB: 500}); err == nil {
 		t.Fatal("expected validation error")
 	}
 }

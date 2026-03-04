@@ -125,10 +125,10 @@ type Config struct {
 	Filter string
 	Format string
 
-	Zones      []string
-	MinSizeGiB int
-	MaxSizeGiB int
-	zonesRaw   string
+	Zones          []string
+	MinDiskSizeGiB int
+	MaxDiskSizeGiB int
+	zonesRaw       string
 }
 
 // ParseFlags は標準のフラグパーサーで引数を解析する。
@@ -167,8 +167,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&cfg.Filter, "filter", "", "インスタンス一覧フィルタ")
 	parser.StringVar(&cfg.Format, "format", "", "インスタンス一覧表示フォーマット")
 	parser.StringVar(&cfg.zonesRaw, "zones", "", "対象ゾーン一覧 (カンマ区切り, 例: asia-southeast3-a,asia-southeast3-b)")
-	parser.IntVar(&cfg.MinSizeGiB, "min-size-gib", 0, "最小ディスクサイズ (GiB)")
-	parser.IntVar(&cfg.MaxSizeGiB, "max-size-gib", 0, "最大ディスクサイズ (GiB)")
+	parser.IntVar(&cfg.MinDiskSizeGiB, "min-disk-size-gib", 0, "最小ディスクサイズ (GiB)")
+	parser.IntVar(&cfg.MaxDiskSizeGiB, "max-disk-size-gib", 0, "最大ディスクサイズ (GiB)")
 
 	if err := parser.Parse(); err != nil {
 		return nil, fmt.Errorf("フラグの解析に失敗しました: %w", err)
@@ -451,14 +451,14 @@ func validateConfig(cfg *Config) error {
 			return fmt.Errorf("ssh-key-path は必須です")
 		}
 	case OperationListDiskTypes, OperationListMachineTypes:
-		if cfg.MinSizeGiB < 0 {
-			return fmt.Errorf("min-size-gib は0以上で指定してください")
+		if cfg.MinDiskSizeGiB < 0 {
+			return fmt.Errorf("min-disk-size-gib は0以上で指定してください")
 		}
-		if cfg.MaxSizeGiB < 0 {
-			return fmt.Errorf("max-size-gib は0以上で指定してください")
+		if cfg.MaxDiskSizeGiB < 0 {
+			return fmt.Errorf("max-disk-size-gib は0以上で指定してください")
 		}
-		if cfg.MinSizeGiB > 0 && cfg.MaxSizeGiB > 0 && cfg.MinSizeGiB > cfg.MaxSizeGiB {
-			return fmt.Errorf("min-size-gib は max-size-gib 以下で指定してください")
+		if cfg.MinDiskSizeGiB > 0 && cfg.MaxDiskSizeGiB > 0 && cfg.MinDiskSizeGiB > cfg.MaxDiskSizeGiB {
+			return fmt.Errorf("min-disk-size-gib は max-disk-size-gib 以下で指定してください")
 		}
 		for _, zone := range cfg.Zones {
 			if !zonePattern.MatchString(zone) {
@@ -538,14 +538,14 @@ func PrintUsage() {
 
 	fmt.Fprintf(os.Stderr, "list-disk-types:\n")
 	fmt.Fprintf(os.Stderr, "  -zones string (カンマ区切り)\n")
-	fmt.Fprintf(os.Stderr, "  -min-size-gib int (0 で指定なし)\n")
-	fmt.Fprintf(os.Stderr, "  -max-size-gib int (0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "  -min-disk-size-gib int (0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "  -max-disk-size-gib int (0 で指定なし)\n")
 	fmt.Fprintf(os.Stderr, "        ※ gcloud を実行して一覧結果を表示\n\n")
 
 	fmt.Fprintf(os.Stderr, "list-machine-types:\n")
 	fmt.Fprintf(os.Stderr, "  -zones string (カンマ区切り)\n")
-	fmt.Fprintf(os.Stderr, "  -min-size-gib int (最大永続ディスクサイズの下限, 0 で指定なし)\n")
-	fmt.Fprintf(os.Stderr, "  -max-size-gib int (最大永続ディスクサイズの上限, 0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "  -min-disk-size-gib int (最大永続ディスクサイズの下限, 0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "  -max-disk-size-gib int (最大永続ディスクサイズの上限, 0 で指定なし)\n")
 	fmt.Fprintf(os.Stderr, "        ※ gcloud を実行して一覧結果を表示\n\n")
 
 	fmt.Fprintf(os.Stderr, "start-gce-instance:\n")
@@ -590,8 +590,8 @@ func PrintUsage() {
 
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-gce-instance -instance-name=my-vm -zone=us-central1-a -machine-type=e2-medium\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  %s -operation=list-disk-types -zones=asia-southeast3-a -min-size-gib=4 -max-size-gib=65536\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "  %s -operation=list-machine-types -zones=asia-southeast3-a,asia-southeast3-b -min-size-gib=100\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-disk-types -zones=asia-southeast3-a -min-disk-size-gib=4 -max-disk-size-gib=65536\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-machine-types -zones=asia-southeast3-a,asia-southeast3-b -min-disk-size-gib=100\n", os.Args[0])
 }
 
 func init() {

@@ -24,9 +24,9 @@ func TestServiceExecute_Normal(t *testing.T) {
 	service := newServiceWithCommandExecutor(mockExecutor)
 
 	result, err := service.Execute(Params{
-		Zones:      []string{"asia-southeast3-a"},
-		MinSizeGiB: 4,
-		MaxSizeGiB: 65536,
+		Zones:          []string{"asia-southeast3-a"},
+		MinDiskSizeGiB: 4,
+		MaxDiskSizeGiB: 65536,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -83,7 +83,7 @@ func TestServiceExecute_ValidationError(t *testing.T) {
 	t.Parallel()
 
 	service := newServiceWithCommandExecutor(&infrastructures.MockCommandExecutor{})
-	if _, err := service.Execute(Params{MinSizeGiB: 1024, MaxSizeGiB: 100}); err == nil {
+	if _, err := service.Execute(Params{MinDiskSizeGiB: 1024, MaxDiskSizeGiB: 100}); err == nil {
 		t.Fatal("expected validation error")
 	}
 }

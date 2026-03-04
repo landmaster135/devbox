@@ -623,9 +623,9 @@ func TestServiceExecuteListDiskTypes_Normal(t *testing.T) {
 	)
 
 	result, err := service.ExecuteListDiskTypes(ListDiskTypesParams{
-		Zones:      []string{"asia-southeast3-a"},
-		MinSizeGiB: 4,
-		MaxSizeGiB: 65536,
+		Zones:          []string{"asia-southeast3-a"},
+		MinDiskSizeGiB: 4,
+		MaxDiskSizeGiB: 65536,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -662,9 +662,9 @@ func TestServiceExecuteListMachineTypes_Normal(t *testing.T) {
 	)
 
 	result, err := service.ExecuteListMachineTypes(ListMachineTypesParams{
-		Zones:      []string{"asia-southeast3-a"},
-		MinSizeGiB: 1024,
-		MaxSizeGiB: 65536,
+		Zones:          []string{"asia-southeast3-a"},
+		MinDiskSizeGiB: 1024,
+		MaxDiskSizeGiB: 65536,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
