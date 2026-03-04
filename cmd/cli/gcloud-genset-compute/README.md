@@ -201,24 +201,24 @@ firewall rule 名には実行時刻のサフィックス `YYMMDD-hhmmss` が付�
 
 ## 使用例
 
-### VM 作成コマンド生成
-
+### 一般的なユースケース
 ```bash
-go run ./cmd/cli/gcloud-genset-compute \
-  -operation=create-gce-instance \
-  -instance-name=my-vm \
-  -zone=us-central1-a \
-  -machine-type=e2-medium
-```
+# Create VM instance
+go run ./cmd/cli/gcloud-genset-compute --operation=create-gce-instance-and-configure --instance-name=my-vm00 --machine-type=e2-standard-2
 
-出力例:
+# If the startup script is NOT executed. Reboot VM instance (Depends on timing)
+go run ./cmd/cli/gcloud-genset-compute --operation=reboot-gce-instance --instance-name=my-vm00 --zone=us-central1-a
 
-```bash
-==============================
-生成された gcloud コマンド
-==============================
-gcloud compute instances create 'my-vm' --zone='us-central1-a' --machine-type='e2-medium' --no-address --boot-disk-size='100GB' --boot-disk-type='pd-balanced'
-==============================
+# Connect VM instance with NOT overwritten SSH key
+go run ./cmd/cli/gcloud-genset-compute --operation=setup-gce-firewall-and-ssh --instance-name=my-vm00 --zone=us-central1-a --creates-ssh-key=false
+
+### Process for cleaning up ###
+
+# Stop VM instance
+go run ./cmd/cli/gcloud-genset-compute --operation=stop-gce-instance --instance-name=my-vm00 --zone=us-central1-a
+
+# Delete VM instance
+go run ./cmd/cli/gcloud-genset-compute --operation=delete-gce-instance --instance-name=my-vm00 --zone=us-central1-a
 ```
 
 ### インスタンス一覧コマンド生成
@@ -229,16 +229,6 @@ go run ./cmd/cli/gcloud-genset-compute \
   -filter='zone:us-central1-a'
 ```
 
-出力例:
-
-```bash
-==============================
-生成された gcloud コマンド
-==============================
-gcloud compute instances list --filter='zone:us-central1-a' --format='table(name, zone.basename(), scheduling.preemptible.yesno(yes=true, no='"'"''), networkInterfaces.internal_ip():label=INTERNAL_IP, external_ip():label=EXTERNAL_IP, status)'
-==============================
-```
-
 ### ディスクタイプ一覧取得（サイズ条件付き）
 
 ```bash
@@ -247,21 +237,6 @@ go run ./cmd/cli/gcloud-genset-compute \
   -zones=asia-southeast3-a \
   -min-disk-size-gib=4 \
   -max-disk-size-gib=65536
-```
-
-出力例:
-
-```text
-NAME                  ZONE               VALID_DISK_SIZES
-hyperdisk-balanced    asia-southeast3-a  4GB-65536GB
-hyperdisk-extreme     asia-southeast3-a  64GB-65536GB
-hyperdisk-ml          asia-southeast3-a  4GB-65536GB
-hyperdisk-throughput  asia-southeast3-a  2048GB-32768GB
-local-ssd             asia-southeast3-a  375GB-375GB
-pd-balanced           asia-southeast3-a  10GB-65536GB
-pd-extreme            asia-southeast3-a  500GB-65536GB
-pd-ssd                asia-southeast3-a  10GB-65536GB
-pd-standard           asia-southeast3-a  10GB-65536GB
 ```
 
 ### マシンタイプ一覧取得（サイズ条件付き）
@@ -276,74 +251,6 @@ go run ./cmd/cli/gcloud-genset-compute \
   -max-disk-size-gib=524288
 ```
 
-出力例:
-
-```text
-NAME         ZONE               GUEST_CPUS  MEMORY_MB  MAX_PERSISTENT_DISKS_SIZE_GB
-c3-highmem-4 asia-southeast3-a  4           32768      65536
-```
-
-### インスタンス起動コマンド生成
-
-```bash
-go run ./cmd/cli/gcloud-genset-compute \
-  -operation=start-gce-instance \
-  -instance-name=my-vm \
-  -zone=us-central1-a
-```
-
-出力例:
-
-```bash
-==============================
-生成された gcloud コマンド
-==============================
-gcloud compute instances start 'my-vm' --zone='us-central1-a'
-==============================
-```
-
-### インスタンス削除コマンド生成
-
-```bash
-go run ./cmd/cli/gcloud-genset-compute \
-  -operation=delete-gce-instance \
-  -instance-name=my-vm \
-  -zone=us-central1-a
-```
-
-出力例:
-
-```bash
-==============================
-生成された gcloud コマンド
-==============================
-gcloud compute instances delete 'my-vm' --zone='us-central1-a' --quiet
-==============================
-```
-
-### firewall作成 + SSHセットアップコマンド生成
-
-```bash
-go run ./cmd/cli/gcloud-genset-compute \
-  -operation=setup-gce-firewall-and-ssh \
-  -instance-name=my-vm \
-  -zone=us-central1-a
-```
-
-出力例:
-
-```bash
-==============================
-生成された gcloud コマンド
-==============================
-if [ -z "${SSH_AUTH_SOCK:-}" ]; then eval "$(ssh-agent -s)" >/dev/null; fi && ssh-add "$HOME/.ssh/google_compute_engine" && \
-gcloud compute firewall-rules create 'allow-ssh-ingress-from-iap-260304-131645' --direction='INGRESS' --action='allow' --rules='tcp:22' --source-ranges='35.235.240.0/20' && \
-gcloud compute firewall-rules create 'allow-ingress-ssh-260304-131645' --allow='tcp:22' --source-ranges='10.0.0.0/8' && \
-gcloud compute scp "$HOME/.ssh/google_compute_engine" 'my-vm:/tmp' --zone='us-central1-a' --tunnel-through-iap && \
-gcloud compute ssh 'my-vm' --zone='us-central1-a' --tunnel-through-iap
-==============================
-```
-
 ### firewall作成 + SSHセットアップ（鍵を再生成して上書き許可）
 
 ```bash
@@ -353,32 +260,6 @@ go run ./cmd/cli/gcloud-genset-compute \
   -zone=us-central1-a \
   -creates-ssh-key=true \
   -forces=true
-```
-
-出力コマンドには、既存鍵検知時に次のログ出力を行う処理が含まれます。
-
-```bash
-echo "既存SSH秘密鍵を上書きしました: $ssh_key_path" >&2
-```
-
-### インスタンス作成 + metadata + startup-script コマンド生成
-
-```bash
-go run ./cmd/cli/gcloud-genset-compute \
-  -operation=create-gce-instance-and-configure \
-  -instance-name=my-vm
-```
-
-出力例:
-
-```bash
-==============================
-生成された gcloud コマンド
-==============================
-gcloud compute instances create 'my-vm' --zone='us-central1-a' --machine-type='e2-medium' --no-address --boot-disk-size='100GB' --boot-disk-type='pd-balanced' && \
-gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata='VSC_PROFILE_URL="",KEYMAP_PROFILE_URL="",GITHUB_ACCOUNT_NAME="",GITHUB_ACCOUNT_EMAIL="",DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD="",GCE_ICON_URL="",GSM_ICON_URL="",GCS_ICON_URL="",GCSCHEDULER_ICON_URL="",GCIAM_ICON_URL="",GCLOUD_RUN_ICON_URL="",GCLOUD_RUN_FUNCTION_ICON_URL="",DEV_HOME=""' && \
-gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata-from-file startup-script='cmd/cli/gcloud-genset-compute/metadata/setup_scripts/startup-script.sh'
-==============================
 ```
 
 ## 備考
@@ -401,16 +282,6 @@ gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata-
 | Docker 設定 | 0分 |
 | VSCode 設定 | 1分 |
 | startup-script 全体完了通知 | 0分 |
-
-## エラー例
-
-```bash
-go run ./cmd/cli/gcloud-genset-compute -operation=create-gce-instance
-```
-
-```text
-エラー: instance-name は必須です
-```
 
 ## ビルド
 
