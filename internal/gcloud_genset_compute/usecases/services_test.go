@@ -429,19 +429,24 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 		{
 			name: "copy-gce-ssh-key",
 			config: &cfg.Config{
-				Operation:    cfg.OperationCopyGCESSHKey,
-				InstanceName: "vm-1",
-				Zone:         "us-central1-a",
-				SSHKeyPath:   "$HOME/.ssh/google_compute_engine",
+				Operation:     cfg.OperationCopyGCESSHKey,
+				InstanceName:  "vm-1",
+				Zone:          "us-central1-a",
+				SSHKeyPath:    "$HOME/.ssh/google_compute_engine",
+				CreatesSSHKey: true,
+				Forces:        true,
 			},
 			expected: "copy-ssh-key-command",
 		},
 		{
 			name: "connect-gce-instance",
 			config: &cfg.Config{
-				Operation:    cfg.OperationConnectGCEInstance,
-				InstanceName: "vm-1",
-				Zone:         "us-central1-a",
+				Operation:     cfg.OperationConnectGCEInstance,
+				InstanceName:  "vm-1",
+				Zone:          "us-central1-a",
+				SSHKeyPath:    "/tmp/key",
+				CreatesSSHKey: true,
+				Forces:        true,
 			},
 			expected: "connect-command",
 		},
@@ -468,10 +473,12 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 		{
 			name: "setup-gce-firewall-and-ssh",
 			config: &cfg.Config{
-				Operation:    cfg.OperationSetupGCEFirewallAndSSH,
-				InstanceName: "vm-1",
-				Zone:         "us-central1-a",
-				SSHKeyPath:   "$HOME/.ssh/google_compute_engine",
+				Operation:     cfg.OperationSetupGCEFirewallAndSSH,
+				InstanceName:  "vm-1",
+				Zone:          "us-central1-a",
+				SSHKeyPath:    "$HOME/.ssh/google_compute_engine",
+				CreatesSSHKey: true,
+				Forces:        true,
 			},
 			expected: "setup-command",
 		},
@@ -536,6 +543,15 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	}
 	if !setupOp.called {
 		t.Fatal("setup operation was not called")
+	}
+	if !copySSHKeyOp.got.CreatesSSHKey || !copySSHKeyOp.got.Forces {
+		t.Fatalf("copy ssh key params mismatch: %+v", copySSHKeyOp.got)
+	}
+	if !setupOp.got.CreatesSSHKey || !setupOp.got.Forces {
+		t.Fatalf("setup params mismatch: %+v", setupOp.got)
+	}
+	if connectOp.got.SSHKeyPath != "/tmp/key" || !connectOp.got.CreatesSSHKey || !connectOp.got.Forces {
+		t.Fatalf("connect params mismatch: %+v", connectOp.got)
 	}
 }
 

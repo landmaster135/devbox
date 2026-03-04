@@ -9,9 +9,11 @@ import (
 
 // Params は SSH 鍵コピーコマンド生成に必要な値。
 type Params struct {
-	InstanceName string
-	Zone         string
-	SSHKeyPath   string
+	InstanceName  string
+	Zone          string
+	SSHKeyPath    string
+	CreatesSSHKey bool
+	Forces        bool
 }
 
 // Service は copy-gce-ssh-key operation のコマンド生成を担当する。
@@ -33,6 +35,9 @@ func (s *Service) Build(params Params) (string, error) {
 	if common.IsBlank(params.SSHKeyPath) {
 		return "", fmt.Errorf("ssh-key-path は必須です")
 	}
+	if params.Forces && !params.CreatesSSHKey {
+		return "", fmt.Errorf("forces は creates-ssh-key=true の場合のみ指定できます")
+	}
 
 	copyCommand := fmt.Sprintf(
 		"gcloud compute scp %s %s --zone=%s --tunnel-through-iap",
@@ -41,9 +46,13 @@ func (s *Service) Build(params Params) (string, error) {
 		common.ShellQuote(params.Zone),
 	)
 
-	commands := []string{
+	commands := make([]string, 0, 3)
+	if params.CreatesSSHKey {
+		commands = append(commands, common.BuildSSHKeyCreationCommand(params.SSHKeyPath, params.Forces))
+	}
+	commands = append(commands,
 		common.BuildSSHAgentSetupCommand(params.SSHKeyPath),
 		copyCommand,
-	}
+	)
 	return strings.Join(commands, " && \\\n"), nil
 }

@@ -157,6 +157,8 @@ Google Compute Engine 向けの CLI ツールです。
 | `-instance-name` | 必須 | なし | 鍵コピー対象のインスタンス名 |
 | `-zone` | 任意 | `us-central1-a` | ゾーン |
 | `-ssh-key-path` | 任意 | `$HOME/.ssh/google_compute_engine` | コピーする秘密鍵パス |
+| `-creates-ssh-key` | 任意 | `false` | `true` のとき SSH 秘密鍵を新規作成してから処理を続行（`ssh-keygen` の対話入力でパスフレーズ設定可） |
+| `-forces` | 任意 | `false` | `creates-ssh-key=true` かつ既存鍵がある場合に上書き許可（上書き時は標準エラーへログ出力） |
 
 ### connect-gce-instance
 
@@ -164,6 +166,9 @@ Google Compute Engine 向けの CLI ツールです。
 |---|---|---|---|
 | `-instance-name` | 必須 | なし | SSH 接続対象のインスタンス名 |
 | `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-ssh-key-path` | 任意 | `$HOME/.ssh/google_compute_engine` | `ssh-add` および鍵生成時に使用する秘密鍵パス |
+| `-creates-ssh-key` | 任意 | `false` | `true` のとき SSH 秘密鍵を新規作成してから接続（`ssh-keygen` の対話入力でパスフレーズ設定可） |
+| `-forces` | 任意 | `false` | `creates-ssh-key=true` かつ既存鍵がある場合に上書き許可（上書き時は標準エラーへログ出力） |
 
 ### set-gce-instance-metadata-from-yaml
 
@@ -188,8 +193,11 @@ Google Compute Engine 向けの CLI ツールです。
 | `-instance-name` | 必須 | なし | セットアップ対象のインスタンス名 |
 | `-zone` | 任意 | `us-central1-a` | ゾーン |
 | `-ssh-key-path` | 任意 | `$HOME/.ssh/google_compute_engine` | コピーする秘密鍵パス |
+| `-creates-ssh-key` | 任意 | `false` | `true` のとき SSH 秘密鍵を新規作成してから処理を続行（`ssh-keygen` の対話入力でパスフレーズ設定可） |
+| `-forces` | 任意 | `false` | `creates-ssh-key=true` かつ既存鍵がある場合に上書き許可（上書き時は標準エラーへログ出力） |
 
 firewall rule 名には実行時刻のサフィックス `YYMMDD-hhmmss` が付与されます。
+`creates-ssh-key=true` で鍵が既存の場合、`forces=false` だとエラーで終了します。
 
 ## 使用例
 
@@ -336,6 +344,23 @@ gcloud compute ssh 'my-vm' --zone='us-central1-a' --tunnel-through-iap
 ==============================
 ```
 
+### firewall作成 + SSHセットアップ（鍵を再生成して上書き許可）
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=setup-gce-firewall-and-ssh \
+  -instance-name=my-vm \
+  -zone=us-central1-a \
+  -creates-ssh-key=true \
+  -forces=true
+```
+
+出力コマンドには、既存鍵検知時に次のログ出力を行う処理が含まれます。
+
+```bash
+echo "既存SSH秘密鍵を上書きしました: $ssh_key_path" >&2
+```
+
 ### インスタンス作成 + metadata + startup-script コマンド生成
 
 ```bash
@@ -360,7 +385,8 @@ gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata-
 
 ### startup-script 処理時間
 
-下記は実際の通知履歴を元に算出した実測値です。目安としてください。既にstartup_scriptによる構築が終わっている場合、全工程を通して1分ぐらいで完了します。
+下記は実際の通知履歴 (`--machine-type=e2-medium`) を元に算出した実測値です。目安としてください。
+既にstartup_scriptによる構築が終わっている場合、全工程を通して1分ぐらいで完了します。
 
 | 対応処理 | 各工程の所要時間 |
 |---|---|

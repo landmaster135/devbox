@@ -202,14 +202,19 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 		})
 	case cfg.OperationCopyGCESSHKey:
 		return s.BuildCopyGCESSHKeyCommand(CopyGCESSHKeyParams{
-			InstanceName: conf.InstanceName,
-			Zone:         conf.Zone,
-			SSHKeyPath:   conf.SSHKeyPath,
+			InstanceName:  conf.InstanceName,
+			Zone:          conf.Zone,
+			SSHKeyPath:    conf.SSHKeyPath,
+			CreatesSSHKey: conf.CreatesSSHKey,
+			Forces:        conf.Forces,
 		})
 	case cfg.OperationConnectGCEInstance:
 		return s.BuildConnectGCEInstanceCommand(ConnectGCEInstanceParams{
-			InstanceName: conf.InstanceName,
-			Zone:         conf.Zone,
+			InstanceName:  conf.InstanceName,
+			Zone:          conf.Zone,
+			SSHKeyPath:    conf.SSHKeyPath,
+			CreatesSSHKey: conf.CreatesSSHKey,
+			Forces:        conf.Forces,
 		})
 	case cfg.OperationSetGCEInstanceMetadataFromYAML:
 		return s.BuildSetGCEInstanceMetadataFromYAMLCommand(SetGCEInstanceMetadataFromYAMLParams{
@@ -225,9 +230,11 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 		})
 	case cfg.OperationSetupGCEFirewallAndSSH:
 		return s.BuildSetupGCEFirewallAndSSHCommand(SetupGCEFirewallAndSSHParams{
-			InstanceName: conf.InstanceName,
-			Zone:         conf.Zone,
-			SSHKeyPath:   conf.SSHKeyPath,
+			InstanceName:  conf.InstanceName,
+			Zone:          conf.Zone,
+			SSHKeyPath:    conf.SSHKeyPath,
+			CreatesSSHKey: conf.CreatesSSHKey,
+			Forces:        conf.Forces,
 		})
 	default:
 		return "", fmt.Errorf("未対応のoperationです: %s", conf.Operation)

@@ -34,3 +34,21 @@ func BuildSSHAgentSetupCommand(sshKeyPath string) string {
 		ShellQuoteSSHKeyPath(sshKeyPath),
 	)
 }
+
+// BuildSSHKeyCreationCommand は SSH 鍵生成のコマンドを返す。
+// force が false の場合、既存鍵を検知したら終了する。
+// force が true の場合、既存鍵を検知したらログ出力後に上書き生成する。
+func BuildSSHKeyCreationCommand(sshKeyPath string, force bool) string {
+	pathAssignment := fmt.Sprintf("ssh_key_path=%s", ShellQuoteSSHKeyPath(sshKeyPath))
+	if force {
+		return fmt.Sprintf(
+			"%s; if [ -f \"$ssh_key_path\" ]; then echo \"既存SSH秘密鍵を上書きしました: $ssh_key_path\" >&2; rm -f \"$ssh_key_path\" \"$ssh_key_path.pub\"; fi; ssh-keygen -t rsa -f \"$ssh_key_path\"",
+			pathAssignment,
+		)
+	}
+
+	return fmt.Sprintf(
+		"%s; if [ -f \"$ssh_key_path\" ]; then echo \"SSH秘密鍵は既に存在します: $ssh_key_path。上書きするには -forces=true を指定してください\" >&2; exit 1; fi; ssh-keygen -t rsa -f \"$ssh_key_path\"",
+		pathAssignment,
+	)
+}

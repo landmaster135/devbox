@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -104,6 +105,8 @@ type Config struct {
 	InstanceName      string
 	Zone              string
 	SSHKeyPath        string
+	CreatesSSHKey     bool
+	Forces            bool
 	MachineType       string
 	BootDiskSize      string
 	BootDiskType      string
@@ -148,6 +151,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&cfg.InstanceName, "instance-name", "", "作成する GCE インスタンス名")
 	parser.StringVar(&cfg.Zone, "zone", "", "インスタンスのゾーン (例: us-central1-a)")
 	parser.StringVar(&cfg.SSHKeyPath, "ssh-key-path", "", "SSH 秘密鍵ファイルパス (例: $HOME/.ssh/google_compute_engine)")
+	parser.BoolVar(&cfg.CreatesSSHKey, "creates-ssh-key", false, "SSH 秘密鍵を新規生成する")
+	parser.BoolVar(&cfg.Forces, "forces", false, "既存SSH秘密鍵が存在する場合に上書きを許可する")
 	parser.StringVar(&cfg.MachineType, "machine-type", "", "マシンタイプ (例: e2-medium)")
 	parser.StringVar(&cfg.BootDiskSize, "boot-disk-size", "", "ブートディスクサイズ (例: 100GB)")
 	parser.StringVar(&cfg.BootDiskType, "boot-disk-type", "", "ブートディスクタイプ (例: pd-balanced)")
@@ -358,6 +363,9 @@ func applyDefaults(cfg *Config) {
 		if cfg.Zone == "" {
 			cfg.Zone = defaultZone
 		}
+		if cfg.SSHKeyPath == "" {
+			cfg.SSHKeyPath = defaultSSHKeyPath
+		}
 	case OperationSetGCEInstanceMetadataFromYAML:
 		if cfg.Zone == "" {
 			cfg.Zone = defaultZone
@@ -417,12 +425,27 @@ func validateConfig(cfg *Config) error {
 		if cfg.SSHKeyPath == "" {
 			return fmt.Errorf("ssh-key-path は必須です")
 		}
+		if cfg.Forces && !cfg.CreatesSSHKey {
+			return fmt.Errorf("forces は creates-ssh-key=true の場合のみ指定できます")
+		}
+		if err := validateSSHKeyCreationPrecondition(cfg.SSHKeyPath, cfg.CreatesSSHKey, cfg.Forces); err != nil {
+			return err
+		}
 	case OperationConnectGCEInstance:
 		if cfg.InstanceName == "" {
 			return fmt.Errorf("instance-name は必須です")
 		}
 		if cfg.Zone == "" {
 			return fmt.Errorf("zone は必須です")
+		}
+		if cfg.SSHKeyPath == "" {
+			return fmt.Errorf("ssh-key-path は必須です")
+		}
+		if cfg.Forces && !cfg.CreatesSSHKey {
+			return fmt.Errorf("forces は creates-ssh-key=true の場合のみ指定できます")
+		}
+		if err := validateSSHKeyCreationPrecondition(cfg.SSHKeyPath, cfg.CreatesSSHKey, cfg.Forces); err != nil {
+			return err
 		}
 	case OperationSetGCEInstanceMetadataFromYAML:
 		if cfg.InstanceName == "" {
@@ -453,6 +476,12 @@ func validateConfig(cfg *Config) error {
 		}
 		if cfg.SSHKeyPath == "" {
 			return fmt.Errorf("ssh-key-path は必須です")
+		}
+		if cfg.Forces && !cfg.CreatesSSHKey {
+			return fmt.Errorf("forces は creates-ssh-key=true の場合のみ指定できます")
+		}
+		if err := validateSSHKeyCreationPrecondition(cfg.SSHKeyPath, cfg.CreatesSSHKey, cfg.Forces); err != nil {
+			return err
 		}
 	case OperationListDiskTypes:
 		if cfg.MinDiskSizeGiB < 0 {
@@ -496,6 +525,47 @@ func validateConfig(cfg *Config) error {
 	}
 
 	return nil
+}
+
+func validateSSHKeyCreationPrecondition(sshKeyPath string, createsSSHKey bool, forces bool) error {
+	if !createsSSHKey || forces {
+		return nil
+	}
+
+	resolvedPath, err := resolveSSHKeyPath(sshKeyPath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(resolvedPath); err == nil {
+		return fmt.Errorf("ssh-key-path は既に存在します: %s。上書きするには forces=true を指定してください", sshKeyPath)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("ssh-key-path の確認に失敗しました: %w", err)
+	}
+
+	return nil
+}
+
+func resolveSSHKeyPath(path string) (string, error) {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return "", fmt.Errorf("ssh-key-path は必須です")
+	}
+
+	if strings.HasPrefix(trimmed, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("ホームディレクトリの取得に失敗しました: %w", err)
+		}
+
+		if trimmed == "~" {
+			trimmed = home
+		} else if strings.HasPrefix(trimmed, "~/") {
+			trimmed = filepath.Join(home, strings.TrimPrefix(trimmed, "~/"))
+		}
+	}
+
+	return os.ExpandEnv(trimmed), nil
 }
 
 func isValidOperation(operation string) bool {
@@ -597,11 +667,16 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "copy-gce-ssh-key:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
 	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
-	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n\n", defaultSSHKeyPath)
+	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n", defaultSSHKeyPath)
+	fmt.Fprintf(os.Stderr, "  -creates-ssh-key bool (default: false)\n")
+	fmt.Fprintf(os.Stderr, "  -forces bool (default: false, creates-ssh-key=true の場合のみ有効)\n\n")
 
 	fmt.Fprintf(os.Stderr, "connect-gce-instance:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
-	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n", defaultSSHKeyPath)
+	fmt.Fprintf(os.Stderr, "  -creates-ssh-key bool (default: false)\n")
+	fmt.Fprintf(os.Stderr, "  -forces bool (default: false, creates-ssh-key=true の場合のみ有効)\n\n")
 
 	fmt.Fprintf(os.Stderr, "set-gce-instance-metadata-from-yaml:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
@@ -616,7 +691,9 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "setup-gce-firewall-and-ssh:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
 	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
-	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n\n", defaultSSHKeyPath)
+	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n", defaultSSHKeyPath)
+	fmt.Fprintf(os.Stderr, "  -creates-ssh-key bool (default: false)\n")
+	fmt.Fprintf(os.Stderr, "  -forces bool (default: false, creates-ssh-key=true の場合のみ有効)\n\n")
 
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-gce-instance -instance-name=my-vm -zone=us-central1-a -machine-type=e2-medium\n", os.Args[0])

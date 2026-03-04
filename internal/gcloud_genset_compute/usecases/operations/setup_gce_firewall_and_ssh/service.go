@@ -22,9 +22,11 @@ const (
 
 // Params は firewall 作成 + SSH 鍵コピー + SSH 接続コマンド生成に必要な値。
 type Params struct {
-	InstanceName string
-	Zone         string
-	SSHKeyPath   string
+	InstanceName  string
+	Zone          string
+	SSHKeyPath    string
+	CreatesSSHKey bool
+	Forces        bool
 }
 
 // Service は setup-gce-firewall-and-ssh operation のコマンド生成を担当する。
@@ -52,12 +54,19 @@ func (s *Service) Build(params Params) (string, error) {
 	if common.IsBlank(params.SSHKeyPath) {
 		return "", fmt.Errorf("ssh-key-path は必須です")
 	}
+	if params.Forces && !params.CreatesSSHKey {
+		return "", fmt.Errorf("forces は creates-ssh-key=true の場合のみ指定できます")
+	}
 
 	dateSuffix := s.now().Format(dateSuffixFormat)
 	iapRuleName := fmt.Sprintf("%s-%s", defaultIAPRuleName, dateSuffix)
 	ingressRuleName := fmt.Sprintf("%s-%s", defaultIngressRule, dateSuffix)
 
-	commands := []string{
+	commands := make([]string, 0, 6)
+	if params.CreatesSSHKey {
+		commands = append(commands, common.BuildSSHKeyCreationCommand(params.SSHKeyPath, params.Forces))
+	}
+	commands = append(commands,
 		common.BuildSSHAgentSetupCommand(params.SSHKeyPath),
 		fmt.Sprintf(
 			"gcloud compute firewall-rules create %s --direction=%s --action=%s --rules=%s --source-ranges=%s",
@@ -84,7 +93,7 @@ func (s *Service) Build(params Params) (string, error) {
 			common.ShellQuote(params.InstanceName),
 			common.ShellQuote(params.Zone),
 		),
-	}
+	)
 
 	return strings.Join(commands, " && \\\n"), nil
 }

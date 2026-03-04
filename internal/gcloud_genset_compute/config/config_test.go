@@ -367,6 +367,12 @@ func TestParseFlagsWithParser_CopyGCESSHKeyDefaults_Normal(t *testing.T) {
 	if cfg.SSHKeyPath != defaultSSHKeyPath {
 		t.Fatalf("ssh-key-path mismatch: %s", cfg.SSHKeyPath)
 	}
+	if cfg.CreatesSSHKey {
+		t.Fatal("creates-ssh-key should default to false")
+	}
+	if cfg.Forces {
+		t.Fatal("forces should default to false")
+	}
 }
 
 func TestParseFlagsWithParser_ConnectGCEInstanceDefaults_Normal(t *testing.T) {
@@ -384,6 +390,15 @@ func TestParseFlagsWithParser_ConnectGCEInstanceDefaults_Normal(t *testing.T) {
 	}
 	if cfg.Zone != defaultZone {
 		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.SSHKeyPath != defaultSSHKeyPath {
+		t.Fatalf("ssh-key-path mismatch: %s", cfg.SSHKeyPath)
+	}
+	if cfg.CreatesSSHKey {
+		t.Fatal("creates-ssh-key should default to false")
+	}
+	if cfg.Forces {
+		t.Fatal("forces should default to false")
 	}
 }
 
@@ -447,6 +462,101 @@ func TestParseFlagsWithParser_SetupGCEFirewallAndSSHDefaults_Normal(t *testing.T
 	}
 	if cfg.SSHKeyPath != defaultSSHKeyPath {
 		t.Fatalf("ssh-key-path mismatch: %s", cfg.SSHKeyPath)
+	}
+	if cfg.CreatesSSHKey {
+		t.Fatal("creates-ssh-key should default to false")
+	}
+	if cfg.Forces {
+		t.Fatal("forces should default to false")
+	}
+}
+
+func TestParseFlagsWithParser_CreatesSSHKeyAndForces_Normal(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+	}{
+		{name: "copy", operation: OperationCopyGCESSHKey},
+		{name: "setup", operation: OperationSetupGCEFirewallAndSSH},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", tt.operation)
+			parser.setString("instance-name", " vm-1 ")
+			parser.setBool("creates-ssh-key", true)
+			parser.setBool("forces", true)
+
+			cfg, err := ParseFlagsWithParser(parser)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !cfg.CreatesSSHKey {
+				t.Fatal("creates-ssh-key should be true")
+			}
+			if !cfg.Forces {
+				t.Fatal("forces should be true")
+			}
+		})
+	}
+}
+
+func TestParseFlagsWithParser_CreatesSSHKeyWithExistingKey_Error(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+	}{
+		{name: "copy", operation: OperationCopyGCESSHKey},
+		{name: "connect", operation: OperationConnectGCEInstance},
+		{name: "setup", operation: OperationSetupGCEFirewallAndSSH},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			keyPath := tempDir + "/id_rsa"
+			if err := os.WriteFile(keyPath, []byte("dummy"), 0o600); err != nil {
+				t.Fatalf("failed to prepare key file: %v", err)
+			}
+
+			parser := newMockFlagParser()
+			parser.setString("operation", tt.operation)
+			parser.setString("instance-name", "vm-1")
+			parser.setString("ssh-key-path", keyPath)
+			parser.setBool("creates-ssh-key", true)
+
+			if _, err := ParseFlagsWithParser(parser); err == nil {
+				t.Fatal("expected validation error")
+			} else if !strings.Contains(err.Error(), "ssh-key-path は既に存在します") {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestParseFlagsWithParser_CreatesSSHKeyWithNonExistingKey_Normal(t *testing.T) {
+	tempDir := t.TempDir()
+	keyPath := tempDir + "/id_rsa"
+
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationCopyGCESSHKey)
+	parser.setString("instance-name", "vm-1")
+	parser.setString("ssh-key-path", keyPath)
+	parser.setBool("creates-ssh-key", true)
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.SSHKeyPath != keyPath {
+		t.Fatalf("ssh-key-path mismatch: %s", cfg.SSHKeyPath)
+	}
+	if !cfg.CreatesSSHKey {
+		t.Fatal("creates-ssh-key should be true")
+	}
+	if cfg.Forces {
+		t.Fatal("forces should be false")
 	}
 }
 
@@ -536,6 +646,29 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				parser := newMockFlagParser()
 				parser.setString("operation", tt.operation)
+				if _, err := ParseFlagsWithParser(parser); err == nil {
+					t.Fatal("expected validation error")
+				}
+			})
+		}
+	})
+
+	t.Run("copy/connect/setup operations reject forces without creates-ssh-key", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			operation string
+		}{
+			{name: "copy invalid force", operation: OperationCopyGCESSHKey},
+			{name: "connect invalid force", operation: OperationConnectGCEInstance},
+			{name: "setup invalid force", operation: OperationSetupGCEFirewallAndSSH},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				parser := newMockFlagParser()
+				parser.setString("operation", tt.operation)
+				parser.setString("instance-name", "vm-1")
+				parser.setBool("forces", true)
 				if _, err := ParseFlagsWithParser(parser); err == nil {
 					t.Fatal("expected validation error")
 				}
@@ -709,6 +842,8 @@ func TestPrintUsage(t *testing.T) {
 		"reboot-gce-instance",
 		"delete-gce-instance",
 		"copy-gce-ssh-key",
+		"creates-ssh-key",
+		"forces",
 		"connect-gce-instance",
 		"set-gce-instance-metadata-from-yaml",
 		"add-startup-script-to-gce-instance",
