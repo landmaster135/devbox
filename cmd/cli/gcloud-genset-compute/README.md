@@ -7,6 +7,8 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | operation | 説明 |
 |---|---|
 | `create-gce-instance` | VM インスタンス作成コマンドを生成 |
+| `create-gce-instance-with-startup-script` | VM インスタンス作成 + startup-script 設定コマンドを生成 |
+| `create-gce-instance-and-configure` | VM インスタンス作成 + metadata 設定 + startup-script 設定コマンドを生成 |
 | `create-gce-router-and-nat` | Cloud Router 作成 + Cloud NAT 作成コマンドを生成 |
 | `create-gce-iap-ssh-firewall-rule` | IAP SSH 用 firewall rule 作成コマンドを生成 |
 | `create-gce-ingress-ssh-firewall-rule` | VPC 内 SSH 用 firewall rule 作成コマンドを生成 |
@@ -17,6 +19,8 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `delete-gce-instance` | インスタンス削除コマンドを生成 |
 | `copy-gce-ssh-key` | SSH 秘密鍵を `/tmp` へコピーするコマンドを生成 |
 | `connect-gce-instance` | IAP トンネル経由の SSH 接続コマンドを生成 |
+| `set-gce-instance-metadata-from-yaml` | YAML ファイルをもとに instance metadata 設定コマンドを生成 |
+| `add-startup-script-to-gce-instance` | startup-script を instance metadata に設定するコマンドを生成 |
 | `setup-gce-firewall-and-ssh` | firewall 作成 + SSH 鍵コピー + SSH 接続の複合コマンドを生成 |
 
 ## フラグ一覧
@@ -37,6 +41,29 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `-machine-type` | 任意 | `e2-medium` | マシンタイプ |
 | `-boot-disk-size` | 任意 | `100GB` | ブートディスクサイズ |
 | `-boot-disk-type` | 任意 | `pd-balanced` | ブートディスクタイプ |
+
+### create-gce-instance-with-startup-script
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | インスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-machine-type` | 任意 | `e2-medium` | マシンタイプ |
+| `-boot-disk-size` | 任意 | `100GB` | ブートディスクサイズ |
+| `-boot-disk-type` | 任意 | `pd-balanced` | ブートディスクタイプ |
+| `-startup-script-path` | 任意 | `cmd/cli/gcloud-genset-compute/metadata/setup_scripts/startup-script.sh` | startup-script のファイルパス |
+
+### create-gce-instance-and-configure
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | インスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-machine-type` | 任意 | `e2-medium` | マシンタイプ |
+| `-boot-disk-size` | 任意 | `100GB` | ブートディスクサイズ |
+| `-boot-disk-type` | 任意 | `pd-balanced` | ブートディスクタイプ |
+| `-metadata-yaml-path` | 任意 | `cmd/cli/gcloud-genset-compute/metadata/config/env.yml` | metadata 用 YAML ファイルパス |
+| `-startup-script-path` | 任意 | `cmd/cli/gcloud-genset-compute/metadata/setup_scripts/startup-script.sh` | startup-script のファイルパス |
 
 ### create-gce-router-and-nat
 
@@ -114,6 +141,22 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 |---|---|---|---|
 | `-instance-name` | 必須 | なし | SSH 接続対象のインスタンス名 |
 | `-zone` | 任意 | `us-central1-a` | ゾーン |
+
+### set-gce-instance-metadata-from-yaml
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | metadata を設定するインスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-metadata-yaml-path` | 任意 | `cmd/cli/gcloud-genset-compute/metadata/config/env.yml` | metadata 用 YAML ファイルパス |
+
+### add-startup-script-to-gce-instance
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | startup-script を設定するインスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-startup-script-path` | 任意 | `cmd/cli/gcloud-genset-compute/metadata/setup_scripts/startup-script.sh` | startup-script のファイルパス |
 
 ### setup-gce-firewall-and-ssh
 
@@ -223,6 +266,26 @@ gcloud compute firewall-rules create 'allow-ssh-ingress-from-iap-260304-131645' 
 gcloud compute firewall-rules create 'allow-ingress-ssh-260304-131645' --allow='tcp:22' --source-ranges='10.0.0.0/8' && \
 gcloud compute scp "$HOME/.ssh/google_compute_engine" 'my-vm:/tmp' --zone='us-central1-a' --tunnel-through-iap && \
 gcloud compute ssh 'my-vm' --zone='us-central1-a' --tunnel-through-iap
+==============================
+```
+
+### インスタンス作成 + metadata + startup-script コマンド生成
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=create-gce-instance-and-configure \
+  -instance-name=my-vm
+```
+
+出力例:
+
+```bash
+==============================
+生成された gcloud コマンド
+==============================
+gcloud compute instances create 'my-vm' --zone='us-central1-a' --machine-type='e2-medium' --no-address --boot-disk-size='100GB' --boot-disk-type='pd-balanced' && \
+gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata='VSC_PROFILE_URL="",KEYMAP_PROFILE_URL="",GITHUB_ACCOUNT_NAME="",GITHUB_ACCOUNT_EMAIL="",DISCORD_WEBHOOK_URL_FOR_IAC_ON_GCLOUD="",GCE_ICON_URL="",GSM_ICON_URL="",GCS_ICON_URL="",GCSCHEDULER_ICON_URL="",GCIAM_ICON_URL="",GCLOUD_RUN_ICON_URL="",GCLOUD_RUN_FUNCTION_ICON_URL="",DEV_HOME=""' && \
+gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata-from-file startup-script='cmd/cli/gcloud-genset-compute/metadata/setup_scripts/startup-script.sh'
 ==============================
 ```
 

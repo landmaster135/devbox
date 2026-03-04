@@ -32,6 +32,14 @@ const (
 	OperationConnectGCEInstance = "connect-gce-instance"
 	// OperationSetupGCEFirewallAndSSH は firewall 作成 + SSH 鍵コピー + SSH 接続コマンドを生成する操作。
 	OperationSetupGCEFirewallAndSSH = "setup-gce-firewall-and-ssh"
+	// OperationSetGCEInstanceMetadataFromYAML は YAML からインスタンス metadata 設定コマンドを生成する操作。
+	OperationSetGCEInstanceMetadataFromYAML = "set-gce-instance-metadata-from-yaml"
+	// OperationAddStartupScriptToGCEInstance はスタートアップスクリプト登録コマンドを生成する操作。
+	OperationAddStartupScriptToGCEInstance = "add-startup-script-to-gce-instance"
+	// OperationCreateGCEInstanceWithStartupScript はインスタンス作成 + スタートアップスクリプト登録コマンドを生成する操作。
+	OperationCreateGCEInstanceWithStartupScript = "create-gce-instance-with-startup-script"
+	// OperationCreateGCEInstanceAndConfigure はインスタンス作成 + metadata 設定 + スタートアップスクリプト登録コマンドを生成する操作。
+	OperationCreateGCEInstanceAndConfigure = "create-gce-instance-and-configure"
 )
 
 var validOperations = []string{
@@ -42,11 +50,15 @@ var validOperations = []string{
 	OperationCreateGCEIAPSSHFirewallRule,
 	OperationCreateGCEInstance,
 	OperationCreateGCERouterAndNAT,
+	OperationCreateGCEInstanceAndConfigure,
+	OperationCreateGCEInstanceWithStartupScript,
 	OperationListGCloudInstances,
 	OperationRebootGCEInstance,
+	OperationSetGCEInstanceMetadataFromYAML,
 	OperationSetupGCEFirewallAndSSH,
 	OperationStartGCEInstance,
 	OperationStopGCEInstance,
+	OperationAddStartupScriptToGCEInstance,
 }
 
 const (
@@ -71,6 +83,8 @@ const (
 
 	defaultInstanceListFormat = "table(name, zone.basename(), scheduling.preemptible.yesno(yes=true, no=''), networkInterfaces.internal_ip():label=INTERNAL_IP, external_ip():label=EXTERNAL_IP, status)"
 	defaultSSHKeyPath         = "$HOME/.ssh/google_compute_engine"
+	defaultMetadataYAMLPath   = "cmd/cli/gcloud-genset-compute/metadata/config/env.yml"
+	defaultStartupScriptPath  = "cmd/cli/gcloud-genset-compute/metadata/setup_scripts/startup-script.sh"
 )
 
 // Config は CLI 引数から得られる設定値を保持する。
@@ -78,12 +92,14 @@ type Config struct {
 	Operation string
 	Help      bool
 
-	InstanceName string
-	Zone         string
-	SSHKeyPath   string
-	MachineType  string
-	BootDiskSize string
-	BootDiskType string
+	InstanceName      string
+	Zone              string
+	SSHKeyPath        string
+	MachineType       string
+	BootDiskSize      string
+	BootDiskType      string
+	MetadataYAMLPath  string
+	StartupScriptPath string
 
 	RouterName string
 	Region     string
@@ -119,6 +135,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	parser.StringVar(&cfg.MachineType, "machine-type", "", "マシンタイプ (例: e2-medium)")
 	parser.StringVar(&cfg.BootDiskSize, "boot-disk-size", "", "ブートディスクサイズ (例: 100GB)")
 	parser.StringVar(&cfg.BootDiskType, "boot-disk-type", "", "ブートディスクタイプ (例: pd-balanced)")
+	parser.StringVar(&cfg.MetadataYAMLPath, "metadata-yaml-path", "", "metadata 設定用 YAML ファイルパス")
+	parser.StringVar(&cfg.StartupScriptPath, "startup-script-path", "", "スタートアップスクリプトファイルパス")
 
 	parser.StringVar(&cfg.RouterName, "router-name", "", "作成する Cloud Router 名")
 	parser.StringVar(&cfg.Region, "region", "", "リージョン (例: us-central1)")
@@ -170,6 +188,8 @@ func normalizeConfig(cfg *Config) {
 	cfg.MachineType = strings.TrimSpace(cfg.MachineType)
 	cfg.BootDiskSize = strings.TrimSpace(cfg.BootDiskSize)
 	cfg.BootDiskType = strings.TrimSpace(cfg.BootDiskType)
+	cfg.MetadataYAMLPath = strings.TrimSpace(cfg.MetadataYAMLPath)
+	cfg.StartupScriptPath = strings.TrimSpace(cfg.StartupScriptPath)
 	cfg.RouterName = strings.TrimSpace(cfg.RouterName)
 	cfg.Region = strings.TrimSpace(cfg.Region)
 	cfg.Network = strings.TrimSpace(cfg.Network)
@@ -210,6 +230,41 @@ func applyDefaults(cfg *Config) {
 		}
 		if cfg.BootDiskType == "" {
 			cfg.BootDiskType = defaultBootDiskType
+		}
+	case OperationCreateGCEInstanceWithStartupScript:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+		if cfg.MachineType == "" {
+			cfg.MachineType = defaultMachineType
+		}
+		if cfg.BootDiskSize == "" {
+			cfg.BootDiskSize = defaultBootDiskSize
+		}
+		if cfg.BootDiskType == "" {
+			cfg.BootDiskType = defaultBootDiskType
+		}
+		if cfg.StartupScriptPath == "" {
+			cfg.StartupScriptPath = defaultStartupScriptPath
+		}
+	case OperationCreateGCEInstanceAndConfigure:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+		if cfg.MachineType == "" {
+			cfg.MachineType = defaultMachineType
+		}
+		if cfg.BootDiskSize == "" {
+			cfg.BootDiskSize = defaultBootDiskSize
+		}
+		if cfg.BootDiskType == "" {
+			cfg.BootDiskType = defaultBootDiskType
+		}
+		if cfg.MetadataYAMLPath == "" {
+			cfg.MetadataYAMLPath = defaultMetadataYAMLPath
+		}
+		if cfg.StartupScriptPath == "" {
+			cfg.StartupScriptPath = defaultStartupScriptPath
 		}
 	case OperationCreateGCERouterAndNAT:
 		if cfg.Region == "" {
@@ -262,6 +317,20 @@ func applyDefaults(cfg *Config) {
 		if cfg.Zone == "" {
 			cfg.Zone = defaultZone
 		}
+	case OperationSetGCEInstanceMetadataFromYAML:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+		if cfg.MetadataYAMLPath == "" {
+			cfg.MetadataYAMLPath = defaultMetadataYAMLPath
+		}
+	case OperationAddStartupScriptToGCEInstance:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+		if cfg.StartupScriptPath == "" {
+			cfg.StartupScriptPath = defaultStartupScriptPath
+		}
 	case OperationSetupGCEFirewallAndSSH:
 		if cfg.Zone == "" {
 			cfg.Zone = defaultZone
@@ -275,6 +344,14 @@ func applyDefaults(cfg *Config) {
 func validateConfig(cfg *Config) error {
 	switch cfg.Operation {
 	case OperationCreateGCEInstance:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+	case OperationCreateGCEInstanceWithStartupScript:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+	case OperationCreateGCEInstanceAndConfigure:
 		if cfg.InstanceName == "" {
 			return fmt.Errorf("instance-name は必須です")
 		}
@@ -305,6 +382,26 @@ func validateConfig(cfg *Config) error {
 		}
 		if cfg.Zone == "" {
 			return fmt.Errorf("zone は必須です")
+		}
+	case OperationSetGCEInstanceMetadataFromYAML:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
+		if cfg.MetadataYAMLPath == "" {
+			return fmt.Errorf("metadata-yaml-path は必須です")
+		}
+	case OperationAddStartupScriptToGCEInstance:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
+		if cfg.StartupScriptPath == "" {
+			return fmt.Errorf("startup-script-path は必須です")
 		}
 	case OperationSetupGCEFirewallAndSSH:
 		if cfg.InstanceName == "" {
@@ -347,6 +444,23 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -machine-type string (default: %s)\n", defaultMachineType)
 	fmt.Fprintf(os.Stderr, "  -boot-disk-size string (default: %s)\n", defaultBootDiskSize)
 	fmt.Fprintf(os.Stderr, "  -boot-disk-type string (default: %s)\n\n", defaultBootDiskType)
+
+	fmt.Fprintf(os.Stderr, "create-gce-instance-with-startup-script:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -machine-type string (default: %s)\n", defaultMachineType)
+	fmt.Fprintf(os.Stderr, "  -boot-disk-size string (default: %s)\n", defaultBootDiskSize)
+	fmt.Fprintf(os.Stderr, "  -boot-disk-type string (default: %s)\n", defaultBootDiskType)
+	fmt.Fprintf(os.Stderr, "  -startup-script-path string (default: %s)\n\n", defaultStartupScriptPath)
+
+	fmt.Fprintf(os.Stderr, "create-gce-instance-and-configure:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -machine-type string (default: %s)\n", defaultMachineType)
+	fmt.Fprintf(os.Stderr, "  -boot-disk-size string (default: %s)\n", defaultBootDiskSize)
+	fmt.Fprintf(os.Stderr, "  -boot-disk-type string (default: %s)\n", defaultBootDiskType)
+	fmt.Fprintf(os.Stderr, "  -metadata-yaml-path string (default: %s)\n", defaultMetadataYAMLPath)
+	fmt.Fprintf(os.Stderr, "  -startup-script-path string (default: %s)\n\n", defaultStartupScriptPath)
 
 	fmt.Fprintf(os.Stderr, "create-gce-router-and-nat:\n")
 	fmt.Fprintf(os.Stderr, "  -router-name string (必須)\n")
@@ -394,6 +508,16 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "connect-gce-instance:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
 	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n\n", defaultZone)
+
+	fmt.Fprintf(os.Stderr, "set-gce-instance-metadata-from-yaml:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -metadata-yaml-path string (default: %s)\n\n", defaultMetadataYAMLPath)
+
+	fmt.Fprintf(os.Stderr, "add-startup-script-to-gce-instance:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -startup-script-path string (default: %s)\n\n", defaultStartupScriptPath)
 
 	fmt.Fprintf(os.Stderr, "setup-gce-firewall-and-ssh:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")

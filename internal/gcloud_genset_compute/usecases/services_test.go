@@ -9,15 +9,19 @@ import (
 	"testing"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_compute/config"
+	addstartupscripttogceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/add_startup_script_to_gce_instance"
 	connectgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/connect_gce_instance"
 	copygcesshkey "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/copy_gce_ssh_key"
 	creategceiapsshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_iap_ssh_firewall_rule"
 	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
 	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
+	creategceinstanceandconfigure "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_and_configure"
+	creategceinstancewithstartupscript "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_with_startup_script"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
 	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
@@ -31,6 +35,32 @@ type createGCEInstanceOperationStub struct {
 }
 
 func (s *createGCEInstanceOperationStub) Build(params creategceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type createGCEInstanceWithStartupScriptOperationStub struct {
+	called bool
+	got    creategceinstancewithstartupscript.Params
+	result string
+	err    error
+}
+
+func (s *createGCEInstanceWithStartupScriptOperationStub) Build(params creategceinstancewithstartupscript.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type createGCEInstanceAndConfigureOperationStub struct {
+	called bool
+	got    creategceinstanceandconfigure.Params
+	result string
+	err    error
+}
+
+func (s *createGCEInstanceAndConfigureOperationStub) Build(params creategceinstanceandconfigure.Params) (string, error) {
 	s.called = true
 	s.got = params
 	return s.result, s.err
@@ -166,6 +196,32 @@ func (s *connectGCEInstanceOperationStub) Build(params connectgceinstance.Params
 	return s.result, s.err
 }
 
+type setGCEInstanceMetadataFromYAMLOperationStub struct {
+	called bool
+	got    setgceinstancemetadatafromyaml.Params
+	result string
+	err    error
+}
+
+func (s *setGCEInstanceMetadataFromYAMLOperationStub) Build(params setgceinstancemetadatafromyaml.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type addStartupScriptToGCEInstanceOperationStub struct {
+	called bool
+	got    addstartupscripttogceinstance.Params
+	result string
+	err    error
+}
+
+func (s *addStartupScriptToGCEInstanceOperationStub) Build(params addstartupscripttogceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
 type setupGCEFirewallAndSSHOperationStub struct {
 	called bool
 	got    setupgcefirewallandssh.Params
@@ -181,6 +237,8 @@ func (s *setupGCEFirewallAndSSHOperationStub) Build(params setupgcefirewallandss
 
 func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	instanceOp := &createGCEInstanceOperationStub{result: "instance-command"}
+	instanceWithStartupScriptOp := &createGCEInstanceWithStartupScriptOperationStub{result: "instance-with-startup-script-command"}
+	instanceAndConfigureOp := &createGCEInstanceAndConfigureOperationStub{result: "instance-and-configure-command"}
 	routerNATOp := &createGCERouterAndNATOperationStub{result: "router-nat-command"}
 	iapSSHOp := &createGCEIAPSSHFirewallRuleOperationStub{result: "iap-ssh-command"}
 	ingressSSHOp := &createGCEIngressSSHFirewallRuleOperationStub{result: "ingress-ssh-command"}
@@ -191,9 +249,28 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	deleteOp := &deleteGCEInstanceOperationStub{result: "delete-command"}
 	copySSHKeyOp := &copyGCESSHKeyOperationStub{result: "copy-ssh-key-command"}
 	connectOp := &connectGCEInstanceOperationStub{result: "connect-command"}
+	setMetadataOp := &setGCEInstanceMetadataFromYAMLOperationStub{result: "set-metadata-command"}
+	addStartupScriptOp := &addStartupScriptToGCEInstanceOperationStub{result: "add-startup-script-command"}
 	setupOp := &setupGCEFirewallAndSSHOperationStub{result: "setup-command"}
 
-	service := newServiceWithOperations(instanceOp, routerNATOp, iapSSHOp, ingressSSHOp, listOp, startOp, stopOp, rebootOp, deleteOp, copySSHKeyOp, connectOp, setupOp)
+	service := newServiceWithOperations(
+		instanceOp,
+		instanceWithStartupScriptOp,
+		instanceAndConfigureOp,
+		routerNATOp,
+		iapSSHOp,
+		ingressSSHOp,
+		listOp,
+		startOp,
+		stopOp,
+		rebootOp,
+		deleteOp,
+		copySSHKeyOp,
+		connectOp,
+		setMetadataOp,
+		addStartupScriptOp,
+		setupOp,
+	)
 
 	tests := []struct {
 		name     string
@@ -211,6 +288,33 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 				BootDiskType: "pd-balanced",
 			},
 			expected: "instance-command",
+		},
+		{
+			name: "create-gce-instance-with-startup-script",
+			config: &cfg.Config{
+				Operation:         cfg.OperationCreateGCEInstanceWithStartupScript,
+				InstanceName:      "vm-1",
+				Zone:              "us-central1-a",
+				MachineType:       "e2-medium",
+				BootDiskSize:      "100GB",
+				BootDiskType:      "pd-balanced",
+				StartupScriptPath: "startup-script.sh",
+			},
+			expected: "instance-with-startup-script-command",
+		},
+		{
+			name: "create-gce-instance-and-configure",
+			config: &cfg.Config{
+				Operation:         cfg.OperationCreateGCEInstanceAndConfigure,
+				InstanceName:      "vm-1",
+				Zone:              "us-central1-a",
+				MachineType:       "e2-medium",
+				BootDiskSize:      "100GB",
+				BootDiskType:      "pd-balanced",
+				MetadataYAMLPath:  "env.yml",
+				StartupScriptPath: "startup-script.sh",
+			},
+			expected: "instance-and-configure-command",
 		},
 		{
 			name: "create-gce-router-and-nat",
@@ -310,6 +414,26 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 			expected: "connect-command",
 		},
 		{
+			name: "set-gce-instance-metadata-from-yaml",
+			config: &cfg.Config{
+				Operation:        cfg.OperationSetGCEInstanceMetadataFromYAML,
+				InstanceName:     "vm-1",
+				Zone:             "us-central1-a",
+				MetadataYAMLPath: "env.yml",
+			},
+			expected: "set-metadata-command",
+		},
+		{
+			name: "add-startup-script-to-gce-instance",
+			config: &cfg.Config{
+				Operation:         cfg.OperationAddStartupScriptToGCEInstance,
+				InstanceName:      "vm-1",
+				Zone:              "us-central1-a",
+				StartupScriptPath: "startup-script.sh",
+			},
+			expected: "add-startup-script-command",
+		},
+		{
 			name: "setup-gce-firewall-and-ssh",
 			config: &cfg.Config{
 				Operation:    cfg.OperationSetupGCEFirewallAndSSH,
@@ -335,6 +459,12 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 
 	if !instanceOp.called {
 		t.Fatal("instance operation was not called")
+	}
+	if !instanceWithStartupScriptOp.called {
+		t.Fatal("instance with startup script operation was not called")
+	}
+	if !instanceAndConfigureOp.called {
+		t.Fatal("instance and configure operation was not called")
 	}
 	if !routerNATOp.called {
 		t.Fatal("router and nat operation was not called")
@@ -366,6 +496,12 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	if !connectOp.called {
 		t.Fatal("connect operation was not called")
 	}
+	if !setMetadataOp.called {
+		t.Fatal("set metadata operation was not called")
+	}
+	if !addStartupScriptOp.called {
+		t.Fatal("add startup script operation was not called")
+	}
 	if !setupOp.called {
 		t.Fatal("setup operation was not called")
 	}
@@ -382,6 +518,8 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 	expectedErr := fmt.Errorf("operation error")
 	service := newServiceWithOperations(
 		&createGCEInstanceOperationStub{err: expectedErr},
+		&createGCEInstanceWithStartupScriptOperationStub{},
+		&createGCEInstanceAndConfigureOperationStub{},
 		&createGCERouterAndNATOperationStub{},
 		&createGCEIAPSSHFirewallRuleOperationStub{},
 		&createGCEIngressSSHFirewallRuleOperationStub{},
@@ -392,6 +530,8 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 		&deleteGCEInstanceOperationStub{},
 		&copyGCESSHKeyOperationStub{},
 		&connectGCEInstanceOperationStub{},
+		&setGCEInstanceMetadataFromYAMLOperationStub{},
+		&addStartupScriptToGCEInstanceOperationStub{},
 		&setupGCEFirewallAndSSHOperationStub{},
 	)
 

@@ -4,15 +4,19 @@ import (
 	"fmt"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_compute/config"
+	addstartupscripttogceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/add_startup_script_to_gce_instance"
 	connectgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/connect_gce_instance"
 	copygcesshkey "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/copy_gce_ssh_key"
 	creategceiapsshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_iap_ssh_firewall_rule"
 	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
 	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
+	creategceinstanceandconfigure "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_and_configure"
+	creategceinstancewithstartupscript "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_with_startup_script"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
 	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
@@ -20,18 +24,22 @@ import (
 
 // Service は GCE 向け gcloud コマンド生成を担当する。
 type Service struct {
-	createGCEInstanceOperation               createGCEInstanceOperation
-	createGCERouterAndNATOperation           createGCERouterAndNATOperation
-	createGCEIAPSSHFirewallRuleOperation     createGCEIAPSSHFirewallRuleOperation
-	createGCEIngressSSHFirewallRuleOperation createGCEIngressSSHFirewallRuleOperation
-	listGCloudInstancesOperation             listGCloudInstancesOperation
-	startGCEInstanceOperation                startGCEInstanceOperation
-	stopGCEInstanceOperation                 stopGCEInstanceOperation
-	rebootGCEInstanceOperation               rebootGCEInstanceOperation
-	deleteGCEInstanceOperation               deleteGCEInstanceOperation
-	copyGCESSHKeyOperation                   copyGCESSHKeyOperation
-	connectGCEInstanceOperation              connectGCEInstanceOperation
-	setupGCEFirewallAndSSHOperation          setupGCEFirewallAndSSHOperation
+	createGCEInstanceOperation                  createGCEInstanceOperation
+	createGCEInstanceWithStartupScriptOperation createGCEInstanceWithStartupScriptOperation
+	createGCEInstanceAndConfigureOperation      createGCEInstanceAndConfigureOperation
+	createGCERouterAndNATOperation              createGCERouterAndNATOperation
+	createGCEIAPSSHFirewallRuleOperation        createGCEIAPSSHFirewallRuleOperation
+	createGCEIngressSSHFirewallRuleOperation    createGCEIngressSSHFirewallRuleOperation
+	listGCloudInstancesOperation                listGCloudInstancesOperation
+	startGCEInstanceOperation                   startGCEInstanceOperation
+	stopGCEInstanceOperation                    stopGCEInstanceOperation
+	rebootGCEInstanceOperation                  rebootGCEInstanceOperation
+	deleteGCEInstanceOperation                  deleteGCEInstanceOperation
+	copyGCESSHKeyOperation                      copyGCESSHKeyOperation
+	connectGCEInstanceOperation                 connectGCEInstanceOperation
+	setGCEInstanceMetadataFromYAMLOperation     setGCEInstanceMetadataFromYAMLOperation
+	addStartupScriptToGCEInstanceOperation      addStartupScriptToGCEInstanceOperation
+	setupGCEFirewallAndSSHOperation             setupGCEFirewallAndSSHOperation
 }
 
 // CreateGCEInstanceParams はインスタンス作成コマンド生成に必要な値。
@@ -39,6 +47,12 @@ type CreateGCEInstanceParams = creategceinstance.Params
 
 // CreateGCERouterAndNATParams は Router/NAT 作成コマンド生成に必要な値。
 type CreateGCERouterAndNATParams = creategcerouterandnat.Params
+
+// CreateGCEInstanceWithStartupScriptParams はインスタンス作成 + スタートアップスクリプト登録コマンド生成に必要な値。
+type CreateGCEInstanceWithStartupScriptParams = creategceinstancewithstartupscript.Params
+
+// CreateGCEInstanceAndConfigureParams はインスタンス作成 + metadata 設定 + スタートアップスクリプト登録コマンド生成に必要な値。
+type CreateGCEInstanceAndConfigureParams = creategceinstanceandconfigure.Params
 
 // CreateGCEIAPSSHFirewallRuleParams は IAP SSH 用 firewall rule 作成コマンド生成に必要な値。
 type CreateGCEIAPSSHFirewallRuleParams = creategceiapsshfirewallrule.Params
@@ -67,6 +81,12 @@ type CopyGCESSHKeyParams = copygcesshkey.Params
 // ConnectGCEInstanceParams は GCE SSH 接続コマンド生成に必要な値。
 type ConnectGCEInstanceParams = connectgceinstance.Params
 
+// SetGCEInstanceMetadataFromYAMLParams は YAML から metadata 設定コマンド生成に必要な値。
+type SetGCEInstanceMetadataFromYAMLParams = setgceinstancemetadatafromyaml.Params
+
+// AddStartupScriptToGCEInstanceParams はスタートアップスクリプト登録コマンド生成に必要な値。
+type AddStartupScriptToGCEInstanceParams = addstartupscripttogceinstance.Params
+
 // SetupGCEFirewallAndSSHParams は firewall 作成 + SSH 鍵コピー + SSH 接続コマンド生成に必要な値。
 type SetupGCEFirewallAndSSHParams = setupgcefirewallandssh.Params
 
@@ -74,6 +94,8 @@ type SetupGCEFirewallAndSSHParams = setupgcefirewallandssh.Params
 func NewService() *Service {
 	return newServiceWithOperations(
 		creategceinstance.NewService(),
+		creategceinstancewithstartupscript.NewService(),
+		creategceinstanceandconfigure.NewService(),
 		creategcerouterandnat.NewService(),
 		creategceiapsshfirewallrule.NewService(),
 		creategceingresssshfirewallrule.NewService(),
@@ -84,6 +106,8 @@ func NewService() *Service {
 		deletegceinstance.NewService(),
 		copygcesshkey.NewService(),
 		connectgceinstance.NewService(),
+		setgceinstancemetadatafromyaml.NewService(),
+		addstartupscripttogceinstance.NewService(),
 		setupgcefirewallandssh.NewService(),
 	)
 }
@@ -98,6 +122,25 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 			MachineType:  conf.MachineType,
 			BootDiskSize: conf.BootDiskSize,
 			BootDiskType: conf.BootDiskType,
+		})
+	case cfg.OperationCreateGCEInstanceWithStartupScript:
+		return s.BuildCreateGCEInstanceWithStartupScriptCommand(CreateGCEInstanceWithStartupScriptParams{
+			InstanceName:      conf.InstanceName,
+			Zone:              conf.Zone,
+			MachineType:       conf.MachineType,
+			BootDiskSize:      conf.BootDiskSize,
+			BootDiskType:      conf.BootDiskType,
+			StartupScriptPath: conf.StartupScriptPath,
+		})
+	case cfg.OperationCreateGCEInstanceAndConfigure:
+		return s.BuildCreateGCEInstanceAndConfigureCommand(CreateGCEInstanceAndConfigureParams{
+			InstanceName:      conf.InstanceName,
+			Zone:              conf.Zone,
+			MachineType:       conf.MachineType,
+			BootDiskSize:      conf.BootDiskSize,
+			BootDiskType:      conf.BootDiskType,
+			MetadataYAMLPath:  conf.MetadataYAMLPath,
+			StartupScriptPath: conf.StartupScriptPath,
 		})
 	case cfg.OperationCreateGCERouterAndNAT:
 		return s.BuildCreateGCERouterAndNATCommand(CreateGCERouterAndNATParams{
@@ -156,6 +199,18 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 			InstanceName: conf.InstanceName,
 			Zone:         conf.Zone,
 		})
+	case cfg.OperationSetGCEInstanceMetadataFromYAML:
+		return s.BuildSetGCEInstanceMetadataFromYAMLCommand(SetGCEInstanceMetadataFromYAMLParams{
+			InstanceName:     conf.InstanceName,
+			Zone:             conf.Zone,
+			MetadataYAMLPath: conf.MetadataYAMLPath,
+		})
+	case cfg.OperationAddStartupScriptToGCEInstance:
+		return s.BuildAddStartupScriptToGCEInstanceCommand(AddStartupScriptToGCEInstanceParams{
+			InstanceName:      conf.InstanceName,
+			Zone:              conf.Zone,
+			StartupScriptPath: conf.StartupScriptPath,
+		})
 	case cfg.OperationSetupGCEFirewallAndSSH:
 		return s.BuildSetupGCEFirewallAndSSHCommand(SetupGCEFirewallAndSSHParams{
 			InstanceName: conf.InstanceName,
@@ -170,6 +225,16 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 // BuildCreateGCEInstanceCommand はインスタンス作成コマンドを生成する。
 func (s *Service) BuildCreateGCEInstanceCommand(params CreateGCEInstanceParams) (string, error) {
 	return s.createGCEInstanceOperation.Build(params)
+}
+
+// BuildCreateGCEInstanceWithStartupScriptCommand はインスタンス作成 + スタートアップスクリプト登録コマンドを生成する。
+func (s *Service) BuildCreateGCEInstanceWithStartupScriptCommand(params CreateGCEInstanceWithStartupScriptParams) (string, error) {
+	return s.createGCEInstanceWithStartupScriptOperation.Build(params)
+}
+
+// BuildCreateGCEInstanceAndConfigureCommand はインスタンス作成 + metadata 設定 + スタートアップスクリプト登録コマンドを生成する。
+func (s *Service) BuildCreateGCEInstanceAndConfigureCommand(params CreateGCEInstanceAndConfigureParams) (string, error) {
+	return s.createGCEInstanceAndConfigureOperation.Build(params)
 }
 
 // BuildCreateGCERouterAndNATCommand は Router/NAT 作成コマンドを生成する。
@@ -220,6 +285,16 @@ func (s *Service) BuildCopyGCESSHKeyCommand(params CopyGCESSHKeyParams) (string,
 // BuildConnectGCEInstanceCommand は GCE SSH 接続コマンドを生成する。
 func (s *Service) BuildConnectGCEInstanceCommand(params ConnectGCEInstanceParams) (string, error) {
 	return s.connectGCEInstanceOperation.Build(params)
+}
+
+// BuildSetGCEInstanceMetadataFromYAMLCommand は YAML から metadata 設定コマンドを生成する。
+func (s *Service) BuildSetGCEInstanceMetadataFromYAMLCommand(params SetGCEInstanceMetadataFromYAMLParams) (string, error) {
+	return s.setGCEInstanceMetadataFromYAMLOperation.Build(params)
+}
+
+// BuildAddStartupScriptToGCEInstanceCommand はスタートアップスクリプト登録コマンドを生成する。
+func (s *Service) BuildAddStartupScriptToGCEInstanceCommand(params AddStartupScriptToGCEInstanceParams) (string, error) {
+	return s.addStartupScriptToGCEInstanceOperation.Build(params)
 }
 
 // BuildSetupGCEFirewallAndSSHCommand は firewall 作成 + SSH 鍵コピー + SSH 接続コマンドを生成する。

@@ -93,6 +93,69 @@ func TestParseFlagsWithParser_CreateInstanceDefaults_Normal(t *testing.T) {
 	}
 }
 
+func TestParseFlagsWithParser_CreateInstanceWithStartupScriptDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationCreateGCEInstanceWithStartupScript)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.MachineType != defaultMachineType {
+		t.Fatalf("machine-type mismatch: %s", cfg.MachineType)
+	}
+	if cfg.BootDiskSize != defaultBootDiskSize {
+		t.Fatalf("boot-disk-size mismatch: %s", cfg.BootDiskSize)
+	}
+	if cfg.BootDiskType != defaultBootDiskType {
+		t.Fatalf("boot-disk-type mismatch: %s", cfg.BootDiskType)
+	}
+	if cfg.StartupScriptPath != defaultStartupScriptPath {
+		t.Fatalf("startup-script-path mismatch: %s", cfg.StartupScriptPath)
+	}
+}
+
+func TestParseFlagsWithParser_CreateInstanceAndConfigureDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationCreateGCEInstanceAndConfigure)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.MachineType != defaultMachineType {
+		t.Fatalf("machine-type mismatch: %s", cfg.MachineType)
+	}
+	if cfg.BootDiskSize != defaultBootDiskSize {
+		t.Fatalf("boot-disk-size mismatch: %s", cfg.BootDiskSize)
+	}
+	if cfg.BootDiskType != defaultBootDiskType {
+		t.Fatalf("boot-disk-type mismatch: %s", cfg.BootDiskType)
+	}
+	if cfg.MetadataYAMLPath != defaultMetadataYAMLPath {
+		t.Fatalf("metadata-yaml-path mismatch: %s", cfg.MetadataYAMLPath)
+	}
+	if cfg.StartupScriptPath != defaultStartupScriptPath {
+		t.Fatalf("startup-script-path mismatch: %s", cfg.StartupScriptPath)
+	}
+}
+
 func TestParseFlagsWithParser_CreateRouterAndNATDefaults_Normal(t *testing.T) {
 	parser := newMockFlagParser()
 	parser.setString("operation", OperationCreateGCERouterAndNAT)
@@ -249,6 +312,48 @@ func TestParseFlagsWithParser_ConnectGCEInstanceDefaults_Normal(t *testing.T) {
 	}
 }
 
+func TestParseFlagsWithParser_SetGCEInstanceMetadataFromYAMLDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationSetGCEInstanceMetadataFromYAML)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.MetadataYAMLPath != defaultMetadataYAMLPath {
+		t.Fatalf("metadata-yaml-path mismatch: %s", cfg.MetadataYAMLPath)
+	}
+}
+
+func TestParseFlagsWithParser_AddStartupScriptToGCEInstanceDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationAddStartupScriptToGCEInstance)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.StartupScriptPath != defaultStartupScriptPath {
+		t.Fatalf("startup-script-path mismatch: %s", cfg.StartupScriptPath)
+	}
+}
+
 func TestParseFlagsWithParser_SetupGCEFirewallAndSSHDefaults_Normal(t *testing.T) {
 	parser := newMockFlagParser()
 	parser.setString("operation", OperationSetupGCEFirewallAndSSH)
@@ -345,7 +450,11 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 		}{
 			{name: "copy missing instance-name", operation: OperationCopyGCESSHKey},
 			{name: "connect missing instance-name", operation: OperationConnectGCEInstance},
+			{name: "set metadata missing instance-name", operation: OperationSetGCEInstanceMetadataFromYAML},
+			{name: "add startup script missing instance-name", operation: OperationAddStartupScriptToGCEInstance},
 			{name: "setup missing instance-name", operation: OperationSetupGCEFirewallAndSSH},
+			{name: "create with startup script missing instance-name", operation: OperationCreateGCEInstanceWithStartupScript},
+			{name: "create and configure missing instance-name", operation: OperationCreateGCEInstanceAndConfigure},
 		}
 
 		for _, tt := range tests {
@@ -461,6 +570,8 @@ func TestPrintUsage(t *testing.T) {
 	keywords := []string{
 		"Google Compute Engine",
 		"create-gce-instance",
+		"create-gce-instance-with-startup-script",
+		"create-gce-instance-and-configure",
 		"create-gce-router-and-nat",
 		"list-gcloud-instances",
 		"start-gce-instance",
@@ -469,6 +580,8 @@ func TestPrintUsage(t *testing.T) {
 		"delete-gce-instance",
 		"copy-gce-ssh-key",
 		"connect-gce-instance",
+		"set-gce-instance-metadata-from-yaml",
+		"add-startup-script-to-gce-instance",
 		"setup-gce-firewall-and-ssh",
 	}
 	for _, keyword := range keywords {
