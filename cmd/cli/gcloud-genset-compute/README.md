@@ -324,3 +324,16 @@ go run ./cmd/cli/gcloud-genset-compute -operation=create-gce-instance
 ```bash
 go build -o bin/gcloud-genset-compute ./cmd/cli/gcloud-genset-compute
 ```
+
+## 参考
+References:
+- [gcloud compute instances create](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/create)
+- [gcloud compute instances add-metadata](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/add-metadata)
+- [gcloud compute instances list](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/list)
+- [gcloud compute instances start](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/start)
+- [gcloud compute instances delete](https://docs.cloud.google.com/sdk/gcloud/reference/compute/instances/delete)
+- [gcloud compute firewall-rules create](https://docs.cloud.google.com/sdk/gcloud/reference/compute/firewall-rules/create)
+- [gcloud compute scp](https://docs.cloud.google.com/sdk/gcloud/reference/compute/scp)
+- [gcloud compute ssh](https://docs.cloud.google.com/sdk/gcloud/reference/compute/ssh)
+- [gcloud compute disk-types list](https://docs.cloud.google.com/sdk/gcloud/reference/compute/disk-types/list)
+- [gcloud compute machine-types list](https://docs.cloud.google.com/sdk/gcloud/reference/compute/machine-types/list)
