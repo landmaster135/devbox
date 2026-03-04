@@ -25,6 +25,7 @@ type machineType struct {
 	GuestCPUs                    int             `json:"guestCpus"`
 	MemoryMB                     int             `json:"memoryMb"`
 	MaximumPersistentDisksSizeGB json.RawMessage `json:"maximumPersistentDisksSizeGb"`
+	Deprecated                   json.RawMessage `json:"deprecated"`
 }
 
 // Service は list-machine-types operation の処理を担当する。
@@ -58,7 +59,7 @@ func (s *Service) Execute(params Params) (string, error) {
 	if len(zones) > 0 {
 		args = append(args, "--zones="+strings.Join(zones, ","))
 	}
-	args = append(args, "--format=json(name,zone,guestCpus,memoryMb,maximumPersistentDisksSizeGb)")
+	args = append(args, "--format=json(name,zone,guestCpus,memoryMb,maximumPersistentDisksSizeGb,deprecated)")
 
 	output, err := s.commandExecutor.Execute("gcloud", args...)
 	if err != nil {
@@ -73,6 +74,10 @@ func (s *Service) Execute(params Params) (string, error) {
 	rows := make([][]string, 0, len(machineTypes))
 	for _, item := range machineTypes {
 		maxPersistentDiskSizeGB, err := parseMaximumPersistentDisksSizeGB(item.MaximumPersistentDisksSizeGB)
+		if err != nil {
+			return "", err
+		}
+		deprecated, err := parseDeprecated(item.Deprecated)
 		if err != nil {
 			return "", err
 		}
@@ -93,11 +98,12 @@ func (s *Service) Execute(params Params) (string, error) {
 			strconv.Itoa(item.GuestCPUs),
 			strconv.Itoa(item.MemoryMB),
 			strconv.FormatInt(maxPersistentDiskSizeGB, 10),
+			strconv.FormatBool(deprecated),
 		})
 	}
 
 	return common.FormatTable(
-		[]string{"NAME", "ZONE", "GUEST_CPUS", "MEMORY_MB", "MAX_PERSISTENT_DISKS_SIZE_GB"},
+		[]string{"NAME", "ZONE", "GUEST_CPUS", "MEMORY_MB", "MAX_PERSISTENT_DISKS_SIZE_GB", "DEPRECATED"},
 		rows,
 	), nil
 }
@@ -186,4 +192,33 @@ func parseMaximumPersistentDisksSizeGB(raw json.RawMessage) (int64, error) {
 	}
 
 	return 0, fmt.Errorf("maximumPersistentDisksSizeGb の形式が不正です: %s", string(raw))
+}
+
+func parseDeprecated(raw json.RawMessage) (bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false, nil
+	}
+
+	var asBool bool
+	if err := json.Unmarshal(raw, &asBool); err == nil {
+		return asBool, nil
+	}
+
+	var asMap map[string]any
+	if err := json.Unmarshal(raw, &asMap); err == nil {
+		return len(asMap) > 0, nil
+	}
+
+	var asString string
+	if err := json.Unmarshal(raw, &asString); err == nil {
+		normalized := strings.ToLower(strings.TrimSpace(asString))
+		switch normalized {
+		case "", "null", "false":
+			return false, nil
+		default:
+			return true, nil
+		}
+	}
+
+	return false, fmt.Errorf("deprecated の形式が不正です: %s", string(raw))
 }

@@ -14,8 +14,8 @@ func TestServiceExecute_Normal(t *testing.T) {
 	mockExecutor := &infrastructures.MockCommandExecutor{
 		ExecuteFunc: func(name string, args ...string) ([]byte, error) {
 			output := `[
-  {"name":"e2-medium","zone":"https://www.googleapis.com/compute/v1/projects/test/zones/asia-southeast3-a","guestCpus":2,"memoryMb":4096,"maximumPersistentDisksSizeGb":257},
-  {"name":"c3-highmem-4","zone":"https://www.googleapis.com/compute/v1/projects/test/zones/asia-southeast3-a","guestCpus":4,"memoryMb":32768,"maximumPersistentDisksSizeGb":65536}
+  {"name":"e2-medium","zone":"https://www.googleapis.com/compute/v1/projects/test/zones/asia-southeast3-a","guestCpus":2,"memoryMb":4096,"maximumPersistentDisksSizeGb":257,"deprecated":null},
+  {"name":"c3-highmem-4","zone":"https://www.googleapis.com/compute/v1/projects/test/zones/asia-southeast3-a","guestCpus":4,"memoryMb":32768,"maximumPersistentDisksSizeGb":65536,"deprecated":{"state":"DEPRECATED"}}
 ]`
 			return []byte(output), nil
 		},
@@ -33,14 +33,26 @@ func TestServiceExecute_Normal(t *testing.T) {
 	if len(mockExecutor.Calls) != 1 {
 		t.Fatalf("call count mismatch: %d", len(mockExecutor.Calls))
 	}
+	if len(mockExecutor.Calls[0].Args) == 0 {
+		t.Fatal("args should not be empty")
+	}
+	if !strings.Contains(strings.Join(mockExecutor.Calls[0].Args, " "), "deprecated") {
+		t.Fatalf("deprecated format missing: %v", mockExecutor.Calls[0].Args)
+	}
 	if !strings.Contains(result, "GUEST_CPUS") {
 		t.Fatalf("header missing: %s", result)
+	}
+	if !strings.Contains(result, "DEPRECATED") {
+		t.Fatalf("deprecated header missing: %s", result)
 	}
 	if strings.Contains(result, "e2-medium") {
 		t.Fatalf("e2-medium should be filtered out: %s", result)
 	}
 	if !strings.Contains(result, "c3-highmem-4") {
 		t.Fatalf("filtered row missing: %s", result)
+	}
+	if !strings.Contains(result, "true") {
+		t.Fatalf("deprecated value should be true: %s", result)
 	}
 	if !strings.Contains(result, "asia-southeast3-a") {
 		t.Fatalf("zone basename missing: %s", result)
@@ -72,6 +84,9 @@ func TestServiceExecute_StringDiskSizeField_Normal(t *testing.T) {
 
 	if !strings.Contains(result, "c4-standard-16") {
 		t.Fatalf("expected row missing: %s", result)
+	}
+	if !strings.Contains(result, "false") {
+		t.Fatalf("default deprecated value should be false: %s", result)
 	}
 }
 
