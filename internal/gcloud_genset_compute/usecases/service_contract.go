@@ -11,7 +11,9 @@ import (
 	creategceinstancewithstartupscript "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_with_startup_script"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
+	listdisktypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_disk_types"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
+	listmachinetypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_machine_types"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
 	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
@@ -45,6 +47,14 @@ type createGCEIngressSSHFirewallRuleOperation interface {
 
 type listGCloudInstancesOperation interface {
 	Build(params listgcloudinstances.Params) (string, error)
+}
+
+type listDiskTypesOperation interface {
+	Execute(params listdisktypes.Params) (string, error)
+}
+
+type listMachineTypesOperation interface {
+	Execute(params listmachinetypes.Params) (string, error)
 }
 
 type startGCEInstanceOperation interface {
@@ -91,6 +101,8 @@ func newServiceWithOperations(
 	createGCEIAPSSHFirewallRuleOp createGCEIAPSSHFirewallRuleOperation,
 	createGCEIngressSSHFirewallRuleOp createGCEIngressSSHFirewallRuleOperation,
 	listGCloudInstancesOp listGCloudInstancesOperation,
+	listDiskTypesOp listDiskTypesOperation,
+	listMachineTypesOp listMachineTypesOperation,
 	startGCEInstanceOp startGCEInstanceOperation,
 	stopGCEInstanceOp stopGCEInstanceOperation,
 	rebootGCEInstanceOp rebootGCEInstanceOperation,
@@ -109,6 +121,8 @@ func newServiceWithOperations(
 		createGCEIAPSSHFirewallRuleOperation:        createGCEIAPSSHFirewallRuleOp,
 		createGCEIngressSSHFirewallRuleOperation:    createGCEIngressSSHFirewallRuleOp,
 		listGCloudInstancesOperation:                listGCloudInstancesOp,
+		listDiskTypesOperation:                      listDiskTypesOp,
+		listMachineTypesOperation:                   listMachineTypesOp,
 		startGCEInstanceOperation:                   startGCEInstanceOp,
 		stopGCEInstanceOperation:                    stopGCEInstanceOp,
 		rebootGCEInstanceOperation:                  rebootGCEInstanceOp,

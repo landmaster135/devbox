@@ -8,6 +8,7 @@ import (
 // FlagParser はフラグ解析を抽象化するインターフェース。
 type FlagParser interface {
 	StringVar(p *string, name string, value string, usage string)
+	IntVar(p *int, name string, value int, usage string)
 	BoolVar(p *bool, name string, value bool, usage string)
 	Parse() error
 	Args() []string
@@ -28,6 +29,11 @@ func NewStandardFlagParser() *StandardFlagParser {
 // StringVar は文字列フラグを登録する。
 func (s *StandardFlagParser) StringVar(p *string, name string, value string, usage string) {
 	s.flagSet.StringVar(p, name, value, usage)
+}
+
+// IntVar は整数フラグを登録する。
+func (s *StandardFlagParser) IntVar(p *int, name string, value int, usage string) {
+	s.flagSet.IntVar(p, name, value, usage)
 }
 
 // BoolVar は真偽値フラグを登録する。

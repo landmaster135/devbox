@@ -22,11 +22,36 @@ func main() {
 	}
 
 	service := usecases.NewService()
-	command, err := service.BuildCommand(config)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
-	}
+	switch config.Operation {
+	case cfg.OperationListDiskTypes:
+		result, err := service.ExecuteListDiskTypes(usecases.ListDiskTypesParams{
+			Zones:      config.Zones,
+			MinSizeGiB: config.MinSizeGiB,
+			MaxSizeGiB: config.MaxSizeGiB,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(result)
+	case cfg.OperationListMachineTypes:
+		result, err := service.ExecuteListMachineTypes(usecases.ListMachineTypesParams{
+			Zones:      config.Zones,
+			MinSizeGiB: config.MinSizeGiB,
+			MaxSizeGiB: config.MaxSizeGiB,
+		})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println(result)
+	default:
+		command, err := service.BuildCommand(config)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+			os.Exit(1)
+		}
 
-	service.PrintHighlightedCommand(command)
+		service.PrintHighlightedCommand(command)
+	}
 }

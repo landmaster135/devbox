@@ -14,7 +14,9 @@ import (
 	creategceinstancewithstartupscript "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_with_startup_script"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
+	listdisktypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_disk_types"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
+	listmachinetypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_machine_types"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
 	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
@@ -22,7 +24,7 @@ import (
 	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
 )
 
-// Service は GCE 向け gcloud コマンド生成を担当する。
+// Service は GCE 向け操作のコマンド生成と一覧取得を担当する。
 type Service struct {
 	createGCEInstanceOperation                  createGCEInstanceOperation
 	createGCEInstanceWithStartupScriptOperation createGCEInstanceWithStartupScriptOperation
@@ -31,6 +33,8 @@ type Service struct {
 	createGCEIAPSSHFirewallRuleOperation        createGCEIAPSSHFirewallRuleOperation
 	createGCEIngressSSHFirewallRuleOperation    createGCEIngressSSHFirewallRuleOperation
 	listGCloudInstancesOperation                listGCloudInstancesOperation
+	listDiskTypesOperation                      listDiskTypesOperation
+	listMachineTypesOperation                   listMachineTypesOperation
 	startGCEInstanceOperation                   startGCEInstanceOperation
 	stopGCEInstanceOperation                    stopGCEInstanceOperation
 	rebootGCEInstanceOperation                  rebootGCEInstanceOperation
@@ -62,6 +66,12 @@ type CreateGCEIngressSSHFirewallRuleParams = creategceingresssshfirewallrule.Par
 
 // ListGCloudInstancesParams はインスタンス一覧コマンド生成に必要な値。
 type ListGCloudInstancesParams = listgcloudinstances.Params
+
+// ListDiskTypesParams はディスクタイプ一覧取得に必要な値。
+type ListDiskTypesParams = listdisktypes.Params
+
+// ListMachineTypesParams はマシンタイプ一覧取得に必要な値。
+type ListMachineTypesParams = listmachinetypes.Params
 
 // StartGCEInstanceParams はインスタンス起動コマンド生成に必要な値。
 type StartGCEInstanceParams = startgceinstance.Params
@@ -100,6 +110,8 @@ func NewService() *Service {
 		creategceiapsshfirewallrule.NewService(),
 		creategceingresssshfirewallrule.NewService(),
 		listgcloudinstances.NewService(),
+		listdisktypes.NewService(),
+		listmachinetypes.NewService(),
 		startgceinstance.NewService(),
 		stopgceinstance.NewService(),
 		rebootgceinstance.NewService(),
@@ -255,6 +267,16 @@ func (s *Service) BuildCreateGCEIngressSSHFirewallRuleCommand(params CreateGCEIn
 // BuildListGCloudInstancesCommand はインスタンス一覧コマンドを生成する。
 func (s *Service) BuildListGCloudInstancesCommand(params ListGCloudInstancesParams) (string, error) {
 	return s.listGCloudInstancesOperation.Build(params)
+}
+
+// ExecuteListDiskTypes はディスクタイプ一覧の実結果を返す。
+func (s *Service) ExecuteListDiskTypes(params ListDiskTypesParams) (string, error) {
+	return s.listDiskTypesOperation.Execute(params)
+}
+
+// ExecuteListMachineTypes はマシンタイプ一覧の実結果を返す。
+func (s *Service) ExecuteListMachineTypes(params ListMachineTypesParams) (string, error) {
+	return s.listMachineTypesOperation.Execute(params)
 }
 
 // BuildStartGCEInstanceCommand はインスタンス起動コマンドを生成する。

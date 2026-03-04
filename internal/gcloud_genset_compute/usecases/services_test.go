@@ -19,7 +19,9 @@ import (
 	creategceinstancewithstartupscript "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance_with_startup_script"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
+	listdisktypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_disk_types"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
+	listmachinetypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_machine_types"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
 	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
@@ -116,6 +118,32 @@ func (s *listGCloudInstancesOperationStub) Build(params listgcloudinstances.Para
 	s.called = true
 	s.got = params
 	return s.result, s.err
+}
+
+type listDiskTypesOperationStub struct {
+	executeCalled bool
+	executeGot    listdisktypes.Params
+	executeResult string
+	executeErr    error
+}
+
+func (s *listDiskTypesOperationStub) Execute(params listdisktypes.Params) (string, error) {
+	s.executeCalled = true
+	s.executeGot = params
+	return s.executeResult, s.executeErr
+}
+
+type listMachineTypesOperationStub struct {
+	executeCalled bool
+	executeGot    listmachinetypes.Params
+	executeResult string
+	executeErr    error
+}
+
+func (s *listMachineTypesOperationStub) Execute(params listmachinetypes.Params) (string, error) {
+	s.executeCalled = true
+	s.executeGot = params
+	return s.executeResult, s.executeErr
 }
 
 type startGCEInstanceOperationStub struct {
@@ -243,6 +271,8 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	iapSSHOp := &createGCEIAPSSHFirewallRuleOperationStub{result: "iap-ssh-command"}
 	ingressSSHOp := &createGCEIngressSSHFirewallRuleOperationStub{result: "ingress-ssh-command"}
 	listOp := &listGCloudInstancesOperationStub{result: "list-command"}
+	listDiskTypesOp := &listDiskTypesOperationStub{}
+	listMachineTypesOp := &listMachineTypesOperationStub{}
 	startOp := &startGCEInstanceOperationStub{result: "start-command"}
 	stopOp := &stopGCEInstanceOperationStub{result: "stop-command"}
 	rebootOp := &rebootGCEInstanceOperationStub{result: "reboot-command"}
@@ -261,6 +291,8 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 		iapSSHOp,
 		ingressSSHOp,
 		listOp,
+		listDiskTypesOp,
+		listMachineTypesOp,
 		startOp,
 		stopOp,
 		rebootOp,
@@ -514,6 +546,20 @@ func TestServiceBuildCommand_UnknownOperation(t *testing.T) {
 	}
 }
 
+func TestServiceBuildCommand_ListOperationsAreUnsupported(t *testing.T) {
+	service := NewService()
+	tests := []string{
+		cfg.OperationListDiskTypes,
+		cfg.OperationListMachineTypes,
+	}
+
+	for _, operation := range tests {
+		if _, err := service.BuildCommand(&cfg.Config{Operation: operation}); err == nil {
+			t.Fatalf("expected error for operation: %s", operation)
+		}
+	}
+}
+
 func TestServiceBuildCommand_OperationError(t *testing.T) {
 	expectedErr := fmt.Errorf("operation error")
 	service := newServiceWithOperations(
@@ -524,6 +570,8 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 		&createGCEIAPSSHFirewallRuleOperationStub{},
 		&createGCEIngressSSHFirewallRuleOperationStub{},
 		&listGCloudInstancesOperationStub{},
+		&listDiskTypesOperationStub{},
+		&listMachineTypesOperationStub{},
 		&startGCEInstanceOperationStub{},
 		&stopGCEInstanceOperationStub{},
 		&rebootGCEInstanceOperationStub{},
@@ -548,6 +596,84 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 	}
 	if err.Error() != expectedErr.Error() {
 		t.Fatalf("error mismatch:\nexpected: %v\nactual:   %v", expectedErr, err)
+	}
+}
+
+func TestServiceExecuteListDiskTypes_Normal(t *testing.T) {
+	listDiskTypesOp := &listDiskTypesOperationStub{executeResult: "disk-types-result"}
+	service := newServiceWithOperations(
+		&createGCEInstanceOperationStub{},
+		&createGCEInstanceWithStartupScriptOperationStub{},
+		&createGCEInstanceAndConfigureOperationStub{},
+		&createGCERouterAndNATOperationStub{},
+		&createGCEIAPSSHFirewallRuleOperationStub{},
+		&createGCEIngressSSHFirewallRuleOperationStub{},
+		&listGCloudInstancesOperationStub{},
+		listDiskTypesOp,
+		&listMachineTypesOperationStub{},
+		&startGCEInstanceOperationStub{},
+		&stopGCEInstanceOperationStub{},
+		&rebootGCEInstanceOperationStub{},
+		&deleteGCEInstanceOperationStub{},
+		&copyGCESSHKeyOperationStub{},
+		&connectGCEInstanceOperationStub{},
+		&setGCEInstanceMetadataFromYAMLOperationStub{},
+		&addStartupScriptToGCEInstanceOperationStub{},
+		&setupGCEFirewallAndSSHOperationStub{},
+	)
+
+	result, err := service.ExecuteListDiskTypes(ListDiskTypesParams{
+		Zones:      []string{"asia-southeast3-a"},
+		MinSizeGiB: 4,
+		MaxSizeGiB: 65536,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "disk-types-result" {
+		t.Fatalf("result mismatch: %s", result)
+	}
+	if !listDiskTypesOp.executeCalled {
+		t.Fatal("execute was not called")
+	}
+}
+
+func TestServiceExecuteListMachineTypes_Normal(t *testing.T) {
+	listMachineTypesOp := &listMachineTypesOperationStub{executeResult: "machine-types-result"}
+	service := newServiceWithOperations(
+		&createGCEInstanceOperationStub{},
+		&createGCEInstanceWithStartupScriptOperationStub{},
+		&createGCEInstanceAndConfigureOperationStub{},
+		&createGCERouterAndNATOperationStub{},
+		&createGCEIAPSSHFirewallRuleOperationStub{},
+		&createGCEIngressSSHFirewallRuleOperationStub{},
+		&listGCloudInstancesOperationStub{},
+		&listDiskTypesOperationStub{},
+		listMachineTypesOp,
+		&startGCEInstanceOperationStub{},
+		&stopGCEInstanceOperationStub{},
+		&rebootGCEInstanceOperationStub{},
+		&deleteGCEInstanceOperationStub{},
+		&copyGCESSHKeyOperationStub{},
+		&connectGCEInstanceOperationStub{},
+		&setGCEInstanceMetadataFromYAMLOperationStub{},
+		&addStartupScriptToGCEInstanceOperationStub{},
+		&setupGCEFirewallAndSSHOperationStub{},
+	)
+
+	result, err := service.ExecuteListMachineTypes(ListMachineTypesParams{
+		Zones:      []string{"asia-southeast3-a"},
+		MinSizeGiB: 1024,
+		MaxSizeGiB: 65536,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "machine-types-result" {
+		t.Fatalf("result mismatch: %s", result)
+	}
+	if !listMachineTypesOp.executeCalled {
+		t.Fatal("execute was not called")
 	}
 }
 

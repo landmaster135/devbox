@@ -3,9 +3,12 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 )
+
+var zonePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 const (
 	// OperationCreateGCEInstance は VM インスタンス作成コマンドを生成する操作。
@@ -18,6 +21,10 @@ const (
 	OperationCreateGCEIngressSSHFirewallRule = "create-gce-ingress-ssh-firewall-rule"
 	// OperationListGCloudInstances はインスタンス一覧取得コマンドを生成する操作。
 	OperationListGCloudInstances = "list-gcloud-instances"
+	// OperationListDiskTypes はディスクタイプ一覧を取得して表示する操作。
+	OperationListDiskTypes = "list-disk-types"
+	// OperationListMachineTypes はマシンタイプ一覧を取得して表示する操作。
+	OperationListMachineTypes = "list-machine-types"
 	// OperationStartGCEInstance はインスタンス起動コマンドを生成する操作。
 	OperationStartGCEInstance = "start-gce-instance"
 	// OperationStopGCEInstance はインスタンス停止コマンドを生成する操作。
@@ -52,7 +59,9 @@ var validOperations = []string{
 	OperationCreateGCERouterAndNAT,
 	OperationCreateGCEInstanceAndConfigure,
 	OperationCreateGCEInstanceWithStartupScript,
+	OperationListDiskTypes,
 	OperationListGCloudInstances,
+	OperationListMachineTypes,
 	OperationRebootGCEInstance,
 	OperationSetGCEInstanceMetadataFromYAML,
 	OperationSetupGCEFirewallAndSSH,
@@ -115,6 +124,11 @@ type Config struct {
 
 	Filter string
 	Format string
+
+	Zones      []string
+	MinSizeGiB int
+	MaxSizeGiB int
+	zonesRaw   string
 }
 
 // ParseFlags は標準のフラグパーサーで引数を解析する。
@@ -152,6 +166,9 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	parser.StringVar(&cfg.Filter, "filter", "", "インスタンス一覧フィルタ")
 	parser.StringVar(&cfg.Format, "format", "", "インスタンス一覧表示フォーマット")
+	parser.StringVar(&cfg.zonesRaw, "zones", "", "対象ゾーン一覧 (カンマ区切り, 例: asia-southeast3-a,asia-southeast3-b)")
+	parser.IntVar(&cfg.MinSizeGiB, "min-size-gib", 0, "最小ディスクサイズ (GiB)")
+	parser.IntVar(&cfg.MaxSizeGiB, "max-size-gib", 0, "最大ディスクサイズ (GiB)")
 
 	if err := parser.Parse(); err != nil {
 		return nil, fmt.Errorf("フラグの解析に失敗しました: %w", err)
@@ -202,6 +219,26 @@ func normalizeConfig(cfg *Config) {
 	cfg.AllowRule = strings.TrimSpace(cfg.AllowRule)
 	cfg.Filter = strings.TrimSpace(cfg.Filter)
 	cfg.Format = strings.TrimSpace(cfg.Format)
+	cfg.zonesRaw = strings.TrimSpace(cfg.zonesRaw)
+	cfg.Zones = parseCommaSeparatedValues(cfg.zonesRaw)
+}
+
+func parseCommaSeparatedValues(value string) []string {
+	if value == "" {
+		return []string{}
+	}
+
+	parts := strings.Split(value, ",")
+	normalized := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		normalized = append(normalized, trimmed)
+	}
+
+	return normalized
 }
 
 func validateOperation(operation string) error {
@@ -413,6 +450,21 @@ func validateConfig(cfg *Config) error {
 		if cfg.SSHKeyPath == "" {
 			return fmt.Errorf("ssh-key-path は必須です")
 		}
+	case OperationListDiskTypes, OperationListMachineTypes:
+		if cfg.MinSizeGiB < 0 {
+			return fmt.Errorf("min-size-gib は0以上で指定してください")
+		}
+		if cfg.MaxSizeGiB < 0 {
+			return fmt.Errorf("max-size-gib は0以上で指定してください")
+		}
+		if cfg.MinSizeGiB > 0 && cfg.MaxSizeGiB > 0 && cfg.MinSizeGiB > cfg.MaxSizeGiB {
+			return fmt.Errorf("min-size-gib は max-size-gib 以下で指定してください")
+		}
+		for _, zone := range cfg.Zones {
+			if !zonePattern.MatchString(zone) {
+				return fmt.Errorf("zones の値が不正です: %s", zone)
+			}
+		}
 	}
 
 	return nil
@@ -430,7 +482,7 @@ func isValidOperation(operation string) bool {
 // PrintUsage は CLI の利用方法を標準エラーに出力する。
 func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "使用方法: %s [オプション]\n\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "Google Compute Engine 向け gcloud コマンド生成ツール\n\n")
+	fmt.Fprintf(os.Stderr, "Google Compute Engine 向け CLI ツール（操作によりコマンド生成または実行結果表示）\n\n")
 
 	fmt.Fprintf(os.Stderr, "共通パラメータ:\n")
 	fmt.Fprintf(os.Stderr, "  -operation string\n")
@@ -484,6 +536,18 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -filter string\n")
 	fmt.Fprintf(os.Stderr, "  -format string (default: table)\n\n")
 
+	fmt.Fprintf(os.Stderr, "list-disk-types:\n")
+	fmt.Fprintf(os.Stderr, "  -zones string (カンマ区切り)\n")
+	fmt.Fprintf(os.Stderr, "  -min-size-gib int (0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "  -max-size-gib int (0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "        ※ gcloud を実行して一覧結果を表示\n\n")
+
+	fmt.Fprintf(os.Stderr, "list-machine-types:\n")
+	fmt.Fprintf(os.Stderr, "  -zones string (カンマ区切り)\n")
+	fmt.Fprintf(os.Stderr, "  -min-size-gib int (最大永続ディスクサイズの下限, 0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "  -max-size-gib int (最大永続ディスクサイズの上限, 0 で指定なし)\n")
+	fmt.Fprintf(os.Stderr, "        ※ gcloud を実行して一覧結果を表示\n\n")
+
 	fmt.Fprintf(os.Stderr, "start-gce-instance:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
 	fmt.Fprintf(os.Stderr, "  -zone string (必須)\n\n")
@@ -526,6 +590,8 @@ func PrintUsage() {
 
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-gce-instance -instance-name=my-vm -zone=us-central1-a -machine-type=e2-medium\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-disk-types -zones=asia-southeast3-a -min-size-gib=4 -max-size-gib=65536\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-machine-types -zones=asia-southeast3-a,asia-southeast3-b -min-size-gib=100\n", os.Args[0])
 }
 
 func init() {

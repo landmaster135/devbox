@@ -11,8 +11,10 @@ import (
 
 type mockFlagParser struct {
 	stringVars   map[string]*string
+	intVars      map[string]*int
 	boolVars     map[string]*bool
 	stringValues map[string]string
+	intValues    map[string]int
 	boolValues   map[string]bool
 	args         []string
 	parseErr     error
@@ -21,8 +23,10 @@ type mockFlagParser struct {
 func newMockFlagParser() *mockFlagParser {
 	return &mockFlagParser{
 		stringVars:   make(map[string]*string),
+		intVars:      make(map[string]*int),
 		boolVars:     make(map[string]*bool),
 		stringValues: make(map[string]string),
+		intValues:    make(map[string]int),
 		boolValues:   make(map[string]bool),
 	}
 }
@@ -45,6 +49,15 @@ func (m *mockFlagParser) BoolVar(p *bool, name string, value bool, usage string)
 	m.boolVars[name] = p
 }
 
+func (m *mockFlagParser) IntVar(p *int, name string, value int, usage string) {
+	if preset, ok := m.intValues[name]; ok {
+		*p = preset
+	} else {
+		*p = value
+	}
+	m.intVars[name] = p
+}
+
 func (m *mockFlagParser) Parse() error   { return m.parseErr }
 func (m *mockFlagParser) Args() []string { return m.args }
 
@@ -58,6 +71,13 @@ func (m *mockFlagParser) setString(name, value string) {
 func (m *mockFlagParser) setBool(name string, value bool) {
 	m.boolValues[name] = value
 	if ptr, ok := m.boolVars[name]; ok {
+		*ptr = value
+	}
+}
+
+func (m *mockFlagParser) setInt(name string, value int) {
+	m.intValues[name] = value
+	if ptr, ok := m.intVars[name]; ok {
 		*ptr = value
 	}
 }
@@ -191,6 +211,54 @@ func TestParseFlagsWithParser_ListInstancesDefaultFormat_Normal(t *testing.T) {
 
 	if cfg.Format != defaultInstanceListFormat {
 		t.Fatalf("format mismatch: %s", cfg.Format)
+	}
+}
+
+func TestParseFlagsWithParser_ListDiskTypes_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationListDiskTypes)
+	parser.setString("zones", " asia-southeast3-a , asia-southeast3-b ")
+	parser.setInt("min-size-gib", 4)
+	parser.setInt("max-size-gib", 65536)
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Zones) != 2 {
+		t.Fatalf("zones length mismatch: %v", cfg.Zones)
+	}
+	if cfg.Zones[0] != "asia-southeast3-a" || cfg.Zones[1] != "asia-southeast3-b" {
+		t.Fatalf("zones mismatch: %v", cfg.Zones)
+	}
+	if cfg.MinSizeGiB != 4 {
+		t.Fatalf("min-size-gib mismatch: %d", cfg.MinSizeGiB)
+	}
+	if cfg.MaxSizeGiB != 65536 {
+		t.Fatalf("max-size-gib mismatch: %d", cfg.MaxSizeGiB)
+	}
+}
+
+func TestParseFlagsWithParser_ListMachineTypes_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationListMachineTypes)
+	parser.setString("zones", "asia-southeast3-a")
+	parser.setInt("min-size-gib", 1024)
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(cfg.Zones) != 1 || cfg.Zones[0] != "asia-southeast3-a" {
+		t.Fatalf("zones mismatch: %v", cfg.Zones)
+	}
+	if cfg.MinSizeGiB != 1024 {
+		t.Fatalf("min-size-gib mismatch: %d", cfg.MinSizeGiB)
+	}
+	if cfg.MaxSizeGiB != 0 {
+		t.Fatalf("max-size-gib mismatch: %d", cfg.MaxSizeGiB)
 	}
 }
 
@@ -468,6 +536,36 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 		}
 	})
 
+	t.Run("list operations validate size range", func(t *testing.T) {
+		t.Run("list disk types min greater than max", func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", OperationListDiskTypes)
+			parser.setInt("min-size-gib", 200)
+			parser.setInt("max-size-gib", 100)
+			if _, err := ParseFlagsWithParser(parser); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+
+		t.Run("list machine types negative min", func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", OperationListMachineTypes)
+			parser.setInt("min-size-gib", -1)
+			if _, err := ParseFlagsWithParser(parser); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+
+		t.Run("list disk types invalid zone", func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", OperationListDiskTypes)
+			parser.setString("zones", "asia-southeast3-a,asia_southeast3_b")
+			if _, err := ParseFlagsWithParser(parser); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+	})
+
 	t.Run("reject positional args", func(t *testing.T) {
 		parser := newMockFlagParser()
 		parser.setString("operation", OperationListGCloudInstances)
@@ -522,21 +620,23 @@ func TestParseFlags_StandardParser(t *testing.T) {
 
 func TestStandardFlagParser(t *testing.T) {
 	originalArgs := os.Args
-	os.Args = []string{"cmd", "-string=value", "-bool", "extra"}
+	os.Args = []string{"cmd", "-string=value", "-int=7", "-bool", "extra"}
 	defer func() { os.Args = originalArgs }()
 
 	parser := NewStandardFlagParser()
 	var str string
+	var i int
 	var b bool
 
 	parser.StringVar(&str, "string", "default", "")
+	parser.IntVar(&i, "int", 0, "")
 	parser.BoolVar(&b, "bool", false, "")
 
 	if err := parser.Parse(); err != nil {
 		t.Fatalf("unexpected parse error: %v", err)
 	}
-	if str != "value" || !b {
-		t.Fatalf("unexpected parsed values: str=%s bool=%v", str, b)
+	if str != "value" || i != 7 || !b {
+		t.Fatalf("unexpected parsed values: str=%s int=%d bool=%v", str, i, b)
 	}
 	args := parser.Args()
 	if len(args) != 1 || args[0] != "extra" {
@@ -574,6 +674,8 @@ func TestPrintUsage(t *testing.T) {
 		"create-gce-instance-and-configure",
 		"create-gce-router-and-nat",
 		"list-gcloud-instances",
+		"list-disk-types",
+		"list-machine-types",
 		"start-gce-instance",
 		"stop-gce-instance",
 		"reboot-gce-instance",

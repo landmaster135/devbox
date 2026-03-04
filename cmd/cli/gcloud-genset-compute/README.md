@@ -1,6 +1,7 @@
 # Gcloud Genset Compute CLI
 
-Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツールです。コマンドは実行せず、標準出力へ表示します。
+Google Compute Engine 向けの CLI ツールです。  
+基本操作は `gcloud` コマンドを生成して表示し、`list-disk-types` / `list-machine-types` は `gcloud` を実行して結果を直接表示します。
 
 ## サポートする操作
 
@@ -13,6 +14,8 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `create-gce-iap-ssh-firewall-rule` | IAP SSH 用 firewall rule 作成コマンドを生成 |
 | `create-gce-ingress-ssh-firewall-rule` | VPC 内 SSH 用 firewall rule 作成コマンドを生成 |
 | `list-gcloud-instances` | インスタンス一覧取得コマンドを生成 |
+| `list-disk-types` | ディスクタイプ一覧を取得して表示（サイズ条件付き絞り込み対応） |
+| `list-machine-types` | マシンタイプ一覧を取得して表示（最大永続ディスクサイズ条件付き絞り込み対応） |
 | `start-gce-instance` | インスタンス起動コマンドを生成 |
 | `stop-gce-instance` | インスタンス停止コマンドを生成 |
 | `reboot-gce-instance` | インスタンス再起動コマンドを生成 |
@@ -98,6 +101,24 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 |---|---|---|---|
 | `-filter` | 任意 | なし | 一覧絞り込み条件 |
 | `-format` | 任意 | table形式 | 出力形式 |
+
+### list-disk-types
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-zones` | 任意 | なし | 対象ゾーン（カンマ区切り） |
+| `-min-size-gib` | 任意 | `0` | 必要な最小ディスクサイズ（GiB） |
+| `-max-size-gib` | 任意 | `0` | 必要な最大ディスクサイズ（GiB） |
+
+`-min-size-gib` と `-max-size-gib` を同時指定した場合、指定レンジ全体を扱える disk type のみを抽出するコマンドを生成します。
+
+### list-machine-types
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-zones` | 任意 | なし | 対象ゾーン（カンマ区切り） |
+| `-min-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の下限 |
+| `-max-size-gib` | 任意 | `0` | `maximumPersistentDisksSizeGb` の上限 |
 
 ### start-gce-instance
 
@@ -206,6 +227,48 @@ go run ./cmd/cli/gcloud-genset-compute \
 ==============================
 gcloud compute instances list --filter='zone:us-central1-a' --format='table(name, zone.basename(), scheduling.preemptible.yesno(yes=true, no='"'"''), networkInterfaces.internal_ip():label=INTERNAL_IP, external_ip():label=EXTERNAL_IP, status)'
 ==============================
+```
+
+### ディスクタイプ一覧取得（サイズ条件付き）
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=list-disk-types \
+  -zones=asia-southeast3-a \
+  -min-size-gib=4 \
+  -max-size-gib=65536
+```
+
+出力例:
+
+```text
+NAME                  ZONE               VALID_DISK_SIZES
+hyperdisk-balanced    asia-southeast3-a  4GB-65536GB
+hyperdisk-extreme     asia-southeast3-a  64GB-65536GB
+hyperdisk-ml          asia-southeast3-a  4GB-65536GB
+hyperdisk-throughput  asia-southeast3-a  2048GB-32768GB
+local-ssd             asia-southeast3-a  375GB-375GB
+pd-balanced           asia-southeast3-a  10GB-65536GB
+pd-extreme            asia-southeast3-a  500GB-65536GB
+pd-ssd                asia-southeast3-a  10GB-65536GB
+pd-standard           asia-southeast3-a  10GB-65536GB
+```
+
+### マシンタイプ一覧取得（サイズ条件付き）
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=list-machine-types \
+  -zones=asia-southeast3-a,asia-southeast3-b \
+  -min-size-gib=1024 \
+  -max-size-gib=65536
+```
+
+出力例:
+
+```text
+NAME         ZONE               GUEST_CPUS  MEMORY_MB  MAX_PERSISTENT_DISKS_SIZE_GB
+c3-highmem-4 asia-southeast3-a  4           32768      65536
 ```
 
 ### インスタンス起動コマンド生成
