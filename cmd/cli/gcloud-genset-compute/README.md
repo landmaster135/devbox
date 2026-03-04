@@ -289,6 +289,23 @@ gcloud compute instances add-metadata 'my-vm' --zone='us-central1-a' --metadata-
 ==============================
 ```
 
+## startup-script 処理時間
+
+下記は実際の通知履歴を元に算出した実測値です。目安としてください。
+
+| 対応処理 | 各工程の所要時間 |
+|---|---|
+| カスタム metadata 反映 | 0分 |
+| startup-script 開始通知 | 0分 |
+| デスクトップ環境設定 | 7分 |
+| Chrome Remote Desktop 設定完了通知 | 0分 |
+| ロケール設定 | 1分 |
+| タイムゾーン設定 | 0分 |
+| IME 設定 | 1分 |
+| 開発リソース設定 | 0分 |
+| VSCode 設定 | 1分 |
+| startup-script 全体完了通知 | 0分 |
+
 ## エラー例
 
 ```bash
