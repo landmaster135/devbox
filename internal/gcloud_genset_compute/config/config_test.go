@@ -177,6 +177,39 @@ func TestParseFlagsWithParser_IngressFirewallDefaults_Normal(t *testing.T) {
 	}
 }
 
+func TestParseFlagsWithParser_InstanceLifecycleOperations_Normal(t *testing.T) {
+	tests := []struct {
+		name      string
+		operation string
+	}{
+		{name: "start", operation: OperationStartGCEInstance},
+		{name: "stop", operation: OperationStopGCEInstance},
+		{name: "reboot", operation: OperationRebootGCEInstance},
+		{name: "delete", operation: OperationDeleteGCEInstance},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := newMockFlagParser()
+			parser.setString("operation", tt.operation)
+			parser.setString("instance-name", " vm-1 ")
+			parser.setString("zone", " us-central1-a ")
+
+			cfg, err := ParseFlagsWithParser(parser)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if cfg.InstanceName != "vm-1" {
+				t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+			}
+			if cfg.Zone != "us-central1-a" {
+				t.Fatalf("zone mismatch: %s", cfg.Zone)
+			}
+		})
+	}
+}
+
 func TestParseFlagsWithParser_Errors(t *testing.T) {
 	t.Run("missing operation", func(t *testing.T) {
 		parser := newMockFlagParser()
@@ -206,6 +239,42 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 		parser.setString("operation", OperationCreateGCERouterAndNAT)
 		if _, err := ParseFlagsWithParser(parser); err == nil {
 			t.Fatal("expected error when router-name is missing")
+		}
+	})
+
+	t.Run("instance lifecycle operations require instance-name and zone", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			operation string
+			zone      string
+		}{
+			{name: "start missing instance-name", operation: OperationStartGCEInstance, zone: "us-central1-a"},
+			{name: "stop missing instance-name", operation: OperationStopGCEInstance, zone: "us-central1-a"},
+			{name: "reboot missing instance-name", operation: OperationRebootGCEInstance, zone: "us-central1-a"},
+			{name: "delete missing instance-name", operation: OperationDeleteGCEInstance, zone: "us-central1-a"},
+			{name: "start missing zone", operation: OperationStartGCEInstance},
+			{name: "stop missing zone", operation: OperationStopGCEInstance},
+			{name: "reboot missing zone", operation: OperationRebootGCEInstance},
+			{name: "delete missing zone", operation: OperationDeleteGCEInstance},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				parser := newMockFlagParser()
+				parser.setString("operation", tt.operation)
+				parser.setString("instance-name", "vm-1")
+				if tt.zone != "" {
+					parser.setString("zone", tt.zone)
+				}
+
+				if strings.Contains(tt.name, "missing instance-name") {
+					parser.setString("instance-name", "")
+				}
+
+				if _, err := ParseFlagsWithParser(parser); err == nil {
+					t.Fatal("expected validation error")
+				}
+			})
 		}
 	})
 
@@ -313,6 +382,10 @@ func TestPrintUsage(t *testing.T) {
 		"create-gce-instance",
 		"create-gce-router-and-nat",
 		"list-gcloud-instances",
+		"start-gce-instance",
+		"stop-gce-instance",
+		"reboot-gce-instance",
+		"delete-gce-instance",
 	}
 	for _, keyword := range keywords {
 		if !strings.Contains(output, keyword) {

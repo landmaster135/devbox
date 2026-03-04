@@ -13,7 +13,11 @@ import (
 	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
 	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
+	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
+	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
+	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
 )
 
 type createGCEInstanceOperationStub struct {
@@ -81,14 +85,70 @@ func (s *listGCloudInstancesOperationStub) Build(params listgcloudinstances.Para
 	return s.result, s.err
 }
 
+type startGCEInstanceOperationStub struct {
+	called bool
+	got    startgceinstance.Params
+	result string
+	err    error
+}
+
+func (s *startGCEInstanceOperationStub) Build(params startgceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type stopGCEInstanceOperationStub struct {
+	called bool
+	got    stopgceinstance.Params
+	result string
+	err    error
+}
+
+func (s *stopGCEInstanceOperationStub) Build(params stopgceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type rebootGCEInstanceOperationStub struct {
+	called bool
+	got    rebootgceinstance.Params
+	result string
+	err    error
+}
+
+func (s *rebootGCEInstanceOperationStub) Build(params rebootgceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type deleteGCEInstanceOperationStub struct {
+	called bool
+	got    deletegceinstance.Params
+	result string
+	err    error
+}
+
+func (s *deleteGCEInstanceOperationStub) Build(params deletegceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
 func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	instanceOp := &createGCEInstanceOperationStub{result: "instance-command"}
 	routerNATOp := &createGCERouterAndNATOperationStub{result: "router-nat-command"}
 	iapSSHOp := &createGCEIAPSSHFirewallRuleOperationStub{result: "iap-ssh-command"}
 	ingressSSHOp := &createGCEIngressSSHFirewallRuleOperationStub{result: "ingress-ssh-command"}
 	listOp := &listGCloudInstancesOperationStub{result: "list-command"}
+	startOp := &startGCEInstanceOperationStub{result: "start-command"}
+	stopOp := &stopGCEInstanceOperationStub{result: "stop-command"}
+	rebootOp := &rebootGCEInstanceOperationStub{result: "reboot-command"}
+	deleteOp := &deleteGCEInstanceOperationStub{result: "delete-command"}
 
-	service := newServiceWithOperations(instanceOp, routerNATOp, iapSSHOp, ingressSSHOp, listOp)
+	service := newServiceWithOperations(instanceOp, routerNATOp, iapSSHOp, ingressSSHOp, listOp, startOp, stopOp, rebootOp, deleteOp)
 
 	tests := []struct {
 		name     string
@@ -149,6 +209,42 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 			},
 			expected: "list-command",
 		},
+		{
+			name: "start-gce-instance",
+			config: &cfg.Config{
+				Operation:    cfg.OperationStartGCEInstance,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+			},
+			expected: "start-command",
+		},
+		{
+			name: "stop-gce-instance",
+			config: &cfg.Config{
+				Operation:    cfg.OperationStopGCEInstance,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+			},
+			expected: "stop-command",
+		},
+		{
+			name: "reboot-gce-instance",
+			config: &cfg.Config{
+				Operation:    cfg.OperationRebootGCEInstance,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+			},
+			expected: "reboot-command",
+		},
+		{
+			name: "delete-gce-instance",
+			config: &cfg.Config{
+				Operation:    cfg.OperationDeleteGCEInstance,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+			},
+			expected: "delete-command",
+		},
 	}
 
 	for _, tt := range tests {
@@ -178,6 +274,18 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	if !listOp.called {
 		t.Fatal("list operation was not called")
 	}
+	if !startOp.called {
+		t.Fatal("start operation was not called")
+	}
+	if !stopOp.called {
+		t.Fatal("stop operation was not called")
+	}
+	if !rebootOp.called {
+		t.Fatal("reboot operation was not called")
+	}
+	if !deleteOp.called {
+		t.Fatal("delete operation was not called")
+	}
 }
 
 func TestServiceBuildCommand_UnknownOperation(t *testing.T) {
@@ -195,6 +303,10 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 		&createGCEIAPSSHFirewallRuleOperationStub{},
 		&createGCEIngressSSHFirewallRuleOperationStub{},
 		&listGCloudInstancesOperationStub{},
+		&startGCEInstanceOperationStub{},
+		&stopGCEInstanceOperationStub{},
+		&rebootGCEInstanceOperationStub{},
+		&deleteGCEInstanceOperationStub{},
 	)
 
 	_, err := service.BuildCommand(&cfg.Config{

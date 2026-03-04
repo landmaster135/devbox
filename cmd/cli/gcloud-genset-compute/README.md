@@ -11,6 +11,10 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `create-gce-iap-ssh-firewall-rule` | IAP SSH 用 firewall rule 作成コマンドを生成 |
 | `create-gce-ingress-ssh-firewall-rule` | VPC 内 SSH 用 firewall rule 作成コマンドを生成 |
 | `list-gcloud-instances` | インスタンス一覧取得コマンドを生成 |
+| `start-gce-instance` | インスタンス起動コマンドを生成 |
+| `stop-gce-instance` | インスタンス停止コマンドを生成 |
+| `reboot-gce-instance` | インスタンス再起動コマンドを生成 |
+| `delete-gce-instance` | インスタンス削除コマンドを生成 |
 
 ## フラグ一覧
 
@@ -65,6 +69,34 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `-filter` | 任意 | なし | 一覧絞り込み条件 |
 | `-format` | 任意 | table形式 | 出力形式 |
 
+### start-gce-instance
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | 起動するインスタンス名 |
+| `-zone` | 必須 | なし | ゾーン |
+
+### stop-gce-instance
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | 停止するインスタンス名 |
+| `-zone` | 必須 | なし | ゾーン |
+
+### reboot-gce-instance
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | 再起動するインスタンス名 |
+| `-zone` | 必須 | なし | ゾーン |
+
+### delete-gce-instance
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | 削除するインスタンス名 |
+| `-zone` | 必須 | なし | ゾーン |
+
 ## 使用例
 
 ### VM 作成コマンド生成
@@ -102,6 +134,44 @@ go run ./cmd/cli/gcloud-genset-compute \
 生成された gcloud コマンド
 ==============================
 gcloud compute instances list --filter='zone:us-central1-a' --format='table(name, zone.basename(), scheduling.preemptible.yesno(yes=true, no='"'"''), networkInterfaces.internal_ip():label=INTERNAL_IP, external_ip():label=EXTERNAL_IP, status)'
+==============================
+```
+
+### インスタンス起動コマンド生成
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=start-gce-instance \
+  -instance-name=my-vm \
+  -zone=us-central1-a
+```
+
+出力例:
+
+```bash
+==============================
+生成された gcloud コマンド
+==============================
+gcloud compute instances start 'my-vm' --zone='us-central1-a'
+==============================
+```
+
+### インスタンス削除コマンド生成
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=delete-gce-instance \
+  -instance-name=my-vm \
+  -zone=us-central1-a
+```
+
+出力例:
+
+```bash
+==============================
+生成された gcloud コマンド
+==============================
+gcloud compute instances delete 'my-vm' --zone='us-central1-a' --quiet
 ==============================
 ```
 

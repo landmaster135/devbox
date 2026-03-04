@@ -18,14 +18,26 @@ const (
 	OperationCreateGCEIngressSSHFirewallRule = "create-gce-ingress-ssh-firewall-rule"
 	// OperationListGCloudInstances はインスタンス一覧取得コマンドを生成する操作。
 	OperationListGCloudInstances = "list-gcloud-instances"
+	// OperationStartGCEInstance はインスタンス起動コマンドを生成する操作。
+	OperationStartGCEInstance = "start-gce-instance"
+	// OperationStopGCEInstance はインスタンス停止コマンドを生成する操作。
+	OperationStopGCEInstance = "stop-gce-instance"
+	// OperationRebootGCEInstance はインスタンス再起動コマンドを生成する操作。
+	OperationRebootGCEInstance = "reboot-gce-instance"
+	// OperationDeleteGCEInstance はインスタンス削除コマンドを生成する操作。
+	OperationDeleteGCEInstance = "delete-gce-instance"
 )
 
 var validOperations = []string{
+	OperationDeleteGCEInstance,
 	OperationCreateGCEIngressSSHFirewallRule,
 	OperationCreateGCEIAPSSHFirewallRule,
 	OperationCreateGCEInstance,
 	OperationCreateGCERouterAndNAT,
 	OperationListGCloudInstances,
+	OperationRebootGCEInstance,
+	OperationStartGCEInstance,
+	OperationStopGCEInstance,
 }
 
 const (
@@ -239,6 +251,13 @@ func validateConfig(cfg *Config) error {
 		if cfg.RouterName == "" {
 			return fmt.Errorf("router-name は必須です")
 		}
+	case OperationStartGCEInstance, OperationStopGCEInstance, OperationRebootGCEInstance, OperationDeleteGCEInstance:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
 	}
 
 	return nil
@@ -292,6 +311,22 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "list-gcloud-instances:\n")
 	fmt.Fprintf(os.Stderr, "  -filter string\n")
 	fmt.Fprintf(os.Stderr, "  -format string (default: table)\n\n")
+
+	fmt.Fprintf(os.Stderr, "start-gce-instance:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (必須)\n\n")
+
+	fmt.Fprintf(os.Stderr, "stop-gce-instance:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (必須)\n\n")
+
+	fmt.Fprintf(os.Stderr, "reboot-gce-instance:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (必須)\n\n")
+
+	fmt.Fprintf(os.Stderr, "delete-gce-instance:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (必須)\n\n")
 
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-gce-instance -instance-name=my-vm -zone=us-central1-a -machine-type=e2-medium\n", os.Args[0])

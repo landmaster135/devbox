@@ -8,7 +8,11 @@ import (
 	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
 	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
 	creategcerouterandnat "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_router_and_nat"
+	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
+	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
+	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
 )
 
 // Service は GCE 向け gcloud コマンド生成を担当する。
@@ -18,6 +22,10 @@ type Service struct {
 	createGCEIAPSSHFirewallRuleOperation     createGCEIAPSSHFirewallRuleOperation
 	createGCEIngressSSHFirewallRuleOperation createGCEIngressSSHFirewallRuleOperation
 	listGCloudInstancesOperation             listGCloudInstancesOperation
+	startGCEInstanceOperation                startGCEInstanceOperation
+	stopGCEInstanceOperation                 stopGCEInstanceOperation
+	rebootGCEInstanceOperation               rebootGCEInstanceOperation
+	deleteGCEInstanceOperation               deleteGCEInstanceOperation
 }
 
 // CreateGCEInstanceParams はインスタンス作成コマンド生成に必要な値。
@@ -35,6 +43,18 @@ type CreateGCEIngressSSHFirewallRuleParams = creategceingresssshfirewallrule.Par
 // ListGCloudInstancesParams はインスタンス一覧コマンド生成に必要な値。
 type ListGCloudInstancesParams = listgcloudinstances.Params
 
+// StartGCEInstanceParams はインスタンス起動コマンド生成に必要な値。
+type StartGCEInstanceParams = startgceinstance.Params
+
+// StopGCEInstanceParams はインスタンス停止コマンド生成に必要な値。
+type StopGCEInstanceParams = stopgceinstance.Params
+
+// RebootGCEInstanceParams はインスタンス再起動コマンド生成に必要な値。
+type RebootGCEInstanceParams = rebootgceinstance.Params
+
+// DeleteGCEInstanceParams はインスタンス削除コマンド生成に必要な値。
+type DeleteGCEInstanceParams = deletegceinstance.Params
+
 // NewService は Service のインスタンスを返す。
 func NewService() *Service {
 	return newServiceWithOperations(
@@ -43,6 +63,10 @@ func NewService() *Service {
 		creategceiapsshfirewallrule.NewService(),
 		creategceingresssshfirewallrule.NewService(),
 		listgcloudinstances.NewService(),
+		startgceinstance.NewService(),
+		stopgceinstance.NewService(),
+		rebootgceinstance.NewService(),
+		deletegceinstance.NewService(),
 	)
 }
 
@@ -83,6 +107,26 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 			Filter: conf.Filter,
 			Format: conf.Format,
 		})
+	case cfg.OperationStartGCEInstance:
+		return s.BuildStartGCEInstanceCommand(StartGCEInstanceParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+		})
+	case cfg.OperationStopGCEInstance:
+		return s.BuildStopGCEInstanceCommand(StopGCEInstanceParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+		})
+	case cfg.OperationRebootGCEInstance:
+		return s.BuildRebootGCEInstanceCommand(RebootGCEInstanceParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+		})
+	case cfg.OperationDeleteGCEInstance:
+		return s.BuildDeleteGCEInstanceCommand(DeleteGCEInstanceParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+		})
 	default:
 		return "", fmt.Errorf("未対応のoperationです: %s", conf.Operation)
 	}
@@ -111,6 +155,26 @@ func (s *Service) BuildCreateGCEIngressSSHFirewallRuleCommand(params CreateGCEIn
 // BuildListGCloudInstancesCommand はインスタンス一覧コマンドを生成する。
 func (s *Service) BuildListGCloudInstancesCommand(params ListGCloudInstancesParams) (string, error) {
 	return s.listGCloudInstancesOperation.Build(params)
+}
+
+// BuildStartGCEInstanceCommand はインスタンス起動コマンドを生成する。
+func (s *Service) BuildStartGCEInstanceCommand(params StartGCEInstanceParams) (string, error) {
+	return s.startGCEInstanceOperation.Build(params)
+}
+
+// BuildStopGCEInstanceCommand はインスタンス停止コマンドを生成する。
+func (s *Service) BuildStopGCEInstanceCommand(params StopGCEInstanceParams) (string, error) {
+	return s.stopGCEInstanceOperation.Build(params)
+}
+
+// BuildRebootGCEInstanceCommand はインスタンス再起動コマンドを生成する。
+func (s *Service) BuildRebootGCEInstanceCommand(params RebootGCEInstanceParams) (string, error) {
+	return s.rebootGCEInstanceOperation.Build(params)
+}
+
+// BuildDeleteGCEInstanceCommand はインスタンス削除コマンドを生成する。
+func (s *Service) BuildDeleteGCEInstanceCommand(params DeleteGCEInstanceParams) (string, error) {
+	return s.deleteGCEInstanceOperation.Build(params)
 }
 
 // PrintHighlightedCommand は生成されたコマンドを見やすい形式で出力する。
