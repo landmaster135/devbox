@@ -15,6 +15,9 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `stop-gce-instance` | インスタンス停止コマンドを生成 |
 | `reboot-gce-instance` | インスタンス再起動コマンドを生成 |
 | `delete-gce-instance` | インスタンス削除コマンドを生成 |
+| `copy-gce-ssh-key` | SSH 秘密鍵を `/tmp` へコピーするコマンドを生成 |
+| `connect-gce-instance` | IAP トンネル経由の SSH 接続コマンドを生成 |
+| `setup-gce-firewall-and-ssh` | firewall 作成 + SSH 鍵コピー + SSH 接続の複合コマンドを生成 |
 
 ## フラグ一覧
 
@@ -97,6 +100,31 @@ Google Compute Engine 向けの `gcloud` コマンドを生成する CLI ツー�
 | `-instance-name` | 必須 | なし | 削除するインスタンス名 |
 | `-zone` | 必須 | なし | ゾーン |
 
+### copy-gce-ssh-key
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | 鍵コピー対象のインスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-ssh-key-path` | 任意 | `$HOME/.ssh/google_compute_engine` | コピーする秘密鍵パス |
+
+### connect-gce-instance
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | SSH 接続対象のインスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+
+### setup-gce-firewall-and-ssh
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | セットアップ対象のインスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-ssh-key-path` | 任意 | `$HOME/.ssh/google_compute_engine` | コピーする秘密鍵パス |
+
+firewall rule 名には実行時刻のサフィックス `YYMMDD-hhmmss` が付与されます。
+
 ## 使用例
 
 ### VM 作成コマンド生成
@@ -172,6 +200,29 @@ go run ./cmd/cli/gcloud-genset-compute \
 生成された gcloud コマンド
 ==============================
 gcloud compute instances delete 'my-vm' --zone='us-central1-a' --quiet
+==============================
+```
+
+### firewall作成 + SSHセットアップコマンド生成
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=setup-gce-firewall-and-ssh \
+  -instance-name=my-vm \
+  -zone=us-central1-a
+```
+
+出力例:
+
+```bash
+==============================
+生成された gcloud コマンド
+==============================
+if [ -z "${SSH_AUTH_SOCK:-}" ]; then eval "$(ssh-agent -s)" >/dev/null; fi && ssh-add "$HOME/.ssh/google_compute_engine" && \
+gcloud compute firewall-rules create 'allow-ssh-ingress-from-iap-260304-131645' --direction='INGRESS' --action='allow' --rules='tcp:22' --source-ranges='35.235.240.0/20' && \
+gcloud compute firewall-rules create 'allow-ingress-ssh-260304-131645' --allow='tcp:22' --source-ranges='10.0.0.0/8' && \
+gcloud compute scp "$HOME/.ssh/google_compute_engine" 'my-vm:/tmp' --zone='us-central1-a' --tunnel-through-iap && \
+gcloud compute ssh 'my-vm' --zone='us-central1-a' --tunnel-through-iap
 ==============================
 ```
 

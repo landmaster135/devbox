@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_compute/config"
+	connectgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/connect_gce_instance"
+	copygcesshkey "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/copy_gce_ssh_key"
 	creategceiapsshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_iap_ssh_firewall_rule"
 	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
 	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
@@ -16,6 +18,7 @@ import (
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
 	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
 )
@@ -137,6 +140,45 @@ func (s *deleteGCEInstanceOperationStub) Build(params deletegceinstance.Params) 
 	return s.result, s.err
 }
 
+type copyGCESSHKeyOperationStub struct {
+	called bool
+	got    copygcesshkey.Params
+	result string
+	err    error
+}
+
+func (s *copyGCESSHKeyOperationStub) Build(params copygcesshkey.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type connectGCEInstanceOperationStub struct {
+	called bool
+	got    connectgceinstance.Params
+	result string
+	err    error
+}
+
+func (s *connectGCEInstanceOperationStub) Build(params connectgceinstance.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
+type setupGCEFirewallAndSSHOperationStub struct {
+	called bool
+	got    setupgcefirewallandssh.Params
+	result string
+	err    error
+}
+
+func (s *setupGCEFirewallAndSSHOperationStub) Build(params setupgcefirewallandssh.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
 func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	instanceOp := &createGCEInstanceOperationStub{result: "instance-command"}
 	routerNATOp := &createGCERouterAndNATOperationStub{result: "router-nat-command"}
@@ -147,8 +189,11 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	stopOp := &stopGCEInstanceOperationStub{result: "stop-command"}
 	rebootOp := &rebootGCEInstanceOperationStub{result: "reboot-command"}
 	deleteOp := &deleteGCEInstanceOperationStub{result: "delete-command"}
+	copySSHKeyOp := &copyGCESSHKeyOperationStub{result: "copy-ssh-key-command"}
+	connectOp := &connectGCEInstanceOperationStub{result: "connect-command"}
+	setupOp := &setupGCEFirewallAndSSHOperationStub{result: "setup-command"}
 
-	service := newServiceWithOperations(instanceOp, routerNATOp, iapSSHOp, ingressSSHOp, listOp, startOp, stopOp, rebootOp, deleteOp)
+	service := newServiceWithOperations(instanceOp, routerNATOp, iapSSHOp, ingressSSHOp, listOp, startOp, stopOp, rebootOp, deleteOp, copySSHKeyOp, connectOp, setupOp)
 
 	tests := []struct {
 		name     string
@@ -245,6 +290,35 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 			},
 			expected: "delete-command",
 		},
+		{
+			name: "copy-gce-ssh-key",
+			config: &cfg.Config{
+				Operation:    cfg.OperationCopyGCESSHKey,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+				SSHKeyPath:   "$HOME/.ssh/google_compute_engine",
+			},
+			expected: "copy-ssh-key-command",
+		},
+		{
+			name: "connect-gce-instance",
+			config: &cfg.Config{
+				Operation:    cfg.OperationConnectGCEInstance,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+			},
+			expected: "connect-command",
+		},
+		{
+			name: "setup-gce-firewall-and-ssh",
+			config: &cfg.Config{
+				Operation:    cfg.OperationSetupGCEFirewallAndSSH,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+				SSHKeyPath:   "$HOME/.ssh/google_compute_engine",
+			},
+			expected: "setup-command",
+		},
 	}
 
 	for _, tt := range tests {
@@ -286,6 +360,15 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	if !deleteOp.called {
 		t.Fatal("delete operation was not called")
 	}
+	if !copySSHKeyOp.called {
+		t.Fatal("copy ssh key operation was not called")
+	}
+	if !connectOp.called {
+		t.Fatal("connect operation was not called")
+	}
+	if !setupOp.called {
+		t.Fatal("setup operation was not called")
+	}
 }
 
 func TestServiceBuildCommand_UnknownOperation(t *testing.T) {
@@ -307,6 +390,9 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 		&stopGCEInstanceOperationStub{},
 		&rebootGCEInstanceOperationStub{},
 		&deleteGCEInstanceOperationStub{},
+		&copyGCESSHKeyOperationStub{},
+		&connectGCEInstanceOperationStub{},
+		&setupGCEFirewallAndSSHOperationStub{},
 	)
 
 	_, err := service.BuildCommand(&cfg.Config{

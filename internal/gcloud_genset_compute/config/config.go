@@ -26,9 +26,17 @@ const (
 	OperationRebootGCEInstance = "reboot-gce-instance"
 	// OperationDeleteGCEInstance はインスタンス削除コマンドを生成する操作。
 	OperationDeleteGCEInstance = "delete-gce-instance"
+	// OperationCopyGCESSHKey は SSH 鍵コピーコマンドを生成する操作。
+	OperationCopyGCESSHKey = "copy-gce-ssh-key"
+	// OperationConnectGCEInstance はインスタンス SSH 接続コマンドを生成する操作。
+	OperationConnectGCEInstance = "connect-gce-instance"
+	// OperationSetupGCEFirewallAndSSH は firewall 作成 + SSH 鍵コピー + SSH 接続コマンドを生成する操作。
+	OperationSetupGCEFirewallAndSSH = "setup-gce-firewall-and-ssh"
 )
 
 var validOperations = []string{
+	OperationConnectGCEInstance,
+	OperationCopyGCESSHKey,
 	OperationDeleteGCEInstance,
 	OperationCreateGCEIngressSSHFirewallRule,
 	OperationCreateGCEIAPSSHFirewallRule,
@@ -36,6 +44,7 @@ var validOperations = []string{
 	OperationCreateGCERouterAndNAT,
 	OperationListGCloudInstances,
 	OperationRebootGCEInstance,
+	OperationSetupGCEFirewallAndSSH,
 	OperationStartGCEInstance,
 	OperationStopGCEInstance,
 }
@@ -61,6 +70,7 @@ const (
 	defaultIngressSourceRanges = "10.0.0.0/8"
 
 	defaultInstanceListFormat = "table(name, zone.basename(), scheduling.preemptible.yesno(yes=true, no=''), networkInterfaces.internal_ip():label=INTERNAL_IP, external_ip():label=EXTERNAL_IP, status)"
+	defaultSSHKeyPath         = "$HOME/.ssh/google_compute_engine"
 )
 
 // Config は CLI 引数から得られる設定値を保持する。
@@ -70,6 +80,7 @@ type Config struct {
 
 	InstanceName string
 	Zone         string
+	SSHKeyPath   string
 	MachineType  string
 	BootDiskSize string
 	BootDiskType string
@@ -104,6 +115,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	parser.StringVar(&cfg.InstanceName, "instance-name", "", "作成する GCE インスタンス名")
 	parser.StringVar(&cfg.Zone, "zone", "", "インスタンスのゾーン (例: us-central1-a)")
+	parser.StringVar(&cfg.SSHKeyPath, "ssh-key-path", "", "SSH 秘密鍵ファイルパス (例: $HOME/.ssh/google_compute_engine)")
 	parser.StringVar(&cfg.MachineType, "machine-type", "", "マシンタイプ (例: e2-medium)")
 	parser.StringVar(&cfg.BootDiskSize, "boot-disk-size", "", "ブートディスクサイズ (例: 100GB)")
 	parser.StringVar(&cfg.BootDiskType, "boot-disk-type", "", "ブートディスクタイプ (例: pd-balanced)")
@@ -154,6 +166,7 @@ func normalizeConfig(cfg *Config) {
 	cfg.Operation = strings.TrimSpace(cfg.Operation)
 	cfg.InstanceName = strings.TrimSpace(cfg.InstanceName)
 	cfg.Zone = strings.TrimSpace(cfg.Zone)
+	cfg.SSHKeyPath = strings.TrimSpace(cfg.SSHKeyPath)
 	cfg.MachineType = strings.TrimSpace(cfg.MachineType)
 	cfg.BootDiskSize = strings.TrimSpace(cfg.BootDiskSize)
 	cfg.BootDiskType = strings.TrimSpace(cfg.BootDiskType)
@@ -238,6 +251,24 @@ func applyDefaults(cfg *Config) {
 		if cfg.Format == "" {
 			cfg.Format = defaultInstanceListFormat
 		}
+	case OperationCopyGCESSHKey:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+		if cfg.SSHKeyPath == "" {
+			cfg.SSHKeyPath = defaultSSHKeyPath
+		}
+	case OperationConnectGCEInstance:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+	case OperationSetupGCEFirewallAndSSH:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
+		if cfg.SSHKeyPath == "" {
+			cfg.SSHKeyPath = defaultSSHKeyPath
+		}
 	}
 }
 
@@ -257,6 +288,33 @@ func validateConfig(cfg *Config) error {
 		}
 		if cfg.Zone == "" {
 			return fmt.Errorf("zone は必須です")
+		}
+	case OperationCopyGCESSHKey:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
+		if cfg.SSHKeyPath == "" {
+			return fmt.Errorf("ssh-key-path は必須です")
+		}
+	case OperationConnectGCEInstance:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
+	case OperationSetupGCEFirewallAndSSH:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
+		if cfg.SSHKeyPath == "" {
+			return fmt.Errorf("ssh-key-path は必須です")
 		}
 	}
 
@@ -327,6 +385,20 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "delete-gce-instance:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
 	fmt.Fprintf(os.Stderr, "  -zone string (必須)\n\n")
+
+	fmt.Fprintf(os.Stderr, "copy-gce-ssh-key:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n\n", defaultSSHKeyPath)
+
+	fmt.Fprintf(os.Stderr, "connect-gce-instance:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n\n", defaultZone)
+
+	fmt.Fprintf(os.Stderr, "setup-gce-firewall-and-ssh:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n\n", defaultSSHKeyPath)
 
 	fmt.Fprintf(os.Stderr, "使用例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-gce-instance -instance-name=my-vm -zone=us-central1-a -machine-type=e2-medium\n", os.Args[0])

@@ -210,6 +210,66 @@ func TestParseFlagsWithParser_InstanceLifecycleOperations_Normal(t *testing.T) {
 	}
 }
 
+func TestParseFlagsWithParser_CopyGCESSHKeyDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationCopyGCESSHKey)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.SSHKeyPath != defaultSSHKeyPath {
+		t.Fatalf("ssh-key-path mismatch: %s", cfg.SSHKeyPath)
+	}
+}
+
+func TestParseFlagsWithParser_ConnectGCEInstanceDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationConnectGCEInstance)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+}
+
+func TestParseFlagsWithParser_SetupGCEFirewallAndSSHDefaults_Normal(t *testing.T) {
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationSetupGCEFirewallAndSSH)
+	parser.setString("instance-name", " vm-1 ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.SSHKeyPath != defaultSSHKeyPath {
+		t.Fatalf("ssh-key-path mismatch: %s", cfg.SSHKeyPath)
+	}
+}
+
 func TestParseFlagsWithParser_Errors(t *testing.T) {
 	t.Run("missing operation", func(t *testing.T) {
 		parser := newMockFlagParser()
@@ -271,6 +331,27 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 					parser.setString("instance-name", "")
 				}
 
+				if _, err := ParseFlagsWithParser(parser); err == nil {
+					t.Fatal("expected validation error")
+				}
+			})
+		}
+	})
+
+	t.Run("copy/connect/setup operations require instance-name", func(t *testing.T) {
+		tests := []struct {
+			name      string
+			operation string
+		}{
+			{name: "copy missing instance-name", operation: OperationCopyGCESSHKey},
+			{name: "connect missing instance-name", operation: OperationConnectGCEInstance},
+			{name: "setup missing instance-name", operation: OperationSetupGCEFirewallAndSSH},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				parser := newMockFlagParser()
+				parser.setString("operation", tt.operation)
 				if _, err := ParseFlagsWithParser(parser); err == nil {
 					t.Fatal("expected validation error")
 				}
@@ -386,6 +467,9 @@ func TestPrintUsage(t *testing.T) {
 		"stop-gce-instance",
 		"reboot-gce-instance",
 		"delete-gce-instance",
+		"copy-gce-ssh-key",
+		"connect-gce-instance",
+		"setup-gce-firewall-and-ssh",
 	}
 	for _, keyword := range keywords {
 		if !strings.Contains(output, keyword) {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	cfg "github.com/landmaster135/devbox/internal/gcloud_genset_compute/config"
+	connectgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/connect_gce_instance"
+	copygcesshkey "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/copy_gce_ssh_key"
 	creategceiapsshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_iap_ssh_firewall_rule"
 	creategceingresssshfirewallrule "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_ingress_ssh_firewall_rule"
 	creategceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/create_gce_instance"
@@ -11,6 +13,7 @@ import (
 	deletegceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/delete_gce_instance"
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
 	stopgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/stop_gce_instance"
 )
@@ -26,6 +29,9 @@ type Service struct {
 	stopGCEInstanceOperation                 stopGCEInstanceOperation
 	rebootGCEInstanceOperation               rebootGCEInstanceOperation
 	deleteGCEInstanceOperation               deleteGCEInstanceOperation
+	copyGCESSHKeyOperation                   copyGCESSHKeyOperation
+	connectGCEInstanceOperation              connectGCEInstanceOperation
+	setupGCEFirewallAndSSHOperation          setupGCEFirewallAndSSHOperation
 }
 
 // CreateGCEInstanceParams はインスタンス作成コマンド生成に必要な値。
@@ -55,6 +61,15 @@ type RebootGCEInstanceParams = rebootgceinstance.Params
 // DeleteGCEInstanceParams はインスタンス削除コマンド生成に必要な値。
 type DeleteGCEInstanceParams = deletegceinstance.Params
 
+// CopyGCESSHKeyParams は SSH 鍵コピーコマンド生成に必要な値。
+type CopyGCESSHKeyParams = copygcesshkey.Params
+
+// ConnectGCEInstanceParams は GCE SSH 接続コマンド生成に必要な値。
+type ConnectGCEInstanceParams = connectgceinstance.Params
+
+// SetupGCEFirewallAndSSHParams は firewall 作成 + SSH 鍵コピー + SSH 接続コマンド生成に必要な値。
+type SetupGCEFirewallAndSSHParams = setupgcefirewallandssh.Params
+
 // NewService は Service のインスタンスを返す。
 func NewService() *Service {
 	return newServiceWithOperations(
@@ -67,6 +82,9 @@ func NewService() *Service {
 		stopgceinstance.NewService(),
 		rebootgceinstance.NewService(),
 		deletegceinstance.NewService(),
+		copygcesshkey.NewService(),
+		connectgceinstance.NewService(),
+		setupgcefirewallandssh.NewService(),
 	)
 }
 
@@ -127,6 +145,23 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 			InstanceName: conf.InstanceName,
 			Zone:         conf.Zone,
 		})
+	case cfg.OperationCopyGCESSHKey:
+		return s.BuildCopyGCESSHKeyCommand(CopyGCESSHKeyParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+			SSHKeyPath:   conf.SSHKeyPath,
+		})
+	case cfg.OperationConnectGCEInstance:
+		return s.BuildConnectGCEInstanceCommand(ConnectGCEInstanceParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+		})
+	case cfg.OperationSetupGCEFirewallAndSSH:
+		return s.BuildSetupGCEFirewallAndSSHCommand(SetupGCEFirewallAndSSHParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+			SSHKeyPath:   conf.SSHKeyPath,
+		})
 	default:
 		return "", fmt.Errorf("未対応のoperationです: %s", conf.Operation)
 	}
@@ -175,6 +210,21 @@ func (s *Service) BuildRebootGCEInstanceCommand(params RebootGCEInstanceParams) 
 // BuildDeleteGCEInstanceCommand はインスタンス削除コマンドを生成する。
 func (s *Service) BuildDeleteGCEInstanceCommand(params DeleteGCEInstanceParams) (string, error) {
 	return s.deleteGCEInstanceOperation.Build(params)
+}
+
+// BuildCopyGCESSHKeyCommand は SSH 鍵コピーコマンドを生成する。
+func (s *Service) BuildCopyGCESSHKeyCommand(params CopyGCESSHKeyParams) (string, error) {
+	return s.copyGCESSHKeyOperation.Build(params)
+}
+
+// BuildConnectGCEInstanceCommand は GCE SSH 接続コマンドを生成する。
+func (s *Service) BuildConnectGCEInstanceCommand(params ConnectGCEInstanceParams) (string, error) {
+	return s.connectGCEInstanceOperation.Build(params)
+}
+
+// BuildSetupGCEFirewallAndSSHCommand は firewall 作成 + SSH 鍵コピー + SSH 接続コマンドを生成する。
+func (s *Service) BuildSetupGCEFirewallAndSSHCommand(params SetupGCEFirewallAndSSHParams) (string, error) {
+	return s.setupGCEFirewallAndSSHOperation.Build(params)
 }
 
 // PrintHighlightedCommand は生成されたコマンドを見やすい形式で出力する。
