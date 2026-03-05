@@ -46,6 +46,7 @@
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-compute                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-container                     | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-deployment                    | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-dns                           | ✅  | ❌️  | ❌️  | ❌️ |
@@ -132,12 +133,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 115
-- **CLIツール実装数**: 104
+- **総サービス数**: 116
+- **CLIツール実装数**: 105
 - **MCPツール実装数**: 27
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 2
-- **CLIのみ実装**: 87
+- **CLIのみ実装**: 88
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
