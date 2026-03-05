@@ -124,7 +124,9 @@ function main() {
     fi
 
     local prompt
-    prompt="\$web-clipping-summary ${target_dir}, ${embedded_article}"
+    local header
+    header="clipped_at_date\\ttitle\\turl"
+    prompt="\$web-clipping-summary ${target_dir}\\n\\n${header}\\n${embedded_article}"
 
     echo "[INFO] Running: codex exec '<prompt with article>'"
     codex exec "$prompt"
