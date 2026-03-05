@@ -15,6 +15,7 @@ import (
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	listmachinetypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_machine_types"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	scpdir "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/scp_dir"
 	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
@@ -77,6 +78,10 @@ type copyGCESSHKeyOperation interface {
 	Build(params copygcesshkey.Params) (string, error)
 }
 
+type scpDirOperation interface {
+	Build(params scpdir.Params) (string, error)
+}
+
 type connectGCEInstanceOperation interface {
 	Build(params connectgceinstance.Params) (string, error)
 }
@@ -108,6 +113,7 @@ func newServiceWithOperations(
 	rebootGCEInstanceOp rebootGCEInstanceOperation,
 	deleteGCEInstanceOp deleteGCEInstanceOperation,
 	copyGCESSHKeyOp copyGCESSHKeyOperation,
+	scpDirOp scpDirOperation,
 	connectGCEInstanceOp connectGCEInstanceOperation,
 	setGCEInstanceMetadataFromYAMLOp setGCEInstanceMetadataFromYAMLOperation,
 	addStartupScriptToGCEInstanceOp addStartupScriptToGCEInstanceOperation,
@@ -128,6 +134,7 @@ func newServiceWithOperations(
 		rebootGCEInstanceOperation:                  rebootGCEInstanceOp,
 		deleteGCEInstanceOperation:                  deleteGCEInstanceOp,
 		copyGCESSHKeyOperation:                      copyGCESSHKeyOp,
+		scpDirOperation:                             scpDirOp,
 		connectGCEInstanceOperation:                 connectGCEInstanceOp,
 		setGCEInstanceMetadataFromYAMLOperation:     setGCEInstanceMetadataFromYAMLOp,
 		addStartupScriptToGCEInstanceOperation:      addStartupScriptToGCEInstanceOp,

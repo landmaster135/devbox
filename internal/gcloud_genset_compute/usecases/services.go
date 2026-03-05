@@ -18,6 +18,7 @@ import (
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	listmachinetypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_machine_types"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	scpdir "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/scp_dir"
 	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
@@ -40,6 +41,7 @@ type Service struct {
 	rebootGCEInstanceOperation                  rebootGCEInstanceOperation
 	deleteGCEInstanceOperation                  deleteGCEInstanceOperation
 	copyGCESSHKeyOperation                      copyGCESSHKeyOperation
+	scpDirOperation                             scpDirOperation
 	connectGCEInstanceOperation                 connectGCEInstanceOperation
 	setGCEInstanceMetadataFromYAMLOperation     setGCEInstanceMetadataFromYAMLOperation
 	addStartupScriptToGCEInstanceOperation      addStartupScriptToGCEInstanceOperation
@@ -88,6 +90,9 @@ type DeleteGCEInstanceParams = deletegceinstance.Params
 // CopyGCESSHKeyParams は SSH 鍵コピーコマンド生成に必要な値。
 type CopyGCESSHKeyParams = copygcesshkey.Params
 
+// SCPDirParams はローカルディレクトリ再帰コピーコマンド生成に必要な値。
+type SCPDirParams = scpdir.Params
+
 // ConnectGCEInstanceParams は GCE SSH 接続コマンド生成に必要な値。
 type ConnectGCEInstanceParams = connectgceinstance.Params
 
@@ -117,6 +122,7 @@ func NewService() *Service {
 		rebootgceinstance.NewService(),
 		deletegceinstance.NewService(),
 		copygcesshkey.NewService(),
+		scpdir.NewService(),
 		connectgceinstance.NewService(),
 		setgceinstancemetadatafromyaml.NewService(),
 		addstartupscripttogceinstance.NewService(),
@@ -207,6 +213,13 @@ func (s *Service) BuildCommand(conf *cfg.Config) (string, error) {
 			SSHKeyPath:    conf.SSHKeyPath,
 			CreatesSSHKey: conf.CreatesSSHKey,
 			Forces:        conf.Forces,
+		})
+	case cfg.OperationSCPDir:
+		return s.BuildSCPDirCommand(SCPDirParams{
+			InstanceName: conf.InstanceName,
+			Zone:         conf.Zone,
+			SrcDir:       conf.SrcDir,
+			DestDir:      conf.DestDir,
 		})
 	case cfg.OperationConnectGCEInstance:
 		return s.BuildConnectGCEInstanceCommand(ConnectGCEInstanceParams{
@@ -309,6 +322,11 @@ func (s *Service) BuildDeleteGCEInstanceCommand(params DeleteGCEInstanceParams) 
 // BuildCopyGCESSHKeyCommand は SSH 鍵コピーコマンドを生成する。
 func (s *Service) BuildCopyGCESSHKeyCommand(params CopyGCESSHKeyParams) (string, error) {
 	return s.copyGCESSHKeyOperation.Build(params)
+}
+
+// BuildSCPDirCommand はローカルディレクトリ再帰コピーコマンドを生成する。
+func (s *Service) BuildSCPDirCommand(params SCPDirParams) (string, error) {
+	return s.scpDirOperation.Build(params)
 }
 
 // BuildConnectGCEInstanceCommand は GCE SSH 接続コマンドを生成する。

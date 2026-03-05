@@ -36,6 +36,8 @@ const (
 	OperationDeleteGCEInstance = "delete-gce-instance"
 	// OperationCopyGCESSHKey は SSH 鍵コピーコマンドを生成する操作。
 	OperationCopyGCESSHKey = "copy-gce-ssh-key"
+	// OperationSCPDir はローカルディレクトリをインスタンスへ再帰コピーするコマンドを生成する操作。
+	OperationSCPDir = "scp-dir"
 	// OperationConnectGCEInstance はインスタンス SSH 接続コマンドを生成する操作。
 	OperationConnectGCEInstance = "connect-gce-instance"
 	// OperationSetupGCEFirewallAndSSH は firewall 作成 + SSH 鍵コピー + SSH 接続コマンドを生成する操作。
@@ -53,6 +55,7 @@ const (
 var validOperations = []string{
 	OperationConnectGCEInstance,
 	OperationCopyGCESSHKey,
+	OperationSCPDir,
 	OperationDeleteGCEInstance,
 	OperationCreateGCEIngressSSHFirewallRule,
 	OperationCreateGCEIAPSSHFirewallRule,
@@ -104,6 +107,8 @@ type Config struct {
 
 	InstanceName      string
 	Zone              string
+	SrcDir            string
+	DestDir           string
 	SSHKeyPath        string
 	CreatesSSHKey     bool
 	Forces            bool
@@ -150,6 +155,8 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	parser.StringVar(&cfg.InstanceName, "instance-name", "", "作成する GCE インスタンス名")
 	parser.StringVar(&cfg.Zone, "zone", "", "インスタンスのゾーン (例: us-central1-a)")
+	parser.StringVar(&cfg.SrcDir, "src-dir", "", "コピー元ディレクトリパス")
+	parser.StringVar(&cfg.DestDir, "dest-dir", "", "コピー先ディレクトリパス (インスタンス上)")
 	parser.StringVar(&cfg.SSHKeyPath, "ssh-key-path", "", "SSH 秘密鍵ファイルパス (例: $HOME/.ssh/google_compute_engine)")
 	parser.BoolVar(&cfg.CreatesSSHKey, "creates-ssh-key", false, "SSH 秘密鍵を新規生成する")
 	parser.BoolVar(&cfg.Forces, "forces", false, "既存SSH秘密鍵が存在する場合に上書きを許可する")
@@ -210,6 +217,8 @@ func normalizeConfig(cfg *Config) {
 	cfg.Operation = strings.TrimSpace(cfg.Operation)
 	cfg.InstanceName = strings.TrimSpace(cfg.InstanceName)
 	cfg.Zone = strings.TrimSpace(cfg.Zone)
+	cfg.SrcDir = strings.TrimSpace(cfg.SrcDir)
+	cfg.DestDir = strings.TrimSpace(cfg.DestDir)
 	cfg.SSHKeyPath = strings.TrimSpace(cfg.SSHKeyPath)
 	cfg.MachineType = strings.TrimSpace(cfg.MachineType)
 	cfg.BootDiskSize = strings.TrimSpace(cfg.BootDiskSize)
@@ -359,6 +368,10 @@ func applyDefaults(cfg *Config) {
 		if cfg.SSHKeyPath == "" {
 			cfg.SSHKeyPath = defaultSSHKeyPath
 		}
+	case OperationSCPDir:
+		if cfg.Zone == "" {
+			cfg.Zone = defaultZone
+		}
 	case OperationConnectGCEInstance:
 		if cfg.Zone == "" {
 			cfg.Zone = defaultZone
@@ -429,6 +442,22 @@ func validateConfig(cfg *Config) error {
 			return fmt.Errorf("forces は creates-ssh-key=true の場合のみ指定できます")
 		}
 		if err := validateSSHKeyCreationPrecondition(cfg.SSHKeyPath, cfg.CreatesSSHKey, cfg.Forces); err != nil {
+			return err
+		}
+	case OperationSCPDir:
+		if cfg.InstanceName == "" {
+			return fmt.Errorf("instance-name は必須です")
+		}
+		if cfg.Zone == "" {
+			return fmt.Errorf("zone は必須です")
+		}
+		if cfg.SrcDir == "" {
+			return fmt.Errorf("src-dir は必須です")
+		}
+		if cfg.DestDir == "" {
+			return fmt.Errorf("dest-dir は必須です")
+		}
+		if err := validateSourceDirExists(cfg.SrcDir); err != nil {
 			return err
 		}
 	case OperationConnectGCEInstance:
@@ -544,6 +573,26 @@ func validateSSHKeyCreationPrecondition(sshKeyPath string, createsSSHKey bool, f
 	}
 
 	return nil
+}
+
+func validateSourceDirExists(srcDir string) error {
+	trimmed := strings.TrimSpace(srcDir)
+	if trimmed == "" {
+		return fmt.Errorf("src-dir は必須です")
+	}
+
+	info, err := os.Stat(trimmed)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("src-dir はディレクトリを指定してください: %s", srcDir)
+		}
+		return nil
+	}
+	if os.IsNotExist(err) {
+		return fmt.Errorf("src-dir が存在しません: %s", srcDir)
+	}
+
+	return fmt.Errorf("src-dir の確認に失敗しました: %w", err)
 }
 
 func resolveSSHKeyPath(path string) (string, error) {
@@ -670,6 +719,12 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -ssh-key-path string (default: %s)\n", defaultSSHKeyPath)
 	fmt.Fprintf(os.Stderr, "  -creates-ssh-key bool (default: false)\n")
 	fmt.Fprintf(os.Stderr, "  -forces bool (default: false, creates-ssh-key=true の場合のみ有効)\n\n")
+
+	fmt.Fprintf(os.Stderr, "scp-dir:\n")
+	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")
+	fmt.Fprintf(os.Stderr, "  -zone string (default: %s)\n", defaultZone)
+	fmt.Fprintf(os.Stderr, "  -src-dir string (必須, 存在するディレクトリ)\n")
+	fmt.Fprintf(os.Stderr, "  -dest-dir string (必須, インスタンス上のパス)\n\n")
 
 	fmt.Fprintf(os.Stderr, "connect-gce-instance:\n")
 	fmt.Fprintf(os.Stderr, "  -instance-name string (必須)\n")

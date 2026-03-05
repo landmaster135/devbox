@@ -471,6 +471,34 @@ func TestParseFlagsWithParser_SetupGCEFirewallAndSSHDefaults_Normal(t *testing.T
 	}
 }
 
+func TestParseFlagsWithParser_SCPDirDefaults_Normal(t *testing.T) {
+	srcDir := t.TempDir()
+
+	parser := newMockFlagParser()
+	parser.setString("operation", OperationSCPDir)
+	parser.setString("instance-name", " vm-1 ")
+	parser.setString("src-dir", " "+srcDir+" ")
+	parser.setString("dest-dir", " workspace ")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.InstanceName != "vm-1" {
+		t.Fatalf("instance-name mismatch: %s", cfg.InstanceName)
+	}
+	if cfg.Zone != defaultZone {
+		t.Fatalf("zone mismatch: %s", cfg.Zone)
+	}
+	if cfg.SrcDir != srcDir {
+		t.Fatalf("src-dir mismatch: %s", cfg.SrcDir)
+	}
+	if cfg.DestDir != "workspace" {
+		t.Fatalf("dest-dir mismatch: %s", cfg.DestDir)
+	}
+}
+
 func TestParseFlagsWithParser_CreatesSSHKeyAndForces_Normal(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -650,6 +678,46 @@ func TestParseFlagsWithParser_Errors(t *testing.T) {
 					t.Fatal("expected validation error")
 				}
 			})
+		}
+	})
+
+	t.Run("scp-dir requires mandatory flags", func(t *testing.T) {
+		srcDir := t.TempDir()
+		tests := []struct {
+			name         string
+			instanceName string
+			srcDir       string
+			destDir      string
+		}{
+			{name: "missing instance-name", srcDir: srcDir, destDir: "workspace"},
+			{name: "missing src-dir", instanceName: "vm-1", destDir: "workspace"},
+			{name: "missing dest-dir", instanceName: "vm-1", srcDir: srcDir},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				parser := newMockFlagParser()
+				parser.setString("operation", OperationSCPDir)
+				parser.setString("instance-name", tt.instanceName)
+				parser.setString("src-dir", tt.srcDir)
+				parser.setString("dest-dir", tt.destDir)
+				if _, err := ParseFlagsWithParser(parser); err == nil {
+					t.Fatal("expected validation error")
+				}
+			})
+		}
+	})
+
+	t.Run("scp-dir src-dir must exist", func(t *testing.T) {
+		parser := newMockFlagParser()
+		parser.setString("operation", OperationSCPDir)
+		parser.setString("instance-name", "vm-1")
+		parser.setString("src-dir", t.TempDir()+"/not-exists")
+		parser.setString("dest-dir", "workspace")
+		if _, err := ParseFlagsWithParser(parser); err == nil {
+			t.Fatal("expected validation error")
+		} else if !strings.Contains(err.Error(), "src-dir が存在しません") {
+			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
@@ -842,6 +910,9 @@ func TestPrintUsage(t *testing.T) {
 		"reboot-gce-instance",
 		"delete-gce-instance",
 		"copy-gce-ssh-key",
+		"scp-dir",
+		"src-dir",
+		"dest-dir",
 		"creates-ssh-key",
 		"forces",
 		"connect-gce-instance",

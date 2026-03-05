@@ -23,6 +23,7 @@ import (
 	listgcloudinstances "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_gcloud_instances"
 	listmachinetypes "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/list_machine_types"
 	rebootgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/reboot_gce_instance"
+	scpdir "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/scp_dir"
 	setgceinstancemetadatafromyaml "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/set_gce_instance_metadata_from_yaml"
 	setupgcefirewallandssh "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/setup_gce_firewall_and_ssh"
 	startgceinstance "github.com/landmaster135/devbox/internal/gcloud_genset_compute/usecases/operations/start_gce_instance"
@@ -211,6 +212,19 @@ func (s *copyGCESSHKeyOperationStub) Build(params copygcesshkey.Params) (string,
 	return s.result, s.err
 }
 
+type scpDirOperationStub struct {
+	called bool
+	got    scpdir.Params
+	result string
+	err    error
+}
+
+func (s *scpDirOperationStub) Build(params scpdir.Params) (string, error) {
+	s.called = true
+	s.got = params
+	return s.result, s.err
+}
+
 type connectGCEInstanceOperationStub struct {
 	called bool
 	got    connectgceinstance.Params
@@ -278,6 +292,7 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	rebootOp := &rebootGCEInstanceOperationStub{result: "reboot-command"}
 	deleteOp := &deleteGCEInstanceOperationStub{result: "delete-command"}
 	copySSHKeyOp := &copyGCESSHKeyOperationStub{result: "copy-ssh-key-command"}
+	scpDirOp := &scpDirOperationStub{result: "scp-dir-command"}
 	connectOp := &connectGCEInstanceOperationStub{result: "connect-command"}
 	setMetadataOp := &setGCEInstanceMetadataFromYAMLOperationStub{result: "set-metadata-command"}
 	addStartupScriptOp := &addStartupScriptToGCEInstanceOperationStub{result: "add-startup-script-command"}
@@ -298,6 +313,7 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 		rebootOp,
 		deleteOp,
 		copySSHKeyOp,
+		scpDirOp,
 		connectOp,
 		setMetadataOp,
 		addStartupScriptOp,
@@ -439,6 +455,17 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 			expected: "copy-ssh-key-command",
 		},
 		{
+			name: "scp-dir",
+			config: &cfg.Config{
+				Operation:    cfg.OperationSCPDir,
+				InstanceName: "vm-1",
+				Zone:         "us-central1-a",
+				SrcDir:       "/tmp/src-dir",
+				DestDir:      "workspace",
+			},
+			expected: "scp-dir-command",
+		},
+		{
 			name: "connect-gce-instance",
 			config: &cfg.Config{
 				Operation:     cfg.OperationConnectGCEInstance,
@@ -532,6 +559,9 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	if !copySSHKeyOp.called {
 		t.Fatal("copy ssh key operation was not called")
 	}
+	if !scpDirOp.called {
+		t.Fatal("scp dir operation was not called")
+	}
 	if !connectOp.called {
 		t.Fatal("connect operation was not called")
 	}
@@ -546,6 +576,9 @@ func TestServiceBuildCommand_DelegatesByOperation(t *testing.T) {
 	}
 	if !copySSHKeyOp.got.CreatesSSHKey || !copySSHKeyOp.got.Forces {
 		t.Fatalf("copy ssh key params mismatch: %+v", copySSHKeyOp.got)
+	}
+	if scpDirOp.got.SrcDir != "/tmp/src-dir" || scpDirOp.got.DestDir != "workspace" {
+		t.Fatalf("scp dir params mismatch: %+v", scpDirOp.got)
 	}
 	if !setupOp.got.CreatesSSHKey || !setupOp.got.Forces {
 		t.Fatalf("setup params mismatch: %+v", setupOp.got)
@@ -593,6 +626,7 @@ func TestServiceBuildCommand_OperationError(t *testing.T) {
 		&rebootGCEInstanceOperationStub{},
 		&deleteGCEInstanceOperationStub{},
 		&copyGCESSHKeyOperationStub{},
+		&scpDirOperationStub{},
 		&connectGCEInstanceOperationStub{},
 		&setGCEInstanceMetadataFromYAMLOperationStub{},
 		&addStartupScriptToGCEInstanceOperationStub{},
@@ -632,6 +666,7 @@ func TestServiceExecuteListDiskTypes_Normal(t *testing.T) {
 		&rebootGCEInstanceOperationStub{},
 		&deleteGCEInstanceOperationStub{},
 		&copyGCESSHKeyOperationStub{},
+		&scpDirOperationStub{},
 		&connectGCEInstanceOperationStub{},
 		&setGCEInstanceMetadataFromYAMLOperationStub{},
 		&addStartupScriptToGCEInstanceOperationStub{},
@@ -671,6 +706,7 @@ func TestServiceExecuteListMachineTypes_Normal(t *testing.T) {
 		&rebootGCEInstanceOperationStub{},
 		&deleteGCEInstanceOperationStub{},
 		&copyGCESSHKeyOperationStub{},
+		&scpDirOperationStub{},
 		&connectGCEInstanceOperationStub{},
 		&setGCEInstanceMetadataFromYAMLOperationStub{},
 		&addStartupScriptToGCEInstanceOperationStub{},

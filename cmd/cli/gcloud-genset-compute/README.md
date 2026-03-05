@@ -21,6 +21,7 @@ Google Compute Engine 向けの CLI ツールです。
 | `reboot-gce-instance` | インスタンス再起動コマンドを生成 |
 | `delete-gce-instance` | インスタンス削除コマンドを生成 |
 | `copy-gce-ssh-key` | SSH 秘密鍵を `/tmp` へコピーするコマンドを生成 |
+| `scp-dir` | ローカルディレクトリを再帰的にインスタンスへコピーするコマンドを生成 |
 | `connect-gce-instance` | IAP トンネル経由の SSH 接続コマンドを生成 |
 | `set-gce-instance-metadata-from-yaml` | YAML ファイルをもとに instance metadata 設定コマンドを生成 |
 | `add-startup-script-to-gce-instance` | startup-script を instance metadata に設定するコマンドを生成 |
@@ -160,6 +161,15 @@ Google Compute Engine 向けの CLI ツールです。
 | `-creates-ssh-key` | 任意 | `false` | `true` のとき SSH 秘密鍵を新規作成してから処理を続行（`ssh-keygen` の対話入力でパスフレーズ設定可） |
 | `-forces` | 任意 | `false` | `creates-ssh-key=true` かつ既存鍵がある場合に上書き許可（上書き時は標準エラーへログ出力） |
 
+### scp-dir
+
+| フラグ | 必須 | デフォルト | 説明 |
+|---|---|---|---|
+| `-instance-name` | 必須 | なし | コピー先のインスタンス名 |
+| `-zone` | 任意 | `us-central1-a` | ゾーン |
+| `-src-dir` | 必須 | なし | ローカルのコピー元ディレクトリ（存在必須） |
+| `-dest-dir` | 必須 | なし | インスタンス上のコピー先ディレクトリパス |
+
 ### connect-gce-instance
 
 | フラグ | 必須 | デフォルト | 説明 |
@@ -260,6 +270,27 @@ go run ./cmd/cli/gcloud-genset-compute \
   -zone=us-central1-a \
   -creates-ssh-key=true \
   -forces=true
+```
+
+### SSH接続コマンド生成（IAPトンネル経由）
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=connect-gce-instance \
+  -instance-name=my-vm \
+  -zone=us-central1-a \
+  -creates-ssh-key=false
+```
+
+### ディレクトリ再帰コピーコマンド生成
+
+```bash
+go run ./cmd/cli/gcloud-genset-compute \
+  -operation=scp-dir \
+  -instance-name=my-vm \
+  -zone=us-central1-a \
+  -src-dir=./local_workspace \
+  -dest-dir=remote_workspace
 ```
 
 ## 備考
