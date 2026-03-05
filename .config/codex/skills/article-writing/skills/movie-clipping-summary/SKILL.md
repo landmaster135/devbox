@@ -15,7 +15,8 @@ description: 動画の字幕ファイルを基に日本語の学習用サマリ�
 4. 字幕ファイル内に動画URLが無ければ、動画URLを質問する。
 5. 字幕内容を読み取り、`Thinking Lens` に沿って要点を整理する。
 6. `web_clipper` の `patch_markdown` ツールを実行し、指定ディレクトリに新規Markdownファイルを作成し、要約を出力する（`target_title`/`target_url`/`src_markdown_content`/`out_file_path`/`top_heading_level=2` を指定）。
-7. 出力前に「構成・言語・比較箇所の表化・固有名詞説明・動画リンク挿入」を検証する。
+7. `patch_markdown` が失敗した場合は、エラー内容をそのまま報告し、`out_file_path` などの入力値修正を確認して再実行する。`patch_markdown` 以外のツールで代替作成してはいけない。
+8. 出力前に「構成・言語・比較箇所の表化・固有名詞説明・動画リンク挿入」を検証する。
 
 ## Thinking Lens
 
@@ -84,6 +85,7 @@ Web記事の要約を作成する。図や表、アノテーションも活用�
 
 - 新規ファイルとして保存する。
 - 保存先はユーザー指定の出力ディレクトリを使う。
+- ファイル作成・更新は `web_clipper.patch_markdown` のみを使用する。`patch_markdown` 以外のツールでのファイル作成・更新・移動・コピー・リネームは禁止。
 - ファイル名は再利用しやすい形式にする。
   - 例: `movie-summary-YYYYMMDD-hhmmss-<slug>.md`
   - 日付が指定されていたらその日付と現在時間を使用し、指定されていない場合は現在日時を使用する。
