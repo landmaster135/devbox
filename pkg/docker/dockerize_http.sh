@@ -83,6 +83,11 @@ verify_image() {
   fi
 }
 
+verify_pg_dump() {
+  log "イメージ内の pg_dump を確認"
+  docker run --rm --entrypoint /bin/sh "$IMAGE_TAG" -c 'which pg_dump && pg_dump --version'
+}
+
 archive_image() {
   log "既存のアーカイブをクリーンアップ"
   rm -f "$TAR_PATH" "$ZIP_PATH"
@@ -114,6 +119,7 @@ run_user_sync
 run_port_sync
 build_frontend
 verify_image
+verify_pg_dump
 archive_image
 
 log "パッケージ用イメージの作成が完了しました"

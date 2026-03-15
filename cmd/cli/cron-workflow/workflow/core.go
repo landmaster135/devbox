@@ -248,7 +248,7 @@ func (wh *WorkflowHandler) NotifyDailyHeading(ctx context.Context) error {
 
 func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error {
 	const (
-		format         = "sql"
+		format         = "binary"
 		notification   = "PostgreSQLのダンプが完了しました"
 		embedType      = "postgres"
 		embedText      = "最新バックアップ"

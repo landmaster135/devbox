@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	workflowPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
+	workflowCLIPkg "github.com/landmaster135/devbox/cmd/cli/cron-workflow/workflow"
 	page "github.com/landmaster135/devbox/cmd/http/handlers/cron_workflow/page"
 	workflow "github.com/landmaster135/devbox/cmd/http/handlers/cron_workflow/workflow"
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
@@ -31,7 +31,7 @@ type Handler struct {
 // NewHandler creates a handler backed by workflow.List.
 func NewHandler(logger *logging.StructuredLogger) *Handler {
 	return &Handler{
-		listWorkflows:           workflowPkg.List,
+		listWorkflows:           workflowCLIPkg.List,
 		logger:                  logging.Ensure(logger),
 		manualWorkflowFieldName: manualWorkflowFieldName,
 		manualRunEndpoint:       ManualRunEndpoint,
@@ -41,7 +41,7 @@ func NewHandler(logger *logging.StructuredLogger) *Handler {
 // NewHandlerWithLister allows supplying a custom workflow lister (primarily for tests).
 func NewHandlerWithLister(listFn func(logger *logging.StructuredLogger) ([]usecases.Workflow, error), logger *logging.StructuredLogger) *Handler {
 	if listFn == nil {
-		listFn = workflowPkg.List
+		listFn = workflowCLIPkg.List
 	}
 	return &Handler{
 		listWorkflows:           listFn,

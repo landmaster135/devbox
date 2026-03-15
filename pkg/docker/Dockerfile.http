@@ -20,9 +20,25 @@ ARG CRON_URL_PORT
 # 必要最小限のパッケージをインストール
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    curl \
     ca-certificates \
+    gnupg && \
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    postgresql-client-common \
+    postgresql-client-17 \
     tzdata && \
     rm -rf /var/lib/apt/lists/*
+
+# PostgreSQL 17 の pg_dump を優先的に参照させる
+ENV PATH="/usr/lib/postgresql/17/bin:${PATH}"
+
+# イメージビルド時に pg_dump の存在とバージョンを検証
+RUN pg_dump --version
 
 WORKDIR /app
 

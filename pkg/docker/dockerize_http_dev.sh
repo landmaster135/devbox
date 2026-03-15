@@ -81,6 +81,11 @@ verify_image() {
   fi
 }
 
+verify_pg_dump() {
+  log "イメージ内の pg_dump を確認"
+  docker run --rm --entrypoint /bin/sh "$IMAGE_TAG" -c 'which pg_dump && pg_dump --version'
+}
+
 compose_up() {
   log "docker compose up -d を実行"
   docker compose -f "$COMPOSE_PATH" up -d
@@ -92,6 +97,7 @@ run_user_sync
 run_port_sync
 build_frontend
 verify_image
+verify_pg_dump
 compose_up
 
 log "開発用デプロイが完了しました"
