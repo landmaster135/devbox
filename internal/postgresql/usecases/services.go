@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	_ "github.com/lib/pq"
 
 	dbExecutor "github.com/landmaster135/devbox/internal/postgresql/domain/executor"
 	model "github.com/landmaster135/devbox/internal/postgresql/domain/model"
 	dump "github.com/landmaster135/devbox/internal/postgresql/usecases/dump"
+	dumpBinary "github.com/landmaster135/devbox/internal/postgresql/usecases/dump_binary"
 	metaFetch "github.com/landmaster135/devbox/internal/postgresql/usecases/meta_fetch"
 	templateRenderer "github.com/landmaster135/devbox/internal/postgresql/usecases/template_renderer"
 )
@@ -338,6 +340,38 @@ func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPa
 		resultFormat = "json"
 	}
 
+	if format == "binary" {
+		binaryDumper := dumpBinary.NewDumper(timezone)
+		binaryResult, err := binaryDumper.DumpDatabase(ctx, dbURL, outputPath)
+		if err != nil {
+			return "", "", fmt.Errorf("全テーブルbinaryダンプの実行に失敗しました: %v", err)
+		}
+
+		dumpResult := dump.DumpResult{
+			TableName:   binaryResult.TableName,
+			RecordCount: binaryResult.RecordCount,
+			OutputPath:  binaryResult.OutputPath,
+			FileName:    binaryResult.FileName,
+			Format:      binaryResult.Format,
+			ExecutedAt:  binaryResult.ExecutedAt,
+		}
+
+		result := &dump.DumpAllTablesResult{
+			DatabaseName: serviceSafeDatabaseName(dbURL),
+			TotalTables:  1,
+			Results:      []dump.DumpResult{dumpResult},
+			FailedTables: []dump.FailedDump{},
+			ExecutedAt:   binaryResult.ExecutedAt,
+		}
+
+		fullResult, minResult, err := dump.FormatDumpAllTablesResult(result, resultFormat, heading)
+		if err != nil {
+			return "", "", err
+		}
+
+		return fullResult, minResult, nil
+	}
+
 	// PostgreSQLサービスを初期化
 	service, err := NewPostgreSQLService(dbURL, timezone)
 	if err != nil {
@@ -352,4 +386,18 @@ func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPa
 	}
 
 	return jsonResult, minJSONResult, nil
+}
+
+func serviceSafeDatabaseName(dbURL string) string {
+	parsed, err := url.Parse(dbURL)
+	if err != nil {
+		return "database"
+	}
+
+	name := strings.TrimPrefix(parsed.Path, "/")
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "database"
+	}
+	return name
 }

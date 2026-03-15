@@ -197,6 +197,82 @@ func TestParseFlags_MissingTableName_Error(t *testing.T) {
 	}
 }
 
+func TestParseFlags_DumpAllTablesBinaryWithoutTableName_Normal(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=binary",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	cfg, err := ParseFlags()
+	if err != nil {
+		t.Fatalf("ParseFlags() でエラーが発生しました: %v", err)
+	}
+
+	if cfg.TableName != "" {
+		t.Errorf("TableName = %s, want empty (dump-all-tables + binary操作では不要)", cfg.TableName)
+	}
+	if cfg.Format != "binary" {
+		t.Errorf("Format = %s, want binary", cfg.Format)
+	}
+}
+
+func TestParseFlags_DumpAllTablesBinaryWithTableName_Error(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=binary",
+		"--table-name=users",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
+	}
+
+	expectedError := "--table-name は指定できません (dump-all-tables操作で--format=binary時)"
+	if err.Error() != expectedError {
+		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
+	}
+}
+
+func TestParseFlags_DumpAllTablesBinaryWithLimit_Error(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump-all-tables",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=binary",
+		"--limit=10",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
+	}
+
+	expectedError := "dump-all-tables操作で--format=binaryの場合、--limit は指定できません"
+	if err.Error() != expectedError {
+		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
+	}
+}
+
 func TestParseFlags_InvalidOperation_Error(t *testing.T) {
 	// テスト用のコマンドライン引数を設定
 	oldArgs := os.Args
@@ -244,7 +320,32 @@ func TestParseFlags_InvalidFormat_Error(t *testing.T) {
 		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
 	}
 
-	expectedError := "未対応のフォーマットです: invalid (対応フォーマット: json, csv, sql, text)"
+	expectedError := "未対応のフォーマットです: invalid (対応フォーマット: json, csv, sql, text, binary)"
+	if err.Error() != expectedError {
+		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
+	}
+}
+
+func TestParseFlags_BinaryFormatForNonDump_Error(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	os.Args = []string{
+		"postgresql-cli",
+		"--operation=dump",
+		"--database-url=postgres://user:pass@localhost/testdb",
+		"--format=binary",
+		"--table-name=users",
+	}
+
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatal("ParseFlags() でエラーが期待されましたが、エラーが発生しませんでした")
+	}
+
+	expectedError := "binaryフォーマットはdump-all-tables操作でのみ対応しています"
 	if err.Error() != expectedError {
 		t.Errorf("エラーメッセージ = %s, want %s", err.Error(), expectedError)
 	}

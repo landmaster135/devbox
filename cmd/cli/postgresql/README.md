@@ -7,7 +7,7 @@ PostgreSQLデータベースのテーブルダンプ機能を提供するCLIツ�
 - 単一テーブルの全レコードをダンプ
 - **データベース内の全テーブルを一括ダンプ**
 - テーブル一覧の取得（最小限・詳細）
-- 複数の出力フォーマット対応（JSON、CSV、SQL、テキスト）
+- 複数の出力フォーマット対応（JSON、CSV、SQL、テキスト、binary）
 - ダンプ結果サマリをJSONまたはMarkdownで取得
 - ダンプ結果サマリの見出しをカスタマイズ
 - レコード数制限機能
@@ -59,6 +59,9 @@ go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres
 
 # SQL形式で全テーブルダンプ
 go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=sql
+
+# binary形式で全テーブルダンプ（pg_dump -Fc 互換）
+go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --format=binary
 
 # 出力ディレクトリを指定して全テーブルダンプ
 go run ./cmd/cli/postgresql --operation=dump-all-tables --database-url="postgres://user:pass@localhost/db" --output-path=/tmp/dumps
@@ -115,24 +118,43 @@ go run ./cmd/cli/postgresql -help
 
 | パラメータ | 説明 | デフォルト値 | 例 |
 |-----------|------|-------------|-----|
-| `--output-path` | 出力ディレクトリパス（dump操作時のみ） | カレントディレクトリ | `/tmp` |
-| `--format` | 出力フォーマット | `json` | `csv`, `sql`, `text` |
+| `--output-path` | 出力ディレクトリパス | カレントディレクトリ | `/tmp` |
+| `--format` | 出力フォーマット | `json` | `csv`, `sql`, `text`, `binary` |
 | `--result-format` | ダンプ結果サマリのフォーマット（dump-all-tables向け） | `json` | `markdown` |
 | `--result-heading` | ダンプ結果サマリの見出し（dump-all-tables + Markdown向け） | なし | `Production Dump` |
 | `--timezone` | タイムスタンプ/ファイル名に使用するタイムゾーン | システムローカル | `Asia/Tokyo` |
-| `--limit` | 最大レコード数（dump操作時のみ） | 制限なし | `100` |
+| `--limit` | 最大レコード数（`dump-all-tables --format=binary` では指定不可） | 制限なし | `100` |
 | `--concurrency` | 並行処理数（dump-all-tables操作時のみ） | CPUコア数（最大10） | `3` |
 | `--help` | ヘルプを表示 | - | - |
 
 ### 操作別パラメータ
 
 dump操作
-- **必須**: `--operation`, `--database-url`, `--table-name`
-- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`, `--timezone`
+
+| パラメータ | dump |
+|---|---|
+| `--operation` | 必須 |
+| `--database-url` | 必須 |
+| `--table-name` | 必須 |
+| `--output-path` | 任意 |
+| `--format` | 任意（`json/csv/sql`） |
+| `--limit` | 任意 |
+| `--timezone` | 任意 |
 
 dump-all-tables操作
-- **必須**: `--operation`, `--database-url`
-- **オプション**: `--output-path`, `--format` (json, csv, sql), `--limit`, `--concurrency`, `--result-format` (json, markdown), `--result-heading`, `--timezone`
+
+| パラメータ | `--format=json/csv/sql` | `--format=binary` |
+|---|---|---|
+| `--operation` | 必須 | 必須 |
+| `--database-url` | 必須 | 必須 |
+| `--table-name` | 任意（未使用） | 指定不可 |
+| `--output-path` | 任意 | 任意 |
+| `--format` | 任意 | 任意 |
+| `--limit` | 任意 | 指定不可 |
+| `--concurrency` | 任意 | 任意（未使用） |
+| `--result-format` | 任意（`json/markdown`） | 任意（`json/markdown`） |
+| `--result-heading` | 任意 | 任意 |
+| `--timezone` | 任意 | 任意 |
 
 list-tables-minimum操作
 - **必須**: `--operation`, `--database-url`
@@ -266,6 +288,7 @@ list-tables操作
 - `users_20250822_180530.json`
 - `products_20250822_180530.csv`
 - `orders_20250822_180530.sql`
+- `mydb_20250822_180530.dump`（`--operation=dump-all-tables --format=binary`）
 
 `--timezone`を指定した場合、これらのファイル名や結果中の`executed_at`は指定タイムゾーンを基準とした日時になります。
 
@@ -330,7 +353,7 @@ list-tables操作
 ## 注意事項
 
 - データベース接続URLにはパスワードが含まれるため、コマンド履歴に注意してください
-- 大量のデータをダンプする場合は、`--limit`オプションの使用を推奨します
+- 大量のデータをダンプする場合は、`--limit`オプションの使用を推奨します（`dump-all-tables --format=binary` では非対応）
 - 出力ディレクトリが存在しない場合、自動的に作成されます
 - 同名のファイルが存在する場合、上書きされます
 
