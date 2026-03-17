@@ -29,12 +29,12 @@ RUN apt-get update && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     postgresql-client-common \
-    postgresql-client-17 \
+    postgresql-client-18 \
     tzdata && \
     rm -rf /var/lib/apt/lists/*
 
-# PostgreSQL 17 の pg_dump を優先的に参照させる
-ENV PATH="/usr/lib/postgresql/17/bin:${PATH}"
+# PostgreSQL の pg_dump を優先的に参照させる
+ENV PATH="/usr/lib/postgresql/18/bin:${PATH}"
 
 # イメージビルド時に pg_dump の存在とバージョンを検証
 RUN pg_dump --version

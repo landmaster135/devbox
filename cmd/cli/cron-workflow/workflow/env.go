@@ -17,6 +17,8 @@ const (
 	EnvKeyDBDirectory01Staging              EnvKey = "DATABASE_DUMP_DIR_01_STAGING"
 	EnvKeyDBURL01Product                    EnvKey = "DATABASE_URL_01_PRODUCT"
 	EnvKeyDBDirectory01Product              EnvKey = "DATABASE_DUMP_DIR_01_PRODUCT"
+	EnvKeyDBURL01MemosStaging               EnvKey = "DATABASE_URL_01_MEMOS_STAGING"
+	EnvKeyDBDirectory01MemosStaging         EnvKey = "DATABASE_DUMP_DIR_01_MEMOS_STAGING"
 	EnvKeyPCInfoOutputDirectory             EnvKey = "PC_INFO_OUTPUT_DIR"
 	EnvKeyPCInfoHostnameOfNAS01             EnvKey = "PC_INFO_MEMORY_HOSTNAME_OF_NAS_01"
 	EnvKeyPCInfoMemoryNamesOfNAS01          EnvKey = "PC_INFO_MEMORY_NAMES_OF_NAS_01"

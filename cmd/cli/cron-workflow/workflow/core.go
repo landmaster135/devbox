@@ -41,6 +41,13 @@ type WorkflowHandlerRepository interface {
 	NotifyWeather(ctx context.Context) error
 	NotifyDailyHeading(ctx context.Context) error
 	DumpPostgreSQLNotification(ctx context.Context) error
+	DumpPostgreSQLNotificationForMemos(ctx context.Context) error
+}
+
+type postgresDumpTarget struct {
+	name      string
+	dbURL     string
+	outputDir string
 }
 
 // List returns all configured workflows.
@@ -77,6 +84,12 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 		wh.GetCreator().Timezone,
 		wh.DumpPostgreSQLNotification,
 	)
+	postgresDumpWorkflowForMemos := usecases.NewWorkflow(
+		"Daily PostgreSQL dump for memos with notification",
+		"5 2 * * 0-6",
+		wh.GetCreator().Timezone,
+		wh.DumpPostgreSQLNotificationForMemos,
+	)
 	pcInfoWorkflow := usecases.NewWorkflow(
 		"Ubuntu PC info snapshot",
 		"*/10 * * * 0-6",
@@ -89,6 +102,7 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
 		*postgresDumpWorkflow,
+		*postgresDumpWorkflowForMemos,
 		*pcInfoWorkflow,
 	}, nil
 }
@@ -247,19 +261,8 @@ func (wh *WorkflowHandler) NotifyDailyHeading(ctx context.Context) error {
 }
 
 func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error {
-	const (
-		format         = "binary"
-		notification   = "PostgreSQLのダンプが完了しました"
-		embedType      = "postgres"
-		embedText      = "最新バックアップ"
-		workerParallel = 3
-	)
-
 	creator := wh.GetCreator()
-	webhookURL, err := getEnvVars(creator.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
-	if err != nil {
-		return fmt.Errorf("resolve Discord webhook URL for PostgreSQL dump: %w", err)
-	}
+	notification := "PostgreSQLのダンプが完了しました"
 	stagingDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01Staging)
 	if err != nil {
 		return fmt.Errorf("resolve staging DB URL: %w", err)
@@ -279,18 +282,49 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 
 	stagingOutputDir := filepath.Join(creator.VolumeDir, stagingDirEnv)
 	productOutputDir := filepath.Join(creator.VolumeDir, productDirEnv)
-
-	service := discordWebhook.NewDefaultDiscordWebhookService()
-	concurrency := workerParallel
-
-	targets := []struct {
-		name      string
-		dbURL     string
-		outputDir string
-	}{
+	targets := []postgresDumpTarget{
 		{name: "staging", dbURL: stagingDBURL, outputDir: stagingOutputDir},
 		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
 	}
+
+	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
+}
+
+func (wh *WorkflowHandler) DumpPostgreSQLNotificationForMemos(ctx context.Context) error {
+	creator := wh.GetCreator()
+	notification := "Memos staging PostgreSQLのダンプが完了しました"
+	memosStagingDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01MemosStaging)
+	if err != nil {
+		return fmt.Errorf("resolve memos staging DB URL: %w", err)
+	}
+	memosStagingDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyDBDirectory01MemosStaging)
+	if err != nil {
+		return fmt.Errorf("resolve memos staging dump directory: %w", err)
+	}
+
+	memosStagingOutputDir := filepath.Join(creator.VolumeDir, memosStagingDirEnv)
+	targets := []postgresDumpTarget{
+		{name: "memos-staging", dbURL: memosStagingDBURL, outputDir: memosStagingOutputDir},
+	}
+
+	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
+}
+
+func (wh *WorkflowHandler) dumpPostgreSQLAndNotify(ctx context.Context, notification string, targets []postgresDumpTarget) error {
+	const (
+		format         = "binary"
+		embedType      = "postgres"
+		embedText      = "最新バックアップ"
+		workerParallel = 3
+	)
+
+	creator := wh.GetCreator()
+	webhookURL, err := getEnvVars(creator.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	if err != nil {
+		return fmt.Errorf("resolve Discord webhook URL for PostgreSQL dump: %w", err)
+	}
+	service := discordWebhook.NewDefaultDiscordWebhookService()
+	concurrency := workerParallel
 
 	headerGen := func(header string, summaries []string) string {
 		return fmt.Sprintf("%s\n%s", header, strings.Join(summaries, "\n"))
