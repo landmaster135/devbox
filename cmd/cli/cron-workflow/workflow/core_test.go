@@ -9,11 +9,11 @@ func TestWorkflowHandler_List_Normal(t *testing.T) {
 	}
 
 	expectedFrequencyByDescription := map[string]string{
-		"Daily Tokyo weather notification":                          "0 1 * * 0-6",
-		"Daily heading Discord notification":                        "1 0 * * 0-6",
-		"Daily PostgreSQL dump with notification":                   "0 2 * * 0-6",
-		"Daily PostgreSQL dump for memos staging with notification": "5 2 * * 0-6",
-		"Ubuntu PC info snapshot":                                   "*/10 * * * 0-6",
+		"Daily Tokyo weather notification":                  "0 1 * * 0-6",
+		"Daily heading Discord notification":                "1 0 * * 0-6",
+		"Daily PostgreSQL dump with notification":           "0 2 * * 0-6",
+		"Daily PostgreSQL dump for memos with notification": "5 2 * * 0-6",
+		"Ubuntu PC info snapshot":                           "*/10 * * * 0-6",
 	}
 
 	if len(workflows) != len(expectedFrequencyByDescription) {

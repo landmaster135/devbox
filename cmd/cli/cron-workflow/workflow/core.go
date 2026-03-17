@@ -292,7 +292,7 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 
 func (wh *WorkflowHandler) DumpPostgreSQLNotificationForMemos(ctx context.Context) error {
 	creator := wh.GetCreator()
-	notification := "Memos staging PostgreSQLのダンプが完了しました"
+	notification := "Memos PostgreSQLのダンプが完了しました"
 	memosStagingDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01MemosStaging)
 	if err != nil {
 		return fmt.Errorf("resolve memos staging DB URL: %w", err)
@@ -301,10 +301,20 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotificationForMemos(ctx context.Contex
 	if err != nil {
 		return fmt.Errorf("resolve memos staging dump directory: %w", err)
 	}
+	memosProdDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01MemosProd)
+	if err != nil {
+		return fmt.Errorf("resolve memos production DB URL: %w", err)
+	}
+	memosProdDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyDBDirectory01MemosProd)
+	if err != nil {
+		return fmt.Errorf("resolve memos production dump directory: %w", err)
+	}
 
 	memosStagingOutputDir := filepath.Join(creator.VolumeDir, memosStagingDirEnv)
+	memosProdOutputDir := filepath.Join(creator.VolumeDir, memosProdDirEnv)
 	targets := []postgresDumpTarget{
 		{name: "memos-staging", dbURL: memosStagingDBURL, outputDir: memosStagingOutputDir},
+		{name: "memos-prod", dbURL: memosProdDBURL, outputDir: memosProdOutputDir},
 	}
 
 	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
