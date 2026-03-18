@@ -97,6 +97,133 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 }
 
+func TestService_Execute_SplitSourceFiles(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "artifacts.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"AF1946",
+			"page_title":"split artifact sample",
+			"category":"system",
+			"output_url":"https://example.com/split",
+			"tags":[{"page_title":"Golang"}]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(tagsFile, []byte(`## Artifact
+#06-af/system/devbox #06-af/system/others
+
+## Frequent Tags
+#31-programming/language/golang
+`), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "AF1946_02.md"), []byte("second\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "AF1946_01.md"), []byte("first\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute("artifact", "", false, 1946, 1946, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=2") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	for _, fileName := range []string{"AF1946_01.md", "AF1946_02.md"} {
+		outPath := filepath.Join(outDir, fileName)
+		outData, err := os.ReadFile(outPath)
+		if err != nil {
+			t.Fatalf("read split output failed (%s): %v", fileName, err)
+		}
+		outText := string(outData)
+		if !strings.Contains(outText, "# split artifact sample") {
+			t.Fatalf("heading missing (%s): %s", fileName, outText)
+		}
+		if !strings.Contains(outText, "https://example.com/split") {
+			t.Fatalf("output_url missing (%s): %s", fileName, outText)
+		}
+		if !strings.Contains(outText, "#91-backup/tool-migration/202602-notion") {
+			t.Fatalf("backup tag missing (%s): %s", fileName, outText)
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "AF1946.md")); !os.IsNotExist(err) {
+		t.Fatalf("base output should not be created when split files exist")
+	}
+}
+
+func TestService_Execute_ExactSourcePreferredOverSplit(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "artifacts.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"AF0100",
+			"page_title":"exact artifact preferred",
+			"category":"system",
+			"output_url":"https://example.com/exact",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(tagsFile, []byte(`## Artifact
+#06-af/system/devbox #06-af/system/others
+
+## Frequent Tags
+#31-programming/language/golang
+`), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "AF0100.md"), []byte("exact\n"), 0644); err != nil {
+		t.Fatalf("write exact body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "AF0100_01.md"), []byte("split\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute("artifact", "", false, 100, 100, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "AF0100.md")); err != nil {
+		t.Fatalf("exact output should exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outDir, "AF0100_01.md")); !os.IsNotExist(err) {
+		t.Fatalf("split output should not be generated when exact source exists")
+	}
+}
+
 func TestService_Execute_CategoryMappings(t *testing.T) {
 	t.Parallel()
 

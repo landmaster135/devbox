@@ -93,6 +93,128 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 }
 
+func TestService_Execute_SplitSourceFiles(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "contents.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"CO000001946",
+			"page_title":"split body sample",
+			"category":"subscription_year",
+			"owning_status":"already",
+			"color":"gray",
+			"bought_at":"2024-01-01T09:00:00+09:00",
+			"score":70,
+			"price":1000,
+			"tags":[{"page_title":"JavaScript"}]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(tagsFile, []byte("## Frequent Tags\n#31-programming/language/javascript\n"), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000001946_02.md"), []byte("second\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000001946_01.md"), []byte("first\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute("content", "", false, 1946, 1946, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=2") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	for _, fileName := range []string{"CO000001946_01.md", "CO000001946_02.md"} {
+		outPath := filepath.Join(outDir, fileName)
+		outData, err := os.ReadFile(outPath)
+		if err != nil {
+			t.Fatalf("read split output failed (%s): %v", fileName, err)
+		}
+		outText := string(outData)
+		if !strings.Contains(outText, "# split body sample") {
+			t.Fatalf("heading missing (%s): %s", fileName, outText)
+		}
+		if !strings.Contains(outText, "con_id: CO000001946") {
+			t.Fatalf("front matter missing (%s): %s", fileName, outText)
+		}
+		if !strings.Contains(outText, "#0a-content/subscription-year") {
+			t.Fatalf("category tag missing (%s): %s", fileName, outText)
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "CO000001946.md")); !os.IsNotExist(err) {
+		t.Fatalf("base output should not be created when split files exist")
+	}
+}
+
+func TestService_Execute_ExactSourcePreferredOverSplit(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "contents.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"CO000000010",
+			"page_title":"exact preferred",
+			"category":"software",
+			"owning_status":"already",
+			"color":"gray",
+			"tags":[{"page_title":"JavaScript"}]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(tagsFile, []byte("## Frequent Tags\n#31-programming/language/javascript\n"), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000010.md"), []byte("exact\n"), 0644); err != nil {
+		t.Fatalf("write exact body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000010_01.md"), []byte("split\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "CO000000010.md")); err != nil {
+		t.Fatalf("exact output should exist: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outDir, "CO000000010_01.md")); !os.IsNotExist(err) {
+		t.Fatalf("split output should not be generated when exact source exists")
+	}
+}
+
 func TestService_Execute_MissingSourceFileCanSkipByFlag(t *testing.T) {
 	t.Parallel()
 

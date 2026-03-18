@@ -3,6 +3,7 @@ package common
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	domain "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/domain"
@@ -78,4 +79,58 @@ func SanitizeCategory(category string) string {
 		return DefaultCategory
 	}
 	return strings.Join(safeSegments, "_")
+}
+
+type SplitMarkdownIndex map[string][]string
+
+func BuildSplitMarkdownIndex(srcBodyFiles []string) SplitMarkdownIndex {
+	index := SplitMarkdownIndex{}
+	for _, srcBodyFile := range srcBodyFiles {
+		conID, hasSuffix := splitConIDWithSuffix(srcBodyFile)
+		if !hasSuffix {
+			continue
+		}
+		index[conID] = append(index[conID], srcBodyFile)
+	}
+
+	for conID := range index {
+		sort.Strings(index[conID])
+	}
+	return index
+}
+
+func (i SplitMarkdownIndex) Resolve(conID string) []string {
+	trimmedConID := strings.TrimSpace(conID)
+	if trimmedConID == "" {
+		return nil
+	}
+	candidates, exists := i[trimmedConID]
+	if !exists {
+		return nil
+	}
+	return append([]string(nil), candidates...)
+}
+
+func splitConIDWithSuffix(path string) (string, bool) {
+	baseName := filepath.Base(path)
+	if !strings.EqualFold(filepath.Ext(baseName), ".md") {
+		return "", false
+	}
+
+	fileStem := strings.TrimSpace(strings.TrimSuffix(baseName, filepath.Ext(baseName)))
+	if fileStem == "" {
+		return "", false
+	}
+
+	separatorIndex := strings.Index(fileStem, "_")
+	if separatorIndex <= 0 || separatorIndex >= len(fileStem)-1 {
+		return "", false
+	}
+
+	conID := strings.TrimSpace(fileStem[:separatorIndex])
+	suffix := strings.TrimSpace(fileStem[separatorIndex+1:])
+	if conID == "" || suffix == "" {
+		return "", false
+	}
+	return conID, true
 }

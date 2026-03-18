@@ -2,14 +2,16 @@ package craftmarkdown
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	markdownconfig "github.com/landmaster135/devbox/internal/markdown_crafter/config"
 
-	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
 	domain "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/domain"
+	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
 	common "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/common"
 )
 
@@ -58,6 +60,38 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 	}
 
 	markdownService := common.NewMarkdownService(s.fileSystem)
+	srcBodyFiles, err := s.fileSystem.ListMarkdownFiles(srcBodyDir)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("src-body-dir の読み込みに失敗しました (%s): %w", srcBodyDir, err)
+		}
+		srcBodyFiles = []string{}
+	}
+	splitIndex := common.BuildSplitMarkdownIndex(srcBodyFiles)
+
+	processOutput := func(content domain.Content, conID, outPath string) error {
+		headingText := strings.TrimSpace(content.PageTitle)
+		if headingText == "" {
+			return fmt.Errorf("page_title が空です (con_id=%s)", conID)
+		}
+		if _, err := markdownService.AddHeading1(outPath, headingText, markdownconfig.HeadingPositionHead); err != nil {
+			return fmt.Errorf("見出し追加に失敗しました (con_id=%s): %w", conID, err)
+		}
+
+		frontMatterPairs := common.BuildFrontMatterPairs(content)
+		if _, err := markdownService.AddFrontMatter(outPath, frontMatterPairs); err != nil {
+			return fmt.Errorf("front matter 追加に失敗しました (con_id=%s): %w", conID, err)
+		}
+
+		tags, err := common.BuildTagsForContent(content, frequentTags)
+		if err != nil {
+			return fmt.Errorf("タグ生成に失敗しました (con_id=%s): %w", conID, err)
+		}
+		if _, err := markdownService.AddTags(outPath, strings.Join(tags, ",")); err != nil {
+			return fmt.Errorf("タグ追加に失敗しました (con_id=%s): %w", conID, err)
+		}
+		return nil
+	}
 
 	totalTarget := 0
 	processed := 0
@@ -82,50 +116,45 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 		if normalizedCategoryFilter != "" && common.NormalizeKey(content.Category) != normalizedCategoryFilter {
 			continue
 		}
-		totalTarget++
 
-		srcPath := filepath.Join(srcBodyDir, conID+".md")
-		exists, err := s.fileSystem.FileExists(srcPath)
+		exactSrcPath := filepath.Join(srcBodyDir, conID+".md")
+		exactExists, err := s.fileSystem.FileExists(exactSrcPath)
 		if err != nil {
-			return "", fmt.Errorf("コピー元ファイルの確認に失敗しました (%s): %w", srcPath, err)
+			return "", fmt.Errorf("コピー元ファイルの確認に失敗しました (%s): %w", exactSrcPath, err)
 		}
 
-		outPath := filepath.Join(outDir, conID+".md")
-		if exists {
-			if err := s.fileSystem.CopyFile(srcPath, outPath); err != nil {
-				return "", fmt.Errorf("Markdownのコピーに失敗しました (%s -> %s): %w", srcPath, outPath, err)
-			}
-		} else {
+		sourcePaths := splitIndex.Resolve(conID)
+		if exactExists {
+			sourcePaths = []string{exactSrcPath}
+		}
+
+		if len(sourcePaths) == 0 {
+			totalTarget++
+			outPath := filepath.Join(outDir, conID+".md")
 			if skipsNoSrcBody {
 				continue
 			}
 			if err := s.fileSystem.WriteFile(outPath, []byte("")); err != nil {
 				return "", fmt.Errorf("空Markdownの作成に失敗しました (%s): %w", outPath, err)
 			}
+			if err := processOutput(content, conID, outPath); err != nil {
+				return "", err
+			}
+			processed++
+			continue
 		}
 
-		headingText := strings.TrimSpace(content.PageTitle)
-		if headingText == "" {
-			return "", fmt.Errorf("page_title が空です (con_id=%s)", conID)
+		totalTarget += len(sourcePaths)
+		for _, srcPath := range sourcePaths {
+			outPath := filepath.Join(outDir, filepath.Base(srcPath))
+			if err := s.fileSystem.CopyFile(srcPath, outPath); err != nil {
+				return "", fmt.Errorf("Markdownのコピーに失敗しました (%s -> %s): %w", srcPath, outPath, err)
+			}
+			if err := processOutput(content, conID, outPath); err != nil {
+				return "", err
+			}
+			processed++
 		}
-		if _, err := markdownService.AddHeading1(outPath, headingText, markdownconfig.HeadingPositionHead); err != nil {
-			return "", fmt.Errorf("見出し追加に失敗しました (con_id=%s): %w", conID, err)
-		}
-
-		frontMatterPairs := common.BuildFrontMatterPairs(content)
-		if _, err := markdownService.AddFrontMatter(outPath, frontMatterPairs); err != nil {
-			return "", fmt.Errorf("front matter 追加に失敗しました (con_id=%s): %w", conID, err)
-		}
-
-		tags, err := common.BuildTagsForContent(content, frequentTags)
-		if err != nil {
-			return "", fmt.Errorf("タグ生成に失敗しました (con_id=%s): %w", conID, err)
-		}
-		if _, err := markdownService.AddTags(outPath, strings.Join(tags, ",")); err != nil {
-			return "", fmt.Errorf("タグ追加に失敗しました (con_id=%s): %w", conID, err)
-		}
-
-		processed++
 	}
 
 	return fmt.Sprintf("処理完了\n対象件数=%d, 加工成功=%d", totalTarget, processed), nil

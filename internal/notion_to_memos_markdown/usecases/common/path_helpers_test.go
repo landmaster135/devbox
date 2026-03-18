@@ -110,3 +110,40 @@ func TestSanitizeCategory(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildSplitMarkdownIndex(t *testing.T) {
+	t.Parallel()
+
+	index := BuildSplitMarkdownIndex([]string{
+		"/tmp/CO0001_02.md",
+		"/tmp/CO0001_01.md",
+		"/tmp/CO0001.md",
+		"/tmp/CO0002_a.md",
+		"/tmp/CO0002_.md",
+		"/tmp/CO0003_01.txt",
+	})
+
+	resolved := index.Resolve("CO0001")
+	if len(resolved) != 2 {
+		t.Fatalf("len(resolved) = %d, want 2", len(resolved))
+	}
+	if resolved[0] != "/tmp/CO0001_01.md" || resolved[1] != "/tmp/CO0001_02.md" {
+		t.Fatalf("unexpected resolved order: %#v", resolved)
+	}
+
+	co2Resolved := index.Resolve(" CO0002 ")
+	if len(co2Resolved) != 1 || co2Resolved[0] != "/tmp/CO0002_a.md" {
+		t.Fatalf("unexpected CO0002 resolved: %#v", co2Resolved)
+	}
+
+	missing := index.Resolve("CO9999")
+	if len(missing) != 0 {
+		t.Fatalf("missing should be empty: %#v", missing)
+	}
+
+	resolved[0] = "mutated"
+	resolvedAgain := index.Resolve("CO0001")
+	if resolvedAgain[0] != "/tmp/CO0001_01.md" {
+		t.Fatalf("Resolve should return a defensive copy: %#v", resolvedAgain)
+	}
+}

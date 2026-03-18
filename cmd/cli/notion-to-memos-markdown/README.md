@@ -12,6 +12,7 @@
 - `--operation=craft-markdown`
   - `--page-type=content` または `--page-type=artifact` を対象に処理
   - `con_id` の数値範囲（`--con_number_start` から `--con_number_end`）を対象に処理
+  - 入力 body は `src-body-dir/<con_id>.md` を優先し、無い場合は `src-body-dir/<con_id>_*.md`（分割ファイル）を対象にする
   - `--skips-no-src-body=true` 指定時はコピー元Markdownがないページをスキップ（未指定/false時は空Markdownを作成して加工）
   - `content`:
     - `--category` 指定時は一致する category の Content のみ処理
