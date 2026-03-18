@@ -93,6 +93,76 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 }
 
+func TestService_Execute_WithExistingFrontMatterSkipsHeadingAndTags(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "contents.json")
+	tagsFile := filepath.Join(tmpDir, "tags.md")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id": "CO000000010",
+			"page_title": "Google Apps Script",
+			"category": "software",
+			"owning_status": "already",
+			"color": "gray",
+			"bought_at": "2024-01-01T09:00:00+09:00",
+			"score": 88,
+			"price": 1200,
+			"url": "https://example.com/gas",
+			"tags": [
+				{"page_title": "JavaScript"},
+				{"page_title": "CustomTag"}
+			]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(tagsFile, []byte("## Frequent Tags\n#31-programming/language/javascript\n"), 0644); err != nil {
+		t.Fatalf("write tags failed: %v", err)
+	}
+	existingFrontMatterBody := `---
+title: Existing
+---
+本文です。
+`
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "CO000000010.md"), []byte(existingFrontMatterBody), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	craftedPath := filepath.Join(outDir, "CO000000010.md")
+	craftedData, err := os.ReadFile(craftedPath)
+	if err != nil {
+		t.Fatalf("read crafted file failed: %v", err)
+	}
+	crafted := string(craftedData)
+	if strings.Contains(crafted, "# Google Apps Script") {
+		t.Fatalf("heading should be skipped when front matter exists: %s", crafted)
+	}
+	if strings.Contains(crafted, "#91-backup/tool-migration/202602-notion") {
+		t.Fatalf("tags should be skipped when front matter exists: %s", crafted)
+	}
+	if !strings.Contains(crafted, "con_id: CO000000010") {
+		t.Fatalf("front matter merge should still run: %s", crafted)
+	}
+}
+
 func TestService_Execute_SplitSourceFiles(t *testing.T) {
 	t.Parallel()
 

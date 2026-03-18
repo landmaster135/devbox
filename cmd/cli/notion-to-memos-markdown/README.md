@@ -16,6 +16,7 @@
   - `--skips-no-src-body=true` 指定時はコピー元Markdownがないページをスキップ（未指定/false時は空Markdownを作成して加工）
   - `content`:
     - `--category` 指定時は一致する category の Content のみ処理
+    - コピー元 Markdown に front matter が既に存在する場合、H1 見出しとタグの新規追加を行わない（front matter へのキー追加は実施）
     - `page_title` を H1 見出しとして先頭に追加
     - front matter（`bought_at`, `score_of_100`, `price_yen`, `con_id`, `url`）を追加
     - `tags.md` の `## Frequent Tags` セクションを使ってタグを解決し、分類タグ群を追加

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	markdownconfig "github.com/landmaster135/devbox/internal/markdown_crafter/config"
+	markdowncommon "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/common"
 
 	domain "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/domain"
 	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
@@ -74,13 +75,24 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 		if headingText == "" {
 			return fmt.Errorf("page_title が空です (con_id=%s)", conID)
 		}
-		if _, err := markdownService.AddHeading1(outPath, headingText, markdownconfig.HeadingPositionHead); err != nil {
-			return fmt.Errorf("見出し追加に失敗しました (con_id=%s): %w", conID, err)
+
+		hasFrontMatter, err := s.hasFrontMatter(outPath)
+		if err != nil {
+			return fmt.Errorf("front matter の判定に失敗しました (con_id=%s): %w", conID, err)
+		}
+		if !hasFrontMatter {
+			if _, err := markdownService.AddHeading1(outPath, headingText, markdownconfig.HeadingPositionHead); err != nil {
+				return fmt.Errorf("見出し追加に失敗しました (con_id=%s): %w", conID, err)
+			}
 		}
 
 		frontMatterPairs := common.BuildFrontMatterPairs(content)
 		if _, err := markdownService.AddFrontMatter(outPath, frontMatterPairs); err != nil {
 			return fmt.Errorf("front matter 追加に失敗しました (con_id=%s): %w", conID, err)
+		}
+
+		if hasFrontMatter {
+			return nil
 		}
 
 		tags, err := common.BuildTagsForContent(content, frequentTags)
@@ -158,4 +170,16 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 	}
 
 	return fmt.Sprintf("処理完了\n対象件数=%d, 加工成功=%d", totalTarget, processed), nil
+}
+
+func (s *Service) hasFrontMatter(filePath string) (bool, error) {
+	content, err := s.fileSystem.ReadFile(filePath)
+	if err != nil {
+		return false, err
+	}
+	hasFrontMatter, _, _, err := markdowncommon.SplitFrontMatterBlock(string(content))
+	if err != nil {
+		return false, err
+	}
+	return hasFrontMatter, nil
 }
