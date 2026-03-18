@@ -231,6 +231,20 @@ go run ./cmd/cli/gcloud-genset-compute --operation=stop-gce-instance --instance-
 go run ./cmd/cli/gcloud-genset-compute --operation=delete-gce-instance --instance-name=my-vm00 --zone=us-central1-a
 ```
 
+### 不要なディスクを削除
+```bash
+# ディスク一覧を取得
+gcloud compute disks list \
+  --filter="type~pd-balanced" \
+  --format="table(name,zone,sizeGb,status,users)"
+
+# VMを削除
+go run ./cmd/cli/gcloud-genset-compute --operation=delete-gce-instance --instance-name=my-vm00 --zone=us-central1-a
+
+# ディスクが残っていたら削除
+gcloud compute disks delete DISK_NAME --zone=us-central1-a
+```
+
 ### インスタンス一覧コマンド生成
 
 ```bash
