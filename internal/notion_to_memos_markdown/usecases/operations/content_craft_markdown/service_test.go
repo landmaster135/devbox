@@ -82,8 +82,16 @@ func TestService_Execute_Normal(t *testing.T) {
 	if !strings.Contains(crafted, "# Google Apps Script") {
 		t.Fatalf("heading missing: %s", crafted)
 	}
+	if !strings.Contains(crafted, `title: "Google Apps Script"`) {
+		t.Fatalf("front matter title missing: %s", crafted)
+	}
 	if !strings.Contains(crafted, "bought_at: 2024-01-01T09:00:00+09:00") {
 		t.Fatalf("front matter missing: %s", crafted)
+	}
+	idxTitle := strings.Index(crafted, `title: "Google Apps Script"`)
+	idxBoughtAt := strings.Index(crafted, "bought_at: 2024-01-01T09:00:00+09:00")
+	if idxTitle == -1 || idxBoughtAt == -1 || idxTitle > idxBoughtAt {
+		t.Fatalf("front matter order is invalid: %s", crafted)
 	}
 	if !strings.Contains(crafted, "#91-backup/tool-migration/202602-notion") {
 		t.Fatalf("required tag missing: %s", crafted)
@@ -157,6 +165,12 @@ title: Existing
 	}
 	if strings.Contains(crafted, "#91-backup/tool-migration/202602-notion") {
 		t.Fatalf("tags should be skipped when front matter exists: %s", crafted)
+	}
+	if !strings.Contains(crafted, `title: "Google Apps Script"`) {
+		t.Fatalf("existing title should be overwritten by page_title: %s", crafted)
+	}
+	if strings.Contains(crafted, "title: Existing") {
+		t.Fatalf("old title should not remain: %s", crafted)
 	}
 	if !strings.Contains(crafted, "con_id: CO000000010") {
 		t.Fatalf("front matter merge should still run: %s", crafted)

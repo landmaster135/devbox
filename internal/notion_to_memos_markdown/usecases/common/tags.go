@@ -51,15 +51,26 @@ var ignoredArtifactTagTitles = map[string]struct{}{
 }
 
 func BuildFrontMatterPairs(content domain.Content) []string {
+	title := QuoteFrontMatterString(content.PageTitle)
 	conID := strings.TrimSpace(content.ConID)
 	url := NormalizeFrontMatterURL(content.URL)
 	return []string{
+		fmt.Sprintf("title=%s", title),
 		fmt.Sprintf("bought_at=%s", strings.TrimSpace(content.BoughtAt)),
 		fmt.Sprintf("score_of_100=%d", content.Score),
 		fmt.Sprintf("price_yen=%d", content.Price),
 		fmt.Sprintf("con_id=%s", conID),
 		fmt.Sprintf("url=%s", url),
 	}
+}
+
+func QuoteFrontMatterString(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return `""`
+	}
+	escaped := strings.ReplaceAll(trimmed, `"`, `\"`)
+	return `"` + escaped + `"`
 }
 
 func NormalizeFrontMatterURL(url string) string {

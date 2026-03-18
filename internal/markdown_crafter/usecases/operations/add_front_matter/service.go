@@ -49,6 +49,7 @@ func (s *Service) Execute(filePath string, kvPairs []string) (string, error) {
 		}
 		existingValues[key] = newValues[key]
 	}
+	existingKeys = moveKeyToFront(existingKeys, "title")
 
 	frontMatter := common.BuildFrontMatter(existingKeys, existingValues)
 	body = strings.TrimPrefix(body, "\n")
@@ -65,4 +66,27 @@ func (s *Service) Execute(filePath string, kvPairs []string) (string, error) {
 	}
 
 	return fmt.Sprintf("add-front-matter: %s を更新しました (%d キー)\n", filePath, len(existingKeys)), nil
+}
+
+func moveKeyToFront(keys []string, target string) []string {
+	if len(keys) == 0 {
+		return keys
+	}
+
+	targetIndex := -1
+	for i, key := range keys {
+		if key == target {
+			targetIndex = i
+			break
+		}
+	}
+	if targetIndex <= 0 {
+		return keys
+	}
+
+	reordered := make([]string, 0, len(keys))
+	reordered = append(reordered, target)
+	reordered = append(reordered, keys[:targetIndex]...)
+	reordered = append(reordered, keys[targetIndex+1:]...)
+	return reordered
 }

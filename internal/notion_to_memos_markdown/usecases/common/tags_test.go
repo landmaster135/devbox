@@ -14,6 +14,7 @@ func TestBuildFrontMatterPairs(t *testing.T) {
 	t.Parallel()
 
 	content := domain.Content{
+		PageTitle: " Sample Title ",
 		BoughtAt: " 2024-01-01T09:00:00+09:00 ",
 		Score:    88,
 		Price:    1200,
@@ -23,6 +24,7 @@ func TestBuildFrontMatterPairs(t *testing.T) {
 
 	got := BuildFrontMatterPairs(content)
 	want := []string{
+		`title="Sample Title"`,
 		"bought_at=2024-01-01T09:00:00+09:00",
 		"score_of_100=88",
 		"price_yen=1200",
@@ -31,6 +33,32 @@ func TestBuildFrontMatterPairs(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("BuildFrontMatterPairs() = %#v, want %#v", got, want)
+	}
+}
+
+func TestQuoteFrontMatterString(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "normal", input: "Sample", want: `"Sample"`},
+		{name: "trim", input: "  Sample Title  ", want: `"Sample Title"`},
+		{name: "empty", input: "", want: `""`},
+		{name: "quote escaped", input: `A "quote" title`, want: `"A \"quote\" title"`},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := QuoteFrontMatterString(tt.input)
+			if got != tt.want {
+				t.Fatalf("QuoteFrontMatterString(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
 	}
 }
 

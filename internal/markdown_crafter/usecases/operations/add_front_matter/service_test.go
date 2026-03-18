@@ -106,3 +106,30 @@ func TestService_AddFrontMatter_OnlyFrontMatter_NoBody(t *testing.T) {
 		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, string(got))
 	}
 }
+
+func TestService_AddFrontMatter_TitleMovedToFrontWhenAddedToExistingFrontMatter(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "doc.md")
+	content := "---\nauthor: nov\nstatus: draft\n---\n\nbody\n"
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write source file: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute(filePath, []string{"title=New Doc"})
+	if err != nil {
+		t.Fatalf("AddFrontMatter returned error: %v", err)
+	}
+
+	got, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to read updated file: %v", err)
+	}
+
+	expected := "---\ntitle: New Doc\nauthor: nov\nstatus: draft\n---\n\nbody\n"
+	if string(got) != expected {
+		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, string(got))
+	}
+}

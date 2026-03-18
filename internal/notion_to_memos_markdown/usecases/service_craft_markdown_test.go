@@ -85,8 +85,16 @@ func TestService_CraftMarkdown_Normal(t *testing.T) {
 		t.Fatalf("read crafted file failed: %v", err)
 	}
 	crafted := string(craftedData)
+	if !strings.Contains(crafted, `title: "Google Apps Script"`) {
+		t.Fatalf("front matter title missing: %s", crafted)
+	}
 	if !strings.Contains(crafted, "bought_at: 2024-01-01T09:00:00+09:00") {
 		t.Fatalf("front matter missing: %s", crafted)
+	}
+	idxTitle := strings.Index(crafted, `title: "Google Apps Script"`)
+	idxBoughtAt := strings.Index(crafted, "bought_at: 2024-01-01T09:00:00+09:00")
+	if idxTitle == -1 || idxBoughtAt == -1 || idxTitle > idxBoughtAt {
+		t.Fatalf("front matter order is invalid: %s", crafted)
 	}
 	if !strings.Contains(crafted, "score_of_100: 88") || !strings.Contains(crafted, "price_yen: 1200") {
 		t.Fatalf("front matter values missing: %s", crafted)
@@ -352,6 +360,9 @@ func TestService_CraftMarkdown_MissingSourceFileCreatesEmptyMarkdown(t *testing.
 		t.Fatalf("missing source output should exist: %v", err)
 	}
 	missingContent := string(missingData)
+	if !strings.Contains(missingContent, `title: "Missing"`) {
+		t.Fatalf("front matter title should be applied to empty markdown: %s", missingContent)
+	}
 	if !strings.Contains(missingContent, "con_id: CO000000011") {
 		t.Fatalf("front matter should be applied to empty markdown: %s", missingContent)
 	}

@@ -18,7 +18,7 @@
     - `--category` 指定時は一致する category の Content のみ処理
     - コピー元 Markdown に front matter が既に存在する場合、H1 見出しとタグの新規追加を行わない（front matter へのキー追加は実施）
     - `page_title` を H1 見出しとして先頭に追加
-    - front matter（`bought_at`, `score_of_100`, `price_yen`, `con_id`, `url`）を追加
+    - front matter（`title`, `bought_at`, `score_of_100`, `price_yen`, `con_id`, `url`）を追加
     - `tags.md` の `## Frequent Tags` セクションを使ってタグを解決し、分類タグ群を追加
   - `artifact`:
     - `output_url` を本文先頭に追加した上で、`add-tags` と `add-heading1` 相当の加工を実行
