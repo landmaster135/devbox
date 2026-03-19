@@ -8,8 +8,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/web_scraper/config"
-	"github.com/landmaster135/devbox/internal/web_scraper/usecases"
+	config "github.com/landmaster135/devbox/internal/web_scraper/config"
+	usecases "github.com/landmaster135/devbox/internal/web_scraper/usecases"
 )
 
 type exitCode int

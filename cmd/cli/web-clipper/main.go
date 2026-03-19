@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/web_clipper/config"
-	"github.com/landmaster135/devbox/internal/web_clipper/usecases"
+	config "github.com/landmaster135/devbox/internal/web_clipper/config"
+	usecases "github.com/landmaster135/devbox/internal/web_clipper/usecases"
 )
 
 func main() {

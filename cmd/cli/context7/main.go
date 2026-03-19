@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/context7/domain/models"
-	"github.com/landmaster135/devbox/internal/context7/usecases"
+	models "github.com/landmaster135/devbox/internal/context7/domain/models"
+	usecases "github.com/landmaster135/devbox/internal/context7/usecases"
 )
 
 func handleSearchCommand(service *usecases.Context7Service, args []string) {

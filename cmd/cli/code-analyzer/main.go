@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/code_analyzer/config"
-	"github.com/landmaster135/devbox/internal/code_analyzer/app"
+	config "github.com/landmaster135/devbox/internal/code_analyzer/config"
+	app "github.com/landmaster135/devbox/internal/code_analyzer/app"
 )
 
 func main() {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/notion_to_memos_markdown/config"
+	config "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/config"
 	progress "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/progress"
-	"github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases"
+	usecases "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases"
 )
 
 func main() {

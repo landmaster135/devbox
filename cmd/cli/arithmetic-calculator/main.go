@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
-	"github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases"
+	config "github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
+	usecases "github.com/landmaster135/devbox/internal/arithmetic_calculator/usecases"
 )
 
 type operationExecutor interface {

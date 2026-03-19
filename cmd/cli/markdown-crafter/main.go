@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/markdown_crafter/config"
-	"github.com/landmaster135/devbox/internal/markdown_crafter/usecases"
+	config "github.com/landmaster135/devbox/internal/markdown_crafter/config"
+	usecases "github.com/landmaster135/devbox/internal/markdown_crafter/usecases"
 )
 
 func main() {

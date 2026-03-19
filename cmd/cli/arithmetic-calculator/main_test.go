@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
+	config "github.com/landmaster135/devbox/internal/arithmetic_calculator/config"
 )
 
 type mockExecutor struct {
