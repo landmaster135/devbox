@@ -220,6 +220,47 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "RemoveTitleHashTags",
+			cfg: &config.Config{
+				Operation: config.OperationRemoveTitleHashTags,
+				DirPath:   "notes",
+			},
+			setup: func(repo *operationDispatchRepository) {
+				repo.listedFiles["notes"] = []string{"notes/a.md"}
+				repo.readFileContents["notes/a.md"] = "## タイトル #Go - 記事\n- [リンク #Go](https://example.com)\n本文 #Keep\n"
+			},
+			assert: func(t *testing.T, result string, repo *operationDispatchRepository) {
+				t.Helper()
+				got := repo.writtenFiles["notes/a.md"]
+				if !strings.Contains(got, "## タイトル - 記事\n- [リンク](https://example.com)\n本文 #Keep\n") {
+					t.Fatalf("title hash tags were not removed: %q", got)
+				}
+				if !strings.Contains(result, "remove-title-hash-tags: 1 ファイルの先頭2行からハッシュタグを除去しました") {
+					t.Fatalf("unexpected result: %s", result)
+				}
+			},
+		},
+		{
+			name: "RemoveTitleHashTagsNoChange",
+			cfg: &config.Config{
+				Operation: config.OperationRemoveTitleHashTags,
+				DirPath:   "notes",
+			},
+			setup: func(repo *operationDispatchRepository) {
+				repo.listedFiles["notes"] = []string{"notes/a.md"}
+				repo.readFileContents["notes/a.md"] = "title\nsecond line\nthird #Keep\n"
+			},
+			assert: func(t *testing.T, result string, repo *operationDispatchRepository) {
+				t.Helper()
+				if _, ok := repo.writtenFiles["notes/a.md"]; ok {
+					t.Fatalf("unchanged file should not be written: %q", repo.writtenFiles["notes/a.md"])
+				}
+				if !strings.Contains(result, "remove-title-hash-tags: 0 ファイルの先頭2行からハッシュタグを除去しました") {
+					t.Fatalf("unexpected result: %s", result)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

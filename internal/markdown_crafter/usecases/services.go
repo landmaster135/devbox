@@ -13,6 +13,7 @@ import (
 	addtags "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/add_tags"
 	deleteemptyfiles "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/delete_empty_files"
 	removeheadingannotations "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/remove_heading_annotations"
+	removetitlehashtags "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/remove_title_hash_tags"
 	replaceimages "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/replace_images"
 	splitheadings "github.com/landmaster135/devbox/internal/markdown_crafter/usecases/operations/split_headings"
 )
@@ -26,6 +27,7 @@ type Service struct {
 	addHeading1Operation              addHeading1Operation
 	replaceImagesOperation            replaceImagesOperation
 	removeHeadingAnnotationsOperation removeHeadingAnnotationsOperation
+	removeTitleHashTagsOperation      removeTitleHashTagsOperation
 }
 
 func NewService(repository domain.Repository) *Service {
@@ -43,6 +45,7 @@ func NewService(repository domain.Repository) *Service {
 		addheading1.NewService(repo),
 		replaceimages.NewService(repo),
 		removeheadingannotations.NewService(repo),
+		removetitlehashtags.NewService(repo),
 	)
 }
 
@@ -78,6 +81,10 @@ func (s *Service) RemoveHeadingAnnotations(filePath string, headingLevel int) (s
 	return s.removeHeadingAnnotationsOperation.Execute(filePath, headingLevel)
 }
 
+func (s *Service) RemoveTitleHashTags(dirPath string) (string, error) {
+	return s.removeTitleHashTagsOperation.Execute(dirPath)
+}
+
 func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 	switch cfg.Operation {
 	case config.OperationSplitHeadings:
@@ -97,6 +104,8 @@ func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 		return s.ReplaceImages(cfg.FilePath, cfg.ReplacementText)
 	case config.OperationRemoveHeadingAnnotations:
 		return s.RemoveHeadingAnnotations(cfg.FilePath, cfg.HeadingLevel)
+	case config.OperationRemoveTitleHashTags:
+		return s.RemoveTitleHashTags(cfg.DirPath)
 	default:
 		return "", fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
 	}

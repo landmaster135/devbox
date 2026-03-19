@@ -157,6 +157,22 @@ func TestParseFlags_RemoveHeadingAnnotations_Normal(t *testing.T) {
 	})
 }
 
+func TestParseFlags_RemoveTitleHashTags_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveTitleHashTags,
+		"--dir-path", "./notes",
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.DirPath != "./notes" {
+			t.Fatalf("unexpected dir path: %s", cfg.DirPath)
+		}
+	})
+}
+
 func TestParseFlags_Help_Normal(t *testing.T) {
 	withArgs([]string{"markdown-crafter", "--help"}, func() {
 		cfg, err := ParseFlags()
@@ -255,6 +271,18 @@ func TestParseFlags_InvalidRemoveHeadingAnnotationsMissingHeadingLevel(t *testin
 		"markdown-crafter",
 		"--operation", OperationRemoveHeadingAnnotations,
 		"--file-path", "./sample.md",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidRemoveTitleHashTagsMissingDirPath(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveTitleHashTags,
 	}, func() {
 		_, err := ParseFlags()
 		if err == nil {

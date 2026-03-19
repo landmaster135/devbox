@@ -1,6 +1,6 @@
 # markdown-crafter
 
-Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 7 操作を切り替えます。
+Markdown ファイルを加工する CLI ツールです。`--operation` で下記の 8 操作を切り替えます。
 
 - `split-headings`: 指定見出しレベルごとに分割して複数ファイル出力
 - `add-front-matter`: `--kv` で指定した key-value をフロントマターへ追加
@@ -9,6 +9,7 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 - `add-heading1`: 本文の先頭または末尾へ見出し1を追加
 - `replace-images`: Markdown 画像記法 `![alt](url)` を指定文字列へ置換
 - `remove-heading-annotations`: 指定見出しレベルの `**見出し**` 注釈を `見出し` へ変換
+- `remove-title-hash-tags`: 各ファイル先頭2行のハッシュタグ（例: `#Python`）を除去
 
 ## 内部構成
 
@@ -21,9 +22,9 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 
 | フラグ | 必須 | デフォルト | 説明 |
 | --- | --- | --- | --- |
-| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` / `replace-images` / `remove-heading-annotations` |
+| `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` / `replace-images` / `remove-heading-annotations` / `remove-title-hash-tags` |
 | `--file-path` | `split-headings` / `add-front-matter` / `add-heading1` / `replace-images` / `remove-heading-annotations` で必須、`add-tags` で `--dir-path` と排他で必須 | なし | 対象の Markdown ファイル |
-| `--dir-path` | `add-tags` で `--file-path` と排他で必須、`delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
+| `--dir-path` | `add-tags` で `--file-path` と排他で必須、`delete-empty-files` / `remove-title-hash-tags` で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
 | `--heading-level` | `split-headings` / `remove-heading-annotations` で必須 | `0` | 対象の見出しレベル（1-6） |
 | `--heading-text` | `add-heading1` で必須 | なし | 追加する見出し1のテキスト |
 | `--heading-position` | `add-heading1` で必須 | なし | 追加位置（`head` または `tail`） |
@@ -137,6 +138,14 @@ go run ./cmd/cli/markdown-crafter \
   --heading-level 3
 ```
 
+### remove-title-hash-tags
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation remove-title-hash-tags \
+  --dir-path ./notes
+```
+
 ## 出力例
 
 ### 成功時
@@ -177,6 +186,12 @@ replace-images: ./sample.md の画像記法 2 件を置換しました
 
 ```text
 remove-heading-annotations: ./sample.md の見出し注釈 2 件を除去しました
+```
+
+```text
+remove-title-hash-tags: 2 ファイルの先頭2行からハッシュタグを除去しました
+- ./notes/a.md
+- ./notes/b.md
 ```
 
 ### エラー時

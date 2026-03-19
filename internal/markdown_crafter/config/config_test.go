@@ -134,6 +134,18 @@ func TestNewConfig_RemoveHeadingAnnotations_Normal(t *testing.T) {
 	}
 }
 
+func TestNewConfig_RemoveTitleHashTags_Normal(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := NewConfig(OperationRemoveTitleHashTags, "", "./docs", 0, "", nil, "", "", "", "", false)
+	if err != nil {
+		t.Fatalf("NewConfig returned error: %v", err)
+	}
+	if cfg.DirPath != "./docs" {
+		t.Fatalf("unexpected dir path: %s", cfg.DirPath)
+	}
+}
+
 func TestNewConfig_InvalidReplaceImages(t *testing.T) {
 	t.Parallel()
 
@@ -152,6 +164,15 @@ func TestNewConfig_InvalidRemoveHeadingAnnotations(t *testing.T) {
 	}
 
 	_, err = NewConfig(OperationRemoveHeadingAnnotations, "./doc.md", "", 0, "", nil, "", "", "", "", false)
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func TestNewConfig_InvalidRemoveTitleHashTags(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewConfig(OperationRemoveTitleHashTags, "", "", 0, "", nil, "", "", "", "", false)
 	if err == nil {
 		t.Fatal("expected validation error")
 	}

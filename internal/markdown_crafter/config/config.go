@@ -15,6 +15,7 @@ const (
 	OperationAddHeading1              = "add-heading1"
 	OperationReplaceImages            = "replace-images"
 	OperationRemoveHeadingAnnotations = "remove-heading-annotations"
+	OperationRemoveTitleHashTags      = "remove-title-hash-tags"
 
 	HeadingPositionHead = "head"
 	HeadingPositionTail = "tail"
@@ -28,6 +29,7 @@ var allowedOperations = []string{
 	OperationAddHeading1,
 	OperationReplaceImages,
 	OperationRemoveHeadingAnnotations,
+	OperationRemoveTitleHashTags,
 }
 
 type Config struct {
@@ -137,6 +139,10 @@ func (c *Config) validate() error {
 		if c.HeadingLevel < 1 || c.HeadingLevel > 6 {
 			return fmt.Errorf("--heading-level は 1 から 6 の範囲で指定してください")
 		}
+	case OperationRemoveTitleHashTags:
+		if strings.TrimSpace(c.DirPath) == "" {
+			return fmt.Errorf("--dir-path は必須です (--operation=remove-title-hash-tags)")
+		}
 	}
 
 	return nil
@@ -215,6 +221,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s --operation add-heading1 --file-path ./note.md --heading-text 概要 --heading-position head\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation replace-images --file-path ./note.md --replacement-text \"(添付画像)\"\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation remove-heading-annotations --file-path ./note.md --heading-level 3\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation remove-title-hash-tags --dir-path ./notes\n\n", exeName)
 
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --operation string\n")
@@ -222,7 +229,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --file-path string\n")
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownファイルパス\n")
 	fmt.Fprintf(os.Stderr, "  --dir-path string\n")
-	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (add-tagsで file-path の代わりに指定, delete-empty-filesで必須)\n")
+	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (add-tagsで file-path の代わりに指定, delete-empty-files/remove-title-hash-tagsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --heading-level int\n")
 	fmt.Fprintf(os.Stderr, "        対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --output-dir string\n")

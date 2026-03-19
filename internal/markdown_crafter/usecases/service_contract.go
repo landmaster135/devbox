@@ -31,6 +31,10 @@ type removeHeadingAnnotationsOperation interface {
 	Execute(filePath string, headingLevel int) (string, error)
 }
 
+type removeTitleHashTagsOperation interface {
+	Execute(dirPath string) (string, error)
+}
+
 func newServiceWithOperations(
 	repository domain.Repository,
 	splitHeadingsOp splitHeadingsOperation,
@@ -40,6 +44,7 @@ func newServiceWithOperations(
 	addHeading1Op addHeading1Operation,
 	replaceImagesOp replaceImagesOperation,
 	removeHeadingAnnotationsOp removeHeadingAnnotationsOperation,
+	removeTitleHashTagsOp removeTitleHashTagsOperation,
 ) *Service {
 	return &Service{
 		repository:                        repository,
@@ -50,5 +55,6 @@ func newServiceWithOperations(
 		addHeading1Operation:              addHeading1Op,
 		replaceImagesOperation:            replaceImagesOp,
 		removeHeadingAnnotationsOperation: removeHeadingAnnotationsOp,
+		removeTitleHashTagsOperation:      removeTitleHashTagsOp,
 	}
 }
