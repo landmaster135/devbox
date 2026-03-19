@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
-	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
+	testutil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 func TestServiceOperationListMemos_Normal(t *testing.T) {

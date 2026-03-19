@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
+	testutil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
 )
 
 func TestJSONClient_DoJSONOutNil_Normal(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
+	testutil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
-	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
 )
 
 func TestService_CreateClipWithAttachments_Normal(t *testing.T) {
