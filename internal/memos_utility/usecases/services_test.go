@@ -2,6 +2,8 @@ package usecases
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
@@ -104,5 +106,49 @@ func TestNewService_CreateClipUsesInjectedMemosService_Normal(t *testing.T) {
 	}
 	if !createMemoCalled {
 		t.Fatal("CreateMemo was not called")
+	}
+}
+
+func TestNewService_CreateClipsProgressReporter_Normal(t *testing.T) {
+	contentDir := t.TempDir()
+	contentFile := filepath.Join(contentDir, "web-summary-20241225-233435-daikokuyu-event-info.md")
+	if err := os.WriteFile(contentFile, []byte("# content"), 0o644); err != nil {
+		t.Fatalf("WriteFile(content) error = %v", err)
+	}
+
+	progressCalled := false
+	svc := NewService(ServiceOptions{
+		MemosService: &MockMemosService{
+			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
+				return &memos.Memo{Name: "memos/1"}, nil
+			},
+		},
+		FileSystem: infrastructures.NewOSFileSystem(),
+		CreateClipsProgressReporter: func(progress CreateClipsProgress) {
+			progressCalled = true
+			if progress.Current != 1 || progress.Total != 1 {
+				t.Fatalf("progress = %#v, want current=1 total=1", progress)
+			}
+			if progress.Operation != common.OperationCreateWebClip {
+				t.Fatalf("operation = %s, want %s", progress.Operation, common.OperationCreateWebClip)
+			}
+			if filepath.Base(progress.ContentFile) != filepath.Base(contentFile) {
+				t.Fatalf("contentFile = %s, want %s", progress.ContentFile, contentFile)
+			}
+			if progress.AttachmentCount != 0 {
+				t.Fatalf("attachmentCount = %d, want 0", progress.AttachmentCount)
+			}
+		},
+	})
+
+	_, err := svc.CreateClips(context.Background(), CreateClipsInput{
+		Operation:  common.OperationCreateClips,
+		ContentDir: contentDir,
+	})
+	if err != nil {
+		t.Fatalf("CreateClips() error = %v", err)
+	}
+	if !progressCalled {
+		t.Fatal("CreateClipsProgressReporter was not called")
 	}
 }

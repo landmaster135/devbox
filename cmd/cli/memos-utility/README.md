@@ -7,6 +7,7 @@
 - `create-web-clip`: `web-summary-YYYYMMDD-hhmmss-<slug>.md` からメモ作成
 - `create-movie-clip`: `movie-summary-YYYYMMDD-hhmmss-<slug>.md` からメモ作成
 - `create-clips`: `content-dir` 配下の `web-summary-*` / `movie-summary-*` を一括でメモ作成
+  - 処理中は `stderr` に進捗（`進捗: 現在/総数 [operation] ファイル名 (attachments=件数)`）を表示
 
 作成時の固定値:
 - `visibility=PRIVATE`
@@ -97,6 +98,10 @@ go run ./cmd/cli/memos-utility \
   -api-token="$MEMOS_TOKEN" \
   -content-dir=/tmp/clips \
   -attachment-dir=/tmp/attachments
+
+# stderr（進捗表示）
+# 進捗: 1/2 [create-movie-clip] movie-summary-20260319-055716-trump-masako-diplomacy.md (attachments=1)
+# 進捗: 2/2 [create-web-clip] web-summary-20241225-233435-daikokuyu-event-info.md (attachments=2)
 ```
 
 ## 出力例

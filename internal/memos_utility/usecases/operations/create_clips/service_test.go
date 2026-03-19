@@ -99,6 +99,67 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 }
 
+func TestService_ExecuteProgressReporter_Normal(t *testing.T) {
+	contentDir := t.TempDir()
+	webContent := filepath.Join(contentDir, "web-summary-20241225-233435-daikokuyu-event-info.md")
+	movieContent := filepath.Join(contentDir, "movie-summary-20260319-055716-trump-masako-diplomacy.md")
+	for _, path := range []string{webContent, movieContent} {
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", path, err)
+		}
+	}
+
+	progresses := make([]common.CreateClipsProgress, 0, 2)
+	service := NewService(ServiceOptions{
+		FileSystem: infrastructures.NewOSFileSystem(),
+		CreateClipService: &mockCreateClipService{
+			executeFunc: func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+				return &common.CreateClipOutput{Operation: input.Operation}, nil
+			},
+		},
+		ProgressReporter: func(progress common.CreateClipsProgress) {
+			progresses = append(progresses, progress)
+		},
+	})
+
+	_, err := service.Execute(context.Background(), common.CreateClipsInput{
+		Operation:  common.OperationCreateClips,
+		ContentDir: contentDir,
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if len(progresses) != 2 {
+		t.Fatalf("len(progresses) = %d, want 2", len(progresses))
+	}
+	if progresses[0].Current != 1 || progresses[0].Total != 2 {
+		t.Fatalf("progresses[0] = %#v, want current=1 total=2", progresses[0])
+	}
+	if progresses[1].Current != 2 || progresses[1].Total != 2 {
+		t.Fatalf("progresses[1] = %#v, want current=2 total=2", progresses[1])
+	}
+
+	if filepath.Base(progresses[0].ContentFile) != filepath.Base(movieContent) {
+		t.Fatalf("progresses[0].ContentFile = %s, want %s", progresses[0].ContentFile, movieContent)
+	}
+	if progresses[0].Operation != common.OperationCreateMovieClip {
+		t.Fatalf("progresses[0].Operation = %s, want %s", progresses[0].Operation, common.OperationCreateMovieClip)
+	}
+	if progresses[0].AttachmentCount != 0 {
+		t.Fatalf("progresses[0].AttachmentCount = %d, want 0", progresses[0].AttachmentCount)
+	}
+	if filepath.Base(progresses[1].ContentFile) != filepath.Base(webContent) {
+		t.Fatalf("progresses[1].ContentFile = %s, want %s", progresses[1].ContentFile, webContent)
+	}
+	if progresses[1].Operation != common.OperationCreateWebClip {
+		t.Fatalf("progresses[1].Operation = %s, want %s", progresses[1].Operation, common.OperationCreateWebClip)
+	}
+	if progresses[1].AttachmentCount != 0 {
+		t.Fatalf("progresses[1].AttachmentCount = %d, want 0", progresses[1].AttachmentCount)
+	}
+}
+
 func TestService_ExecuteContentFilenameInvalid_NoCreateClipCall_Error(t *testing.T) {
 	contentDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(contentDir, "invalid.md"), []byte("x"), 0o644); err != nil {

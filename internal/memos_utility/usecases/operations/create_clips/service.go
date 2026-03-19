@@ -21,12 +21,14 @@ type CreateClipService interface {
 type ServiceOptions struct {
 	CreateClipService CreateClipService
 	FileSystem        infrastructures.FileSystem
+	ProgressReporter  func(progress common.CreateClipsProgress)
 }
 
 // Service は create-clips operation を扱う。
 type Service struct {
 	createClipService CreateClipService
 	fileSystem        infrastructures.FileSystem
+	progressReporter  func(progress common.CreateClipsProgress)
 }
 
 // NewService は Service を生成する。
@@ -34,6 +36,7 @@ func NewService(opts ServiceOptions) *Service {
 	return &Service{
 		createClipService: opts.CreateClipService,
 		fileSystem:        opts.FileSystem,
+		progressReporter:  opts.ProgressReporter,
 	}
 }
 
@@ -92,8 +95,18 @@ func (s *Service) Execute(ctx context.Context, input common.CreateClipsInput) (*
 		Clips:         make([]*common.CreateClipOutput, 0, len(targets)),
 	}
 
-	for _, target := range targets {
+	for index, target := range targets {
 		attachments := attachmentsByContent[target.ContentBaseName]
+		if s.progressReporter != nil {
+			s.progressReporter(common.CreateClipsProgress{
+				Current:         index + 1,
+				Total:           len(targets),
+				Operation:       target.Operation,
+				ContentFile:     target.ContentPath,
+				AttachmentCount: len(attachments),
+			})
+		}
+
 		clipOutput, err := s.createClipService.Execute(ctx, common.CreateClipInput{
 			Operation:   target.Operation,
 			ContentFile: target.ContentPath,

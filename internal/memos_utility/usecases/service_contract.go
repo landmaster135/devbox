@@ -19,6 +19,9 @@ type CreateClipsInput = common.CreateClipsInput
 // CreateClipsOutput は create-clips の出力。
 type CreateClipsOutput = common.CreateClipsOutput
 
+// CreateClipsProgress は create-clips の進捗通知情報。
+type CreateClipsProgress = common.CreateClipsProgress
+
 // MemosService は memos-utility が利用する Memos サービスの契約。
 type MemosService interface {
 	CreateMemo(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error)

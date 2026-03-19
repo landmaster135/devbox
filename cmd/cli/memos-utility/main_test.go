@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -41,7 +42,7 @@ func TestRun_CreateWebClip_Normal(t *testing.T) {
 		"-api-token=test-token",
 		"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
 		"-attachments= ./a.png , ./b.txt ",
-	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemosUtilityService {
+	}, &stdout, &stderr, func(conf *cfg.Config, _ io.Writer) usecases.MemosUtilityService {
 		return &mockMemosUtilityService{
 			createClipFunc: func(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error) {
 				called = true
@@ -82,7 +83,7 @@ func TestRun_ServiceError_Error(t *testing.T) {
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
 		"-content-file=/tmp/movie-summary-20260319-055716-sample.md",
-	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemosUtilityService {
+	}, &stdout, &stderr, func(conf *cfg.Config, _ io.Writer) usecases.MemosUtilityService {
 		return &mockMemosUtilityService{
 			createClipFunc: func(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error) {
 				return nil, errors.New("create failed")
@@ -109,7 +110,7 @@ func TestRun_CreateClips_Normal(t *testing.T) {
 		"-api-token=test-token",
 		"-content-dir=/tmp/clips",
 		"-attachment-dir=/tmp/attachments",
-	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemosUtilityService {
+	}, &stdout, &stderr, func(conf *cfg.Config, _ io.Writer) usecases.MemosUtilityService {
 		return &mockMemosUtilityService{
 			createClipsFunc: func(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error) {
 				called = true
@@ -154,7 +155,7 @@ func TestRun_ParseError_Error(t *testing.T) {
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
 		"-content-file=/tmp/invalid.md",
-	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemosUtilityService {
+	}, &stdout, &stderr, func(conf *cfg.Config, _ io.Writer) usecases.MemosUtilityService {
 		t.Fatal("factory should not be called")
 		return nil
 	})
@@ -171,7 +172,7 @@ func TestRun_Help_Normal(t *testing.T) {
 	var stdout bytes.Buffer
 	factoryCalled := false
 
-	exitCode := run([]string{"-help"}, &stdout, &bytes.Buffer{}, func(conf *cfg.Config) usecases.MemosUtilityService {
+	exitCode := run([]string{"-help"}, &stdout, &bytes.Buffer{}, func(conf *cfg.Config, _ io.Writer) usecases.MemosUtilityService {
 		factoryCalled = true
 		return &mockMemosUtilityService{}
 	})
@@ -181,5 +182,39 @@ func TestRun_Help_Normal(t *testing.T) {
 	}
 	if factoryCalled {
 		t.Fatal("factory should not be called")
+	}
+}
+
+func TestNewCreateClipsProgressReporter_CreateClips_Normal(t *testing.T) {
+	var stderr bytes.Buffer
+	reporter := newCreateClipsProgressReporter(&cfg.Config{
+		Operation: cfg.OperationCreateClips,
+	}, &stderr)
+
+	if reporter == nil {
+		t.Fatal("reporter = nil, want non-nil")
+	}
+
+	reporter(usecases.CreateClipsProgress{
+		Current:         1,
+		Total:           3,
+		Operation:       cfg.OperationCreateWebClip,
+		ContentFile:     "/tmp/web-summary-20241225-233435-daikokuyu-event-info.md",
+		AttachmentCount: 2,
+	})
+
+	got := stderr.String()
+	if !strings.Contains(got, "進捗: 1/3 [create-web-clip] web-summary-20241225-233435-daikokuyu-event-info.md (attachments=2)") {
+		t.Fatalf("stderr = %q, want progress line", got)
+	}
+}
+
+func TestNewCreateClipsProgressReporter_NotCreateClips_Normal(t *testing.T) {
+	reporter := newCreateClipsProgressReporter(&cfg.Config{
+		Operation: cfg.OperationCreateWebClip,
+	}, &bytes.Buffer{})
+
+	if reporter != nil {
+		t.Fatal("reporter != nil, want nil")
 	}
 }

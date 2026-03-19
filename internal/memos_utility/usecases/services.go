@@ -13,11 +13,12 @@ import (
 
 // ServiceOptions は Service 生成時の入力。
 type ServiceOptions struct {
-	BaseURL      string
-	APIToken     string
-	Timeout      time.Duration
-	MemosService MemosService
-	FileSystem   infrastructures.FileSystem
+	BaseURL                     string
+	APIToken                    string
+	Timeout                     time.Duration
+	MemosService                MemosService
+	FileSystem                  infrastructures.FileSystem
+	CreateClipsProgressReporter func(progress CreateClipsProgress)
 }
 
 // Service は memos-utility のユースケースを提供する。
@@ -51,6 +52,7 @@ func NewService(opts ServiceOptions) *Service {
 	createClipsOp := createclips.NewService(createclips.ServiceOptions{
 		CreateClipService: createClipOp,
 		FileSystem:        fileSystem,
+		ProgressReporter:  opts.CreateClipsProgressReporter,
 	})
 
 	return &Service{

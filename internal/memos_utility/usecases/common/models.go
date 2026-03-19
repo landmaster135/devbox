@@ -33,3 +33,12 @@ type CreateClipsOutput struct {
 	Total         int                 `json:"total"`
 	Clips         []*CreateClipOutput `json:"clips"`
 }
+
+// CreateClipsProgress は create-clips の進捗通知情報。
+type CreateClipsProgress struct {
+	Current         int
+	Total           int
+	Operation       string
+	ContentFile     string
+	AttachmentCount int
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 	usecases "github.com/landmaster135/devbox/internal/memos_utility/usecases"
 )
 
-type serviceFactory func(conf *cfg.Config) usecases.MemosUtilityService
+type serviceFactory func(conf *cfg.Config, stderr io.Writer) usecases.MemosUtilityService
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, newServiceFromConfig))
@@ -31,7 +32,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 		return 0
 	}
 
-	service := factory(conf)
+	service := factory(conf, stderr)
 	ctx := context.Background()
 
 	var result any
@@ -64,12 +65,31 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 	return 0
 }
 
-func newServiceFromConfig(conf *cfg.Config) usecases.MemosUtilityService {
+func newServiceFromConfig(conf *cfg.Config, stderr io.Writer) usecases.MemosUtilityService {
 	return usecases.NewService(usecases.ServiceOptions{
-		BaseURL:  conf.BaseURL,
-		APIToken: conf.APIToken,
-		Timeout:  time.Duration(conf.TimeoutSeconds) * time.Second,
+		BaseURL:                     conf.BaseURL,
+		APIToken:                    conf.APIToken,
+		Timeout:                     time.Duration(conf.TimeoutSeconds) * time.Second,
+		CreateClipsProgressReporter: newCreateClipsProgressReporter(conf, stderr),
 	})
+}
+
+func newCreateClipsProgressReporter(conf *cfg.Config, stderr io.Writer) func(progress usecases.CreateClipsProgress) {
+	if conf.Operation != cfg.OperationCreateClips {
+		return nil
+	}
+
+	return func(progress usecases.CreateClipsProgress) {
+		fmt.Fprintf(
+			stderr,
+			"進捗: %d/%d [%s] %s (attachments=%d)\n",
+			progress.Current,
+			progress.Total,
+			progress.Operation,
+			filepath.Base(progress.ContentFile),
+			progress.AttachmentCount,
+		)
+	}
 }
 
 func printJSON(writer io.Writer, v any) error {
