@@ -23,8 +23,7 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 | --- | --- | --- | --- |
 | `--operation` | 必須 | なし | `split-headings` / `add-front-matter` / `add-tags` / `delete-empty-files` / `add-heading1` / `replace-images` / `remove-heading-annotations` |
 | `--file-path` | `split-headings` / `add-front-matter` / `add-heading1` / `replace-images` / `remove-heading-annotations` で必須、`add-tags` で `--dir-path` と排他で必須 | なし | 対象の Markdown ファイル |
-| `--dir-path` | `add-tags` で `--file-path` と排他で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
-| `--directory-path` | `delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ |
+| `--dir-path` | `add-tags` で `--file-path` と排他で必須、`delete-empty-files` で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
 | `--heading-level` | `split-headings` / `remove-heading-annotations` で必須 | `0` | 対象の見出しレベル（1-6） |
 | `--heading-text` | `add-heading1` で必須 | なし | 追加する見出し1のテキスト |
 | `--heading-position` | `add-heading1` で必須 | なし | 追加位置（`head` または `tail`） |
@@ -102,7 +101,7 @@ go run ./cmd/cli/markdown-crafter \
 ```bash
 go run ./cmd/cli/markdown-crafter \
   --operation delete-empty-files \
-  --directory-path ./notes
+  --dir-path ./notes
 ```
 
 次のいずれかに一致する `.md` ファイルを削除します。

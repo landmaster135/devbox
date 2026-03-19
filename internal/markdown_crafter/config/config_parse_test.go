@@ -90,14 +90,14 @@ func TestParseFlags_DeleteEmptyFiles_Normal(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
 		"--operation", OperationDeleteEmptyFiles,
-		"--directory-path", "./notes",
+		"--dir-path", "./notes",
 	}, func() {
 		cfg, err := ParseFlags()
 		if err != nil {
 			t.Fatalf("ParseFlags returned error: %v", err)
 		}
-		if cfg.DirectoryPath != "./notes" {
-			t.Fatalf("unexpected directory path: %s", cfg.DirectoryPath)
+		if cfg.DirPath != "./notes" {
+			t.Fatalf("unexpected dir path: %s", cfg.DirPath)
 		}
 	})
 }
@@ -208,6 +208,31 @@ func TestParseFlags_InvalidAddTagsWithBothTargets(t *testing.T) {
 		_, err := ParseFlags()
 		if err == nil {
 			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidDeleteEmptyFilesMissingDirPath(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationDeleteEmptyFiles,
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidDeleteEmptyFilesLegacyDirectoryPath(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationDeleteEmptyFiles,
+		"--directory-path", "./notes",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected parse error")
 		}
 	})
 }

@@ -34,7 +34,6 @@ type Config struct {
 	Operation       string
 	FilePath        string
 	DirPath         string
-	DirectoryPath   string
 	HeadingLevel    int
 	OutputDir       string
 	KVPairs         []string
@@ -45,12 +44,11 @@ type Config struct {
 	Help            bool
 }
 
-func NewConfig(operation, filePath, dirPath, directoryPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
+func NewConfig(operation, filePath, dirPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
 	cfg := &Config{
 		Operation:       operation,
 		FilePath:        filePath,
 		DirPath:         dirPath,
-		DirectoryPath:   directoryPath,
 		HeadingLevel:    headingLevel,
 		OutputDir:       outputDir,
 		KVPairs:         kvPairs,
@@ -109,8 +107,8 @@ func (c *Config) validate() error {
 			return fmt.Errorf("--tags は必須です (--operation=add-tags)")
 		}
 	case OperationDeleteEmptyFiles:
-		if strings.TrimSpace(c.DirectoryPath) == "" {
-			return fmt.Errorf("--directory-path は必須です (--operation=delete-empty-files)")
+		if strings.TrimSpace(c.DirPath) == "" {
+			return fmt.Errorf("--dir-path は必須です (--operation=delete-empty-files)")
 		}
 	case OperationAddHeading1:
 		if strings.TrimSpace(c.FilePath) == "" {
@@ -175,7 +173,6 @@ func ParseFlags() (*Config, error) {
 		operation       string
 		filePath        string
 		dirPath         string
-		directoryPath   string
 		headingLevel    int
 		outputDir       string
 		tags            string
@@ -188,8 +185,7 @@ func ParseFlags() (*Config, error) {
 
 	flagSet.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作 (%s)", strings.Join(allowedOperations, ", ")))
 	flagSet.StringVar(&filePath, "file-path", "", "対象のMarkdownファイルパス")
-	flagSet.StringVar(&dirPath, "dir-path", "", "対象のMarkdownディレクトリパス (add-tagsで必須条件あり)")
-	flagSet.StringVar(&directoryPath, "directory-path", "", "対象のMarkdownディレクトリパス (delete-empty-filesで必須)")
+	flagSet.StringVar(&dirPath, "dir-path", "", "対象のMarkdownディレクトリパス (add-tags/delete-empty-filesで必須条件あり)")
 	flagSet.IntVar(&headingLevel, "heading-level", 0, "対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)")
 	flagSet.StringVar(&outputDir, "output-dir", "", "分割後ファイルの出力先ディレクトリ (split-headingsで必須)")
 	flagSet.Var(&kvPairs, "kv", "front matter に追加する key=value (add-front-matter で複数指定可)")
@@ -204,7 +200,7 @@ func ParseFlags() (*Config, error) {
 		return nil, err
 	}
 
-	return NewConfig(operation, filePath, dirPath, directoryPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
+	return NewConfig(operation, filePath, dirPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
 }
 
 func PrintUsage() {
@@ -215,7 +211,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s --operation add-front-matter --file-path ./note.md --kv title=記事 --kv author=nov\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --file-path ./note.md --tags go,markdown\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --dir-path ./notes --tags go,markdown\n", exeName)
-	fmt.Fprintf(os.Stderr, "  %s --operation delete-empty-files --directory-path ./notes\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation delete-empty-files --dir-path ./notes\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-heading1 --file-path ./note.md --heading-text 概要 --heading-position head\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation replace-images --file-path ./note.md --replacement-text \"(添付画像)\"\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation remove-heading-annotations --file-path ./note.md --heading-level 3\n\n", exeName)
@@ -226,9 +222,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --file-path string\n")
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownファイルパス\n")
 	fmt.Fprintf(os.Stderr, "  --dir-path string\n")
-	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (add-tagsで file-path の代わりに指定)\n")
-	fmt.Fprintf(os.Stderr, "  --directory-path string\n")
-	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (delete-empty-filesで必須)\n")
+	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (add-tagsで file-path の代わりに指定, delete-empty-filesで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --heading-level int\n")
 	fmt.Fprintf(os.Stderr, "        対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --output-dir string\n")

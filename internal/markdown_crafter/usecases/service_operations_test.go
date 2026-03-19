@@ -142,8 +142,8 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 		{
 			name: "DeleteEmptyFiles",
 			cfg: &config.Config{
-				Operation:     config.OperationDeleteEmptyFiles,
-				DirectoryPath: "notes",
+				Operation: config.OperationDeleteEmptyFiles,
+				DirPath:   "notes",
 			},
 			setup: func(repo *operationDispatchRepository) {
 				repo.listedFiles["notes"] = []string{"notes/a.md"}

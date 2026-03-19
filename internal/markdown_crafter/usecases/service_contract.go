@@ -16,7 +16,7 @@ type addTagsOperation interface {
 }
 
 type deleteEmptyFilesOperation interface {
-	Execute(directoryPath string) (string, error)
+	Execute(dirPath string) (string, error)
 }
 
 type addHeading1Operation interface {

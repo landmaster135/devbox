@@ -62,8 +62,8 @@ func (s *Service) AddTagsByDir(dirPath string, tagsCSV string) (string, error) {
 	return s.addTagsOperation.ExecuteByDir(dirPath, tagsCSV)
 }
 
-func (s *Service) DeleteEmptyFiles(directoryPath string) (string, error) {
-	return s.deleteEmptyFilesOperation.Execute(directoryPath)
+func (s *Service) DeleteEmptyFiles(dirPath string) (string, error) {
+	return s.deleteEmptyFilesOperation.Execute(dirPath)
 }
 
 func (s *Service) AddHeading1(filePath, headingText, headingPosition string) (string, error) {
@@ -90,7 +90,7 @@ func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 		}
 		return s.AddTags(cfg.FilePath, cfg.Tags)
 	case config.OperationDeleteEmptyFiles:
-		return s.DeleteEmptyFiles(cfg.DirectoryPath)
+		return s.DeleteEmptyFiles(cfg.DirPath)
 	case config.OperationAddHeading1:
 		return s.AddHeading1(cfg.FilePath, cfg.HeadingText, cfg.HeadingPosition)
 	case config.OperationReplaceImages:
