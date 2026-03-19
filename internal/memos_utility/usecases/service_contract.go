@@ -4,7 +4,20 @@ import (
 	"context"
 
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
+	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
+
+// CreateClipInput は create-web-clip / create-movie-clip の入力。
+type CreateClipInput = common.CreateClipInput
+
+// CreateClipOutput は create-web-clip / create-movie-clip の出力。
+type CreateClipOutput = common.CreateClipOutput
+
+// CreateClipsInput は create-clips の入力。
+type CreateClipsInput = common.CreateClipsInput
+
+// CreateClipsOutput は create-clips の出力。
+type CreateClipsOutput = common.CreateClipsOutput
 
 // MemosService は memos-utility が利用する Memos サービスの契約。
 type MemosService interface {
@@ -16,6 +29,14 @@ type MemosService interface {
 type MemosUtilityService interface {
 	CreateClip(ctx context.Context, input CreateClipInput) (*CreateClipOutput, error)
 	CreateClips(ctx context.Context, input CreateClipsInput) (*CreateClipsOutput, error)
+}
+
+type createClipOperation interface {
+	Execute(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error)
+}
+
+type createClipsOperation interface {
+	Execute(ctx context.Context, input common.CreateClipsInput) (*common.CreateClipsOutput, error)
 }
 
 // MockMemosService はテスト用モック。

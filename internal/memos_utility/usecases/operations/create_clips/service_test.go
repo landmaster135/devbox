@@ -1,4 +1,4 @@
-package usecases
+package createclips
 
 import (
 	"context"
@@ -11,9 +11,21 @@ import (
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	testutil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
+	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
 
-func TestService_CreateClips_Normal(t *testing.T) {
+type mockCreateClipService struct {
+	executeFunc func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error)
+}
+
+func (m *mockCreateClipService) Execute(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+	if m.executeFunc != nil {
+		return m.executeFunc(ctx, input)
+	}
+	return nil, nil
+}
+
+func TestService_Execute_Normal(t *testing.T) {
 	contentDir := t.TempDir()
 	attachmentDir := t.TempDir()
 
@@ -35,29 +47,27 @@ func TestService_CreateClips_Normal(t *testing.T) {
 		}
 	}
 
-	patchCalls := make(map[string][]string)
+	createClipCalls := make(map[string]common.CreateClipInput)
 	service := NewService(ServiceOptions{
 		FileSystem: infrastructures.NewOSFileSystem(),
-		MemosService: &MockMemosService{
-			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
-				baseName := filepath.Base(contentFile)
-				name := strings.TrimSuffix(baseName, filepath.Ext(baseName))
-				return &memos.Memo{Name: "memos/" + name}, nil
-			},
-			PatchFilesFunc: func(ctx context.Context, memo string, filePaths []string, replaces bool) (*memos.SetMemoAttachmentsOutput, error) {
-				patchCalls[memo] = append([]string(nil), filePaths...)
-				return &memos.SetMemoAttachmentsOutput{Name: memo}, nil
+		CreateClipService: &mockCreateClipService{
+			executeFunc: func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+				createClipCalls[filepath.Base(input.ContentFile)] = input
+				return &common.CreateClipOutput{
+					Operation: input.Operation,
+					Memo:      &memos.Memo{Name: "memos/" + strings.TrimSuffix(filepath.Base(input.ContentFile), filepath.Ext(input.ContentFile))},
+				}, nil
 			},
 		},
 	})
 
-	result, err := service.CreateClips(context.Background(), CreateClipsInput{
-		Operation:     operationCreateClips,
+	result, err := service.Execute(context.Background(), common.CreateClipsInput{
+		Operation:     common.OperationCreateClips,
 		ContentDir:    contentDir,
 		AttachmentDir: attachmentDir,
 	})
 	if err != nil {
-		t.Fatalf("CreateClips() error = %v", err)
+		t.Fatalf("Execute() error = %v", err)
 	}
 	if result.Total != 2 {
 		t.Fatalf("result.Total = %d, want 2", result.Total)
@@ -66,26 +76,30 @@ func TestService_CreateClips_Normal(t *testing.T) {
 		t.Fatalf("len(result.Clips) = %d, want 2", len(result.Clips))
 	}
 
-	webMemo := "memos/web-summary-20241225-233435-daikokuyu-event-info"
-	webPaths, ok := patchCalls[webMemo]
+	webInput, ok := createClipCalls[filepath.Base(webContent)]
 	if !ok {
-		t.Fatalf("patch call missing for %s", webMemo)
+		t.Fatalf("create clip call missing for %s", filepath.Base(webContent))
 	}
-	if len(webPaths) != 2 || webPaths[0] != webAttachment1 || webPaths[1] != webAttachment2 {
-		t.Fatalf("web patch files = %#v, want [%s %s]", webPaths, webAttachment1, webAttachment2)
+	if webInput.Operation != common.OperationCreateWebClip {
+		t.Fatalf("web operation = %s, want %s", webInput.Operation, common.OperationCreateWebClip)
+	}
+	if len(webInput.Attachments) != 2 || webInput.Attachments[0] != webAttachment1 || webInput.Attachments[1] != webAttachment2 {
+		t.Fatalf("web attachments = %#v, want [%s %s]", webInput.Attachments, webAttachment1, webAttachment2)
 	}
 
-	movieMemo := "memos/movie-summary-20260319-055716-trump-masako-diplomacy"
-	moviePaths, ok := patchCalls[movieMemo]
+	movieInput, ok := createClipCalls[filepath.Base(movieContent)]
 	if !ok {
-		t.Fatalf("patch call missing for %s", movieMemo)
+		t.Fatalf("create clip call missing for %s", filepath.Base(movieContent))
 	}
-	if len(moviePaths) != 1 || moviePaths[0] != movieAttachment {
-		t.Fatalf("movie patch files = %#v, want [%s]", moviePaths, movieAttachment)
+	if movieInput.Operation != common.OperationCreateMovieClip {
+		t.Fatalf("movie operation = %s, want %s", movieInput.Operation, common.OperationCreateMovieClip)
+	}
+	if len(movieInput.Attachments) != 1 || movieInput.Attachments[0] != movieAttachment {
+		t.Fatalf("movie attachments = %#v, want [%s]", movieInput.Attachments, movieAttachment)
 	}
 }
 
-func TestService_CreateClips_ContentFilenameInvalid_NoMemoCreated_Error(t *testing.T) {
+func TestService_ExecuteContentFilenameInvalid_NoCreateClipCall_Error(t *testing.T) {
 	contentDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(contentDir, "invalid.md"), []byte("x"), 0o644); err != nil {
 		t.Fatalf("WriteFile() error = %v", err)
@@ -93,27 +107,27 @@ func TestService_CreateClips_ContentFilenameInvalid_NoMemoCreated_Error(t *testi
 
 	service := NewService(ServiceOptions{
 		FileSystem: infrastructures.NewOSFileSystem(),
-		MemosService: &MockMemosService{
-			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
-				t.Fatal("CreateMemo should not be called when content filename is invalid")
+		CreateClipService: &mockCreateClipService{
+			executeFunc: func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+				t.Fatal("Execute should not be called when content filename is invalid")
 				return nil, nil
 			},
 		},
 	})
 
-	_, err := service.CreateClips(context.Background(), CreateClipsInput{
-		Operation:  operationCreateClips,
+	_, err := service.Execute(context.Background(), common.CreateClipsInput{
+		Operation:  common.OperationCreateClips,
 		ContentDir: contentDir,
 	})
 	if err == nil {
-		t.Fatal("CreateClips() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "content-dir 内のファイル名が不正です") {
 		t.Fatalf("error = %v, want content-dir validation message", err)
 	}
 }
 
-func TestService_CreateClips_AttachmentFilenameInvalid_NoMemoCreated_Error(t *testing.T) {
+func TestService_ExecuteAttachmentFilenameInvalid_NoCreateClipCall_Error(t *testing.T) {
 	contentDir := t.TempDir()
 	attachmentDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(contentDir, "web-summary-20241225-233435-daikokuyu-event-info.md"), []byte("x"), 0o644); err != nil {
@@ -125,28 +139,28 @@ func TestService_CreateClips_AttachmentFilenameInvalid_NoMemoCreated_Error(t *te
 
 	service := NewService(ServiceOptions{
 		FileSystem: infrastructures.NewOSFileSystem(),
-		MemosService: &MockMemosService{
-			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
-				t.Fatal("CreateMemo should not be called when attachment filename is invalid")
+		CreateClipService: &mockCreateClipService{
+			executeFunc: func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+				t.Fatal("Execute should not be called when attachment filename is invalid")
 				return nil, nil
 			},
 		},
 	})
 
-	_, err := service.CreateClips(context.Background(), CreateClipsInput{
-		Operation:     operationCreateClips,
+	_, err := service.Execute(context.Background(), common.CreateClipsInput{
+		Operation:     common.OperationCreateClips,
 		ContentDir:    contentDir,
 		AttachmentDir: attachmentDir,
 	})
 	if err == nil {
-		t.Fatal("CreateClips() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "attachment-dir 内のファイル名が不正です") {
 		t.Fatalf("error = %v, want attachment-dir validation message", err)
 	}
 }
 
-func TestService_CreateClips_AttachmentPrecheckFailed_NoMemoCreated_Error(t *testing.T) {
+func TestService_ExecuteAttachmentPrecheckFailed_NoCreateClipCall_Error(t *testing.T) {
 	contentDir := t.TempDir()
 	attachmentDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(contentDir, "web-summary-20241225-233435-daikokuyu-event-info.md"), []byte("x"), 0o644); err != nil {
@@ -163,21 +177,21 @@ func TestService_CreateClips_AttachmentPrecheckFailed_NoMemoCreated_Error(t *tes
 				return nil, errors.New("mock read error")
 			},
 		},
-		MemosService: &MockMemosService{
-			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
-				t.Fatal("CreateMemo should not be called when attachment precheck fails")
+		CreateClipService: &mockCreateClipService{
+			executeFunc: func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+				t.Fatal("Execute should not be called when attachment precheck fails")
 				return nil, nil
 			},
 		},
 	})
 
-	_, err := service.CreateClips(context.Background(), CreateClipsInput{
-		Operation:     operationCreateClips,
+	_, err := service.Execute(context.Background(), common.CreateClipsInput{
+		Operation:     common.OperationCreateClips,
 		ContentDir:    contentDir,
 		AttachmentDir: attachmentDir,
 	})
 	if err == nil {
-		t.Fatal("CreateClips() error = nil, want error")
+		t.Fatal("Execute() error = nil, want error")
 	}
 	if !strings.Contains(err.Error(), "メモは作成されませんでした") {
 		t.Fatalf("error = %v, want no-memo-created message", err)

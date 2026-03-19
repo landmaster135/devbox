@@ -1,17 +1,41 @@
-package usecases
+package createclips
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
+
+	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
+	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
 
-var webClipAttachmentFilePattern = regexp.MustCompile(`^(web-summary-\d{8}-\d{6}-[A-Za-z0-9][A-Za-z0-9_-]*)_(\d+)\.([A-Za-z0-9]+)$`)
-var movieClipAttachmentFilePattern = regexp.MustCompile(`^(movie-summary-\d{8}-\d{6}-[A-Za-z0-9][A-Za-z0-9_-]*)_(\d+)\.([A-Za-z0-9]+)$`)
+// CreateClipService は単一クリップ生成 operation の契約。
+type CreateClipService interface {
+	Execute(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error)
+}
+
+// ServiceOptions は Service 生成時の入力。
+type ServiceOptions struct {
+	CreateClipService CreateClipService
+	FileSystem        infrastructures.FileSystem
+}
+
+// Service は create-clips operation を扱う。
+type Service struct {
+	createClipService CreateClipService
+	fileSystem        infrastructures.FileSystem
+}
+
+// NewService は Service を生成する。
+func NewService(opts ServiceOptions) *Service {
+	return &Service{
+		createClipService: opts.CreateClipService,
+		fileSystem:        opts.FileSystem,
+	}
+}
 
 type clipTarget struct {
 	Operation       string
@@ -19,10 +43,10 @@ type clipTarget struct {
 	ContentBaseName string
 }
 
-// CreateClips は content-dir 配下の clip ファイルを走査し、メモを一括作成する。
-func (s *Service) CreateClips(ctx context.Context, input CreateClipsInput) (*CreateClipsOutput, error) {
-	operation := normalizeOperation(input.Operation)
-	if operation != operationCreateClips {
+// Execute は content-dir 配下の clip ファイルを走査し、メモを一括作成する。
+func (s *Service) Execute(ctx context.Context, input common.CreateClipsInput) (*common.CreateClipsOutput, error) {
+	operation := common.NormalizeOperation(input.Operation)
+	if operation != common.OperationCreateClips {
 		return nil, fmt.Errorf("未対応の operation です: %s", operation)
 	}
 
@@ -61,16 +85,16 @@ func (s *Service) CreateClips(ctx context.Context, input CreateClipsInput) (*Cre
 		}
 	}
 
-	output := &CreateClipsOutput{
+	output := &common.CreateClipsOutput{
 		Operation:     operation,
 		ContentDir:    contentDir,
 		AttachmentDir: attachmentDir,
-		Clips:         make([]*CreateClipOutput, 0, len(targets)),
+		Clips:         make([]*common.CreateClipOutput, 0, len(targets)),
 	}
 
 	for _, target := range targets {
 		attachments := attachmentsByContent[target.ContentBaseName]
-		clipOutput, err := s.CreateClip(ctx, CreateClipInput{
+		clipOutput, err := s.createClipService.Execute(ctx, common.CreateClipInput{
 			Operation:   target.Operation,
 			ContentFile: target.ContentPath,
 			Attachments: attachments,
@@ -132,15 +156,15 @@ func resolveClipTargets(contentFiles []string) ([]clipTarget, error) {
 		contentBaseName := strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
 		switch {
-		case webClipFilePattern.MatchString(baseName):
+		case common.MatchWebClipFile(baseName):
 			targets = append(targets, clipTarget{
-				Operation:       operationCreateWebClip,
+				Operation:       common.OperationCreateWebClip,
 				ContentPath:     contentFile,
 				ContentBaseName: contentBaseName,
 			})
-		case movieClipFilePattern.MatchString(baseName):
+		case common.MatchMovieClipFile(baseName):
 			targets = append(targets, clipTarget{
-				Operation:       operationCreateMovieClip,
+				Operation:       common.OperationCreateMovieClip,
 				ContentPath:     contentFile,
 				ContentBaseName: contentBaseName,
 			})
@@ -154,7 +178,7 @@ func resolveClipTargets(contentFiles []string) ([]clipTarget, error) {
 func resolveAttachmentsByContent(attachmentFiles []string) (map[string][]string, error) {
 	attachmentsByContent := make(map[string][]string)
 	for _, attachmentFile := range attachmentFiles {
-		contentBaseName, err := resolveContentBaseNameFromAttachment(filepath.Base(attachmentFile))
+		contentBaseName, err := common.ResolveContentBaseNameFromAttachment(filepath.Base(attachmentFile))
 		if err != nil {
 			return nil, err
 		}
@@ -165,16 +189,6 @@ func resolveAttachmentsByContent(attachmentFiles []string) (map[string][]string,
 		sort.Strings(attachmentsByContent[contentBaseName])
 	}
 	return attachmentsByContent, nil
-}
-
-func resolveContentBaseNameFromAttachment(baseName string) (string, error) {
-	if webMatches := webClipAttachmentFilePattern.FindStringSubmatch(baseName); len(webMatches) == 4 {
-		return webMatches[1], nil
-	}
-	if movieMatches := movieClipAttachmentFilePattern.FindStringSubmatch(baseName); len(movieMatches) == 4 {
-		return movieMatches[1], nil
-	}
-	return "", fmt.Errorf("attachment-dir 内のファイル名が不正です。web-summary-YYYYMMDD-hhmmss-<slug>_<number>.<extension> または movie-summary-YYYYMMDD-hhmmss-<slug>_<number>.<extension> のみ指定できます: %s", baseName)
 }
 
 func flattenAttachmentFiles(attachmentsByContent map[string][]string) []string {
