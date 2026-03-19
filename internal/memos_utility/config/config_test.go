@@ -51,6 +51,29 @@ func TestConfig_ParseFlagsFromArgs_CreateMovieClip_Normal(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_CreateClips_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-clips",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-dir=/tmp/clips",
+		"-attachment-dir=/tmp/attachments",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateClips {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateClips)
+	}
+	if cfg.ContentDir != "/tmp/clips" {
+		t.Fatalf("contentDir = %s, want /tmp/clips", cfg.ContentDir)
+	}
+	if cfg.AttachmentDir != "/tmp/attachments" {
+		t.Fatalf("attachmentDir = %s, want /tmp/attachments", cfg.AttachmentDir)
+	}
+}
+
 func TestConfig_ParseFlagsFromArgs_Help_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{"-help"})
 	if err != nil {
@@ -112,6 +135,37 @@ func TestConfig_ParseFlagsFromArgs_ValidationError_Error(t *testing.T) {
 				"-api-token=test-token",
 			},
 			wantErr: "content-file パラメータは必須です",
+		},
+		{
+			name: "ContentDirMissingForCreateClips",
+			args: []string{
+				"-operation=create-clips",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+			},
+			wantErr: "content-dir パラメータは必須です",
+		},
+		{
+			name: "ContentFileDisallowedForCreateClips",
+			args: []string{
+				"-operation=create-clips",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/clips",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "create-clips では content-file は指定できません",
+		},
+		{
+			name: "AttachmentsDisallowedForCreateClips",
+			args: []string{
+				"-operation=create-clips",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/clips",
+				"-attachments=./a.png",
+			},
+			wantErr: "create-clips では attachments は指定できません",
 		},
 		{
 			name: "TimeoutInvalid",

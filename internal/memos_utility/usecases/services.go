@@ -16,6 +16,7 @@ import (
 const (
 	operationCreateWebClip   = "create-web-clip"
 	operationCreateMovieClip = "create-movie-clip"
+	operationCreateClips     = "create-clips"
 )
 
 var webClipFilePattern = regexp.MustCompile(`^web-summary-(\d{8})-(\d{6})-([A-Za-z0-9][A-Za-z0-9_-]*)\.md$`)
@@ -46,6 +47,22 @@ type CreateClipOutput struct {
 	Memo               *memos.Memo                     `json:"memo,omitempty"`
 	Attachments        []string                        `json:"attachments,omitempty"`
 	SetMemoAttachments *memos.SetMemoAttachmentsOutput `json:"setMemoAttachments,omitempty"`
+}
+
+// CreateClipsInput は create-clips の入力。
+type CreateClipsInput struct {
+	Operation     string
+	ContentDir    string
+	AttachmentDir string
+}
+
+// CreateClipsOutput は create-clips の出力。
+type CreateClipsOutput struct {
+	Operation     string              `json:"operation"`
+	ContentDir    string              `json:"contentDir"`
+	AttachmentDir string              `json:"attachmentDir,omitempty"`
+	Total         int                 `json:"total"`
+	Clips         []*CreateClipOutput `json:"clips"`
 }
 
 // Service は memos-utility のユースケースを提供する。
@@ -210,5 +227,3 @@ func resolveMemoIdentifier(memo *memos.Memo) (string, error) {
 
 	return "", fmt.Errorf("name/uid/id のいずれも取得できません")
 }
-
-var _ MemosUtilityService = (*Service)(nil)

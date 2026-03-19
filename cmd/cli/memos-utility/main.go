@@ -42,6 +42,12 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			ContentFile: conf.ContentFile,
 			Attachments: splitByComma(conf.Attachments),
 		})
+	case cfg.OperationCreateClips:
+		result, err = service.CreateClips(ctx, usecases.CreateClipsInput{
+			Operation:     conf.Operation,
+			ContentDir:    conf.ContentDir,
+			AttachmentDir: conf.AttachmentDir,
+		})
 	default:
 		fmt.Fprintf(stderr, "エラー: 未対応の operation です: %s\n", conf.Operation)
 		return 1

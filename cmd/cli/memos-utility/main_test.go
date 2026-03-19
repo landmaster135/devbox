@@ -12,12 +12,20 @@ import (
 )
 
 type mockMemosUtilityService struct {
-	createClipFunc func(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error)
+	createClipFunc  func(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error)
+	createClipsFunc func(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error)
 }
 
 func (m *mockMemosUtilityService) CreateClip(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error) {
 	if m.createClipFunc != nil {
 		return m.createClipFunc(ctx, input)
+	}
+	return nil, nil
+}
+
+func (m *mockMemosUtilityService) CreateClips(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error) {
+	if m.createClipsFunc != nil {
+		return m.createClipsFunc(ctx, input)
 	}
 	return nil, nil
 }
@@ -87,6 +95,53 @@ func TestRun_ServiceError_Error(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "create failed") {
 		t.Fatalf("stderr = %s, want create failed", stderr.String())
+	}
+}
+
+func TestRun_CreateClips_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	exitCode := run([]string{
+		"-operation=create-clips",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-dir=/tmp/clips",
+		"-attachment-dir=/tmp/attachments",
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemosUtilityService {
+		return &mockMemosUtilityService{
+			createClipsFunc: func(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error) {
+				called = true
+				if input.Operation != cfg.OperationCreateClips {
+					t.Fatalf("operation = %s, want %s", input.Operation, cfg.OperationCreateClips)
+				}
+				if input.ContentDir != "/tmp/clips" {
+					t.Fatalf("contentDir = %s, want /tmp/clips", input.ContentDir)
+				}
+				if input.AttachmentDir != "/tmp/attachments" {
+					t.Fatalf("attachmentDir = %s, want /tmp/attachments", input.AttachmentDir)
+				}
+				return &usecases.CreateClipsOutput{
+					Operation:  input.Operation,
+					ContentDir: input.ContentDir,
+					Total:      0,
+				}, nil
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if !called {
+		t.Fatal("CreateClips was not called")
+	}
+	if !strings.Contains(stdout.String(), "\"operation\": \"create-clips\"") {
+		t.Fatalf("stdout = %s, want operation json", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %s, want empty", stderr.String())
 	}
 }
 
