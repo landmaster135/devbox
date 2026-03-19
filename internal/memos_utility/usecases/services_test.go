@@ -153,6 +153,32 @@ func TestService_CreateClipUseUIDAsIdentifier_Normal(t *testing.T) {
 	}
 }
 
+func TestService_CreateClipAttachmentDirectory_NoMemoCreated_Error(t *testing.T) {
+	directoryPath := t.TempDir()
+
+	service := NewService(ServiceOptions{
+		FileSystem: infrastructures.NewOSFileSystem(),
+		MemosService: &MockMemosService{
+			CreateMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
+				t.Fatal("CreateMemo should not be called when attachment path is a directory")
+				return nil, nil
+			},
+		},
+	})
+
+	_, err := service.CreateClip(context.Background(), CreateClipInput{
+		Operation:   operationCreateWebClip,
+		ContentFile: "/tmp/web-summary-20240719-231059-palworld.md",
+		Attachments: []string{directoryPath},
+	})
+	if err == nil {
+		t.Fatal("CreateClip() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "メモは作成されませんでした") {
+		t.Fatalf("error = %v, want メモは作成されませんでした", err)
+	}
+}
+
 func TestService_CreateClipError_Error(t *testing.T) {
 	tests := []struct {
 		name       string
