@@ -81,8 +81,8 @@ func (s *Service) RemoveHeadingAnnotations(filePath string, headingLevel int) (s
 	return s.removeHeadingAnnotationsOperation.Execute(filePath, headingLevel)
 }
 
-func (s *Service) RemoveTitleHashTags(dirPath string) (string, error) {
-	return s.removeTitleHashTagsOperation.Execute(dirPath)
+func (s *Service) RemoveTitleHashTags(dirPath string, startLine int, endLine int) (string, error) {
+	return s.removeTitleHashTagsOperation.Execute(dirPath, startLine, endLine)
 }
 
 func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
@@ -105,7 +105,7 @@ func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 	case config.OperationRemoveHeadingAnnotations:
 		return s.RemoveHeadingAnnotations(cfg.FilePath, cfg.HeadingLevel)
 	case config.OperationRemoveTitleHashTags:
-		return s.RemoveTitleHashTags(cfg.DirPath)
+		return s.RemoveTitleHashTags(cfg.DirPath, cfg.StartLine, cfg.EndLine)
 	default:
 		return "", fmt.Errorf("未サポートのoperationです: %s", cfg.Operation)
 	}

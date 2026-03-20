@@ -225,6 +225,8 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 			cfg: &config.Config{
 				Operation: config.OperationRemoveTitleHashTags,
 				DirPath:   "notes",
+				StartLine: 1,
+				EndLine:   2,
 			},
 			setup: func(repo *operationDispatchRepository) {
 				repo.listedFiles["notes"] = []string{"notes/a.md"}
@@ -236,7 +238,7 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 				if !strings.Contains(got, "## タイトル - 記事\n- [リンク](https://example.com)\n本文 #Keep\n") {
 					t.Fatalf("title hash tags were not removed: %q", got)
 				}
-				if !strings.Contains(result, "remove-title-hash-tags: 1 ファイルの先頭2行からハッシュタグを除去しました") {
+				if !strings.Contains(result, "remove-title-hash-tags: 1 ファイルの 1 行目から 2 行目までのハッシュタグを除去しました") {
 					t.Fatalf("unexpected result: %s", result)
 				}
 			},
@@ -246,6 +248,8 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 			cfg: &config.Config{
 				Operation: config.OperationRemoveTitleHashTags,
 				DirPath:   "notes",
+				StartLine: 1,
+				EndLine:   2,
 			},
 			setup: func(repo *operationDispatchRepository) {
 				repo.listedFiles["notes"] = []string{"notes/a.md"}
@@ -256,7 +260,7 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 				if _, ok := repo.writtenFiles["notes/a.md"]; ok {
 					t.Fatalf("unchanged file should not be written: %q", repo.writtenFiles["notes/a.md"])
 				}
-				if !strings.Contains(result, "remove-title-hash-tags: 0 ファイルの先頭2行からハッシュタグを除去しました") {
+				if !strings.Contains(result, "remove-title-hash-tags: 0 ファイルの 1 行目から 2 行目までのハッシュタグを除去しました") {
 					t.Fatalf("unexpected result: %s", result)
 				}
 			},

@@ -9,7 +9,7 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 - `add-heading1`: 本文の先頭または末尾へ見出し1を追加
 - `replace-images`: Markdown 画像記法 `![alt](url)` を指定文字列へ置換
 - `remove-heading-annotations`: 指定見出しレベルの `**見出し**` 注釈を `見出し` へ変換
-- `remove-title-hash-tags`: 各ファイル先頭2行のハッシュタグ（例: `#Python`）を除去
+- `remove-title-hash-tags`: 各ファイルの指定行範囲にあるハッシュタグ（例: `#Python`）を除去
 
 ## 内部構成
 
@@ -26,6 +26,8 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 | `--file-path` | `split-headings` / `add-front-matter` / `add-heading1` / `replace-images` / `remove-heading-annotations` で必須、`add-tags` で `--dir-path` と排他で必須 | なし | 対象の Markdown ファイル |
 | `--dir-path` | `add-tags` で `--file-path` と排他で必須、`delete-empty-files` / `remove-title-hash-tags` で必須 | なし | 対象の Markdown ディレクトリ（直下の `.md` を処理） |
 | `--heading-level` | `split-headings` / `remove-heading-annotations` で必須 | `0` | 対象の見出しレベル（1-6） |
+| `--start-line` | `remove-title-hash-tags` で必須 | `0` | ハッシュタグ除去の対象開始行（1始まり） |
+| `--end-line` | `remove-title-hash-tags` で必須 | `0` | ハッシュタグ除去の対象終了行（1始まり、`--start-line` 以上） |
 | `--heading-text` | `add-heading1` で必須 | なし | 追加する見出し1のテキスト |
 | `--heading-position` | `add-heading1` で必須 | なし | 追加位置（`head` または `tail`） |
 | `--replacement-text` | `replace-images` で必須 | なし | 画像記法を置換する文字列（例: `(添付画像)`） |
@@ -143,7 +145,9 @@ go run ./cmd/cli/markdown-crafter \
 ```bash
 go run ./cmd/cli/markdown-crafter \
   --operation remove-title-hash-tags \
-  --dir-path ./notes
+  --dir-path ./notes \
+  --start-line 1 \
+  --end-line 2
 ```
 
 ## 出力例
@@ -189,7 +193,7 @@ remove-heading-annotations: ./sample.md の見出し注釈 2 件を除去しま�
 ```
 
 ```text
-remove-title-hash-tags: 2 ファイルの先頭2行からハッシュタグを除去しました
+remove-title-hash-tags: 2 ファイルの 1 行目から 2 行目までのハッシュタグを除去しました
 - ./notes/a.md
 - ./notes/b.md
 ```
@@ -210,4 +214,8 @@ remove-title-hash-tags: 2 ファイルの先頭2行からハッシュタグを�
 
 ```text
 エラー: --replacement-text は必須です (--operation=replace-images)
+```
+
+```text
+エラー: --start-line は必須です (--operation=remove-title-hash-tags)
 ```

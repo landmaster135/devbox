@@ -63,7 +63,7 @@ func TestService_RemoveTitleHashTags_Normal(t *testing.T) {
 	repo.readContents["notes/b.md"] = "#Python - Tips\nsecond #Tag line\nthird #NoChange\n"
 
 	service := NewService(repo)
-	result, err := service.Execute("notes")
+	result, err := service.Execute("notes", 1, 2)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestService_RemoveTitleHashTags_Normal(t *testing.T) {
 		t.Fatalf("unexpected content for b.md:\nexpected:\n%q\ngot:\n%q", expectedB, repo.writtenContents["notes/b.md"])
 	}
 
-	if !strings.Contains(result, "remove-title-hash-tags: 2 ファイルの先頭2行からハッシュタグを除去しました") {
+	if !strings.Contains(result, "remove-title-hash-tags: 2 ファイルの 1 行目から 2 行目までのハッシュタグを除去しました") {
 		t.Fatalf("unexpected result: %q", result)
 	}
 	if !strings.Contains(result, "notes/a.md") || !strings.Contains(result, "notes/b.md") {
@@ -92,7 +92,7 @@ func TestService_RemoveTitleHashTags_NoMarkdownFiles_Normal(t *testing.T) {
 	repo := newRemoveTitleHashTagsMockRepository()
 	service := NewService(repo)
 
-	result, err := service.Execute("notes")
+	result, err := service.Execute("notes", 1, 2)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
@@ -109,11 +109,11 @@ func TestService_RemoveTitleHashTags_NoChangeFile_Normal(t *testing.T) {
 	repo.readContents["notes/a.md"] = "title\nsecond line\nthird #Keep\n"
 	service := NewService(repo)
 
-	result, err := service.Execute("notes")
+	result, err := service.Execute("notes", 1, 2)
 	if err != nil {
 		t.Fatalf("Execute returned error: %v", err)
 	}
-	if !strings.Contains(result, "remove-title-hash-tags: 0 ファイルの先頭2行からハッシュタグを除去しました") {
+	if !strings.Contains(result, "remove-title-hash-tags: 0 ファイルの 1 行目から 2 行目までのハッシュタグを除去しました") {
 		t.Fatalf("unexpected result: %q", result)
 	}
 	if len(repo.writtenContents) != 0 {
@@ -128,7 +128,7 @@ func TestService_RemoveTitleHashTags_ListError(t *testing.T) {
 	repo.listErr = errors.New("list error")
 	service := NewService(repo)
 
-	if _, err := service.Execute("notes"); err == nil {
+	if _, err := service.Execute("notes", 1, 2); err == nil {
 		t.Fatal("expected list error")
 	}
 }
@@ -141,7 +141,7 @@ func TestService_RemoveTitleHashTags_ReadError(t *testing.T) {
 	repo.readErrors["notes/a.md"] = errors.New("read error")
 	service := NewService(repo)
 
-	if _, err := service.Execute("notes"); err == nil {
+	if _, err := service.Execute("notes", 1, 2); err == nil {
 		t.Fatal("expected read error")
 	}
 }
@@ -155,8 +155,22 @@ func TestService_RemoveTitleHashTags_WriteError(t *testing.T) {
 	repo.writeErrors["notes/a.md"] = errors.New("write error")
 	service := NewService(repo)
 
-	if _, err := service.Execute("notes"); err == nil {
+	if _, err := service.Execute("notes", 1, 2); err == nil {
 		t.Fatal("expected write error")
+	}
+}
+
+func TestService_RemoveTitleHashTags_InvalidLineRange(t *testing.T) {
+	t.Parallel()
+
+	repo := newRemoveTitleHashTagsMockRepository()
+	service := NewService(repo)
+
+	if _, err := service.Execute("notes", 0, 2); err == nil {
+		t.Fatal("expected invalid line range error")
+	}
+	if _, err := service.Execute("notes", 2, 1); err == nil {
+		t.Fatal("expected invalid line range error")
 	}
 }
 
@@ -164,7 +178,7 @@ func TestRemoveTitleHashTagsFromContent_OnlyFirstTwoLines_Normal(t *testing.T) {
 	t.Parallel()
 
 	content := "line1 #A\nline2 #B\nline3 #C\n"
-	got := removeTitleHashTagsFromContent(content)
+	got := removeTitleHashTagsFromContent(content, 1, 2)
 	expected := "line1\nline2\nline3 #C\n"
 	if got != expected {
 		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, got)
@@ -175,10 +189,31 @@ func TestRemoveTitleHashTagsFromContent_ShortContent_Normal(t *testing.T) {
 	t.Parallel()
 
 	content := "#Python"
-	got := removeTitleHashTagsFromContent(content)
+	got := removeTitleHashTagsFromContent(content, 1, 2)
 	expected := ""
 	if got != expected {
 		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, got)
+	}
+}
+
+func TestRemoveTitleHashTagsFromContent_LineRange_Normal(t *testing.T) {
+	t.Parallel()
+
+	content := "line1 #A\nline2 #B\nline3 #C\n"
+	got := removeTitleHashTagsFromContent(content, 2, 3)
+	expected := "line1 #A\nline2\nline3\n"
+	if got != expected {
+		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, got)
+	}
+}
+
+func TestRemoveTitleHashTagsFromContent_StartLineOverFileLength_Normal(t *testing.T) {
+	t.Parallel()
+
+	content := "line1 #A\nline2 #B\n"
+	got := removeTitleHashTagsFromContent(content, 4, 5)
+	if got != content {
+		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", content, got)
 	}
 }
 
@@ -218,7 +253,7 @@ func TestRemoveTitleHashTagsFromContent_FullWidthSpaceAndMultipleTags_Normal(t *
 	t.Parallel()
 
 	content := "## Goの初心者が見ると幸せになれる場所 #golang #Go 要約\n- [Goの初心者が見ると幸せになれる場所　#golang #Go - Qiita](https://qiita.com/tenntenn/items/0e33a4959250d1a55045)\n本文\n"
-	got := removeTitleHashTagsFromContent(content)
+	got := removeTitleHashTagsFromContent(content, 1, 2)
 	expected := "## Goの初心者が見ると幸せになれる場所 要約\n- [Goの初心者が見ると幸せになれる場所 - Qiita](https://qiita.com/tenntenn/items/0e33a4959250d1a55045)\n本文\n"
 	if got != expected {
 		t.Fatalf("unexpected content:\nexpected:\n%q\ngot:\n%q", expected, got)

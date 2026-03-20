@@ -37,6 +37,8 @@ type Config struct {
 	FilePath        string
 	DirPath         string
 	HeadingLevel    int
+	StartLine       int
+	EndLine         int
 	OutputDir       string
 	KVPairs         []string
 	Tags            string
@@ -46,12 +48,14 @@ type Config struct {
 	Help            bool
 }
 
-func NewConfig(operation, filePath, dirPath string, headingLevel int, outputDir string, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
+func NewConfig(operation, filePath, dirPath string, headingLevel, startLine, endLine int, outputDir string, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
 	cfg := &Config{
 		Operation:       operation,
 		FilePath:        filePath,
 		DirPath:         dirPath,
 		HeadingLevel:    headingLevel,
+		StartLine:       startLine,
+		EndLine:         endLine,
 		OutputDir:       outputDir,
 		KVPairs:         kvPairs,
 		Tags:            tags,
@@ -143,6 +147,18 @@ func (c *Config) validate() error {
 		if strings.TrimSpace(c.DirPath) == "" {
 			return fmt.Errorf("--dir-path は必須です (--operation=remove-title-hash-tags)")
 		}
+		if c.StartLine == 0 {
+			return fmt.Errorf("--start-line は必須です (--operation=remove-title-hash-tags)")
+		}
+		if c.EndLine == 0 {
+			return fmt.Errorf("--end-line は必須です (--operation=remove-title-hash-tags)")
+		}
+		if c.StartLine < 1 || c.EndLine < 1 {
+			return fmt.Errorf("--start-line と --end-line は 1 以上で指定してください (--operation=remove-title-hash-tags)")
+		}
+		if c.StartLine > c.EndLine {
+			return fmt.Errorf("--start-line は --end-line 以下で指定してください (--operation=remove-title-hash-tags)")
+		}
 	}
 
 	return nil
@@ -180,6 +196,8 @@ func ParseFlags() (*Config, error) {
 		filePath        string
 		dirPath         string
 		headingLevel    int
+		startLine       int
+		endLine         int
 		outputDir       string
 		tags            string
 		headingText     string
@@ -193,6 +211,8 @@ func ParseFlags() (*Config, error) {
 	flagSet.StringVar(&filePath, "file-path", "", "対象のMarkdownファイルパス")
 	flagSet.StringVar(&dirPath, "dir-path", "", "対象のMarkdownディレクトリパス (add-tags/delete-empty-filesで必須条件あり)")
 	flagSet.IntVar(&headingLevel, "heading-level", 0, "対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)")
+	flagSet.IntVar(&startLine, "start-line", 0, "対象開始行（1始まり, remove-title-hash-tagsで必須）")
+	flagSet.IntVar(&endLine, "end-line", 0, "対象終了行（1始まり, remove-title-hash-tagsで必須）")
 	flagSet.StringVar(&outputDir, "output-dir", "", "分割後ファイルの出力先ディレクトリ (split-headingsで必須)")
 	flagSet.Var(&kvPairs, "kv", "front matter に追加する key=value (add-front-matter で複数指定可)")
 	flagSet.StringVar(&tags, "tags", "", "追加するタグ（カンマ区切り, 例: go,markdown）")
@@ -206,7 +226,7 @@ func ParseFlags() (*Config, error) {
 		return nil, err
 	}
 
-	return NewConfig(operation, filePath, dirPath, headingLevel, outputDir, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
+	return NewConfig(operation, filePath, dirPath, headingLevel, startLine, endLine, outputDir, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
 }
 
 func PrintUsage() {
@@ -221,7 +241,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s --operation add-heading1 --file-path ./note.md --heading-text 概要 --heading-position head\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation replace-images --file-path ./note.md --replacement-text \"(添付画像)\"\n\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation remove-heading-annotations --file-path ./note.md --heading-level 3\n\n", exeName)
-	fmt.Fprintf(os.Stderr, "  %s --operation remove-title-hash-tags --dir-path ./notes\n\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation remove-title-hash-tags --dir-path ./notes --start-line 1 --end-line 2\n\n", exeName)
 
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --operation string\n")
@@ -232,6 +252,10 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        対象のMarkdownディレクトリパス (add-tagsで file-path の代わりに指定, delete-empty-files/remove-title-hash-tagsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --heading-level int\n")
 	fmt.Fprintf(os.Stderr, "        対象の見出しレベル (1-6, split-headings/remove-heading-annotationsで必須)\n")
+	fmt.Fprintf(os.Stderr, "  --start-line int\n")
+	fmt.Fprintf(os.Stderr, "        対象開始行（1始まり, remove-title-hash-tagsで必須）\n")
+	fmt.Fprintf(os.Stderr, "  --end-line int\n")
+	fmt.Fprintf(os.Stderr, "        対象終了行（1始まり, remove-title-hash-tagsで必須）\n")
 	fmt.Fprintf(os.Stderr, "  --output-dir string\n")
 	fmt.Fprintf(os.Stderr, "        分割後ファイルの出力先ディレクトリ (split-headingsで必須)\n")
 	fmt.Fprintf(os.Stderr, "  --kv key=value\n")

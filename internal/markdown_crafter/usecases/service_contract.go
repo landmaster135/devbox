@@ -32,7 +32,7 @@ type removeHeadingAnnotationsOperation interface {
 }
 
 type removeTitleHashTagsOperation interface {
-	Execute(dirPath string) (string, error)
+	Execute(dirPath string, startLine int, endLine int) (string, error)
 }
 
 func newServiceWithOperations(

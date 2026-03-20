@@ -24,7 +24,14 @@ func NewService(repository domain.Repository) *Service {
 	}
 }
 
-func (s *Service) Execute(dirPath string) (string, error) {
+func (s *Service) Execute(dirPath string, startLine int, endLine int) (string, error) {
+	if startLine < 1 || endLine < 1 {
+		return "", fmt.Errorf("startLine と endLine は 1 以上で指定してください")
+	}
+	if startLine > endLine {
+		return "", fmt.Errorf("startLine は endLine 以下で指定してください")
+	}
+
 	markdownFiles, err := s.repository.ListMarkdownFiles(dirPath)
 	if err != nil {
 		return "", err
@@ -40,7 +47,7 @@ func (s *Service) Execute(dirPath string) (string, error) {
 			return "", fmt.Errorf("%s の読み込みに失敗しました: %w", filePath, err)
 		}
 
-		updated := removeTitleHashTagsFromContent(content)
+		updated := removeTitleHashTagsFromContent(content, startLine, endLine)
 		if content == updated {
 			continue
 		}
@@ -52,23 +59,27 @@ func (s *Service) Execute(dirPath string) (string, error) {
 	}
 
 	var out strings.Builder
-	out.WriteString(fmt.Sprintf("remove-title-hash-tags: %d ファイルの先頭2行からハッシュタグを除去しました\n", len(updatedFiles)))
+	out.WriteString(fmt.Sprintf("remove-title-hash-tags: %d ファイルの %d 行目から %d 行目までのハッシュタグを除去しました\n", len(updatedFiles), startLine, endLine))
 	for _, filePath := range updatedFiles {
 		out.WriteString(fmt.Sprintf("- %s\n", filePath))
 	}
 	return out.String(), nil
 }
 
-func removeTitleHashTagsFromContent(content string) string {
+func removeTitleHashTagsFromContent(content string, startLine int, endLine int) string {
 	normalized := common.NormalizeNewlines(content)
 	lines := strings.SplitAfter(normalized, "\n")
 
-	targetLineCount := 2
-	if len(lines) < targetLineCount {
-		targetLineCount = len(lines)
+	startIndex := startLine - 1
+	if startIndex >= len(lines) {
+		return strings.Join(lines, "")
+	}
+	endIndex := endLine - 1
+	if endIndex >= len(lines) {
+		endIndex = len(lines) - 1
 	}
 
-	for i := 0; i < targetLineCount; i++ {
+	for i := startIndex; i <= endIndex; i++ {
 		lines[i] = removeHashTagsFromLine(lines[i])
 	}
 

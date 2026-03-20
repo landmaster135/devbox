@@ -162,6 +162,8 @@ func TestParseFlags_RemoveTitleHashTags_Normal(t *testing.T) {
 		"markdown-crafter",
 		"--operation", OperationRemoveTitleHashTags,
 		"--dir-path", "./notes",
+		"--start-line", "1",
+		"--end-line", "2",
 	}, func() {
 		cfg, err := ParseFlags()
 		if err != nil {
@@ -169,6 +171,9 @@ func TestParseFlags_RemoveTitleHashTags_Normal(t *testing.T) {
 		}
 		if cfg.DirPath != "./notes" {
 			t.Fatalf("unexpected dir path: %s", cfg.DirPath)
+		}
+		if cfg.StartLine != 1 || cfg.EndLine != 2 {
+			t.Fatalf("unexpected line range: start=%d end=%d", cfg.StartLine, cfg.EndLine)
 		}
 	})
 }
@@ -283,6 +288,51 @@ func TestParseFlags_InvalidRemoveTitleHashTagsMissingDirPath(t *testing.T) {
 	withArgs([]string{
 		"markdown-crafter",
 		"--operation", OperationRemoveTitleHashTags,
+		"--start-line", "1",
+		"--end-line", "2",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidRemoveTitleHashTagsMissingStartLine(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveTitleHashTags,
+		"--dir-path", "./notes",
+		"--end-line", "2",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidRemoveTitleHashTagsMissingEndLine(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveTitleHashTags,
+		"--dir-path", "./notes",
+		"--start-line", "1",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidRemoveTitleHashTagsStartLineGreaterThanEndLine(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationRemoveTitleHashTags,
+		"--dir-path", "./notes",
+		"--start-line", "3",
+		"--end-line", "2",
 	}, func() {
 		_, err := ParseFlags()
 		if err == nil {
