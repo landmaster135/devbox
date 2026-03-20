@@ -8,8 +8,8 @@ import (
 
 // Config はカラーコード変換CLIの設定を保持する構造体
 type Config struct {
-	SrcFormat  string // 変換元のカラーコード形式 (hex, rgb, hsl, hsv)
-	DestFormat string // 変換先のカラーコード形式 (hex, rgb, hsl, hsv)
+	SrcFormat  string // 変換元のカラーコード形式 (hex, rgb, hsl, hsv, dec)
+	DestFormat string // 変換先のカラーコード形式 (hex, rgb, hsl, hsv, dec)
 	Value      string // 変換するカラーコード値
 	Help       bool   // ヘルプ表示フラグ
 }
@@ -27,7 +27,7 @@ func NewConfig(srcFormat, destFormat, value string) (*Config, error) {
 	}
 
 	// サポートされている形式の検証
-	validFormats := []string{"hex", "rgb", "hsl", "hsv"}
+	validFormats := []string{"hex", "rgb", "hsl", "hsv", "dec"}
 	if !isValidFormat(srcFormat, validFormats) {
 		return nil, fmt.Errorf("無効な変換元形式です: %s (サポート形式: %s)", srcFormat, strings.Join(validFormats, ", "))
 	}
@@ -114,10 +114,10 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		help       = false
 	)
 
-	parser.StringVar(&srcFormat, "src-format", srcFormat, "変換元のカラーコード形式 (hex, rgb, hsl, hsv)")
+	parser.StringVar(&srcFormat, "src-format", srcFormat, "変換元のカラーコード形式 (hex, rgb, hsl, hsv, dec)")
 	parser.StringVar(&srcFormat, "s", srcFormat, "変換元形式の短縮形")
 
-	parser.StringVar(&destFormat, "dest-format", destFormat, "変換先のカラーコード形式 (hex, rgb, hsl, hsv)")
+	parser.StringVar(&destFormat, "dest-format", destFormat, "変換先のカラーコード形式 (hex, rgb, hsl, hsv, dec)")
 	parser.StringVar(&destFormat, "d", destFormat, "変換先形式の短縮形")
 
 	parser.StringVar(&value, "value", value, "変換するカラーコード値")
@@ -163,6 +163,7 @@ func PrintUsage() {
   rgb  - RGB形式 (例: rgb(255,0,0))
   hsl  - HSL形式 (例: hsl(0,100%%,50%%))
   hsv  - HSV形式 (例: hsv(0,100%%,100%%))
+  dec  - 10進数形式 (例: 16711680)
 
 オプション:
   -src-format, -s   変換元のカラーコード形式
@@ -174,6 +175,7 @@ func PrintUsage() {
   %s -s hex -d rgb -v "#FF0000"     # HEXからRGBに変換
   %s -s rgb -d hsl -v "rgb(255,0,0)" # RGBからHSLに変換
   %s hex hsv "#00FF00"              # HEXからHSVに変換（位置引数）
+  %s -s dec -d hex -v "16711680"    # 10進数からHEXに変換
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }

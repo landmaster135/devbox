@@ -70,6 +70,7 @@ func TestNewConfig_Normal(t *testing.T) {
 		testSrcFormat  = "hex"
 		testDestFormat = "rgb"
 		testValue      = "#FF0000"
+		testDecValue   = "16711680"
 	)
 
 	tests := []struct {
@@ -81,15 +82,27 @@ func TestNewConfig_Normal(t *testing.T) {
 		expectedConfig *Config
 	}{
 		{
-			name:       "ValidHexToRgb_Normal",
-			srcFormat:  testSrcFormat,
-			destFormat: testDestFormat,
-			value:      testValue,
+			name:        "ValidHexToRgb_Normal",
+			srcFormat:   testSrcFormat,
+			destFormat:  testDestFormat,
+			value:       testValue,
 			expectError: false,
 			expectedConfig: &Config{
 				SrcFormat:  testSrcFormat,
 				DestFormat: testDestFormat,
 				Value:      testValue,
+			},
+		},
+		{
+			name:        "ValidDecToHex_Normal",
+			srcFormat:   "dec",
+			destFormat:  "hex",
+			value:       testDecValue,
+			expectError: false,
+			expectedConfig: &Config{
+				SrcFormat:  "dec",
+				DestFormat: "hex",
+				Value:      testDecValue,
 			},
 		},
 		{
@@ -163,6 +176,7 @@ func TestParseFlags_Normal(t *testing.T) {
 		testSrcFormat  = "hex"
 		testDestFormat = "rgb"
 		testValue      = "#FF0000"
+		testDecValue   = "16711680"
 	)
 
 	tests := []struct {
@@ -221,6 +235,20 @@ func TestParseFlags_Normal(t *testing.T) {
 				Value:      testValue,
 			},
 		},
+		{
+			name: "DecFormatFlags_Normal",
+			setupMock: func(mock *MockFlagParser) {
+				mock.SetStringValue("src-format", "dec")
+				mock.SetStringValue("dest-format", "hex")
+				mock.SetStringValue("value", testDecValue)
+			},
+			expectError: false,
+			expectedConfig: &Config{
+				SrcFormat:  "dec",
+				DestFormat: "hex",
+				Value:      testDecValue,
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -263,7 +291,7 @@ func TestParseFlags_Normal(t *testing.T) {
 }
 
 func TestIsValidFormat_Normal(t *testing.T) {
-	validFormats := []string{"hex", "rgb", "hsl", "hsv"}
+	validFormats := []string{"hex", "rgb", "hsl", "hsv", "dec"}
 
 	tests := []struct {
 		name     string
@@ -293,6 +321,11 @@ func TestIsValidFormat_Normal(t *testing.T) {
 		{
 			name:     "ValidUpperCase_Normal",
 			format:   "HEX",
+			expected: true,
+		},
+		{
+			name:     "ValidDec_Normal",
+			format:   "dec",
 			expected: true,
 		},
 		{

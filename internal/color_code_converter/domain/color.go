@@ -15,6 +15,8 @@ type Color struct {
 	B float64 // Blue (0-255)
 }
 
+const maxDecimalColorValue = 16777215
+
 // NewColor は新しいColorを作成する
 func NewColor(r, g, b float64) *Color {
 	return &Color{
@@ -151,6 +153,34 @@ func ParseFromHSV(hsvStr string) (*Color, error) {
 	return hsvToRgb(h, s/100, v/100), nil
 }
 
+// ParseFromDecimal は10進数形式の文字列からColorを作成する
+func ParseFromDecimal(decStr string) (*Color, error) {
+	decStr = strings.TrimSpace(decStr)
+	if decStr == "" {
+		return nil, fmt.Errorf("無効なDEC形式です: %s", decStr)
+	}
+
+	matched, _ := regexp.MatchString(`^\d+$`, decStr)
+	if !matched {
+		return nil, fmt.Errorf("無効なDEC形式です: %s", decStr)
+	}
+
+	decValue, err := strconv.ParseInt(decStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("無効なDEC形式です: %s", decStr)
+	}
+
+	if decValue < 0 || decValue > maxDecimalColorValue {
+		return nil, fmt.Errorf("DEC値が範囲外です: %s", decStr)
+	}
+
+	r := (decValue >> 16) & 0xFF
+	g := (decValue >> 8) & 0xFF
+	b := decValue & 0xFF
+
+	return NewColor(float64(r), float64(g), float64(b)), nil
+}
+
 // ToHex はColorをHEX形式の文字列に変換する
 func (c *Color) ToHex() string {
 	r := int(math.Round(c.R))
@@ -177,6 +207,15 @@ func (c *Color) ToHSL() string {
 func (c *Color) ToHSV() string {
 	h, s, v := rgbToHsv(c.R, c.G, c.B)
 	return fmt.Sprintf("hsv(%.0f,%.0f%%,%.0f%%)", h, s*100, v*100)
+}
+
+// ToDecimal はColorを10進数形式の文字列に変換する
+func (c *Color) ToDecimal() string {
+	r := int(math.Round(c.R))
+	g := int(math.Round(c.G))
+	b := int(math.Round(c.B))
+	decValue := (r << 16) | (g << 8) | b
+	return strconv.Itoa(decValue)
 }
 
 // rgbToHsl はRGB値をHSL値に変換する

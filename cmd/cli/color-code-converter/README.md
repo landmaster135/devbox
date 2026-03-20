@@ -8,6 +8,7 @@
 - **RGB** - RGB形式 (例: `rgb(255,0,0)`)
 - **HSL** - HSL形式 (例: `hsl(0,100%,50%)`)
 - **HSV** - HSV形式 (例: `hsv(0,100%,100%)`)
+- **DEC** - 10進数形式 (例: `16711680`)
 
 ## 使用方法
 
@@ -39,44 +40,57 @@ go run ./cmd/cli/color-code-converter -h
 ### HEXからRGBに変換
 
 ```bash
-$ go run ./cmd/cli/color-code-converter -s hex -d rgb -v "#FF0000"
-rgb(255,0,0)
+go run ./cmd/cli/color-code-converter -s hex -d rgb -v "#FF0000"
+
+# rgb(255,0,0)
 ```
 
 ### RGBからHSLに変換
 
 ```bash
-$ go run ./cmd/cli/color-code-converter -s rgb -d hsl -v "rgb(255,0,0)"
-hsl(0,100%,50%)
+go run ./cmd/cli/color-code-converter -s rgb -d hsl -v "rgb(255,0,0)"
+
+# hsl(0,100%,50%)
 ```
 
 ### HEXからHSVに変換
 
 ```bash
-$ go run ./cmd/cli/color-code-converter hex hsv "#00FF00"
-hsv(120,100%,100%)
+go run ./cmd/cli/color-code-converter hex hsv "#00FF00"
+
+# hsv(120,100%,100%)
+```
+
+### 10進数からHEXに変換
+
+```bash
+go run ./cmd/cli/color-code-converter -s dec -d hex -v "16711680"
+
+# #FF0000
 ```
 
 ### 3桁HEXコードの変換
 
 ```bash
-$ go run ./cmd/cli/color-code-converter -s hex -d rgb -v "#F00"
-rgb(255,0,0)
+go run ./cmd/cli/color-code-converter -s hex -d rgb -v "#F00"
+
+# rgb(255,0,0)
 ```
 
 ### 大文字小文字を区別しない変換
 
 ```bash
-$ go run ./cmd/cli/color-code-converter -s hex -d rgb -v "#ff0000"
-rgb(255,0,0)
+go run ./cmd/cli/color-code-converter -s hex -d rgb -v "#ff0000"
+
+# rgb(255,0,0)
 ```
 
 ## オプション
 
 | オプション | 短縮形 | 説明 | 必須 |
 |-----------|--------|------|------|
-| `-src-format` | `-s` | 変換元のカラーコード形式 (hex, rgb, hsl, hsv) | ✓ |
-| `-dest-format` | `-d` | 変換先のカラーコード形式 (hex, rgb, hsl, hsv) | ✓ |
+| `-src-format` | `-s` | 変換元のカラーコード形式 (hex, rgb, hsl, hsv, dec) | ✓ |
+| `-dest-format` | `-d` | 変換先のカラーコード形式 (hex, rgb, hsl, hsv, dec) | ✓ |
 | `-value` | `-v` | 変換するカラーコード値 | ✓ |
 | `-help` | `-h` | ヘルプを表示 | |
 
@@ -89,8 +103,9 @@ rgb(255,0,0)
 - 必須パラメータが不足している場合
 
 ```bash
-$ ./color-code-converter -s hex -d rgb -v "invalid"
-エラー: カラーコードの解析に失敗しました: 無効なHEX形式です: INVALID
+go run ./cmd/cli/color-code-converter -s hex -d rgb -v "invalid"
+
+# エラー: カラーコードの解析に失敗しました: 無効なHEX形式です: INVALID
 ```
 
 ## ビルド方法
@@ -124,6 +139,7 @@ go test -cover ./internal/color_code_converter/...
 - HEX ↔ RGB: 直接的な16進数変換
 - RGB ↔ HSL: 標準的なHSL変換アルゴリズム
 - RGB ↔ HSV: 標準的なHSV変換アルゴリズム
+- DEC ↔ RGB: 24bit整数値（0〜16777215）との相互変換
 - 全ての変換はRGBを中間表現として使用
 
 ### 入力値の検証
@@ -132,6 +148,7 @@ go test -cover ./internal/color_code_converter/...
 - RGB: `rgb(r,g,b)` 形式（0-255の整数値）
 - HSL: `hsl(h,s%,l%)` 形式（H: 0-360, S/L: 0-100%）
 - HSV: `hsv(h,s%,v%)` 形式（H: 0-360, S/V: 0-100%）
+- DEC: 10進整数文字列（0-16777215）
 
 ## ライセンス
 

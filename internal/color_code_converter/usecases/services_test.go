@@ -20,6 +20,7 @@ func TestConvertColor_Normal(t *testing.T) {
 		testRgbValue = "rgb(255,0,0)"
 		testHslValue = "hsl(0,100%,50%)"
 		testHsvValue = "hsv(0,100%,100%)"
+		testDecValue = "16711680"
 	)
 
 	tests := []struct {
@@ -63,6 +64,20 @@ func TestConvertColor_Normal(t *testing.T) {
 			srcFormat:  "hex",
 			destFormat: "hex",
 			value:      testHexValue,
+			expected:   testHexValue,
+		},
+		{
+			name:       "HexToDec_Normal",
+			srcFormat:  "hex",
+			destFormat: "dec",
+			value:      testHexValue,
+			expected:   testDecValue,
+		},
+		{
+			name:       "DecToHex_Normal",
+			srcFormat:  "dec",
+			destFormat: "hex",
+			value:      testDecValue,
 			expected:   testHexValue,
 		},
 		{
@@ -139,6 +154,7 @@ func TestParseColorFromFormat_Normal(t *testing.T) {
 		testRgbValue = "rgb(255,0,0)"
 		testHslValue = "hsl(0,100%,50%)"
 		testHsvValue = "hsv(0,100%,100%)"
+		testDecValue = "16711680"
 	)
 
 	tests := []struct {
@@ -168,6 +184,11 @@ func TestParseColorFromFormat_Normal(t *testing.T) {
 			value:  testHsvValue,
 		},
 		{
+			name:   "ValidDec_Normal",
+			format: "dec",
+			value:  testDecValue,
+		},
+		{
 			name:        "InvalidFormat_Error",
 			format:      "invalid",
 			value:       testHexValue,
@@ -182,6 +203,12 @@ func TestParseColorFromFormat_Normal(t *testing.T) {
 		{
 			name:        "InvalidRgbValue_Error",
 			format:      "rgb",
+			value:       "invalid",
+			expectError: true,
+		},
+		{
+			name:        "InvalidDecValue_Error",
+			format:      "dec",
 			value:       "invalid",
 			expectError: true,
 		},
@@ -246,6 +273,11 @@ func TestFormatColorToFormat_Normal(t *testing.T) {
 			expected: "hsv(0,100%,100%)",
 		},
 		{
+			name:     "ValidDec_Normal",
+			format:   "dec",
+			expected: "16711680",
+		},
+		{
 			name:        "InvalidFormat_Error",
 			format:      "invalid",
 			expectError: true,
@@ -282,6 +314,7 @@ func TestValidateColorFormat_Normal(t *testing.T) {
 		testRgbValue = "rgb(255,0,0)"
 		testHslValue = "hsl(0,100%,50%)"
 		testHsvValue = "hsv(0,100%,100%)"
+		testDecValue = "16711680"
 	)
 
 	tests := []struct {
@@ -311,6 +344,11 @@ func TestValidateColorFormat_Normal(t *testing.T) {
 			value:  testHsvValue,
 		},
 		{
+			name:   "ValidDec_Normal",
+			format: "dec",
+			value:  testDecValue,
+		},
+		{
 			name:        "InvalidHexValue_Error",
 			format:      "hex",
 			value:       "invalid",
@@ -320,6 +358,12 @@ func TestValidateColorFormat_Normal(t *testing.T) {
 			name:        "InvalidRgbValue_Error",
 			format:      "rgb",
 			value:       "invalid",
+			expectError: true,
+		},
+		{
+			name:        "InvalidDecValue_Error",
+			format:      "dec",
+			value:       "99999999",
 			expectError: true,
 		},
 		{
@@ -353,7 +397,7 @@ func TestGetSupportedFormats_Normal(t *testing.T) {
 	service := NewColorConverterService()
 	formats := service.GetSupportedFormats()
 
-	expectedFormats := []string{"hex", "rgb", "hsl", "hsv"}
+	expectedFormats := []string{"hex", "rgb", "hsl", "hsv", "dec"}
 
 	if len(formats) != len(expectedFormats) {
 		t.Errorf("GetSupportedFormats() returned %d formats, want %d", len(formats), len(expectedFormats))
@@ -371,6 +415,7 @@ func TestConvertColorWithValidation_Normal(t *testing.T) {
 	const (
 		testHexValue = "#FF0000"
 		testRgbValue = "rgb(255,0,0)"
+		testDecValue = "16711680"
 	)
 
 	tests := []struct {
@@ -387,6 +432,13 @@ func TestConvertColorWithValidation_Normal(t *testing.T) {
 			destFormat: "rgb",
 			value:      testHexValue,
 			expected:   testRgbValue,
+		},
+		{
+			name:       "ValidDecConversion_Normal",
+			srcFormat:  "dec",
+			destFormat: "hex",
+			value:      testDecValue,
+			expected:   testHexValue,
 		},
 		{
 			name:        "UnsupportedSrcFormat_Error",
@@ -436,7 +488,7 @@ func TestConvertColorWithValidation_Normal(t *testing.T) {
 }
 
 func TestIsFormatSupported_Normal(t *testing.T) {
-	supportedFormats := []string{"hex", "rgb", "hsl", "hsv"}
+	supportedFormats := []string{"hex", "rgb", "hsl", "hsv", "dec"}
 
 	tests := []struct {
 		name     string
@@ -461,6 +513,11 @@ func TestIsFormatSupported_Normal(t *testing.T) {
 		{
 			name:     "SupportedHsv_Normal",
 			format:   "hsv",
+			expected: true,
+		},
+		{
+			name:     "SupportedDec_Normal",
+			format:   "dec",
 			expected: true,
 		},
 		{
@@ -500,6 +557,7 @@ func TestColorConversionIntegration_Normal(t *testing.T) {
 		{"rgb", "rgb(255,0,0)"},
 		{"hsl", "hsl(0,100%,50%)"},
 		{"hsv", "hsv(0,100%,100%)"},
+		{"dec", "16711680"},
 	}
 
 	// 各形式から他の全ての形式への変換をテスト
