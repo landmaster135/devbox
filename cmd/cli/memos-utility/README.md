@@ -1,6 +1,6 @@
 # Memos Utility CLI
 
-`web-summary-*` / `movie-summary-*` の Markdown から、Memos にメモを作成するための CLI です。
+特定のドメインに対して、Memos にメモを作成するための CLI です。
 
 ## 機能
 
