@@ -12,6 +12,8 @@ Memos API（`/api/v1`）を操作するCLIツールです。
 - `update-memo`: 既存メモを更新（UpdateMemo）
 - `update-tag`: 既存タグを新しいタグへ一括置換
 - `patch-files`: ローカルファイルを添付として作成し、メモ添付を更新
+- `list-memo-relations`: 対象メモのリレーション一覧を取得
+- `add-memo-relations`: 対象メモのリレーションを追加/置換して更新
 
 ## インストール
 
@@ -33,7 +35,7 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `update-tag`, `patch-files`） | 必須 |
+| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `update-tag`, `patch-files`, `list-memo-relations`, `add-memo-relations`） | 必須 |
 | `-base-url` | Memos のベースURL（例: `https://memos.example.com`） | 必須 |
 | `-api-token` | Bearer トークン | 必須 |
 | `-timeout` | HTTPタイムアウト秒（デフォルト: 30） | 任意 |
@@ -143,6 +145,28 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 補足:
 - `patch-files` は、指定された全ファイルの読み込みと MIME type 判定が成功した場合にのみ `CreateAttachment` を開始します。
 - 1件でもファイル読み込みまたは MIME type 判定に失敗した場合、添付作成は一切行わずに中断します。
+
+### list-memo-relations
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-memo` | リレーション取得対象の memo 識別子 | 必須 |
+
+補足:
+- `list-memo-relations` は内部で全ページを取得し、対象メモの既存リレーションをまとめて返します。
+- 任意のメモにおけるレスポンスボディにおいて、自身がリンクしているメモだと`relations[n].memo`で自身のID、自身がリンクされているメモだと`relations[n].relatedMemo`で自身のIDが返却されます。
+
+### add-memo-relations
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-memo` | リレーション更新対象の memo 識別子 | 必須 |
+| `-related-memos` | 追加対象の related memo 識別子をカンマ区切りで指定 | 必須 |
+| `-replaces` | `true` なら既存リレーションを破棄して置換。`false`（デフォルト）なら既存を保持して追加 | 任意 |
+
+補足:
+- `add-memo-relations` はまず `ListMemoRelations` で既存リレーションを取得し、`SetMemoRelations` で更新します。
+- 結果には `discardedRelations`（破棄された関係）と `addedRelations`（追加された関係）を含みます。
 
 ## 使用例
 
@@ -280,6 +304,36 @@ go run ./cmd/cli/memos \
   -replaces=true
 ```
 
+メモの既存リレーションを確認
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memo-relations \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123
+```
+
+メモへリレーションを追加（既存保持）
+```bash
+go run ./cmd/cli/memos \
+  -operation=add-memo-relations \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123 \
+  -related-memos="memo-456,memo-789"
+```
+
+メモのリレーションを置換（既存破棄）
+```bash
+go run ./cmd/cli/memos \
+  -operation=add-memo-relations \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -memo=memo-123 \
+  -related-memos="memo-456,memo-789" \
+  -replaces=true
+```
+
 メモ作成（改行を含む本文をファイルから渡す）
 ```bash
 go run ./cmd/cli/memos \
@@ -307,3 +361,5 @@ go run ./cmd/cli/memos \
 - ListAttachments: https://usememos.com/docs/api/attachmentservice/ListAttachments
 - ListMemoAttachments: https://usememos.com/docs/api/memoservice/ListMemoAttachments
 - SetMemoAttachments: https://usememos.com/docs/api/memoservice/SetMemoAttachments
+- ListMemoRelations: https://usememos.com/docs/api/memoservice/ListMemoRelations
+- SetMemoRelations: https://usememos.com/docs/api/memoservice/SetMemoRelations

@@ -89,6 +89,10 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 		result, err = service.UpdateTag(ctx, conf.SrcTag, conf.DestTag)
 	case cfg.OperationPatchFiles:
 		result, err = service.PatchFiles(ctx, conf.Memo, splitByComma(conf.Files), conf.Replaces)
+	case cfg.OperationListMemoRelations:
+		result, err = service.ListMemoRelations(ctx, conf.Memo)
+	case cfg.OperationAddMemoRelations:
+		result, err = service.AddMemoRelations(ctx, conf.Memo, splitByComma(conf.RelatedMemos), conf.Replaces)
 	default:
 		fmt.Fprintf(stderr, "エラー: 未対応の operation です: %s\n", conf.Operation)
 		return 1

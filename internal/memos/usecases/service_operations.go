@@ -1,6 +1,11 @@
 package usecases
 
-import "context"
+import (
+	"context"
+	"strings"
+
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+)
 
 // CreateMemo は CreateMemo API を呼び出す。
 func (s *Service) CreateMemo(
@@ -111,4 +116,41 @@ func (s *Service) SetMemoAttachments(
 	attachments []Attachment,
 ) (*SetMemoAttachmentsOutput, error) {
 	return s.setMemoAttachmentsOp.Set(ctx, memo, attachments)
+}
+
+// ListMemoRelations は ListMemoRelations API を呼び出し、全ページを取得する。
+func (s *Service) ListMemoRelations(
+	ctx context.Context,
+	memo string,
+) (*ListMemoRelationsOutput, error) {
+	const pageSize = 100
+
+	all := make([]common.MemoRelation, 0)
+	pageToken := ""
+
+	for {
+		result, err := s.listMemoRelationsOp.List(ctx, memo, pageSize, pageToken)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			return &ListMemoRelationsOutput{Relations: all}, nil
+		}
+
+		all = append(all, result.Relations...)
+		if strings.TrimSpace(result.NextPageToken) == "" {
+			return &ListMemoRelationsOutput{Relations: all}, nil
+		}
+		pageToken = result.NextPageToken
+	}
+}
+
+// AddMemoRelations は指定メモへ related memos を追加/置換する。
+func (s *Service) AddMemoRelations(
+	ctx context.Context,
+	memo string,
+	relatedMemos []string,
+	replaces bool,
+) (*AddMemoRelationsOutput, error) {
+	return s.addMemoRelationsOp.Execute(ctx, memo, relatedMemos, replaces)
 }

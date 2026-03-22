@@ -53,6 +53,39 @@ type SetMemoAttachmentsOutput struct {
 	Attachments []Attachment `json:"attachments,omitempty"`
 }
 
+// MemoRelationMemo はリレーション内のメモ参照情報。
+type MemoRelationMemo struct {
+	Name    string `json:"name,omitempty"`
+	Snippet string `json:"snippet,omitempty"`
+}
+
+// MemoRelation はメモ間のリレーション情報。
+type MemoRelation struct {
+	Memo        MemoRelationMemo `json:"memo,omitempty"`
+	RelatedMemo MemoRelationMemo `json:"relatedMemo,omitempty"`
+	Type        string           `json:"type,omitempty"`
+}
+
+const (
+	MemoRelationTypeUnspecified = "TYPE_UNSPECIFIED"
+	MemoRelationTypeReference   = "REFERENCE"
+	MemoRelationTypeComment     = "COMMENT"
+)
+
+// ListMemoRelationsOutput は ListMemoRelations のレスポンス。
+type ListMemoRelationsOutput struct {
+	Relations     []MemoRelation `json:"relations,omitempty"`
+	NextPageToken string         `json:"nextPageToken,omitempty"`
+}
+
+// AddMemoRelationsOutput は add-memo-relations 操作のレスポンス。
+type AddMemoRelationsOutput struct {
+	Memo               string         `json:"memo"`
+	DiscardedRelations []MemoRelation `json:"discardedRelations,omitempty"`
+	AddedRelations     []MemoRelation `json:"addedRelations,omitempty"`
+	FinalRelations     []MemoRelation `json:"finalRelations,omitempty"`
+}
+
 // UpdateTagOutput は update-tag 操作のレスポンス。
 type UpdateTagOutput struct {
 	SourceTag        string   `json:"sourceTag"`

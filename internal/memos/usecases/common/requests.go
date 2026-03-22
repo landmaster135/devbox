@@ -23,3 +23,9 @@ type SetMemoAttachmentsRequest struct {
 	Name        string       `json:"name,omitempty"`
 	Attachments []Attachment `json:"attachments,omitempty"`
 }
+
+// SetMemoRelationsRequest はリレーション更新 payload。
+type SetMemoRelationsRequest struct {
+	Name      string         `json:"name,omitempty"`
+	Relations []MemoRelation `json:"relations,omitempty"`
+}

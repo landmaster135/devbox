@@ -3,6 +3,8 @@ package usecases
 import (
 	"context"
 	"testing"
+
+	"github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 func TestNewService_DefaultDependencies_Normal(t *testing.T) {
@@ -44,6 +46,12 @@ func TestNewService_DefaultDependencies_Normal(t *testing.T) {
 	}
 	if service.setMemoAttachmentsOp == nil {
 		t.Fatal("setMemoAttachmentsOp is nil")
+	}
+	if service.listMemoRelationsOp == nil {
+		t.Fatal("listMemoRelationsOp is nil")
+	}
+	if service.addMemoRelationsOp == nil {
+		t.Fatal("addMemoRelationsOp is nil")
 	}
 }
 
@@ -133,5 +141,62 @@ func TestService_UpdateTag_DelegatesOperation(t *testing.T) {
 	}
 	if result.DestinationTag != "project" {
 		t.Fatalf("destinationTag = %s, want project", result.DestinationTag)
+	}
+}
+
+type stubListMemoRelationsOperation struct{}
+
+func (s *stubListMemoRelationsOperation) List(ctx context.Context, memo string, pageSize int, pageToken string) (*ListMemoRelationsOutput, error) {
+	return &ListMemoRelationsOutput{
+		Relations: []common.MemoRelation{
+			{
+				Memo:        common.MemoRelationMemo{Name: "memos/memo-1"},
+				RelatedMemo: common.MemoRelationMemo{Name: "memos/memo-2"},
+			},
+		},
+	}, nil
+}
+
+func TestService_ListMemoRelations_DelegatesOperation(t *testing.T) {
+	service := &Service{listMemoRelationsOp: &stubListMemoRelationsOperation{}}
+
+	result, err := service.ListMemoRelations(context.Background(), "memos/memo-1")
+	if err != nil {
+		t.Fatalf("ListMemoRelations() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("result = nil, want non-nil")
+	}
+	if len(result.Relations) != 1 {
+		t.Fatalf("len(relations) = %d, want 1", len(result.Relations))
+	}
+}
+
+type stubAddMemoRelationsOperation struct{}
+
+func (s *stubAddMemoRelationsOperation) Execute(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*AddMemoRelationsOutput, error) {
+	return &AddMemoRelationsOutput{
+		Memo: memo,
+		AddedRelations: []common.MemoRelation{
+			{
+				Memo:        common.MemoRelationMemo{Name: memo},
+				RelatedMemo: common.MemoRelationMemo{Name: "memos/memo-2"},
+			},
+		},
+	}, nil
+}
+
+func TestService_AddMemoRelations_DelegatesOperation(t *testing.T) {
+	service := &Service{addMemoRelationsOp: &stubAddMemoRelationsOperation{}}
+
+	result, err := service.AddMemoRelations(context.Background(), "memos/memo-1", []string{"memo-2"}, false)
+	if err != nil {
+		t.Fatalf("AddMemoRelations() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("result = nil, want non-nil")
+	}
+	if len(result.AddedRelations) != 1 {
+		t.Fatalf("len(addedRelations) = %d, want 1", len(result.AddedRelations))
 	}
 }

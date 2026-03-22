@@ -7,12 +7,14 @@ import (
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	addmemorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/add_memo_relations"
 	attachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/attachments"
 	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"
 	deletememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/delete_memo"
 	getmemo "github.com/landmaster135/devbox/internal/memos/usecases/operations/get_memo"
 	listattachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_attachments"
 	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
+	memorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/memo_relations"
 	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
 	updatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_memo"
 	updatetag "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_tag"
@@ -76,6 +78,14 @@ type setMemoAttachmentsOperation interface {
 	Set(ctx context.Context, memo string, attachments []common.Attachment) (*common.SetMemoAttachmentsOutput, error)
 }
 
+type listMemoRelationsOperation interface {
+	List(ctx context.Context, memo string, pageSize int, pageToken string) (*common.ListMemoRelationsOutput, error)
+}
+
+type addMemoRelationsOperation interface {
+	Execute(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*common.AddMemoRelationsOutput, error)
+}
+
 // Service は Memos API 呼び出しのユースケースを提供する。
 type Service struct {
 	createMemoOp          createMemoOperation
@@ -89,6 +99,8 @@ type Service struct {
 	createAttachmentOp    createAttachmentOperation
 	listMemoAttachmentsOp listMemoAttachmentsOperation
 	setMemoAttachmentsOp  setMemoAttachmentsOperation
+	listMemoRelationsOp   listMemoRelationsOperation
+	addMemoRelationsOp    addMemoRelationsOperation
 }
 
 // Memo は CLI/上位層に返すメモ情報。
@@ -115,6 +127,12 @@ type ListMemoAttachmentsOutput = common.ListMemoAttachmentsOutput
 // SetMemoAttachmentsOutput は SetMemoAttachments のレスポンス。
 type SetMemoAttachmentsOutput = common.SetMemoAttachmentsOutput
 
+// ListMemoRelationsOutput は ListMemoRelations のレスポンス。
+type ListMemoRelationsOutput = common.ListMemoRelationsOutput
+
+// AddMemoRelationsOutput は add-memo-relations のレスポンス。
+type AddMemoRelationsOutput = common.AddMemoRelationsOutput
+
 // NewService は Service を生成する。
 func NewService(opts ServiceOptions) *Service {
 	client := opts.HTTPClient
@@ -140,6 +158,7 @@ func NewService(opts ServiceOptions) *Service {
 	attachmentsOp := attachments.New(jsonClient)
 	listMemosOp := listmemos.New(jsonClient)
 	updateMemoOp := updatememo.New(jsonClient, fileSystem)
+	memoRelationsOp := memorelations.New(jsonClient)
 
 	return &Service{
 		createMemoOp:          creatememo.New(jsonClient, fileSystem),
@@ -153,5 +172,7 @@ func NewService(opts ServiceOptions) *Service {
 		createAttachmentOp:    attachmentsOp,
 		listMemoAttachmentsOp: attachmentsOp,
 		setMemoAttachmentsOp:  attachmentsOp,
+		listMemoRelationsOp:   memoRelationsOp,
+		addMemoRelationsOp:    addmemorelations.New(memoRelationsOp, memoRelationsOp),
 	}
 }
