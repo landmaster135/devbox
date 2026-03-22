@@ -42,6 +42,8 @@ func BuildDisplayTime(operation, contentFile string) (string, error) {
 		timestamp, ok = ParseWebClipDisplayTime(baseName)
 	case OperationCreateMovieClip:
 		timestamp, ok = ParseMovieClipDisplayTime(baseName)
+	case OperationCreateCommonMemos:
+		timestamp, ok = ParseCommonMemoDisplayTime(baseName)
 	default:
 		return "", fmt.Errorf("未対応の operation です: %s", operation)
 	}

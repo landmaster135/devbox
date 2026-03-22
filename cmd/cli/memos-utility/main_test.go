@@ -13,8 +13,9 @@ import (
 )
 
 type mockMemosUtilityService struct {
-	createClipFunc  func(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error)
-	createClipsFunc func(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error)
+	createClipFunc        func(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error)
+	createClipsFunc       func(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error)
+	createCommonMemosFunc func(ctx context.Context, input usecases.CreateCommonMemosInput) (*usecases.CreateCommonMemosOutput, error)
 }
 
 func (m *mockMemosUtilityService) CreateClip(ctx context.Context, input usecases.CreateClipInput) (*usecases.CreateClipOutput, error) {
@@ -27,6 +28,13 @@ func (m *mockMemosUtilityService) CreateClip(ctx context.Context, input usecases
 func (m *mockMemosUtilityService) CreateClips(ctx context.Context, input usecases.CreateClipsInput) (*usecases.CreateClipsOutput, error) {
 	if m.createClipsFunc != nil {
 		return m.createClipsFunc(ctx, input)
+	}
+	return nil, nil
+}
+
+func (m *mockMemosUtilityService) CreateCommonMemos(ctx context.Context, input usecases.CreateCommonMemosInput) (*usecases.CreateCommonMemosOutput, error) {
+	if m.createCommonMemosFunc != nil {
+		return m.createCommonMemosFunc(ctx, input)
 	}
 	return nil, nil
 }
@@ -146,6 +154,53 @@ func TestRun_CreateClips_Normal(t *testing.T) {
 	}
 }
 
+func TestRun_CreateCommonMemos_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	exitCode := run([]string{
+		"-operation=create-common-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-dir=/tmp/common-memos",
+		"-attachment-dir=/tmp/attachments",
+	}, &stdout, &stderr, func(conf *cfg.Config, _ io.Writer) usecases.MemosUtilityService {
+		return &mockMemosUtilityService{
+			createCommonMemosFunc: func(ctx context.Context, input usecases.CreateCommonMemosInput) (*usecases.CreateCommonMemosOutput, error) {
+				called = true
+				if input.Operation != cfg.OperationCreateCommonMemos {
+					t.Fatalf("operation = %s, want %s", input.Operation, cfg.OperationCreateCommonMemos)
+				}
+				if input.ContentDir != "/tmp/common-memos" {
+					t.Fatalf("contentDir = %s, want /tmp/common-memos", input.ContentDir)
+				}
+				if input.AttachmentDir != "/tmp/attachments" {
+					t.Fatalf("attachmentDir = %s, want /tmp/attachments", input.AttachmentDir)
+				}
+				return &usecases.CreateCommonMemosOutput{
+					Operation:  input.Operation,
+					ContentDir: input.ContentDir,
+					Total:      0,
+				}, nil
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if !called {
+		t.Fatal("CreateCommonMemos was not called")
+	}
+	if !strings.Contains(stdout.String(), "\"operation\": \"create-common-memos\"") {
+		t.Fatalf("stdout = %s, want operation json", stdout.String())
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %s, want empty", stderr.String())
+	}
+}
+
 func TestRun_ParseError_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -212,6 +267,40 @@ func TestNewCreateClipsProgressReporter_CreateClips_Normal(t *testing.T) {
 func TestNewCreateClipsProgressReporter_NotCreateClips_Normal(t *testing.T) {
 	reporter := newCreateClipsProgressReporter(&cfg.Config{
 		Operation: cfg.OperationCreateWebClip,
+	}, &bytes.Buffer{})
+
+	if reporter != nil {
+		t.Fatal("reporter != nil, want nil")
+	}
+}
+
+func TestNewCreateCommonMemosProgressReporter_CreateCommonMemos_Normal(t *testing.T) {
+	var stderr bytes.Buffer
+	reporter := newCreateCommonMemosProgressReporter(&cfg.Config{
+		Operation: cfg.OperationCreateCommonMemos,
+	}, &stderr)
+
+	if reporter == nil {
+		t.Fatal("reporter = nil, want non-nil")
+	}
+
+	reporter(usecases.CreateClipsProgress{
+		Current:         2,
+		Total:           5,
+		Operation:       cfg.OperationCreateCommonMemos,
+		ContentFile:     "/tmp/20260316080301_03.md",
+		AttachmentCount: 4,
+	})
+
+	got := stderr.String()
+	if !strings.Contains(got, "進捗: 2/5 [create-common-memos] 20260316080301_03.md (attachments=4)") {
+		t.Fatalf("stderr = %q, want progress line", got)
+	}
+}
+
+func TestNewCreateCommonMemosProgressReporter_NotCreateCommonMemos_Normal(t *testing.T) {
+	reporter := newCreateCommonMemosProgressReporter(&cfg.Config{
+		Operation: cfg.OperationCreateClips,
 	}, &bytes.Buffer{})
 
 	if reporter != nil {

@@ -74,6 +74,29 @@ func TestConfig_ParseFlagsFromArgs_CreateClips_Normal(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_CreateCommonMemos_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-common-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-dir=/tmp/common-memos",
+		"-attachment-dir=/tmp/attachments",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateCommonMemos {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateCommonMemos)
+	}
+	if cfg.ContentDir != "/tmp/common-memos" {
+		t.Fatalf("contentDir = %s, want /tmp/common-memos", cfg.ContentDir)
+	}
+	if cfg.AttachmentDir != "/tmp/attachments" {
+		t.Fatalf("attachmentDir = %s, want /tmp/attachments", cfg.AttachmentDir)
+	}
+}
+
 func TestConfig_ParseFlagsFromArgs_Help_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{"-help"})
 	if err != nil {
@@ -166,6 +189,37 @@ func TestConfig_ParseFlagsFromArgs_ValidationError_Error(t *testing.T) {
 				"-attachments=./a.png",
 			},
 			wantErr: "create-clips では attachments は指定できません",
+		},
+		{
+			name: "ContentDirMissingForCreateCommonMemos",
+			args: []string{
+				"-operation=create-common-memos",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+			},
+			wantErr: "content-dir パラメータは必須です",
+		},
+		{
+			name: "ContentFileDisallowedForCreateCommonMemos",
+			args: []string{
+				"-operation=create-common-memos",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/common-memos",
+				"-content-file=/tmp/20260303053400_02.md",
+			},
+			wantErr: "create-common-memos では content-file は指定できません",
+		},
+		{
+			name: "AttachmentsDisallowedForCreateCommonMemos",
+			args: []string{
+				"-operation=create-common-memos",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/common-memos",
+				"-attachments=./a.png",
+			},
+			wantErr: "create-common-memos では attachments は指定できません",
 		},
 		{
 			name: "TimeoutInvalid",

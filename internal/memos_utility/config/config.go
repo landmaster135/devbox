@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	OperationCreateWebClip   = "create-web-clip"
-	OperationCreateMovieClip = "create-movie-clip"
-	OperationCreateClips     = "create-clips"
+	OperationCreateWebClip     = "create-web-clip"
+	OperationCreateMovieClip   = "create-movie-clip"
+	OperationCreateClips       = "create-clips"
+	OperationCreateCommonMemos = "create-common-memos"
 
 	defaultTimeoutSeconds = 30
 )
@@ -23,6 +24,7 @@ var supportedOperations = []string{
 	OperationCreateWebClip,
 	OperationCreateMovieClip,
 	OperationCreateClips,
+	OperationCreateCommonMemos,
 }
 
 var webClipFilePattern = regexp.MustCompile(`^web-summary-(\d{8})-(\d{6})-([A-Za-z0-9][A-Za-z0-9_-]*)\.md$`)
@@ -129,6 +131,16 @@ func validateConfig(cfg *Config) error {
 		if cfg.Attachments != "" {
 			return fmt.Errorf("create-clips では attachments は指定できません。attachment-dir を使用してください")
 		}
+	case OperationCreateCommonMemos:
+		if cfg.ContentDir == "" {
+			return fmt.Errorf("content-dir パラメータは必須です")
+		}
+		if cfg.ContentFile != "" {
+			return fmt.Errorf("create-common-memos では content-file は指定できません")
+		}
+		if cfg.Attachments != "" {
+			return fmt.Errorf("create-common-memos では attachments は指定できません。attachment-dir を使用してください")
+		}
 	default:
 		return fmt.Errorf("未対応の operation です: %s", cfg.Operation)
 	}
@@ -180,8 +192,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  -timeout int\n        HTTP リクエストのタイムアウト秒数 (デフォルト: %d)\n", defaultTimeoutSeconds)
 	fmt.Fprintf(os.Stderr, "  -content-file string\n        メモ本文を読み込むファイルパス (create-web-clip/create-movie-clip で必須)\n")
 	fmt.Fprintf(os.Stderr, "  -attachments string\n        添付するファイルパス（任意、カンマ区切り。create-web-clip/create-movie-clip で利用）\n")
-	fmt.Fprintf(os.Stderr, "  -content-dir string\n        一括作成対象の Markdown ファイルを格納したディレクトリ (create-clips で必須)\n")
-	fmt.Fprintf(os.Stderr, "  -attachment-dir string\n        一括作成時に添付ファイルを格納したディレクトリ (create-clips で任意)\n")
+	fmt.Fprintf(os.Stderr, "  -content-dir string\n        一括作成対象の Markdown ファイルを格納したディレクトリ (create-clips/create-common-memos で必須)\n")
+	fmt.Fprintf(os.Stderr, "  -attachment-dir string\n        一括作成時に添付ファイルを格納したディレクトリ (create-clips/create-common-memos で任意)\n")
 	fmt.Fprintf(os.Stderr, "  -help, -h\n        ヘルプを表示\n\n")
 
 	fmt.Fprintf(os.Stderr, "operation 別 content-file 制約:\n")
@@ -192,9 +204,13 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  create-clips\n")
 	fmt.Fprintf(os.Stderr, "        content-dir 配下の全ファイルが web-summary-... または movie-summary-... 形式のみ\n")
 	fmt.Fprintf(os.Stderr, "        attachment-dir 指定時は *_<number>.<extension> 形式のみ\n\n")
+	fmt.Fprintf(os.Stderr, "  create-common-memos\n")
+	fmt.Fprintf(os.Stderr, "        content-dir 配下の全ファイルが YYYYMMDDhhmmss_<number>.md 形式のみ\n")
+	fmt.Fprintf(os.Stderr, "        attachment-dir 指定時は YYYYMMDDhhmmss_<number>_<index>.<extension> 形式のみ\n\n")
 
 	fmt.Fprintf(os.Stderr, "例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-web-clip -base-url=https://memos.example.com -api-token=token -content-file=./web-summary-20240719-231059-sample.md\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-movie-clip -base-url=https://memos.example.com -api-token=token -content-file=./movie-summary-20260319-055716-sample.md -attachments=./a.png,./b.txt\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-clips -base-url=https://memos.example.com -api-token=token -content-dir=./clips -attachment-dir=./attachments\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=create-common-memos -base-url=https://memos.example.com -api-token=token -content-dir=./common-memos -attachment-dir=./attachments\n", os.Args[0])
 }

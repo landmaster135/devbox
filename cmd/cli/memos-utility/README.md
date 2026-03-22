@@ -8,6 +8,10 @@
 - `create-movie-clip`: `movie-summary-YYYYMMDD-hhmmss-<slug>.md` からメモ作成
 - `create-clips`: `content-dir` 配下の `web-summary-*` / `movie-summary-*` を一括でメモ作成
   - 処理中は `stderr` に進捗（`進捗: 現在/総数 [operation] ファイル名 (attachments=件数)`）を表示
+- `create-common-memos`: `content-dir` 配下の `YYYYMMDDhhmmss_<number>.md` を一括でメモ作成
+  - 処理中は `stderr` に進捗（`進捗: 現在/総数 [operation] ファイル名 (attachments=件数)`）を表示
+  - `attachment-dir` 指定時は `YYYYMMDDhhmmss_<number>_<index>.<extension>` を content ごとに紐付けて添付
+  - 全メモ作成後、同一 timestamp 内で `<number>-1` が存在する場合のみ `add-memo-relations(replaces=false)` を追加
 
 作成時の固定値:
 - `visibility=PRIVATE`
@@ -17,7 +21,7 @@
 `content-file` のファイル名から `displayTime`（`+09:00`）を自動生成します。
 
 `-attachments` を指定した場合は、メモ作成前に全ファイルの存在・読込可能性を検証します。1件でも不正なパスがある場合、メモは作成しません。  
-`-operation=create-clips` で `-attachment-dir` を指定した場合も同様に、添付対象の全ファイルを事前検証し、1件でも不正ならメモは作成しません。
+`-operation=create-clips` または `-operation=create-common-memos` で `-attachment-dir` を指定した場合も同様に、添付対象の全ファイルを事前検証し、1件でも不正ならメモは作成しません。
 
 ## インストール
 
@@ -42,13 +46,13 @@ go run ./cmd/cli/memos-utility \
 
 | フラグ | 説明 | 必須 | デフォルト |
 |---|---|---|---|
-| `-operation` | 実行操作（`create-web-clip`, `create-movie-clip`, `create-clips`） | 必須 | - |
+| `-operation` | 実行操作（`create-web-clip`, `create-movie-clip`, `create-clips`, `create-common-memos`） | 必須 | - |
 | `-base-url` | Memos のベースURL | 必須 | - |
 | `-api-token` | Memos API の Bearer トークン | 必須 | - |
 | `-content-file` | メモ本文を読み込む Markdown ファイルパス（`create-web-clip` / `create-movie-clip` で必須） | 条件付き必須 | - |
 | `-attachments` | 添付するローカルファイルパス（カンマ区切り、`create-web-clip` / `create-movie-clip` で任意） | 任意 | 空 |
-| `-content-dir` | 一括作成対象の Markdown ディレクトリ（`create-clips` で必須） | 条件付き必須 | - |
-| `-attachment-dir` | 一括作成時の添付ディレクトリ（`create-clips` で任意） | 任意 | 空 |
+| `-content-dir` | 一括作成対象の Markdown ディレクトリ（`create-clips` / `create-common-memos` で必須） | 条件付き必須 | - |
+| `-attachment-dir` | 一括作成時の添付ディレクトリ（`create-clips` / `create-common-memos` で任意） | 任意 | 空 |
 | `-timeout` | HTTP タイムアウト秒 | 任意 | `30` |
 | `-help`, `-h` | ヘルプ表示 | 任意 | `false` |
 
@@ -65,6 +69,11 @@ go run ./cmd/cli/memos-utility \
   - `-attachment-dir` 指定時は配下の全ファイルが以下のいずれかである必要があります。
     - `web-summary-YYYYMMDD-hhmmss-<slug>_<number>.<extension>`
     - `movie-summary-YYYYMMDD-hhmmss-<slug>_<number>.<extension>`
+- `-operation=create-common-memos`
+  - `-content-dir` 配下の全ファイルが以下である必要があります。
+    - `YYYYMMDDhhmmss_<number>.md`
+  - `-attachment-dir` 指定時は配下の全ファイルが以下である必要があります。
+    - `YYYYMMDDhhmmss_<number>_<index>.<extension>`
 
 ## 使用例
 
@@ -102,6 +111,17 @@ go run ./cmd/cli/memos-utility \
 # stderr（進捗表示）
 # 進捗: 1/2 [create-movie-clip] movie-summary-20260319-055716-trump-masako-diplomacy.md (attachments=1)
 # 進捗: 2/2 [create-web-clip] web-summary-20241225-233435-daikokuyu-event-info.md (attachments=2)
+```
+
+ディレクトリ内の common memos を一括作成:
+
+```bash
+go run ./cmd/cli/memos-utility \
+  -operation=create-common-memos \
+  -base-url="$MEMOS_BASE_URL" \
+  -api-token="$MEMOS_TOKEN" \
+  -content-dir=/tmp/common-memos \
+  -attachment-dir=/tmp/common-attachments
 ```
 
 ## 出力例
@@ -150,6 +170,31 @@ go run ./cmd/cli/memos-utility \
     {
       "operation": "create-web-clip",
       "displayTime": "2024-12-25T23:34:35+09:00"
+    }
+  ]
+}
+```
+
+`create-common-memos` 成功時（例）:
+
+```json
+{
+  "operation": "create-common-memos",
+  "contentDir": "/tmp/common-memos",
+  "attachmentDir": "/tmp/common-attachments",
+  "total": 2,
+  "memos": [
+    {
+      "contentFile": "/tmp/common-memos/20260316080301_01.md",
+      "displayTime": "2026-03-16T08:03:01+09:00"
+    },
+    {
+      "contentFile": "/tmp/common-memos/20260316080301_02.md",
+      "displayTime": "2026-03-16T08:03:01+09:00",
+      "attachments": [
+        "/tmp/common-attachments/20260316080301_02_11.webp"
+      ],
+      "relatedToPreviousBy": "memos/20260316080301_01"
     }
   ]
 }

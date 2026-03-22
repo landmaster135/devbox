@@ -49,6 +49,12 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			ContentDir:    conf.ContentDir,
 			AttachmentDir: conf.AttachmentDir,
 		})
+	case cfg.OperationCreateCommonMemos:
+		result, err = service.CreateCommonMemos(ctx, usecases.CreateCommonMemosInput{
+			Operation:     conf.Operation,
+			ContentDir:    conf.ContentDir,
+			AttachmentDir: conf.AttachmentDir,
+		})
 	default:
 		fmt.Fprintf(stderr, "エラー: 未対応の operation です: %s\n", conf.Operation)
 		return 1
@@ -67,15 +73,34 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 
 func newServiceFromConfig(conf *cfg.Config, stderr io.Writer) usecases.MemosUtilityService {
 	return usecases.NewService(usecases.ServiceOptions{
-		BaseURL:                     conf.BaseURL,
-		APIToken:                    conf.APIToken,
-		Timeout:                     time.Duration(conf.TimeoutSeconds) * time.Second,
-		CreateClipsProgressReporter: newCreateClipsProgressReporter(conf, stderr),
+		BaseURL:                           conf.BaseURL,
+		APIToken:                          conf.APIToken,
+		Timeout:                           time.Duration(conf.TimeoutSeconds) * time.Second,
+		CreateClipsProgressReporter:       newCreateClipsProgressReporter(conf, stderr),
+		CreateCommonMemosProgressReporter: newCreateCommonMemosProgressReporter(conf, stderr),
 	})
 }
 
 func newCreateClipsProgressReporter(conf *cfg.Config, stderr io.Writer) func(progress usecases.CreateClipsProgress) {
 	if conf.Operation != cfg.OperationCreateClips {
+		return nil
+	}
+
+	return func(progress usecases.CreateClipsProgress) {
+		fmt.Fprintf(
+			stderr,
+			"進捗: %d/%d [%s] %s (attachments=%d)\n",
+			progress.Current,
+			progress.Total,
+			progress.Operation,
+			filepath.Base(progress.ContentFile),
+			progress.AttachmentCount,
+		)
+	}
+}
+
+func newCreateCommonMemosProgressReporter(conf *cfg.Config, stderr io.Writer) func(progress usecases.CreateClipsProgress) {
+	if conf.Operation != cfg.OperationCreateCommonMemos {
 		return nil
 	}
 

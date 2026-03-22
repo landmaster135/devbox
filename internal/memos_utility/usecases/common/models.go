@@ -42,3 +42,29 @@ type CreateClipsProgress struct {
 	ContentFile     string
 	AttachmentCount int
 }
+
+// CreateCommonMemosInput は create-common-memos の入力。
+type CreateCommonMemosInput struct {
+	Operation     string
+	ContentDir    string
+	AttachmentDir string
+}
+
+// CreateCommonMemoOutput は create-common-memos の各メモ作成結果。
+type CreateCommonMemoOutput struct {
+	ContentFile         string                          `json:"contentFile"`
+	DisplayTime         string                          `json:"displayTime"`
+	Memo                *memos.Memo                     `json:"memo,omitempty"`
+	Attachments         []string                        `json:"attachments,omitempty"`
+	SetMemoAttachments  *memos.SetMemoAttachmentsOutput `json:"setMemoAttachments,omitempty"`
+	RelatedToPreviousBy string                          `json:"relatedToPreviousBy,omitempty"`
+}
+
+// CreateCommonMemosOutput は create-common-memos の出力。
+type CreateCommonMemosOutput struct {
+	Operation     string                    `json:"operation"`
+	ContentDir    string                    `json:"contentDir"`
+	AttachmentDir string                    `json:"attachmentDir,omitempty"`
+	Total         int                       `json:"total"`
+	Memos         []*CreateCommonMemoOutput `json:"memos"`
+}

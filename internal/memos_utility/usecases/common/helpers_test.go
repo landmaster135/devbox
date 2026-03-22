@@ -36,6 +36,14 @@ func TestBuildDisplayTime_Normal(t *testing.T) {
 	if got != "2026-03-19T05:57:16+09:00" {
 		t.Fatalf("BuildDisplayTime() = %s, want 2026-03-19T05:57:16+09:00", got)
 	}
+
+	commonMemoDisplayTime, err := BuildDisplayTime(OperationCreateCommonMemos, "/tmp/20260316080301_03.md")
+	if err != nil {
+		t.Fatalf("BuildDisplayTime(common) error = %v", err)
+	}
+	if commonMemoDisplayTime != "2026-03-16T08:03:01+09:00" {
+		t.Fatalf("BuildDisplayTime(common) = %s, want 2026-03-16T08:03:01+09:00", commonMemoDisplayTime)
+	}
 }
 
 func TestBuildDisplayTime_Error(t *testing.T) {
@@ -158,5 +166,17 @@ func TestPatterns_Normal(t *testing.T) {
 	}
 	if base, ok := ParseMovieAttachmentContentBaseName("movie-summary-20260319-055716-trump-masako-diplomacy_01.webp"); !ok || base != "movie-summary-20260319-055716-trump-masako-diplomacy" {
 		t.Fatalf("ParseMovieAttachmentContentBaseName() = (%s, %v), want expected", base, ok)
+	}
+	if !MatchCommonMemoFile("20260316080301_03.md") {
+		t.Fatal("MatchCommonMemoFile() = false, want true")
+	}
+	if ts, ok := ParseCommonMemoDisplayTime("20260316080301_03.md"); !ok || ts != "20260316080301" {
+		t.Fatalf("ParseCommonMemoDisplayTime() = (%s, %v), want (20260316080301, true)", ts, ok)
+	}
+	if ts, num, ok := ParseCommonMemoFileKey("20260316080301_03.md"); !ok || ts != "20260316080301" || num != 3 {
+		t.Fatalf("ParseCommonMemoFileKey() = (%s, %d, %v), want (20260316080301, 3, true)", ts, num, ok)
+	}
+	if ts, num, ok := ParseCommonMemoAttachmentKey("20260316080301_03_11.webp"); !ok || ts != "20260316080301" || num != 3 {
+		t.Fatalf("ParseCommonMemoAttachmentKey() = (%s, %d, %v), want (20260316080301, 3, true)", ts, num, ok)
 	}
 }

@@ -9,24 +9,27 @@ import (
 	common "github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 	createclip "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_clip"
 	createclips "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_clips"
+	createcommonmemos "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_common_memos"
 )
 
 // ServiceOptions は Service 生成時の入力。
 type ServiceOptions struct {
-	BaseURL                     string
-	APIToken                    string
-	Timeout                     time.Duration
-	MemosService                MemosService
-	FileSystem                  infrastructures.FileSystem
-	CreateClipsProgressReporter func(progress CreateClipsProgress)
+	BaseURL                           string
+	APIToken                          string
+	Timeout                           time.Duration
+	MemosService                      MemosService
+	FileSystem                        infrastructures.FileSystem
+	CreateClipsProgressReporter       func(progress CreateClipsProgress)
+	CreateCommonMemosProgressReporter func(progress CreateClipsProgress)
 }
 
 // Service は memos-utility のユースケースを提供する。
 type Service struct {
-	memosService  MemosService
-	fileSystem    infrastructures.FileSystem
-	createClipOp  createClipOperation
-	createClipsOp createClipsOperation
+	memosService        MemosService
+	fileSystem          infrastructures.FileSystem
+	createClipOp        createClipOperation
+	createClipsOp       createClipsOperation
+	createCommonMemosOp createCommonMemosOperation
 }
 
 // NewService は Service を生成する。
@@ -54,12 +57,18 @@ func NewService(opts ServiceOptions) *Service {
 		FileSystem:        fileSystem,
 		ProgressReporter:  opts.CreateClipsProgressReporter,
 	})
+	createCommonMemosOp := createcommonmemos.NewService(createcommonmemos.ServiceOptions{
+		MemosService:     memosService,
+		FileSystem:       fileSystem,
+		ProgressReporter: opts.CreateCommonMemosProgressReporter,
+	})
 
 	return &Service{
-		memosService:  memosService,
-		fileSystem:    fileSystem,
-		createClipOp:  createClipOp,
-		createClipsOp: createClipsOp,
+		memosService:        memosService,
+		fileSystem:          fileSystem,
+		createClipOp:        createClipOp,
+		createClipsOp:       createClipsOp,
+		createCommonMemosOp: createCommonMemosOp,
 	}
 }
 
@@ -71,4 +80,9 @@ func (s *Service) CreateClip(ctx context.Context, input CreateClipInput) (*Creat
 // CreateClips は operation を委譲して一括クリップ作成する。
 func (s *Service) CreateClips(ctx context.Context, input CreateClipsInput) (*CreateClipsOutput, error) {
 	return s.createClipsOp.Execute(ctx, common.CreateClipsInput(input))
+}
+
+// CreateCommonMemos は operation を委譲して共通メモを一括作成する。
+func (s *Service) CreateCommonMemos(ctx context.Context, input CreateCommonMemosInput) (*CreateCommonMemosOutput, error) {
+	return s.createCommonMemosOp.Execute(ctx, common.CreateCommonMemosInput(input))
 }
