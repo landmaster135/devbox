@@ -80,6 +80,56 @@ internal/{tool-name}/
       └─ *_test.go
 ```
 
+### `PrintUsage(format)` の実装パターン
+
+`PrintUsage(format)` は **出力先と実行ファイル名の注入のみ** を担当し、ヘルプ本文（usageTemplate）の組み立ては `config` 層で行います。
+
+`infrastructures/flag_parser/usage.go`:
+
+```go
+package flag_parser
+
+import (
+	"fmt"
+	"os"
+)
+
+func PrintUsage(format string) {
+	fmt.Fprintf(os.Stderr, format, os.Args[0])
+}
+```
+
+`config/config.go`:
+
+```go
+package config
+
+import (
+	"sort"
+	"strconv"
+	"strings"
+
+	flagParser "github.com/landmaster135/devbox/internal/{tool-name}/infrastructures/flag_parser"
+)
+
+const usageTemplate = `使用方法: %[1]s [オプション]
+
+共通オプション:
+  -operation string 実行する操作 (%s)
+  -timeout int     タイムアウト秒数 (デフォルト: %s)
+`
+
+func PrintUsage() {
+	ops := make([]string, len(supportedOperations))
+	copy(ops, supportedOperations)
+	sort.Strings(ops)
+
+	usage := strings.Replace(usageTemplate, "%s", strings.Join(ops, ", "), 1)
+	usage = strings.Replace(usage, "%s", strconv.Itoa(defaultTimeoutSeconds), 1)
+	flagParser.PrintUsage(usage)
+}
+```
+
 ## 実装アンチパターン
 
 ### CLIツールで結果を表示しない
