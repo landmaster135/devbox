@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"slices"
 
 	flagParser "github.com/landmaster135/devbox/internal/zip_compressor/infrastructures/flag_parser"
 )
@@ -20,14 +21,7 @@ func NewConfig(operation, path string) (*Config, error) {
 	}
 
 	validOperations := []string{"compress", "decompress"}
-	isValid := false
-	for _, op := range validOperations {
-		if operation == op {
-			isValid = true
-			break
-		}
-	}
-	if !isValid {
+	if !slices.Contains(validOperations, operation) {
 		return nil, fmt.Errorf("無効な操作タイプです: %s", operation)
 	}
 
