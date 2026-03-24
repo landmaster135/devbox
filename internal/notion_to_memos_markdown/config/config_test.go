@@ -78,8 +78,8 @@ func TestNewConfig(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		operation      string
-		pageType       string
+		operation      Operation
+		pageType       PageType
 		baseURL        string
 		apiToken       string
 		category       string
@@ -92,7 +92,7 @@ func TestNewConfig(t *testing.T) {
 		conNumberStart int
 		conNumberEnd   int
 		threshold      int
-		wantPageType   string
+		wantPageType   PageType
 		wantTargetStr  string
 		wantErr        string
 	}{
@@ -369,8 +369,8 @@ func TestNewConfig(t *testing.T) {
 			t.Parallel()
 
 			got, err := NewConfig(
-				tt.operation,
-				tt.pageType,
+				string(tt.operation),
+				string(tt.pageType),
 				tt.baseURL,
 				tt.apiToken,
 				tt.category,
@@ -421,8 +421,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("distribute normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationDistributeFiles)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationDistributeFiles))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("src-json-file", "/tmp/contents.json")
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetString("out-dir", "/tmp/out")
@@ -439,8 +439,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("craft normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationCraftMarkdown)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationCraftMarkdown))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("src-json-file", "/tmp/contents.json")
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetString("out-dir", "/tmp/out")
@@ -461,8 +461,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("craft artifact normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationCraftMarkdown)
-		parser.SetString("page-type", PageTypeArtifact)
+		parser.SetString("operation", string(OperationCraftMarkdown))
+		parser.SetString("page-type", string(PageTypeArtifact))
 		parser.SetString("src-json-path", "/tmp/artifacts.json")
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetString("out-dir", "/tmp/out")
@@ -486,8 +486,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("craft with category", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationCraftMarkdown)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationCraftMarkdown))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("category", "software")
 		parser.SetString("src-json-file", "/tmp/contents.json")
 		parser.SetString("src-body-dir", "/tmp/body")
@@ -510,8 +510,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("src json path alias", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationDistributeFiles)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationDistributeFiles))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("src-json-path", "/tmp/contents.json")
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetString("out-dir", "/tmp/out")
@@ -527,7 +527,7 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("check body length normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationCheckBodyLength)
+		parser.SetString("operation", string(OperationCheckBodyLength))
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetInt("threshold", 120)
 
@@ -545,7 +545,7 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("check body length missing threshold", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationCheckBodyLength)
+		parser.SetString("operation", string(OperationCheckBodyLength))
 		parser.SetString("src-body-dir", "/tmp/body")
 
 		_, err := ParseFlagsWithParser(parser)
@@ -556,7 +556,7 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("grep str normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationGrepStr)
+		parser.SetString("operation", string(OperationGrepStr))
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetString("target-str", "TODO")
 
@@ -574,7 +574,7 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("grep str missing target str", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationGrepStr)
+		parser.SetString("operation", string(OperationGrepStr))
 		parser.SetString("src-body-dir", "/tmp/body")
 
 		_, err := ParseFlagsWithParser(parser)
@@ -598,8 +598,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("rename bodies by category id normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationRenameBodiesByCategoryID)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationRenameBodiesByCategoryID))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("src-json-file", "/tmp/contents.json")
 		parser.SetString("src-resource-dir", "/tmp/resource")
 		parser.SetInt("con_number_start", 100)
@@ -622,8 +622,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("migrate to memos normal", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationMigrateToMemos)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationMigrateToMemos))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("base-url", "https://memos.example.com")
 		parser.SetString("api-token", "token")
 		parser.SetString("src-body-dir", "/tmp/body")
@@ -652,8 +652,8 @@ func TestParseFlagsWithParser(t *testing.T) {
 
 	t.Run("migrate to memos missing api token", func(t *testing.T) {
 		parser := NewMockFlagParser()
-		parser.SetString("operation", OperationMigrateToMemos)
-		parser.SetString("page-type", PageTypeContent)
+		parser.SetString("operation", string(OperationMigrateToMemos))
+		parser.SetString("page-type", string(PageTypeContent))
 		parser.SetString("base-url", "https://memos.example.com")
 		parser.SetString("src-body-dir", "/tmp/body")
 		parser.SetString("src-resource-dir", "/tmp/resource")

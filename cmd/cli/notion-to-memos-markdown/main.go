@@ -27,10 +27,10 @@ func main() {
 	var result string
 	switch cfg.Operation {
 	case config.OperationDistributeFiles:
-		result, err = service.DistributeFiles(cfg.PageType, cfg.SrcJSONFile, cfg.SrcBodyDir, cfg.OutDir)
+		result, err = service.DistributeFiles(string(cfg.PageType), cfg.SrcJSONFile, cfg.SrcBodyDir, cfg.OutDir)
 	case config.OperationCraftMarkdown:
 		result, err = service.CraftMarkdown(
-			cfg.PageType,
+			string(cfg.PageType),
 			cfg.Category,
 			cfg.SkipsNoSrcBody,
 			cfg.ConNumberStart,
@@ -45,7 +45,7 @@ func main() {
 		result, err = service.GrepStr(cfg.SrcBodyDir, cfg.TargetStr)
 	case config.OperationRenameBodiesByCategoryID:
 		result, err = service.RenameBodiesByCategoryID(
-			cfg.PageType,
+			string(cfg.PageType),
 			cfg.ConNumberStart,
 			cfg.ConNumberEnd,
 			cfg.SrcJSONFile,
@@ -53,7 +53,7 @@ func main() {
 		)
 	case config.OperationMigrateToMemos:
 		result, err = service.MigrateToMemos(
-			cfg.PageType,
+			string(cfg.PageType),
 			cfg.BaseURL,
 			cfg.APIToken,
 			cfg.SrcBodyDir,

@@ -6,20 +6,24 @@ import (
 	"strings"
 )
 
+type Operation string
+
+type PageType string
+
 const (
-	OperationDistributeFiles          = "distribute-files"
-	OperationCraftMarkdown            = "craft-markdown"
-	OperationCheckBodyLength          = "check-body-length"
-	OperationGrepStr                  = "grep-str"
-	OperationRenameBodiesByCategoryID = "rename-bodies-by-category-id"
-	OperationMigrateToMemos           = "migrate-to-memos"
-	PageTypeContent                   = "content"
-	PageTypeArtifact                  = "artifact"
+	OperationDistributeFiles          Operation = "distribute-files"
+	OperationCraftMarkdown            Operation = "craft-markdown"
+	OperationCheckBodyLength          Operation = "check-body-length"
+	OperationGrepStr                  Operation = "grep-str"
+	OperationRenameBodiesByCategoryID Operation = "rename-bodies-by-category-id"
+	OperationMigrateToMemos           Operation = "migrate-to-memos"
+	PageTypeContent                   PageType  = "content"
+	PageTypeArtifact                  PageType  = "artifact"
 )
 
 type Config struct {
-	Operation      string
-	PageType       string
+	Operation      Operation
+	PageType       PageType
 	BaseURL        string
 	APIToken       string
 	Category       string
@@ -36,7 +40,7 @@ type Config struct {
 }
 
 func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, srcResourceDir, outDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
-	trimmedOperation := strings.TrimSpace(operation)
+	trimmedOperation := Operation(strings.TrimSpace(operation))
 	if trimmedOperation == "" {
 		return nil, fmt.Errorf("operation パラメータは必須です")
 	}
@@ -49,7 +53,7 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 		return nil, fmt.Errorf("未対応のoperationです: %s", trimmedOperation)
 	}
 
-	trimmedPageType := strings.TrimSpace(pageType)
+	trimmedPageType := PageType(strings.TrimSpace(pageType))
 	trimmedBaseURL := strings.TrimSpace(baseURL)
 	trimmedAPIToken := strings.TrimSpace(apiToken)
 	trimmedSrcJSONFile := strings.TrimSpace(srcJSONFile)
