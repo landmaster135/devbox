@@ -10,7 +10,7 @@ import (
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
-	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
 
 // MemosService は create-common-memos operation が利用する Memos サービスの契約。

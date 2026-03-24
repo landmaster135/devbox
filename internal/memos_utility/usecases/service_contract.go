@@ -4,7 +4,7 @@ import (
 	"context"
 
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
-	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
 
 // CreateClipInput は create-web-clip / create-movie-clip の入力。

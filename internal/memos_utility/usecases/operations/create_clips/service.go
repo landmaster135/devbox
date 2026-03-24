@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
-	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
 
 // CreateClipService は単一クリップ生成 operation の契約。

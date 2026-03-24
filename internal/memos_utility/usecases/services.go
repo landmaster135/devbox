@@ -7,9 +7,9 @@ import (
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
 	common "github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
-	createclip "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_clip"
-	createclips "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_clips"
-	createcommonmemos "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_common_memos"
+	createClip "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_clip"
+	createClips "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_clips"
+	createCommonMemos "github.com/landmaster135/devbox/internal/memos_utility/usecases/operations/create_common_memos"
 )
 
 // ServiceOptions は Service 生成時の入力。
@@ -48,16 +48,16 @@ func NewService(opts ServiceOptions) *Service {
 		fileSystem = infrastructures.NewOSFileSystem()
 	}
 
-	createClipOp := createclip.NewService(createclip.ServiceOptions{
+	createClipOp := createClip.NewService(createClip.ServiceOptions{
 		MemosService: memosService,
 		FileSystem:   fileSystem,
 	})
-	createClipsOp := createclips.NewService(createclips.ServiceOptions{
+	createClipsOp := createClips.NewService(createClips.ServiceOptions{
 		CreateClipService: createClipOp,
 		FileSystem:        fileSystem,
 		ProgressReporter:  opts.CreateClipsProgressReporter,
 	})
-	createCommonMemosOp := createcommonmemos.NewService(createcommonmemos.ServiceOptions{
+	createCommonMemosOp := createCommonMemos.NewService(createCommonMemos.ServiceOptions{
 		MemosService:     memosService,
 		FileSystem:       fileSystem,
 		ProgressReporter: opts.CreateCommonMemosProgressReporter,

@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
-	testutil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
+	testUtil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
-	"github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos_utility/usecases/common"
 )
 
 type mockMemosService struct {
@@ -303,7 +303,7 @@ func TestService_ExecuteAttachmentPrecheckFailed_NoMemoCreated_Error(t *testing.
 	}
 
 	service := NewService(ServiceOptions{
-		FileSystem: &testutil.MockFileSystem{
+		FileSystem: &testUtil.MockFileSystem{
 			ReadAttachmentFileFunc: func(filePath string) (*infrastructures.AttachmentFile, error) {
 				return nil, errors.New("mock read error")
 			},
