@@ -20,6 +20,7 @@ const (
 	OperationMigrateToMemos           Operation = "migrate-to-memos"
 	PageTypeContent                   PageType  = "content"
 	PageTypeArtifact                  PageType  = "artifact"
+	PageTypeTask                      PageType  = "task"
 )
 
 type Config struct {
@@ -84,7 +85,7 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 		if trimmedPageType == "" {
 			return nil, fmt.Errorf("page-type パラメータは必須です")
 		}
-		if trimmedPageType != PageTypeContent && trimmedPageType != PageTypeArtifact {
+		if trimmedPageType != PageTypeContent && trimmedPageType != PageTypeArtifact && trimmedPageType != PageTypeTask {
 			return nil, fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 		}
 		if trimmedSrcJSONFile == "" {

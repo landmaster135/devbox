@@ -21,6 +21,11 @@ func (s *Service) CraftMarkdown(pageType, category string, skipsNoSrcBody bool, 
 			return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 		}
 		return s.artifactCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+	case common.SupportedPageTypeTask:
+		if s.taskCraftOperation == nil {
+			return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
+		}
+		return s.taskCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
 	default:
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}

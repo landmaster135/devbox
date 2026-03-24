@@ -62,6 +62,17 @@ func TestNewConfig(t *testing.T) {
 			wantPageType:   PageTypeArtifact,
 		},
 		{
+			name:           "craft task normal",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeTask,
+			srcJSONFile:    "/tmp/tasks.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			conNumberStart: 1,
+			conNumberEnd:   10,
+			wantPageType:   PageTypeTask,
+		},
+		{
 			name:           "rename bodies by category id normal",
 			operation:      OperationRenameBodiesByCategoryID,
 			pageType:       PageTypeContent,
@@ -415,6 +426,31 @@ func TestParseFlagsWithParser(t *testing.T) {
 		}
 		if cfg.ConNumberStart != 10 || cfg.ConNumberEnd != 20 {
 			t.Fatalf("con range = (%d,%d), want (10,20)", cfg.ConNumberStart, cfg.ConNumberEnd)
+		}
+	})
+
+	t.Run("craft task normal", func(t *testing.T) {
+		parser := flagParser.NewMockFlagParser()
+		parser.SetString("operation", string(OperationCraftMarkdown))
+		parser.SetString("page-type", string(PageTypeTask))
+		parser.SetString("src-json-file", "/tmp/tasks.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("out-dir", "/tmp/out")
+		parser.SetInt("con_number_start", 20)
+		parser.SetInt("con_number_end", 30)
+
+		cfg, err := ParseFlagsWithParser(parser)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.PageType != PageTypeTask {
+			t.Fatalf("PageType = %q, want %q", cfg.PageType, PageTypeTask)
+		}
+		if cfg.SrcJSONFile != "/tmp/tasks.json" {
+			t.Fatalf("SrcJSONFile = %q, want /tmp/tasks.json", cfg.SrcJSONFile)
+		}
+		if cfg.ConNumberStart != 20 || cfg.ConNumberEnd != 30 {
+			t.Fatalf("con range = (%d,%d), want (20,30)", cfg.ConNumberStart, cfg.ConNumberEnd)
 		}
 	})
 

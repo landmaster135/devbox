@@ -29,7 +29,7 @@ func TestService_RenameBodiesByCategoryID_Normal(t *testing.T) {
 		},
 	}
 
-	service := newServiceWithOperations(nil, nil, nil, nil, nil, op, nil)
+	service := newServiceWithOperations(nil, nil, nil, nil, nil, nil, op, nil)
 	got, err := service.RenameBodiesByCategoryID("content", 100, 200, "/tmp/contents.json", "/tmp/resource")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -48,7 +48,7 @@ func TestService_RenameBodiesByCategoryID_Error(t *testing.T) {
 		},
 	}
 
-	service := newServiceWithOperations(nil, nil, nil, nil, nil, op, nil)
+	service := newServiceWithOperations(nil, nil, nil, nil, nil, nil, op, nil)
 	_, err := service.RenameBodiesByCategoryID("content", 100, 200, "/tmp/contents.json", "/tmp/resource")
 	if err == nil || err.Error() != "failed" {
 		t.Fatalf("error = %v", err)

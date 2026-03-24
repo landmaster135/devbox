@@ -10,7 +10,7 @@
   - `--out-dir/<category>/` へコピー
   - `category` が空の場合は `uncategorized` に振り分け
 - `--operation=craft-markdown`
-  - `--page-type=content` または `--page-type=artifact` を対象に処理
+  - `--page-type=content` / `artifact` / `task` を対象に処理
   - `con_id` の数値範囲（`--con_number_start` から `--con_number_end`）を対象に処理
   - 入力 body は `src-body-dir/<con_id>.md` を優先し、無い場合は `src-body-dir/<con_id>_*.md`（分割ファイル）を対象にする
   - `--skips-no-src-body=true` 指定時はコピー元Markdownがないページをスキップ（未指定/false時は空Markdownを作成して加工）
@@ -23,6 +23,11 @@
   - `artifact`:
     - `output_url` を本文先頭に追加した上で、`add-tags` と `add-heading1` 相当の加工を実行
     - `tags.md` の `## Frequent Tags` と `## Artifact` を使ってタグを解決し、`#91-backup/tool-migration/202602-notion` を必ず付与
+  - `task`:
+    - 出力は `out-dir` 直下に作成
+    - どの入力でも各出力ファイルに `add-heading1(page_title)` と `add-tags` 相当の加工を適用
+    - `priority` と `status_id` から Task用タグを付与し、`#91-backup/tool-migration/202602_notion` を必ず付与
+    - `status_id` に応じて `done_at_start` または `updated_at` を採用し、`yyyyMMddhhmmss_<number>.md` へリネーム
 - `--operation=check-body-length`
   - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
   - ファイル本文の文字数をルーン数でカウントする
@@ -50,7 +55,7 @@
 | フラグ | 必須 | 説明 |
 | --- | --- | --- |
 | `--operation` | 必須 | 操作タイプ。`distribute-files`、`craft-markdown`、`check-body-length`、`grep-str`、`rename-bodies-by-category-id`、`migrate-to-memos` |
-| `--page-type` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`/`migrate-to-memos`で必須 | ページタイプ。`distribute-files`/`rename-bodies-by-category-id`/`migrate-to-memos` は `content`、`craft-markdown` は `content` または `artifact` |
+| `--page-type` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`/`migrate-to-memos`で必須 | ページタイプ。`distribute-files`/`rename-bodies-by-category-id`/`migrate-to-memos` は `content`、`craft-markdown` は `content` / `artifact` / `task` |
 | `--base-url` | `migrate-to-memos`で必須 | Memos API のベースURL（例: `https://memos.example.com`） |
 | `--api-token` | `migrate-to-memos`で必須 | Memos API の Bearer トークン |
 | `--category` | `craft-markdown`で任意 | 対象 category。指定時は一致するページのみ処理 |
@@ -104,6 +109,19 @@ go run ./cmd/cli/notion-to-memos-markdown \
   --src-json-path=$HOME/devbox/cmd/cli/notion-to-memos-markdown/tmp/artifacts.json \
   --src-body-dir=$HOME/path/to/dir \
   --out-dir=/tmp/notion-artifacts-crafted
+```
+
+`craft-markdown` (task):
+
+```bash
+go run ./cmd/cli/notion-to-memos-markdown \
+  --operation=craft-markdown \
+  --page-type=task \
+  --con_number_start=2000 \
+  --con_number_end=2200 \
+  --src-json-path=$HOME/devbox/cmd/cli/notion-to-memos-markdown/tmp/tasks.json \
+  --src-body-dir=$HOME/path/to/dir \
+  --out-dir=/tmp/notion-tasks-crafted
 ```
 
 `check-body-length`:
@@ -161,6 +179,11 @@ src-body-dir基準: 総md件数=130, JSON対応=110, JSON未対応=20
 ```text
 処理完了
 対象件数=42, 加工成功=42
+```
+
+```text
+処理完了
+対象件数=42, 加工成功=39, スキップ=3
 ```
 
 ```text

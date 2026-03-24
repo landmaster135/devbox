@@ -45,4 +45,7 @@ func TestPrintUsage(t *testing.T) {
 	if !strings.Contains(output, "--src-resource-dir") {
 		t.Fatalf("usage output missing option description: %q", output)
 	}
+	if !strings.Contains(output, "--page-type=task") {
+		t.Fatalf("usage output missing task example: %q", output)
+	}
 }

@@ -9,12 +9,14 @@ import (
 	grepstr "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_grep_str"
 	migratetomemos "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_migrate_to_memos"
 	renamebodiesbycategoryid "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/content_rename_bodies_by_category_id"
+	taskcraftmarkdown "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases/operations/task_craft_markdown"
 )
 
 type Service struct {
 	distributeFilesOperation distributeFilesOperation
 	craftMarkdownOperation   craftMarkdownOperation
 	artifactCraftOperation   craftMarkdownOperation
+	taskCraftOperation       craftMarkdownOperation
 	checkBodyLengthOperation checkBodyLengthOperation
 	grepStrOperation         grepStrOperation
 	renameBodiesOperation    renameBodiesByCategoryIDOperation
@@ -35,6 +37,7 @@ func NewServiceWithReporter(fileSystem filesystem.Repository, reporter migrateto
 		distributefiles.NewService(repo),
 		contentcraftmarkdown.NewService(repo),
 		artifactcraftmarkdown.NewService(repo),
+		taskcraftmarkdown.NewService(repo),
 		checkbodylength.NewService(repo),
 		grepstr.NewService(repo),
 		renamebodiesbycategoryid.NewService(repo),

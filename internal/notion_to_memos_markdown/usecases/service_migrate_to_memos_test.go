@@ -36,7 +36,7 @@ func TestService_MigrateToMemos_Normal(t *testing.T) {
 		},
 	}
 
-	service := newServiceWithOperations(nil, nil, nil, nil, nil, nil, op)
+	service := newServiceWithOperations(nil, nil, nil, nil, nil, nil, nil, op)
 	got, err := service.MigrateToMemos("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -55,7 +55,7 @@ func TestService_MigrateToMemos_Error(t *testing.T) {
 		},
 	}
 
-	service := newServiceWithOperations(nil, nil, nil, nil, nil, nil, op)
+	service := newServiceWithOperations(nil, nil, nil, nil, nil, nil, nil, op)
 	_, err := service.MigrateToMemos("content", "https://memos.example.com", "token", "/tmp/body", "/tmp/resources")
 	if err == nil || err.Error() != "failed" {
 		t.Fatalf("error = %v", err)

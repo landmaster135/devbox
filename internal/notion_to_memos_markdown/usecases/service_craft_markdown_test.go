@@ -206,6 +206,71 @@ func TestService_CraftMarkdown_ArtifactNormal(t *testing.T) {
 	}
 }
 
+func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	jsonContent := `[
+		{
+			"con_id": "TK000009999",
+			"page_title": "Task sample",
+			"status_id": "0198d2e4-9a5e-7127-82b2-3541e7eda226",
+			"priority": 5,
+			"done_at_start": "2026-04-18T10:51:47.182772+09:00",
+			"updated_at": "2026-04-18T11:22:33.000000+09:00",
+			"tags": [{"page_title":"JavaScript"}, {"page_title":"CustomTaskTag"}]
+		}
+	]`
+	if err := os.WriteFile(srcJSONFile, []byte(jsonContent), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	body := "# intro\n\n## section A\nalpha\n\n## section B\nbeta\n"
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000009999.md"), []byte(body), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(nil)
+	result, err := service.CraftMarkdown("task", "", false, 9999, 9999, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=2") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	for _, fileName := range []string{"20260418105147_01.md", "20260418105147_02.md"} {
+		path := filepath.Join(outDir, fileName)
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("read crafted file failed (%s): %v", fileName, readErr)
+		}
+		text := string(data)
+		if !strings.Contains(text, "# Task sample") {
+			t.Fatalf("heading missing (%s): %s", fileName, text)
+		}
+		if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
+			t.Fatalf("task backup tag missing (%s): %s", fileName, text)
+		}
+		if !strings.Contains(text, "#01-p/todo-status/3-done") {
+			t.Fatalf("status tag missing (%s): %s", fileName, text)
+		}
+		if !strings.Contains(text, "#01-p/todo-prior/5-high") {
+			t.Fatalf("priority tag missing (%s): %s", fileName, text)
+		}
+		if strings.Contains(text, "#javascript") || strings.Contains(text, "#customtasktag") {
+			t.Fatalf("task tags should be ignored (%s): %s", fileName, text)
+		}
+	}
+}
+
 func TestService_CraftMarkdown_InvalidCategory(t *testing.T) {
 	t.Parallel()
 
