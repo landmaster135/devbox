@@ -1,4 +1,4 @@
-package config
+package flag_parser
 
 import (
 	"flag"
