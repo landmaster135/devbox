@@ -9,12 +9,12 @@
 3. CLI から `usecases` を呼び出す構成にする
 4. 正常系の結果は標準出力（`fmt.Print`）に出力する
 5. 異常系は標準エラー出力（`fmt.Fprintf(os.Stderr, ...)`）と `os.Exit(1)` で終了する
-6. `-help` などの利用方法表示は `infrastructures/flag_parser.PrintUsage()` として実装し、`config` 層から分離する
+6. `-help` などの利用方法表示は `config.PrintUsage()` から呼び出し、`config` 層が `infrastructures/flag_parser` へ委譲する
 
 ## フラグ実装の責務分離
 
 1. `config` 層は `Config` の生成と検証を担当する
-2. `infrastructures/flag_parser` は `FlagParser` 実装と usage 出力を担当する
+2. `infrastructures/flag_parser` は `FlagParser` 実装と usage 出力関数を担当する
 3. `MockFlagParser` は `infrastructures/flag_parser` に colocate し、`config` テストから再利用する
 
 ## 実装パターン

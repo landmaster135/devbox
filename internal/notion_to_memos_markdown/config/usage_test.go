@@ -1,4 +1,4 @@
-package flag_parser
+package config
 
 import (
 	"io"
@@ -8,6 +8,8 @@ import (
 )
 
 func TestPrintUsage(t *testing.T) {
+	t.Parallel()
+
 	oldArgs := os.Args
 	oldStderr := os.Stderr
 	defer func() {
@@ -23,7 +25,7 @@ func TestPrintUsage(t *testing.T) {
 	}
 
 	os.Stderr = w
-	PrintUsage("cmd=%[1]s alias=%[1]s")
+	PrintUsage()
 	if err := w.Close(); err != nil {
 		t.Fatalf("failed to close write pipe: %v", err)
 	}
@@ -34,7 +36,13 @@ func TestPrintUsage(t *testing.T) {
 	}
 
 	output := string(outputBytes)
-	if !strings.Contains(output, "cmd=custom-notion-cli alias=custom-notion-cli") {
-		t.Fatalf("output = %q, want to contain command interpolation", output)
+	if !strings.Contains(output, "notion-to-memos-markdown CLI") {
+		t.Fatalf("usage output missing title: %q", output)
+	}
+	if !strings.Contains(output, "custom-notion-cli --operation=distribute-files") {
+		t.Fatalf("usage output missing command name interpolation: %q", output)
+	}
+	if !strings.Contains(output, "--src-resource-dir") {
+		t.Fatalf("usage output missing option description: %q", output)
 	}
 }

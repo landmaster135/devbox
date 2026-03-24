@@ -5,7 +5,6 @@ import (
 	"os"
 
 	config "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/config"
-	flagParser "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/flag_parser"
 	progress "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/progress"
 	usecases "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/usecases"
 )
@@ -14,12 +13,12 @@ func main() {
 	cfg, err := config.ParseFlags()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		flagParser.PrintUsage()
+		config.PrintUsage()
 		os.Exit(1)
 	}
 
 	if cfg.Help {
-		flagParser.PrintUsage()
+		config.PrintUsage()
 		return
 	}
 

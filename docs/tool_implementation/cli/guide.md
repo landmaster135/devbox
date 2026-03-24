@@ -14,7 +14,6 @@ import (
 	"os"
 
 	config "github.com/landmaster135/devbox/internal/{tool-name}/config"
-	flag_parser "github.com/landmaster135/devbox/internal/{tool-name}/infrastructures/flag_parser"
 	usecases "github.com/landmaster135/devbox/internal/{tool-name}/usecases"
 )
 
@@ -22,12 +21,12 @@ func main() {
 	cfg, err := config.ParseFlags()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		flag_parser.PrintUsage()
+		config.PrintUsage()
 		os.Exit(1)
 	}
 
 	if cfg.Help {
-		flag_parser.PrintUsage()
+		config.PrintUsage()
 		return
 	}
 
@@ -38,7 +37,7 @@ func main() {
 		handleOperation2(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
-		flag_parser.PrintUsage()
+		config.PrintUsage()
 		os.Exit(1)
 	}
 }
@@ -59,10 +58,11 @@ func handleOperation1(cfg *config.Config) {
 - `config` 層:
   - `Config` の生成と検証
   - `ParseFlags()` と `ParseFlagsWithParser(parser)` の公開
+  - `PrintUsage()` で usage 出力処理を `infrastructures/flag_parser` に委譲
 - `infrastructures/flag_parser` 層:
   - `FlagParser` interface
   - `StandardFlagParser` 実装
-  - `PrintUsage()` 実装
+  - `PrintUsage(format)` 実装。`os.Stderr` と `os.Args[0]` を infrastructure 層で扱う
   - `MockFlagParser` 実装とその単体テスト。`infrastructures/flag_parser` に colocate して再利用可能にする。
 
 想定ディレクトリ構成:
