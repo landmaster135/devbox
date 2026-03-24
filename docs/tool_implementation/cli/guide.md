@@ -12,7 +12,9 @@ package main
 import (
 	"fmt"
 	"os"
+
 	config "github.com/landmaster135/devbox/internal/{tool-name}/config"
+	flag_parser "github.com/landmaster135/devbox/internal/{tool-name}/infrastructures/flag_parser"
 	usecases "github.com/landmaster135/devbox/internal/{tool-name}/usecases"
 )
 
@@ -20,12 +22,12 @@ func main() {
 	cfg, err := config.ParseFlags()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		config.PrintUsage()
+		flag_parser.PrintUsage()
 		os.Exit(1)
 	}
 
 	if cfg.Help {
-		config.PrintUsage()
+		flag_parser.PrintUsage()
 		return
 	}
 
@@ -36,7 +38,7 @@ func main() {
 		handleOperation2(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作タイプです: %s\n", cfg.Operation)
-		config.PrintUsage()
+		flag_parser.PrintUsage()
 		os.Exit(1)
 	}
 }
@@ -48,8 +50,34 @@ func handleOperation1(cfg *config.Config) {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Print(result) // 重要: 結果を標準出力に表示
+	fmt.Print(result)
 }
+```
+
+### フラグ関連の責務分離
+
+- `config` 層:
+  - `Config` の生成と検証
+  - `ParseFlags()` と `ParseFlagsWithParser(parser)` の公開
+- `infrastructures/flag_parser` 層:
+  - `FlagParser` interface
+  - `StandardFlagParser` 実装
+  - `PrintUsage()` 実装
+  - `MockFlagParser` 実装とその単体テスト。`infrastructures/flag_parser` に colocate して再利用可能にする。
+
+想定ディレクトリ構成:
+
+```text
+internal/{tool-name}/
+├─ config/
+│  ├─ config.go
+│  └─ config_test.go
+└─ infrastructures/
+   └─ flag_parser/
+      ├─ flag_parser.go
+      ├─ usage.go
+      ├─ mock_flag_parser.go
+      └─ *_test.go
 ```
 
 ## 実装アンチパターン
@@ -69,21 +97,23 @@ if err != nil {
 fmt.Print(result)
 ```
 
-### フラグパーサーのモック実装の間違い（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
+### フラグパーサーモックで事前設定値を反映しない（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
 
 ```go
-// ❌ 間違い: フラグ定義後に値を設定しても反映されない
+// ❌ 間違い: デフォルト値しか入らない
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-  *p = value // デフォルト値のみ
+  *p = value
 }
 
-// ✅ 正しい: 事前設定値をチェックして適用
+// ✅ 正しい: 事前設定値を優先して適用
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
   if presetValue, exists := m.stringValues[name]; exists {
-    *p = presetValue // 事前設定値を優先
-  } else {
-    *p = value // デフォルト値
+    *p = presetValue
+    return
   }
-  m.stringVars[name] = p
+  if *p != "" {
+    return
+  }
+  *p = value
 }
 ```

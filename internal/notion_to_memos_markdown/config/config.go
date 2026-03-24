@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	flag_parser "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/flag_parser"
+	flagParser "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/flag_parser"
 )
 
 type Operation string
@@ -175,10 +175,10 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 }
 
 func ParseFlags() (*Config, error) {
-	return ParseFlagsWithParser(flag_parser.NewStandardFlagParser())
+	return ParseFlagsWithParser(flagParser.NewStandardFlagParser())
 }
 
-func ParseFlagsWithParser(parser flag_parser.FlagParser) (*Config, error) {
+func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	var (
 		operation      string
 		pageType       string
