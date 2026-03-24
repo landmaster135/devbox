@@ -1,85 +1,11 @@
 package config
 
 import (
+	"errors"
 	"testing"
+
+	flagParser "github.com/landmaster135/devbox/internal/zip_compressor/infrastructures/flag_parser"
 )
-
-// MockFlagParser はテスト用のFlagParserモック
-type MockFlagParser struct {
-	stringVars   map[string]*string
-	boolVars     map[string]*bool
-	stringValues map[string]string // 事前設定された文字列値
-	boolValues   map[string]bool   // 事前設定されたブール値
-	args         []string
-	parseError   error
-}
-
-// NewMockFlagParser は新しいMockFlagParserを作成する
-func NewMockFlagParser() *MockFlagParser {
-	return &MockFlagParser{
-		stringVars:   make(map[string]*string),
-		boolVars:     make(map[string]*bool),
-		stringValues: make(map[string]string),
-		boolValues:   make(map[string]bool),
-		args:         []string{},
-	}
-}
-
-// StringVar は文字列フラグを定義する（モック）
-func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-	// 事前設定された値があるかチェック
-	if presetValue, exists := m.stringValues[name]; exists {
-		*p = presetValue
-	} else {
-		*p = value // デフォルト値を設定
-	}
-	m.stringVars[name] = p
-}
-
-// BoolVar はブールフラグを定義する（モック）
-func (m *MockFlagParser) BoolVar(p *bool, name string, value bool, usage string) {
-	// 事前設定された値があるかチェック
-	if presetValue, exists := m.boolValues[name]; exists {
-		*p = presetValue
-	} else {
-		*p = value // デフォルト値を設定
-	}
-	m.boolVars[name] = p
-}
-
-func (m *MockFlagParser) Parse() error {
-	return m.parseError
-}
-
-func (m *MockFlagParser) Args() []string {
-	return m.args
-}
-
-// SetStringFlag はテスト用に文字列フラグの値を設定する
-func (m *MockFlagParser) SetStringFlag(name, value string) {
-	m.stringValues[name] = value
-	if p, exists := m.stringVars[name]; exists {
-		*p = value
-	}
-}
-
-// SetBoolFlag はテスト用にブールフラグの値を設定する
-func (m *MockFlagParser) SetBoolFlag(name string, value bool) {
-	m.boolValues[name] = value
-	if p, exists := m.boolVars[name]; exists {
-		*p = value
-	}
-}
-
-// SetArgs はテスト用に残りの引数を設定する
-func (m *MockFlagParser) SetArgs(args []string) {
-	m.args = args
-}
-
-// SetParseError はテスト用に解析エラーを設定する
-func (m *MockFlagParser) SetParseError(err error) {
-	m.parseError = err
-}
 
 func TestNewConfig_Normal(t *testing.T) {
 	tests := []struct {
@@ -103,18 +29,19 @@ func TestNewConfig_Normal(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := NewConfig(tt.operation, tt.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NewConfig() error = %v, wantErr %v", err, tt.wantErr)
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := NewConfig(tc.operation, tc.path)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("NewConfig() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
-			if !tt.wantErr {
-				if cfg.Operation != tt.operation {
-					t.Errorf("NewConfig() Operation = %v, want %v", cfg.Operation, tt.operation)
+			if !tc.wantErr {
+				if cfg.Operation != tc.operation {
+					t.Errorf("NewConfig() Operation = %v, want %v", cfg.Operation, tc.operation)
 				}
-				if cfg.Path != tt.path {
-					t.Errorf("NewConfig() Path = %v, want %v", cfg.Path, tt.path)
+				if cfg.Path != tc.path {
+					t.Errorf("NewConfig() Path = %v, want %v", cfg.Path, tc.path)
 				}
 			}
 		})
@@ -149,14 +76,15 @@ func TestNewConfig_Error(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewConfig(tt.operation, tt.path)
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := NewConfig(tc.operation, tc.path)
 			if err == nil {
 				t.Errorf("NewConfig() expected error but got nil")
 				return
 			}
-			if err.Error() != tt.wantErr {
-				t.Errorf("NewConfig() error = %v, want %v", err.Error(), tt.wantErr)
+			if err.Error() != tc.wantErr {
+				t.Errorf("NewConfig() error = %v, want %v", err.Error(), tc.wantErr)
 			}
 		})
 	}
@@ -216,87 +144,52 @@ func TestParseFlagsWithParser_Normal(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			parser := NewMockFlagParser()
-			parser.SetArgs(tt.args)
+		tc := tt
+		t.Run(tc.name, func(t *testing.T) {
+			parser := flagParser.NewMockFlagParser()
+			parser.SetArgs(tc.args)
 
-			// 事前に値を設定
-			parser.SetStringFlag("operation", tt.operation)
-			parser.SetStringFlag("o", tt.operation)
-			parser.SetStringFlag("path", tt.path)
-			parser.SetStringFlag("p", tt.path)
-			parser.SetBoolFlag("help", tt.help)
-			parser.SetBoolFlag("h", tt.help)
+			parser.SetStringFlag("operation", tc.operation)
+			parser.SetStringFlag("o", tc.operation)
+			parser.SetStringFlag("path", tc.path)
+			parser.SetStringFlag("p", tc.path)
+			parser.SetBoolFlag("help", tc.help)
+			parser.SetBoolFlag("h", tc.help)
 
 			cfg, err := ParseFlagsWithParser(parser)
-
 			if err != nil {
 				t.Errorf("ParseFlagsWithParser() error = %v", err)
 				return
 			}
 
-			if tt.expectedHelp {
+			if tc.expectedHelp {
 				if !cfg.Help {
-					t.Errorf("ParseFlagsWithParser() Help = %v, want %v", cfg.Help, tt.expectedHelp)
+					t.Errorf("ParseFlagsWithParser() Help = %v, want %v", cfg.Help, tc.expectedHelp)
 				}
 				return
 			}
 
-			if cfg.Operation != tt.expectedOp {
-				t.Errorf("ParseFlagsWithParser() Operation = %v, want %v", cfg.Operation, tt.expectedOp)
+			if cfg.Operation != tc.expectedOp {
+				t.Errorf("ParseFlagsWithParser() Operation = %v, want %v", cfg.Operation, tc.expectedOp)
 			}
-			if cfg.Path != tt.expectedPath {
-				t.Errorf("ParseFlagsWithParser() Path = %v, want %v", cfg.Path, tt.expectedPath)
+			if cfg.Path != tc.expectedPath {
+				t.Errorf("ParseFlagsWithParser() Path = %v, want %v", cfg.Path, tc.expectedPath)
 			}
 		})
 	}
 }
 
-func TestStartsWith_Normal(t *testing.T) {
-	tests := []struct {
-		name   string
-		s      string
-		prefix string
-		want   bool
-	}{
-		{
-			name:   "前方一致_true",
-			s:      "hello world",
-			prefix: "hello",
-			want:   true,
-		},
-		{
-			name:   "前方一致_false",
-			s:      "hello world",
-			prefix: "world",
-			want:   false,
-		},
-		{
-			name:   "完全一致",
-			s:      "test",
-			prefix: "test",
-			want:   true,
-		},
-		{
-			name:   "空文字列",
-			s:      "test",
-			prefix: "",
-			want:   true,
-		},
-		{
-			name:   "プレフィックスが長い",
-			s:      "hi",
-			prefix: "hello",
-			want:   false,
-		},
-	}
+func TestParseFlagsWithParser_ParseError(t *testing.T) {
+	t.Parallel()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := startsWith(tt.s, tt.prefix)
-			if got != tt.want {
-				t.Errorf("startsWith() = %v, want %v", got, tt.want)
-			}
-		})
+	parser := flagParser.NewMockFlagParser()
+	parser.SetParseError(errors.New("parse failed"))
+
+	_, err := ParseFlagsWithParser(parser)
+	if err == nil {
+		t.Fatalf("ParseFlagsWithParser() error = nil, want non-nil")
+	}
+	if err.Error() != "フラグの解析に失敗しました: parse failed" {
+		t.Fatalf("ParseFlagsWithParser() error = %q", err.Error())
 	}
 }

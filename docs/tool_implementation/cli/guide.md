@@ -97,7 +97,7 @@ if err != nil {
 fmt.Print(result)
 ```
 
-### フラグパーサーモックで事前設定値を反映しない（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
+### フラグパーサーモックで事前設定値を反映しない（正しい実装は `internal/zip_compressor/infrastructures/flag_parser/mock_flag_parser.go` を参照）
 
 ```go
 // ❌ 間違い: デフォルト値しか入らない
