@@ -1,10 +1,12 @@
 package taskcraftmarkdown
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	domain "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/domain"
 	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
@@ -114,6 +116,131 @@ func TestService_Execute_MissingSourceCanSkip(t *testing.T) {
 	}
 	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=0") || !strings.Contains(result, "スキップ=1") {
 		t.Fatalf("unexpected result: %s", result)
+	}
+}
+
+func TestService_Execute_RenameCollisionIncrementsSeconds(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	const baseName = "20260418105147_01.md"
+	if err := os.WriteFile(filepath.Join(outDir, baseName), []byte("existing\n"), 0644); err != nil {
+		t.Fatalf("write existing file failed: %v", err)
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002947",
+			"page_title":"Collision Task",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002947.md"), []byte("plain body\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute("task", "", false, 2947, 2947, srcJSONFile, srcBodyDir, outDir); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	existing, err := os.ReadFile(filepath.Join(outDir, baseName))
+	if err != nil {
+		t.Fatalf("read existing file failed: %v", err)
+	}
+	if string(existing) != "existing\n" {
+		t.Fatalf("existing file was overwritten: %q", string(existing))
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "20260418105148_01.md")); err != nil {
+		t.Fatalf("expected collided output not found: %v", err)
+	}
+}
+
+func TestService_Execute_RenameCollisionIncrementsUntilAvailable(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
+	for _, fileName := range []string{
+		"20260418105147_01.md",
+		"20260418105148_01.md",
+		"20260418105149_01.md",
+	} {
+		if err := os.WriteFile(filepath.Join(outDir, fileName), []byte("existing\n"), 0644); err != nil {
+			t.Fatalf("write existing file failed (%s): %v", fileName, err)
+		}
+	}
+
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002948",
+			"page_title":"Collision Chain Task",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002948.md"), []byte("plain body\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute("task", "", false, 2948, 2948, srcJSONFile, srcBodyDir, outDir); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(outDir, "20260418105150_01.md")); err != nil {
+		t.Fatalf("expected collided output not found: %v", err)
+	}
+}
+
+func TestService_resolveTaskRenamePath_FileExistsError(t *testing.T) {
+	t.Parallel()
+
+	mockRepo := &filesystem.MockRepository{
+		FileExistsFunc: func(path string) (bool, error) {
+			return false, errors.New("file exists failed")
+		},
+	}
+	service := NewService(mockRepo)
+
+	_, err := service.resolveTaskRenamePath(
+		"/tmp/out",
+		time.Date(2026, 4, 18, 10, 51, 47, 0, time.UTC),
+		"01",
+	)
+	if err == nil || !strings.Contains(err.Error(), "候補ファイルの確認に失敗しました") || !strings.Contains(err.Error(), "file exists failed") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

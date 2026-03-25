@@ -29,6 +29,7 @@
     - `priority` と `status_id` から Task用タグを付与し、`#91-backup/tool-migration/202602_notion` を必ず付与
     - `powered_artifacts[].page_title` が定義済みマップに一致した場合、対応する追加タグを付与
     - `status_id` に応じて `done_at_start` または `updated_at` を採用し、`yyyyMMddhhmmss_<number>.md` へリネーム
+    - リネーム先が `out-dir` 内で衝突する場合は、タイムスタンプの秒（`ss`）を 1 秒ずつ増やして非衝突名を採用
 - `--operation=check-body-length`
   - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
   - ファイル本文の文字数をルーン数でカウントする

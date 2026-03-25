@@ -20,6 +20,7 @@ import (
 
 const (
 	taskSplitHeadingLevel = 2
+	taskTimestampLayout   = "20060102150405"
 
 	doneStatusID    = "0198d2e4-9a5e-7127-82b2-3541e7eda226"
 	wipStatusID     = "0198d2e4-9a5e-7165-9b5b-80fde571d270"
@@ -196,7 +197,10 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 			}
 
 			suffix := resolveTaskSuffix(conID, outputPath, i)
-			renamedPath := filepath.Join(outDir, fmt.Sprintf("%s_%s.md", timestamp, suffix))
+			renamedPath, err := s.resolveTaskRenamePath(outDir, timestamp, suffix)
+			if err != nil {
+				return "", fmt.Errorf("出力ファイル名の解決に失敗しました (con_id=%s): %w", conID, err)
+			}
 			if err := s.fileSystem.RenameFile(outputPath, renamedPath); err != nil {
 				return "", fmt.Errorf("ファイル名の変更に失敗しました (%s -> %s): %w", outputPath, renamedPath, err)
 			}
@@ -383,7 +387,30 @@ func resolveTaskPriorityLevel(priority domain.TaskPriority) (int, bool) {
 	return priorityValue, true
 }
 
-func resolveTimestampForTask(task domain.Task) (string, error) {
+func (s *Service) resolveTaskRenamePath(outDir string, baseTimestamp time.Time, suffix string) (string, error) {
+	const maxAttempts = 24 * 60 * 60
+
+	for offset := range maxAttempts {
+		currentTimestamp := baseTimestamp.Add(time.Duration(offset) * time.Second)
+		candidatePath := filepath.Join(outDir, fmt.Sprintf("%s_%s.md", currentTimestamp.Format(taskTimestampLayout), suffix))
+
+		exists, err := s.fileSystem.FileExists(candidatePath)
+		if err != nil {
+			return "", fmt.Errorf("候補ファイルの確認に失敗しました (%s): %w", candidatePath, err)
+		}
+		if !exists {
+			return candidatePath, nil
+		}
+	}
+
+	return "", fmt.Errorf(
+		"衝突回避の上限に達しました (base_timestamp=%s, suffix=%s)",
+		baseTimestamp.Format(taskTimestampLayout),
+		suffix,
+	)
+}
+
+func resolveTimestampForTask(task domain.Task) (time.Time, error) {
 	timeSource := strings.TrimSpace(task.UpdatedAt)
 	if normalizeStatusID(task.StatusID) == doneStatusID {
 		doneAtStart := strings.TrimSpace(task.DoneAtStart)
@@ -392,14 +419,14 @@ func resolveTimestampForTask(task domain.Task) (string, error) {
 		}
 	}
 	if timeSource == "" {
-		return "", fmt.Errorf("updated_at が空です")
+		return time.Time{}, fmt.Errorf("updated_at が空です")
 	}
 
 	parsed, err := time.Parse(time.RFC3339Nano, timeSource)
 	if err != nil {
-		return "", fmt.Errorf("日時の解析に失敗しました: %w", err)
+		return time.Time{}, fmt.Errorf("日時の解析に失敗しました: %w", err)
 	}
-	return parsed.Format("20060102150405"), nil
+	return parsed, nil
 }
 
 func normalizeStatusID(statusID *string) string {
