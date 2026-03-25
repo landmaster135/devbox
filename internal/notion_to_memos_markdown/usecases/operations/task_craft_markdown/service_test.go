@@ -50,6 +50,84 @@ func TestService_Execute_Normal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
+		t.Fatalf("unexpected result: %s", result)
+	}
+
+	const outputFile = "20260418105147_01.md"
+	data, readErr := os.ReadFile(filepath.Join(outDir, outputFile))
+	if readErr != nil {
+		t.Fatalf("read output failed (%s): %v", outputFile, readErr)
+	}
+	text := string(data)
+	if !strings.Contains(text, "# Daily Task") {
+		t.Fatalf("heading missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#01-p/todo-status/2-wip") {
+		t.Fatalf("status tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#01-p/todo-prior/3-mid") {
+		t.Fatalf("priority tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
+		t.Fatalf("required tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#06-af/system/devbox") {
+		t.Fatalf("artifact tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#06-af/diary/hobby") || !strings.Contains(text, "#wine") {
+		t.Fatalf("artifact mapped tags missing (%s): %s", outputFile, text)
+	}
+	if strings.Count(text, "#06-af/system/devbox") != 1 {
+		t.Fatalf("artifact duplicate tags should be removed (%s): %s", outputFile, text)
+	}
+	if strings.Contains(text, "#javascript") {
+		t.Fatalf("task tags should be ignored (%s): %s", outputFile, text)
+	}
+	if strings.Contains(text, "#unknown") {
+		t.Fatalf("unknown artifact title should be ignored (%s): %s", outputFile, text)
+	}
+
+	if _, statErr := os.Stat(filepath.Join(outDir, "20260418105147_02.md")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("unexpected second output: %v", statErr)
+	}
+}
+
+func TestService_Execute_UsesSplitSourcesWhenExactMissing_Normal(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	outDir := filepath.Join(tmpDir, "out")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002949",
+			"page_title":"Split Source Task",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002949_01.md"), []byte("first body\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002949_02.md"), []byte("second body\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	result, err := service.Execute("task", "", false, 2949, 2949, srcJSONFile, srcBodyDir, outDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=2") {
 		t.Fatalf("unexpected result: %s", result)
 	}
@@ -60,32 +138,8 @@ func TestService_Execute_Normal(t *testing.T) {
 			t.Fatalf("read output failed (%s): %v", fileName, readErr)
 		}
 		text := string(data)
-		if !strings.Contains(text, "# Daily Task") {
+		if !strings.Contains(text, "# Split Source Task") {
 			t.Fatalf("heading missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#01-p/todo-status/2-wip") {
-			t.Fatalf("status tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#01-p/todo-prior/3-mid") {
-			t.Fatalf("priority tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
-			t.Fatalf("required tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#06-af/system/devbox") {
-			t.Fatalf("artifact tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#06-af/diary/hobby") || !strings.Contains(text, "#wine") {
-			t.Fatalf("artifact mapped tags missing (%s): %s", fileName, text)
-		}
-		if strings.Count(text, "#06-af/system/devbox") != 1 {
-			t.Fatalf("artifact duplicate tags should be removed (%s): %s", fileName, text)
-		}
-		if strings.Contains(text, "#javascript") {
-			t.Fatalf("task tags should be ignored (%s): %s", fileName, text)
-		}
-		if strings.Contains(text, "#unknown") {
-			t.Fatalf("unknown artifact title should be ignored (%s): %s", fileName, text)
 		}
 	}
 }

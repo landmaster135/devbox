@@ -243,35 +243,34 @@ func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(result, "対象件数=2") || !strings.Contains(result, "加工成功=2") {
+	if !strings.Contains(result, "対象件数=1") || !strings.Contains(result, "加工成功=1") {
 		t.Fatalf("unexpected result: %s", result)
 	}
 
-	for _, fileName := range []string{"20260418105147_01.md", "20260418105147_02.md"} {
-		path := filepath.Join(outDir, fileName)
-		data, readErr := os.ReadFile(path)
-		if readErr != nil {
-			t.Fatalf("read crafted file failed (%s): %v", fileName, readErr)
-		}
-		text := string(data)
-		if !strings.Contains(text, "# Task sample") {
-			t.Fatalf("heading missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
-			t.Fatalf("task backup tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#01-p/todo-status/3-done") {
-			t.Fatalf("status tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#01-p/todo-prior/5-high") {
-			t.Fatalf("priority tag missing (%s): %s", fileName, text)
-		}
-		if !strings.Contains(text, "#06-af/system/devbox") || !strings.Contains(text, "#06-af/article/note") {
-			t.Fatalf("powered artifacts tag missing (%s): %s", fileName, text)
-		}
-		if strings.Contains(text, "#javascript") || strings.Contains(text, "#customtasktag") {
-			t.Fatalf("task tags should be ignored (%s): %s", fileName, text)
-		}
+	const outputFile = "20260418105147_01.md"
+	path := filepath.Join(outDir, outputFile)
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
+		t.Fatalf("read crafted file failed (%s): %v", outputFile, readErr)
+	}
+	text := string(data)
+	if !strings.Contains(text, "# Task sample") {
+		t.Fatalf("heading missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
+		t.Fatalf("task backup tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#01-p/todo-status/3-done") {
+		t.Fatalf("status tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#01-p/todo-prior/5-high") {
+		t.Fatalf("priority tag missing (%s): %s", outputFile, text)
+	}
+	if !strings.Contains(text, "#06-af/system/devbox") || !strings.Contains(text, "#06-af/article/note") {
+		t.Fatalf("powered artifacts tag missing (%s): %s", outputFile, text)
+	}
+	if strings.Contains(text, "#javascript") || strings.Contains(text, "#customtasktag") {
+		t.Fatalf("task tags should be ignored (%s): %s", outputFile, text)
 	}
 }
 

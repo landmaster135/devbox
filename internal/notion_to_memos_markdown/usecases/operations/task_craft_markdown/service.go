@@ -19,8 +19,7 @@ import (
 )
 
 const (
-	taskSplitHeadingLevel = 2
-	taskTimestampLayout   = "20060102150405"
+	taskTimestampLayout = "20060102150405"
 
 	doneStatusID    = "0198d2e4-9a5e-7127-82b2-3541e7eda226"
 	wipStatusID     = "0198d2e4-9a5e-7165-9b5b-80fde571d270"
@@ -171,7 +170,7 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 		}
 		tags := buildTagsForTask(task)
 
-		outputPaths, missingSource, err := s.prepareTaskOutputs(markdownService, conID, srcBodyDir, outDir, splitIndex)
+		outputPaths, missingSource, err := s.prepareTaskOutputs(conID, srcBodyDir, outDir, splitIndex)
 		if err != nil {
 			return "", err
 		}
@@ -211,7 +210,7 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 	return fmt.Sprintf("処理完了\n対象件数=%d, 加工成功=%d, スキップ=%d", totalTarget, processed, skipped), nil
 }
 
-func (s *Service) prepareTaskOutputs(markdownService commonMarkdownService, conID, srcBodyDir, outDir string, splitIndex common.SplitMarkdownIndex) ([]string, bool, error) {
+func (s *Service) prepareTaskOutputs(conID, srcBodyDir, outDir string, splitIndex common.SplitMarkdownIndex) ([]string, bool, error) {
 	exactSrcPath := filepath.Join(srcBodyDir, conID+".md")
 	exactExists, err := s.fileSystem.FileExists(exactSrcPath)
 	if err != nil {
@@ -219,14 +218,6 @@ func (s *Service) prepareTaskOutputs(markdownService commonMarkdownService, conI
 	}
 
 	if exactExists {
-		splitPaths, splitSuccess, err := s.splitSourceMarkdown(markdownService, exactSrcPath, outDir)
-		if err != nil {
-			return nil, false, err
-		}
-		if splitSuccess {
-			return splitPaths, false, nil
-		}
-
 		fallbackPath := filepath.Join(outDir, conID+"_01.md")
 		if err := s.fileSystem.CopyFile(exactSrcPath, fallbackPath); err != nil {
 			return nil, false, fmt.Errorf("Markdownのコピーに失敗しました (%s -> %s): %w", exactSrcPath, fallbackPath, err)
@@ -252,49 +243,8 @@ func (s *Service) prepareTaskOutputs(markdownService commonMarkdownService, conI
 }
 
 type commonMarkdownService interface {
-	SplitHeadings(filePath string, headingLevel int, outputDir string) (string, error)
 	AddHeading1(filePath, headingText, headingPosition string) (string, error)
 	AddTags(filePath string, tagsCSV string) (string, error)
-}
-
-func (s *Service) splitSourceMarkdown(markdownService commonMarkdownService, sourcePath, outputDir string) ([]string, bool, error) {
-	beforeFiles, err := s.fileSystem.ListMarkdownFiles(outputDir)
-	if err != nil {
-		return nil, false, fmt.Errorf("split前ファイル一覧の取得に失敗しました (%s): %w", outputDir, err)
-	}
-	beforeSet := make(map[string]struct{}, len(beforeFiles))
-	for _, path := range beforeFiles {
-		beforeSet[path] = struct{}{}
-	}
-
-	_, err = markdownService.SplitHeadings(sourcePath, taskSplitHeadingLevel, outputDir)
-	if err != nil {
-		if strings.Contains(err.Error(), "見出しレベル") {
-			return nil, false, nil
-		}
-		return nil, false, fmt.Errorf("split-headings の実行に失敗しました (%s): %w", sourcePath, err)
-	}
-
-	files, err := s.fileSystem.ListMarkdownFiles(outputDir)
-	if err != nil {
-		return nil, false, fmt.Errorf("split後ファイル一覧の取得に失敗しました (%s): %w", outputDir, err)
-	}
-
-	result := make([]string, 0, len(files))
-	for _, path := range files {
-		if _, exists := beforeSet[path]; exists {
-			continue
-		}
-		baseName := filepath.Base(path)
-		stem := strings.TrimSuffix(baseName, filepath.Ext(baseName))
-		if digitsOnlyRegexp.MatchString(stem) {
-			result = append(result, path)
-		}
-	}
-	if len(result) == 0 {
-		return nil, false, nil
-	}
-	return result, true, nil
 }
 
 func applyTaskMarkdown(markdownService commonMarkdownService, filePath, pageTitle string, tags []string) error {
