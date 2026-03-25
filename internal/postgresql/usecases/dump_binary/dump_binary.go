@@ -28,17 +28,19 @@ type Dumper struct {
 	commandExecutor infrastructures.CommandExecutor
 	fileWriter      writer.FileWriter
 	timezone        string
+	retryConfig     RetryConfig
 }
 
 func NewDumper(timezone string) *Dumper {
-	return &Dumper{
-		commandExecutor: infrastructures.NewOSCommandExecutor(),
-		fileWriter:      &writer.DefaultFileWriter{},
-		timezone:        strings.TrimSpace(timezone),
-	}
+	return NewDumperWithDependencies(
+		infrastructures.NewOSCommandExecutor(),
+		&writer.DefaultFileWriter{},
+		timezone,
+		RetryConfig{},
+	)
 }
 
-func NewDumperWithDependencies(commandExecutor infrastructures.CommandExecutor, fileWriter writer.FileWriter, timezone string) *Dumper {
+func NewDumperWithDependencies(commandExecutor infrastructures.CommandExecutor, fileWriter writer.FileWriter, timezone string, retryConfig RetryConfig) *Dumper {
 	if commandExecutor == nil {
 		commandExecutor = infrastructures.NewOSCommandExecutor()
 	}
@@ -46,10 +48,13 @@ func NewDumperWithDependencies(commandExecutor infrastructures.CommandExecutor, 
 		fileWriter = &writer.DefaultFileWriter{}
 	}
 
+	retryConfig = normalizeRetryConfig(retryConfig)
+
 	return &Dumper{
 		commandExecutor: commandExecutor,
 		fileWriter:      fileWriter,
 		timezone:        strings.TrimSpace(timezone),
+		retryConfig:     retryConfig,
 	}
 }
 
@@ -82,23 +87,33 @@ func (d *Dumper) DumpDatabase(ctx context.Context, databaseURL, outputPath strin
 	fileName := d.generateFileName(databaseURL)
 	filePath := filepath.Join(outputPath, fileName)
 
-	output, err := d.commandExecutor.Execute("pg_dump", "-Fc", "--dbname", pgDumpDatabaseURL, "-f", filePath)
-	if err != nil {
-		commandOutput := strings.TrimSpace(string(output))
-		if commandOutput == "" {
-			return nil, fmt.Errorf("pg_dump の実行に失敗しました: %w", err)
+	for attempt := 1; attempt <= d.retryConfig.MaxAttempts; attempt++ {
+		output, err := d.commandExecutor.Execute("pg_dump", "-Fc", "--dbname", pgDumpDatabaseURL, "-f", filePath)
+		if err == nil {
+			return &DumpResult{
+				TableName:   "all_tables",
+				RecordCount: 0,
+				OutputPath:  outputPath,
+				FileName:    fileName,
+				Format:      "binary",
+				ExecutedAt:  d.currentTime().Format("2006-01-02 15:04:05"),
+			}, nil
 		}
-		return nil, fmt.Errorf("pg_dump の実行に失敗しました: %w: %s", err, commandOutput)
+
+		commandOutput := strings.TrimSpace(string(output))
+		if !isRetriablePgDumpError(err, commandOutput) || attempt == d.retryConfig.MaxAttempts {
+			if commandOutput == "" {
+				return nil, fmt.Errorf("pg_dump の実行に失敗しました (attempts=%d): %w", attempt, err)
+			}
+			return nil, fmt.Errorf("pg_dump の実行に失敗しました (attempts=%d): %w: %s", attempt, err, commandOutput)
+		}
+
+		if err := d.retryConfig.SleepWithContext(ctx, pgDumpRetryDelay(d.retryConfig, attempt)); err != nil {
+			return nil, err
+		}
 	}
 
-	return &DumpResult{
-		TableName:   "all_tables",
-		RecordCount: 0,
-		OutputPath:  outputPath,
-		FileName:    fileName,
-		Format:      "binary",
-		ExecutedAt:  d.currentTime().Format("2006-01-02 15:04:05"),
-	}, nil
+	return nil, errors.New("pg_dump の実行に失敗しました")
 }
 
 func (d *Dumper) generateFileName(databaseURL string) string {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,10 +15,21 @@ import (
 	writer "github.com/landmaster135/devbox/internal/postgresql/usecases/writer"
 )
 
+func noWaitRetryConfig(maxAttempts int) RetryConfig {
+	return RetryConfig{
+		MaxAttempts: maxAttempts,
+		BaseDelay:   time.Millisecond,
+		MaxDelay:    time.Millisecond,
+		SleepWithContext: func(ctx context.Context, d time.Duration) error {
+			return nil
+		},
+	}
+}
+
 func TestDumper_DumpDatabase_Normal(t *testing.T) {
 	mockExecutor := &infrastructures.MockCommandExecutor{}
 	mockWriter := &writer.MockFileWriter{}
-	dumper := NewDumperWithDependencies(mockExecutor, mockWriter, "")
+	dumper := NewDumperWithDependencies(mockExecutor, mockWriter, "", RetryConfig{})
 
 	outputDir := t.TempDir()
 	mockWriter.MkdirAllFunc = func(path string, perm os.FileMode) error {
@@ -47,7 +59,7 @@ func TestDumper_DumpDatabase_Normal(t *testing.T) {
 
 func TestDumper_DumpDatabase_StripsStatementCacheModeForPgDump(t *testing.T) {
 	mockExecutor := &infrastructures.MockCommandExecutor{}
-	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "")
+	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", RetryConfig{})
 
 	var capturedArgs []string
 	mockExecutor.ExecuteFunc = func(name string, args ...string) ([]byte, error) {
@@ -66,7 +78,7 @@ func TestDumper_DumpDatabase_StripsStatementCacheModeForPgDump(t *testing.T) {
 }
 
 func TestDumper_DumpDatabase_DatabaseURLEmpty_Error(t *testing.T) {
-	dumper := NewDumperWithDependencies(&infrastructures.MockCommandExecutor{}, &writer.MockFileWriter{}, "")
+	dumper := NewDumperWithDependencies(&infrastructures.MockCommandExecutor{}, &writer.MockFileWriter{}, "", RetryConfig{})
 
 	result, err := dumper.DumpDatabase(context.Background(), "", t.TempDir())
 	require.Error(t, err)
@@ -80,13 +92,76 @@ func TestDumper_DumpDatabase_CommandError(t *testing.T) {
 			return []byte("permission denied"), errors.New("exit status 1")
 		},
 	}
-	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "")
+	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", noWaitRetryConfig(3))
 
 	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir())
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "pg_dump の実行に失敗しました")
+	assert.Contains(t, err.Error(), "(attempts=1)")
 	assert.Contains(t, err.Error(), "permission denied")
+	assert.Len(t, mockExecutor.Calls, 1)
+}
+
+func TestDumper_DumpDatabase_RetryOnRetriableErrorThenSuccess(t *testing.T) {
+	mockExecutor := &infrastructures.MockCommandExecutor{}
+	mockWriter := &writer.MockFileWriter{}
+	dumper := NewDumperWithDependencies(mockExecutor, mockWriter, "", noWaitRetryConfig(3))
+
+	attempt := 0
+	mockExecutor.ExecuteFunc = func(name string, args ...string) ([]byte, error) {
+		attempt++
+		if attempt == 1 {
+			return []byte("pg_dump: error: connection to server failed: ERROR:  Control plane request failed"), errors.New("exit status 1")
+		}
+		return []byte("ok"), nil
+	}
+
+	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Len(t, mockExecutor.Calls, 2)
+}
+
+func TestDumper_DumpDatabase_RetryExhaustedOnRetriableError(t *testing.T) {
+	mockExecutor := &infrastructures.MockCommandExecutor{
+		ExecuteFunc: func(name string, args ...string) ([]byte, error) {
+			return []byte("pg_dump: error: connection to server failed: ERROR:  Control plane request failed"), errors.New("exit status 1")
+		},
+	}
+	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", noWaitRetryConfig(3))
+
+	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "(attempts=3)")
+	assert.Contains(t, err.Error(), "Control plane request failed")
+	assert.Len(t, mockExecutor.Calls, 3)
+}
+
+func TestDumper_DumpDatabase_ContextCanceledDuringRetryWait(t *testing.T) {
+	mockExecutor := &infrastructures.MockCommandExecutor{
+		ExecuteFunc: func(name string, args ...string) ([]byte, error) {
+			return []byte("pg_dump: error: connection to server failed: ERROR:  Control plane request failed"), errors.New("exit status 1")
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	retryConfig := RetryConfig{
+		MaxAttempts: 3,
+		BaseDelay:   time.Second,
+		MaxDelay:    time.Second,
+		SleepWithContext: func(ctx context.Context, d time.Duration) error {
+			cancel()
+			<-ctx.Done()
+			return ctx.Err()
+		},
+	}
+	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", retryConfig)
+
+	result, err := dumper.DumpDatabase(ctx, "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Nil(t, result)
+	assert.Len(t, mockExecutor.Calls, 1)
 }
 
 func TestResolveDatabaseName_Normal(t *testing.T) {
