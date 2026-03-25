@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	domain "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/domain"
 	filesystem "github.com/landmaster135/devbox/internal/notion_to_memos_markdown/infrastructures/filesystem"
 )
 
@@ -27,6 +28,12 @@ func TestService_Execute_Normal(t *testing.T) {
 			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
 			"priority":{"page_title":"3-mid"},
 			"updated_at":"2026-04-18T10:51:47.182772+09:00",
+			"powered_artifacts":[
+				{"page_title":"devbox"},
+				{"page_title":"ワインを飲んだり勉強するムーヴメント"},
+				{"page_title":"devbox"},
+				{"page_title":"Unknown Artifact"}
+			],
 			"tags":[{"page_title":"JavaScript"}]
 		}
 	]`), 0644); err != nil {
@@ -63,8 +70,20 @@ func TestService_Execute_Normal(t *testing.T) {
 		if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
 			t.Fatalf("required tag missing (%s): %s", fileName, text)
 		}
+		if !strings.Contains(text, "#06-af/system/devbox") {
+			t.Fatalf("artifact tag missing (%s): %s", fileName, text)
+		}
+		if !strings.Contains(text, "#06-af/diary/hobby") || !strings.Contains(text, "#wine") {
+			t.Fatalf("artifact mapped tags missing (%s): %s", fileName, text)
+		}
+		if strings.Count(text, "#06-af/system/devbox") != 1 {
+			t.Fatalf("artifact duplicate tags should be removed (%s): %s", fileName, text)
+		}
 		if strings.Contains(text, "#javascript") {
 			t.Fatalf("task tags should be ignored (%s): %s", fileName, text)
+		}
+		if strings.Contains(text, "#unknown") {
+			t.Fatalf("unknown artifact title should be ignored (%s): %s", fileName, text)
 		}
 	}
 }
@@ -105,5 +124,31 @@ func TestService_Execute_Error(t *testing.T) {
 	_, err := service.Execute("content", "", false, 1, 1, "/tmp/tasks.json", "/tmp/body", "/tmp/out")
 	if err == nil || err.Error() != "未対応のpage-typeです: content" {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestBuildTagsForTask_PoweredArtifactsIgnoresUnknownAndDeduplicates(t *testing.T) {
+	t.Parallel()
+
+	task := domain.Task{
+		PoweredArtifacts: []domain.TaskPoweredArtifact{
+			{PageTitle: "devbox"},
+			{PageTitle: "devbox"},
+			{PageTitle: "  devbox  "},
+			{PageTitle: "Unknown"},
+		},
+	}
+
+	tags := buildTagsForTask(task)
+	joined := "#" + strings.Join(tags, " #")
+
+	if !strings.Contains(joined, "#91-backup/tool-migration/202602_notion") {
+		t.Fatalf("required backup tag missing: %s", joined)
+	}
+	if strings.Count(joined, "#06-af/system/devbox") != 1 {
+		t.Fatalf("artifact tags should be deduplicated: %s", joined)
+	}
+	if strings.Contains(joined, "#unknown") {
+		t.Fatalf("unknown artifact title should be ignored: %s", joined)
 	}
 }

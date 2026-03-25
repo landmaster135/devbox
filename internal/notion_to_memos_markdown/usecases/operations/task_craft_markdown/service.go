@@ -30,6 +30,66 @@ const (
 var (
 	digitsOnlyRegexp   = regexp.MustCompile(`^\d+$`)
 	priorityDigitRegex = regexp.MustCompile(`\d+`)
+	taskArtifactTagMap = map[string][]string{
+		"ブログ活動（投稿部）：エンドルフィン風呂に浸かる": {"06-af/article/blog"},
+		"note活動（投稿部）": {"06-af/article/note"},
+		"INTPなワイは100話で3年勤めたサラリーマンを辞める（マンガ）": {"06-af/article/comic"},
+		"ワインを飲んだり勉強するムーヴメント":                {"06-af/diary/hobby", "wine"},
+		"料理のレシピのまとめ集":                       {"06-af/diary/hobby", "cooking"},
+		"ペンギンを愛でたり勉強するムーヴメント":               {"06-af/diary/hobby", "penguin"},
+		"サバ缶を食ったり鯖缶を勉強するムーヴメント":             {"06-af/diary/hobby", "mackerel"},
+		"旅行日程プラン計画まとめ集":                     {"06-af/diary/hobby", "travel"},
+		"画像生成AIによるイラストで同人活動":                {"06-af/diary/hobby", "illust"},
+		"生け花を学ぶムーヴメント":                      {"06-af/diary/hobby", "flowerarrangement"},
+		"過去のメールのやり取りまとめ集":                   {"mail"},
+		"notion-synchronizer":               {"06-af/system/notion-synchronizer"},
+		"dathub":                            {"06-af/system/dathub"},
+		"devbox":                            {"06-af/system/devbox"},
+		"dotfiles":                          {"06-af/system/dotfiles"},
+		"db-server-brewery":                 {"06-af/system/db-server-brewery"},
+		"chrome-forge":                      {"06-af/system/chrome-forge"},
+		"ミニマリストに俺はなる（整理整頓、片付け）":             {"cleaning"},
+		"AppSheet_RoutineMaker":             {"06-af/system-legacy/appsheet"},
+		"AppSheet_LunchMaster":              {"06-af/system-legacy/appsheet"},
+		"AppSheet_MediaMaster":              {"06-af/system-legacy/appsheet"},
+		"イラスト活動：kinkinart135ml":             {"illust"},
+		"Googleドキュメントで日記活動":                 {"06-af/system-legacy/googledocs"},
+		"税金とか年金とかの公的なヤツに関する作業たち":            {"tax"},
+		"歴代の自作PCリストまとめ":                     {"pc"},
+		"原神：魔神任務プレイリスト":                     {"genshinimpact", "06-af/movie"},
+		"原神：伝説任務プレイリスト":                     {"genshinimpact", "06-af/movie"},
+		"原神：その他プレイリスト":                      {"genshinimpact", "06-af/movie"},
+		"Chocolate Factory【ゆっくり実況】":         {"06-af/movie", "architecture"},
+		"Azurlane_アズールレーン（動画再生リスト）":         {"06-af/movie", "azurlane"},
+		"Monster Hunter Wilds（動画再生リスト）":     {"06-af/movie", "monsterhunterwilds"},
+		"【Frostpunk 2】極寒の氷の世界で極限生活-Reignite-【ゆっくり実況】": {"06-af/movie", "architecture"},
+		"【Satisfactory】未知の設備でゆっくり工業化【ゆっくり実況】":         {"06-af/movie", "satisfactory", "architecture"},
+		"Palworld_パルワールド（動画再生リスト）":                    {"06-af/movie", "palworld"},
+		"PictureExifOptimizer":                               {"06-af/system-legacy/powershell"},
+		"Monster Hunter World: Ice Borneプレイ日記":               {"06-af/diary/game", "monsterhunterworld"},
+		"Monster Hunter Wildsプレイ日記":                          {"06-af/diary/game", "monsterhunterwilds"},
+		"Azur Laneプレイ日記かつ作業記録":                               {"06-af/diary/game", "azurlane"},
+		"原神（Genshin Impact）_ゲームプレイ日記":                        {"06-af/diary/game", "genshinimpact"},
+		"Palworldプレイ日記":                                      {"06-af/diary/game", "palworld"},
+		"World of Warshipsプレイ日記":                             {"06-af/diary/game"},
+		"Epistory_プレイ日記":                                     {"06-af/diary/game"},
+		"Notion習慣トラッカー":                                      {"#06-af/system-legacy/notion"},
+		"Notionタスク管理ツール":                                     {"#06-af/system-legacy/notion"},
+		"Notion持ち物管理ツール":                                     {"#06-af/system-legacy/notion"},
+		"Notion作品管理ツール":                                      {"#06-af/system-legacy/notion"},
+		"Notion食べ物管理ツール":                                     {"#06-af/system-legacy/notion"},
+		"davinci_materials AND 11_kinkingame24bit_YouTube":   {"#davinciresolve"},
+		"◆20240207_MediaMasterSheet":                         {"#06-af/system-legacy/spreadsheet"},
+		"◆20230213_RoutineMakerSheet":                        {"#06-af/system-legacy/spreadsheet"},
+		"◆20210330_GloveDriveSheet":                          {"#06-af/system-legacy/spreadsheet"},
+		"◆20201104_LunchMasterSheet":                         {"#06-af/system-legacy/spreadsheet"},
+		"◆20220108_WebclipManagerSheet":                      {"#06-af/system-legacy/spreadsheet"},
+		"◆20211204_ScriptManagerSheet":                       {"#06-af/system-legacy/spreadsheet"},
+		"◆20221201_kinkingame24bitのシート（YoutubeManagerSheet）": {"#06-af/system-legacy/spreadsheet"},
+		"◆20210119_kinkinbeer135mlのシート（BlogManagerSheet）：ブログ活動開発部": {"#06-af/system-legacy/spreadsheet"},
+		"◆20220526_ImageCroppingSheet":  {"#06-af/system-legacy/spreadsheet"},
+		"色々な各種セットアップ作業（WindowsとかMacとか）": {"#settings"},
+	}
 )
 
 type Service struct {
@@ -249,7 +309,7 @@ func applyTaskMarkdown(markdownService commonMarkdownService, filePath, pageTitl
 }
 
 func buildTagsForTask(task domain.Task) []string {
-	tags := make([]string, 0, 3)
+	tags := make([]string, 0, 6)
 	if statusTag := mapTaskStatusTag(task.StatusID); statusTag != "" {
 		tags = append(tags, statusTag)
 	}
@@ -257,8 +317,23 @@ func buildTagsForTask(task domain.Task) []string {
 		tags = append(tags, priorityTag)
 	}
 	tags = append(tags, common.RequiredBackupTagTask)
+	tags = append(tags, mapTaskArtifactTags(task.PoweredArtifacts)...)
 
 	return uniqueTaskTags(tags)
+}
+
+func mapTaskArtifactTags(poweredArtifacts []domain.TaskPoweredArtifact) []string {
+	tags := make([]string, 0, len(poweredArtifacts))
+	for _, artifact := range poweredArtifacts {
+		title := strings.TrimSpace(artifact.PageTitle)
+		if title == "" {
+			continue
+		}
+		if mapped, ok := taskArtifactTagMap[title]; ok {
+			tags = append(tags, mapped...)
+		}
+	}
+	return tags
 }
 
 func mapTaskStatusTag(statusID *string) string {

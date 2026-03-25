@@ -226,6 +226,7 @@ func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
 			"priority": 5,
 			"done_at_start": "2026-04-18T10:51:47.182772+09:00",
 			"updated_at": "2026-04-18T11:22:33.000000+09:00",
+			"powered_artifacts": [{"page_title":"devbox"}, {"page_title":"note活動（投稿部）"}],
 			"tags": [{"page_title":"JavaScript"}, {"page_title":"CustomTaskTag"}]
 		}
 	]`
@@ -264,6 +265,9 @@ func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
 		}
 		if !strings.Contains(text, "#01-p/todo-prior/5-high") {
 			t.Fatalf("priority tag missing (%s): %s", fileName, text)
+		}
+		if !strings.Contains(text, "#06-af/system/devbox") || !strings.Contains(text, "#06-af/article/note") {
+			t.Fatalf("powered artifacts tag missing (%s): %s", fileName, text)
 		}
 		if strings.Contains(text, "#javascript") || strings.Contains(text, "#customtasktag") {
 			t.Fatalf("task tags should be ignored (%s): %s", fileName, text)

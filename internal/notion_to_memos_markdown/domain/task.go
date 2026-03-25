@@ -8,16 +8,21 @@ import (
 )
 
 type Task struct {
-	ConID       string       `json:"con_id"`
-	PageTitle   string       `json:"page_title"`
-	StatusID    *string      `json:"status_id"`
-	Priority    TaskPriority `json:"priority"`
-	DoneAtStart string       `json:"done_at_start"`
-	UpdatedAt   string       `json:"updated_at"`
-	Tags        []TaskTag    `json:"tags"`
+	ConID            string                `json:"con_id"`
+	PageTitle        string                `json:"page_title"`
+	StatusID         *string               `json:"status_id"`
+	Priority         TaskPriority          `json:"priority"`
+	DoneAtStart      string                `json:"done_at_start"`
+	UpdatedAt        string                `json:"updated_at"`
+	PoweredArtifacts []TaskPoweredArtifact `json:"powered_artifacts"`
+	Tags             []TaskTag             `json:"tags"`
 }
 
 type TaskTag struct {
+	PageTitle string `json:"page_title"`
+}
+
+type TaskPoweredArtifact struct {
 	PageTitle string `json:"page_title"`
 }
 

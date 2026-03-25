@@ -27,6 +27,7 @@
     - 出力は `out-dir` 直下に作成
     - どの入力でも各出力ファイルに `add-heading1(page_title)` と `add-tags` 相当の加工を適用
     - `priority` と `status_id` から Task用タグを付与し、`#91-backup/tool-migration/202602_notion` を必ず付与
+    - `powered_artifacts[].page_title` が定義済みマップに一致した場合、対応する追加タグを付与
     - `status_id` に応じて `done_at_start` または `updated_at` を採用し、`yyyyMMddhhmmss_<number>.md` へリネーム
 - `--operation=check-body-length`
   - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
