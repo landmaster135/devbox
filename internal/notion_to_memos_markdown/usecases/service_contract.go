@@ -5,7 +5,7 @@ type distributeFilesOperation interface {
 }
 
 type craftMarkdownOperation interface {
-	Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error)
+	Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir string) (string, error)
 }
 
 type checkBodyLengthOperation interface {

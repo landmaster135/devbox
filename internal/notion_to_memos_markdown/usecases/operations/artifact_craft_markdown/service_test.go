@@ -61,7 +61,7 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("artifact", "", false, 186, 186, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("artifact", "", false, 186, 186, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestService_Execute_SplitSourceFiles(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("artifact", "", false, 1946, 1946, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("artifact", "", false, 1946, 1946, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestService_Execute_ExactSourcePreferredOverSplit(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("artifact", "", false, 100, 100, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("artifact", "", false, 100, 100, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -270,7 +270,7 @@ func TestService_Execute_CategoryMappings(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	_, err := service.Execute("artifact", "", false, 100, 101, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.Execute("artifact", "", false, 100, 101, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestService_Execute_Error(t *testing.T) {
 	t.Run("unsupported page type", func(t *testing.T) {
 		t.Parallel()
 		service := NewService(&filesystem.MockRepository{})
-		_, err := service.Execute("content", "", false, 1, 1, "/tmp/artifacts.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 1, "/tmp/artifacts.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || err.Error() != "未対応のpage-typeです: content" {
 			t.Fatalf("error = %v", err)
 		}
@@ -312,7 +312,7 @@ func TestService_Execute_Error(t *testing.T) {
 		}
 
 		service := NewService(mockRepo)
-		_, err := service.Execute("artifact", "", false, 1, 1, "/tmp/artifacts.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("artifact", "", false, 1, 1, "/tmp/artifacts.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "Artifact JSONの解析に失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -333,7 +333,7 @@ func TestService_Execute_Error(t *testing.T) {
 		}
 
 		service := NewService(mockRepo)
-		_, err := service.Execute("artifact", "", false, 1, 1, "/tmp/artifacts.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("artifact", "", false, 1, 1, "/tmp/artifacts.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "## Artifact") {
 			t.Fatalf("error = %v", err)
 		}
@@ -365,7 +365,7 @@ func TestService_Execute_Error(t *testing.T) {
 		}
 
 		service := NewService(mockRepo)
-		_, err := service.Execute("artifact", "", false, 1, 10, "/tmp/artifacts.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("artifact", "", false, 1, 10, "/tmp/artifacts.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "page_title が空です") {
 			t.Fatalf("error = %v", err)
 		}

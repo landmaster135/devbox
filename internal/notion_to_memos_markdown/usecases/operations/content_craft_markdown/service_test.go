@@ -65,7 +65,7 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -146,7 +146,7 @@ title: Existing
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -216,7 +216,7 @@ func TestService_Execute_SplitSourceFiles(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("content", "", false, 1946, 1946, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("content", "", false, 1946, 1946, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestService_Execute_ExactSourcePreferredOverSplit(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -330,7 +330,7 @@ func TestService_Execute_MissingSourceFileCanSkipByFlag(t *testing.T) {
 	}
 
 	service := NewService(mockRepo)
-	result, err := service.Execute("content", "", true, 10, 10, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+	result, err := service.Execute("content", "", true, 10, 10, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -348,7 +348,7 @@ func TestService_Execute_Error(t *testing.T) {
 	t.Run("unsupported page type", func(t *testing.T) {
 		t.Parallel()
 		service := NewService(&filesystem.MockRepository{})
-		_, err := service.Execute("artifact", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("artifact", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || err.Error() != "未対応のpage-typeです: artifact" {
 			t.Fatalf("error = %v", err)
 		}
@@ -357,7 +357,7 @@ func TestService_Execute_Error(t *testing.T) {
 	t.Run("invalid range value", func(t *testing.T) {
 		t.Parallel()
 		service := NewService(&filesystem.MockRepository{})
-		_, err := service.Execute("content", "", false, 0, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 0, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || err.Error() != "con_number_start と con_number_end は1以上で指定してください" {
 			t.Fatalf("error = %v", err)
 		}
@@ -366,7 +366,7 @@ func TestService_Execute_Error(t *testing.T) {
 	t.Run("start greater than end", func(t *testing.T) {
 		t.Parallel()
 		service := NewService(&filesystem.MockRepository{})
-		_, err := service.Execute("content", "", false, 2, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 2, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || err.Error() != "con_number_start は con_number_end 以下である必要があります" {
 			t.Fatalf("error = %v", err)
 		}
@@ -379,7 +379,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return nil, errors.New("read failed")
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "src-json-file の読み込みに失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -392,7 +392,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return []byte("{invalid"), nil
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "Content JSONの解析に失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -408,7 +408,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return nil, errors.New("read tags failed")
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "tags.md の読み込みに失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -431,7 +431,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return errors.New("mkdir failed")
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 1, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "出力ディレクトリの作成に失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -460,7 +460,7 @@ func TestService_Execute_Error(t *testing.T) {
 			}
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "con_id の解析に失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -492,7 +492,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return false, errors.New("stat failed")
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "コピー元ファイルの確認に失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -527,7 +527,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return errors.New("copy failed")
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "Markdownのコピーに失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -562,7 +562,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return errors.New("write failed")
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "空Markdownの作成に失敗しました") {
 			t.Fatalf("error = %v", err)
 		}
@@ -594,7 +594,7 @@ func TestService_Execute_Error(t *testing.T) {
 			return true, nil
 		}
 		service := NewService(mockRepo)
-		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "/tmp/out")
+		_, err := service.Execute("content", "", false, 1, 10, "/tmp/contents.json", "/tmp/body", "", "/tmp/out", "")
 		if err == nil || !strings.Contains(err.Error(), "page_title が空です") {
 			t.Fatalf("error = %v", err)
 		}
@@ -633,7 +633,7 @@ func TestService_Execute_InvalidCategory(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	_, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.Execute("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err == nil || !strings.Contains(err.Error(), "タグ生成に失敗しました") {
 		t.Fatalf("error = %v", err)
 	}

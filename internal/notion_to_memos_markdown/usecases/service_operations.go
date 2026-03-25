@@ -11,21 +11,21 @@ func (s *Service) DistributeFiles(pageType, srcJSONFile, srcBodyDir, outDir stri
 	return s.distributeFilesOperation.Execute(pageType, srcJSONFile, srcBodyDir, outDir)
 }
 
-func (s *Service) CraftMarkdown(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
+func (s *Service) CraftMarkdown(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	switch trimmedPageType {
 	case common.SupportedPageTypeContent:
-		return s.craftMarkdownOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+		return s.craftMarkdownOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
 	case common.SupportedPageTypeArtifact:
 		if s.artifactCraftOperation == nil {
 			return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 		}
-		return s.artifactCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+		return s.artifactCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
 	case common.SupportedPageTypeTask:
 		if s.taskCraftOperation == nil {
 			return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 		}
-		return s.taskCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, outDir)
+		return s.taskCraftOperation.Execute(trimmedPageType, category, skipsNoSrcBody, conNumberStart, conNumberEnd, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
 	default:
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}

@@ -25,11 +25,13 @@ func NewService(fileSystem filesystem.Repository) *Service {
 	}
 }
 
-func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
+func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	if trimmedPageType != common.SupportedPageTypeArtifact {
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}
+	_ = srcResourceDir
+	_ = outResourceDir
 	if conNumberStart <= 0 || conNumberEnd <= 0 {
 		return "", fmt.Errorf("con_number_start と con_number_end は1以上で指定してください")
 	}

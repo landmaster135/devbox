@@ -25,12 +25,17 @@
     - `tags.md` の `## Frequent Tags` と `## Artifact` を使ってタグを解決し、`#91-backup/tool-migration/202602-notion` を必ず付与
   - `task`:
     - 出力は `out-dir` 直下に作成
+    - `--src-resource-dir` 配下を再帰走査し、対象 Task の添付ファイルを取得する
+    - 添付ファイルは `out-resource-dir` 直下へ複製する
     - `src-body-dir/<con_id>.md` がある場合は見出し分割せず、1入力につき1ファイル（`<con_id>_01.md`）を加工対象にする
     - `src-body-dir/<con_id>.md` が無い場合のみ `src-body-dir/<con_id>_*.md` を加工対象にする
     - どの入力でも各出力ファイルに `add-heading1(page_title)` と `add-tags` 相当の加工を適用
     - `priority` と `status_id` から Task用タグを付与し、`#91-backup/tool-migration/202602_notion` を必ず付与
     - `powered_artifacts[].page_title` が定義済みマップに一致した場合、対応する追加タグを付与
-    - `status_id` に応じて `done_at_start` または `updated_at` を採用し、`yyyyMMddhhmmss_<number>.md` へリネーム
+    - `status_id` に応じて `done_at_start` または `updated_at` を採用し、`yyyyMMddhhmmss_<index>.md` へリネーム
+    - 添付ファイル名は `con_id_<number>(.<ext>)` または `con_id_<index>_<number>(.<ext>)` のみ受け付ける（規約外はエラー）
+    - 添付ファイルは対応する Markdown の `yyyyMMddhhmmss_<index>` を使って `yyyyMMddhhmmss_<index>_<number>(.<ext>)` へリネームする（拡張子なしも許容）
+    - 添付ファイルの同名衝突は回避せず、出力先が既に存在する場合はエラーにする
     - リネーム先が `out-dir` 内で衝突する場合は、タイムスタンプの秒（`ss`）を 1 秒ずつ増やして非衝突名を採用
 - `--operation=check-body-length`
   - `--src-body-dir` 配下を再帰的に走査して全ファイルを対象にする
@@ -70,8 +75,9 @@
 | `--target-str` | `grep-str`で必須 | 検索対象の文字列 |
 | `--src-json-file` | `distribute-files`/`craft-markdown`/`rename-bodies-by-category-id`で必須 | 入力 JSON ファイルのパス（`craft-markdown` では `content`/`artifact` の両方を受け付ける。`--src-json-path` も利用可能） |
 | `--src-body-dir` | `distribute-files`/`craft-markdown`/`check-body-length`/`grep-str`/`migrate-to-memos`で必須 | 入力ディレクトリ |
-| `--src-resource-dir` | `rename-bodies-by-category-id`/`migrate-to-memos`で必須 | リソース入力ディレクトリ |
+| `--src-resource-dir` | `craft-markdown`(`task`)/`rename-bodies-by-category-id`/`migrate-to-memos`で必須 | リソース入力ディレクトリ |
 | `--out-dir` | `distribute-files`/`craft-markdown`で必須 | 出力先ルートディレクトリ |
+| `--out-resource-dir` | `craft-markdown`(`task`)で必須 | Task添付リソースの出力先ディレクトリ |
 | `-help`, `-h` | 任意 | ヘルプ表示 |
 
 ## 使用例
@@ -125,7 +131,9 @@ go run ./cmd/cli/notion-to-memos-markdown \
   --con_number_end=2200 \
   --src-json-path=$HOME/devbox/cmd/cli/notion-to-memos-markdown/tmp/tasks.json \
   --src-body-dir=$HOME/path/to/dir \
-  --out-dir=/tmp/notion-tasks-crafted
+  --src-resource-dir=$HOME/path/to/resource_dir \
+  --out-dir=/tmp/notion-tasks-crafted \
+  --out-resource-dir=/tmp/notion-tasks-crafted-resources
 ```
 
 `check-body-length`:

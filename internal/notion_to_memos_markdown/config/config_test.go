@@ -22,6 +22,7 @@ func TestNewConfig(t *testing.T) {
 		srcBodyDir     string
 		srcResourceDir string
 		outDir         string
+		outResourceDir string
 		targetStr      string
 		conNumberStart int
 		conNumberEnd   int
@@ -67,10 +68,36 @@ func TestNewConfig(t *testing.T) {
 			pageType:       PageTypeTask,
 			srcJSONFile:    "/tmp/tasks.json",
 			srcBodyDir:     "/tmp/body",
+			srcResourceDir: "/tmp/resources",
 			outDir:         "/tmp/out",
+			outResourceDir: "/tmp/out-resources",
 			conNumberStart: 1,
 			conNumberEnd:   10,
 			wantPageType:   PageTypeTask,
+		},
+		{
+			name:           "craft task missing src resource dir",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeTask,
+			srcJSONFile:    "/tmp/tasks.json",
+			srcBodyDir:     "/tmp/body",
+			outDir:         "/tmp/out",
+			outResourceDir: "/tmp/out-resources",
+			conNumberStart: 1,
+			conNumberEnd:   10,
+			wantErr:        "src-resource-dir パラメータは必須です",
+		},
+		{
+			name:           "craft task missing out resource dir",
+			operation:      OperationCraftMarkdown,
+			pageType:       PageTypeTask,
+			srcJSONFile:    "/tmp/tasks.json",
+			srcBodyDir:     "/tmp/body",
+			srcResourceDir: "/tmp/resources",
+			outDir:         "/tmp/out",
+			conNumberStart: 1,
+			conNumberEnd:   10,
+			wantErr:        "out-resource-dir パラメータは必須です",
 		},
 		{
 			name:           "rename bodies by category id normal",
@@ -324,6 +351,7 @@ func TestNewConfig(t *testing.T) {
 				tt.srcBodyDir,
 				tt.srcResourceDir,
 				tt.outDir,
+				tt.outResourceDir,
 				tt.targetStr,
 				tt.conNumberStart,
 				tt.conNumberEnd,
@@ -435,7 +463,9 @@ func TestParseFlagsWithParser(t *testing.T) {
 		parser.SetString("page-type", string(PageTypeTask))
 		parser.SetString("src-json-file", "/tmp/tasks.json")
 		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("src-resource-dir", "/tmp/resources")
 		parser.SetString("out-dir", "/tmp/out")
+		parser.SetString("out-resource-dir", "/tmp/out-resources")
 		parser.SetInt("con_number_start", 20)
 		parser.SetInt("con_number_end", 30)
 
@@ -449,8 +479,48 @@ func TestParseFlagsWithParser(t *testing.T) {
 		if cfg.SrcJSONFile != "/tmp/tasks.json" {
 			t.Fatalf("SrcJSONFile = %q, want /tmp/tasks.json", cfg.SrcJSONFile)
 		}
+		if cfg.SrcResourceDir != "/tmp/resources" {
+			t.Fatalf("SrcResourceDir = %q, want /tmp/resources", cfg.SrcResourceDir)
+		}
+		if cfg.OutResourceDir != "/tmp/out-resources" {
+			t.Fatalf("OutResourceDir = %q, want /tmp/out-resources", cfg.OutResourceDir)
+		}
 		if cfg.ConNumberStart != 20 || cfg.ConNumberEnd != 30 {
 			t.Fatalf("con range = (%d,%d), want (20,30)", cfg.ConNumberStart, cfg.ConNumberEnd)
+		}
+	})
+
+	t.Run("craft task missing src resource dir", func(t *testing.T) {
+		parser := flagParser.NewMockFlagParser()
+		parser.SetString("operation", string(OperationCraftMarkdown))
+		parser.SetString("page-type", string(PageTypeTask))
+		parser.SetString("src-json-file", "/tmp/tasks.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("out-dir", "/tmp/out")
+		parser.SetString("out-resource-dir", "/tmp/out-resources")
+		parser.SetInt("con_number_start", 20)
+		parser.SetInt("con_number_end", 30)
+
+		_, err := ParseFlagsWithParser(parser)
+		if err == nil || err.Error() != "src-resource-dir パラメータは必須です" {
+			t.Fatalf("error = %v", err)
+		}
+	})
+
+	t.Run("craft task missing out resource dir", func(t *testing.T) {
+		parser := flagParser.NewMockFlagParser()
+		parser.SetString("operation", string(OperationCraftMarkdown))
+		parser.SetString("page-type", string(PageTypeTask))
+		parser.SetString("src-json-file", "/tmp/tasks.json")
+		parser.SetString("src-body-dir", "/tmp/body")
+		parser.SetString("src-resource-dir", "/tmp/resources")
+		parser.SetString("out-dir", "/tmp/out")
+		parser.SetInt("con_number_start", 20)
+		parser.SetInt("con_number_end", 30)
+
+		_, err := ParseFlagsWithParser(parser)
+		if err == nil || err.Error() != "out-resource-dir パラメータは必須です" {
+			t.Fatalf("error = %v", err)
 		}
 	})
 

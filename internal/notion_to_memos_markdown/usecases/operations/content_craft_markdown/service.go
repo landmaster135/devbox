@@ -26,11 +26,13 @@ func NewService(fileSystem filesystem.Repository) *Service {
 	}
 }
 
-func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
+func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	if trimmedPageType != common.SupportedPageType {
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}
+	_ = srcResourceDir
+	_ = outResourceDir
 	trimmedCategory := strings.TrimSpace(category)
 	normalizedCategoryFilter := common.NormalizeKey(trimmedCategory)
 	if conNumberStart <= 0 || conNumberEnd <= 0 {

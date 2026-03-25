@@ -71,7 +71,7 @@ func TestService_CraftMarkdown_Normal(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestService_CraftMarkdown_ArtifactNormal(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("artifact", "", false, 100, 100, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("artifact", "", false, 100, 100, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -212,9 +212,14 @@ func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
 	tmpDir := t.TempDir()
 	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
 	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
 	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
 
 	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 
@@ -239,7 +244,7 @@ func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("task", "", false, 9999, 9999, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("task", "", false, 9999, 9999, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -313,7 +318,7 @@ func TestService_CraftMarkdown_InvalidCategory(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	_, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err == nil || !strings.Contains(err.Error(), "未対応のcategoryです") {
 		t.Fatalf("error = %v", err)
 	}
@@ -356,7 +361,7 @@ func TestService_CraftMarkdown_FrequentTagsNotFound(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	_, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	_, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err == nil || !strings.Contains(err.Error(), "## Frequent Tags") {
 		t.Fatalf("error = %v", err)
 	}
@@ -411,7 +416,7 @@ func TestService_CraftMarkdown_MissingSourceFileCreatesEmptyMarkdown(t *testing.
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", false, 10, 11, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", false, 10, 11, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -491,7 +496,7 @@ func TestService_CraftMarkdown_MissingSourceFileCanSkipByFlag(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", true, 10, 11, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", true, 10, 11, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -559,7 +564,7 @@ func TestService_CraftMarkdown_FilterByCategory(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "software", false, 10, 11, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "software", false, 10, 11, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -613,7 +618,7 @@ func TestService_CraftMarkdown_NullColorSkipsColorTag(t *testing.T) {
 	}
 
 	service := NewService(nil)
-	result, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.CraftMarkdown("content", "", false, 10, 10, srcJSONFile, srcBodyDir, "", outDir, "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

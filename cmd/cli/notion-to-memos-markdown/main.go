@@ -37,7 +37,9 @@ func main() {
 			cfg.ConNumberEnd,
 			cfg.SrcJSONFile,
 			cfg.SrcBodyDir,
+			cfg.SrcResourceDir,
 			cfg.OutDir,
+			cfg.OutResourceDir,
 		)
 	case config.OperationCheckBodyLength:
 		result, err = service.CheckBodyLength(cfg.SrcBodyDir, cfg.Threshold)

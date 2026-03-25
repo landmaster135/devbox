@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -102,12 +103,20 @@ func NewService(fileSystem filesystem.Repository) *Service {
 	}
 }
 
-func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, outDir string) (string, error) {
+func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNumberStart, conNumberEnd int, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir string) (string, error) {
 	trimmedPageType := strings.TrimSpace(pageType)
 	if trimmedPageType != common.SupportedPageTypeTask {
 		return "", fmt.Errorf("未対応のpage-typeです: %s", trimmedPageType)
 	}
 	_ = category
+	trimmedSrcResourceDir := strings.TrimSpace(srcResourceDir)
+	if trimmedSrcResourceDir == "" {
+		return "", fmt.Errorf("src-resource-dir パラメータは必須です")
+	}
+	trimmedOutResourceDir := strings.TrimSpace(outResourceDir)
+	if trimmedOutResourceDir == "" {
+		return "", fmt.Errorf("out-resource-dir パラメータは必須です")
+	}
 
 	if conNumberStart <= 0 || conNumberEnd <= 0 {
 		return "", fmt.Errorf("con_number_start と con_number_end は1以上で指定してください")
@@ -128,6 +137,13 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 
 	if err := s.fileSystem.MkdirAll(outDir, common.DefaultDirectoryPerm); err != nil {
 		return "", fmt.Errorf("出力ディレクトリの作成に失敗しました (%s): %w", outDir, err)
+	}
+	if err := s.fileSystem.MkdirAll(trimmedOutResourceDir, common.DefaultDirectoryPerm); err != nil {
+		return "", fmt.Errorf("リソース出力ディレクトリの作成に失敗しました (%s): %w", trimmedOutResourceDir, err)
+	}
+	resourceFiles, err := s.fileSystem.ListFilesRecursive(trimmedSrcResourceDir)
+	if err != nil {
+		return "", fmt.Errorf("src-resource-dir の読み取りに失敗しました (%s): %w", trimmedSrcResourceDir, err)
 	}
 
 	markdownService := common.NewMarkdownService(s.fileSystem)
@@ -190,6 +206,7 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 			totalTarget += len(outputPaths)
 		}
 
+		markdownPrefixByIndex := make(map[string]string, len(outputPaths))
 		for i, outputPath := range outputPaths {
 			if err := applyTaskMarkdown(markdownService, outputPath, task.PageTitle, tags); err != nil {
 				return "", fmt.Errorf("Task Markdownの加工に失敗しました (con_id=%s): %w", conID, err)
@@ -203,7 +220,17 @@ func (s *Service) Execute(pageType, category string, skipsNoSrcBody bool, conNum
 			if err := s.fileSystem.RenameFile(outputPath, renamedPath); err != nil {
 				return "", fmt.Errorf("ファイル名の変更に失敗しました (%s -> %s): %w", outputPath, renamedPath, err)
 			}
+			renamedStem := strings.TrimSuffix(filepath.Base(renamedPath), filepath.Ext(renamedPath))
+			markdownPrefixByIndex[suffix] = renamedStem
 			processed++
+		}
+
+		taskResources, err := collectTaskResourcesByConID(resourceFiles, conID)
+		if err != nil {
+			return "", err
+		}
+		if err := s.copyTaskResources(taskResources, markdownPrefixByIndex, trimmedOutResourceDir, conID); err != nil {
+			return "", err
 		}
 	}
 
@@ -240,6 +267,122 @@ func (s *Service) prepareTaskOutputs(conID, srcBodyDir, outDir string, splitInde
 	}
 
 	return outputPaths, false, nil
+}
+
+type taskResourceFile struct {
+	SrcPath   string
+	Index     string
+	Number    string
+	Extension string
+}
+
+func collectTaskResourcesByConID(resourceFiles []string, conID string) ([]taskResourceFile, error) {
+	matchedResources := make([]taskResourceFile, 0)
+	for _, resourceFile := range resourceFiles {
+		fileName := filepath.Base(resourceFile)
+		if !strings.HasPrefix(fileName, conID) {
+			continue
+		}
+
+		parsedResource, err := parseTaskResourceFileName(conID, fileName)
+		if err != nil {
+			return nil, fmt.Errorf("添付ファイル名が規約外です (con_id=%s, file=%s): %w", conID, fileName, err)
+		}
+		parsedResource.SrcPath = resourceFile
+		matchedResources = append(matchedResources, parsedResource)
+	}
+
+	sort.Slice(matchedResources, func(i, j int) bool {
+		if matchedResources[i].Index != matchedResources[j].Index {
+			return matchedResources[i].Index < matchedResources[j].Index
+		}
+		if matchedResources[i].Number != matchedResources[j].Number {
+			return matchedResources[i].Number < matchedResources[j].Number
+		}
+		return matchedResources[i].SrcPath < matchedResources[j].SrcPath
+	})
+	return matchedResources, nil
+}
+
+func parseTaskResourceFileName(conID, fileName string) (taskResourceFile, error) {
+	extension := filepath.Ext(fileName)
+	stem := strings.TrimSuffix(fileName, extension)
+	expectedPrefix := conID + "_"
+	if !strings.HasPrefix(stem, expectedPrefix) {
+		return taskResourceFile{}, fmt.Errorf("`%s` で始まる必要があります", expectedPrefix)
+	}
+
+	rest := strings.TrimPrefix(stem, expectedPrefix)
+	if rest == "" {
+		return taskResourceFile{}, fmt.Errorf("`%s` の後ろに番号が必要です", expectedPrefix)
+	}
+
+	parts := strings.Split(rest, "_")
+	switch len(parts) {
+	case 1:
+		number, err := normalizeTaskResourceNumber(parts[0], "number")
+		if err != nil {
+			return taskResourceFile{}, err
+		}
+		return taskResourceFile{
+			Index:     "01",
+			Number:    number,
+			Extension: extension,
+		}, nil
+	case 2:
+		index, err := normalizeTaskResourceNumber(parts[0], "index")
+		if err != nil {
+			return taskResourceFile{}, err
+		}
+		number, err := normalizeTaskResourceNumber(parts[1], "number")
+		if err != nil {
+			return taskResourceFile{}, err
+		}
+		return taskResourceFile{
+			Index:     index,
+			Number:    number,
+			Extension: extension,
+		}, nil
+	default:
+		return taskResourceFile{}, fmt.Errorf("許可される形式は con_id_<number>(.<ext>) または con_id_<index>_<number>(.<ext>) です")
+	}
+}
+
+func normalizeTaskResourceNumber(value, fieldName string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if !digitsOnlyRegexp.MatchString(trimmed) {
+		return "", fmt.Errorf("%s が数値ではありません: %s", fieldName, value)
+	}
+	number, err := strconv.Atoi(trimmed)
+	if err != nil || number <= 0 {
+		return "", fmt.Errorf("%s は1以上の数値である必要があります: %s", fieldName, value)
+	}
+	return fmt.Sprintf("%02d", number), nil
+}
+
+func (s *Service) copyTaskResources(resources []taskResourceFile, markdownPrefixByIndex map[string]string, outResourceDir, conID string) error {
+	for _, resource := range resources {
+		markdownPrefix, exists := markdownPrefixByIndex[resource.Index]
+		if !exists {
+			return fmt.Errorf("添付ファイルに対応するTask Markdownが見つかりません (con_id=%s, index=%s, source=%s)", conID, resource.Index, resource.SrcPath)
+		}
+
+		dstName := fmt.Sprintf("%s_%s%s", markdownPrefix, resource.Number, resource.Extension)
+		dstPath := filepath.Join(outResourceDir, dstName)
+
+		exists, err := s.fileSystem.FileExists(dstPath)
+		if err != nil {
+			return fmt.Errorf("添付ファイルの出力先確認に失敗しました (%s): %w", dstPath, err)
+		}
+		if exists {
+			return fmt.Errorf("添付ファイルの出力先が既に存在します (%s)", dstPath)
+		}
+
+		if err := s.fileSystem.CopyFile(resource.SrcPath, dstPath); err != nil {
+			return fmt.Errorf("添付ファイルのコピーに失敗しました (%s -> %s): %w", resource.SrcPath, dstPath, err)
+		}
+	}
+	return nil
 }
 
 type commonMarkdownService interface {

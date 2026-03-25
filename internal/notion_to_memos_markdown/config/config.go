@@ -34,6 +34,7 @@ type Config struct {
 	SrcBodyDir     string
 	SrcResourceDir string
 	OutDir         string
+	OutResourceDir string
 	TargetStr      string
 	ConNumberStart int
 	ConNumberEnd   int
@@ -41,7 +42,7 @@ type Config struct {
 	Help           bool
 }
 
-func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, srcResourceDir, outDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
+func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoSrcBody bool, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir, targetStr string, conNumberStart, conNumberEnd, threshold int) (*Config, error) {
 	trimmedOperation := Operation(strings.TrimSpace(operation))
 	if trimmedOperation == "" {
 		return nil, fmt.Errorf("operation パラメータは必須です")
@@ -62,6 +63,7 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 	trimmedSrcBodyDir := strings.TrimSpace(srcBodyDir)
 	trimmedSrcResourceDir := strings.TrimSpace(srcResourceDir)
 	trimmedOutDir := strings.TrimSpace(outDir)
+	trimmedOutResourceDir := strings.TrimSpace(outResourceDir)
 	trimmedTargetStr := strings.TrimSpace(targetStr)
 
 	switch trimmedOperation {
@@ -96,6 +98,14 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 		}
 		if trimmedOutDir == "" {
 			return nil, fmt.Errorf("out-dir パラメータは必須です")
+		}
+		if trimmedPageType == PageTypeTask {
+			if trimmedSrcResourceDir == "" {
+				return nil, fmt.Errorf("src-resource-dir パラメータは必須です")
+			}
+			if trimmedOutResourceDir == "" {
+				return nil, fmt.Errorf("out-resource-dir パラメータは必須です")
+			}
 		}
 	case OperationRenameBodiesByCategoryID:
 		if trimmedPageType == "" {
@@ -168,6 +178,7 @@ func NewConfig(operation, pageType, baseURL, apiToken, category string, skipsNoS
 		SrcBodyDir:     trimmedSrcBodyDir,
 		SrcResourceDir: trimmedSrcResourceDir,
 		OutDir:         trimmedOutDir,
+		OutResourceDir: trimmedOutResourceDir,
 		TargetStr:      trimmedTargetStr,
 		ConNumberStart: conNumberStart,
 		ConNumberEnd:   conNumberEnd,
@@ -191,6 +202,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 		srcBodyDir     string
 		srcResourceDir string
 		outDir         string
+		outResourceDir string
 		targetStr      string
 		conNumberStart int
 		conNumberEnd   int
@@ -207,9 +219,10 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	parser.StringVar(&srcJSONFile, "src-json-file", "", "入力JSONファイルのパス（必須）")
 	parser.StringVar(&srcJSONFile, "src-json-path", "", "入力JSONファイルのパス（後方互換）")
 	parser.StringVar(&srcBodyDir, "src-body-dir", "", "Markdown本文ファイル群のディレクトリ（distribute-files/craft-markdown/check-body-length/grep-str/migrate-to-memosで必須）")
-	parser.StringVar(&srcResourceDir, "src-resource-dir", "", "リソースファイル群のディレクトリ（rename-bodies-by-category-id/migrate-to-memosで必須）")
+	parser.StringVar(&srcResourceDir, "src-resource-dir", "", "リソースファイル群のディレクトリ（craft-markdownのtask/rename-bodies-by-category-id/migrate-to-memosで必須）")
 	parser.StringVar(&targetStr, "target-str", "", "検索文字列（grep-strで必須）")
 	parser.StringVar(&outDir, "out-dir", "", "カテゴリ別出力先ディレクトリ（必須）")
+	parser.StringVar(&outResourceDir, "out-resource-dir", "", "リソース出力ディレクトリ（craft-markdownのtaskで必須）")
 	parser.IntVar(&conNumberStart, "con_number_start", 0, "con_id範囲の開始番号（craft-markdown/rename-bodies-by-category-idで必須）")
 	parser.IntVar(&conNumberEnd, "con_number_end", 0, "con_id範囲の終了番号（craft-markdown/rename-bodies-by-category-idで必須）")
 	parser.IntVar(&threshold, "threshold", -1, "文字数の閾値（check-body-lengthで必須、0以上）")
@@ -235,6 +248,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 		srcBodyDir,
 		srcResourceDir,
 		outDir,
+		outResourceDir,
 		targetStr,
 		conNumberStart,
 		conNumberEnd,

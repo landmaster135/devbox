@@ -18,9 +18,14 @@ func TestService_Execute_Normal(t *testing.T) {
 	tmpDir := t.TempDir()
 	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
 	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
 	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
 
 	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 	if err := os.WriteFile(srcJSONFile, []byte(`[
@@ -46,7 +51,7 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("task", "", false, 2945, 2945, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("task", "", false, 2945, 2945, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -99,9 +104,14 @@ func TestService_Execute_UsesSplitSourcesWhenExactMissing_Normal(t *testing.T) {
 	tmpDir := t.TempDir()
 	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
 	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
 	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
 
 	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 	if err := os.WriteFile(srcJSONFile, []byte(`[
@@ -124,7 +134,7 @@ func TestService_Execute_UsesSplitSourcesWhenExactMissing_Normal(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("task", "", false, 2949, 2949, srcJSONFile, srcBodyDir, outDir)
+	result, err := service.Execute("task", "", false, 2949, 2949, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -144,12 +154,212 @@ func TestService_Execute_UsesSplitSourcesWhenExactMissing_Normal(t *testing.T) {
 	}
 }
 
+func TestService_Execute_TaskResourcesRename_Normal(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
+	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002950",
+			"page_title":"Task With Resources",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002950_01.md"), []byte("first body\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002950_02.md"), []byte("second body\n"), 0644); err != nil {
+		t.Fatalf("write split body failed: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(srcResourceDir, "TK000002950_02.webp"), []byte("webp"), 0644); err != nil {
+		t.Fatalf("write resource failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcResourceDir, "TK000002950_02_01.gif"), []byte("gif"), 0644); err != nil {
+		t.Fatalf("write resource failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcResourceDir, "TK000002950_2"), []byte("noext"), 0644); err != nil {
+		t.Fatalf("write resource failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	if _, err := service.Execute("task", "", false, 2950, 2950, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expectedFiles := map[string]string{
+		"20260418105147_01_02.webp": "webp",
+		"20260418105147_02_01.gif":  "gif",
+		"20260418105147_01_02":      "noext",
+	}
+	for fileName, wantBody := range expectedFiles {
+		data, err := os.ReadFile(filepath.Join(outResourceDir, fileName))
+		if err != nil {
+			t.Fatalf("resource output missing (%s): %v", fileName, err)
+		}
+		if string(data) != wantBody {
+			t.Fatalf("resource body mismatch (%s): got=%q want=%q", fileName, string(data), wantBody)
+		}
+	}
+}
+
+func TestService_Execute_TaskResourcesInvalidName_Error(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
+	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002951",
+			"page_title":"Task Invalid Resource",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002951.md"), []byte("body\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcResourceDir, "TK000002951_bad_name.png"), []byte("ng"), 0644); err != nil {
+		t.Fatalf("write resource failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute("task", "", false, 2951, 2951, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
+	if err == nil || !strings.Contains(err.Error(), "添付ファイル名が規約外です") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_Execute_TaskResourcesMissingMarkdownIndex_Error(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
+	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002952",
+			"page_title":"Task Missing Markdown Index",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002952.md"), []byte("body\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcResourceDir, "TK000002952_02_01.png"), []byte("ng"), 0644); err != nil {
+		t.Fatalf("write resource failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute("task", "", false, 2952, 2952, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
+	if err == nil || !strings.Contains(err.Error(), "対応するTask Markdownが見つかりません") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_Execute_TaskResourcesDestinationExists_Error(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
+	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
+
+	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(outResourceDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(srcJSONFile, []byte(`[
+		{
+			"con_id":"TK000002953",
+			"page_title":"Task Destination Exists",
+			"status_id":"0198d2e4-9a5e-7165-9b5b-80fde571d270",
+			"priority":3,
+			"updated_at":"2026-04-18T10:51:47+09:00",
+			"tags":[]
+		}
+	]`), 0644); err != nil {
+		t.Fatalf("write json failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcBodyDir, "TK000002953.md"), []byte("body\n"), 0644); err != nil {
+		t.Fatalf("write body failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(srcResourceDir, "TK000002953_02.png"), []byte("src"), 0644); err != nil {
+		t.Fatalf("write resource failed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(outResourceDir, "20260418105147_01_02.png"), []byte("existing"), 0644); err != nil {
+		t.Fatalf("write existing resource failed: %v", err)
+	}
+
+	service := NewService(filesystem.NewRepository())
+	_, err := service.Execute("task", "", false, 2953, 2953, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir)
+	if err == nil || !strings.Contains(err.Error(), "添付ファイルの出力先が既に存在します") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestService_Execute_MissingSourceCanSkip(t *testing.T) {
 	t.Parallel()
 
 	tmpDir := t.TempDir()
 	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
 	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
 
 	if err := os.WriteFile(srcJSONFile, []byte(`[
 		{
@@ -163,8 +373,12 @@ func TestService_Execute_MissingSourceCanSkip(t *testing.T) {
 	]`), 0644); err != nil {
 		t.Fatalf("write json failed: %v", err)
 	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+
 	service := NewService(filesystem.NewRepository())
-	result, err := service.Execute("task", "", true, 2946, 2946, srcJSONFile, filepath.Join(tmpDir, "missing"), outDir)
+	result, err := service.Execute("task", "", true, 2946, 2946, srcJSONFile, filepath.Join(tmpDir, "missing"), srcResourceDir, outDir, outResourceDir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -179,12 +393,17 @@ func TestService_Execute_RenameCollisionIncrementsSeconds(t *testing.T) {
 	tmpDir := t.TempDir()
 	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
 	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
 	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
 
 	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 
@@ -210,7 +429,7 @@ func TestService_Execute_RenameCollisionIncrementsSeconds(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	if _, err := service.Execute("task", "", false, 2947, 2947, srcJSONFile, srcBodyDir, outDir); err != nil {
+	if _, err := service.Execute("task", "", false, 2947, 2947, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -233,12 +452,17 @@ func TestService_Execute_RenameCollisionIncrementsUntilAvailable(t *testing.T) {
 	tmpDir := t.TempDir()
 	srcJSONFile := filepath.Join(tmpDir, "tasks.json")
 	srcBodyDir := filepath.Join(tmpDir, "body")
+	srcResourceDir := filepath.Join(tmpDir, "resources")
 	outDir := filepath.Join(tmpDir, "out")
+	outResourceDir := filepath.Join(tmpDir, "out-resources")
 
 	if err := os.MkdirAll(srcBodyDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.MkdirAll(srcResourceDir, 0755); err != nil {
 		t.Fatalf("mkdir failed: %v", err)
 	}
 
@@ -269,7 +493,7 @@ func TestService_Execute_RenameCollisionIncrementsUntilAvailable(t *testing.T) {
 	}
 
 	service := NewService(filesystem.NewRepository())
-	if _, err := service.Execute("task", "", false, 2948, 2948, srcJSONFile, srcBodyDir, outDir); err != nil {
+	if _, err := service.Execute("task", "", false, 2948, 2948, srcJSONFile, srcBodyDir, srcResourceDir, outDir, outResourceDir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -302,7 +526,7 @@ func TestService_Execute_Error(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(&filesystem.MockRepository{})
-	_, err := service.Execute("content", "", false, 1, 1, "/tmp/tasks.json", "/tmp/body", "/tmp/out")
+	_, err := service.Execute("content", "", false, 1, 1, "/tmp/tasks.json", "/tmp/body", "/tmp/resources", "/tmp/out", "/tmp/out-resources")
 	if err == nil || err.Error() != "未対応のpage-typeです: content" {
 		t.Fatalf("error = %v", err)
 	}
