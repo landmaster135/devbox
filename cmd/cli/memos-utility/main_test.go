@@ -325,29 +325,50 @@ func TestNewCreateCommonMemosRelationReporter_CreateCommonMemos_Normal(t *testin
 		CurrentMemoIdentifierSource:  "name",
 		PreviousMemoIdentifier:       "memos/previous",
 		PreviousMemoIdentifierSource: "uid",
+		Attempt:                      1,
+		TotalAttempts:                3,
+		Retrying:                     false,
+	})
+	reporter(usecases.CreateCommonMemosRelationProgress{
+		Phase:                  usecases.CreateCommonMemosRelationPhaseRetry,
+		ContentFile:            "/tmp/20260316080301_03.md",
+		CurrentMemoIdentifier:  "memos/current",
+		PreviousMemoIdentifier: "memos/previous",
+		Attempt:                1,
+		TotalAttempts:          3,
+		Retrying:               true,
+		RetryAfter:             "1s",
+		ErrorMessage:           "temporary failed to get memo",
 	})
 	reporter(usecases.CreateCommonMemosRelationProgress{
 		Phase:                  usecases.CreateCommonMemosRelationPhaseOK,
 		ContentFile:            "/tmp/20260316080301_03.md",
 		CurrentMemoIdentifier:  "memos/current",
 		PreviousMemoIdentifier: "memos/previous",
+		Attempt:                2,
+		TotalAttempts:          3,
 	})
 	reporter(usecases.CreateCommonMemosRelationProgress{
 		Phase:                  usecases.CreateCommonMemosRelationPhaseError,
 		ContentFile:            "/tmp/20260316080301_03.md",
 		CurrentMemoIdentifier:  "memos/current",
 		PreviousMemoIdentifier: "memos/previous",
+		Attempt:                3,
+		TotalAttempts:          3,
 		ErrorMessage:           "relation failed",
 	})
 
 	got := stderr.String()
-	if !strings.Contains(got, "relation: [start] 20260316080301_03.md current=memos/current(from=name) previous=memos/previous(from=uid)") {
+	if !strings.Contains(got, "relation: [start] 20260316080301_03.md current=memos/current(from=name) previous=memos/previous(from=uid) attempt=1/3 retrying=false") {
 		t.Fatalf("stderr = %q, want relation start line", got)
 	}
-	if !strings.Contains(got, "relation: [ok] 20260316080301_03.md current=memos/current previous=memos/previous") {
+	if !strings.Contains(got, "relation: [retry] 20260316080301_03.md current=memos/current previous=memos/previous attempt=1/3 retry-after=1s err=temporary failed to get memo") {
+		t.Fatalf("stderr = %q, want relation retry line", got)
+	}
+	if !strings.Contains(got, "relation: [ok] 20260316080301_03.md current=memos/current previous=memos/previous attempt=2/3") {
 		t.Fatalf("stderr = %q, want relation ok line", got)
 	}
-	if !strings.Contains(got, "relation: [error] 20260316080301_03.md current=memos/current previous=memos/previous err=relation failed") {
+	if !strings.Contains(got, "relation: [error] 20260316080301_03.md current=memos/current previous=memos/previous attempt=3/3 err=relation failed") {
 		t.Fatalf("stderr = %q, want relation error line", got)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
@@ -47,6 +48,13 @@ type commonMemoTarget struct {
 	baseName    string
 	displayTime string
 }
+
+const (
+	relationAddMemoMaxAttempts      = 3
+	relationAddMemoInitialRetryWait = 1 * time.Second
+)
+
+var waitRelationRetry = waitWithContext
 
 // NewService は Service を生成する。
 func NewService(opts ServiceOptions) *Service {
@@ -172,34 +180,9 @@ func (s *Service) Execute(ctx context.Context, input common.CreateCommonMemosInp
 			continue
 		}
 		currentMemoID := memoIDByKey[target.key]
-		s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
-			Phase:                        common.CreateCommonMemosRelationPhaseStart,
-			ContentFile:                  target.contentPath,
-			CurrentMemoIdentifier:        currentMemoID.Identifier,
-			CurrentMemoIdentifierSource:  string(currentMemoID.Source),
-			PreviousMemoIdentifier:       prevMemoID.Identifier,
-			PreviousMemoIdentifierSource: string(prevMemoID.Source),
-		})
-		if _, err := s.memosService.AddMemoRelations(ctx, currentMemoID.Identifier, []string{prevMemoID.Identifier}, false); err != nil {
-			s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
-				Phase:                        common.CreateCommonMemosRelationPhaseError,
-				ContentFile:                  target.contentPath,
-				CurrentMemoIdentifier:        currentMemoID.Identifier,
-				CurrentMemoIdentifierSource:  string(currentMemoID.Source),
-				PreviousMemoIdentifier:       prevMemoID.Identifier,
-				PreviousMemoIdentifierSource: string(prevMemoID.Source),
-				ErrorMessage:                 err.Error(),
-			})
+		if err := s.addMemoRelationWithRetry(ctx, target.contentPath, currentMemoID, prevMemoID); err != nil {
 			return nil, fmt.Errorf("content-file %s の relation 追加に失敗しました: %w", target.baseName, err)
 		}
-		s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
-			Phase:                        common.CreateCommonMemosRelationPhaseOK,
-			ContentFile:                  target.contentPath,
-			CurrentMemoIdentifier:        currentMemoID.Identifier,
-			CurrentMemoIdentifierSource:  string(currentMemoID.Source),
-			PreviousMemoIdentifier:       prevMemoID.Identifier,
-			PreviousMemoIdentifierSource: string(prevMemoID.Source),
-		})
 		if result := resultByKey[target.key]; result != nil {
 			result.RelatedToPreviousBy = prevMemoID.Identifier
 		}
@@ -214,6 +197,101 @@ func (s *Service) reportRelationProgress(progress common.CreateCommonMemosRelati
 		return
 	}
 	s.relationReporter(progress)
+}
+
+func (s *Service) addMemoRelationWithRetry(
+	ctx context.Context,
+	contentPath string,
+	currentMemoID common.ResolvedMemoIdentifier,
+	prevMemoID common.ResolvedMemoIdentifier,
+) error {
+	waitDuration := relationAddMemoInitialRetryWait
+
+	for attempt := 1; attempt <= relationAddMemoMaxAttempts; attempt++ {
+		s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+			Phase:                        common.CreateCommonMemosRelationPhaseStart,
+			ContentFile:                  contentPath,
+			CurrentMemoIdentifier:        currentMemoID.Identifier,
+			CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+			PreviousMemoIdentifier:       prevMemoID.Identifier,
+			PreviousMemoIdentifierSource: string(prevMemoID.Source),
+			Attempt:                      attempt,
+			TotalAttempts:                relationAddMemoMaxAttempts,
+			Retrying:                     attempt > 1,
+		})
+
+		_, err := s.memosService.AddMemoRelations(ctx, currentMemoID.Identifier, []string{prevMemoID.Identifier}, false)
+		if err == nil {
+			s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+				Phase:                        common.CreateCommonMemosRelationPhaseOK,
+				ContentFile:                  contentPath,
+				CurrentMemoIdentifier:        currentMemoID.Identifier,
+				CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+				PreviousMemoIdentifier:       prevMemoID.Identifier,
+				PreviousMemoIdentifierSource: string(prevMemoID.Source),
+				Attempt:                      attempt,
+				TotalAttempts:                relationAddMemoMaxAttempts,
+				Retrying:                     attempt > 1,
+			})
+			return nil
+		}
+
+		if !isRetryableRelationAddError(err) || attempt == relationAddMemoMaxAttempts {
+			s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+				Phase:                        common.CreateCommonMemosRelationPhaseError,
+				ContentFile:                  contentPath,
+				CurrentMemoIdentifier:        currentMemoID.Identifier,
+				CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+				PreviousMemoIdentifier:       prevMemoID.Identifier,
+				PreviousMemoIdentifierSource: string(prevMemoID.Source),
+				Attempt:                      attempt,
+				TotalAttempts:                relationAddMemoMaxAttempts,
+				Retrying:                     attempt > 1,
+				ErrorMessage:                 err.Error(),
+			})
+			return err
+		}
+
+		s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+			Phase:                        common.CreateCommonMemosRelationPhaseRetry,
+			ContentFile:                  contentPath,
+			CurrentMemoIdentifier:        currentMemoID.Identifier,
+			CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+			PreviousMemoIdentifier:       prevMemoID.Identifier,
+			PreviousMemoIdentifierSource: string(prevMemoID.Source),
+			Attempt:                      attempt,
+			TotalAttempts:                relationAddMemoMaxAttempts,
+			Retrying:                     true,
+			RetryAfter:                   waitDuration.String(),
+			ErrorMessage:                 err.Error(),
+		})
+		if err := waitRelationRetry(ctx, waitDuration); err != nil {
+			return err
+		}
+		waitDuration *= 2
+	}
+
+	return fmt.Errorf("relation 追加の試行回数が上限に達しました")
+}
+
+func isRetryableRelationAddError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errorMessage := strings.ToLower(err.Error())
+	return strings.Contains(errorMessage, "status=500") && strings.Contains(errorMessage, "failed to get memo")
+}
+
+func waitWithContext(ctx context.Context, duration time.Duration) error {
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func (s *Service) precheckAttachmentFiles(attachments []string) error {

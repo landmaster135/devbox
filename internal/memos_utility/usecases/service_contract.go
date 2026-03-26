@@ -27,6 +27,7 @@ type CreateCommonMemosRelationProgress = common.CreateCommonMemosRelationProgres
 
 const (
 	CreateCommonMemosRelationPhaseStart = common.CreateCommonMemosRelationPhaseStart
+	CreateCommonMemosRelationPhaseRetry = common.CreateCommonMemosRelationPhaseRetry
 	CreateCommonMemosRelationPhaseOK    = common.CreateCommonMemosRelationPhaseOK
 	CreateCommonMemosRelationPhaseError = common.CreateCommonMemosRelationPhaseError
 )

@@ -13,6 +13,7 @@
   - `attachment-dir` 指定時は `YYYYMMDDhhmmss_<number>_<index>.<extension>` を content ごとに紐付けて添付
   - 全メモ作成後、同一 timestamp 内で `<number>-1` が存在する場合のみ `add-memo-relations(replaces=false)` を追加
   - relation 追加時は `stderr` に `current/previous` の採用識別子と採用元（name/uid/id）を出力
+  - relation 追加で `status=500` かつ `failed to get memo` が返る一時エラー時は最大3回まで自動リトライ（1s, 2s）
 
 作成時の固定値:
 - `visibility=PRIVATE`
@@ -125,8 +126,10 @@ go run ./cmd/cli/memos-utility \
   -attachment-dir=/tmp/common-attachments
 
 # stderr（relation ログ例）
-# relation: [start] 20260316080301_03.md current=memos/20260316080301_03(from=name) previous=memos/20260316080301_02(from=name)
-# relation: [ok] 20260316080301_03.md current=memos/20260316080301_03 previous=memos/20260316080301_02
+# relation: [start] 20260316080301_03.md current=memos/20260316080301_03(from=name) previous=memos/20260316080301_02(from=name) attempt=1/3 retrying=false
+# relation: [retry] 20260316080301_03.md current=memos/20260316080301_03 previous=memos/20260316080301_02 attempt=1/3 retry-after=1s err=Memos API PATCH /memos/20260316080301_03/relations が失敗しました: status=500 body={"code":13,"message":"failed to get memo","details":[]}
+# relation: [start] 20260316080301_03.md current=memos/20260316080301_03(from=name) previous=memos/20260316080301_02(from=name) attempt=2/3 retrying=true
+# relation: [ok] 20260316080301_03.md current=memos/20260316080301_03 previous=memos/20260316080301_02 attempt=2/3
 ```
 
 ## 出力例

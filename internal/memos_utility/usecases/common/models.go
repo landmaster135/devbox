@@ -45,6 +45,7 @@ type CreateClipsProgress struct {
 
 const (
 	CreateCommonMemosRelationPhaseStart = "start"
+	CreateCommonMemosRelationPhaseRetry = "retry"
 	CreateCommonMemosRelationPhaseOK    = "ok"
 	CreateCommonMemosRelationPhaseError = "error"
 )
@@ -57,6 +58,10 @@ type CreateCommonMemosRelationProgress struct {
 	CurrentMemoIdentifierSource  string
 	PreviousMemoIdentifier       string
 	PreviousMemoIdentifierSource string
+	Attempt                      int
+	TotalAttempts                int
+	Retrying                     bool
+	RetryAfter                   string
 	ErrorMessage                 string
 }
 

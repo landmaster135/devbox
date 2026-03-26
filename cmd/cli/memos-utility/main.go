@@ -125,41 +125,61 @@ func newCreateCommonMemosRelationReporter(conf *cfg.Config, stderr io.Writer) fu
 
 	return func(progress usecases.CreateCommonMemosRelationProgress) {
 		contentFile := filepath.Base(progress.ContentFile)
+		attemptSuffix := ""
+		if progress.Attempt > 0 && progress.TotalAttempts > 0 {
+			attemptSuffix = fmt.Sprintf(" attempt=%d/%d", progress.Attempt, progress.TotalAttempts)
+		}
 		switch progress.Phase {
 		case usecases.CreateCommonMemosRelationPhaseStart:
 			fmt.Fprintf(
 				stderr,
-				"relation: [start] %s current=%s(from=%s) previous=%s(from=%s)\n",
+				"relation: [start] %s current=%s(from=%s) previous=%s(from=%s)%s retrying=%t\n",
 				contentFile,
 				progress.CurrentMemoIdentifier,
 				progress.CurrentMemoIdentifierSource,
 				progress.PreviousMemoIdentifier,
 				progress.PreviousMemoIdentifierSource,
+				attemptSuffix,
+				progress.Retrying,
+			)
+		case usecases.CreateCommonMemosRelationPhaseRetry:
+			fmt.Fprintf(
+				stderr,
+				"relation: [retry] %s current=%s previous=%s%s retry-after=%s err=%s\n",
+				contentFile,
+				progress.CurrentMemoIdentifier,
+				progress.PreviousMemoIdentifier,
+				attemptSuffix,
+				progress.RetryAfter,
+				progress.ErrorMessage,
 			)
 		case usecases.CreateCommonMemosRelationPhaseOK:
 			fmt.Fprintf(
 				stderr,
-				"relation: [ok] %s current=%s previous=%s\n",
+				"relation: [ok] %s current=%s previous=%s%s\n",
 				contentFile,
 				progress.CurrentMemoIdentifier,
 				progress.PreviousMemoIdentifier,
+				attemptSuffix,
 			)
 		case usecases.CreateCommonMemosRelationPhaseError:
 			fmt.Fprintf(
 				stderr,
-				"relation: [error] %s current=%s previous=%s err=%s\n",
+				"relation: [error] %s current=%s previous=%s%s err=%s\n",
 				contentFile,
 				progress.CurrentMemoIdentifier,
 				progress.PreviousMemoIdentifier,
+				attemptSuffix,
 				progress.ErrorMessage,
 			)
 		default:
 			fmt.Fprintf(
 				stderr,
-				"relation: [unknown] %s current=%s previous=%s\n",
+				"relation: [unknown] %s current=%s previous=%s%s\n",
 				contentFile,
 				progress.CurrentMemoIdentifier,
 				progress.PreviousMemoIdentifier,
+				attemptSuffix,
 			)
 		}
 	}

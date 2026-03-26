@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	testUtil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
@@ -173,6 +174,15 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 	if relationEvents[0].CurrentMemoIdentifierSource != "name" || relationEvents[0].PreviousMemoIdentifierSource != "name" {
 		t.Fatalf("relationEvents[0] source = (%s,%s), want (name,name)", relationEvents[0].CurrentMemoIdentifierSource, relationEvents[0].PreviousMemoIdentifierSource)
+	}
+	if relationEvents[0].Attempt != 1 || relationEvents[0].TotalAttempts != relationAddMemoMaxAttempts {
+		t.Fatalf("relationEvents[0] attempt = (%d/%d), want (1/%d)", relationEvents[0].Attempt, relationEvents[0].TotalAttempts, relationAddMemoMaxAttempts)
+	}
+	if relationEvents[0].Retrying {
+		t.Fatal("relationEvents[0].Retrying = true, want false")
+	}
+	if relationEvents[1].Attempt != 1 || relationEvents[1].TotalAttempts != relationAddMemoMaxAttempts {
+		t.Fatalf("relationEvents[1] attempt = (%d/%d), want (1/%d)", relationEvents[1].Attempt, relationEvents[1].TotalAttempts, relationAddMemoMaxAttempts)
 	}
 
 	if result.Memos[1].RelatedToPreviousBy != "memos/20260316080301_01" {
@@ -457,5 +467,144 @@ func TestService_ExecuteAddMemoRelationsFailed_Error(t *testing.T) {
 	}
 	if !strings.Contains(relationEvents[1].ErrorMessage, "relation failed") {
 		t.Fatalf("relationEvents[1].ErrorMessage = %s, want relation failed", relationEvents[1].ErrorMessage)
+	}
+	if relationEvents[0].Attempt != 1 || relationEvents[1].Attempt != 1 {
+		t.Fatalf("attempts = (%d,%d), want (1,1)", relationEvents[0].Attempt, relationEvents[1].Attempt)
+	}
+}
+
+func TestService_ExecuteAddMemoRelationsRetryableThenSuccess_Normal(t *testing.T) {
+	originalWaitRelationRetry := waitRelationRetry
+	waitRelationRetry = func(ctx context.Context, duration time.Duration) error {
+		return nil
+	}
+	t.Cleanup(func() {
+		waitRelationRetry = originalWaitRelationRetry
+	})
+
+	contentDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(contentDir, "20260316080301_01.md"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile(content1) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "20260316080301_02.md"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile(content2) error = %v", err)
+	}
+
+	relationEvents := make([]common.CreateCommonMemosRelationProgress, 0, 4)
+	addMemoRelationsCalls := 0
+	service := NewService(ServiceOptions{
+		FileSystem: infrastructures.NewOSFileSystem(),
+		MemosService: &mockMemosService{
+			createMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
+				return &memos.Memo{Name: "memos/" + strings.TrimSuffix(filepath.Base(contentFile), ".md")}, nil
+			},
+			addMemoRelationsFunc: func(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*memos.AddMemoRelationsOutput, error) {
+				addMemoRelationsCalls++
+				if addMemoRelationsCalls == 1 {
+					return nil, errors.New(`Memos API PATCH /memos/example/relations が失敗しました: status=500 body={"code":13,"message":"failed to get memo","details":[]}`)
+				}
+				return &memos.AddMemoRelationsOutput{Memo: memo}, nil
+			},
+		},
+		RelationReporter: func(progress common.CreateCommonMemosRelationProgress) {
+			relationEvents = append(relationEvents, progress)
+		},
+	})
+
+	_, err := service.Execute(context.Background(), common.CreateCommonMemosInput{
+		Operation:  common.OperationCreateCommonMemos,
+		ContentDir: contentDir,
+	})
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if addMemoRelationsCalls != 2 {
+		t.Fatalf("addMemoRelationsCalls = %d, want 2", addMemoRelationsCalls)
+	}
+	if len(relationEvents) != 4 {
+		t.Fatalf("len(relationEvents) = %d, want 4", len(relationEvents))
+	}
+	if relationEvents[0].Phase != common.CreateCommonMemosRelationPhaseStart || relationEvents[0].Attempt != 1 {
+		t.Fatalf("relationEvents[0] = %#v, want start attempt=1", relationEvents[0])
+	}
+	if relationEvents[1].Phase != common.CreateCommonMemosRelationPhaseRetry || relationEvents[1].RetryAfter == "" {
+		t.Fatalf("relationEvents[1] = %#v, want retry with retryAfter", relationEvents[1])
+	}
+	if relationEvents[2].Phase != common.CreateCommonMemosRelationPhaseStart || relationEvents[2].Attempt != 2 || !relationEvents[2].Retrying {
+		t.Fatalf("relationEvents[2] = %#v, want start attempt=2 retrying=true", relationEvents[2])
+	}
+	if relationEvents[3].Phase != common.CreateCommonMemosRelationPhaseOK || relationEvents[3].Attempt != 2 {
+		t.Fatalf("relationEvents[3] = %#v, want ok attempt=2", relationEvents[3])
+	}
+}
+
+func TestService_ExecuteAddMemoRelationsRetryableMaxAttempts_Error(t *testing.T) {
+	originalWaitRelationRetry := waitRelationRetry
+	waitRelationRetry = func(ctx context.Context, duration time.Duration) error {
+		return nil
+	}
+	t.Cleanup(func() {
+		waitRelationRetry = originalWaitRelationRetry
+	})
+
+	contentDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(contentDir, "20260316080301_01.md"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile(content1) error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(contentDir, "20260316080301_02.md"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("WriteFile(content2) error = %v", err)
+	}
+
+	relationEvents := make([]common.CreateCommonMemosRelationProgress, 0, 6)
+	addMemoRelationsCalls := 0
+	service := NewService(ServiceOptions{
+		FileSystem: infrastructures.NewOSFileSystem(),
+		MemosService: &mockMemosService{
+			createMemoFunc: func(ctx context.Context, memoID string, content string, contentFile string, visibility string, state string, pinned *bool, displayTime string) (*memos.Memo, error) {
+				return &memos.Memo{Name: "memos/" + strings.TrimSuffix(filepath.Base(contentFile), ".md")}, nil
+			},
+			addMemoRelationsFunc: func(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*memos.AddMemoRelationsOutput, error) {
+				addMemoRelationsCalls++
+				return nil, errors.New(`Memos API PATCH /memos/example/relations が失敗しました: status=500 body={"code":13,"message":"failed to get memo","details":[]}`)
+			},
+		},
+		RelationReporter: func(progress common.CreateCommonMemosRelationProgress) {
+			relationEvents = append(relationEvents, progress)
+		},
+	})
+
+	_, err := service.Execute(context.Background(), common.CreateCommonMemosInput{
+		Operation:  common.OperationCreateCommonMemos,
+		ContentDir: contentDir,
+	})
+	if err == nil {
+		t.Fatal("Execute() error = nil, want error")
+	}
+	if addMemoRelationsCalls != relationAddMemoMaxAttempts {
+		t.Fatalf("addMemoRelationsCalls = %d, want %d", addMemoRelationsCalls, relationAddMemoMaxAttempts)
+	}
+	if !strings.Contains(err.Error(), "relation 追加に失敗しました") {
+		t.Fatalf("error = %v, want relation failure message", err)
+	}
+	if len(relationEvents) != 6 {
+		t.Fatalf("len(relationEvents) = %d, want 6", len(relationEvents))
+	}
+	if relationEvents[0].Phase != common.CreateCommonMemosRelationPhaseStart || relationEvents[0].Attempt != 1 {
+		t.Fatalf("relationEvents[0] = %#v, want start attempt=1", relationEvents[0])
+	}
+	if relationEvents[1].Phase != common.CreateCommonMemosRelationPhaseRetry || relationEvents[1].Attempt != 1 {
+		t.Fatalf("relationEvents[1] = %#v, want retry attempt=1", relationEvents[1])
+	}
+	if relationEvents[2].Phase != common.CreateCommonMemosRelationPhaseStart || relationEvents[2].Attempt != 2 {
+		t.Fatalf("relationEvents[2] = %#v, want start attempt=2", relationEvents[2])
+	}
+	if relationEvents[3].Phase != common.CreateCommonMemosRelationPhaseRetry || relationEvents[3].Attempt != 2 {
+		t.Fatalf("relationEvents[3] = %#v, want retry attempt=2", relationEvents[3])
+	}
+	if relationEvents[4].Phase != common.CreateCommonMemosRelationPhaseStart || relationEvents[4].Attempt != 3 {
+		t.Fatalf("relationEvents[4] = %#v, want start attempt=3", relationEvents[4])
+	}
+	if relationEvents[5].Phase != common.CreateCommonMemosRelationPhaseError || relationEvents[5].Attempt != 3 {
+		t.Fatalf("relationEvents[5] = %#v, want error attempt=3", relationEvents[5])
 	}
 }
