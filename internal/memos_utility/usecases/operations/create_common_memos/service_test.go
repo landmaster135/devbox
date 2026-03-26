@@ -67,6 +67,7 @@ func TestService_Execute_Normal(t *testing.T) {
 	patchFiles := []string(nil)
 	addRelationMemoID := ""
 	addRelationRelatedMemoID := ""
+	relationEvents := make([]common.CreateCommonMemosRelationProgress, 0, 2)
 
 	service := NewService(ServiceOptions{
 		FileSystem: infrastructures.NewOSFileSystem(),
@@ -117,6 +118,9 @@ func TestService_Execute_Normal(t *testing.T) {
 				return &memos.AddMemoRelationsOutput{Memo: memo}, nil
 			},
 		},
+		RelationReporter: func(progress common.CreateCommonMemosRelationProgress) {
+			relationEvents = append(relationEvents, progress)
+		},
 	})
 
 	result, err := service.Execute(context.Background(), common.CreateCommonMemosInput{
@@ -154,6 +158,21 @@ func TestService_Execute_Normal(t *testing.T) {
 	}
 	if addRelationRelatedMemoID != "memos/20260316080301_01" {
 		t.Fatalf("addRelationRelatedMemoID = %s, want memos/20260316080301_01", addRelationRelatedMemoID)
+	}
+	if len(relationEvents) != 2 {
+		t.Fatalf("len(relationEvents) = %d, want 2", len(relationEvents))
+	}
+	if relationEvents[0].Phase != common.CreateCommonMemosRelationPhaseStart {
+		t.Fatalf("relationEvents[0].Phase = %s, want %s", relationEvents[0].Phase, common.CreateCommonMemosRelationPhaseStart)
+	}
+	if relationEvents[1].Phase != common.CreateCommonMemosRelationPhaseOK {
+		t.Fatalf("relationEvents[1].Phase = %s, want %s", relationEvents[1].Phase, common.CreateCommonMemosRelationPhaseOK)
+	}
+	if relationEvents[0].CurrentMemoIdentifier != "memos/20260316080301_02" || relationEvents[0].PreviousMemoIdentifier != "memos/20260316080301_01" {
+		t.Fatalf("relationEvents[0] = %#v, want current/previous identifiers", relationEvents[0])
+	}
+	if relationEvents[0].CurrentMemoIdentifierSource != "name" || relationEvents[0].PreviousMemoIdentifierSource != "name" {
+		t.Fatalf("relationEvents[0] source = (%s,%s), want (name,name)", relationEvents[0].CurrentMemoIdentifierSource, relationEvents[0].PreviousMemoIdentifierSource)
 	}
 
 	if result.Memos[1].RelatedToPreviousBy != "memos/20260316080301_01" {
@@ -401,6 +420,7 @@ func TestService_ExecuteAddMemoRelationsFailed_Error(t *testing.T) {
 		t.Fatalf("WriteFile(content2) error = %v", err)
 	}
 
+	relationEvents := make([]common.CreateCommonMemosRelationProgress, 0, 2)
 	service := NewService(ServiceOptions{
 		FileSystem: infrastructures.NewOSFileSystem(),
 		MemosService: &mockMemosService{
@@ -410,6 +430,9 @@ func TestService_ExecuteAddMemoRelationsFailed_Error(t *testing.T) {
 			addMemoRelationsFunc: func(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*memos.AddMemoRelationsOutput, error) {
 				return nil, errors.New("relation failed")
 			},
+		},
+		RelationReporter: func(progress common.CreateCommonMemosRelationProgress) {
+			relationEvents = append(relationEvents, progress)
 		},
 	})
 
@@ -422,5 +445,17 @@ func TestService_ExecuteAddMemoRelationsFailed_Error(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "relation 追加に失敗しました") {
 		t.Fatalf("error = %v, want relation failure message", err)
+	}
+	if len(relationEvents) != 2 {
+		t.Fatalf("len(relationEvents) = %d, want 2", len(relationEvents))
+	}
+	if relationEvents[0].Phase != common.CreateCommonMemosRelationPhaseStart {
+		t.Fatalf("relationEvents[0].Phase = %s, want %s", relationEvents[0].Phase, common.CreateCommonMemosRelationPhaseStart)
+	}
+	if relationEvents[1].Phase != common.CreateCommonMemosRelationPhaseError {
+		t.Fatalf("relationEvents[1].Phase = %s, want %s", relationEvents[1].Phase, common.CreateCommonMemosRelationPhaseError)
+	}
+	if !strings.Contains(relationEvents[1].ErrorMessage, "relation failed") {
+		t.Fatalf("relationEvents[1].ErrorMessage = %s, want relation failed", relationEvents[1].ErrorMessage)
 	}
 }

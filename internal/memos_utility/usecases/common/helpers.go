@@ -10,6 +10,19 @@ import (
 	memos "github.com/landmaster135/devbox/internal/memos/usecases"
 )
 
+type MemoIdentifierSource string
+
+const (
+	MemoIdentifierSourceName MemoIdentifierSource = "name"
+	MemoIdentifierSourceUID  MemoIdentifierSource = "uid"
+	MemoIdentifierSourceID   MemoIdentifierSource = "id"
+)
+
+type ResolvedMemoIdentifier struct {
+	Identifier string
+	Source     MemoIdentifierSource
+}
+
 func NormalizeOperation(operation string) string {
 	return strings.ToLower(strings.TrimSpace(operation))
 }
@@ -61,21 +74,38 @@ func BuildDisplayTime(operation, contentFile string) (string, error) {
 }
 
 func ResolveMemoIdentifier(memo *memos.Memo) (string, error) {
+	resolved, err := ResolveMemoIdentifierWithSource(memo)
+	if err != nil {
+		return "", err
+	}
+	return resolved.Identifier, nil
+}
+
+func ResolveMemoIdentifierWithSource(memo *memos.Memo) (ResolvedMemoIdentifier, error) {
 	if memo == nil {
-		return "", fmt.Errorf("メモ情報が空です")
+		return ResolvedMemoIdentifier{}, fmt.Errorf("メモ情報が空です")
 	}
 
 	if memoName := strings.TrimSpace(memo.Name); memoName != "" {
-		return memoName, nil
+		return ResolvedMemoIdentifier{
+			Identifier: memoName,
+			Source:     MemoIdentifierSourceName,
+		}, nil
 	}
 	if memoUID := strings.TrimSpace(memo.UID); memoUID != "" {
-		return memoUID, nil
+		return ResolvedMemoIdentifier{
+			Identifier: memoUID,
+			Source:     MemoIdentifierSourceUID,
+		}, nil
 	}
 	if memo.ID > 0 {
-		return strconv.FormatInt(memo.ID, 10), nil
+		return ResolvedMemoIdentifier{
+			Identifier: strconv.FormatInt(memo.ID, 10),
+			Source:     MemoIdentifierSourceID,
+		}, nil
 	}
 
-	return "", fmt.Errorf("name/uid/id のいずれも取得できません")
+	return ResolvedMemoIdentifier{}, fmt.Errorf("name/uid/id のいずれも取得できません")
 }
 
 func ResolveContentBaseNameFromAttachment(baseName string) (string, error) {

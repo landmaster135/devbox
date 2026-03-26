@@ -78,6 +78,7 @@ func newServiceFromConfig(conf *cfg.Config, stderr io.Writer) usecases.MemosUtil
 		Timeout:                           time.Duration(conf.TimeoutSeconds) * time.Second,
 		CreateClipsProgressReporter:       newCreateClipsProgressReporter(conf, stderr),
 		CreateCommonMemosProgressReporter: newCreateCommonMemosProgressReporter(conf, stderr),
+		CreateCommonMemosRelationReporter: newCreateCommonMemosRelationReporter(conf, stderr),
 	})
 }
 
@@ -114,6 +115,53 @@ func newCreateCommonMemosProgressReporter(conf *cfg.Config, stderr io.Writer) fu
 			filepath.Base(progress.ContentFile),
 			progress.AttachmentCount,
 		)
+	}
+}
+
+func newCreateCommonMemosRelationReporter(conf *cfg.Config, stderr io.Writer) func(progress usecases.CreateCommonMemosRelationProgress) {
+	if conf.Operation != cfg.OperationCreateCommonMemos {
+		return nil
+	}
+
+	return func(progress usecases.CreateCommonMemosRelationProgress) {
+		contentFile := filepath.Base(progress.ContentFile)
+		switch progress.Phase {
+		case usecases.CreateCommonMemosRelationPhaseStart:
+			fmt.Fprintf(
+				stderr,
+				"relation: [start] %s current=%s(from=%s) previous=%s(from=%s)\n",
+				contentFile,
+				progress.CurrentMemoIdentifier,
+				progress.CurrentMemoIdentifierSource,
+				progress.PreviousMemoIdentifier,
+				progress.PreviousMemoIdentifierSource,
+			)
+		case usecases.CreateCommonMemosRelationPhaseOK:
+			fmt.Fprintf(
+				stderr,
+				"relation: [ok] %s current=%s previous=%s\n",
+				contentFile,
+				progress.CurrentMemoIdentifier,
+				progress.PreviousMemoIdentifier,
+			)
+		case usecases.CreateCommonMemosRelationPhaseError:
+			fmt.Fprintf(
+				stderr,
+				"relation: [error] %s current=%s previous=%s err=%s\n",
+				contentFile,
+				progress.CurrentMemoIdentifier,
+				progress.PreviousMemoIdentifier,
+				progress.ErrorMessage,
+			)
+		default:
+			fmt.Fprintf(
+				stderr,
+				"relation: [unknown] %s current=%s previous=%s\n",
+				contentFile,
+				progress.CurrentMemoIdentifier,
+				progress.PreviousMemoIdentifier,
+			)
+		}
 	}
 }
 

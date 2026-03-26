@@ -22,6 +22,15 @@ type CreateClipsOutput = common.CreateClipsOutput
 // CreateClipsProgress は create-clips の進捗通知情報。
 type CreateClipsProgress = common.CreateClipsProgress
 
+// CreateCommonMemosRelationProgress は create-common-memos の relation ログ通知情報。
+type CreateCommonMemosRelationProgress = common.CreateCommonMemosRelationProgress
+
+const (
+	CreateCommonMemosRelationPhaseStart = common.CreateCommonMemosRelationPhaseStart
+	CreateCommonMemosRelationPhaseOK    = common.CreateCommonMemosRelationPhaseOK
+	CreateCommonMemosRelationPhaseError = common.CreateCommonMemosRelationPhaseError
+)
+
 // CreateCommonMemosInput は create-common-memos の入力。
 type CreateCommonMemosInput = common.CreateCommonMemosInput
 

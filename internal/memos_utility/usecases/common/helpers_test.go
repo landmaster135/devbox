@@ -104,6 +104,34 @@ func TestResolveMemoIdentifier_Normal(t *testing.T) {
 	}
 }
 
+func TestResolveMemoIdentifierWithSource_Normal(t *testing.T) {
+	tests := []struct {
+		name       string
+		memo       *memos.Memo
+		wantID     string
+		wantSource MemoIdentifierSource
+	}{
+		{name: "Name", memo: &memos.Memo{Name: "memos/1"}, wantID: "memos/1", wantSource: MemoIdentifierSourceName},
+		{name: "UID", memo: &memos.Memo{UID: "uid-1"}, wantID: "uid-1", wantSource: MemoIdentifierSourceUID},
+		{name: "ID", memo: &memos.Memo{ID: 42}, wantID: "42", wantSource: MemoIdentifierSourceID},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ResolveMemoIdentifierWithSource(tt.memo)
+			if err != nil {
+				t.Fatalf("ResolveMemoIdentifierWithSource() error = %v", err)
+			}
+			if got.Identifier != tt.wantID {
+				t.Fatalf("identifier = %s, want %s", got.Identifier, tt.wantID)
+			}
+			if got.Source != tt.wantSource {
+				t.Fatalf("source = %s, want %s", got.Source, tt.wantSource)
+			}
+		})
+	}
+}
+
 func TestResolveMemoIdentifier_Error(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -119,6 +147,29 @@ func TestResolveMemoIdentifier_Error(t *testing.T) {
 			_, err := ResolveMemoIdentifier(tt.memo)
 			if err == nil {
 				t.Fatal("ResolveMemoIdentifier() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), tt.wantErrSub) {
+				t.Fatalf("error = %v, want %s", err, tt.wantErrSub)
+			}
+		})
+	}
+}
+
+func TestResolveMemoIdentifierWithSource_Error(t *testing.T) {
+	tests := []struct {
+		name       string
+		memo       *memos.Memo
+		wantErrSub string
+	}{
+		{name: "NilMemo", memo: nil, wantErrSub: "メモ情報が空です"},
+		{name: "NoIdentifier", memo: &memos.Memo{}, wantErrSub: "いずれも取得できません"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ResolveMemoIdentifierWithSource(tt.memo)
+			if err == nil {
+				t.Fatal("ResolveMemoIdentifierWithSource() error = nil, want error")
 			}
 			if !strings.Contains(err.Error(), tt.wantErrSub) {
 				t.Fatalf("error = %v, want %s", err, tt.wantErrSub)

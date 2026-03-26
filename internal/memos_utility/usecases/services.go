@@ -21,6 +21,7 @@ type ServiceOptions struct {
 	FileSystem                        infrastructures.FileSystem
 	CreateClipsProgressReporter       func(progress CreateClipsProgress)
 	CreateCommonMemosProgressReporter func(progress CreateClipsProgress)
+	CreateCommonMemosRelationReporter func(progress CreateCommonMemosRelationProgress)
 }
 
 // Service は memos-utility のユースケースを提供する。
@@ -61,6 +62,7 @@ func NewService(opts ServiceOptions) *Service {
 		MemosService:     memosService,
 		FileSystem:       fileSystem,
 		ProgressReporter: opts.CreateCommonMemosProgressReporter,
+		RelationReporter: opts.CreateCommonMemosRelationReporter,
 	})
 
 	return &Service{

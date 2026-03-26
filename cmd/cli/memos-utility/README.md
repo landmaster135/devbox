@@ -12,6 +12,7 @@
   - 処理中は `stderr` に進捗（`進捗: 現在/総数 [operation] ファイル名 (attachments=件数)`）を表示
   - `attachment-dir` 指定時は `YYYYMMDDhhmmss_<number>_<index>.<extension>` を content ごとに紐付けて添付
   - 全メモ作成後、同一 timestamp 内で `<number>-1` が存在する場合のみ `add-memo-relations(replaces=false)` を追加
+  - relation 追加時は `stderr` に `current/previous` の採用識別子と採用元（name/uid/id）を出力
 
 作成時の固定値:
 - `visibility=PRIVATE`
@@ -122,6 +123,10 @@ go run ./cmd/cli/memos-utility \
   -api-token="$MEMOS_TOKEN" \
   -content-dir=/tmp/common-memos \
   -attachment-dir=/tmp/common-attachments
+
+# stderr（relation ログ例）
+# relation: [start] 20260316080301_03.md current=memos/20260316080301_03(from=name) previous=memos/20260316080301_02(from=name)
+# relation: [ok] 20260316080301_03.md current=memos/20260316080301_03 previous=memos/20260316080301_02
 ```
 
 ## 出力例

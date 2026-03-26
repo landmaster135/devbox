@@ -307,3 +307,57 @@ func TestNewCreateCommonMemosProgressReporter_NotCreateCommonMemos_Normal(t *tes
 		t.Fatal("reporter != nil, want nil")
 	}
 }
+
+func TestNewCreateCommonMemosRelationReporter_CreateCommonMemos_Normal(t *testing.T) {
+	var stderr bytes.Buffer
+	reporter := newCreateCommonMemosRelationReporter(&cfg.Config{
+		Operation: cfg.OperationCreateCommonMemos,
+	}, &stderr)
+
+	if reporter == nil {
+		t.Fatal("reporter = nil, want non-nil")
+	}
+
+	reporter(usecases.CreateCommonMemosRelationProgress{
+		Phase:                        usecases.CreateCommonMemosRelationPhaseStart,
+		ContentFile:                  "/tmp/20260316080301_03.md",
+		CurrentMemoIdentifier:        "memos/current",
+		CurrentMemoIdentifierSource:  "name",
+		PreviousMemoIdentifier:       "memos/previous",
+		PreviousMemoIdentifierSource: "uid",
+	})
+	reporter(usecases.CreateCommonMemosRelationProgress{
+		Phase:                  usecases.CreateCommonMemosRelationPhaseOK,
+		ContentFile:            "/tmp/20260316080301_03.md",
+		CurrentMemoIdentifier:  "memos/current",
+		PreviousMemoIdentifier: "memos/previous",
+	})
+	reporter(usecases.CreateCommonMemosRelationProgress{
+		Phase:                  usecases.CreateCommonMemosRelationPhaseError,
+		ContentFile:            "/tmp/20260316080301_03.md",
+		CurrentMemoIdentifier:  "memos/current",
+		PreviousMemoIdentifier: "memos/previous",
+		ErrorMessage:           "relation failed",
+	})
+
+	got := stderr.String()
+	if !strings.Contains(got, "relation: [start] 20260316080301_03.md current=memos/current(from=name) previous=memos/previous(from=uid)") {
+		t.Fatalf("stderr = %q, want relation start line", got)
+	}
+	if !strings.Contains(got, "relation: [ok] 20260316080301_03.md current=memos/current previous=memos/previous") {
+		t.Fatalf("stderr = %q, want relation ok line", got)
+	}
+	if !strings.Contains(got, "relation: [error] 20260316080301_03.md current=memos/current previous=memos/previous err=relation failed") {
+		t.Fatalf("stderr = %q, want relation error line", got)
+	}
+}
+
+func TestNewCreateCommonMemosRelationReporter_NotCreateCommonMemos_Normal(t *testing.T) {
+	reporter := newCreateCommonMemosRelationReporter(&cfg.Config{
+		Operation: cfg.OperationCreateClips,
+	}, &bytes.Buffer{})
+
+	if reporter != nil {
+		t.Fatal("reporter != nil, want nil")
+	}
+}

@@ -43,6 +43,23 @@ type CreateClipsProgress struct {
 	AttachmentCount int
 }
 
+const (
+	CreateCommonMemosRelationPhaseStart = "start"
+	CreateCommonMemosRelationPhaseOK    = "ok"
+	CreateCommonMemosRelationPhaseError = "error"
+)
+
+// CreateCommonMemosRelationProgress は create-common-memos の relation 処理ログ通知情報。
+type CreateCommonMemosRelationProgress struct {
+	Phase                        string
+	ContentFile                  string
+	CurrentMemoIdentifier        string
+	CurrentMemoIdentifierSource  string
+	PreviousMemoIdentifier       string
+	PreviousMemoIdentifierSource string
+	ErrorMessage                 string
+}
+
 // CreateCommonMemosInput は create-common-memos の入力。
 type CreateCommonMemosInput struct {
 	Operation     string

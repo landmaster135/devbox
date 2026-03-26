@@ -25,6 +25,7 @@ type ServiceOptions struct {
 	MemosService     MemosService
 	FileSystem       infrastructures.FileSystem
 	ProgressReporter func(progress common.CreateClipsProgress)
+	RelationReporter func(progress common.CreateCommonMemosRelationProgress)
 }
 
 // Service は create-common-memos operation を扱う。
@@ -32,6 +33,7 @@ type Service struct {
 	memosService     MemosService
 	fileSystem       infrastructures.FileSystem
 	progressReporter func(progress common.CreateClipsProgress)
+	relationReporter func(progress common.CreateCommonMemosRelationProgress)
 }
 
 type commonMemoKey struct {
@@ -52,6 +54,7 @@ func NewService(opts ServiceOptions) *Service {
 		memosService:     opts.MemosService,
 		fileSystem:       opts.FileSystem,
 		progressReporter: opts.ProgressReporter,
+		relationReporter: opts.RelationReporter,
 	}
 }
 
@@ -104,7 +107,7 @@ func (s *Service) Execute(ctx context.Context, input common.CreateCommonMemosInp
 		Memos:         make([]*common.CreateCommonMemoOutput, 0, len(targets)),
 	}
 
-	memoIDByKey := make(map[commonMemoKey]string, len(targets))
+	memoIDByKey := make(map[commonMemoKey]common.ResolvedMemoIdentifier, len(targets))
 	resultByKey := make(map[commonMemoKey]*common.CreateCommonMemoOutput, len(targets))
 
 	for _, target := range targets {
@@ -137,7 +140,7 @@ func (s *Service) Execute(ctx context.Context, input common.CreateCommonMemosInp
 			return nil, fmt.Errorf("content-file %s のメモ作成結果が空です", target.baseName)
 		}
 
-		memoID, err := common.ResolveMemoIdentifier(memo)
+		memoID, err := common.ResolveMemoIdentifierWithSource(memo)
 		if err != nil {
 			return nil, fmt.Errorf("content-file %s のメモ識別子を取得できません: %w", target.baseName, err)
 		}
@@ -150,7 +153,7 @@ func (s *Service) Execute(ctx context.Context, input common.CreateCommonMemosInp
 		}
 
 		if len(attachments) > 0 {
-			setOutput, err := s.memosService.PatchFiles(ctx, memoID, attachments, false)
+			setOutput, err := s.memosService.PatchFiles(ctx, memoID.Identifier, attachments, false)
 			if err != nil {
 				return nil, fmt.Errorf("content-file %s のメモ作成には成功しましたが、添付の追加に失敗しました: %w", target.baseName, err)
 			}
@@ -169,16 +172,48 @@ func (s *Service) Execute(ctx context.Context, input common.CreateCommonMemosInp
 			continue
 		}
 		currentMemoID := memoIDByKey[target.key]
-		if _, err := s.memosService.AddMemoRelations(ctx, currentMemoID, []string{prevMemoID}, false); err != nil {
+		s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+			Phase:                        common.CreateCommonMemosRelationPhaseStart,
+			ContentFile:                  target.contentPath,
+			CurrentMemoIdentifier:        currentMemoID.Identifier,
+			CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+			PreviousMemoIdentifier:       prevMemoID.Identifier,
+			PreviousMemoIdentifierSource: string(prevMemoID.Source),
+		})
+		if _, err := s.memosService.AddMemoRelations(ctx, currentMemoID.Identifier, []string{prevMemoID.Identifier}, false); err != nil {
+			s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+				Phase:                        common.CreateCommonMemosRelationPhaseError,
+				ContentFile:                  target.contentPath,
+				CurrentMemoIdentifier:        currentMemoID.Identifier,
+				CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+				PreviousMemoIdentifier:       prevMemoID.Identifier,
+				PreviousMemoIdentifierSource: string(prevMemoID.Source),
+				ErrorMessage:                 err.Error(),
+			})
 			return nil, fmt.Errorf("content-file %s の relation 追加に失敗しました: %w", target.baseName, err)
 		}
+		s.reportRelationProgress(common.CreateCommonMemosRelationProgress{
+			Phase:                        common.CreateCommonMemosRelationPhaseOK,
+			ContentFile:                  target.contentPath,
+			CurrentMemoIdentifier:        currentMemoID.Identifier,
+			CurrentMemoIdentifierSource:  string(currentMemoID.Source),
+			PreviousMemoIdentifier:       prevMemoID.Identifier,
+			PreviousMemoIdentifierSource: string(prevMemoID.Source),
+		})
 		if result := resultByKey[target.key]; result != nil {
-			result.RelatedToPreviousBy = prevMemoID
+			result.RelatedToPreviousBy = prevMemoID.Identifier
 		}
 	}
 
 	output.Total = len(output.Memos)
 	return output, nil
+}
+
+func (s *Service) reportRelationProgress(progress common.CreateCommonMemosRelationProgress) {
+	if s.relationReporter == nil {
+		return
+	}
+	s.relationReporter(progress)
 }
 
 func (s *Service) precheckAttachmentFiles(attachments []string) error {
