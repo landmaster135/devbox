@@ -83,6 +83,10 @@ tasks:
     desc: "Build MCP tools"
     cmds:
       - echo 'No registered command...'
+  build:zip:tools:
+    desc: "Zip compiled tool directories into pkg/bin"
+    cmds:
+      - echo 'No registered command...'
   domain:mig:new:
     desc: "Initialize resources for a new domain"
     cmds:
