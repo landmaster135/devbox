@@ -167,3 +167,23 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
   *p = value
 }
 ```
+
+### ユーザー名つき絶対パスをハードコードする
+
+`/home/user/...` のようなユーザー名つき絶対パスは、実装コード・usage・README・テストデータのいずれでも禁止します。環境依存は避けるべきです。
+
+```go
+// ❌ 間違い: 特定ユーザーに依存するパス
+fmt.Printf("  %s --agent-home-dir=/home/user/.codex\n", program)
+
+// ✅ 正しい: 実行環境に依存しない表現
+fmt.Printf("  %s --agent-home-dir=$HOME/.codex\n", program)
+```
+
+```go
+// ❌ 間違い: テストでも特定ユーザーのホームを使う
+cfg, err := NewConfig("retrieve-session", "codex", 10, "", "", "/home/user/.codex")
+
+// ✅ 正しい: 汎用パスを使う
+cfg, err := NewConfig("retrieve-session", "codex", 10, "", "", "/tmp/codex-home")
+```
