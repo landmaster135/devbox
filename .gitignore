@@ -75,7 +75,8 @@ qdrant_storage/
 
 ### binary ###
 pkg/bin/*
-bin
+!pkg/bin/.gitkeep
+/bin
 
 ### test data ###
 internal/exif_modifier/test_data/tmp/*
