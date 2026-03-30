@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -36,6 +37,7 @@ func (m *mockMemoUpdater) Execute(ctx context.Context, memo string, content stri
 func TestServiceOperationUpdateTag_Normal(t *testing.T) {
 	listCalled := 0
 	updatedContents := map[string]string{}
+	var updatedContentsMu sync.Mutex
 
 	service := New(
 		&mockMemoLister{
@@ -97,7 +99,9 @@ func TestServiceOperationUpdateTag_Normal(t *testing.T) {
 				if len(updateMask) != 1 || updateMask[0] != "content" {
 					t.Fatalf("updateMask = %v, want [content]", updateMask)
 				}
+				updatedContentsMu.Lock()
 				updatedContents[memo] = content
+				updatedContentsMu.Unlock()
 				return &common.Memo{Name: memo}, nil
 			},
 		},
