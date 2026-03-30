@@ -15,10 +15,10 @@
 リポジトリルートで実行:
 ```bash
 bash ./scripts/ops/ci/ci_test_with_logging.sh \
-  --log-file=".agents/tmp/go-test.log" \
+  --log-file="tmp/go-test.log" \
   --go-version=1.25 \
   --cov-file=coverage.out \
-  --coverage-report-file=.agents/tmp/coverage-report.txt \
+  --coverage-report-file=tmp/coverage-report.txt \
   --image-tag=devbox-ci-test:local \
   --run-context=local
 ```
@@ -33,7 +33,7 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 workflow `/.github/workflows/test_integration.yml` では以下の流れです。
 ```bash
 bash ./scripts/ops/ci/ci_test_with_logging.sh \
-  --log-file="${GITHUB_WORKSPACE}/.agents/tmp/go-test.log" \
+  --log-file="${GITHUB_WORKSPACE}/tmp/go-test.log" \
   --go-version="${GO_VERSION}" \
   --cov-file="${COV_FILE}" \
   --coverage-report-file="${COV_REPORT_FILE}" \

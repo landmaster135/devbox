@@ -6,10 +6,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 CI_TEST_SCRIPT="${SCRIPT_DIR}/ci_test.sh"
 
-LOG_FILE="${ROOT_DIR}/.agents/tmp/go-test.log"
+LOG_FILE="${ROOT_DIR}/tmp/go-test.log"
 GO_VERSION="${GO_VERSION:-1.25}"
 COV_FILE="${COV_FILE:-coverage.out}"
-COVERAGE_REPORT_FILE="${COVERAGE_REPORT_FILE:-.agents/tmp/coverage-report.txt}"
+COVERAGE_REPORT_FILE="${COVERAGE_REPORT_FILE:-tmp/coverage-report.txt}"
 IMAGE_TAG="${CI_TEST_IMAGE_TAG:-devbox-ci-go${GO_VERSION}}"
 RUN_CONTEXT="${RUN_CONTEXT:-auto}"
 CONTEXT_LINES=10
