@@ -23,7 +23,8 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
   --log-file="$HOME/devbox/.agents/tmp/go-test.log" \
   --go-version=1.25 \
   --cov-file=coverage.out \
-  --image-tag=devbox-ci-test:local
+  --image-tag=devbox-ci-test:local \
+  --run-context=local
 ```
 
 カバレッジ表示:
@@ -49,8 +50,11 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
   --log-file="${GITHUB_WORKSPACE}/.agents/tmp/go-test.log" \
   --go-version="${GO_VERSION}" \
   --cov-file="${COV_FILE}" \
-  --image-tag="devbox-ci-test:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+  --image-tag="devbox-ci-test:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+  --run-context="github-actions"
 ```
+
+`--run-context` は `local` / `github-actions` / `auto` を指定できます。`local` の場合のみ、既知の失敗テスト名をバイネームで許容します。
 
 ## 失敗時ログの見方
 
@@ -60,8 +64,14 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 - `==================== FAILURE SUMMARY END ====================`
 - `==================== FAILURE CONTEXT START ====================`
 - `==================== FAILURE CONTEXT END ====================`
+- `==================== LOCAL FAILURE FILTER START ====================`
+- `==================== LOCAL FAILURE FILTER END ====================`
+- `==================== FINAL RESULT START ====================`
+- `==================== FINAL RESULT END ====================`
 
 まず `FAILURE SUMMARY` を見て失敗テスト名や `panic` を確認し、次に `FAILURE CONTEXT` で前後行を確認してください。
+ローカル実行で既知失敗フィルタが動いた場合は `filter-result` に `PASS local known failures only` または `FAIL unknown failures remain` が表示されます。
+最終的な成否は `FINAL RESULT` の `overall-result` で判定できます。
 
 ## よくある失敗
 
