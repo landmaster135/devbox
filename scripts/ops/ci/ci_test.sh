@@ -114,6 +114,7 @@ function run_tests() {
   mount_flags=(
     -v "${ROOT_DIR}:${ROOT_DIR}"
   )
+  mounted_dirs["${ROOT_DIR}"]=1
 
   passthrough_vars=(
     GOOGLE_APPLICATION_CREDENTIALS
@@ -137,6 +138,10 @@ function run_tests() {
     path_value="${!path_var:-}"
     if [[ -n "${path_value}" ]]; then
       path_dir="$(dirname "${path_value}")"
+      # ROOT_DIR は既に丸ごと mount 済みなので、配下パスの重複 mount を避ける
+      if [[ "${path_dir}" == "${ROOT_DIR}" || "${path_dir}" == "${ROOT_DIR}/"* ]]; then
+        continue
+      fi
       if [[ -d "${path_dir}" && -z "${mounted_dirs["${path_dir}"]:-}" ]]; then
         mount_flags+=(-v "${path_dir}:${path_dir}:ro")
         mounted_dirs["${path_dir}"]=1
