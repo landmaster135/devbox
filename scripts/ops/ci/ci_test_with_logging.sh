@@ -9,6 +9,7 @@ CI_TEST_SCRIPT="${SCRIPT_DIR}/ci_test.sh"
 LOG_FILE="${ROOT_DIR}/.agents/tmp/go-test.log"
 GO_VERSION="${GO_VERSION:-1.25}"
 COV_FILE="${COV_FILE:-coverage.out}"
+COVERAGE_REPORT_FILE="${COVERAGE_REPORT_FILE:-.agents/tmp/coverage-report.txt}"
 IMAGE_TAG="${CI_TEST_IMAGE_TAG:-devbox-ci-go${GO_VERSION}}"
 RUN_CONTEXT="${RUN_CONTEXT:-auto}"
 CONTEXT_LINES=10
@@ -31,6 +32,8 @@ options:
   --log-file PATH       ログ保存先 (default: ${LOG_FILE})
   --go-version VERSION  Goバージョン (default: ${GO_VERSION})
   --cov-file PATH       coverprofile 出力先 (default: ${COV_FILE})
+  --coverage-report-file PATH
+                       go tool cover -func レポート出力先 (default: ${COVERAGE_REPORT_FILE})
   --image-tag TAG       Docker image tag (default: ${IMAGE_TAG})
   --run-context VALUE   実行コンテキスト local|github-actions|auto (default: ${RUN_CONTEXT})
   --context-lines N     一致行の前後表示行数 (default: ${CONTEXT_LINES})
@@ -89,6 +92,14 @@ function parse_args() {
         CONTEXT_LINES="${1#*=}"
         shift
         ;;
+      --coverage-report-file=*)
+        COVERAGE_REPORT_FILE="${1#*=}"
+        shift
+        ;;
+      --coverage-report-file)
+        COVERAGE_REPORT_FILE="${2:-}"
+        shift 2
+        ;;
       --context-lines)
         CONTEXT_LINES="${2:-}"
         shift 2
@@ -101,7 +112,7 @@ function parse_args() {
     esac
   done
 
-  if [[ -z "${LOG_FILE}" || -z "${GO_VERSION}" || -z "${COV_FILE}" || -z "${IMAGE_TAG}" || -z "${RUN_CONTEXT}" ]]; then
+  if [[ -z "${LOG_FILE}" || -z "${GO_VERSION}" || -z "${COV_FILE}" || -z "${COVERAGE_REPORT_FILE}" || -z "${IMAGE_TAG}" || -z "${RUN_CONTEXT}" ]]; then
     echo "empty option value is not allowed" >&2
     exit 1
   fi
@@ -292,6 +303,14 @@ function resolve_coverage_file_path() {
   echo "${ROOT_DIR}/${COV_FILE}"
 }
 
+function resolve_coverage_report_path() {
+  if [[ "${COVERAGE_REPORT_FILE}" = /* ]]; then
+    echo "${COVERAGE_REPORT_FILE}"
+    return
+  fi
+  echo "${ROOT_DIR}/${COVERAGE_REPORT_FILE}"
+}
+
 function resolve_module_path() {
   (
     cd "${ROOT_DIR}" && go list -m -f '{{.Path}}' 2>/dev/null
@@ -309,16 +328,48 @@ function build_module_coverage_profile() {
   } > "${out_path}"
 }
 
-function print_coverage_total() {
-  local cov_path=""
-  local total_percent=""
+function generate_coverage_report() {
+  local cov_path="$1"
+  local report_path="$2"
   local module_path=""
+  local source_cov_path=""
   local filtered_cov_path=""
 
+  mkdir -p "$(dirname "${report_path}")"
+  module_path="$(resolve_module_path)"
+  source_cov_path="${cov_path}"
+
+  if [[ -n "${module_path}" ]]; then
+    filtered_cov_path="$(mktemp)"
+    build_module_coverage_profile "${cov_path}" "${module_path}" "${filtered_cov_path}"
+    if [[ "$(wc -l < "${filtered_cov_path}")" -gt 1 ]]; then
+      source_cov_path="${filtered_cov_path}"
+    fi
+  fi
+
+  if ! go tool cover -func="${source_cov_path}" > "${report_path}" 2>/dev/null; then
+    if [[ -n "${filtered_cov_path}" ]]; then
+      rm -f "${filtered_cov_path}"
+    fi
+    return 1
+  fi
+
+  if [[ -n "${filtered_cov_path}" ]]; then
+    rm -f "${filtered_cov_path}"
+  fi
+}
+
+function print_coverage_total() {
+  local cov_path=""
+  local report_path=""
+  local total_percent=""
+
   cov_path="$(resolve_coverage_file_path)"
+  report_path="$(resolve_coverage_report_path)"
   print_marker "COVERAGE TOTAL START"
   echo "[run-context] ${RUN_CONTEXT}"
   echo "[coverage-file] ${cov_path}"
+  echo "[coverage-report-file] ${report_path}"
 
   if [[ ! -f "${cov_path}" ]]; then
     echo "[coverage-total] unavailable file not found"
@@ -326,17 +377,12 @@ function print_coverage_total() {
     return
   fi
 
-  module_path="$(resolve_module_path)"
-  if [[ -n "${module_path}" ]]; then
-    filtered_cov_path="$(mktemp)"
-    build_module_coverage_profile "${cov_path}" "${module_path}" "${filtered_cov_path}"
-    total_percent="$(go tool cover -func="${filtered_cov_path}" 2>/dev/null | awk '/^total:/{print $NF}' || true)"
-    rm -f "${filtered_cov_path}"
+  if generate_coverage_report "${cov_path}" "${report_path}"; then
+    total_percent="$(awk '/^total:/{print $NF}' "${report_path}" || true)"
+  else
+    total_percent=""
   fi
 
-  if [[ -z "${total_percent}" ]]; then
-    total_percent="$(go tool cover -func="${cov_path}" 2>/dev/null | awk '/^total:/{print $NF}' || true)"
-  fi
   if [[ -z "${total_percent}" ]]; then
     echo "[coverage-total] unavailable failed to parse total"
   else

@@ -20,9 +20,10 @@
 
 ```bash
 bash ./scripts/ops/ci/ci_test_with_logging.sh \
-  --log-file="$HOME/devbox/.agents/tmp/go-test.log" \
+  --log-file=".agents/tmp/go-test.log" \
   --go-version=1.25 \
   --cov-file=coverage.out \
+  --coverage-report-file=.agents/tmp/coverage-report.txt \
   --image-tag=devbox-ci-test:local \
   --run-context=local
 ```
@@ -30,7 +31,7 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 カバレッジ表示:
 
 ```bash
-go tool cover -func=coverage.out | awk '/^total:/{print $0}'
+awk '/^total:/{print $0}' ".agents/tmp/coverage-report.txt"
 ```
 
 ## GitHub Actionsで実行する
@@ -50,6 +51,7 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
   --log-file="${GITHUB_WORKSPACE}/.agents/tmp/go-test.log" \
   --go-version="${GO_VERSION}" \
   --cov-file="${COV_FILE}" \
+  --coverage-report-file="${COV_REPORT_FILE}" \
   --image-tag="devbox-ci-test:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
   --run-context="github-actions"
 ```
@@ -72,7 +74,8 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 まず `FAILURE SUMMARY` を見て失敗テスト名や `panic` を確認し、次に `FAILURE CONTEXT` で前後行を確認してください。
 ローカル実行で既知失敗フィルタが動いた場合は `filter-result` に `PASS local known failures only` または `FAIL unknown failures remain` が表示されます。
 最終的な成否は `FINAL RESULT` の `overall-result` で判定できます。
-さらに `COVERAGE TOTAL` セクションで、自モジュール `go list -m` 配下のみを対象にした総カバレッジ `coverage-total` が表示されます。
+さらに `COVERAGE TOTAL` セクションで、自モジュール `go list -m` 配下のみを対象にした総カバレッジ `coverage-total` が表示されます。  
+この値の算出に使った `go tool cover -func` 形式のレポートは `--coverage-report-file` に保存され、coverage badge 更新でも同じファイルを使用します。
 コンソール出力では `go test` のパッケージ別カバレッジ行を非表示にして、総カバレッジ表示のみを使うようにしています。
 
 ## よくある失敗

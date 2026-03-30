@@ -8,6 +8,7 @@ permissions: write-all
 env:
   GO_VERSION: "1.25"
   COV_FILE: "coverage.out"
+  COV_REPORT_FILE: ".agents/tmp/coverage-report.txt"
   DOCS_FILE_FOR_SERVICE_IMPLEMENTATION_STATUS: "docs/project_status/service_implementation_status.md"
   GOOGLE_CLOUD_PROJECT_ID_01: "any-project"
   GCLOUD_PROJECT_NUMBER: ${{ secrets.GCLOUD_PROJECT_NUMBER }}
@@ -57,6 +58,7 @@ jobs:
             --log-file="${{ github.workspace }}/.agents/tmp/go-test.log" \
             --go-version="${{ env.GO_VERSION }}" \
             --cov-file="${{ env.COV_FILE }}" \
+            --coverage-report-file="${{ env.COV_REPORT_FILE }}" \
             --image-tag="devbox-ci-test:${{ github.run_id }}-${{ github.run_attempt }}" \
             --run-context="github-actions"
       - name: Go Coverage Badge
@@ -66,7 +68,7 @@ jobs:
             -operation=patch-badge \
             -badge-title=coverage \
             -target-file=${{ github.workspace }}/README.md \
-            -coverage-file=${{ env.COV_FILE }}
+            -coverage-file=${{ env.COV_REPORT_FILE }}
       - name: Update service implementation doc
         run: |
           go run ./cmd/cli/service-implementing-viewer/main.go \
