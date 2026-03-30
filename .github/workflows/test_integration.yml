@@ -68,7 +68,7 @@ jobs:
         run: "gcloud info"
       - name: Run Test
         run: |
-          ./scripts/ops/github_ci_logging.sh \
+          bash ./scripts/ops/github_ci_logging.sh \
             --log-file=/tmp/go-test.log \
             --error-title="go test failed" \
             --summary-title="go test failed summary" \
