@@ -68,12 +68,15 @@ jobs:
         run: "gcloud info"
       - name: Run Test
         run: |
+          set -euo pipefail
+
           bash ./scripts/ops/github_ci_logging.sh \
             --log-file=/tmp/go-test.log \
             --error-title="go test failed" \
             --summary-title="go test failed summary" \
             --context-title="go test failure contexts" \
             --context-lines=10 \
+            --failure-pattern='(^--- FAIL: )|(^panic: )|(\[build failed\])' \
             -- \
             go test -v ./... -coverpkg=./... -covermode=count -coverprofile=${{ env.COV_FILE }}
 
