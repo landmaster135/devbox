@@ -8,7 +8,6 @@ SUMMARY_TITLE="ci failed summary"
 CONTEXT_TITLE="ci failure contexts"
 CONTEXT_LINES=10
 FAILURE_PATTERN='(^--- FAIL: )|(^FAIL[[:space:]])|(^panic: )|(\[build failed\])'
-STREAM_OUTPUT=0
 COMMAND=()
 
 function show_help() {
@@ -25,7 +24,6 @@ options:
   --context-title TEXT    前後行表示グループ名 (default: ci failure contexts)
   --context-lines NUMBER  一致行の前後表示行数 (default: 10)
   --failure-pattern REGEX 失敗抽出用の正規表現
-  --stream-output         実行中ログを逐次表示する defaultはオフ
   --help                  ヘルプ表示
 EOF
 }
@@ -40,6 +38,11 @@ function check_requirements() {
       exit 1
     fi
   done
+}
+
+function print_marker() {
+  local label="$1"
+  echo "==================== ${label} ===================="
 }
 
 function parse_args() {
@@ -97,10 +100,6 @@ function parse_args() {
         FAILURE_PATTERN="${2:-}"
         shift 2
         ;;
-      --stream-output)
-        STREAM_OUTPUT=1
-        shift
-        ;;
       --)
         shift
         COMMAND=("$@")
@@ -119,7 +118,7 @@ function parse_args() {
     exit 1
   fi
 
-  if [[ -z "${LOG_FILE}" || -z "${ERROR_TITLE}" || -z "${SUMMARY_TITLE}" || -z "${CONTEXT_TITLE}" || -z "${CONTEXT_LINES}" || -z "${FAILURE_PATTERN}" || -z "${STREAM_OUTPUT}" ]]; then
+  if [[ -z "${LOG_FILE}" || -z "${ERROR_TITLE}" || -z "${SUMMARY_TITLE}" || -z "${CONTEXT_TITLE}" || -z "${CONTEXT_LINES}" || -z "${FAILURE_PATTERN}" ]]; then
     echo "empty option value is not allowed" >&2
     exit 1
   fi
@@ -129,10 +128,6 @@ function parse_args() {
     exit 1
   fi
 
-  if [[ "${STREAM_OUTPUT}" != "0" && "${STREAM_OUTPUT}" != "1" ]]; then
-    echo "--stream-output must be either 0 or 1 internally" >&2
-    exit 1
-  fi
 }
 
 function print_failure_contexts() {
@@ -189,15 +184,11 @@ function print_failure_contexts() {
 function run_with_logging() {
   local command_status=0
   local first_failure_line=""
+  local match_count=0
 
   set +e
-  if [[ "${STREAM_OUTPUT}" == "1" ]]; then
-    "${COMMAND[@]}" 2>&1 | tee "${LOG_FILE}"
-    command_status=${PIPESTATUS[0]}
-  else
-    "${COMMAND[@]}" > "${LOG_FILE}" 2>&1
-    command_status=$?
-  fi
+  "${COMMAND[@]}" 2>&1 | tee "${LOG_FILE}"
+  command_status=${PIPESTATUS[0]}
   set -e
 
   if [[ "${command_status}" -ne 0 ]]; then
@@ -208,13 +199,21 @@ function run_with_logging() {
       echo "::error title=${ERROR_TITLE}::command exited with status ${command_status}"
     fi
 
+    print_marker "FAILURE SUMMARY START"
     echo "::group::${SUMMARY_TITLE}"
     grep -E "${FAILURE_PATTERN}" "${LOG_FILE}" || true
+    match_count="$(grep -Ec "${FAILURE_PATTERN}" "${LOG_FILE}" || true)"
+    if ((match_count == 0)); then
+      echo "no lines matched failure pattern. check full log: ${LOG_FILE}"
+    fi
     echo "::endgroup::"
+    print_marker "FAILURE SUMMARY END"
 
+    print_marker "FAILURE CONTEXT START"
     echo "::group::${CONTEXT_TITLE} (+/- ${CONTEXT_LINES} lines)"
     print_failure_contexts
     echo "::endgroup::"
+    print_marker "FAILURE CONTEXT END"
     exit "${command_status}"
   fi
 }

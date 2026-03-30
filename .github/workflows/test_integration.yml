@@ -76,7 +76,6 @@ jobs:
             --summary-title="go test failed summary" \
             --context-title="go test failure contexts" \
             --context-lines=10 \
-            --failure-pattern='(^--- FAIL: )|(^panic: )|(\[build failed\])' \
             -- \
             go test -v ./... -coverpkg=./... -covermode=count -coverprofile=${{ env.COV_FILE }}
 
