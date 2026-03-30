@@ -10,14 +10,15 @@ description: エージェント用ハーネスを新規作成・改修するス�
 1. 入力情報を確認する。
 2. ユーザーから指定が無ければ、対象リポジトリのルートパスを確認する。
 3. リポジトリ構成を把握する。最低限、次を確認する。
-   - ルート直下の `AGENTS.md` の有無
-   - `docs/` の有無と主要インデックスの有無
-   - `.agents/tmp/` の有無
+  - ルート直下の `AGENTS.md` の有無
+  - `docs/` の有無と主要インデックスの有無
+  - `.agents/tmp/` の有無
 4. `AGENTS.md` が無い場合は新規作成する。存在する場合は改修案を作成する。
 5. `docs/` が無い場合はディレクトリと初期ドキュメント群を新規作成する。存在する場合は不足・重複・リンク不整合の改修案を作成する。
 6. `scripts/directory_validate.go` を実行して、ベースライン構成が満たされていることを検証する。
-7. 既存ドキュメントがある場合、改修案を `.agents/tmp` に Markdown で書き出す。
-8. 最終出力として、作成または改修案出力したファイル一覧と、次に実施すべき作業を簡潔に報告する。
+7. `scripts/empty_docs_inspection.go` を実行して、`docs/` 配下に空ファイルが無いことを検証する。
+8. 既存ドキュメントがある場合、改修案を `.agents/tmp` に Markdown で書き出す。
+9. 最終出力として、作成または改修案出力したファイル一覧と、次に実施すべき作業を簡潔に報告する。
 
 ## 基本方針
 
@@ -82,11 +83,21 @@ description: エージェント用ハーネスを新規作成・改修するス�
 次のコマンドで、`docs` 配下がベースライン構成を満たすか検証する。
 
 ```bash
-go run .config/codex/skills/agent-orchestration/skills/harness_craftsman/scripts/directory_validate.go --docs-dir <対象ディレクトリ>
+go run $HOME/.codex/skills/agent-orchestration/skills/harness_craftsman/scripts/directory_validate.go --docs-dir <対象ディレクトリ>
 ```
 
-- `<対象ディレクトリ>` には、`changelog`, `docs_management`, `exec_plans`, `project_overview`, `project_status`, `task_implementation`, `tool_implementation`, `user_prompt` が直接ぶら下がるディレクトリを指定する。
 - 検証に失敗した場合は不足項目を埋めるか、既存構成を残す判断をしたうえで `.agents/tmp/harness_doc_improvement_plan.md` に改修案として記録する。
+
+### 3.2 空ファイル検査
+
+次のコマンドで、`docs/` 配下に空ファイルが存在しないか検証する。
+
+```bash
+go run $HOME/.codex/skills/agent-orchestration/skills/harness_craftsman/scripts/empty_docs_inspection.go --docs-dir <対象ディレクトリ>
+```
+
+- 空ファイルが検出された場合は対象ファイルを修正し、再実行で `OK` を確認する。
+- 既存構成を優先して修正を保留する場合は、理由を `.agents/tmp/harness_doc_improvement_plan.md` に記録する。
 
 ### 4. 既存ドキュメントがある場合の改修案出力
 
@@ -138,5 +149,6 @@ go run .config/codex/skills/agent-orchestration/skills/harness_craftsman/scripts
 - `AGENTS.md` に詳細ルールを過度に書いていないか。
 - `docs/` の主要 index へ遷移できるか。
 - `scripts/directory_validate.go` でベースライン構成が検証済みか。
+- `scripts/empty_docs_inspection.go` で空ファイル検査が完了しているか。
 - 既存ドキュメントがある場合、`.agents/tmp/harness_doc_improvement_plan.md` が生成されているか。
 - 生成または提案したファイルの一覧を最終報告で明示したか。
