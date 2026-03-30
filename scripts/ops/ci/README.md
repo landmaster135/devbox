@@ -1,7 +1,5 @@
 ## CI実行ガイド
-
 このディレクトリは、GitHub Actions とローカルで同じ Docker ベースのテスト環境を使うためのものです。
-
 - `Dockerfile.ci`
   - CIテスト用コンテナ定義
 - `ci_test.sh`
@@ -10,14 +8,11 @@
   - `ci_test.sh` のログ保存と失敗時サマリー表示を担当
 
 ## 前提
-
 - リポジトリルート: `$HOME/devbox`
 - ローカル実行には Docker が必要
 
 ## ローカルでCI相当テストを実行する
-
 リポジトリルートで実行:
-
 ```bash
 bash ./scripts/ops/ci/ci_test_with_logging.sh \
   --log-file=".agents/tmp/go-test.log" \
@@ -28,24 +23,14 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
   --run-context=local
 ```
 
-カバレッジ表示:
-
-```bash
-awk '/^total:/{print $0}' ".agents/tmp/coverage-report.txt"
-```
-
 ## GitHub Actionsで実行する
-
 現在の `go-test-integration` は `on: push` トリガーです。
-
 1. ブランチへ push する
 2. GitHub の Actions で `go-test-integration` を開く
 3. 失敗時は `Run Test` ステップを確認する
 
 ## Run Testで実際に呼ばれるコマンド
-
 workflow `/.github/workflows/test_integration.yml` では以下の流れです。
-
 ```bash
 bash ./scripts/ops/ci/ci_test_with_logging.sh \
   --log-file="${GITHUB_WORKSPACE}/.agents/tmp/go-test.log" \
@@ -59,9 +44,7 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 `--run-context` は `local` / `github-actions` / `auto` を指定できます。`local` の場合のみ、既知の失敗テスト名をバイネームで許容します。
 
 ## 失敗時ログの見方
-
 `ci_test_with_logging.sh` は失敗時に目印を出します。
-
 - `==================== FAILURE SUMMARY START ====================`
 - `==================== FAILURE SUMMARY END ====================`
 - `==================== FAILURE CONTEXT START ====================`
@@ -80,10 +63,6 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 
 ## よくある失敗
 
-- `docker コマンドが見つかりません`
-  - Docker をインストールして起動する
-- `permission denied`
-  - スクリプトは `bash ./scripts/...` で実行する
 - `could not find default credentials`
   - GCP連携テストでADCが必要です。`google-github-actions/auth` 相当の認証情報をローカルにも設定する
 - `no lines matched failure pattern`
