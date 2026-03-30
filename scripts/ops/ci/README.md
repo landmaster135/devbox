@@ -30,7 +30,7 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 カバレッジ表示:
 
 ```bash
-go tool cover -func=coverage.out -o=coverage.out
+go tool cover -func=coverage.out | awk '/^total:/{print $0}'
 ```
 
 ## GitHub Actionsで実行する
@@ -72,6 +72,8 @@ bash ./scripts/ops/ci/ci_test_with_logging.sh \
 まず `FAILURE SUMMARY` を見て失敗テスト名や `panic` を確認し、次に `FAILURE CONTEXT` で前後行を確認してください。
 ローカル実行で既知失敗フィルタが動いた場合は `filter-result` に `PASS local known failures only` または `FAIL unknown failures remain` が表示されます。
 最終的な成否は `FINAL RESULT` の `overall-result` で判定できます。
+さらに `COVERAGE TOTAL` セクションで、自モジュール `go list -m` 配下のみを対象にした総カバレッジ `coverage-total` が表示されます。
+コンソール出力では `go test` のパッケージ別カバレッジ行を非表示にして、総カバレッジ表示のみを使うようにしています。
 
 ## よくある失敗
 

@@ -59,8 +59,6 @@ jobs:
             --cov-file="${{ env.COV_FILE }}" \
             --image-tag="devbox-ci-test:${{ github.run_id }}-${{ github.run_attempt }}" \
             --run-context="github-actions"
-
-          go tool cover -func=${{ env.COV_FILE }} -o=${{ env.COV_FILE }}
       - name: Go Coverage Badge
         if: ${{ matrix.coverage-badge }}
         run: |

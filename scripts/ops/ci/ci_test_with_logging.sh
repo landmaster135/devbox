@@ -284,6 +284,75 @@ function print_final_result() {
   print_marker "FINAL RESULT END"
 }
 
+function resolve_coverage_file_path() {
+  if [[ "${COV_FILE}" = /* ]]; then
+    echo "${COV_FILE}"
+    return
+  fi
+  echo "${ROOT_DIR}/${COV_FILE}"
+}
+
+function resolve_module_path() {
+  (
+    cd "${ROOT_DIR}" && go list -m -f '{{.Path}}' 2>/dev/null
+  ) || true
+}
+
+function build_module_coverage_profile() {
+  local cov_path="$1"
+  local module_path="$2"
+  local out_path="$3"
+
+  {
+    head -n 1 "${cov_path}"
+    rg "^${module_path}/" "${cov_path}" || true
+  } > "${out_path}"
+}
+
+function print_coverage_total() {
+  local cov_path=""
+  local total_percent=""
+  local module_path=""
+  local filtered_cov_path=""
+
+  cov_path="$(resolve_coverage_file_path)"
+  print_marker "COVERAGE TOTAL START"
+  echo "[run-context] ${RUN_CONTEXT}"
+  echo "[coverage-file] ${cov_path}"
+
+  if [[ ! -f "${cov_path}" ]]; then
+    echo "[coverage-total] unavailable file not found"
+    print_marker "COVERAGE TOTAL END"
+    return
+  fi
+
+  module_path="$(resolve_module_path)"
+  if [[ -n "${module_path}" ]]; then
+    filtered_cov_path="$(mktemp)"
+    build_module_coverage_profile "${cov_path}" "${module_path}" "${filtered_cov_path}"
+    total_percent="$(go tool cover -func="${filtered_cov_path}" 2>/dev/null | awk '/^total:/{print $NF}' || true)"
+    rm -f "${filtered_cov_path}"
+  fi
+
+  if [[ -z "${total_percent}" ]]; then
+    total_percent="$(go tool cover -func="${cov_path}" 2>/dev/null | awk '/^total:/{print $NF}' || true)"
+  fi
+  if [[ -z "${total_percent}" ]]; then
+    echo "[coverage-total] unavailable failed to parse total"
+  else
+    echo "[coverage-total] ${total_percent}"
+  fi
+  print_marker "COVERAGE TOTAL END"
+}
+
+function filter_console_output() {
+  awk '
+    /^[[:space:]]*coverage:[[:space:]][0-9.]+% of statements in \.\/\.\.\.$/ { next }
+    /^[[:space:]]*ok[[:space:]].*coverage:[[:space:]][0-9.]+% of statements in \.\/\.\.\.$/ { next }
+    { print }
+  '
+}
+
 function run_ci_test() {
   local test_status=0
   local first_failure_line=""
@@ -294,7 +363,7 @@ function run_ci_test() {
   bash "${CI_TEST_SCRIPT}" \
     --go-version="${GO_VERSION}" \
     --cov-file="${COV_FILE}" \
-    --image-tag="${IMAGE_TAG}" 2>&1 | tee "${LOG_FILE}"
+    --image-tag="${IMAGE_TAG}" 2>&1 | tee "${LOG_FILE}" | filter_console_output
   test_status=${PIPESTATUS[0]}
   set -e
 
@@ -303,6 +372,7 @@ function run_ci_test() {
       classify_failed_tests_for_local
       if should_tolerate_local_failures; then
         print_local_filter_result "PASS local known failures only"
+        print_coverage_total
         print_final_result "SUCCESS"
         echo "full test log: ${LOG_FILE}"
         return 0
@@ -338,11 +408,13 @@ function run_ci_test() {
     echo "::endgroup::"
     print_marker "FAILURE CONTEXT END"
 
+    print_coverage_total
     print_final_result "FAILURE"
     echo "full test log: ${LOG_FILE}"
     exit "${test_status}"
   fi
 
+  print_coverage_total
   print_final_result "SUCCESS"
   echo "full test log: ${LOG_FILE}"
 }
