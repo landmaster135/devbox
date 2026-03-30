@@ -324,7 +324,7 @@ function build_module_coverage_profile() {
 
   {
     head -n 1 "${cov_path}"
-    rg "^${module_path}/" "${cov_path}" || true
+    awk -v module_prefix="${module_path}/" 'NR > 1 && index($0, module_prefix) == 1 { print }' "${cov_path}"
   } > "${out_path}"
 }
 
