@@ -1,0 +1,75 @@
+## CI実行ガイド
+
+このディレクトリは、GitHub Actions とローカルで同じ Docker ベースのテスト環境を使うためのものです。
+
+- `Dockerfile.ci`
+  - CIテスト用コンテナ定義
+- `ci_test.sh`
+  - コンテナをビルドして `go test -v ./... -coverpkg=./... -covermode=count -coverprofile=...` を実行
+- `ci_test_with_logging.sh`
+  - `ci_test.sh` のログ保存と失敗時サマリー表示を担当
+
+## 前提
+
+- リポジトリルート: `$HOME/devbox`
+- ローカル実行には Docker が必要
+
+## ローカルでCI相当テストを実行する
+
+リポジトリルートで実行:
+
+```bash
+bash ./scripts/ops/ci/ci_test_with_logging.sh \
+  --log-file="$HOME/devbox/.agents/tmp/go-test.log" \
+  --go-version=1.25 \
+  --cov-file=coverage.out \
+  --image-tag=devbox-ci-test:local
+```
+
+カバレッジ表示:
+
+```bash
+go tool cover -func=coverage.out -o=coverage.out
+```
+
+## GitHub Actionsで実行する
+
+現在の `go-test-integration` は `on: push` トリガーです。
+
+1. ブランチへ push する
+2. GitHub の Actions で `go-test-integration` を開く
+3. 失敗時は `Run Test` ステップを確認する
+
+## Run Testで実際に呼ばれるコマンド
+
+workflow `/.github/workflows/test_integration.yml` では以下の流れです。
+
+```bash
+bash ./scripts/ops/ci/ci_test_with_logging.sh \
+  --log-file="${GITHUB_WORKSPACE}/.agents/tmp/go-test.log" \
+  --go-version="${GO_VERSION}" \
+  --cov-file="${COV_FILE}" \
+  --image-tag="devbox-ci-test:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+```
+
+## 失敗時ログの見方
+
+`ci_test_with_logging.sh` は失敗時に目印を出します。
+
+- `==================== FAILURE SUMMARY START ====================`
+- `==================== FAILURE SUMMARY END ====================`
+- `==================== FAILURE CONTEXT START ====================`
+- `==================== FAILURE CONTEXT END ====================`
+
+まず `FAILURE SUMMARY` を見て失敗テスト名や `panic` を確認し、次に `FAILURE CONTEXT` で前後行を確認してください。
+
+## よくある失敗
+
+- `docker コマンドが見つかりません`
+  - Docker をインストールして起動する
+- `permission denied`
+  - スクリプトは `bash ./scripts/...` で実行する
+- `could not find default credentials`
+  - GCP連携テストでADCが必要です。`google-github-actions/auth` 相当の認証情報をローカルにも設定する
+- `no lines matched failure pattern`
+  - テスト失敗以外の異常終了です。`--log-file` で指定したログ全文を確認する

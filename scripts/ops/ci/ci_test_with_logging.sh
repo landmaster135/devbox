@@ -2,47 +2,32 @@
 
 set -euo pipefail
 
-LOG_FILE="/tmp/github-ci.log"
-ERROR_TITLE="ci command failed"
-SUMMARY_TITLE="ci failed summary"
-CONTEXT_TITLE="ci failure contexts"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+CI_TEST_SCRIPT="${SCRIPT_DIR}/ci_test.sh"
+
+LOG_FILE="${ROOT_DIR}/.agents/tmp/go-test.log"
+GO_VERSION="${GO_VERSION:-1.25}"
+COV_FILE="${COV_FILE:-coverage.out}"
+IMAGE_TAG="${CI_TEST_IMAGE_TAG:-devbox-ci-go${GO_VERSION}}"
 CONTEXT_LINES=10
-FAILURE_PATTERN='(^--- FAIL: )|(^FAIL[[:space:]])|(^panic: )|(\[build failed\])'
-COMMAND=()
+FAILURE_PATTERN='(^--- FAIL: )|(^FAIL$)|(^FAIL[[:space:]])|(^panic: )|(\[build failed\])'
 
 function show_help() {
-  cat <<'EOF'
-[INFO] 任意コマンドの標準出力/標準エラーをログ保存し、失敗時に要約を表示します。
+  cat <<EOF
+[INFO] ci_test.sh の実行ログを保存し、失敗時に要約と前後文脈を表示します。
 
 使用方法:
-  ./scripts/ops/github_ci_logging.sh [options] -- <command> [args...]
+  ./scripts/ops/ci/ci_test_with_logging.sh [options]
 
 options:
-  --log-file PATH         ログ保存先 (default: /tmp/github-ci.log)
-  --error-title TEXT      GitHub annotation title (default: ci command failed)
-  --summary-title TEXT    失敗要約グループ名 (default: ci failed summary)
-  --context-title TEXT    前後行表示グループ名 (default: ci failure contexts)
-  --context-lines NUMBER  一致行の前後表示行数 (default: 10)
-  --failure-pattern REGEX 失敗抽出用の正規表現
-  --help                  ヘルプ表示
+  --log-file PATH       ログ保存先 (default: ${LOG_FILE})
+  --go-version VERSION  Goバージョン (default: ${GO_VERSION})
+  --cov-file PATH       coverprofile 出力先 (default: ${COV_FILE})
+  --image-tag TAG       Docker image tag (default: ${IMAGE_TAG})
+  --context-lines N     一致行の前後表示行数 (default: ${CONTEXT_LINES})
+  --help                ヘルプ表示
 EOF
-}
-
-function check_requirements() {
-  local required_commands=(tee grep sed wc nl cut)
-  local cmd
-
-  for cmd in "${required_commands[@]}"; do
-    if ! command -v "${cmd}" >/dev/null 2>&1; then
-      echo "required command not found: ${cmd}" >&2
-      exit 1
-    fi
-  done
-}
-
-function print_marker() {
-  local label="$1"
-  echo "==================== ${label} ===================="
 }
 
 function parse_args() {
@@ -60,28 +45,28 @@ function parse_args() {
         LOG_FILE="${2:-}"
         shift 2
         ;;
-      --error-title=*)
-        ERROR_TITLE="${1#*=}"
+      --go-version=*)
+        GO_VERSION="${1#*=}"
         shift
         ;;
-      --error-title)
-        ERROR_TITLE="${2:-}"
+      --go-version)
+        GO_VERSION="${2:-}"
         shift 2
         ;;
-      --summary-title=*)
-        SUMMARY_TITLE="${1#*=}"
+      --cov-file=*)
+        COV_FILE="${1#*=}"
         shift
         ;;
-      --summary-title)
-        SUMMARY_TITLE="${2:-}"
+      --cov-file)
+        COV_FILE="${2:-}"
         shift 2
         ;;
-      --context-title=*)
-        CONTEXT_TITLE="${1#*=}"
+      --image-tag=*)
+        IMAGE_TAG="${1#*=}"
         shift
         ;;
-      --context-title)
-        CONTEXT_TITLE="${2:-}"
+      --image-tag)
+        IMAGE_TAG="${2:-}"
         shift 2
         ;;
       --context-lines=*)
@@ -92,19 +77,6 @@ function parse_args() {
         CONTEXT_LINES="${2:-}"
         shift 2
         ;;
-      --failure-pattern=*)
-        FAILURE_PATTERN="${1#*=}"
-        shift
-        ;;
-      --failure-pattern)
-        FAILURE_PATTERN="${2:-}"
-        shift 2
-        ;;
-      --)
-        shift
-        COMMAND=("$@")
-        break
-        ;;
       *)
         echo "unknown option: $1" >&2
         show_help
@@ -113,12 +85,7 @@ function parse_args() {
     esac
   done
 
-  if [[ ${#COMMAND[@]} -eq 0 ]]; then
-    echo "command is required. use -- <command> [args...]" >&2
-    exit 1
-  fi
-
-  if [[ -z "${LOG_FILE}" || -z "${ERROR_TITLE}" || -z "${SUMMARY_TITLE}" || -z "${CONTEXT_TITLE}" || -z "${CONTEXT_LINES}" || -z "${FAILURE_PATTERN}" ]]; then
+  if [[ -z "${LOG_FILE}" || -z "${GO_VERSION}" || -z "${COV_FILE}" || -z "${IMAGE_TAG}" ]]; then
     echo "empty option value is not allowed" >&2
     exit 1
   fi
@@ -127,7 +94,29 @@ function parse_args() {
     echo "--context-lines must be a non-negative integer" >&2
     exit 1
   fi
+}
 
+function ensure_log_path() {
+  mkdir -p "$(dirname "${LOG_FILE}")"
+}
+
+function print_marker() {
+  local label="$1"
+  echo "==================== ${label} ===================="
+}
+
+function print_failure_index() {
+  echo "[failure-tests]"
+  grep -nE '^--- FAIL: ' "${LOG_FILE}" || echo "none"
+
+  echo "[failure-packages]"
+  grep -nE '^FAIL([[:space:]]+[^[:space:]]+)?([[:space:]]+\[build failed\])?$' "${LOG_FILE}" || echo "none"
+
+  echo "[panic-lines]"
+  grep -nE '^panic: ' "${LOG_FILE}" || echo "none"
+
+  echo "[build-failed-lines]"
+  grep -nE '\[build failed\]' "${LOG_FILE}" || echo "none"
 }
 
 function print_failure_contexts() {
@@ -181,47 +170,54 @@ function print_failure_contexts() {
   fi
 }
 
-function run_with_logging() {
-  local command_status=0
+function run_ci_test() {
+  local test_status=0
   local first_failure_line=""
-  local match_count=0
+
+  ensure_log_path
 
   set +e
-  "${COMMAND[@]}" 2>&1 | tee "${LOG_FILE}"
-  command_status=${PIPESTATUS[0]}
+  bash "${CI_TEST_SCRIPT}" \
+    --go-version="${GO_VERSION}" \
+    --cov-file="${COV_FILE}" \
+    --image-tag="${IMAGE_TAG}" 2>&1 | tee "${LOG_FILE}"
+  test_status=${PIPESTATUS[0]}
   set -e
 
-  if [[ "${command_status}" -ne 0 ]]; then
+  if [[ "${test_status}" -ne 0 ]]; then
     first_failure_line="$(grep -m 1 -E "${FAILURE_PATTERN}" "${LOG_FILE}" || true)"
     if [[ -n "${first_failure_line}" ]]; then
-      echo "::error title=${ERROR_TITLE}::${first_failure_line}"
+      echo "::error title=go test failed::${first_failure_line}"
     else
-      echo "::error title=${ERROR_TITLE}::command exited with status ${command_status}"
+      echo "::error title=go test failed::command exited with status ${test_status}"
     fi
 
     print_marker "FAILURE SUMMARY START"
-    echo "::group::${SUMMARY_TITLE}"
+    print_marker "FAILURE INDEX START"
+    print_failure_index
+    print_marker "FAILURE INDEX END"
+
+    echo "::group::go test failed summary"
     grep -E "${FAILURE_PATTERN}" "${LOG_FILE}" || true
-    match_count="$(grep -Ec "${FAILURE_PATTERN}" "${LOG_FILE}" || true)"
-    if ((match_count == 0)); then
-      echo "no lines matched failure pattern. check full log: ${LOG_FILE}"
-    fi
     echo "::endgroup::"
     print_marker "FAILURE SUMMARY END"
 
     print_marker "FAILURE CONTEXT START"
-    echo "::group::${CONTEXT_TITLE} (+/- ${CONTEXT_LINES} lines)"
+    echo "::group::go test failure contexts (+/- ${CONTEXT_LINES} lines)"
     print_failure_contexts
     echo "::endgroup::"
     print_marker "FAILURE CONTEXT END"
-    exit "${command_status}"
+
+    echo "full test log: ${LOG_FILE}"
+    exit "${test_status}"
   fi
+
+  echo "full test log: ${LOG_FILE}"
 }
 
 function main() {
   parse_args "$@"
-  check_requirements
-  run_with_logging
+  run_ci_test
 }
 
 main "$@"
