@@ -8,30 +8,45 @@ import (
 	"sort"
 )
 
+// Docs Directory Validator
+//
+// Usage:
+//   go run directory_validate.go --docs-dir <target-docs-dir>
+//
+// Example:
+//   go run directory_validate.go --docs-dir docs
+//   go run directory_validate.go --docs-dir /path/to/repo/docs
+
 type expectedEntry struct {
-	path       string
-	dir_name   string
+	// base_dir is a base relative path from docs-dir.
+	// Current baseline uses "." to mean direct child directories of docs-dir.
+	base_dir string
+	// dir_name is the required directory name under path.
+	dir_name string
+	// file_names are required files under dir_name.
 	file_names []string
 }
 
 // expectedLayout defines the canonical minimum docs structure.
 var expectedLayout = []expectedEntry{
-	{path: ".", dir_name: "changelog", file_names: []string{"README.md"}},
-	{path: ".", dir_name: "docs_management", file_names: []string{"index.md"}},
-	{path: ".", dir_name: "exec_plans", file_names: []string{"index.md"}},
-	{path: ".", dir_name: "project_overview", file_names: []string{"index.md"}},
-	{path: ".", dir_name: "project_status", file_names: []string{"index.md"}},
-	{path: ".", dir_name: "task_implementation", file_names: []string{"index.md"}},
-	{path: ".", dir_name: "tool_implementation", file_names: []string{"index.md"}},
-	{path: ".", dir_name: "user_prompt", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "changelog", file_names: []string{"README.md"}},
+	{base_dir: ".", dir_name: "docs_management", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "exec_plans", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "project_overview", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "project_status", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "task_implementation", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "tool_implementation", file_names: []string{"index.md"}},
+	{base_dir: ".", dir_name: "user_prompt", file_names: []string{"index.md"}},
 }
 
 func main() {
 	var docsDir string
 
+	// Parse CLI arguments.
 	flag.StringVar(&docsDir, "docs-dir", "docs", "path to docs directory")
 	flag.Parse()
 
+	// Run validation and return non-zero on failure for CI/scripting usage.
 	if err := validateLayout(docsDir); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -40,7 +55,10 @@ func main() {
 	fmt.Printf("OK: docs layout is valid: %s\n", docsDir)
 }
 
+// validateLayout verifies that required directories/files exist
+// and have expected types.
 func validateLayout(docsDir string) error {
+	// Validate docs-dir itself.
 	info, err := os.Stat(docsDir)
 	if err != nil {
 		return fmt.Errorf("failed to access docs directory %q: %w", docsDir, err)
@@ -67,10 +85,11 @@ func validateLayout(docsDir string) error {
 	return fmt.Errorf("%s", report)
 }
 
+// collectMissing returns required directories/files that do not exist.
 func collectMissing(docsDir string) []string {
 	missing := []string{}
 	for _, entry := range expectedLayout {
-		dirPath := filepath.Join(docsDir, filepath.FromSlash(entry.path), entry.dir_name)
+		dirPath := filepath.Join(docsDir, filepath.FromSlash(entry.base_dir), entry.dir_name)
 		dirRel := toRelativeSlash(docsDir, dirPath)
 		dirInfo, err := os.Stat(dirPath)
 		if os.IsNotExist(err) {
@@ -92,10 +111,11 @@ func collectMissing(docsDir string) []string {
 	return missing
 }
 
+// collectTypeMismatch returns paths where directory/file type is incorrect.
 func collectTypeMismatch(docsDir string) []string {
 	mismatch := []string{}
 	for _, entry := range expectedLayout {
-		dirPath := filepath.Join(docsDir, filepath.FromSlash(entry.path), entry.dir_name)
+		dirPath := filepath.Join(docsDir, filepath.FromSlash(entry.base_dir), entry.dir_name)
 		dirInfo, err := os.Stat(dirPath)
 		if err != nil {
 			continue
@@ -122,6 +142,7 @@ func collectTypeMismatch(docsDir string) []string {
 	return mismatch
 }
 
+// toRelativeSlash converts absolute path to docs-dir-relative slash path.
 func toRelativeSlash(baseDir string, targetPath string) string {
 	rel, err := filepath.Rel(baseDir, targetPath)
 	if err != nil {
@@ -130,6 +151,7 @@ func toRelativeSlash(baseDir string, targetPath string) string {
 	return filepath.ToSlash(rel)
 }
 
+// formatList formats validation results for readable multi-line output.
 func formatList(title string, items []string) string {
 	out := fmt.Sprintf("- %s:\n", title)
 	for _, item := range items {
