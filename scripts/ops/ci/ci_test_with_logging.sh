@@ -224,34 +224,9 @@ function is_local_allowed_failure_test() {
   return 1
 }
 
-function all_failed_tests_allowed_for_local() {
-  local test_name=""
-  local -a failed_tests=()
-
-  if grep -qE '^panic: |\[build failed\]' "${LOG_FILE}"; then
-    return 1
-  fi
-
-  mapfile -t failed_tests < <(collect_failed_test_names || true)
-  if [[ ${#failed_tests[@]} -eq 0 ]]; then
-    return 1
-  fi
-
-  for test_name in "${failed_tests[@]}"; do
-    if ! is_local_allowed_failure_test "${test_name}"; then
-      return 1
-    fi
-  done
-
-  return 0
-}
-
 function classify_failed_tests_for_local() {
   local test_name=""
   local -a failed_tests=()
-
-  LOCAL_FAILED_TESTS_ALLOWED=()
-  LOCAL_FAILED_TESTS_BLOCKED=()
 
   mapfile -t failed_tests < <(collect_failed_test_names || true)
   for test_name in "${failed_tests[@]}"; do
@@ -261,6 +236,22 @@ function classify_failed_tests_for_local() {
       LOCAL_FAILED_TESTS_BLOCKED+=("${test_name}")
     fi
   done
+}
+
+function should_tolerate_local_failures() {
+  if grep -qE '^panic: |\[build failed\]' "${LOG_FILE}"; then
+    return 1
+  fi
+
+  if [[ ${#LOCAL_FAILED_TESTS_ALLOWED[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  if [[ ${#LOCAL_FAILED_TESTS_BLOCKED[@]} -gt 0 ]]; then
+    return 1
+  fi
+
+  return 0
 }
 
 function print_local_filter_result() {
@@ -310,7 +301,7 @@ function run_ci_test() {
   if [[ "${test_status}" -ne 0 ]]; then
     if [[ "${RUN_CONTEXT}" == "local" ]]; then
       classify_failed_tests_for_local
-      if all_failed_tests_allowed_for_local; then
+      if should_tolerate_local_failures; then
         print_local_filter_result "PASS local known failures only"
         print_final_result "SUCCESS"
         echo "full test log: ${LOG_FILE}"
