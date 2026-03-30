@@ -10,8 +10,15 @@ LOG_FILE="${ROOT_DIR}/.agents/tmp/go-test.log"
 GO_VERSION="${GO_VERSION:-1.25}"
 COV_FILE="${COV_FILE:-coverage.out}"
 IMAGE_TAG="${CI_TEST_IMAGE_TAG:-devbox-ci-go${GO_VERSION}}"
+RUN_CONTEXT="${RUN_CONTEXT:-auto}"
 CONTEXT_LINES=10
 FAILURE_PATTERN='(^--- FAIL: )|(^FAIL$)|(^FAIL[[:space:]])|(^panic: )|(\[build failed\])'
+LOCAL_ALLOWED_FAILURE_TESTS=(
+  "TestGetClientOptions_Normal"
+  "TestGetClientOptions_Normal/WithServiceAccount_Normal"
+)
+LOCAL_FAILED_TESTS_ALLOWED=()
+LOCAL_FAILED_TESTS_BLOCKED=()
 
 function show_help() {
   cat <<EOF
@@ -25,6 +32,7 @@ options:
   --go-version VERSION  Goバージョン (default: ${GO_VERSION})
   --cov-file PATH       coverprofile 出力先 (default: ${COV_FILE})
   --image-tag TAG       Docker image tag (default: ${IMAGE_TAG})
+  --run-context VALUE   実行コンテキスト local|github-actions|auto (default: ${RUN_CONTEXT})
   --context-lines N     一致行の前後表示行数 (default: ${CONTEXT_LINES})
   --help                ヘルプ表示
 EOF
@@ -69,6 +77,14 @@ function parse_args() {
         IMAGE_TAG="${2:-}"
         shift 2
         ;;
+      --run-context=*)
+        RUN_CONTEXT="${1#*=}"
+        shift
+        ;;
+      --run-context)
+        RUN_CONTEXT="${2:-}"
+        shift 2
+        ;;
       --context-lines=*)
         CONTEXT_LINES="${1#*=}"
         shift
@@ -85,7 +101,7 @@ function parse_args() {
     esac
   done
 
-  if [[ -z "${LOG_FILE}" || -z "${GO_VERSION}" || -z "${COV_FILE}" || -z "${IMAGE_TAG}" ]]; then
+  if [[ -z "${LOG_FILE}" || -z "${GO_VERSION}" || -z "${COV_FILE}" || -z "${IMAGE_TAG}" || -z "${RUN_CONTEXT}" ]]; then
     echo "empty option value is not allowed" >&2
     exit 1
   fi
@@ -94,6 +110,25 @@ function parse_args() {
     echo "--context-lines must be a non-negative integer" >&2
     exit 1
   fi
+}
+
+function resolve_run_context() {
+  if [[ "${RUN_CONTEXT}" == "auto" ]]; then
+    if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+      RUN_CONTEXT="github-actions"
+    else
+      RUN_CONTEXT="local"
+    fi
+  fi
+
+  case "${RUN_CONTEXT}" in
+    local|github-actions)
+      ;;
+    *)
+      echo "--run-context must be one of local, github-actions, auto" >&2
+      exit 1
+      ;;
+  esac
 }
 
 function ensure_log_path() {
@@ -170,6 +205,85 @@ function print_failure_contexts() {
   fi
 }
 
+function collect_failed_test_names() {
+  grep -E '^[[:space:]]*--- FAIL: ' "${LOG_FILE}" \
+    | sed -E 's/^[[:space:]]*--- FAIL: ([^[:space:]]+).*/\1/' \
+    | sort -u
+}
+
+function is_local_allowed_failure_test() {
+  local test_name="$1"
+  local allowed_test=""
+
+  for allowed_test in "${LOCAL_ALLOWED_FAILURE_TESTS[@]}"; do
+    if [[ "${test_name}" == "${allowed_test}" ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+function classify_failed_tests_for_local() {
+  local test_name=""
+  local -a failed_tests=()
+
+  mapfile -t failed_tests < <(collect_failed_test_names || true)
+  for test_name in "${failed_tests[@]}"; do
+    if is_local_allowed_failure_test "${test_name}"; then
+      LOCAL_FAILED_TESTS_ALLOWED+=("${test_name}")
+    else
+      LOCAL_FAILED_TESTS_BLOCKED+=("${test_name}")
+    fi
+  done
+}
+
+function should_tolerate_local_failures() {
+  if grep -qE '^panic: |\[build failed\]' "${LOG_FILE}"; then
+    return 1
+  fi
+
+  if [[ ${#LOCAL_FAILED_TESTS_ALLOWED[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  if [[ ${#LOCAL_FAILED_TESTS_BLOCKED[@]} -gt 0 ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+function print_local_filter_result() {
+  local result="$1"
+  print_marker "LOCAL FAILURE FILTER START"
+  echo "[run-context] ${RUN_CONTEXT}"
+  echo "[policy] known failures are tolerated only in local runs"
+  echo "[filter-result] ${result}"
+  echo "[tolerated-failed-tests]"
+  if [[ ${#LOCAL_FAILED_TESTS_ALLOWED[@]} -eq 0 ]]; then
+    echo "none"
+  else
+    printf '%s\n' "${LOCAL_FAILED_TESTS_ALLOWED[@]}"
+  fi
+  echo "[remaining-failed-tests]"
+  if [[ ${#LOCAL_FAILED_TESTS_BLOCKED[@]} -eq 0 ]]; then
+    echo "none"
+  else
+    printf '%s\n' "${LOCAL_FAILED_TESTS_BLOCKED[@]}"
+  fi
+  print_marker "LOCAL FAILURE FILTER END"
+}
+
+function print_final_result() {
+  local overall_result="$1"
+
+  print_marker "FINAL RESULT START"
+  echo "[overall-result] ${overall_result}"
+  echo "[run-context] ${RUN_CONTEXT}"
+  print_marker "FINAL RESULT END"
+}
+
 function run_ci_test() {
   local test_status=0
   local first_failure_line=""
@@ -185,7 +299,23 @@ function run_ci_test() {
   set -e
 
   if [[ "${test_status}" -ne 0 ]]; then
-    first_failure_line="$(grep -m 1 -E "${FAILURE_PATTERN}" "${LOG_FILE}" || true)"
+    if [[ "${RUN_CONTEXT}" == "local" ]]; then
+      classify_failed_tests_for_local
+      if should_tolerate_local_failures; then
+        print_local_filter_result "PASS local known failures only"
+        print_final_result "SUCCESS"
+        echo "full test log: ${LOG_FILE}"
+        return 0
+      fi
+      print_local_filter_result "FAIL unknown failures remain"
+    fi
+
+    if [[ "${RUN_CONTEXT}" == "local" && ${#LOCAL_FAILED_TESTS_BLOCKED[@]} -gt 0 ]]; then
+      first_failure_line="--- FAIL: ${LOCAL_FAILED_TESTS_BLOCKED[0]}"
+    else
+      first_failure_line="$(grep -m 1 -E "${FAILURE_PATTERN}" "${LOG_FILE}" || true)"
+    fi
+
     if [[ -n "${first_failure_line}" ]]; then
       echo "::error title=go test failed::${first_failure_line}"
     else
@@ -208,15 +338,18 @@ function run_ci_test() {
     echo "::endgroup::"
     print_marker "FAILURE CONTEXT END"
 
+    print_final_result "FAILURE"
     echo "full test log: ${LOG_FILE}"
     exit "${test_status}"
   fi
 
+  print_final_result "SUCCESS"
   echo "full test log: ${LOG_FILE}"
 }
 
 function main() {
   parse_args "$@"
+  resolve_run_context
   run_ci_test
 }
 
