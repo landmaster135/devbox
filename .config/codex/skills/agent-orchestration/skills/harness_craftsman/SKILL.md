@@ -57,6 +57,29 @@ description: エージェント用ハーネスを新規作成・改修するス�
 - 既存見出し構造は維持し、リンク切れと重複記述を優先修正候補にする。
 - ルール追加が `AGENTS.md` 側に偏っている場合は、`docs/` へ移管する改修案を作る。
 
+具体例（新規作成時）。
+
+```md
+# AGENTS.md (docs マップ)
+
+## Summary
+- このファイルは入口。詳細ルールは `docs/` 側を正本とする。
+- `docs/tool_implementation/index.md`: 実装・改修手順
+- `docs/docs_management/index.md`: docs 管理ルール
+
+## Prerequisites
+- 回答は日本語で行う。
+- 詳細ルールは AGENTS.md に書きすぎない。
+
+## Quick Decision Trees
+### 「タスクに着手したい」
+- 指示書を確認したい → `.agents/tmp/instructions.md`
+```
+
+具体例（既存改修時）。
+- NG: AGENTS.md に長いコーディング規約を追記する。
+- OK: AGENTS.md には「規約は `docs/task_implementation/index.md` を参照」とだけ書く。
+
 ### 3. docs 初期整備
 
 `docs/` が無い場合は、次のような入口中心構成を作る。
