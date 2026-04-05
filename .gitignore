@@ -89,3 +89,6 @@ internal/git_diff_recorder/ai_model/*
 lib/personal/*
 !lib/personal/.gitkeep
 !lib/personal/README.md
+
+### agent ###
+.codex
