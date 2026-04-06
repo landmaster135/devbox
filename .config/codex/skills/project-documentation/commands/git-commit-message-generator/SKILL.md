@@ -1,4 +1,7 @@
-Create Git commit message in English. Remember displaying that message to user.
+---
+name: git-commit-message-generator
+description: Create Git commit message in English. Remember displaying that message to user.
+---
 
 # Git Commit Message Creation
 
