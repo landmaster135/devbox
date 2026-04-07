@@ -1,11 +1,9 @@
 ---
 name: git-commit-message-generator
-description: Create Git commit message in English. Remember displaying that message to user.
+description: Create Git commit message with tag in English. Don't use parentheses. git_dir='.' staged_only=true. Remember displaying that message to user.
 ---
 
 # Git Commit Message Creation
-
-Create Git commit message with tag. Don't use parentheses. git_dir='.' staged_only=true
 
 ## Workflow
 1. If `git_dir` directory is not provided, ask for the directory.
