@@ -105,8 +105,9 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          PREFIX_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input prefix to rename image files (e.g. yyyymmdd_00.jpg): " prefix)" || exit 1
+          PREFIX_ARG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Input prefix to rename image files (optional. press Enter to rename as xx.jpg): " \
+            --input-type text --key prefix --default "")" || exit 1
           START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input number to renumber the images  (e.g. prefix_xx.jpg): " start)" || exit 1
           SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
@@ -114,7 +115,7 @@ tasks:
             --choice-option "n|-name" --choice-option "d|-time")" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} \
-            "interactive-input から値を取得できませんでした。" "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
+            "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
 
           echo $'\n[Step 01: START]--- 画像リネームプログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \

@@ -18,6 +18,18 @@ func TestParseFlags_ExtensionsDefault_Normal(t *testing.T) {
 	}
 }
 
+func TestParseFlags_WithoutPrefix_Normal(t *testing.T) {
+	var stderr bytes.Buffer
+	config, err := parseFlags([]string{"-name"}, &stderr)
+	if err != nil {
+		t.Fatalf("parseFlags() が予期せず失敗しました: %v", err)
+	}
+
+	if config.Prefix != "" {
+		t.Errorf("prefix未指定時は空文字を期待します。実際: %q", config.Prefix)
+	}
+}
+
 func TestParseFlags_ExtensionsCustom_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	config, err := parseFlags([]string{

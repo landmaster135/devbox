@@ -61,17 +61,10 @@ type Config struct {
 
 // validateConfig は設定の妥当性を検証します
 func validateConfig(config Config, stderr io.Writer) error {
-	// プレフィックスが指定されていない場合はエラーを表示して終了
-	if config.Prefix == "" {
-		fmt.Fprintln(stderr, "エラー: プレフィックスは必須です。-prefix フラグを使用して記事番号を指定してください。")
-		fmt.Fprintln(stderr, "例: ./image-renamer -prefix \"20250507\" -time")
-		return fmt.Errorf("プレフィックスが指定されていません")
-	}
-
 	// 並び替え方法のチェック：両方ともfalseならエラー
 	if !config.SortByTime && !config.SortByName {
 		fmt.Fprintln(stderr, "エラー: -time または -name のいずれかの並べ替え方法を指定する必要があります。")
-		fmt.Fprintln(stderr, "例: ./image-renamer -prefix \"20250507\" -time")
+		fmt.Fprintln(stderr, "例: ./image-renamer -name")
 		return fmt.Errorf("並べ替え方法が指定されていません")
 	}
 
@@ -286,7 +279,7 @@ func prepareJobs(fileInfos []FileInfo, config Config) []Job {
 		serial := config.StartCount + i
 		serialStr := fmt.Sprintf(formatStr, serial)
 		ext := filepath.Ext(file.Path)
-		newName := fmt.Sprintf("%s%s%s%s", config.Prefix, config.Delimiter, serialStr, ext)
+		newName := buildRenamedFileName(config.Prefix, config.Delimiter, serialStr, ext)
 		newPath := filepath.Join(filepath.Dir(file.Path), newName)
 		jobs[i] = Job{
 			File:      file,
@@ -296,6 +289,14 @@ func prepareJobs(fileInfos []FileInfo, config Config) []Job {
 		}
 	}
 	return jobs
+}
+
+func buildRenamedFileName(prefix, delimiter, serial, ext string) string {
+	if prefix == "" {
+		return serial + ext
+	}
+
+	return prefix + delimiter + serial + ext
 }
 
 // detectRenameConflicts はリネーム前後のパス衝突を検出します
@@ -385,7 +386,11 @@ func ProcessImageRename(config Config, stdout, stderr io.Writer) (int, int, erro
 	}
 
 	fmt.Fprintf(stdout, "画像ファイルが %d 件見つかりました。\n", len(files))
-	fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
+	if config.Prefix == "" {
+		fmt.Fprintln(stdout, "プレフィックス: (なし)")
+	} else {
+		fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
+	}
 	fmt.Fprintf(stdout, "区切り文字: %s\n", config.Delimiter)
 	fmt.Fprintf(stdout, "開始番号: %d\n", config.StartCount)
 

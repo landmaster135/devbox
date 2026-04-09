@@ -29,7 +29,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
 	sortByName := flagSet.Bool("name", false, "画像ファイルをファイル名順に並べ替え")
 	sortByTime := flagSet.Bool("time", false, "画像ファイルを更新日時順に並べ替え")
-	prefix := flagSet.String("prefix", "", "記事番号のプレフィックス (必須)")
+	prefix := flagSet.String("prefix", "", "記事番号のプレフィックス (任意)")
 	delimiter := flagSet.String("delimiter", "_", "プレフィックスとシリアル番号の間の区切り文字")
 	digits := flagSet.Int("digits", 4, "シリアル番号の桁数")
 	startCount := flagSet.Int("start", 1, "リネーム操作の開始番号")

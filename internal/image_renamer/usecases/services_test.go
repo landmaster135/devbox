@@ -64,6 +64,19 @@ func TestValidateConfig_Normal(t *testing.T) {
 				Workers:    1,
 			},
 		},
+		{
+			name: "プレフィックスが空の場合も正常終了",
+			config: Config{
+				SrcDir:     tempDir,
+				SortByName: true,
+				SortByTime: false,
+				Prefix:     "",
+				Digits:     4,
+				StartCount: 1,
+				Recursive:  false,
+				Workers:    1,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -102,20 +115,6 @@ func TestValidateConfig_Error(t *testing.T) {
 		config        Config
 		expectedError string
 	}{
-		{
-			name: "プレフィックスが空の場合",
-			config: Config{
-				SrcDir:     tempDir,
-				SortByName: true,
-				SortByTime: false,
-				Prefix:     "",
-				Digits:     4,
-				StartCount: 1,
-				Recursive:  false,
-				Workers:    1,
-			},
-			expectedError: "プレフィックスが指定されていません",
-		},
 		{
 			name: "ソートフラグが両方falseの場合",
 			config: Config{
@@ -459,27 +458,37 @@ func TestPrepareJobs_Normal(t *testing.T) {
 	testCases := []struct {
 		name         string
 		startCount   int
+		prefix       string
 		expected     []int
 		expectedName []string
 	}{
 		{
 			name:         "開始番号が1の場合",
 			startCount:   1,
+			prefix:       "test",
 			expected:     []int{1, 2},
 			expectedName: []string{"test_0001.jpg", "test_0002.jpg"},
 		},
 		{
 			name:         "開始番号が10の場合",
 			startCount:   10,
+			prefix:       "test",
 			expected:     []int{10, 11},
 			expectedName: []string{"test_0010.jpg", "test_0011.jpg"},
+		},
+		{
+			name:         "プレフィックスが空の場合",
+			startCount:   1,
+			prefix:       "",
+			expected:     []int{1, 2},
+			expectedName: []string{"0001.jpg", "0002.jpg"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := Config{
-				Prefix:     "test",
+				Prefix:     tc.prefix,
 				Delimiter:  "_",
 				Digits:     4,
 				StartCount: tc.startCount,
