@@ -248,6 +248,10 @@ tasks:
     desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
     cmds:
       - task: file-maneuver:file-maneuver:filter-thumbnail-webp
+  image:rename:convert:by-2-digits:
+    desc: "image-renamerで2桁連番リネーム後にWebP変換"
+    cmds:
+      - task: image-synthesize:image-rename:by-2-digits:convert
   image:rename:convert:by-3-digits:
     desc: "image-renamerで3桁連番リネーム後にWebP変換 (Content向け)"
     cmds:

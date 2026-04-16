@@ -1,10 +1,13 @@
 package usecases
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	filesystem "github.com/landmaster135/devbox/internal/service_implementing_viewer/infrastructures/filesystem"
 )
 
 // TestServiceImplementingViewerService はServiceImplementingViewerServiceのテストクラス
@@ -108,6 +111,31 @@ func TestNewServiceImplementingViewerService_Normal(t *testing.T) {
 		if service.targetDirs[i] != expected {
 			t.Errorf("targetDirs[%d]が期待値と異なります。期待値: %s, 実際: %s", i, expected, service.targetDirs[i])
 		}
+	}
+}
+
+func TestNewServiceImplementingViewerServiceWithDependencies_Normal(t *testing.T) {
+	rootDir := "/test/root"
+	targetDirs := []string{"cli", "mcp"}
+	mockRepo := &filesystem.MockRepository{}
+
+	service := NewServiceImplementingViewerServiceWithDependencies(rootDir, targetDirs, mockRepo)
+
+	if service == nil {
+		t.Fatal("サービスがnilです")
+	}
+	if service.fileSystem != mockRepo {
+		t.Fatal("fileSystemが注入されていません")
+	}
+}
+
+func TestNewServiceImplementingViewerServiceWithDependencies_NilRepository(t *testing.T) {
+	service := NewServiceImplementingViewerServiceWithDependencies("/test/root", []string{"cli"}, nil)
+	if service == nil {
+		t.Fatal("サービスがnilです")
+	}
+	if service.fileSystem == nil {
+		t.Fatal("デフォルトRepositoryが設定されていません")
 	}
 }
 
@@ -385,5 +413,25 @@ func TestFormatAsTable_Normal(t *testing.T) {
 	// 絵文字の検証
 	if !strings.Contains(result, "✅") || !strings.Contains(result, "❌️") {
 		t.Error("結果に適切な絵文字が含まれていません")
+	}
+}
+
+func TestGetServiceImplementingStatus_ListDirectoriesError(t *testing.T) {
+	mockRepo := &filesystem.MockRepository{
+		ListDirectoriesFunc: func(path string) ([]string, error) {
+			if path == filepath.Join("/root", "cli") {
+				return nil, errors.New("read dir failed")
+			}
+			return []string{}, nil
+		},
+	}
+	service := NewServiceImplementingViewerServiceWithDependencies("/root", []string{"cli"}, mockRepo)
+
+	_, _, err := service.GetServiceImplementingStatus()
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+	if !strings.Contains(err.Error(), "ディレクトリ /root/cli の読み取りに失敗しました") {
+		t.Fatalf("エラーメッセージが期待値と異なります: %v", err)
 	}
 }

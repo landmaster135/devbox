@@ -7,6 +7,54 @@ import (
 	"strings"
 )
 
+const (
+	OperationAdd               = "add"
+	OperationSubtract          = "subtract"
+	OperationMultiply          = "multiply"
+	OperationDivide            = "divide"
+	OperationSum               = "sum"
+	OperationEvaluateLineCount = "evaluate_line_count"
+	OperationParseAPICost      = "parse-api-cost"
+	OperationPower             = "power"
+	OperationSquareRoot        = "square_root"
+	OperationFactorial         = "factorial"
+	OperationTrigonometry      = "trigonometry"
+	OperationCalculate         = "calculate"
+	OperationGetConstants      = "get_constants"
+)
+
+var supportedOperations = []string{
+	OperationAdd,
+	OperationSubtract,
+	OperationMultiply,
+	OperationDivide,
+	OperationSum,
+	OperationEvaluateLineCount,
+	OperationParseAPICost,
+	OperationPower,
+	OperationSquareRoot,
+	OperationFactorial,
+	OperationTrigonometry,
+	OperationCalculate,
+	OperationGetConstants,
+}
+
+// SupportedOperations はサポート済みoperation一覧を返す
+func SupportedOperations() []string {
+	operations := make([]string, len(supportedOperations))
+	copy(operations, supportedOperations)
+	return operations
+}
+
+func isSupportedOperation(operation string) bool {
+	for _, supported := range supportedOperations {
+		if operation == supported {
+			return true
+		}
+	}
+	return false
+}
+
 // Config は算術計算CLIの設定を保持する構造体
 type Config struct {
 	Operation  string    // 操作タイプ (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost, power, square_root, factorial, trigonometry, calculate, get_constants)
@@ -34,44 +82,36 @@ func NewConfig(operation string, x, y float64, numbers []float64, filePath strin
 	}
 
 	// 操作タイプの検証
-	validOperations := []string{"add", "subtract", "multiply", "divide", "sum", "evaluate_line_count", "parse-api-cost", "power", "square_root", "factorial", "trigonometry", "calculate", "get_constants"}
-	isValid := false
-	for _, op := range validOperations {
-		if operation == op {
-			isValid = true
-			break
-		}
-	}
-	if !isValid {
+	if !isSupportedOperation(operation) {
 		return nil, fmt.Errorf("無効な操作タイプです: %s", operation)
 	}
 
 	// 操作タイプ別の検証
 	switch operation {
-	case "add", "subtract", "multiply", "divide":
+	case OperationAdd, OperationSubtract, OperationMultiply, OperationDivide:
 		// 二項演算の場合、x, yが必要
 		// デフォルト値0.0でも計算可能なので、特別な検証は不要
-	case "sum":
+	case OperationSum:
 		if len(numbers) == 0 {
 			return nil, fmt.Errorf("sum操作には数値の配列が必要です")
 		}
-	case "evaluate_line_count":
+	case OperationEvaluateLineCount:
 		if filePath == "" {
 			return nil, fmt.Errorf("evaluate_line_count操作にはファイルパスが必要です")
 		}
 		if threshold < 0 {
 			return nil, fmt.Errorf("閾値は0以上である必要があります")
 		}
-	case "power":
+	case OperationPower:
 		// べき乗計算では base と exponent が必要
-	case "square_root":
+	case OperationSquareRoot:
 		// 平方根計算では number が必要
-	case "factorial":
+	case OperationFactorial:
 		// 階乗計算では n が必要
 		if n < 0 {
 			return nil, fmt.Errorf("階乗は負数では定義されていません")
 		}
-	case "trigonometry":
+	case OperationTrigonometry:
 		// 三角関数計算では function, angle, unit が必要
 		if function == "" {
 			return nil, fmt.Errorf("三角関数の種類が指定されていません")
@@ -79,7 +119,7 @@ func NewConfig(operation string, x, y float64, numbers []float64, filePath strin
 		if unit == "" {
 			unit = "radians" // デフォルトはラジアン
 		}
-	case "calculate":
+	case OperationCalculate:
 		// 数式評価では expression が必要
 		if expression == "" {
 			return nil, fmt.Errorf("評価する数式が指定されていません")
@@ -111,7 +151,7 @@ func NewConfigForParseApiCost(operation, filePath, textInput string) (*Config, e
 		return nil, fmt.Errorf("操作タイプが指定されていません")
 	}
 
-	if operation != "parse-api-cost" {
+	if operation != OperationParseAPICost {
 		return nil, fmt.Errorf("この関数はparse-api-cost操作専用です: %s", operation)
 	}
 
@@ -163,7 +203,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		help         = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost, power, square_root, factorial, trigonometry, calculate, get_constants)")
+	parser.StringVar(&operation, "operation", operation, fmt.Sprintf("算術操作 (%s)", strings.Join(SupportedOperations(), ", ")))
 	parser.StringVar(&operation, "o", operation, "算術操作の短縮形")
 
 	// 基本計算用のパラメータ
@@ -260,17 +300,17 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	// 残りの引数から x, y, threshold を取得（位置引数として）
 	args := parser.Args()
-	if len(args) >= 1 && operation != "sum" && operation != "evaluate_line_count" {
+	if len(args) >= 1 && operation != OperationSum && operation != OperationEvaluateLineCount {
 		if val, err := strconv.ParseFloat(args[0], 64); err == nil {
 			x = val
 		}
 	}
-	if len(args) >= 2 && operation != "sum" && operation != "evaluate_line_count" {
+	if len(args) >= 2 && operation != OperationSum && operation != OperationEvaluateLineCount {
 		if val, err := strconv.ParseFloat(args[1], 64); err == nil {
 			y = val
 		}
 	}
-	if len(args) >= 1 && operation == "evaluate_line_count" {
+	if len(args) >= 1 && operation == OperationEvaluateLineCount {
 		if val, err := strconv.Atoi(args[0]); err == nil {
 			threshold = val
 		}
@@ -291,7 +331,7 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	}
 
 	// parse-api-cost操作の場合は専用の処理を行う
-	if operation == "parse-api-cost" {
+	if operation == OperationParseAPICost {
 		return NewConfigForParseApiCost(operation, filePath, textInput)
 	}
 
@@ -324,14 +364,14 @@ func PrintUsage() {
     %s -o parse-api-cost -ti "API料金が150円掛かった。"
 
 オプション:
-  -operation, -o    算術操作 (add, subtract, multiply, divide, sum, evaluate_line_count, parse-api-cost)
+  -operation, -o    算術操作 (%s)
   -x               第一オペランド (基本計算用)
   -y               第二オペランド (基本計算用)
-  -numbers, -n     カンマ区切りの数値リスト (sum操作用)
+  -numbers, -nums  カンマ区切りの数値リスト (sum操作用)
   -file, -f        評価するファイルのパス (evaluate_line_count, parse-api-cost操作用)
   -threshold, -t   行数の閾値 (evaluate_line_count操作用)
   -text-input, -ti テキスト入力 (parse-api-cost操作用)
   -help, -h        このヘルプを表示
 
-`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+`, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], strings.Join(SupportedOperations(), ", "))
 }

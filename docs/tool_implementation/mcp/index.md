@@ -10,6 +10,7 @@
 4. 必須入力は `request.Require*`、任意入力は `request.Get*` で取得する
 5. 処理結果は `mcp.CallToolResult` として返却し、標準出力は使用しない
 6. `cmd/mcp/router.go` にルーティングを追加する
+7. `.config/codex/mcp_linux/config.toml` に対象サーバーのエントリを追加する
 
 ## 実装パターン
 

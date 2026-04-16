@@ -22,6 +22,8 @@ func main() {
 		handleOutputOperation(cfg)
 	case "write":
 		handleWriteOperation(cfg)
+	case "aggregate-summary":
+		handleAggregateSummaryOperation(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応のoperationです: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -63,10 +65,21 @@ func handleWriteOperation(cfg *config.Config) {
 		os.Exit(1)
 	}
 
-		if err := usecases.UpdateDocumentationFile(cfg.WriteFile, result, statistics); err != nil {
+	if err := usecases.UpdateDocumentationFile(cfg.WriteFile, result, statistics); err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Printf("ファイルを更新しました: %s\n", cfg.WriteFile)
+}
+
+func handleAggregateSummaryOperation(cfg *config.Config) {
+	service := usecases.NewServiceImplementingViewerService(cfg.RootDir, cfg.TargetDirs)
+
+	if err := service.AggregateSummaryToFile(cfg.WriteFile); err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("サマリーを出力しました: %s\n", cfg.WriteFile)
 }

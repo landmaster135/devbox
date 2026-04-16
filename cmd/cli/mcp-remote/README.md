@@ -1,6 +1,6 @@
-# MCP Remote - Go Implementation
+# MCP Remote
 
-Node.js版[mcp-remote](https://github.com/mark3labs/mcp-remote)を参考にしたGoでのMCP Remote CLIツール実装です。
+MCP Remote CLIツールです。
 
 ## 概要
 
@@ -213,12 +213,8 @@ Error: 401 Unauthorized
 - **メモリ使用量**: より効率的なメモリ使用
 - **型安全性**: コンパイル時の型チェック
 
-## ライセンス
-
-このプロジェクトは[元のmcp-remote](https://github.com/mark3labs/mcp-remote)と同じライセンスに従います。
-
 ## 関連リンク
 
 - [MCP (Model Context Protocol)](https://modelcontextprotocol.io/)
 - [mcp-go](https://github.com/mark3labs/mcp-go)
-- [元のmcp-remote (Node.js版)](https://github.com/mark3labs/mcp-remote)
+- [元のmcp-remote (Node.js版)](https://github.com/geelen/mcp-remote)

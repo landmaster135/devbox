@@ -1,12 +1,12 @@
 # Image Renamer
 
-画像ファイルを指定したプレフィックスとシリアル番号でリネームするツールです。
+画像ファイルを指定したプレフィックス（任意）とシリアル番号でリネームするツールです。
 
 ## 機能
 
 - 指定したディレクトリ内の画像ファイル（jpg, jpeg, png, webp, avif）を検索
 - ファイルを更新日時順またはファイル名順に並べ替え
-- 指定したプレフィックスとシリアル番号でファイルをリネーム
+- 指定したプレフィックス（任意）とシリアル番号でファイルをリネーム
 - 並行処理による高速なリネーム操作
 - 再帰的なディレクトリ走査オプション
 
@@ -23,12 +23,13 @@
 | -src       | .            | スキャンするソースディレクトリ |
 | -time      | false        | 画像ファイルを更新日時順に並べ替え |
 | -name      | false        | 画像ファイルをファイル名順に並べ替え |
-| -prefix    | (必須)       | 記事番号のプレフィックス |
+| -prefix    | ""           | 記事番号のプレフィックス（未指定時は連番のみ） |
 | -delimiter | _            | プレフィックスとシリアル番号の間の区切り文字 |
 | -digits    | 4            | シリアル番号の桁数 |
 | -start     | 1            | リネーム操作の開始番号 |
 | -r         | false        | サブディレクトリを再帰的にスキャン |
 | -workers   | CPU数        | 並行ワーカー数 |
+| -extensions | (未指定)    | リネーム対象拡張子（カンマ区切り）。未指定時は `jpg,jpeg,png,webp,avif` |
 
 **注意**: `-time` または `-name` のいずれかを指定する必要があります。両方指定した場合は `-name` が優先されます。
 
@@ -39,6 +40,9 @@
 ```bash
 # カレントディレクトリの画像ファイルを日付順に並べ替えてリネーム
 go run ./cmd/cli/image-renamer -prefix "20250507" -time
+
+# プレフィックスなしで連番のみリネーム（例: 0001.jpg）
+go run ./cmd/cli/image-renamer -name
 
 # 指定したディレクトリの画像ファイルをファイル名順に並べ替えてリネーム
 go run ./cmd/cli/image-renamer -src ./photos -prefix "article01" -name
@@ -65,6 +69,9 @@ go run ./cmd/cli/image-renamer -src ./photos -prefix "article01" -time -r
 ```bash
 # ワーカー数を8に設定
 go run ./cmd/cli/image-renamer -prefix "article01" -time -workers 8
+
+# HEICとPNGのみを対象にリネーム
+go run ./cmd/cli/image-renamer -prefix "article01" -name -extensions ".heic,.png"
 ```
 
 ## ビルド方法

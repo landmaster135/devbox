@@ -1,0 +1,268 @@
+package config
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestConfig_ParseFlagsFromArgs_CreateWebClip_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-web-clip",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-file=/tmp/web-summary-20240719-231059-palworld-steam.md",
+		"-attachments=./a.png, ./b.txt",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateWebClip {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateWebClip)
+	}
+	if cfg.TimeoutSeconds != defaultTimeoutSeconds {
+		t.Fatalf("timeout = %d, want %d", cfg.TimeoutSeconds, defaultTimeoutSeconds)
+	}
+	if cfg.ContentFile != "/tmp/web-summary-20240719-231059-palworld-steam.md" {
+		t.Fatalf("contentFile = %s, want expected path", cfg.ContentFile)
+	}
+	if cfg.Attachments != "./a.png, ./b.txt" {
+		t.Fatalf("attachments = %s, want ./a.png, ./b.txt", cfg.Attachments)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_CreateMovieClip_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-movie-clip",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-file=/tmp/movie-summary-20260319-055716-trump-masako.md",
+		"-timeout=45",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateMovieClip {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateMovieClip)
+	}
+	if cfg.TimeoutSeconds != 45 {
+		t.Fatalf("timeout = %d, want 45", cfg.TimeoutSeconds)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_CreateClips_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-clips",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-dir=/tmp/clips",
+		"-attachment-dir=/tmp/attachments",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateClips {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateClips)
+	}
+	if cfg.ContentDir != "/tmp/clips" {
+		t.Fatalf("contentDir = %s, want /tmp/clips", cfg.ContentDir)
+	}
+	if cfg.AttachmentDir != "/tmp/attachments" {
+		t.Fatalf("attachmentDir = %s, want /tmp/attachments", cfg.AttachmentDir)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_CreateCommonMemos_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=create-common-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-content-dir=/tmp/common-memos",
+		"-attachment-dir=/tmp/attachments",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationCreateCommonMemos {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationCreateCommonMemos)
+	}
+	if cfg.ContentDir != "/tmp/common-memos" {
+		t.Fatalf("contentDir = %s, want /tmp/common-memos", cfg.ContentDir)
+	}
+	if cfg.AttachmentDir != "/tmp/attachments" {
+		t.Fatalf("attachmentDir = %s, want /tmp/attachments", cfg.AttachmentDir)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_Help_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{"-help"})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if !cfg.Help {
+		t.Fatal("help = false, want true")
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_ValidationError_Error(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr string
+	}{
+		{
+			name: "OperationMissing",
+			args: []string{
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "operation パラメータは必須です",
+		},
+		{
+			name: "OperationUnsupported",
+			args: []string{
+				"-operation=create",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "未対応の operation です",
+		},
+		{
+			name: "BaseURLMissing",
+			args: []string{
+				"-operation=create-web-clip",
+				"-api-token=test-token",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "base-url パラメータは必須です",
+		},
+		{
+			name: "APITokenMissing",
+			args: []string{
+				"-operation=create-web-clip",
+				"-base-url=https://memos.example.com",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "api-token パラメータは必須です",
+		},
+		{
+			name: "ContentFileMissing",
+			args: []string{
+				"-operation=create-web-clip",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+			},
+			wantErr: "content-file パラメータは必須です",
+		},
+		{
+			name: "ContentDirMissingForCreateClips",
+			args: []string{
+				"-operation=create-clips",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+			},
+			wantErr: "content-dir パラメータは必須です",
+		},
+		{
+			name: "ContentFileDisallowedForCreateClips",
+			args: []string{
+				"-operation=create-clips",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/clips",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "create-clips では content-file は指定できません",
+		},
+		{
+			name: "AttachmentsDisallowedForCreateClips",
+			args: []string{
+				"-operation=create-clips",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/clips",
+				"-attachments=./a.png",
+			},
+			wantErr: "create-clips では attachments は指定できません",
+		},
+		{
+			name: "ContentDirMissingForCreateCommonMemos",
+			args: []string{
+				"-operation=create-common-memos",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+			},
+			wantErr: "content-dir パラメータは必須です",
+		},
+		{
+			name: "ContentFileDisallowedForCreateCommonMemos",
+			args: []string{
+				"-operation=create-common-memos",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/common-memos",
+				"-content-file=/tmp/20260303053400_02.md",
+			},
+			wantErr: "create-common-memos では content-file は指定できません",
+		},
+		{
+			name: "AttachmentsDisallowedForCreateCommonMemos",
+			args: []string{
+				"-operation=create-common-memos",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-dir=/tmp/common-memos",
+				"-attachments=./a.png",
+			},
+			wantErr: "create-common-memos では attachments は指定できません",
+		},
+		{
+			name: "TimeoutInvalid",
+			args: []string{
+				"-operation=create-web-clip",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+				"-timeout=0",
+			},
+			wantErr: "timeout パラメータは 1 以上",
+		},
+		{
+			name: "WebClipPatternInvalid",
+			args: []string{
+				"-operation=create-web-clip",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-file=/tmp/movie-summary-20260319-055716-trump.md",
+			},
+			wantErr: "web-summary-YYYYMMDD-hhmmss-<slug>.md",
+		},
+		{
+			name: "MovieClipPatternInvalid",
+			args: []string{
+				"-operation=create-movie-clip",
+				"-base-url=https://memos.example.com",
+				"-api-token=test-token",
+				"-content-file=/tmp/web-summary-20240719-231059-palworld.md",
+			},
+			wantErr: "movie-summary-YYYYMMDD-hhmmss-<slug>.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseFlagsFromArgs(tt.args)
+			if err == nil {
+				t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("error = %v, want %s", err, tt.wantErr)
+			}
+		})
+	}
+}

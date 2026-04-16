@@ -12,6 +12,7 @@ package main
 import (
 	"fmt"
 	"os"
+
 	config "github.com/landmaster135/devbox/internal/{tool-name}/config"
 	usecases "github.com/landmaster135/devbox/internal/{tool-name}/usecases"
 )
@@ -48,7 +49,84 @@ func handleOperation1(cfg *config.Config) {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Print(result) // 重要: 結果を標準出力に表示
+	fmt.Print(result)
+}
+```
+
+### フラグ関連の責務分離
+
+- `config` 層:
+  - `Config` の生成と検証
+  - `ParseFlags()` と `ParseFlagsWithParser(parser)` の公開
+  - `PrintUsage()` で usage 出力処理を `infrastructures/flag_parser` に委譲
+- `infrastructures/flag_parser` 層:
+  - `FlagParser` interface
+  - `StandardFlagParser` 実装
+  - `PrintUsage(format)` 実装。`os.Stderr` と `os.Args[0]` を infrastructure 層で扱う
+  - `MockFlagParser` 実装とその単体テスト。`infrastructures/flag_parser` に colocate して再利用可能にする。
+
+想定ディレクトリ構成:
+
+```text
+internal/{tool-name}/
+├─ config/
+│  ├─ config.go
+│  └─ config_test.go
+└─ infrastructures/
+   └─ flag_parser/
+      ├─ flag_parser.go
+      ├─ usage.go
+      ├─ mock_flag_parser.go
+      └─ *_test.go
+```
+
+### `PrintUsage(format)` の実装パターン
+
+`PrintUsage(format)` は **出力先と実行ファイル名の注入のみ** を担当し、ヘルプ本文（usageTemplate）の組み立ては `config` 層で行います。
+
+`infrastructures/flag_parser/usage.go`:
+
+```go
+package flag_parser
+
+import (
+	"fmt"
+	"os"
+)
+
+func PrintUsage(format string) {
+	fmt.Fprintf(os.Stderr, format, os.Args[0])
+}
+```
+
+`config/config.go`:
+
+```go
+package config
+
+import (
+	"sort"
+	"strconv"
+	"strings"
+
+	flagParser "github.com/landmaster135/devbox/internal/{tool-name}/infrastructures/flag_parser"
+)
+
+const usageTemplate = `使用方法: %[1]s [オプション]
+
+共通オプション:
+  -operation string 実行する操作 (%s)
+  -timeout int     タイムアウト秒数 (デフォルト: %s)
+`
+
+func PrintUsage() {
+	ops := make([]string, len(supportedOperations))
+	copy(ops, supportedOperations)
+	sort.Strings(ops)
+
+	usage := strings.Replace(usageTemplate, "%s", strings.Join(ops, ", "), 1)
+	usage = strings.Replace(usage, "%s", strconv.Itoa(defaultTimeoutSeconds), 1)
+	flagParser.PrintUsage(usage)
 }
 ```
 
@@ -69,21 +147,43 @@ if err != nil {
 fmt.Print(result)
 ```
 
-### フラグパーサーのモック実装の間違い（正しい実装は `internal/zip_compressor/config/config_test.go` を参照）
+### フラグパーサーモックで事前設定値を反映しない（正しい実装は `internal/zip_compressor/infrastructures/flag_parser/mock_flag_parser.go` を参照）
 
 ```go
-// ❌ 間違い: フラグ定義後に値を設定しても反映されない
+// ❌ 間違い: デフォルト値しか入らない
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
-  *p = value // デフォルト値のみ
+  *p = value
 }
 
-// ✅ 正しい: 事前設定値をチェックして適用
+// ✅ 正しい: 事前設定値を優先して適用
 func (m *MockFlagParser) StringVar(p *string, name string, value string, usage string) {
   if presetValue, exists := m.stringValues[name]; exists {
-    *p = presetValue // 事前設定値を優先
-  } else {
-    *p = value // デフォルト値
+    *p = presetValue
+    return
   }
-  m.stringVars[name] = p
+  if *p != "" {
+    return
+  }
+  *p = value
 }
+```
+
+### ユーザー名つき絶対パスをハードコードする
+
+`/home/user/...` のようなユーザー名つき絶対パスは、実装コード・usage・README・テストデータのいずれでも禁止します。環境依存は避けるべきです。
+
+```go
+// ❌ 間違い: 特定ユーザーに依存するパス
+fmt.Printf("  %s --agent-home-dir=/home/user/.codex\n", program)
+
+// ✅ 正しい: 実行環境に依存しない表現
+fmt.Printf("  %s --agent-home-dir=$HOME/.codex\n", program)
+```
+
+```go
+// ❌ 間違い: テストでも特定ユーザーのホームを使う
+cfg, err := NewConfig("retrieve-session", "codex", 10, "", "", "/home/user/.codex")
+
+// ✅ 正しい: 汎用パスを使う
+cfg, err := NewConfig("retrieve-session", "codex", 10, "", "", "/tmp/codex-home")
 ```

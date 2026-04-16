@@ -261,6 +261,11 @@ func formatDumpAllTablesResult(result *DumpAllTablesResult, format, heading stri
 	}
 }
 
+// FormatDumpAllTablesResult は全テーブルダンプ結果を指定フォーマットへ変換します。
+func FormatDumpAllTablesResult(result *DumpAllTablesResult, format, heading string) (string, string, error) {
+	return formatDumpAllTablesResult(result, format, heading)
+}
+
 func formatDumpAllTablesResultAsJSON(result *DumpAllTablesResult) (string, string, error) {
 	jsonResult, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {

@@ -1,5 +1,7 @@
 # Cron Workflow HTTP Handler
 
+Provides GUI for CRON workflow.
+
 ## Prerequisites
 - Go 1.25.5 or later
 - templ v0.3.977 or later

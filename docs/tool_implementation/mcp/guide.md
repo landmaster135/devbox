@@ -11,6 +11,7 @@
 - [ ] `mcp.WithPromptDescription()` でプロンプトの説明を設定
 - [ ] `server.WithPromptCapabilities(true)` でプロンプト機能を有効化
 - [ ] `server.WithLogging()` で診断用ログを有効化する
+- [ ] `.config/codex/mcp_linux/config.toml` に対象サーバーエントリを追加する
 
 ## 実装パターン
 
@@ -174,7 +175,7 @@ param := request.GetString("required_param", "")
 
 ## MCPツールのテスト
 
-1. `.config/cline/cline_mcp_settings.json` に設定追加
+1. `.config/codex/mcp_linux/config.toml` に設定追加
 2. Cline から実行してテスト
 3. エラーログを確認
 

@@ -1,6 +1,6 @@
 # HTML Sanitizer
 
-`internal/html_sanitizer/usecases/sanitizer` に実装されている `SanitizeHTMLBody` をCLIから呼び出し、main/article要素を基点にHTMLをサニタイズします。
+main/article要素を基点にHTMLをサニタイズするCLIツールです。
 
 ## ビルド
 

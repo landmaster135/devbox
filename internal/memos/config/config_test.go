@@ -426,6 +426,58 @@ func TestConfig_ParseFlagsFromArgs_UpdateMemoUpdatesTimeTrue_Normal(t *testing.T
 	}
 }
 
+func TestConfig_ParseFlagsFromArgs_UpdateTag_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=update-tag",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-src-tag=#work",
+		"-dest-tag=#project",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Operation != OperationUpdateTag {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationUpdateTag)
+	}
+	if cfg.SrcTag != "work" {
+		t.Fatalf("srcTag = %s, want work", cfg.SrcTag)
+	}
+	if cfg.DestTag != "project" {
+		t.Fatalf("destTag = %s, want project", cfg.DestTag)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateTagMissingSrcTag_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=update-tag",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-dest-tag=project",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "src-tag") {
+		t.Fatalf("error = %v, want src-tag", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_UpdateTagMissingDestTag_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=update-tag",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-src-tag=work",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "dest-tag") {
+		t.Fatalf("error = %v, want dest-tag", err)
+	}
+}
+
 func TestConfig_ParseFlagsFromArgs_PatchFiles_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=patch-files",
@@ -493,6 +545,108 @@ func TestConfig_ParseFlagsFromArgs_PatchFilesMissingFiles_Error(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "files パラメータ") {
 		t.Fatalf("error = %v, want files パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_ListMemoRelations_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memo-relations",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Operation != OperationListMemoRelations {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationListMemoRelations)
+	}
+	if cfg.Memo != "memo-1" {
+		t.Fatalf("memo = %s, want memo-1", cfg.Memo)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_ListMemoRelationsMissingMemo_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memo-relations",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "memo パラメータ") {
+		t.Fatalf("error = %v, want memo パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_AddMemoRelations_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=add-memo-relations",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-related-memos=memo-2,memo-3",
+		"-replaces=true",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Operation != OperationAddMemoRelations {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationAddMemoRelations)
+	}
+	if cfg.RelatedMemos != "memo-2,memo-3" {
+		t.Fatalf("relatedMemos = %s, want memo-2,memo-3", cfg.RelatedMemos)
+	}
+	if !cfg.Replaces {
+		t.Fatalf("replaces = %v, want true", cfg.Replaces)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_AddMemoRelationsDefaultReplaces_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=add-memo-relations",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-related-memos=memo-2",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+	if cfg.Replaces {
+		t.Fatalf("replaces = %v, want false", cfg.Replaces)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_AddMemoRelationsMissingMemo_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=add-memo-relations",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-related-memos=memo-2",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "memo パラメータ") {
+		t.Fatalf("error = %v, want memo パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlagsFromArgs_AddMemoRelationsMissingRelatedMemos_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=add-memo-relations",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-memo=memo-1",
+		"-related-memos=, ,",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "related-memos パラメータ") {
+		t.Fatalf("error = %v, want related-memos パラメータ", err)
 	}
 }
 

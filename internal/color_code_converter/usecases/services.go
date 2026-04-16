@@ -53,6 +53,8 @@ func (s *ColorConverterService) parseColorFromFormat(format, value string) (*dom
 		return domain.ParseFromHSL(value)
 	case "hsv":
 		return domain.ParseFromHSV(value)
+	case "dec":
+		return domain.ParseFromDecimal(value)
 	default:
 		return nil, fmt.Errorf("サポートされていない変換元形式です: %s", format)
 	}
@@ -69,6 +71,8 @@ func (s *ColorConverterService) formatColorToFormat(format string, color *domain
 		return color.ToHSL(), nil
 	case "hsv":
 		return color.ToHSV(), nil
+	case "dec":
+		return color.ToDecimal(), nil
 	default:
 		return "", fmt.Errorf("サポートされていない変換先形式です: %s", format)
 	}
@@ -82,7 +86,7 @@ func (s *ColorConverterService) ValidateColorFormat(format, value string) error 
 
 // GetSupportedFormats はサポートされているカラーコード形式のリストを返す
 func (s *ColorConverterService) GetSupportedFormats() []string {
-	return []string{"hex", "rgb", "hsl", "hsv"}
+	return []string{"hex", "rgb", "hsl", "hsv", "dec"}
 }
 
 // ConvertColorWithValidation はバリデーション付きでカラーコードを変換する

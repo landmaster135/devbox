@@ -1,6 +1,6 @@
 # Diff Dreamer
 
-Diff Dreamerは、difff《ﾃﾞｭﾌﾌ》と同様のUIを提供するテキスト比較ツールです。CLIからHTMLファイルを生成し、ブラウザで差分を可視化できます。
+テキスト比較用のGUIをHTMLページで提供します。
 
 ## 概要
 

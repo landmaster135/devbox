@@ -56,21 +56,15 @@ type Config struct {
 	StartCount int
 	Recursive  bool
 	Workers    int
+	Extensions []string
 }
 
 // validateConfig は設定の妥当性を検証します
 func validateConfig(config Config, stderr io.Writer) error {
-	// プレフィックスが指定されていない場合はエラーを表示して終了
-	if config.Prefix == "" {
-		fmt.Fprintln(stderr, "エラー: プレフィックスは必須です。-prefix フラグを使用して記事番号を指定してください。")
-		fmt.Fprintln(stderr, "例: ./image-renamer -prefix \"20250507\" -time")
-		return fmt.Errorf("プレフィックスが指定されていません")
-	}
-
 	// 並び替え方法のチェック：両方ともfalseならエラー
 	if !config.SortByTime && !config.SortByName {
 		fmt.Fprintln(stderr, "エラー: -time または -name のいずれかの並べ替え方法を指定する必要があります。")
-		fmt.Fprintln(stderr, "例: ./image-renamer -prefix \"20250507\" -time")
+		fmt.Fprintln(stderr, "例: ./image-renamer -name")
 		return fmt.Errorf("並べ替え方法が指定されていません")
 	}
 
@@ -90,18 +84,76 @@ func validateConfig(config Config, stderr io.Writer) error {
 	return nil
 }
 
-func isImageExt(ext string) bool {
-	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".avif":
-		return true
-	default:
-		return false
+var defaultImageExtensions = []string{".jpg", ".jpeg", ".png", ".webp", ".avif"}
+var defaultImageExtensionSet = extensionSet(defaultImageExtensions)
+
+func normalizeExtension(ext string) string {
+	normalized := strings.TrimSpace(strings.ToLower(ext))
+	if normalized == "" {
+		return ""
 	}
+	if !strings.HasPrefix(normalized, ".") {
+		normalized = "." + normalized
+	}
+	return normalized
+}
+
+func normalizeExtensions(extensions []string) []string {
+	if len(extensions) == 0 {
+		defaults := make([]string, len(defaultImageExtensions))
+		copy(defaults, defaultImageExtensions)
+		return defaults
+	}
+
+	normalized := make([]string, 0, len(extensions))
+	seen := make(map[string]struct{}, len(extensions))
+
+	for _, extension := range extensions {
+		for _, token := range strings.Split(extension, ",") {
+			normalizedExt := normalizeExtension(token)
+			if normalizedExt == "" {
+				continue
+			}
+			if _, ok := seen[normalizedExt]; ok {
+				continue
+			}
+			seen[normalizedExt] = struct{}{}
+			normalized = append(normalized, normalizedExt)
+		}
+	}
+
+	if len(normalized) == 0 {
+		defaults := make([]string, len(defaultImageExtensions))
+		copy(defaults, defaultImageExtensions)
+		return defaults
+	}
+
+	return normalized
+}
+
+func extensionSet(extensions []string) map[string]struct{} {
+	normalized := normalizeExtensions(extensions)
+	set := make(map[string]struct{}, len(normalized))
+	for _, ext := range normalized {
+		set[ext] = struct{}{}
+	}
+	return set
+}
+
+func isImageExt(ext string) bool {
+	_, ok := defaultImageExtensionSet[normalizeExtension(ext)]
+	return ok
+}
+
+func isTargetExt(ext string, targetExts map[string]struct{}) bool {
+	_, ok := targetExts[normalizeExtension(ext)]
+	return ok
 }
 
 // findImageFiles は指定されたディレクトリから画像ファイルを検索します
-func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]string, error) {
+func findImageFiles(srcDir string, recursive bool, extensions []string, stdout, stderr io.Writer) ([]string, error) {
 	var files []string
+	targetExts := extensionSet(extensions)
 
 	if recursive {
 		err := filepath.WalkDir(srcDir, func(path string, d fs.DirEntry, err error) error {
@@ -109,8 +161,8 @@ func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]
 				return err
 			}
 			if !d.IsDir() {
-				ext := strings.ToLower(filepath.Ext(d.Name()))
-				if isImageExt(ext) {
+				ext := filepath.Ext(d.Name())
+				if isTargetExt(ext, targetExts) {
 					files = append(files, path)
 				}
 			}
@@ -129,8 +181,8 @@ func findImageFiles(srcDir string, recursive bool, stdout, stderr io.Writer) ([]
 
 		for _, entry := range entries {
 			if !entry.IsDir() {
-				ext := strings.ToLower(filepath.Ext(entry.Name()))
-				if isImageExt(ext) {
+				ext := filepath.Ext(entry.Name())
+				if isTargetExt(ext, targetExts) {
 					files = append(files, filepath.Join(srcDir, entry.Name()))
 				}
 			}
@@ -227,7 +279,7 @@ func prepareJobs(fileInfos []FileInfo, config Config) []Job {
 		serial := config.StartCount + i
 		serialStr := fmt.Sprintf(formatStr, serial)
 		ext := filepath.Ext(file.Path)
-		newName := fmt.Sprintf("%s%s%s%s", config.Prefix, config.Delimiter, serialStr, ext)
+		newName := buildRenamedFileName(config.Prefix, config.Delimiter, serialStr, ext)
 		newPath := filepath.Join(filepath.Dir(file.Path), newName)
 		jobs[i] = Job{
 			File:      file,
@@ -237,6 +289,14 @@ func prepareJobs(fileInfos []FileInfo, config Config) []Job {
 		}
 	}
 	return jobs
+}
+
+func buildRenamedFileName(prefix, delimiter, serial, ext string) string {
+	if prefix == "" {
+		return serial + ext
+	}
+
+	return prefix + delimiter + serial + ext
 }
 
 // detectRenameConflicts はリネーム前後のパス衝突を検出します
@@ -315,7 +375,7 @@ func ProcessImageRename(config Config, stdout, stderr io.Writer) (int, int, erro
 	}
 
 	// 画像ファイルの検索
-	files, err := findImageFiles(config.SrcDir, config.Recursive, stdout, stderr)
+	files, err := findImageFiles(config.SrcDir, config.Recursive, config.Extensions, stdout, stderr)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -326,7 +386,11 @@ func ProcessImageRename(config Config, stdout, stderr io.Writer) (int, int, erro
 	}
 
 	fmt.Fprintf(stdout, "画像ファイルが %d 件見つかりました。\n", len(files))
-	fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
+	if config.Prefix == "" {
+		fmt.Fprintln(stdout, "プレフィックス: (なし)")
+	} else {
+		fmt.Fprintf(stdout, "プレフィックス: %s\n", config.Prefix)
+	}
 	fmt.Fprintf(stdout, "区切り文字: %s\n", config.Delimiter)
 	fmt.Fprintf(stdout, "開始番号: %d\n", config.StartCount)
 

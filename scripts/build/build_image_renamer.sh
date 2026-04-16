@@ -26,10 +26,10 @@ echo "Building for Linux/AMD64..."
 mkdir -p "${LINUX_AMD64_DIR}"
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${LINUX_AMD64_DIR}/${OUTPUT_NAME}" "${PACKAGE}"
 
-# Windows/AMD64向けビルド
+# Windows/AMD64向けビルド(Windows Defender誤検知対策で-ldflagsから-sを省く)
 echo "Building for Windows/AMD64..."
 mkdir -p "${WIN_AMD64_DIR}"
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${WIN_AMD64_DIR}/${WIN_OUTPUT_NAME}" "${PACKAGE}"
+GOOS=windows GOARCH=amd64 go build -ldflags="-w" -trimpath -o "${WIN_AMD64_DIR}/${WIN_OUTPUT_NAME}" "${PACKAGE}"
 
 # macOS/ARM64向けビルド
 echo "Building for macOS/ARM64..."
@@ -38,5 +38,9 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./image-renamer -src ./photos -prefix \"article01\" -time"
-echo "  ./image-renamer -src ./photos -r -prefix \"20250507\" -name -digits 3 -start 10"
+echo "  go run ./cmd/cli/image-renamer -prefix \"20250507\" -time"
+echo "  go run ./cmd/cli/image-renamer -name"
+echo "  go run ./cmd/cli/image-renamer -src ./photos -prefix \"article01\" -name"
+echo "  go run ./cmd/cli/image-renamer -prefix \"article01\" -digits 3 -time"
+echo "  go run ./cmd/cli/image-renamer -prefix \"article01\" -start 10 -time"
+echo "  go run ./cmd/cli/image-renamer -prefix \"article01\" -delimiter \"-\" -time"

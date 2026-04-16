@@ -12,6 +12,7 @@
 - **サービス名正規化**: 「_」と「-」を同じものとして扱い、統一された形式で表示
 - **表形式出力**: Markdown形式の表でサービス実装状況を視覚的に表示
 - **統計情報表示**: 各ディレクトリの実装数、組み合わせパターンなどの詳細な統計情報を表示
+- **README概要集約**: 各ツールの `README.md` から概要行を抽出してカテゴリ別に集約
 - **ソート機能**: サービス名を昇順でソート
 - **存在チェック**: 各サービスが各対象ディレクトリに存在するかを✅/❌で表示
 
@@ -34,13 +35,14 @@ go run cmd/cli/service-implementing-viewer/main.go -operation=output -root-dir=<
 
 - `-root-dir` (必須): スキャンするルートディレクトリのパス
 - `-target-dirs` (必須): 対象ディレクトリ名をカンマ区切りで指定
-- `-operation` (必須): 実行するオペレーション。`output` は標準出力に表示、`write` は指定ファイルを書き換え
-- `-write-file`: `-operation=write` の際に必須。結果を書き込むMarkdownファイルのパス
+- `-operation` (必須): 実行するオペレーション。`output` は標準出力に表示、`write` は指定ファイルを書き換え、`aggregate-summary` はREADME概要を集約して出力
+- `-write-file`: `-operation=write` または `-operation=aggregate-summary` の際に必須。結果を書き込むMarkdownファイルのパス
 
 ### オペレーション種別
 
 - `output`: 従来通り、Markdown表と統計情報を標準出力へ表示します。
 - `write`: `### 実装状況一覧` と `### 統計情報` が含まれるMarkdownファイルを開き、両セクションの内容を最新結果で自動置換します。
+- `aggregate-summary`: 各ツールディレクトリの `README.md` を読み、`##` 見出しが出るまでの範囲で最初の本文行を概要として集約し、指定ファイルへ書き込みます。`README.md` がない、または本文行が見つからない場合は空文字を出力します（`*{tool_name}*: `）。
 
 ## 使用例
 
@@ -60,6 +62,13 @@ go run cmd/cli/service-implementing-viewer/main.go \
   -root-dir=/home/user/devbox/cmd \
   -target-dirs=cli,mcp,grpc/handlers,http/handlers \
   -write-file=docs/service_implementation_status.md
+
+# README概要を集約して出力（aggregate-summaryモード）
+go run cmd/cli/service-implementing-viewer/main.go \
+  -operation=aggregate-summary \
+  -root-dir=/home/user/devbox/cmd \
+  -target-dirs=cli,mcp,grpc/handlers,http/handlers \
+  -write-file=docs/service_summary.md
 ```
 
 ## 出力例
@@ -95,6 +104,22 @@ go run cmd/cli/service-implementing-viewer/main.go \
 - **全て実装済み**: 1
 ```
 
+### README概要集約出力（aggregate-summary）
+```
+## CLI tools
+*anilist*: AniListからアニメ・マンガ情報を取得するためのコマンドラインツールです。
+*some-tool*: 
+
+## MCP tools
+*arithmetic-calculator*: A simple arithmetic calculator.
+
+## GRPC/HANDLERS tools
+*weather_notificator*: Sends weather forecast notification.
+
+## HTTP/HANDLERS tools
+*cron_workflow*: Serves GUI for CRON workflow.
+```
+
 ## アーキテクチャ
 
 ### ディレクトリ構造
@@ -106,9 +131,18 @@ internal/service_implementing_viewer/
 │   ├── config_test.go        # 設定のテストコード
 │   ├── flag_parser.go        # フラグパーサー実装
 │   └── interfaces.go         # インターフェース定義
+├── infrastructures/          # 外部依存実装
+│   └── filesystem/
+│       ├── impl.go           # OSファイルシステム実装
+│       ├── impl_test.go      # filesystem実装のテストコード
+│       └── repository.go     # filesystem抽象インターフェース
 └── usecases/                 # ビジネスロジック
+    ├── aggregate_summary.go  # README概要集約ロジック
+    ├── aggregate_summary_test.go # README概要集約ロジックのテスト
     ├── services.go           # サービス実装状況確認ロジック
-    └── services_test.go      # ビジネスロジックのテストコード
+    ├── services_test.go      # サービス実装状況確認ロジックのテスト
+    ├── document_updater.go   # ドキュメント更新ロジック
+    └── document_updater_test.go # ドキュメント更新ロジックのテスト
 ```
 
 ## 主要コンポーネント
@@ -124,10 +158,16 @@ internal/service_implementing_viewer/
 - **ServiceStatus**: サービスの実装状況を表す構造体
 - **ServiceStatistics**: サービス実装の統計情報を表す構造体
 
+### Infrastructures パッケージ
+- **filesystem.Repository**: usecases層から利用するファイルシステム操作の抽象
+- **filesystem.osRepository**: `os.ReadFile`/`os.WriteFile`/`os.ReadDir` を扱う実装
+
 ## 主要メソッド
 
 ### ServiceImplementingViewerService
 - `GetServiceImplementingStatus()`: サービス実装状況を取得し、表形式と統計情報で返す
+- `BuildAggregatedSummary()`: README概要をカテゴリ別に集約したMarkdownを返す
+- `AggregateSummaryToFile()`: README概要集約結果をファイルへ書き込む
 - `getServicesInDirectory()`: 指定されたディレクトリ内のサービス名を取得
 - `normalizeServiceName()`: サービス名を正規化（「_」→「-」）
 - `isServiceImplementedInDirectory()`: サービスがディレクトリに実装されているかチェック

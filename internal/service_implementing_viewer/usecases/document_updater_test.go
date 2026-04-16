@@ -1,8 +1,13 @@
 package usecases
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	filesystem "github.com/landmaster135/devbox/internal/service_implementing_viewer/infrastructures/filesystem"
 )
 
 func TestBuildUpdatedDocument(t *testing.T) {
@@ -39,6 +44,103 @@ func TestBuildUpdatedDocumentMissingHeading(t *testing.T) {
 
 	if _, err := buildUpdatedDocument(original, table, stats); err == nil {
 		t.Fatalf("エラーが発生しませんでした")
+	}
+}
+
+func TestUpdateDocumentationFileWithRepository_Normal(t *testing.T) {
+	original := "# Title\n\n" + implementationHeading + "\n\n" + "| old | table |\n\n" + statisticsHeading + "\n\n- old stats\n"
+	stats := &ServiceStatistics{TotalServices: 2, CLICount: 1}
+	table := "| service | cli |\n| alpha | ✅ |"
+	mockRepo := &filesystem.MockRepository{
+		ReadFileFunc: func(path string) ([]byte, error) {
+			return []byte(original), nil
+		},
+	}
+
+	err := updateDocumentationFileWithRepository(mockRepo, "docs/status.md", table, stats)
+	if err != nil {
+		t.Fatalf("予期せぬエラー: %v", err)
+	}
+
+	if mockRepo.LastWritePath != "docs/status.md" {
+		t.Fatalf("書き込みパスが期待値と異なります。期待値: %s, 実際: %s", "docs/status.md", mockRepo.LastWritePath)
+	}
+	if mockRepo.LastWritePermission != 0o644 {
+		t.Fatalf("書き込みパーミッションが期待値と異なります。期待値: %o, 実際: %o", 0o644, mockRepo.LastWritePermission)
+	}
+
+	updated := string(mockRepo.LastWriteContent)
+	if !containsLine(updated, "| alpha | ✅ |") {
+		t.Fatalf("テーブルが更新されていません: %s", updated)
+	}
+	if !containsLine(updated, "- **総サービス数**: 2") {
+		t.Fatalf("統計情報が更新されていません: %s", updated)
+	}
+}
+
+func TestUpdateDocumentationFileWithRepository_ReadError(t *testing.T) {
+	mockRepo := &filesystem.MockRepository{
+		ReadFileFunc: func(path string) ([]byte, error) {
+			return nil, errors.New("read failed")
+		},
+	}
+
+	err := updateDocumentationFileWithRepository(mockRepo, "docs/status.md", "", &ServiceStatistics{})
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+}
+
+func TestUpdateDocumentationFileWithRepository_WriteError(t *testing.T) {
+	original := "# Title\n\n" + implementationHeading + "\n\n" + statisticsHeading + "\n"
+	mockRepo := &filesystem.MockRepository{
+		ReadFileFunc: func(path string) ([]byte, error) {
+			return []byte(original), nil
+		},
+		WriteFileFunc: func(path string, data []byte, perm os.FileMode) error {
+			return errors.New("write failed")
+		},
+	}
+
+	err := updateDocumentationFileWithRepository(mockRepo, "docs/status.md", "", &ServiceStatistics{})
+	if err == nil {
+		t.Fatal("エラーが発生しませんでした")
+	}
+}
+
+func TestUpdateDocumentationFile_Normal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "status.md")
+	original := "# Title\n\n" + implementationHeading + "\n\n" + statisticsHeading + "\n\n## Next\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatalf("テストファイル作成に失敗: %v", err)
+	}
+
+	err := UpdateDocumentationFile(path, "| service | cli |\n| app | ✅ |", &ServiceStatistics{TotalServices: 1})
+	if err != nil {
+		t.Fatalf("予期せぬエラー: %v", err)
+	}
+
+	updated, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("更新後ファイルの読み込みに失敗: %v", err)
+	}
+	text := string(updated)
+	if !containsLine(text, "| app | ✅ |") {
+		t.Fatalf("テーブルが更新されていません: %s", text)
+	}
+	if !containsLine(text, "- **総サービス数**: 1") {
+		t.Fatalf("統計が更新されていません: %s", text)
+	}
+}
+
+func TestBuildStatisticsSection_NilStats(t *testing.T) {
+	lines := buildStatisticsSection(nil)
+	if len(lines) == 0 {
+		t.Fatal("統計行が空です")
+	}
+	if !containsLine(strings.Join(lines, "\n"), "- **総サービス数**: 0") {
+		t.Fatal("nil stats の既定値が反映されていません")
 	}
 }
 

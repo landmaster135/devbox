@@ -7,14 +7,17 @@ import (
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
 	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	addmemorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/add_memo_relations"
 	attachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/attachments"
 	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"
 	deletememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/delete_memo"
 	getmemo "github.com/landmaster135/devbox/internal/memos/usecases/operations/get_memo"
 	listattachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_attachments"
 	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
+	memorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/memo_relations"
 	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
 	updatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_memo"
+	updatetag "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_tag"
 )
 
 const defaultTimeout = 30 * time.Second
@@ -55,6 +58,10 @@ type updateMemoOperation interface {
 	Execute(ctx context.Context, memo string, content string, contentFile string, visibility string, state string, pinned *bool, updateMask []string, displayTime string) (*common.Memo, error)
 }
 
+type updateTagOperation interface {
+	Execute(ctx context.Context, srcTag string, destTag string) (*common.UpdateTagOutput, error)
+}
+
 type patchFilesOperation interface {
 	Execute(ctx context.Context, memo string, filePaths []string, replaces bool) (*common.SetMemoAttachmentsOutput, error)
 }
@@ -71,6 +78,14 @@ type setMemoAttachmentsOperation interface {
 	Set(ctx context.Context, memo string, attachments []common.Attachment) (*common.SetMemoAttachmentsOutput, error)
 }
 
+type listMemoRelationsOperation interface {
+	List(ctx context.Context, memo string, pageSize int, pageToken string) (*common.ListMemoRelationsOutput, error)
+}
+
+type addMemoRelationsOperation interface {
+	Execute(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*common.AddMemoRelationsOutput, error)
+}
+
 // Service は Memos API 呼び出しのユースケースを提供する。
 type Service struct {
 	createMemoOp          createMemoOperation
@@ -79,10 +94,13 @@ type Service struct {
 	listMemosOp           listMemosOperation
 	listAttachmentsOp     listAttachmentsOperation
 	updateMemoOp          updateMemoOperation
+	updateTagOp           updateTagOperation
 	patchFilesOp          patchFilesOperation
 	createAttachmentOp    createAttachmentOperation
 	listMemoAttachmentsOp listMemoAttachmentsOperation
 	setMemoAttachmentsOp  setMemoAttachmentsOperation
+	listMemoRelationsOp   listMemoRelationsOperation
+	addMemoRelationsOp    addMemoRelationsOperation
 }
 
 // Memo は CLI/上位層に返すメモ情報。
@@ -97,6 +115,9 @@ type ListMemosOutput = common.ListMemosOutput
 // ListAttachmentsOutput は ListAttachments のレスポンス。
 type ListAttachmentsOutput = common.ListAttachmentsOutput
 
+// UpdateTagOutput は update-tag のレスポンス。
+type UpdateTagOutput = common.UpdateTagOutput
+
 // Attachment は Memos API の添付情報。
 type Attachment = common.Attachment
 
@@ -105,6 +126,12 @@ type ListMemoAttachmentsOutput = common.ListMemoAttachmentsOutput
 
 // SetMemoAttachmentsOutput は SetMemoAttachments のレスポンス。
 type SetMemoAttachmentsOutput = common.SetMemoAttachmentsOutput
+
+// ListMemoRelationsOutput は ListMemoRelations のレスポンス。
+type ListMemoRelationsOutput = common.ListMemoRelationsOutput
+
+// AddMemoRelationsOutput は add-memo-relations のレスポンス。
+type AddMemoRelationsOutput = common.AddMemoRelationsOutput
 
 // NewService は Service を生成する。
 func NewService(opts ServiceOptions) *Service {
@@ -129,17 +156,23 @@ func NewService(opts ServiceOptions) *Service {
 	})
 
 	attachmentsOp := attachments.New(jsonClient)
+	listMemosOp := listmemos.New(jsonClient)
+	updateMemoOp := updatememo.New(jsonClient, fileSystem)
+	memoRelationsOp := memorelations.New(jsonClient)
 
 	return &Service{
 		createMemoOp:          creatememo.New(jsonClient, fileSystem),
 		getMemoOp:             getmemo.New(jsonClient),
 		deleteMemoOp:          deletememo.New(jsonClient),
-		listMemosOp:           listmemos.New(jsonClient),
+		listMemosOp:           listMemosOp,
 		listAttachmentsOp:     listattachments.New(jsonClient),
-		updateMemoOp:          updatememo.New(jsonClient, fileSystem),
+		updateMemoOp:          updateMemoOp,
+		updateTagOp:           updatetag.New(listMemosOp, updateMemoOp),
 		patchFilesOp:          patchfiles.New(fileSystem, attachmentsOp, attachmentsOp, attachmentsOp),
 		createAttachmentOp:    attachmentsOp,
 		listMemoAttachmentsOp: attachmentsOp,
 		setMemoAttachmentsOp:  attachmentsOp,
+		listMemoRelationsOp:   memoRelationsOp,
+		addMemoRelationsOp:    addmemorelations.New(memoRelationsOp, memoRelationsOp),
 	}
 }

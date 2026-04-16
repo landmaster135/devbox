@@ -110,17 +110,70 @@ func TestProcessImageRename_EmptyDirectory(t *testing.T) {
 	}
 }
 
-// TestProcessImageRename_InvalidConfig は無効な設定でのテストです
-func TestProcessImageRename_InvalidConfig(t *testing.T) {
+// TestProcessImageRename_EmptyPrefix はプレフィックス空文字での正常系テストです
+func TestProcessImageRename_EmptyPrefix(t *testing.T) {
 	// Arrange
 	tempDir := t.TempDir()
 
-	// プレフィックスが空の無効な設定
+	// テスト用の画像ファイルを作成
+	testFiles := []string{"test1.jpg", "test2.png"}
+	for _, filename := range testFiles {
+		filePath := filepath.Join(tempDir, filename)
+		if err := os.WriteFile(filePath, []byte("test image content"), 0644); err != nil {
+			t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+		}
+	}
+
 	config := Config{
 		SrcDir:     tempDir,
 		SortByName: true,
 		SortByTime: false,
-		Prefix:     "", // 空のプレフィックス（無効）
+		Prefix:     "",
+		Delimiter:  "_",
+		Digits:     2,
+		StartCount: 1,
+		Recursive:  false,
+		Workers:    1,
+	}
+
+	var stdout, stderr bytes.Buffer
+
+	// Act
+	successCount, errorCount, err := ProcessImageRename(config, &stdout, &stderr)
+
+	// Assert
+	if err != nil {
+		t.Errorf("ProcessImageRename でエラーが発生しました: %v", err)
+	}
+
+	if successCount != 2 {
+		t.Errorf("成功数が期待値と異なります。期待値: 2, 実際: %d", successCount)
+	}
+
+	if errorCount != 0 {
+		t.Errorf("エラー数が期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	// リネーム後のファイルが存在することを確認
+	expectedFiles := []string{"01.jpg", "02.png"}
+	for _, expectedFile := range expectedFiles {
+		expectedPath := filepath.Join(tempDir, expectedFile)
+		if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+			t.Errorf("リネーム後のファイルが存在しません: %s", expectedFile)
+		}
+	}
+}
+
+// TestProcessImageRename_InvalidConfig_NoSort は並べ替え未指定の異常系テストです
+func TestProcessImageRename_InvalidConfig_NoSort(t *testing.T) {
+	// Arrange
+	tempDir := t.TempDir()
+
+	config := Config{
+		SrcDir:     tempDir,
+		SortByName: false,
+		SortByTime: false,
+		Prefix:     "",
 		Delimiter:  "_",
 		Digits:     3,
 		StartCount: 1,
@@ -146,9 +199,8 @@ func TestProcessImageRename_InvalidConfig(t *testing.T) {
 		t.Errorf("エラー数が期待値と異なります。期待値: 0, 実際: %d", errorCount)
 	}
 
-	// 標準エラー出力にエラーメッセージが含まれていることを確認
 	stderrStr := stderr.String()
-	if !strings.Contains(stderrStr, "プレフィックスは必須です") {
+	if !strings.Contains(stderrStr, "-time または -name") {
 		t.Errorf("期待されるエラーメッセージが見つかりません: %s", stderrStr)
 	}
 }
@@ -437,5 +489,62 @@ func TestProcessImageRename_CustomDelimiterAndDigits(t *testing.T) {
 	stdoutStr := stdout.String()
 	if !strings.Contains(stdoutStr, "区切り文字: .") {
 		t.Errorf("期待される出力メッセージが見つかりません: %s", stdoutStr)
+	}
+}
+
+// TestProcessImageRename_WithExtensions は拡張子フィルタが適用されることをテストします
+func TestProcessImageRename_WithExtensions(t *testing.T) {
+	tempDir := t.TempDir()
+
+	testFiles := []string{"target1.heic", "target2.HEIC", "skip.jpg", "skip.png"}
+	for _, filename := range testFiles {
+		filePath := filepath.Join(tempDir, filename)
+		if err := os.WriteFile(filePath, []byte("test image content"), 0644); err != nil {
+			t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+		}
+	}
+
+	config := Config{
+		SrcDir:     tempDir,
+		SortByName: true,
+		SortByTime: false,
+		Prefix:     "EXT",
+		Delimiter:  "_",
+		Digits:     3,
+		StartCount: 1,
+		Recursive:  false,
+		Workers:    1,
+		Extensions: []string{"heic"},
+	}
+
+	var stdout, stderr bytes.Buffer
+	successCount, errorCount, err := ProcessImageRename(config, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("ProcessImageRename() が予期せず失敗しました: %v", err)
+	}
+
+	if successCount != 2 {
+		t.Errorf("成功数が期待値と異なります。期待値: 2, 実際: %d", successCount)
+	}
+	if errorCount != 0 {
+		t.Errorf("エラー数が期待値と異なります。期待値: 0, 実際: %d", errorCount)
+	}
+
+	expectedFiles := []string{"EXT_001.heic", "EXT_002.HEIC"}
+	for _, expectedFile := range expectedFiles {
+		if _, err := os.Stat(filepath.Join(tempDir, expectedFile)); os.IsNotExist(err) {
+			t.Errorf("期待されるリネーム後ファイルが存在しません: %s", expectedFile)
+		}
+	}
+
+	if _, err := os.Stat(filepath.Join(tempDir, "skip.jpg")); err != nil {
+		t.Errorf("対象外ファイルは残る想定です: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tempDir, "skip.png")); err != nil {
+		t.Errorf("対象外ファイルは残る想定です: %v", err)
+	}
+
+	if !strings.Contains(stdout.String(), "画像ファイルが 2 件見つかりました") {
+		t.Errorf("期待される出力メッセージが見つかりません: %s", stdout.String())
 	}
 }

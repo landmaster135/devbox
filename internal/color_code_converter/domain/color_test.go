@@ -295,6 +295,74 @@ func TestParseFromHSV_Normal(t *testing.T) {
 	}
 }
 
+func TestParseFromDecimal_Normal(t *testing.T) {
+	tests := []struct {
+		name        string
+		decStr      string
+		expected    *Color
+		expectError bool
+	}{
+		{
+			name:     "ValidDecimalRed_Normal",
+			decStr:   "16711680",
+			expected: &Color{R: 255, G: 0, B: 0},
+		},
+		{
+			name:     "ValidDecimalZero_Normal",
+			decStr:   "0",
+			expected: &Color{R: 0, G: 0, B: 0},
+		},
+		{
+			name:     "ValidDecimalMax_Normal",
+			decStr:   "16777215",
+			expected: &Color{R: 255, G: 255, B: 255},
+		},
+		{
+			name:        "NegativeValue_Error",
+			decStr:      "-1",
+			expectError: true,
+		},
+		{
+			name:        "OutOfRangeValue_Error",
+			decStr:      "16777216",
+			expectError: true,
+		},
+		{
+			name:        "InvalidCharacters_Error",
+			decStr:      "abc",
+			expectError: true,
+		},
+		{
+			name:        "EmptyString_Error",
+			decStr:      "",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			color, err := ParseFromDecimal(tt.decStr)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("期待されたエラーが発生しませんでした")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("予期しないエラーが発生しました: %v", err)
+				return
+			}
+
+			if color.R != tt.expected.R || color.G != tt.expected.G || color.B != tt.expected.B {
+				t.Errorf("ParseFromDecimal(%v) = {%v, %v, %v}, want {%v, %v, %v}",
+					tt.decStr, color.R, color.G, color.B, tt.expected.R, tt.expected.G, tt.expected.B)
+			}
+		})
+	}
+}
+
 func TestToHex_Normal(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -376,6 +444,44 @@ func TestToRGB_Normal(t *testing.T) {
 			result := tt.color.ToRGB()
 			if result != tt.expected {
 				t.Errorf("ToRGB() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestToDecimal_Normal(t *testing.T) {
+	tests := []struct {
+		name     string
+		color    *Color
+		expected string
+	}{
+		{
+			name:     "RedColor_Normal",
+			color:    &Color{R: 255, G: 0, B: 0},
+			expected: "16711680",
+		},
+		{
+			name:     "GreenColor_Normal",
+			color:    &Color{R: 0, G: 255, B: 0},
+			expected: "65280",
+		},
+		{
+			name:     "BlueColor_Normal",
+			color:    &Color{R: 0, G: 0, B: 255},
+			expected: "255",
+		},
+		{
+			name:     "WhiteColor_Normal",
+			color:    &Color{R: 255, G: 255, B: 255},
+			expected: "16777215",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.color.ToDecimal()
+			if result != tt.expected {
+				t.Errorf("ToDecimal() = %v, want %v", result, tt.expected)
 			}
 		})
 	}

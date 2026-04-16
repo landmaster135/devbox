@@ -2,6 +2,7 @@
 
 ## 実装戦略
 
+- ユーザーから特別に指示が無い限り、後方互換性は考慮しない。
 - `domain/`、`usecases/`、`infrastructures/` を実装。
 - **infrastructure層は、他のいかなる層からも独立していなければならない。**
 
@@ -113,21 +114,21 @@ func (s *Service) PatchFiles(ctx context.Context, memo string, filePaths []strin
 
 テスト方針:
 - usecase テストでは `mockFileSystem` を注入し、ファイルI/Oに依存せず分岐を検証する
+  - `infrastructures` 層の `Repository` に対するモックは、対応する `infrastructures/{resource}/` 直下で定義する
+  - usecases 側のテストから上記モックを import して利用し、usecases 配下で同等モックを再定義しない
 - CLI テストではファイル内容ではなく、`service` への引数委譲を検証する
 
 ### 4. operation別サブディレクトリ + common分離
 
-operation が増えて `usecases/services.go` が肥大化する場合は、`usecases` 直下に処理をフラットに並べず、operationごとにサブディレクトリへ分割します。共通処理は `common` サブディレクトリへ集約します。
+operation が増えて `usecases/services.go` が肥大化する場合は、`usecases` 直下に処理をフラットに並べず、operationごとにサブディレクトリへ分割します。共通の業務ロジックは `common` サブディレクトリへ集約し、HTTP クライアントなどの外部I/Oは `infrastructures` 層へ分離します。
 
 ディレクトリ構成の例:
 ```text
 internal/{tool}/usecases/
-├── services.go                      // Facadeと依存注入
-├── service_operations.go            // 公開メソッドの委譲
-├── service_contract.go              // 公開インターフェース + テスト用公開Mock
+├── services.go                      // Facade、依存注入、公開メソッドを同居
+├── service_contract.go              // operationインターフェース定義 + 組み立て
 ├── common/
 │   ├── helpers.go                   // 正規化、共通バリデーション
-│   ├── http.go                      // JSON HTTPクライアント
 │   ├── models.go                    // 共通DTO
 │   └── requests.go                  // 共通request payload
 ├── operations/
@@ -139,15 +140,32 @@ internal/{tool}/usecases/
 │   │   └── service_test.go
 │   └── ...
 └── testutil/
-    └── helpers.go                   // mock HTTP client / mock FS / 共通helper
+    └── helpers.go                   // 共通テストヘルパ
+
+internal/{tool}/infrastructures/
+├── http/
+│   ├── client.go                    // JSON HTTPクライアント実装
+│   └── mock_client.go               // HTTPクライアント向けmock（usecaseテストから利用）
+└── filesystem/
+    ├── repository.go
+    ├── impl.go
+    └── mock_repository.go           // Repository向けmock（usecaseテストから利用）
 ```
 
 実装ルール:
-- `services.go` は Facade として薄く保つ（公開APIと依存注入に限定）
+- `services.go` に **初期化（依存注入）と公開メソッドを必ず同居** させる
 - 各 operation のロジックは `operations/{operation}/` に閉じ込める
-- operation 間で共有するロジック・DTO・HTTP処理は `common/` に移す
+- operation 間で共有する業務ロジック・DTO・request payload は `common/` に移す
+- HTTPクライアントやファイル操作などの外部I/Oは `infrastructures/` に実装する
+- `infrastructures` 層の `Repository` モックは `infrastructures/{resource}/` 直下に置く
 - operation 専用テストは同じ operation ディレクトリに置く
 - operation 実装ファイル名は `service.go`、テストファイル名は `service_test.go` とする
+- 薄い委譲ファイルを作らない
+
+参照実装:
+- `internal/markdown_crafter/usecases/services.go`
+- `internal/markdown_crafter/usecases/service_contract.go`
+- `internal/markdown_crafter/usecases/operations/`
 
 適用目安:
 - operation が 4 種類以上あり、単一 `services.go` の見通しが悪くなっている場合

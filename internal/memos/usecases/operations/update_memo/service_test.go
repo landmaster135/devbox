@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
-	"github.com/landmaster135/devbox/internal/memos/usecases/testutil"
+	testutil "github.com/landmaster135/devbox/internal/memos/infrastructures/testutil"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 func TestServiceOperationUpdateMemo_AutoUpdateMask_Normal(t *testing.T) {

@@ -40,6 +40,10 @@ pkg/win_dos/Taskfile.env.yml
 *.log
 .gocache/
 .cache/
+.ci/
+
+### tmp ###
+**/tmp/**
 
 ### Docker ###
 # .dockerignore
@@ -72,7 +76,9 @@ qdrant_storage/
 
 ### binary ###
 pkg/bin/*
-bin
+!pkg/bin/.gitkeep
+/bin
+devbox
 
 ### test data ###
 internal/exif_modifier/test_data/tmp/*
@@ -84,3 +90,6 @@ internal/git_diff_recorder/ai_model/*
 lib/personal/*
 !lib/personal/.gitkeep
 !lib/personal/README.md
+
+### agent ###
+.codex

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 
 	usecases "github.com/landmaster135/devbox/internal/image_renamer/usecases"
 )
@@ -28,12 +29,13 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 	srcDir := flagSet.String("src", ".", "スキャンするソースディレクトリ")
 	sortByName := flagSet.Bool("name", false, "画像ファイルをファイル名順に並べ替え")
 	sortByTime := flagSet.Bool("time", false, "画像ファイルを更新日時順に並べ替え")
-	prefix := flagSet.String("prefix", "", "記事番号のプレフィックス (必須)")
+	prefix := flagSet.String("prefix", "", "記事番号のプレフィックス (任意)")
 	delimiter := flagSet.String("delimiter", "_", "プレフィックスとシリアル番号の間の区切り文字")
 	digits := flagSet.Int("digits", 4, "シリアル番号の桁数")
 	startCount := flagSet.Int("start", 1, "リネーム操作の開始番号")
 	recursive := flagSet.Bool("r", false, "サブディレクトリを再帰的にスキャン")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "並行ワーカー数")
+	extensions := flagSet.String("extensions", "", "リネーム対象の拡張子(カンマ区切り、例: \".jpg,.png,.heic\")")
 
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
@@ -51,7 +53,30 @@ func parseFlags(args []string, stderr io.Writer) (usecases.Config, error) {
 		StartCount: *startCount,
 		Recursive:  *recursive,
 		Workers:    *workers,
+		Extensions: parseExtensions(*extensions),
 	}, nil
+}
+
+func parseExtensions(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+
+	parts := strings.Split(raw, ",")
+	extensions := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		extensions = append(extensions, trimmed)
+	}
+
+	if len(extensions) == 0 {
+		return nil
+	}
+
+	return extensions
 }
 
 // run は画像ファイルリネームツールの主要なロジックを実行します

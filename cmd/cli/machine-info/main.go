@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/machine_info/config"
-	"github.com/landmaster135/devbox/internal/machine_info/usecases"
+	config "github.com/landmaster135/devbox/internal/machine_info/config"
+	usecases "github.com/landmaster135/devbox/internal/machine_info/usecases"
 )
 
 func main() {

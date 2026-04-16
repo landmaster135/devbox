@@ -25,6 +25,7 @@ import (
 	postgresql "github.com/landmaster135/devbox/cmd/mcp/postgresql"
 	sequentialthinking "github.com/landmaster135/devbox/cmd/mcp/sequentialthinking"
 	service_implementing_viewer "github.com/landmaster135/devbox/cmd/mcp/service_implementing_viewer"
+	web_clipper "github.com/landmaster135/devbox/cmd/mcp/web_clipper"
 
 	shell "github.com/landmaster135/devbox/cmd/mcp/shell"
 	timezone "github.com/landmaster135/devbox/cmd/mcp/timezone"
@@ -98,6 +99,8 @@ func Router() {
 		ops_for_golang.BuildGolangOpsServer()
 	case "shell":
 		shell.BuildShellServer()
+	case "web_clipper":
+		web_clipper.BuildWebClipperServer()
 	default:
 		fmt.Fprintln(os.Stderr, "argument is invalid")
 		os.Exit(1)

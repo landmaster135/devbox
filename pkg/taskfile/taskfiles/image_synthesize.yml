@@ -98,6 +98,39 @@ tasks:
         interactive: true
         silent: true
 
+  image-rename:by-2-digits:convert:
+    desc: "image-renamerで2桁連番リネーム後にWebP変換"
+    cmds:
+      - cmd: |
+          set -eu
+          {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.INTERACTIVE_CHOICE_FLAG_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
+
+          PREFIX_ARG="$("{{.INTERACTIVE_BIN}}" \
+            --prompt "Input prefix to rename image files (optional. press Enter to rename as xx.jpg): " \
+            --input-type text --key prefix --default "")" || exit 1
+          START_ARG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input number to renumber the images  (e.g. prefix_xx.jpg): " start)" || exit 1
+          SORT_FLAG="$({{.INTERACTIVE_CHOICE_FLAG_INPUT_NAME}} \
+            "Select how to sort image files to rename  [n]='-name'  [d]='-time' : " \
+            --choice-option "n|-name" --choice-option "d|-time")" || exit 1
+
+          {{.METHOD_FLAG_GUARD_NAME}} \
+            "interactive-input から値を取得できませんでした。" "$START_ARG" "$SORT_FLAG"
+
+          echo $'\n[Step 01: START]--- 画像リネームプログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-renamer{{.EXE}}" \
+            --src . --digits 2 --delimiter "_" \
+            "$PREFIX_ARG" "$START_ARG" "$SORT_FLAG"
+          echo $'\n[Step 01: END]--- 画像リネームプログラムの実行が完了しました ---'
+
+          echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
+          "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
+            --src . --ext webp --q 80 --archive .{{.DIR_SEP}}5_original_files
+          echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
+        dir: "{{.TASKFILE_DIR}}"
+        interactive: true
+        silent: true
+
   image-rename:by-4-digits:convert:
     desc: "image-renamerで4桁連番リネーム後にWebP変換"
     cmds:

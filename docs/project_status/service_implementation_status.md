@@ -14,6 +14,7 @@
 
 | service                                     | cli | mcp | grpc/handlers | http/handlers |
 | :-----------------------------------------: | :-: | :-: | :-: | :-: |
+| agent-session                               | ✅  | ❌️  | ❌️  | ❌️ |
 | anilist                                     | ✅  | ❌️  | ❌️  | ❌️ |
 | arithmetic-calculator                       | ✅  | ✅  | ❌️  | ❌️ |
 | arxiv                                       | ✅  | ❌️  | ❌️  | ❌️ |
@@ -23,6 +24,7 @@
 | code-analyzer                               | ✅  | ❌️  | ❌️  | ❌️ |
 | color-code-converter                        | ✅  | ❌️  | ❌️  | ❌️ |
 | context7                                    | ✅  | ✅  | ❌️  | ❌️ |
+| coverage-badge                              | ✅  | ❌️  | ❌️  | ❌️ |
 | cron-workflow                               | ✅  | ❌️  | ❌️  | ✅ |
 | data-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | datetime-calculator                         | ✅  | ✅  | ❌️  | ❌️ |
@@ -39,13 +41,13 @@
 | exif-viewer                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | figma                                       | ❌️  | ✅  | ❌️  | ❌️ |
 | file-character-replacer                     | ✅  | ❌️  | ❌️  | ❌️ |
+| file-line-deduper                           | ✅  | ❌️  | ❌️  | ❌️ |
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
-| file-processor                              | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
-| filesystem-v2                               | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
+| gcloud-genset-compute                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-container                     | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-deployment                    | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-dns                           | ✅  | ❌️  | ❌️  | ❌️ |
@@ -88,13 +90,17 @@
 | json-timestamp-modifier                     | ✅  | ❌️  | ❌️  | ❌️ |
 | kana-converter                              | ✅  | ❌️  | ❌️  | ❌️ |
 | machine-info                                | ✅  | ❌️  | ❌️  | ❌️ |
+| markdown-crafter                            | ✅  | ❌️  | ❌️  | ❌️ |
+| mcp-infra-mark3labs                         | ✅  | ❌️  | ❌️  | ❌️ |
 | mcp-remote                                  | ✅  | ❌️  | ❌️  | ❌️ |
 | memory                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | memos                                       | ✅  | ❌️  | ❌️  | ❌️ |
+| memos-utility                               | ✅  | ❌️  | ❌️  | ❌️ |
 | movie-converter-for-gif                     | ✅  | ❌️  | ❌️  | ❌️ |
 | movie-converter-for-webm                    | ✅  | ❌️  | ❌️  | ❌️ |
 | notion-blog-content-extractor               | ✅  | ❌️  | ❌️  | ❌️ |
 | notion-sync                                 | ✅  | ✅  | ❌️  | ❌️ |
+| notion-to-memos-markdown                    | ✅  | ❌️  | ❌️  | ❌️ |
 | ocr-executor                                | ✅  | ❌️  | ❌️  | ❌️ |
 | ocr-executor-with-ai                        | ✅  | ❌️  | ❌️  | ❌️ |
 | ollama                                      | ✅  | ❌️  | ❌️  | ❌️ |
@@ -119,6 +125,7 @@
 | valkey                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | vector-embedding                            | ✅  | ❌️  | ❌️  | ❌️ |
 | weather-notificator                         | ✅  | ✅  | ✅  | ✅ |
+| web-clipper                                 | ✅  | ✅  | ❌️  | ❌️ |
 | web-scraper                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | withings                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | yaml-parser                                 | ✅  | ❌️  | ❌️  | ❌️ |
@@ -128,16 +135,16 @@
 
 ### 統計情報
 
-- **総サービス数**: 111
-- **CLIツール実装数**: 100
-- **MCPツール実装数**: 26
+- **総サービス数**: 118
+- **CLIツール実装数**: 107
+- **MCPツール実装数**: 27
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 2
-- **CLIのみ実装**: 84
+- **CLIのみ実装**: 90
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
-- **CLI+MCP両方実装**: 15
+- **CLI+MCP両方実装**: 16
 - **全て実装済み**: 1
 
 ## 注意事項

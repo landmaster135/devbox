@@ -3,6 +3,7 @@ package infrastructures
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -61,6 +62,19 @@ func TestOSFileSystem_ReadAttachmentFile_NotFound_Error(t *testing.T) {
 	_, err := fs.ReadAttachmentFile("/tmp/does-not-exist-memos-attachment")
 	if err == nil {
 		t.Fatal("ReadAttachmentFile() error = nil, want error")
+	}
+}
+
+func TestOSFileSystem_ReadAttachmentFile_DirectoryPath_Error(t *testing.T) {
+	fs := NewOSFileSystem()
+	dirPath := t.TempDir()
+
+	_, err := fs.ReadAttachmentFile(dirPath)
+	if err == nil {
+		t.Fatal("ReadAttachmentFile() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "ファイルの読み込みに失敗しました") {
+		t.Fatalf("error = %v, want ファイルの読み込みに失敗しました", err)
 	}
 }
 

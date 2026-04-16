@@ -64,6 +64,19 @@ func TestValidateConfig_Normal(t *testing.T) {
 				Workers:    1,
 			},
 		},
+		{
+			name: "プレフィックスが空の場合も正常終了",
+			config: Config{
+				SrcDir:     tempDir,
+				SortByName: true,
+				SortByTime: false,
+				Prefix:     "",
+				Digits:     4,
+				StartCount: 1,
+				Recursive:  false,
+				Workers:    1,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -102,20 +115,6 @@ func TestValidateConfig_Error(t *testing.T) {
 		config        Config
 		expectedError string
 	}{
-		{
-			name: "プレフィックスが空の場合",
-			config: Config{
-				SrcDir:     tempDir,
-				SortByName: true,
-				SortByTime: false,
-				Prefix:     "",
-				Digits:     4,
-				StartCount: 1,
-				Recursive:  false,
-				Workers:    1,
-			},
-			expectedError: "プレフィックスが指定されていません",
-		},
 		{
 			name: "ソートフラグが両方falseの場合",
 			config: Config{
@@ -221,7 +220,7 @@ func TestFindImageFiles_Normal(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			files, err := findImageFiles(tempDir, tc.recursive, &stdout, &stderr)
+			files, err := findImageFiles(tempDir, tc.recursive, nil, &stdout, &stderr)
 			if err != nil {
 				t.Errorf("FindImageFiles() エラーが発生しました: %v", err)
 			}
@@ -259,13 +258,13 @@ func TestFindImageFiles_Error(t *testing.T) {
 	nonExistentDir := "/non-existent-dir"
 
 	var stdout, stderr bytes.Buffer
-	_, err := findImageFiles(nonExistentDir, false, &stdout, &stderr)
+	_, err := findImageFiles(nonExistentDir, false, nil, &stdout, &stderr)
 	if err == nil {
 		t.Errorf("FindImageFiles() エラーが発生しませんでした。存在しないディレクトリでエラーが期待されていました。")
 	}
 
 	// 再帰的検索でも同様にテスト
-	_, err = findImageFiles(nonExistentDir, true, &stdout, &stderr)
+	_, err = findImageFiles(nonExistentDir, true, nil, &stdout, &stderr)
 	if err == nil {
 		t.Errorf("FindImageFiles() エラーが発生しませんでした。存在しないディレクトリでエラーが期待されていました。")
 	}
@@ -459,27 +458,37 @@ func TestPrepareJobs_Normal(t *testing.T) {
 	testCases := []struct {
 		name         string
 		startCount   int
+		prefix       string
 		expected     []int
 		expectedName []string
 	}{
 		{
 			name:         "開始番号が1の場合",
 			startCount:   1,
+			prefix:       "test",
 			expected:     []int{1, 2},
 			expectedName: []string{"test_0001.jpg", "test_0002.jpg"},
 		},
 		{
 			name:         "開始番号が10の場合",
 			startCount:   10,
+			prefix:       "test",
 			expected:     []int{10, 11},
 			expectedName: []string{"test_0010.jpg", "test_0011.jpg"},
+		},
+		{
+			name:         "プレフィックスが空の場合",
+			startCount:   1,
+			prefix:       "",
+			expected:     []int{1, 2},
+			expectedName: []string{"0001.jpg", "0002.jpg"},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := Config{
-				Prefix:     "test",
+				Prefix:     tc.prefix,
 				Delimiter:  "_",
 				Digits:     4,
 				StartCount: tc.startCount,
@@ -534,6 +543,74 @@ func TestIsImageExt_Normal(t *testing.T) {
 				t.Errorf("isImageExt() 期待される結果と異なります。拡張子: %s, 期待: %v, 実際: %v", tc.ext, tc.expected, result)
 			}
 		})
+	}
+}
+
+func TestNormalizeExtensions_Normal(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "nilならデフォルトを返す",
+			input:    nil,
+			expected: []string{".jpg", ".jpeg", ".png", ".webp", ".avif"},
+		},
+		{
+			name:     "先頭ドットなしと大文字を正規化",
+			input:    []string{"jpg", " PNG ", ".Heic"},
+			expected: []string{".jpg", ".png", ".heic"},
+		},
+		{
+			name:     "カンマ区切り入力と重複を正規化",
+			input:    []string{"jpg,png", ".JPG", "  ,  ", ".png"},
+			expected: []string{".jpg", ".png"},
+		},
+		{
+			name:     "実質空入力はデフォルトへフォールバック",
+			input:    []string{"", "   ", ","},
+			expected: []string{".jpg", ".jpeg", ".png", ".webp", ".avif"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeExtensions(tc.input)
+			if !reflect.DeepEqual(got, tc.expected) {
+				t.Errorf("normalizeExtensions() 期待値と異なります。期待: %v, 実際: %v", tc.expected, got)
+			}
+		})
+	}
+}
+
+func TestFindImageFiles_WithCustomExtensions(t *testing.T) {
+	tempDir := t.TempDir()
+
+	filesToCreate := []string{
+		"sample.jpg",
+		"sample.png",
+		"sample.HEIC",
+		"sample.txt",
+	}
+	for _, name := range filesToCreate {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte("test"), 0644); err != nil {
+			t.Fatalf("テストファイルの作成に失敗しました: %v", err)
+		}
+	}
+
+	var stdout, stderr bytes.Buffer
+	files, err := findImageFiles(tempDir, false, []string{"heic"}, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("findImageFiles() が予期せず失敗しました: %v", err)
+	}
+
+	if len(files) != 1 {
+		t.Fatalf("findImageFiles() 検出件数が期待と異なります。期待: 1, 実際: %d", len(files))
+	}
+
+	if filepath.Base(files[0]) != "sample.HEIC" {
+		t.Errorf("findImageFiles() 検出ファイルが期待と異なります。実際: %s", files[0])
 	}
 }
 

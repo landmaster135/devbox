@@ -1,6 +1,6 @@
 # Qdrant CLI
 
-Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert / 検索を行う CLI です。`github.com/qdrant/go-client/qdrant` を利用し、埋め込み生成には既存の `vector-embedding` ツールと同じユースケース層を再利用しています。
+Qdrant の gRPC API を叩いてコレクション操作やベクトル upsert / 検索を行う CLI です。
 
 ## ビルド
 
@@ -140,3 +140,7 @@ go run ./cmd/cli/qdrant \
 ```
 
 > ℹ️ フィルタを指定しない場合はコレクション全体が対象です。`filter-should` と `filter-min-should` を併用すると、「should 条件を N 件以上満たすポイント」だけに payload を適用できます。
+
+## 関連リンク
+
+- [Qdrant CLI](https://github.com/qdrant/qdrant)

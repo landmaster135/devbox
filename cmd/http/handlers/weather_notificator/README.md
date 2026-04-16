@@ -1,6 +1,6 @@
 # Weather Notificator HTTP Handler
 
-天気予報をDiscordに通知するHTTPハンドラです。
+天気予報をDiscordに通知するHTTPハンドラを提供します。
 
 ## 概要
 

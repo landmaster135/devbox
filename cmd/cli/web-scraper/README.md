@@ -1,6 +1,6 @@
 # Web Scraper
 
-`github.com/go-rod/rod` を利用してブラウザを自動操作し、WebページのDOMツリーのうち`<main>`要素のみを取得するCLIツールです。
+ブラウザを自動操作し、WebページのDOMツリーを取得するCLIツールです。
 
 ## 機能
 - `get_dom_tree`: 指定したURLを開き、DOMツリーから`<main>`要素のみ（外側のタグを含む）を抽出して出力します。`<faceplate-tracker>`要素を自動で除去し、全要素から`class`/`style`属性を削除、さらに連続する空行を1行に圧縮します。

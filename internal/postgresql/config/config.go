@@ -14,7 +14,7 @@ type Config struct {
 	DatabaseURL   string // 必須: PostgreSQL接続URL
 	TableName     string // dump操作時のみ必須: ダンプするテーブル名
 	OutputPath    string // オプション: 出力ディレクトリパス
-	Format        string // オプション: 出力フォーマット (json, csv, sql, text)
+	Format        string // オプション: 出力フォーマット (json, csv, sql, text, binary)
 	Limit         *int   // オプション: 最大レコード数
 	Concurrency   *int   // オプション: 並行処理数 (1-CPUコア数)
 	ResultFormat  string // オプション: ダンプ結果のフォーマット (json, markdown)
@@ -31,7 +31,7 @@ func ParseFlags() (*Config, error) {
 	flag.StringVar(&cfg.DatabaseURL, "database-url", "", "PostgreSQLデータベース接続URL (必須)")
 	flag.StringVar(&cfg.TableName, "table-name", "", "ダンプするテーブル名 (dump操作時のみ必須)")
 	flag.StringVar(&cfg.OutputPath, "output-path", "", "出力ディレクトリパス (オプション、デフォルト: カレントディレクトリ)")
-	flag.StringVar(&cfg.Format, "format", "json", "出力フォーマット (オプション: json, csv, sql, text、デフォルト: json)")
+	flag.StringVar(&cfg.Format, "format", "json", "出力フォーマット (オプション: json, csv, sql, text, binary、デフォルト: json)")
 	flag.StringVar(&cfg.ResultFormat, "result-format", "json", "ダンプ結果のフォーマット (オプション: json, markdown、デフォルト: json)")
 	flag.StringVar(&cfg.ResultHeading, "result-heading", "", "ダンプ結果サマリの見出し (Markdown出力時に利用)")
 	flag.StringVar(&cfg.Timezone, "timezone", "", "タイムゾーン (例: Asia/Tokyo)。未指定の場合はシステムローカルを使用")
@@ -92,20 +92,21 @@ func (c *Config) validate() error {
 		return fmt.Errorf("--database-url は必須です")
 	}
 
+	// フォーマットの検証
+	validFormats := map[string]bool{
+		"json":   true,
+		"csv":    true,
+		"sql":    true,
+		"text":   true,
+		"binary": true,
+	}
+	if !validFormats[c.Format] {
+		return fmt.Errorf("未対応のフォーマットです: %s (対応フォーマット: json, csv, sql, text, binary)", c.Format)
+	}
+
 	// table-nameはdump操作時のみ必須
 	if c.Operation == "dump" && c.TableName == "" {
 		return fmt.Errorf("--table-name は必須です (dump操作時)")
-	}
-
-	// フォーマットの検証
-	validFormats := map[string]bool{
-		"json": true,
-		"csv":  true,
-		"sql":  true,
-		"text": true,
-	}
-	if !validFormats[c.Format] {
-		return fmt.Errorf("未対応のフォーマットです: %s (対応フォーマット: json, csv, sql, text)", c.Format)
 	}
 
 	// result-format の検証
@@ -120,6 +121,15 @@ func (c *Config) validate() error {
 	// 操作別のフォーマット制限
 	if c.Operation == "list-tables-minimum" && c.Format != "json" {
 		return fmt.Errorf("list-tables-minimum操作ではjsonフォーマットのみ対応しています")
+	}
+	if c.Format == "binary" && c.Operation != "dump-all-tables" {
+		return fmt.Errorf("binaryフォーマットはdump-all-tables操作でのみ対応しています")
+	}
+	if c.Operation == "dump-all-tables" && c.Format == "binary" && c.TableName != "" {
+		return fmt.Errorf("--table-name は指定できません (dump-all-tables操作で--format=binary時)")
+	}
+	if c.Operation == "dump-all-tables" && c.Format == "binary" && c.Limit != nil {
+		return fmt.Errorf("dump-all-tables操作で--format=binaryの場合、--limit は指定できません")
 	}
 
 	// limitの検証
@@ -147,7 +157,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  --table-name string     ダンプするテーブル名 (dump操作時のみ必須)\n\n")
 	fmt.Fprintf(os.Stderr, "オプション:\n")
 	fmt.Fprintf(os.Stderr, "  --output-path string    出力ディレクトリパス (デフォルト: カレントディレクトリ)\n")
-	fmt.Fprintf(os.Stderr, "  --format string         出力フォーマット: json, csv, sql, text (デフォルト: json)\n")
+	fmt.Fprintf(os.Stderr, "  --format string         出力フォーマット: json, csv, sql, text, binary (デフォルト: json)\n")
 	fmt.Fprintf(os.Stderr, "  --result-format string  ダンプ結果フォーマット: json, markdown (デフォルト: json)\n")
 	fmt.Fprintf(os.Stderr, "  --result-heading string ダンプ結果サマリの見出し (Markdown時のみ)\n")
 	fmt.Fprintf(os.Stderr, "  --timezone string       タイムスタンプ/ファイル名で利用するタイムゾーン (例: Asia/Tokyo)\n")
@@ -159,6 +169,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump --database-url=\"postgres://user:pass@localhost/db\" --table-name=users\n\n")
 	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\"\n\n")
+	fmt.Fprintf(os.Stderr, "  # 全テーブルをbinary形式でダンプ\n")
+	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --format=binary\n\n")
 	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ（CSV形式、出力先指定）\n")
 	fmt.Fprintf(os.Stderr, "  postgresql-cli --operation=dump-all-tables --database-url=\"postgres://user:pass@localhost/db\" --format=csv --output-path=/tmp/dumps\n\n")
 	fmt.Fprintf(os.Stderr, "  # 全テーブルダンプ（各テーブル最大1000件）\n")
