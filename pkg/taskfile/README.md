@@ -65,6 +65,9 @@ includes:
 
 ```
 
+### Set env vars
+Especially, confirm `PACKAGE_ROOT_DIR`.
+
 ### Symblic links
 Create new symbolic links.
 ```bash
