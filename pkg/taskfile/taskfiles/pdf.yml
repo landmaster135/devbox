@@ -2,11 +2,11 @@ version: "3"
 
 includes:
   core:
-    taskfile: ./core.yml
+    taskfile: ./_core.yml
     internal: true
 
 vars:
-  HOME_DIR: "{{- if .HOME -}}{{ .HOME }}{{- else if .USERPROFILE -}}{{ .USERPROFILE }}{{- else -}}{{ .ROOT_TASKFILE_DIR }}{{- end -}}"
+  HOME_DIR: "{{- if .HOME -}}{{ .HOME }}{{- else if .USERPROFILE -}}{{ .USERPROFILE }}{{- else -}}{{ .PACKAGE_ROOT_DIR }}{{- end -}}"
   DEFAULT_PICTURE_BACKUP_DIR: "{{.HOME_DIR}}{{.DIR_SEP}}Downloads{{.DIR_SEP}}picture_backup"
   DOWNLOADS_PICTURE_BACKUP_DIR: "{{ default .DEFAULT_PICTURE_BACKUP_DIR .PICTURE_BACKUP_DIR }}"
 

@@ -2,63 +2,63 @@ version: "3"
 
 includes:
   calc:
-    taskfile: ./taskfiles/calculate_for_text.yml
+    taskfile: ./pkg/taskfiles/calculate_for_text.yml
     flatten: false
     internal: true
   db:
-    taskfile: ./taskfiles/db_server.yml
+    taskfile: ./pkg/taskfiles/db_server.yml
     flatten: false
     internal: true
   diff-dreamer:
-    taskfile: ./taskfiles/diff_dreamer.yml
+    taskfile: ./pkg/taskfiles/diff_dreamer.yml
     flatten: false
     internal: true
   image-rename:
-    taskfile: ./taskfiles/image_rename.yml
+    taskfile: ./pkg/taskfiles/image_rename.yml
     flatten: false
     internal: true
   image-convert:
-    taskfile: ./taskfiles/image_convert.yml
+    taskfile: ./pkg/taskfiles/image_convert.yml
     flatten: false
     internal: true
   ocr:
-    taskfile: ./taskfiles/ocr.yml
+    taskfile: ./pkg/taskfiles/ocr.yml
     flatten: false
     internal: true
   iso8601:
-    taskfile: ./taskfiles/iso8601.yml
+    taskfile: ./pkg/taskfiles/iso8601.yml
     flatten: false
     internal: true
   kana:
-    taskfile: ./taskfiles/kana_converter.yml
+    taskfile: ./pkg/taskfiles/kana_converter.yml
     flatten: false
     internal: true
   file-maneuver:
-    taskfile: ./taskfiles/file_maneuver.yml
+    taskfile: ./pkg/taskfiles/file_maneuver.yml
     flatten: false
     internal: true
   json:
-    taskfile: ./taskfiles/json.yml
+    taskfile: ./pkg/taskfiles/json.yml
     flatten: false
     internal: true
   movie-convert:
-    taskfile: ./taskfiles/movie_convert.yml
+    taskfile: ./pkg/taskfiles/movie_convert.yml
     flatten: false
     internal: true
   image-synthesize:
-    taskfile: ./taskfiles/image_synthesize.yml
+    taskfile: ./pkg/taskfiles/image_synthesize.yml
     flatten: false
     internal: true
   exif:
-    taskfile: ./taskfiles/exif.yml
+    taskfile: ./pkg/taskfiles/exif.yml
     flatten: false
     internal: true
   http-request:
-    taskfile: ./taskfiles/http_request.yml
+    taskfile: ./pkg/taskfiles/http_request.yml
     flatten: false
     internal: true
   pdf:
-    taskfile: ./taskfiles/pdf.yml
+    taskfile: ./pkg/taskfiles/pdf.yml
     flatten: false
     internal: true
 
@@ -243,7 +243,7 @@ tasks:
   file:maneuver:exe:
     desc: "<FAV> file-maneuverでwin_amd64のexeを同期"
     cmds:
-      - task: file-maneuver:file-maneuver:sync-executables
+      - task: file-maneuver:file-maneuver:sync-win-exe
   file:maneuver:webp:thumbnail_of_game:
     desc: "file-maneuverでthumbnail_of_gameなWebPを移動"
     cmds:

@@ -2,14 +2,14 @@ version: "3"
 
 includes:
   core:
-    taskfile: ./core.yml
+    taskfile: ./_core.yml
     internal: true
   env:
     taskfile: ./env.yml
     internal: true
 
 tasks:
-  file-maneuver:sync-executables:
+  file-maneuver:sync-win-exe:
     desc: "file-maneuverでwin_amd64向けexeを同期"
     cmds:
       - cmd: |
@@ -17,7 +17,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- file-maneuverでexeを同期します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}file-maneuver{{.EXE}}" \
-            --src-dirs "\{{.FILE_MANEUVERS_EXE_SRC_DIRS}}" \
+            --src-dirs "\{{.FILE_MANEUVERS_WIN_EXE_SRC_DIRS}}" \
             --dest-dir "{{.CLI_BIN_DIR}}" \
             --extensions exe --copy --overwrite
           echo $'\n[Step 01: END]--- file-maneuverでexeの同期が完了しました ---'
