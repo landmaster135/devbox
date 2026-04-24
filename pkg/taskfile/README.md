@@ -64,3 +64,11 @@ includes:
 ...
 
 ```
+
+### Symblic links
+Create new symbolic links.
+```bash
+cd "<your-dir>"
+ln -sfn "$HOME/devbox/pkg/taskfile/taskfiles" "taskfiles"
+ln -sfn "$HOME/devbox/pkg/bin" "bin"
+```
