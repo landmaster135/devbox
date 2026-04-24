@@ -146,7 +146,7 @@ tasks:
       - cmd: |
           set -eu
 
-          JSON_DIR="{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}9_json"
+          JSON_DIR="{{.PACKAGE_ROOT_DIR}}{{.DIR_SEP}}9_json"
           KEY="pc_stats"
           
           DATE=$({{.CLI_BIN_DIR}}{{.DIR_SEP}}iso8601-converter{{.EXE}} --operation now --format date)

@@ -18,7 +18,7 @@ tasks:
           PATH="{{.PATH_OF_DB_SERVER_ENDPOINT_01_FOR_LOGIN}}"
           ENDPOINT="${BASE_URL}/${PATH}"
 
-          JSON_PATH="{{.ROOT_TASKFILE_DIR}}{{.DIR_SEP}}9_json{{.DIR_SEP}}config{{.DIR_SEP}}login_from_windows_01.json"
+          JSON_PATH="{{.PACKAGE_ROOT_DIR}}{{.DIR_SEP}}9_json{{.DIR_SEP}}config{{.DIR_SEP}}login_from_windows_01.json"
 
           echo "[INFO] Endpoint: ${ENDPOINT}"
           echo "[INFO] JSON: ${JSON_PATH}"
