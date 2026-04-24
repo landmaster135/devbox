@@ -17,7 +17,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- file-maneuverでexeを同期します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}file-maneuver{{.EXE}}" \
-            --src-dirs "\{{.FILE_MANEUVERS_WIN_EXE_DST_DIR}}" \
+            --src-dirs "\{{.FILE_MANEUVERS_WIN_EXE_SRC_DIRS}}" \
             --dest-dir "{{.CLI_BIN_DIR}}" \
             --extensions exe --copy --overwrite
           echo $'\n[Step 01: END]--- file-maneuverでexeの同期が完了しました ---'
