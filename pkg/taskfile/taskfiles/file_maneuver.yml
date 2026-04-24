@@ -2,14 +2,14 @@ version: "3"
 
 includes:
   core:
-    taskfile: ./core.yml
+    taskfile: ./_core.yml
     internal: true
   env:
     taskfile: ./env.yml
     internal: true
 
 tasks:
-  file-maneuver:sync-executables:
+  file-maneuver:sync-win-exe:
     desc: "file-maneuverでwin_amd64向けexeを同期"
     cmds:
       - cmd: |
