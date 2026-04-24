@@ -2,7 +2,7 @@
 
 ## Directory Structure
 Use `Taskfile.yml` with the following structure.
-```
+```txt
 your_tool_directory/
 |--1-1_image_renamer_with_exif/
 |--
@@ -39,14 +39,28 @@ your_tool_directory/
 | | | | | |--all_cli_entry
 | | | | |--win_amd64
 | | | | | |--all_cli_entry.exe
-|--taskfiles
-| |--calculate_for_text.yml
-| |--core.yml
-| |--env.sample.yml
-| |--env.yml
-| |--file_maneuver.yml
-| |--image_convert.yml
-| |--image_rename.yml
-| |--image_synthesize.yml
-| |--iso8601.yml
+| |--taskfiles
+| | |--calculate_for_text.yml
+| | |--core.yml
+| | |--env.sample.yml
+| | |--env.yml
+| | |--file_maneuver.yml
+| | |--image_convert.yml
+| | |--image_rename.yml
+| | |--image_synthesize.yml
+| | |--iso8601.yml
+```
+
+## Installation
+### Root taskfile settings
+Input `<your-taskfiles-dir>` to use in your working directory.
+```yaml
+includes:
+  calc:
+    taskfile: ./<your-taskfiles-dir>/calculate_for_text.yml
+    flatten: false
+    internal: true
+
+...
+
 ```
