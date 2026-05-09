@@ -57,8 +57,8 @@ func TestNewConfig_Normal(t *testing.T) {
 			if cfg.Token != tt.token {
 				t.Fatalf("Token = %s, want %s", cfg.Token, tt.token)
 			}
-			if cfg.PullsPageWorkers != defaultWorkers {
-				t.Fatalf("PullsPageWorkers = %d, want %d", cfg.PullsPageWorkers, defaultWorkers)
+			if cfg.ReposWorkers != defaultWorkers {
+				t.Fatalf("ReposWorkers = %d, want %d", cfg.ReposWorkers, defaultWorkers)
 			}
 		})
 	}
@@ -187,12 +187,12 @@ func TestParseFlagsWithParser_UsesDotEnv(t *testing.T) {
 	if cfg.Token != "env-token" {
 		t.Fatalf("Token = %s, want env-token", cfg.Token)
 	}
-	if cfg.PullsPageWorkers != defaultWorkers {
-		t.Fatalf("PullsPageWorkers = %d, want %d", cfg.PullsPageWorkers, defaultWorkers)
+	if cfg.ReposWorkers != defaultWorkers {
+		t.Fatalf("ReposWorkers = %d, want %d", cfg.ReposWorkers, defaultWorkers)
 	}
 }
 
-func TestParseFlagsWithParser_CustomPullsWorkers(t *testing.T) {
+func TestParseFlagsWithParser_CustomReposWorkers(t *testing.T) {
 	parser := flagParser.NewMockFlagParser()
 	parser.SetArgs([]string{"repo", "list"})
 	parser.SetBoolFlag("help", false)
@@ -201,18 +201,18 @@ func TestParseFlagsWithParser_CustomPullsWorkers(t *testing.T) {
 	parser.SetStringFlag("forgejo-host", "https://example.com")
 	parser.SetStringFlag("forgejo-username", "user")
 	parser.SetStringFlag("forgejo-token", "token")
-	parser.SetStringFlag("forgejo-pulls-page-workers", "8")
+	parser.SetStringFlag("repos-workers", "8")
 
 	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
 		t.Fatalf("ParseFlagsWithParser() error = %v", err)
 	}
-	if cfg.PullsPageWorkers != 8 {
-		t.Fatalf("PullsPageWorkers = %d, want 8", cfg.PullsPageWorkers)
+	if cfg.ReposWorkers != 8 {
+		t.Fatalf("ReposWorkers = %d, want 8", cfg.ReposWorkers)
 	}
 }
 
-func TestParseFlagsWithParser_InvalidPullsWorkers(t *testing.T) {
+func TestParseFlagsWithParser_InvalidReposWorkers(t *testing.T) {
 	parser := flagParser.NewMockFlagParser()
 	parser.SetArgs([]string{"repo", "list"})
 	parser.SetBoolFlag("help", false)
@@ -221,7 +221,7 @@ func TestParseFlagsWithParser_InvalidPullsWorkers(t *testing.T) {
 	parser.SetStringFlag("forgejo-host", "https://example.com")
 	parser.SetStringFlag("forgejo-username", "user")
 	parser.SetStringFlag("forgejo-token", "token")
-	parser.SetStringFlag("forgejo-pulls-page-workers", "abc")
+	parser.SetStringFlag("repos-workers", "abc")
 
 	if _, err := ParseFlagsWithParser(parser); err == nil {
 		t.Fatal("expected error")

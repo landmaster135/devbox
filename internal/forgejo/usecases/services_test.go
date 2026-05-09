@@ -368,14 +368,14 @@ func newServiceForTest(server *testServer, t *testing.T) *Service {
 	return newServiceForTestWithWorkers(server, t, 4)
 }
 
-func newServiceForTestWithWorkers(server *testServer, t *testing.T, pullsWorkers int) *Service {
+func newServiceForTestWithWorkers(server *testServer, t *testing.T, reposWorkers int) *Service {
 	t.Helper()
 	service, err := NewService(ServiceOptions{
-		Host:             server.URL,
-		Username:         "landmaster135",
-		Token:            "token",
-		HTTPClient:       server.Client(),
-		PullsPageWorkers: pullsWorkers,
+		Host:         server.URL,
+		Username:     "landmaster135",
+		Token:        "token",
+		HTTPClient:   server.Client(),
+		ReposWorkers: reposWorkers,
 	})
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)

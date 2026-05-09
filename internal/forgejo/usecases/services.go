@@ -19,7 +19,7 @@ const (
 	defaultHTTPTimeout  = 30 * time.Second
 	timeFormatDate      = time.RFC3339
 	pullsPageSize       = 100
-	defaultPullsWorkers = 4
+	defaultReposWorkers = 4
 )
 
 type httpClient interface {
@@ -32,8 +32,8 @@ type ServiceOptions struct {
 	Username   string
 	Token      string
 	HTTPClient *http.Client
-	// PullsPageWorkers はrepo list 取得時の同時実行ワーカー数です。
-	PullsPageWorkers int
+	// ReposWorkers はrepo list 取得時の同時実行ワーカー数です。
+	ReposWorkers int
 }
 
 // Service はCLI向けのForgejo処理を担当します。
@@ -43,7 +43,7 @@ type Service struct {
 	username     string
 	token        string
 	httpClient   httpClient
-	pullsWorkers int
+	reposWorkers int
 }
 
 // RepoRecord は repo list の出力レコードです。
@@ -115,7 +115,7 @@ func NewService(options ServiceOptions) (*Service, error) {
 		username:     strings.TrimSpace(options.Username),
 		token:        options.Token,
 		httpClient:   client,
-		pullsWorkers: resolvePullsWorkers(options.PullsPageWorkers),
+		reposWorkers: resolveReposWorkers(options.ReposWorkers),
 	}, nil
 }
 
@@ -212,7 +212,7 @@ func (s *Service) ListRepos() ([]RepoRecord, error) {
 	}
 	close(jobs)
 
-	workerCount := s.pullsWorkers
+	workerCount := s.reposWorkers
 	if workerCount > len(repoJobs) {
 		workerCount = len(repoJobs)
 	}
@@ -289,9 +289,9 @@ func (s *Service) fetchTopics(owner, repo string) ([]string, error) {
 	return topics, err
 }
 
-func resolvePullsWorkers(raw int) int {
+func resolveReposWorkers(raw int) int {
 	if raw <= 0 {
-		return defaultPullsWorkers
+		return defaultReposWorkers
 	}
 	return raw
 }

@@ -22,7 +22,7 @@ const usageTemplate = `Forgejo CLI
   -forgejo-host       Forgejoのホスト URL (例: https://codeberg.org)
   -forgejo-username   Forgejoのユーザー名
   -forgejo-token      Forgejo APIトークン
-  -forgejo-pulls-page-workers  repo list の同時ワーカー数 (初期値: 4)
+  -repos-workers  repo list の同時ワーカー数 (初期値: 4)
   -json               JSON形式で出力
   -help, -h           ヘルプを表示
 

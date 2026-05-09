@@ -36,7 +36,7 @@ func run() int {
 		HTTPClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		PullsPageWorkers: cfg.PullsPageWorkers,
+		ReposWorkers: cfg.ReposWorkers,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
