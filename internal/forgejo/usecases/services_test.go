@@ -1,391 +1,9 @@
 package usecases
 
 import (
-	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"strings"
-	"sync"
-	"sync/atomic"
+	"errors"
 	"testing"
-	"time"
-
-	forgejo "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
 )
-
-func TestListRepos(t *testing.T) {
-	server, called := newForgejoTestServer(map[string]handlerResponse{
-		"GET /api/v1/user/repos": {
-			status: http.StatusOK,
-			body:   `[{"id":1,"owner":{"login":"landmaster135"},"name":"repo1","full_name":"landmaster135/repo1","description":"Repo one","private":false,"html_url":"https://example.com/landmaster135/repo1","open_issues_count":1,"open_pr_counter":2,"forks_count":3,"stars_count":4,"watchers_count":5,"size":123,"archived":false,"created_at":"2022-10-18T00:00:00Z","updated_at":"2022-10-19T00:00:00Z"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/topics": {
-			status: http.StatusOK,
-			body:   `{"topics":["game","demo"]}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/languages": {
-			status: http.StatusOK,
-			body:   `{"Go":120.0,"C++":40.0}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/pulls": {
-			status: http.StatusOK,
-			body: `[{
-				"id":3,
-				"state":"closed",
-				"title":"Old PR"
-			}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/issues": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "2",
-			},
-			body: `[{
-				"id":9,
-				"state":"closed",
-				"title":"Old issue"
-			}]`,
-		},
-	})
-	defer server.Close()
-
-	service := newServiceForTest(server, t)
-	records, err := service.ListRepos()
-	if err != nil {
-		t.Fatalf("ListRepos() error = %v", err)
-	}
-
-	if len(records) != 1 {
-		t.Fatalf("len(records) = %d, want 1", len(records))
-	}
-
-	record := records[0]
-	if record.Name != "repo1" {
-		t.Fatalf("Name = %q, want %q", record.Name, "repo1")
-	}
-	if record.Language != "Go" {
-		t.Fatalf("Language = %q, want %q", record.Language, "Go")
-	}
-	if record.Tags != "game,demo" {
-		t.Fatalf("Tags = %q, want %q", record.Tags, "game,demo")
-	}
-	if record.OpenPullsCount != 2 {
-		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
-	}
-	if record.OpenIssuesCount != 1 {
-		t.Fatalf("OpenIssuesCount = %d, want %d", record.OpenIssuesCount, 1)
-	}
-	if record.ClosedPullsCount != 1 {
-		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 1)
-	}
-	if record.ClosedIssuesCount != 2 {
-		t.Fatalf("ClosedIssuesCount = %d, want %d", record.ClosedIssuesCount, 2)
-	}
-	if record.RepoCreatedAt != "2022-10-18T00:00:00Z" {
-		t.Fatalf("RepoCreatedAt = %q, want %q", record.RepoCreatedAt, "2022-10-18T00:00:00Z")
-	}
-	if !called("GET /api/v1/repos/landmaster135/repo1/topics") {
-		t.Fatalf("topics endpoint was not requested")
-	}
-	if !called("GET /api/v1/repos/landmaster135/repo1/languages") {
-		t.Fatalf("languages endpoint was not requested")
-	}
-	if !called("GET /api/v1/repos/landmaster135/repo1/pulls") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=100&state=closed") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed&limit=100") {
-		t.Fatalf("pulls endpoint was not requested")
-	}
-	if !called("GET /api/v1/repos/landmaster135/repo1/issues") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/issues?limit=1&page=1&state=closed&type=issues") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/issues?state=closed&limit=1&type=issues&page=1") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/issues?type=issues&state=closed&limit=1&page=1") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/issues?state=closed&type=issues") {
-		t.Fatalf("issues endpoint was not requested")
-	}
-}
-
-func TestListReposWithMultiplePullPages(t *testing.T) {
-	server, called := newForgejoTestServer(map[string]handlerResponse{
-		"GET /api/v1/user/repos": {
-			status: http.StatusOK,
-			body:   `[{"id":1,"owner":{"login":"landmaster135"},"name":"repo1","full_name":"landmaster135/repo1","description":"Repo one","private":false,"html_url":"https://example.com/landmaster135/repo1","open_issues_count":1,"open_pr_counter":2,"forks_count":3,"stars_count":4,"watchers_count":5,"size":123,"archived":false,"created_at":"2022-10-18T00:00:00Z","updated_at":"2022-10-19T00:00:00Z"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/topics": {
-			status: http.StatusOK,
-			body:   `{"topics":["game","demo"]}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/languages": {
-			status: http.StatusOK,
-			body:   `{"Go":120.0,"C++":40.0}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/pulls": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "2",
-			},
-			body: `[{"id":3,"state":"closed","title":"Old PR"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/issues": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "7",
-			},
-			body: `[{"id":9,"state":"closed","title":"Old issue"}]`,
-		},
-	})
-	defer server.Close()
-
-	service := newServiceForTest(server, t)
-	records, err := service.ListRepos()
-	if err != nil {
-		t.Fatalf("ListRepos() error = %v", err)
-	}
-
-	if len(records) != 1 {
-		t.Fatalf("len(records) = %d, want 1", len(records))
-	}
-
-	record := records[0]
-	if record.OpenPullsCount != 2 {
-		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
-	}
-	if record.OpenIssuesCount != 1 {
-		t.Fatalf("OpenIssuesCount = %d, want %d", record.OpenIssuesCount, 1)
-	}
-	if record.ClosedPullsCount != 2 {
-		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 2)
-	}
-	if record.ClosedIssuesCount != 7 {
-		t.Fatalf("ClosedIssuesCount = %d, want %d", record.ClosedIssuesCount, 7)
-	}
-	if called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=1&state=closed") ||
-		called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=1&page=2&state=closed") ||
-		called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed&page=2&limit=1") ||
-		called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&state=closed&limit=1") {
-		t.Fatalf("second pulls page was requested")
-	}
-}
-
-func TestListRepos_UsesWorkerCount(t *testing.T) {
-	paths := map[string]handlerResponse{
-		"GET /api/v1/user/repos": {
-			status: http.StatusOK,
-			body: `[{"id":1,"owner":{"login":"landmaster135"},"name":"repo1","full_name":"landmaster135/repo1","description":"Repo one","private":false,"html_url":"https://example.com/landmaster135/repo1","open_issues_count":1,"open_pr_counter":2,"forks_count":3,"stars_count":4,"watchers_count":5,"size":123,"archived":false,"created_at":"2022-10-18T00:00:00Z","updated_at":"2022-10-19T00:00:00Z"},
-				{"id":2,"owner":{"login":"landmaster135"},"name":"repo2","full_name":"landmaster135/repo2","description":"Repo two","private":false,"html_url":"https://example.com/landmaster135/repo2","open_issues_count":0,"open_pr_counter":1,"forks_count":1,"stars_count":2,"watchers_count":3,"size":45,"archived":false,"created_at":"2022-10-20T00:00:00Z","updated_at":"2022-10-21T00:00:00Z"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/topics": {
-			status: http.StatusOK,
-			body:   `{"topics":["game"]}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/languages": {
-			status: http.StatusOK,
-			body:   `{"Go":120.0,"C++":40.0}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/pulls": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "10",
-			},
-			body: `[{"id":3,"state":"closed","title":"Old PR"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/issues": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "21",
-			},
-			body: `[{"id":9,"state":"closed","title":"Old issue"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo2/topics": {
-			status: http.StatusOK,
-			body:   `{"topics":["dev"]}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo2/languages": {
-			status: http.StatusOK,
-			body:   `{"Rust":200.0}`,
-		},
-		"GET /api/v1/repos/landmaster135/repo2/pulls": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "7",
-			},
-			body: `[{"id":4,"state":"closed","title":"Old PR2"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo2/issues": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"X-Total-Count": "3",
-			},
-			body: `[{"id":10,"state":"closed","title":"Closed issue"}]`,
-		},
-	}
-
-	var activeCount int64
-	var maxActiveCount int64
-	server, _ := newForgejoTestServerWithRequestDelay(paths, &activeCount, &maxActiveCount, 40*time.Millisecond)
-	defer server.Close()
-
-	{
-		service := newServiceForTestWithWorkers(server, t, 1)
-		if _, err := service.ListRepos(); err != nil {
-			t.Fatalf("ListRepos() error = %v", err)
-		}
-		if got := atomic.LoadInt64(&maxActiveCount); got != 1 {
-			t.Fatalf("worker=1 -> maxActiveCount = %d, want 1", got)
-		}
-	}
-
-	atomic.StoreInt64(&activeCount, 0)
-	atomic.StoreInt64(&maxActiveCount, 0)
-
-	{
-		service := newServiceForTestWithWorkers(server, t, 4)
-		if _, err := service.ListRepos(); err != nil {
-			t.Fatalf("ListRepos() error = %v", err)
-		}
-		if got := atomic.LoadInt64(&maxActiveCount); got < 2 {
-			t.Fatalf("worker=4 -> maxActiveCount = %d, want >= 2", got)
-		}
-	}
-}
-
-func TestPullsListResponsePaginationHeader(t *testing.T) {
-	server, _ := newForgejoTestServer(map[string]handlerResponse{
-		"GET /api/v1/repos/landmaster135/repo1/pulls": {
-			status: http.StatusOK,
-			headers: map[string]string{
-				"Link": "</api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"next\", </api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"last\"",
-			},
-			body: `[{"id":1,"state":"open","title":"Add README"},{"id":2,"state":"open","title":"Fix bug"}]`,
-		},
-	})
-	defer server.Close()
-
-	service := newServiceForTest(server, t)
-	_, response, err := service.client.ListRepoPullRequests("landmaster135", "repo1", forgejo.ListPullRequestsOptions{
-		ListOptions: forgejo.ListOptions{
-			Page:     1,
-			PageSize: pullsPageSize,
-		},
-		State: forgejo.StateAll,
-	})
-	if err != nil {
-		t.Fatalf("ListRepoPullRequests() error = %v", err)
-	}
-	if response == nil {
-		t.Fatal("response = nil")
-	}
-	t.Logf("LastPage=%d NextPage=%d", response.LastPage, response.NextPage)
-	if response.LastPage != 2 {
-		t.Fatalf("response.LastPage = %d (want 2)", response.LastPage)
-	}
-}
-
-func TestListProjects(t *testing.T) {
-	server, called := newForgejoTestServer(map[string]handlerResponse{
-		"GET /api/v1/users/octocat/repos": {
-			status: http.StatusOK,
-			body: `[
-				{"id":10,"owner":{"login":"octocat"},"name":"project-repo","full_name":"octocat/project-repo","description":"project repo"},
-				{"id":11,"owner":{"login":"octocat"},"name":"empty-project","full_name":"octocat/empty-project","description":"no projects"}
-			]`,
-		},
-		"GET /api/v1/repos/octocat/project-repo/projects?state=all": {
-			status: http.StatusOK,
-			body:   `[{"name":"Backend","title":"Backend Project","description":"infra","is_private":false,"is_archived":false,"created_at":"2024-01-01T00:00:00Z","updated_at":"2024-01-02T00:00:00Z"}]`,
-		},
-		"GET /api/v1/repos/octocat/empty-project/projects?state=all": {
-			status: http.StatusOK,
-			body:   `[]`,
-		},
-	})
-	defer server.Close()
-
-	service := newServiceForTestWithUsername(server, "octocat", t)
-	records, err := service.ListProjects()
-	if err != nil {
-		t.Fatalf("ListProjects() error = %v", err)
-	}
-	if len(records) != 1 {
-		t.Fatalf("len(records) = %d, want 1", len(records))
-	}
-
-	record := records[0]
-	if record.Name != "Backend" {
-		t.Fatalf("Name = %q, want %q", record.Name, "Backend")
-	}
-	if record.RepoFullName != "octocat/project-repo" {
-		t.Fatalf("RepoFullName = %q, want %q", record.RepoFullName, "octocat/project-repo")
-	}
-	if record.CreatedAt != "2024-01-01T00:00:00Z" {
-		t.Fatalf("CreatedAt = %q, want %q", record.CreatedAt, "2024-01-01T00:00:00Z")
-	}
-	if !called("GET /api/v1/repos/octocat/project-repo/projects?state=all") {
-		t.Fatalf("project endpoint for project-repo was not requested")
-	}
-	if !called("GET /api/v1/repos/octocat/empty-project/projects?state=all") {
-		t.Fatalf("project endpoint for empty-project was not requested")
-	}
-}
-
-func TestListProjectsNotSupported(t *testing.T) {
-	server, _ := newForgejoTestServer(map[string]handlerResponse{
-		"GET /api/v1/users/failure/repos": {
-			status: http.StatusOK,
-			body:   `[{"id":1,"owner":{"login":"failure"},"name":"no-project","full_name":"failure/no-project"}]`,
-		},
-		"GET /api/v1/repos/failure/no-project/projects?state=all": {
-			status: http.StatusNotFound,
-			body:   `not found`,
-		},
-	})
-	defer server.Close()
-
-	service := newServiceForTestWithUsername(server, "failure", t)
-	_, err := service.ListProjects()
-	if err == nil {
-		t.Fatalf("ListProjects() error = nil, want error")
-	}
-	if err.Error() != "project list API is not supported on this server" {
-		t.Fatalf("error = %v, want %q", err, "project list API is not supported on this server")
-	}
-}
-
-func TestDecodeProjects(t *testing.T) {
-	plain := `[{"name":"P1","created_at":"2020-01-01T00:00:00Z","updated_at":"2020-01-02T00:00:00Z"}]`
-	decoded, err := decodeProjects([]byte(plain))
-	if err != nil {
-		t.Fatalf("decodeProjects() error = %v", err)
-	}
-	if len(decoded) != 1 {
-		t.Fatalf("len(decoded) = %d, want 1", len(decoded))
-	}
-
-	wrapped := `{"data":[{"name":"P2","title":"Title","created_at":"2020-01-03T00:00:00Z","updated_at":"2020-01-04T00:00:00Z"}], "projects":[]}`
-	decoded, err = decodeProjects([]byte(wrapped))
-	if err != nil {
-		t.Fatalf("decodeProjects() wrapped error = %v", err)
-	}
-	if len(decoded) != 1 {
-		t.Fatalf("len(decoded) = %d, want 1", len(decoded))
-	}
-	if decoded[0].Name != "P2" {
-		t.Fatalf("Name = %q, want %q", decoded[0].Name, "P2")
-	}
-}
-
-func TestIsNotFoundError(t *testing.T) {
-	if ok := isNotFoundError(&requestError{status: http.StatusNotFound, body: "not found"}); !ok {
-		t.Fatal("isNotFoundError() should return true")
-	}
-	if ok := isNotFoundError(nil); ok {
-		t.Fatal("isNotFoundError(nil) should return false")
-	}
-	if ok := isNotFoundError(fmt.Errorf("other")); ok {
-		t.Fatal("isNotFoundError(other) should return false")
-	}
-}
 
 func TestNormalizeHost(t *testing.T) {
 	if got := normalizeHost("example.com"); got != "https://example.com" {
@@ -396,208 +14,73 @@ func TestNormalizeHost(t *testing.T) {
 	}
 }
 
-func TestFormatDate(t *testing.T) {
-	if got := formatDate(time.Time{}); got != "" {
-		t.Fatalf("formatDate(zero) = %q, want %q", got, "")
-	}
-	if got := formatDate(time.Date(2026, 5, 9, 12, 34, 56, 0, time.UTC)); got != "2026-05-09T12:34:56Z" {
-		t.Fatalf("formatDate() = %q, want %q", got, "2026-05-09T12:34:56Z")
-	}
-}
-
-func TestPrimaryLanguage(t *testing.T) {
-	if got := primaryLanguage(map[string]float64{"A": 1, "B": 3, "C": 2}); got != "B" {
-		t.Fatalf("primaryLanguage() = %q, want %q", got, "B")
-	}
-	if got := primaryLanguage(map[string]float64{}); got != "" {
-		t.Fatalf("primaryLanguage(empty) = %q, want %q", got, "")
-	}
-}
-
-func newServiceForTest(server *testServer, t *testing.T) *Service {
-	t.Helper()
-	return newServiceForTestWithWorkers(server, t, 4)
-}
-
-func newServiceForTestWithWorkers(server *testServer, t *testing.T, reposWorkers int) *Service {
-	t.Helper()
-	service, err := NewService(ServiceOptions{
-		Host:         server.URL,
-		Username:     "landmaster135",
-		Token:        "token",
-		HTTPClient:   server.Client(),
-		ReposWorkers: reposWorkers,
+func TestNewService_HostRequired(t *testing.T) {
+	_, err := NewService(ServiceOptions{
+		Host: "",
 	})
-	if err != nil {
-		t.Fatalf("NewService() error = %v", err)
+	if err == nil {
+		t.Fatal("NewService() error = nil, want error")
 	}
-	return service
 }
 
-func newServiceForTestWithUsername(server *testServer, username string, t *testing.T) *Service {
-	t.Helper()
-	service, err := NewService(ServiceOptions{
-		Host:       server.URL,
-		Username:   username,
-		Token:      "token",
-		HTTPClient: server.Client(),
-	})
-	if err != nil {
-		t.Fatalf("NewService() error = %v", err)
-	}
-	return service
-}
+func TestListRepos_DelegatesToOperation(t *testing.T) {
+	oldFactory := newRepoListOperation
+	defer func() { newRepoListOperation = oldFactory }()
 
-// handlerResponse はテストサーバーのレスポンスを定義する。
-type handlerResponse struct {
-	status  int
-	body    string
-	headers map[string]string
-}
-
-type testServer struct {
-	URL    string
-	client *http.Client
-}
-
-func (s *testServer) Close() {
-	// no-op for in-memory transport
-}
-
-func (s *testServer) Client() *http.Client {
-	return s.client
-}
-
-type mockTransport struct {
-	handler http.Handler
-}
-
-func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	recorder := httptest.NewRecorder()
-	m.handler.ServeHTTP(recorder, req)
-	return recorder.Result(), nil
-}
-
-func newForgejoTestServer(paths map[string]handlerResponse) (*testServer, func(string) bool) {
-	normalizeRequestPath := func(path, rawQuery string) string {
-		path = strings.TrimSuffix(path, "/")
-		if rawQuery == "" {
-			return path
-		}
-		values, err := url.ParseQuery(rawQuery)
-		if err != nil {
-			return path + "?" + rawQuery
-		}
-		return path + "?" + values.Encode()
-	}
-
-	normalizeRequestKey := func(rawKey string) string {
-		parts := strings.SplitN(strings.TrimSpace(rawKey), " ", 2)
-		if len(parts) != 2 {
-			return rawKey
-		}
-		method := parts[0]
-		pathAndQuery := parts[1]
-		split := strings.SplitN(pathAndQuery, "?", 2)
-		path := split[0]
-		rawQuery := ""
-		if len(split) == 2 {
-			rawQuery = split[1]
-		}
-		return fmt.Sprintf("%s %s", method, normalizeRequestPath(path, rawQuery))
-	}
-
-	normalizedPaths := make(map[string]handlerResponse, len(paths))
-	for key, response := range paths {
-		normalizedPaths[normalizeRequestKey(key)] = response
-	}
-
-	pathStates := struct {
-		mu     sync.Mutex
-		counts map[string]int
-	}{
-		counts: map[string]int{},
-	}
-
-	recordPathState := func(key string) {
-		pathStates.mu.Lock()
-		pathStates.counts[key]++
-		pathStates.mu.Unlock()
-	}
-
-	buildKey := func(r *http.Request) string {
-		return fmt.Sprintf("%s %s", r.Method, normalizeRequestPath(r.URL.Path, r.URL.RawQuery))
-	}
-	buildPathOnlyKey := func(r *http.Request) string {
-		return fmt.Sprintf("%s %s", r.Method, strings.TrimSuffix(r.URL.Path, "/"))
-	}
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := buildKey(r)
-		recordPathState(key)
-		pathOnlyKey := buildPathOnlyKey(r)
-		recordPathState(pathOnlyKey)
-
-		if response, ok := normalizedPaths[key]; ok {
-			for headerKey, headerValue := range response.headers {
-				w.Header().Set(headerKey, headerValue)
-			}
-			w.WriteHeader(response.status)
-			_, _ = w.Write([]byte(response.body))
-			return
-		}
-		if response, ok := normalizedPaths[pathOnlyKey]; ok {
-			for headerKey, headerValue := range response.headers {
-				w.Header().Set(headerKey, headerValue)
-			}
-			w.WriteHeader(response.status)
-			_, _ = w.Write([]byte(response.body))
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte("not found"))
-	})
-
-	called := func(path string) bool {
-		pathStates.mu.Lock()
-		defer pathStates.mu.Unlock()
-		_, ok := pathStates.counts[normalizeRequestKey(path)]
-		return ok
-	}
-
-	return &testServer{
-		URL: "http://forgejo.local",
-		client: &http.Client{
-			Transport: &mockTransport{
-				handler: handler,
+	expected := []RepoRecord{{Name: "repo1"}}
+	newRepoListOperation = func(dependencies repoListDependencies) repoListOperation {
+		return repoListOperationMock{
+			execute: func() ([]RepoRecord, error) {
+				if dependencies.ReposWorkers != 3 {
+					t.Fatalf("ReposWorkers = %d, want 3", dependencies.ReposWorkers)
+				}
+				return expected, nil
 			},
-		},
-	}, called
+		}
+	}
+
+	service := &Service{reposWorkers: 3}
+	got, err := service.ListRepos()
+	if err != nil {
+		t.Fatalf("ListRepos() error = %v", err)
+	}
+	if len(got) != 1 || got[0].Name != "repo1" {
+		t.Fatalf("ListRepos() = %#v, want %#v", got, expected)
+	}
 }
 
-func newForgejoTestServerWithRequestDelay(paths map[string]handlerResponse, activeCount, maxActiveCount *int64, requestDelay time.Duration) (*testServer, func(string) bool) {
-	server, called := newForgejoTestServer(paths)
-	innerHandler := server.client.Transport.(*mockTransport).handler
-	server.client.Transport = &mockTransport{
-		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			currentActive := atomic.AddInt64(activeCount, 1)
-			for {
-				maxActive := atomic.LoadInt64(maxActiveCount)
-				if currentActive <= maxActive {
-					break
-				}
-				if atomic.CompareAndSwapInt64(maxActiveCount, maxActive, currentActive) {
-					break
-				}
-			}
-			defer atomic.AddInt64(activeCount, -1)
+func TestListProjects_DelegatesToOperation(t *testing.T) {
+	oldFactory := newProjectListOperation
+	defer func() { newProjectListOperation = oldFactory }()
 
-			if requestDelay > 0 {
-				time.Sleep(requestDelay)
-			}
-			innerHandler.ServeHTTP(w, r)
-		}),
+	expectedErr := errors.New("boom")
+	newProjectListOperation = func(_ projectListDependencies) projectListOperation {
+		return projectListOperationMock{
+			execute: func() ([]ProjectRecord, error) {
+				return nil, expectedErr
+			},
+		}
 	}
-	return server, called
+
+	service := &Service{}
+	_, err := service.ListProjects()
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("ListProjects() error = %v, want %v", err, expectedErr)
+	}
+}
+
+type repoListOperationMock struct {
+	execute func() ([]RepoRecord, error)
+}
+
+func (m repoListOperationMock) Execute() ([]RepoRecord, error) {
+	return m.execute()
+}
+
+type projectListOperationMock struct {
+	execute func() ([]ProjectRecord, error)
+}
+
+func (m projectListOperationMock) Execute() ([]ProjectRecord, error) {
+	return m.execute()
 }
