@@ -23,6 +23,14 @@ func TestListRepos(t *testing.T) {
 			status: http.StatusOK,
 			body:   `{"Go":120.0,"C++":40.0}`,
 		},
+		"GET /api/v1/repos/landmaster135/repo1/pulls": {
+			status: http.StatusOK,
+			body: `[
+				{"id":1,"state":"open","title":"Add README"},
+				{"id":2,"state":"open","title":"Fix bug"},
+				{"id":3,"state":"closed","title":"Old PR"}
+			]`,
+		},
 	})
 	defer server.Close()
 
@@ -46,6 +54,12 @@ func TestListRepos(t *testing.T) {
 	if record.Tags != "game,demo" {
 		t.Fatalf("Tags = %q, want %q", record.Tags, "game,demo")
 	}
+	if record.OpenPullsCount != 2 {
+		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
+	}
+	if record.ClosedPullsCount != 1 {
+		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 1)
+	}
 	if record.RepoCreatedAt != "2022-10-18T00:00:00Z" {
 		t.Fatalf("RepoCreatedAt = %q, want %q", record.RepoCreatedAt, "2022-10-18T00:00:00Z")
 	}
@@ -54,6 +68,9 @@ func TestListRepos(t *testing.T) {
 	}
 	if !called("GET /api/v1/repos/landmaster135/repo1/languages") {
 		t.Fatalf("languages endpoint was not requested")
+	}
+	if !called("GET /api/v1/repos/landmaster135/repo1/pulls") {
+		t.Fatalf("pulls endpoint was not requested")
 	}
 }
 

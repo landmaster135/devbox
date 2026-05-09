@@ -16,6 +16,7 @@ import (
 const (
 	defaultHTTPTimeout = 30 * time.Second
 	timeFormatDate     = time.RFC3339
+	pullsPageSize      = 100
 )
 
 type httpClient interface {
@@ -46,7 +47,8 @@ type RepoRecord struct {
 	IsPrivate        bool               `json:"is_private"`
 	HTTPURL          string             `json:"http_url"`
 	IssuesCount      int                `json:"issues_count"`
-	PullsCount       int                `json:"pulls_count"`
+	OpenPullsCount   int                `json:"open_pulls_count"`
+	ClosedPullsCount int                `json:"closed_pulls_count"`
 	ForksCount       int                `json:"forks_count"`
 	StargazersCount  int                `json:"stargazers_count"`
 	SubscribersCount int                `json:"subscribers_count"`
@@ -137,6 +139,10 @@ func (s *Service) ListRepos() ([]RepoRecord, error) {
 		if err != nil {
 			return nil, fmt.Errorf("languagesの取得に失敗しました (%s/%s): %w", owner, repoName, err)
 		}
+		openPullsCount, closedPullsCount, err := s.fetchPullsCount(owner, repoName)
+		if err != nil {
+			return nil, fmt.Errorf("pullsの取得に失敗しました (%s/%s): %w", owner, repoName, err)
+		}
 
 		records = append(records, RepoRecord{
 			Name:             repoName,
@@ -144,7 +150,8 @@ func (s *Service) ListRepos() ([]RepoRecord, error) {
 			IsPrivate:        repo.Private,
 			HTTPURL:          repo.HTMLURL,
 			IssuesCount:      repo.OpenIssues,
-			PullsCount:       repo.OpenPulls,
+			OpenPullsCount:   openPullsCount,
+			ClosedPullsCount: closedPullsCount,
 			ForksCount:       repo.Forks,
 			StargazersCount:  repo.Stars,
 			SubscribersCount: repo.Watchers,
@@ -241,6 +248,41 @@ func (s *Service) fetchLanguages(owner, repo string) (map[string]float64, error)
 		return nil, err
 	}
 	return languages, nil
+}
+
+func (s *Service) fetchPullsCount(owner, repo string) (int, int, error) {
+	page := 1
+	totalOpenPulls := 0
+	totalClosedPulls := 0
+	for {
+		pulls, response, err := s.client.ListRepoPullRequests(owner, repo, forgejo.ListPullRequestsOptions{
+			ListOptions: forgejo.ListOptions{
+				Page:     page,
+				PageSize: pullsPageSize,
+			},
+			State: forgejo.StateAll,
+		})
+		if err != nil {
+			return 0, 0, err
+		}
+
+		for _, pull := range pulls {
+			if pull == nil {
+				continue
+			}
+			switch pull.State {
+			case forgejo.StateOpen:
+				totalOpenPulls++
+			case forgejo.StateClosed:
+				totalClosedPulls++
+			}
+		}
+		if response == nil || response.LastPage == 0 || response.LastPage <= page {
+			break
+		}
+		page++
+	}
+	return totalOpenPulls, totalClosedPulls, nil
 }
 
 func (s *Service) fetchProjects(owner, repo string) ([]projectResponse, error) {
