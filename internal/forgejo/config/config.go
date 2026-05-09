@@ -11,18 +11,18 @@ import (
 )
 
 const (
-	dotenvFilename       = ".env"
-	operationRepoList    = "repo list"
-	operationProjectList = "project list"
-	envKeyHost           = "forgejo-host"
-	envKeyUsername       = "forgejo-username"
-	envKeyToken          = "forgejo-token"
-	defaultWorkers       = 4
+	dotenvFilename     = ".env"
+	operationRepoList  = "repo list"
+	operationIssueList = "issue list"
+	envKeyHost         = "forgejo-host"
+	envKeyUsername     = "forgejo-username"
+	envKeyToken        = "forgejo-token"
+	defaultWorkers     = 4
 )
 
 // Config はForgejo CLIの設定です。
 type Config struct {
-	Operation string // 実行する操作 (repo list, project list)
+	Operation string // 実行する操作 (repo list, issue list)
 	Host      string // Forgejoホスト
 	Username  string // Forgejoユーザー名
 	Token     string // APIトークン
@@ -32,7 +32,7 @@ type Config struct {
 	Help         bool // ヘルプ表示フラグ
 }
 
-var supportedOperations = []string{operationRepoList, operationProjectList}
+var supportedOperations = []string{operationRepoList, operationIssueList}
 
 // NewConfig は新しいConfigを作成します。
 func NewConfig(operation, host, username, token string, jsonOutput bool) (*Config, error) {
@@ -97,7 +97,7 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 		help         = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "実行する操作 (repo list, project list)")
+	parser.StringVar(&operation, "operation", operation, "実行する操作 (repo list, issue list)")
 	parser.BoolVar(&jsonOutput, "json", jsonOutput, "JSON形式で出力")
 	parser.StringVar(&host, "forgejo-host", host, "Forgejoホスト（https://example.com）")
 	parser.StringVar(&username, "forgejo-username", username, "Forgejoユーザー名")
@@ -168,8 +168,8 @@ func resolveOperation(operation string, args []string) string {
 	if len(args) >= 2 && strings.EqualFold(strings.TrimSpace(args[0]), "repo") && strings.EqualFold(strings.TrimSpace(args[1]), "list") {
 		return operationRepoList
 	}
-	if len(args) >= 2 && strings.EqualFold(strings.TrimSpace(args[0]), "project") && strings.EqualFold(strings.TrimSpace(args[1]), "list") {
-		return operationProjectList
+	if len(args) >= 2 && strings.EqualFold(strings.TrimSpace(args[0]), "issue") && strings.EqualFold(strings.TrimSpace(args[1]), "list") {
+		return operationIssueList
 	}
 	if len(args) >= 1 {
 		return strings.TrimSpace(args[0])

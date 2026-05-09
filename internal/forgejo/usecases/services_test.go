@@ -49,23 +49,23 @@ func TestListRepos_DelegatesToOperation(t *testing.T) {
 	}
 }
 
-func TestListProjects_DelegatesToOperation(t *testing.T) {
-	oldFactory := newProjectListOperation
-	defer func() { newProjectListOperation = oldFactory }()
+func TestListIssues_DelegatesToOperation(t *testing.T) {
+	oldFactory := newIssueListOperation
+	defer func() { newIssueListOperation = oldFactory }()
 
 	expectedErr := errors.New("boom")
-	newProjectListOperation = func(_ projectListDependencies) projectListOperation {
-		return projectListOperationMock{
-			execute: func() ([]ProjectRecord, error) {
+	newIssueListOperation = func(_ issueListDependencies) issueListOperation {
+		return issueListOperationMock{
+			execute: func() ([]IssueRecord, error) {
 				return nil, expectedErr
 			},
 		}
 	}
 
 	service := &Service{}
-	_, err := service.ListProjects()
+	_, err := service.ListIssues()
 	if !errors.Is(err, expectedErr) {
-		t.Fatalf("ListProjects() error = %v, want %v", err, expectedErr)
+		t.Fatalf("ListIssues() error = %v, want %v", err, expectedErr)
 	}
 }
 
@@ -77,10 +77,10 @@ func (m repoListOperationMock) Execute() ([]RepoRecord, error) {
 	return m.execute()
 }
 
-type projectListOperationMock struct {
-	execute func() ([]ProjectRecord, error)
+type issueListOperationMock struct {
+	execute func() ([]IssueRecord, error)
 }
 
-func (m projectListOperationMock) Execute() ([]ProjectRecord, error) {
+func (m issueListOperationMock) Execute() ([]IssueRecord, error) {
 	return m.execute()
 }

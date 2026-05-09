@@ -11,14 +11,14 @@ const usageTemplate = `Forgejo CLI
 
 使用方法:
   %s -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username user -forgejo-token your_token
-  %s -operation "project list" -forgejo-host https://codeberg.org -forgejo-username user -forgejo-token your_token
+  %s -operation "issue list" -forgejo-host https://codeberg.org -forgejo-username user -forgejo-token your_token
 
   位置引数:
   repo list
-  project list
+  issue list
 
 オプション:
-  -operation          実行する操作 (repo list, project list)
+  -operation          実行する操作 (repo list, issue list)
   -forgejo-host       Forgejoのホスト URL (例: https://codeberg.org)
   -forgejo-username   Forgejoのユーザー名
   -forgejo-token      Forgejo APIトークン

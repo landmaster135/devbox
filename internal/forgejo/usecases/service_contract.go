@@ -9,15 +9,15 @@ import (
 // RepoRecord は repo list の出力レコードです。
 type RepoRecord = commonUsecases.RepoRecord
 
-// ProjectRecord は project list の出力レコードです。
-type ProjectRecord = commonUsecases.ProjectRecord
+// IssueRecord は issue list の出力レコードです。
+type IssueRecord = commonUsecases.IssueRecord
 
 type repoListOperation interface {
 	Execute() ([]RepoRecord, error)
 }
 
-type projectListOperation interface {
-	Execute() ([]ProjectRecord, error)
+type issueListOperation interface {
+	Execute() ([]IssueRecord, error)
 }
 
 type repoListDependencies struct {
@@ -29,10 +29,7 @@ type repoListDependencies struct {
 	ReposWorkers int
 }
 
-type projectListDependencies struct {
-	Client     *forgejo.Client
-	Host       string
-	Username   string
-	Token      string
-	HTTPClient commonUsecases.HTTPClient
+type issueListDependencies struct {
+	Client   *forgejo.Client
+	Username string
 }

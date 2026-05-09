@@ -1,7 +1,5 @@
 package common
 
-import "time"
-
 // RepoRecord は repo list の出力レコードです。
 type RepoRecord struct {
 	Name              string             `json:"name"`
@@ -24,24 +22,19 @@ type RepoRecord struct {
 	Tags              string             `json:"tags"`
 }
 
-// ProjectRecord は project list の出力レコードです。
-type ProjectRecord struct {
-	Name         string `json:"name"`
-	Description  string `json:"description"`
-	IsPrivate    bool   `json:"is_private"`
-	IsArchived   bool   `json:"is_archived"`
-	RepoFullName string `json:"repo_full_name"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
-}
-
-// ProjectResponse は Forgejo project API 応答の最小形です。
-type ProjectResponse struct {
-	Name        string    `json:"name"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	IsPrivate   bool      `json:"is_private"`
-	Archived    bool      `json:"is_archived"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+// IssueRecord は issue list の出力レコードです。
+type IssueRecord struct {
+	RepoFullName string   `json:"repo_full_name"`
+	Number       int64    `json:"number"`
+	Title        string   `json:"title"`
+	State        string   `json:"state"`
+	HTMLURL      string   `json:"html_url"`
+	Author       string   `json:"author"`
+	Assignees    []string `json:"assignees"`
+	Labels       []string `json:"labels"`
+	Comments     int      `json:"comments"`
+	IsLocked     bool     `json:"is_locked"`
+	CreatedAt    string   `json:"created_at"`
+	UpdatedAt    string   `json:"updated_at"`
+	ClosedAt     string   `json:"closed_at"`
 }

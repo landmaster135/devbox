@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/json"
 	"net/http"
 	"sort"
 	"strings"
@@ -15,26 +14,6 @@ const TimeFormatDate = time.RFC3339
 // HTTPClient は HTTP アクセスの抽象です。
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
-}
-
-// DecodeProjects は複数の API 応答形式を吸収して projects を返します。
-func DecodeProjects(data []byte) ([]ProjectResponse, error) {
-	var projects []ProjectResponse
-	if err := json.Unmarshal(data, &projects); err == nil {
-		return projects, nil
-	}
-
-	var wrapper struct {
-		Data     []ProjectResponse `json:"data"`
-		Projects []ProjectResponse `json:"projects"`
-	}
-	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return nil, err
-	}
-	if len(wrapper.Data) > 0 {
-		return wrapper.Data, nil
-	}
-	return wrapper.Projects, nil
 }
 
 // SetAuthHeader は API 呼び出し用ヘッダを設定します。
@@ -69,6 +48,14 @@ func FormatDate(t time.Time) string {
 		return ""
 	}
 	return t.Format(TimeFormatDate)
+}
+
+// FormatDatePtr は RFC3339 文字列へ変換します（nil安全）。
+func FormatDatePtr(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return FormatDate(*t)
 }
 
 // PrimaryLanguage は最大値の言語名を返します。

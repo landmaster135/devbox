@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -51,8 +52,8 @@ func run() int {
 			return 1
 		}
 		return outputRecords(records, cfg.JSON)
-	case "project list":
-		records, err := service.ListProjects()
+	case "issue list":
+		records, err := service.ListIssues()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 			return 1
@@ -79,8 +80,8 @@ func outputRecords(records any, asJSON bool) int {
 	switch typed := records.(type) {
 	case []usecases.RepoRecord:
 		return printRepos(typed)
-	case []usecases.ProjectRecord:
-		return printProjects(typed)
+	case []usecases.IssueRecord:
+		return printIssues(typed)
 	default:
 		data, err := json.Marshal(records)
 		if err != nil {
@@ -128,18 +129,24 @@ func printRepos(records []usecases.RepoRecord) int {
 	return 0
 }
 
-func printProjects(records []usecases.ProjectRecord) int {
+func printIssues(records []usecases.IssueRecord) int {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "name\tdescription\tis_private\tis_archived\trepo_full_name\tcreated_at\tupdated_at")
+	_, _ = fmt.Fprintln(w, "repo_full_name\tnumber\ttitle\tstate\thtml_url\tauthor\tassignees\tlabels\tcomments\tis_locked\tcreated_at\tupdated_at\tclosed_at")
 	for _, record := range records {
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%t\t%t\t%s\t%s\t%s\n",
-			record.Name,
-			record.Description,
-			record.IsPrivate,
-			record.IsArchived,
+		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%d\t%t\t%s\t%s\t%s\n",
 			record.RepoFullName,
+			record.Number,
+			record.Title,
+			record.State,
+			record.HTMLURL,
+			record.Author,
+			strings.Join(record.Assignees, ","),
+			strings.Join(record.Labels, ","),
+			record.Comments,
+			record.IsLocked,
 			record.CreatedAt,
 			record.UpdatedAt,
+			record.ClosedAt,
 		)
 	}
 

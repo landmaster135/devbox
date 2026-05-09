@@ -1,11 +1,11 @@
 # Forgejo CLI
 
-Forgejo のリポジトリ情報を取得する CLI です。
+Forgejo のリポジトリ/Issue 情報を取得する CLI です。
 
 ## 機能
 
 - `repo list`: `repo list` で自分がアクセス可能なリポジトリ一覧を取得
-- `project list`: 指定ユーザーのリポジトリ配下のプロジェクト一覧を取得
+- `issue list`: 指定ユーザーのリポジトリ配下の issue 一覧を取得
 
 認証は `forgejo-token` の API トークンを使用します。  
 `.env`（または OS 環境変数）から以下のキーを読み込みます。
@@ -19,10 +19,10 @@ Forgejo のリポジトリ情報を取得する CLI です。
 ```bash
 ./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
 
-./forgejo -operation "project list" -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
+./forgejo -operation "issue list" -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
 
 ./forgejo repo list -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
-./forgejo project list -forgejo-username YOUR_NAME
+./forgejo issue list -forgejo-username YOUR_NAME
 ```
 
 ## パラメータ
@@ -31,7 +31,7 @@ Forgejo のリポジトリ情報を取得する CLI です。
 
 | 名前 | 説明 |
 | --- | --- |
-| `-operation` | 実行操作 (`repo list` / `project list`) |
+| `-operation` | 実行操作 (`repo list` / `issue list`) |
 | `forgejo-host` | Forgejo ホスト（例: `https://codeberg.org`） |
 | `forgejo-username` | ユーザー名 |
 | `forgejo-token` | API トークン |
@@ -50,7 +50,7 @@ Forgejo のリポジトリ情報を取得する CLI です。
 ./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx -json
 ./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx -repos-workers 8
 
-./forgejo project list -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx
+./forgejo issue list -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx
 ```
 
 `.env` に設定する例:
@@ -119,30 +119,46 @@ EOF
 ]
 ```
 
-### `project list`
+### `issue list`
 
 出力項目:
 
-- `name`
-- `description`
-- `is_private`
-- `is_archived`
 - `repo_full_name`
+- `number`
+- `title`
+- `state`
+- `html_url`
+- `author`
+- `assignees`
+- `labels`
+- `comments`
+- `is_locked`
 - `created_at`
 - `updated_at`
+- `closed_at`
 
 `-json` 指定時は以下のような JSON 形式で出力されます。
 
 ```json
 [
   {
-    "name": "Backend",
-    "description": "infra",
-    "is_private": false,
-    "is_archived": false,
     "repo_full_name": "owner/repo",
+    "number": 5,
+    "title": "Bug fix",
+    "state": "open",
+    "html_url": "https://forgejo.example.com/owner/repo/issues/5",
+    "author": "alice",
+    "assignees": [
+      "bob"
+    ],
+    "labels": [
+      "bug"
+    ],
+    "comments": 2,
+    "is_locked": false,
     "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-02T00:00:00Z"
+    "updated_at": "2024-01-02T00:00:00Z",
+    "closed_at": ""
   }
 ]
 ```
@@ -151,5 +167,3 @@ EOF
 
 - 必須パラメータ不足時はエラーメッセージを表示して終了します
 - API 呼び出し失敗時は `stderr` にエラー内容を表示します
-- `project list` でプロジェクト API が未対応の場合は  
-  `project list API is not supported on this server`

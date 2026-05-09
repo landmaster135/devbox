@@ -9,7 +9,7 @@ import (
 	forgejo "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
 
 	commonUsecases "github.com/landmaster135/devbox/internal/forgejo/usecases/common"
-	projectList "github.com/landmaster135/devbox/internal/forgejo/usecases/operations/project_list"
+	issueList "github.com/landmaster135/devbox/internal/forgejo/usecases/operations/issue_list"
 	repoList "github.com/landmaster135/devbox/internal/forgejo/usecases/operations/repo_list"
 )
 
@@ -49,13 +49,10 @@ var (
 			ReposWorkers: dependencies.ReposWorkers,
 		})
 	}
-	newProjectListOperation = func(dependencies projectListDependencies) projectListOperation {
-		return projectList.NewService(projectList.Options{
-			Client:     dependencies.Client,
-			Host:       dependencies.Host,
-			Username:   dependencies.Username,
-			Token:      dependencies.Token,
-			HTTPClient: dependencies.HTTPClient,
+	newIssueListOperation = func(dependencies issueListDependencies) issueListOperation {
+		return issueList.NewService(issueList.Options{
+			Client:   dependencies.Client,
+			Username: dependencies.Username,
 		})
 	}
 )
@@ -104,14 +101,11 @@ func (s *Service) ListRepos() ([]RepoRecord, error) {
 	return operation.Execute()
 }
 
-// ListProjects はプロジェクト一覧を取得します。
-func (s *Service) ListProjects() ([]ProjectRecord, error) {
-	operation := newProjectListOperation(projectListDependencies{
-		Client:     s.client,
-		Host:       s.host,
-		Username:   s.username,
-		Token:      s.token,
-		HTTPClient: s.httpClient,
+// ListIssues は issue 一覧を取得します。
+func (s *Service) ListIssues() ([]IssueRecord, error) {
+	operation := newIssueListOperation(issueListDependencies{
+		Client:   s.client,
+		Username: s.username,
 	})
 	return operation.Execute()
 }

@@ -27,8 +27,8 @@ func TestNewConfig_Normal(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "project list",
-			operation: "project list",
+			name:      "issue list",
+			operation: "issue list",
 			host:      "https://example.com",
 			username:  "user",
 			token:     "token",
@@ -169,14 +169,14 @@ func TestParseFlagsWithParser_UsesDotEnv(t *testing.T) {
 	}
 
 	parser := flagParser.NewMockFlagParser()
-	parser.SetArgs([]string{"project", "list"})
+	parser.SetArgs([]string{"issue", "list"})
 	parser.SetBoolFlag("json", false)
 	cfg, err := ParseFlagsWithParserWithEnvFile(parser, dotenvPath)
 	if err != nil {
 		t.Fatalf("ParseFlagsWithParserWithEnvFile() error = %v", err)
 	}
-	if cfg.Operation != "project list" {
-		t.Fatalf("Operation = %s, want project list", cfg.Operation)
+	if cfg.Operation != "issue list" {
+		t.Fatalf("Operation = %s, want issue list", cfg.Operation)
 	}
 	if cfg.Host != "https://example.com" {
 		t.Fatalf("Host = %s, want https://example.com", cfg.Host)

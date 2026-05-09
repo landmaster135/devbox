@@ -7,26 +7,13 @@ import (
 	"time"
 )
 
-func TestDecodeProjects(t *testing.T) {
-	plain := `[{"name":"P1","created_at":"2020-01-01T00:00:00Z","updated_at":"2020-01-02T00:00:00Z"}]`
-	decoded, err := DecodeProjects([]byte(plain))
-	if err != nil {
-		t.Fatalf("DecodeProjects() error = %v", err)
+func TestFormatDatePtr(t *testing.T) {
+	now := time.Date(2026, 5, 9, 12, 34, 56, 0, time.UTC)
+	if got := FormatDatePtr(nil); got != "" {
+		t.Fatalf("FormatDatePtr(nil) = %q, want %q", got, "")
 	}
-	if len(decoded) != 1 {
-		t.Fatalf("len(decoded) = %d, want 1", len(decoded))
-	}
-
-	wrapped := `{"data":[{"name":"P2","title":"Title","created_at":"2020-01-03T00:00:00Z","updated_at":"2020-01-04T00:00:00Z"}], "projects":[]}`
-	decoded, err = DecodeProjects([]byte(wrapped))
-	if err != nil {
-		t.Fatalf("DecodeProjects() wrapped error = %v", err)
-	}
-	if len(decoded) != 1 {
-		t.Fatalf("len(decoded) = %d, want 1", len(decoded))
-	}
-	if decoded[0].Name != "P2" {
-		t.Fatalf("Name = %q, want %q", decoded[0].Name, "P2")
+	if got := FormatDatePtr(&now); got != "2026-05-09T12:34:56Z" {
+		t.Fatalf("FormatDatePtr() = %q, want %q", got, "2026-05-09T12:34:56Z")
 	}
 }
 
