@@ -44,6 +44,7 @@ pkg/win_dos/Taskfile.env.yml
 
 ### tmp ###
 **/tmp/**
+.tmp/
 
 ### Docker ###
 # .dockerignore
