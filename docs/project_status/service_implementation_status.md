@@ -33,6 +33,7 @@
 | diff-dreamer                                | ✅  | ❌️  | ❌️  | ❌️ |
 | discord-webhook                             | ✅  | ❌️  | ❌️  | ❌️ |
 | docker                                      | ✅  | ❌️  | ❌️  | ❌️ |
+| dockhand                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | duckduckgo-search                           | ❌️  | ✅  | ❌️  | ❌️ |
 | env-loader                                  | ✅  | ❌️  | ❌️  | ❌️ |
 | everart                                     | ❌️  | ✅  | ❌️  | ❌️ |
@@ -44,6 +45,7 @@
 | file-line-deduper                           | ✅  | ❌️  | ❌️  | ❌️ |
 | file-maneuver                               | ✅  | ❌️  | ❌️  | ❌️ |
 | filesystem                                  | ✅  | ✅  | ❌️  | ❌️ |
+| forgejo                                     | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-ai                            | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-billing                       | ✅  | ❌️  | ❌️  | ❌️ |
 | gcloud-genset-cloudsql                      | ✅  | ❌️  | ❌️  | ❌️ |
@@ -135,12 +137,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 118
-- **CLIツール実装数**: 107
+- **総サービス数**: 120
+- **CLIツール実装数**: 109
 - **MCPツール実装数**: 27
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 2
-- **CLIのみ実装**: 90
+- **CLIのみ実装**: 92
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0
