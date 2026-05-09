@@ -94,7 +94,7 @@ func outputRecords(records any, asJSON bool) int {
 
 func printRepos(records []usecases.RepoRecord) int {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "name\tdescription\tis_private\thttp_url\tissues_count\topen_pulls_count\tclosed_pulls_count\tforks_count\tstargazers_count\tsubscribers_count\tlanguage\tlanguages\tsize\trepo_created_at\trepo_updated_at\tis_archived\ttags")
+	_, _ = fmt.Fprintln(w, "name\tdescription\tis_private\thttp_url\topen_issues_count\tclosed_issues_count\topen_pulls_count\tclosed_pulls_count\tforks_count\tstargazers_count\tsubscribers_count\tlanguage\tlanguages\tsize\trepo_created_at\trepo_updated_at\tis_archived\ttags")
 	for _, record := range records {
 		languageJSON, err := json.Marshal(record.Languages)
 		if err != nil {
@@ -102,12 +102,13 @@ func printRepos(records []usecases.RepoRecord) int {
 			fmt.Fprintf(os.Stderr, "エラー: 言語情報の整形に失敗しました: %v\n", err)
 			return 1
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%t\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%d\t%s\t%s\t%t\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%t\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%d\t%s\t%s\t%t\t%s\n",
 			record.Name,
 			record.Description,
 			record.IsPrivate,
 			record.HTTPURL,
-			record.IssuesCount,
+			record.OpenIssuesCount,
+			record.ClosedIssuesCount,
 			record.OpenPullsCount,
 			record.ClosedPullsCount,
 			record.ForksCount,

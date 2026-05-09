@@ -75,7 +75,8 @@ EOF
 - `description`
 - `is_private`
 - `http_url`
-- `issues_count`
+- `open_issues_count`
+- `closed_issues_count`
 - `open_pulls_count`
 - `closed_pulls_count`
 - `forks_count`
@@ -98,7 +99,8 @@ EOF
     "description": "",
     "is_private": false,
     "http_url": "https://forgejo.example.com/owner/repo-name",
-    "issues_count": 0,
+    "open_issues_count": 1,
+    "closed_issues_count": 0,
     "open_pulls_count": 2,
     "closed_pulls_count": 1,
     "forks_count": 0,

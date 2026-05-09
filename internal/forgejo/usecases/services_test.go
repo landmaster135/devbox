@@ -36,6 +36,17 @@ func TestListRepos(t *testing.T) {
 				"title":"Old PR"
 			}]`,
 		},
+		"GET /api/v1/repos/landmaster135/repo1/issues": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"X-Total-Count": "2",
+			},
+			body: `[{
+				"id":9,
+				"state":"closed",
+				"title":"Old issue"
+			}]`,
+		},
 	})
 	defer server.Close()
 
@@ -62,8 +73,14 @@ func TestListRepos(t *testing.T) {
 	if record.OpenPullsCount != 2 {
 		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
 	}
+	if record.OpenIssuesCount != 1 {
+		t.Fatalf("OpenIssuesCount = %d, want %d", record.OpenIssuesCount, 1)
+	}
 	if record.ClosedPullsCount != 1 {
 		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 1)
+	}
+	if record.ClosedIssuesCount != 2 {
+		t.Fatalf("ClosedIssuesCount = %d, want %d", record.ClosedIssuesCount, 2)
 	}
 	if record.RepoCreatedAt != "2022-10-18T00:00:00Z" {
 		t.Fatalf("RepoCreatedAt = %q, want %q", record.RepoCreatedAt, "2022-10-18T00:00:00Z")
@@ -79,6 +96,13 @@ func TestListRepos(t *testing.T) {
 		!called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=100&state=closed") &&
 		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed&limit=100") {
 		t.Fatalf("pulls endpoint was not requested")
+	}
+	if !called("GET /api/v1/repos/landmaster135/repo1/issues") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/issues?limit=1&page=1&state=closed&type=issues") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/issues?state=closed&limit=1&type=issues&page=1") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/issues?type=issues&state=closed&limit=1&page=1") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/issues?state=closed&type=issues") {
+		t.Fatalf("issues endpoint was not requested")
 	}
 }
 
@@ -103,6 +127,13 @@ func TestListReposWithMultiplePullPages(t *testing.T) {
 			},
 			body: `[{"id":3,"state":"closed","title":"Old PR"}]`,
 		},
+		"GET /api/v1/repos/landmaster135/repo1/issues": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"X-Total-Count": "7",
+			},
+			body: `[{"id":9,"state":"closed","title":"Old issue"}]`,
+		},
 	})
 	defer server.Close()
 
@@ -120,8 +151,14 @@ func TestListReposWithMultiplePullPages(t *testing.T) {
 	if record.OpenPullsCount != 2 {
 		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
 	}
+	if record.OpenIssuesCount != 1 {
+		t.Fatalf("OpenIssuesCount = %d, want %d", record.OpenIssuesCount, 1)
+	}
 	if record.ClosedPullsCount != 2 {
 		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 2)
+	}
+	if record.ClosedIssuesCount != 7 {
+		t.Fatalf("ClosedIssuesCount = %d, want %d", record.ClosedIssuesCount, 7)
 	}
 	if called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=1&state=closed") ||
 		called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=1&page=2&state=closed") ||
@@ -153,6 +190,13 @@ func TestListRepos_UsesWorkerCount(t *testing.T) {
 			},
 			body: `[{"id":3,"state":"closed","title":"Old PR"}]`,
 		},
+		"GET /api/v1/repos/landmaster135/repo1/issues": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"X-Total-Count": "21",
+			},
+			body: `[{"id":9,"state":"closed","title":"Old issue"}]`,
+		},
 		"GET /api/v1/repos/landmaster135/repo2/topics": {
 			status: http.StatusOK,
 			body:   `{"topics":["dev"]}`,
@@ -167,6 +211,13 @@ func TestListRepos_UsesWorkerCount(t *testing.T) {
 				"X-Total-Count": "7",
 			},
 			body: `[{"id":4,"state":"closed","title":"Old PR2"}]`,
+		},
+		"GET /api/v1/repos/landmaster135/repo2/issues": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"X-Total-Count": "3",
+			},
+			body: `[{"id":10,"state":"closed","title":"Closed issue"}]`,
 		},
 	}
 

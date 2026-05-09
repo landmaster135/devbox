@@ -48,23 +48,24 @@ type Service struct {
 
 // RepoRecord は repo list の出力レコードです。
 type RepoRecord struct {
-	Name             string             `json:"name"`
-	Description      string             `json:"description"`
-	IsPrivate        bool               `json:"is_private"`
-	HTTPURL          string             `json:"http_url"`
-	IssuesCount      int                `json:"issues_count"`
-	OpenPullsCount   int                `json:"open_pulls_count"`
-	ClosedPullsCount int                `json:"closed_pulls_count"`
-	ForksCount       int                `json:"forks_count"`
-	StargazersCount  int                `json:"stargazers_count"`
-	SubscribersCount int                `json:"subscribers_count"`
-	Language         string             `json:"language"`
-	Languages        map[string]float64 `json:"languages"`
-	Size             int                `json:"size"`
-	RepoCreatedAt    string             `json:"repo_created_at"`
-	RepoUpdatedAt    string             `json:"repo_updated_at"`
-	IsArchived       bool               `json:"is_archived"`
-	Tags             string             `json:"tags"`
+	Name              string             `json:"name"`
+	Description       string             `json:"description"`
+	IsPrivate         bool               `json:"is_private"`
+	HTTPURL           string             `json:"http_url"`
+	OpenIssuesCount   int                `json:"open_issues_count"`
+	ClosedIssuesCount int                `json:"closed_issues_count"`
+	OpenPullsCount    int                `json:"open_pulls_count"`
+	ClosedPullsCount  int                `json:"closed_pulls_count"`
+	ForksCount        int                `json:"forks_count"`
+	StargazersCount   int                `json:"stargazers_count"`
+	SubscribersCount  int                `json:"subscribers_count"`
+	Language          string             `json:"language"`
+	Languages         map[string]float64 `json:"languages"`
+	Size              int                `json:"size"`
+	RepoCreatedAt     string             `json:"repo_created_at"`
+	RepoUpdatedAt     string             `json:"repo_updated_at"`
+	IsArchived        bool               `json:"is_archived"`
+	Tags              string             `json:"tags"`
 }
 
 // ProjectRecord は project list の出力レコードです。
@@ -340,25 +341,30 @@ func (s *Service) fetchRepoRecord(owner, repoName string, repo *forgejo.Reposito
 	if err != nil {
 		return RepoRecord{}, fmt.Errorf("pullsの取得に失敗しました (%s/%s): %w", owner, repoName, err)
 	}
+	closedIssuesCount, err := s.fetchClosedIssuesCount(owner, repoName)
+	if err != nil {
+		return RepoRecord{}, fmt.Errorf("issuesの取得に失敗しました (%s/%s): %w", owner, repoName, err)
+	}
 
 	return RepoRecord{
-		Name:             repoName,
-		Description:      repo.Description,
-		IsPrivate:        repo.Private,
-		HTTPURL:          repo.HTMLURL,
-		IssuesCount:      repo.OpenIssues,
-		OpenPullsCount:   repo.OpenPulls,
-		ClosedPullsCount: closedPullsCount,
-		ForksCount:       repo.Forks,
-		StargazersCount:  repo.Stars,
-		SubscribersCount: repo.Watchers,
-		Language:         primaryLanguage(languages),
-		Languages:        languages,
-		Size:             repo.Size,
-		RepoCreatedAt:    formatDate(repo.Created),
-		RepoUpdatedAt:    formatDate(repo.Updated),
-		IsArchived:       repo.Archived,
-		Tags:             strings.Join(topics, ","),
+		Name:              repoName,
+		Description:       repo.Description,
+		IsPrivate:         repo.Private,
+		HTTPURL:           repo.HTMLURL,
+		OpenIssuesCount:   repo.OpenIssues,
+		ClosedIssuesCount: closedIssuesCount,
+		OpenPullsCount:    repo.OpenPulls,
+		ClosedPullsCount:  closedPullsCount,
+		ForksCount:        repo.Forks,
+		StargazersCount:   repo.Stars,
+		SubscribersCount:  repo.Watchers,
+		Language:          primaryLanguage(languages),
+		Languages:         languages,
+		Size:              repo.Size,
+		RepoCreatedAt:     formatDate(repo.Created),
+		RepoUpdatedAt:     formatDate(repo.Updated),
+		IsArchived:        repo.Archived,
+		Tags:              strings.Join(topics, ","),
 	}, nil
 }
 
@@ -394,6 +400,45 @@ func (s *Service) fetchClosedPullsCount(owner, repo string) (int, error) {
 	}
 
 	return len(firstPulls), nil
+}
+
+func (s *Service) fetchClosedIssuesCount(owner, repo string) (int, error) {
+	return s.fetchIssuesCount(owner, repo, forgejo.StateClosed)
+}
+
+func (s *Service) fetchIssuesCount(owner, repo string, state forgejo.StateType) (int, error) {
+	firstIssues, response, err := s.client.ListRepoIssues(owner, repo, forgejo.ListIssueOption{
+		ListOptions: forgejo.ListOptions{
+			Page:     1,
+			PageSize: 1,
+		},
+		State: state,
+		Type:  forgejo.IssueTypeIssue,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	if response == nil {
+		return len(firstIssues), nil
+	}
+
+	totalCountFromHeader := strings.TrimSpace(response.Header.Get("X-Total-Count"))
+	if totalCountFromHeader != "" {
+		totalClosedIssues, err := strconv.Atoi(totalCountFromHeader)
+		if err == nil {
+			return totalClosedIssues, nil
+		}
+	}
+	if len(firstIssues) == 0 {
+		return 0, nil
+	}
+
+	if response.LastPage > 1 {
+		return response.LastPage, nil
+	}
+
+	return len(firstIssues), nil
 }
 
 func (s *Service) fetchProjects(owner, repo string) ([]projectResponse, error) {
