@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/landmaster135/devbox/internal/forgejo/infrastructures/flag_parser"
@@ -16,6 +17,7 @@ const (
 	envKeyHost           = "forgejo-host"
 	envKeyUsername       = "forgejo-username"
 	envKeyToken          = "forgejo-token"
+	defaultWorkers       = 4
 )
 
 // Config はForgejo CLIの設定です。
@@ -25,7 +27,9 @@ type Config struct {
 	Username  string // Forgejoユーザー名
 	Token     string // APIトークン
 	JSON      bool   // JSON形式で出力するか
-	Help      bool   // ヘルプ表示フラグ
+	// PullsPageWorkers はpulls一覧のページ取得時に同時に実行するワーカー数です。
+	PullsPageWorkers int
+	Help             bool // ヘルプ表示フラグ
 }
 
 var supportedOperations = []string{operationRepoList, operationProjectList}
@@ -62,11 +66,12 @@ func NewConfig(operation, host, username, token string, jsonOutput bool) (*Confi
 	}
 
 	return &Config{
-		Operation: operation,
-		Host:      host,
-		Username:  username,
-		Token:     token,
-		JSON:      jsonOutput,
+		Operation:        operation,
+		Host:             host,
+		Username:         username,
+		Token:            token,
+		JSON:             jsonOutput,
+		PullsPageWorkers: defaultWorkers,
 	}, nil
 }
 
@@ -83,12 +88,13 @@ func ParseFlagsWithParser(parser flag_parser.FlagParser) (*Config, error) {
 // ParseFlagsWithParserWithEnvFile は指定した .env ファイルを環境変数のデフォルト値として使用します。
 func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath string) (*Config, error) {
 	var (
-		operation  = ""
-		host       = ""
-		username   = ""
-		token      = ""
-		jsonOutput = false
-		help       = false
+		operation        = ""
+		host             = ""
+		username         = ""
+		token            = ""
+		pullsPageWorkers = ""
+		jsonOutput       = false
+		help             = false
 	)
 
 	parser.StringVar(&operation, "operation", operation, "実行する操作 (repo list, project list)")
@@ -96,6 +102,7 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 	parser.StringVar(&host, "forgejo-host", host, "Forgejoホスト（https://example.com）")
 	parser.StringVar(&username, "forgejo-username", username, "Forgejoユーザー名")
 	parser.StringVar(&token, "forgejo-token", token, "Forgejo APIトークン")
+	parser.StringVar(&pullsPageWorkers, "forgejo-pulls-page-workers", pullsPageWorkers, "pullsページ取得時の同時実行数")
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプを表示（短縮）")
 
@@ -124,7 +131,33 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 		token = lookupEnvWithDotEnv(envKeyToken, token, envValues)
 	}
 
-	return NewConfig(operation, host, username, token, jsonOutput)
+	pullsPageWorkersInt, err := parsePullsPageWorkers(pullsPageWorkers)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := NewConfig(operation, host, username, token, jsonOutput)
+	if err != nil {
+		return nil, err
+	}
+	cfg.PullsPageWorkers = pullsPageWorkersInt
+	return cfg, nil
+}
+
+func parsePullsPageWorkers(raw string) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultWorkers, nil
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("forgejo-pulls-page-workers が不正です: %v", err)
+	}
+	if value <= 0 {
+		return 0, fmt.Errorf("forgejo-pulls-page-workers は1以上を指定してください")
+	}
+	return value, nil
 }
 
 func resolveOperation(operation string, args []string) string {

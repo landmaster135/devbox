@@ -41,12 +41,14 @@ Forgejo のリポジトリ情報を取得する CLI です。
 | 名前 | 説明 | デフォルト |
 | --- | --- | --- |
 | `-json` | 結果を JSON で整形して出力 | `false` |
+| `-forgejo-pulls-page-workers` | pulls 一覧のページ同時取得数 | `4` |
 | `-help`, `-h` | このヘルプを表示 | `false` |
 
 ## 使用例
 
 ```bash
 ./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx -json
+./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx -forgejo-pulls-page-workers 8
 
 ./forgejo project list -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx
 ```

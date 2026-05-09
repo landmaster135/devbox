@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -294,7 +295,7 @@ func TestPrimaryLanguage(t *testing.T) {
 	}
 }
 
-func newServiceForTest(server *httptest.Server, t *testing.T) *Service {
+func newServiceForTest(server *testServer, t *testing.T) *Service {
 	t.Helper()
 	service, err := NewService(ServiceOptions{
 		Host:       server.URL,
@@ -308,7 +309,7 @@ func newServiceForTest(server *httptest.Server, t *testing.T) *Service {
 	return service
 }
 
-func newServiceForTestWithUsername(server *httptest.Server, username string, t *testing.T) *Service {
+func newServiceForTestWithUsername(server *testServer, username string, t *testing.T) *Service {
 	t.Helper()
 	service, err := NewService(ServiceOptions{
 		Host:       server.URL,
@@ -329,7 +330,30 @@ type handlerResponse struct {
 	headers map[string]string
 }
 
-func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, func(string) bool) {
+type testServer struct {
+	URL    string
+	client *http.Client
+}
+
+func (s *testServer) Close() {
+	// no-op for in-memory transport
+}
+
+func (s *testServer) Client() *http.Client {
+	return s.client
+}
+
+type mockTransport struct {
+	handler http.Handler
+}
+
+func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	recorder := httptest.NewRecorder()
+	m.handler.ServeHTTP(recorder, req)
+	return recorder.Result(), nil
+}
+
+func newForgejoTestServer(paths map[string]handlerResponse) (*testServer, func(string) bool) {
 	normalizeRequestPath := func(path, rawQuery string) string {
 		path = strings.TrimSuffix(path, "/")
 		if rawQuery == "" {
@@ -363,7 +387,19 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, f
 		normalizedPaths[normalizeRequestKey(key)] = response
 	}
 
-	pathStates := map[string]int{}
+	pathStates := struct {
+		mu     sync.Mutex
+		counts map[string]int
+	}{
+		counts: map[string]int{},
+	}
+
+	recordPathState := func(key string) {
+		pathStates.mu.Lock()
+		pathStates.counts[key]++
+		pathStates.mu.Unlock()
+	}
+
 	buildKey := func(r *http.Request) string {
 		return fmt.Sprintf("%s %s", r.Method, normalizeRequestPath(r.URL.Path, r.URL.RawQuery))
 	}
@@ -373,10 +409,10 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, f
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := buildKey(r)
-		pathStates[key]++
-		if _, ok := pathStates[buildPathOnlyKey(r)]; !ok && key != buildPathOnlyKey(r) {
-			pathStates[buildPathOnlyKey(r)] = 0
-		}
+		recordPathState(key)
+		pathOnlyKey := buildPathOnlyKey(r)
+		recordPathState(pathOnlyKey)
+
 		if response, ok := normalizedPaths[key]; ok {
 			for headerKey, headerValue := range response.headers {
 				w.Header().Set(headerKey, headerValue)
@@ -385,8 +421,7 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, f
 			_, _ = w.Write([]byte(response.body))
 			return
 		}
-		if response, ok := normalizedPaths[buildPathOnlyKey(r)]; ok {
-			pathStates[buildPathOnlyKey(r)]++
+		if response, ok := normalizedPaths[pathOnlyKey]; ok {
 			for headerKey, headerValue := range response.headers {
 				w.Header().Set(headerKey, headerValue)
 			}
@@ -399,10 +434,19 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, f
 		_, _ = w.Write([]byte("not found"))
 	})
 
-	server := httptest.NewServer(handler)
 	called := func(path string) bool {
-		_, ok := pathStates[normalizeRequestKey(path)]
+		pathStates.mu.Lock()
+		defer pathStates.mu.Unlock()
+		_, ok := pathStates.counts[normalizeRequestKey(path)]
 		return ok
 	}
-	return server, called
+
+	return &testServer{
+		URL: "http://forgejo.local",
+		client: &http.Client{
+			Transport: &mockTransport{
+				handler: handler,
+			},
+		},
+	}, called
 }

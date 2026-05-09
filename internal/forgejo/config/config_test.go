@@ -57,6 +57,9 @@ func TestNewConfig_Normal(t *testing.T) {
 			if cfg.Token != tt.token {
 				t.Fatalf("Token = %s, want %s", cfg.Token, tt.token)
 			}
+			if cfg.PullsPageWorkers != defaultWorkers {
+				t.Fatalf("PullsPageWorkers = %d, want %d", cfg.PullsPageWorkers, defaultWorkers)
+			}
 		})
 	}
 }
@@ -183,6 +186,45 @@ func TestParseFlagsWithParser_UsesDotEnv(t *testing.T) {
 	}
 	if cfg.Token != "env-token" {
 		t.Fatalf("Token = %s, want env-token", cfg.Token)
+	}
+	if cfg.PullsPageWorkers != defaultWorkers {
+		t.Fatalf("PullsPageWorkers = %d, want %d", cfg.PullsPageWorkers, defaultWorkers)
+	}
+}
+
+func TestParseFlagsWithParser_CustomPullsWorkers(t *testing.T) {
+	parser := flagParser.NewMockFlagParser()
+	parser.SetArgs([]string{"repo", "list"})
+	parser.SetBoolFlag("help", false)
+	parser.SetBoolFlag("h", false)
+	parser.SetBoolFlag("json", false)
+	parser.SetStringFlag("forgejo-host", "https://example.com")
+	parser.SetStringFlag("forgejo-username", "user")
+	parser.SetStringFlag("forgejo-token", "token")
+	parser.SetStringFlag("forgejo-pulls-page-workers", "8")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("ParseFlagsWithParser() error = %v", err)
+	}
+	if cfg.PullsPageWorkers != 8 {
+		t.Fatalf("PullsPageWorkers = %d, want 8", cfg.PullsPageWorkers)
+	}
+}
+
+func TestParseFlagsWithParser_InvalidPullsWorkers(t *testing.T) {
+	parser := flagParser.NewMockFlagParser()
+	parser.SetArgs([]string{"repo", "list"})
+	parser.SetBoolFlag("help", false)
+	parser.SetBoolFlag("h", false)
+	parser.SetBoolFlag("json", false)
+	parser.SetStringFlag("forgejo-host", "https://example.com")
+	parser.SetStringFlag("forgejo-username", "user")
+	parser.SetStringFlag("forgejo-token", "token")
+	parser.SetStringFlag("forgejo-pulls-page-workers", "abc")
+
+	if _, err := ParseFlagsWithParser(parser); err == nil {
+		t.Fatal("expected error")
 	}
 }
 

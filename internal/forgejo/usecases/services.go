@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	defaultHTTPTimeout = 30 * time.Second
-	timeFormatDate     = time.RFC3339
-	pullsPageSize      = 100
-	pullsPageWorkers   = 4
+	defaultHTTPTimeout  = 30 * time.Second
+	timeFormatDate      = time.RFC3339
+	pullsPageSize       = 100
+	defaultPullsWorkers = 4
 )
 
 type httpClient interface {
@@ -31,15 +31,18 @@ type ServiceOptions struct {
 	Username   string
 	Token      string
 	HTTPClient *http.Client
+	// PullsPageWorkers はpulls取得時のワーカー数です。
+	PullsPageWorkers int
 }
 
 // Service はCLI向けのForgejo処理を担当します。
 type Service struct {
-	client     *forgejo.Client
-	host       string
-	username   string
-	token      string
-	httpClient httpClient
+	client       *forgejo.Client
+	host         string
+	username     string
+	token        string
+	httpClient   httpClient
+	pullsWorkers int
 }
 
 // RepoRecord は repo list の出力レコードです。
@@ -106,11 +109,12 @@ func NewService(options ServiceOptions) (*Service, error) {
 	}
 
 	return &Service{
-		client:     forgejoClient,
-		host:       host,
-		username:   strings.TrimSpace(options.Username),
-		token:      options.Token,
-		httpClient: client,
+		client:       forgejoClient,
+		host:         host,
+		username:     strings.TrimSpace(options.Username),
+		token:        options.Token,
+		httpClient:   client,
+		pullsWorkers: resolvePullsWorkers(options.PullsPageWorkers),
 	}, nil
 }
 
@@ -221,6 +225,13 @@ func (s *Service) fetchTopics(owner, repo string) ([]string, error) {
 	return topics, err
 }
 
+func resolvePullsWorkers(raw int) int {
+	if raw <= 0 {
+		return defaultPullsWorkers
+	}
+	return raw
+}
+
 func (s *Service) fetchLanguages(owner, repo string) (map[string]float64, error) {
 	requestURL := fmt.Sprintf("%s/api/v1/repos/%s/%s/languages", s.host, url.PathEscape(owner), url.PathEscape(repo))
 	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
@@ -289,7 +300,7 @@ func (s *Service) fetchPullsCount(owner, repo string) (int, int, error) {
 	done := make(chan struct{})
 
 	var wg sync.WaitGroup
-	workerCount := pullsPageWorkers
+	workerCount := s.pullsWorkers
 	if workerCount > lastPage-1 {
 		workerCount = lastPage - 1
 	}
