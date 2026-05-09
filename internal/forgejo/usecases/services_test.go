@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -29,11 +30,11 @@ func TestListRepos(t *testing.T) {
 		},
 		"GET /api/v1/repos/landmaster135/repo1/pulls": {
 			status: http.StatusOK,
-			body: `[
-				{"id":1,"state":"open","title":"Add README"},
-				{"id":2,"state":"open","title":"Fix bug"},
-				{"id":3,"state":"closed","title":"Old PR"}
-			]`,
+			body: `[{
+				"id":3,
+				"state":"closed",
+				"title":"Old PR"
+			}]`,
 		},
 	})
 	defer server.Close()
@@ -73,7 +74,10 @@ func TestListRepos(t *testing.T) {
 	if !called("GET /api/v1/repos/landmaster135/repo1/languages") {
 		t.Fatalf("languages endpoint was not requested")
 	}
-	if !called("GET /api/v1/repos/landmaster135/repo1/pulls") {
+	if !called("GET /api/v1/repos/landmaster135/repo1/pulls") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=100&state=closed") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed&limit=100") {
 		t.Fatalf("pulls endpoint was not requested")
 	}
 }
@@ -95,13 +99,9 @@ func TestListReposWithMultiplePullPages(t *testing.T) {
 		"GET /api/v1/repos/landmaster135/repo1/pulls": {
 			status: http.StatusOK,
 			headers: map[string]string{
-				"Link": "</api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"next\", </api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"last\"",
+				"X-Total-Count": "2",
 			},
-			body: `[{"id":1,"state":"open","title":"Add README"},{"id":2,"state":"open","title":"Fix bug"}]`,
-		},
-		"GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all": {
-			status: http.StatusOK,
-			body:   `[{"id":3,"state":"closed","title":"Old PR"}]`,
+			body: `[{"id":3,"state":"closed","title":"Old PR"}]`,
 		},
 	})
 	defer server.Close()
@@ -120,14 +120,82 @@ func TestListReposWithMultiplePullPages(t *testing.T) {
 	if record.OpenPullsCount != 2 {
 		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
 	}
-	if record.ClosedPullsCount != 1 {
-		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 1)
+	if record.ClosedPullsCount != 2 {
+		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 2)
 	}
-	if !called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=100&page=2&state=all") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=all&page=2&limit=100") &&
-		!called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&state=all&limit=100") {
-		t.Fatalf("second pulls page was not requested")
+	if called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=1&state=closed") ||
+		called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=1&page=2&state=closed") ||
+		called("GET /api/v1/repos/landmaster135/repo1/pulls?state=closed&page=2&limit=1") ||
+		called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&state=closed&limit=1") {
+		t.Fatalf("second pulls page was requested")
+	}
+}
+
+func TestListRepos_UsesWorkerCount(t *testing.T) {
+	paths := map[string]handlerResponse{
+		"GET /api/v1/user/repos": {
+			status: http.StatusOK,
+			body: `[{"id":1,"owner":{"login":"landmaster135"},"name":"repo1","full_name":"landmaster135/repo1","description":"Repo one","private":false,"html_url":"https://example.com/landmaster135/repo1","open_issues_count":1,"open_pr_counter":2,"forks_count":3,"stars_count":4,"watchers_count":5,"size":123,"archived":false,"created_at":"2022-10-18T00:00:00Z","updated_at":"2022-10-19T00:00:00Z"},
+				{"id":2,"owner":{"login":"landmaster135"},"name":"repo2","full_name":"landmaster135/repo2","description":"Repo two","private":false,"html_url":"https://example.com/landmaster135/repo2","open_issues_count":0,"open_pr_counter":1,"forks_count":1,"stars_count":2,"watchers_count":3,"size":45,"archived":false,"created_at":"2022-10-20T00:00:00Z","updated_at":"2022-10-21T00:00:00Z"}]`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/topics": {
+			status: http.StatusOK,
+			body:   `{"topics":["game"]}`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/languages": {
+			status: http.StatusOK,
+			body:   `{"Go":120.0,"C++":40.0}`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/pulls": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"X-Total-Count": "10",
+			},
+			body: `[{"id":3,"state":"closed","title":"Old PR"}]`,
+		},
+		"GET /api/v1/repos/landmaster135/repo2/topics": {
+			status: http.StatusOK,
+			body:   `{"topics":["dev"]}`,
+		},
+		"GET /api/v1/repos/landmaster135/repo2/languages": {
+			status: http.StatusOK,
+			body:   `{"Rust":200.0}`,
+		},
+		"GET /api/v1/repos/landmaster135/repo2/pulls": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"X-Total-Count": "7",
+			},
+			body: `[{"id":4,"state":"closed","title":"Old PR2"}]`,
+		},
+	}
+
+	var activeCount int64
+	var maxActiveCount int64
+	server, _ := newForgejoTestServerWithRequestDelay(paths, &activeCount, &maxActiveCount, 40*time.Millisecond)
+	defer server.Close()
+
+	{
+		service := newServiceForTestWithWorkers(server, t, 1)
+		if _, err := service.ListRepos(); err != nil {
+			t.Fatalf("ListRepos() error = %v", err)
+		}
+		if got := atomic.LoadInt64(&maxActiveCount); got != 1 {
+			t.Fatalf("worker=1 -> maxActiveCount = %d, want 1", got)
+		}
+	}
+
+	atomic.StoreInt64(&activeCount, 0)
+	atomic.StoreInt64(&maxActiveCount, 0)
+
+	{
+		service := newServiceForTestWithWorkers(server, t, 4)
+		if _, err := service.ListRepos(); err != nil {
+			t.Fatalf("ListRepos() error = %v", err)
+		}
+		if got := atomic.LoadInt64(&maxActiveCount); got < 2 {
+			t.Fatalf("worker=4 -> maxActiveCount = %d, want >= 2", got)
+		}
 	}
 }
 
@@ -297,11 +365,17 @@ func TestPrimaryLanguage(t *testing.T) {
 
 func newServiceForTest(server *testServer, t *testing.T) *Service {
 	t.Helper()
+	return newServiceForTestWithWorkers(server, t, 4)
+}
+
+func newServiceForTestWithWorkers(server *testServer, t *testing.T, pullsWorkers int) *Service {
+	t.Helper()
 	service, err := NewService(ServiceOptions{
-		Host:       server.URL,
-		Username:   "landmaster135",
-		Token:      "token",
-		HTTPClient: server.Client(),
+		Host:             server.URL,
+		Username:         "landmaster135",
+		Token:            "token",
+		HTTPClient:       server.Client(),
+		PullsPageWorkers: pullsWorkers,
 	})
 	if err != nil {
 		t.Fatalf("NewService() error = %v", err)
@@ -449,4 +523,30 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*testServer, func(s
 			},
 		},
 	}, called
+}
+
+func newForgejoTestServerWithRequestDelay(paths map[string]handlerResponse, activeCount, maxActiveCount *int64, requestDelay time.Duration) (*testServer, func(string) bool) {
+	server, called := newForgejoTestServer(paths)
+	innerHandler := server.client.Transport.(*mockTransport).handler
+	server.client.Transport = &mockTransport{
+		handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			currentActive := atomic.AddInt64(activeCount, 1)
+			for {
+				maxActive := atomic.LoadInt64(maxActiveCount)
+				if currentActive <= maxActive {
+					break
+				}
+				if atomic.CompareAndSwapInt64(maxActiveCount, maxActive, currentActive) {
+					break
+				}
+			}
+			defer atomic.AddInt64(activeCount, -1)
+
+			if requestDelay > 0 {
+				time.Sleep(requestDelay)
+			}
+			innerHandler.ServeHTTP(w, r)
+		}),
+	}
+	return server, called
 }

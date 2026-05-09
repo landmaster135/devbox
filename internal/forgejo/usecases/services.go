@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +32,7 @@ type ServiceOptions struct {
 	Username   string
 	Token      string
 	HTTPClient *http.Client
-	// PullsPageWorkers はpulls取得時のワーカー数です。
+	// PullsPageWorkers はrepo list 取得時の同時実行ワーカー数です。
 	PullsPageWorkers int
 }
 
@@ -125,7 +126,19 @@ func (s *Service) ListRepos() ([]RepoRecord, error) {
 		return nil, fmt.Errorf("リポジトリ一覧の取得に失敗しました: %w", err)
 	}
 
-	records := make([]RepoRecord, 0, len(repos))
+	type repoJob struct {
+		index    int
+		owner    string
+		repoName string
+		repo     *forgejo.Repository
+	}
+
+	type repoResult struct {
+		index  int
+		record RepoRecord
+	}
+
+	repoJobs := make([]repoJob, 0, len(repos))
 	for _, repo := range repos {
 		if repo == nil {
 			continue
@@ -137,39 +150,90 @@ func (s *Service) ListRepos() ([]RepoRecord, error) {
 		if repoName == "" {
 			continue
 		}
-		topics, err := s.fetchTopics(owner, repoName)
-		if err != nil {
-			return nil, fmt.Errorf("topicsの取得に失敗しました (%s/%s): %w", owner, repoName, err)
-		}
-		languages, err := s.fetchLanguages(owner, repoName)
-		if err != nil {
-			return nil, fmt.Errorf("languagesの取得に失敗しました (%s/%s): %w", owner, repoName, err)
-		}
-		openPullsCount, closedPullsCount, err := s.fetchPullsCount(owner, repoName)
-		if err != nil {
-			return nil, fmt.Errorf("pullsの取得に失敗しました (%s/%s): %w", owner, repoName, err)
-		}
-
-		records = append(records, RepoRecord{
-			Name:             repoName,
-			Description:      repo.Description,
-			IsPrivate:        repo.Private,
-			HTTPURL:          repo.HTMLURL,
-			IssuesCount:      repo.OpenIssues,
-			OpenPullsCount:   openPullsCount,
-			ClosedPullsCount: closedPullsCount,
-			ForksCount:       repo.Forks,
-			StargazersCount:  repo.Stars,
-			SubscribersCount: repo.Watchers,
-			Language:         primaryLanguage(languages),
-			Languages:        languages,
-			Size:             repo.Size,
-			RepoCreatedAt:    formatDate(repo.Created),
-			RepoUpdatedAt:    formatDate(repo.Updated),
-			IsArchived:       repo.Archived,
-			Tags:             strings.Join(topics, ","),
+		repoJobs = append(repoJobs, repoJob{
+			index:    len(repoJobs),
+			owner:    owner,
+			repoName: repoName,
+			repo:     repo,
 		})
 	}
+
+	records := make([]RepoRecord, len(repoJobs))
+	if len(repoJobs) == 0 {
+		return records, nil
+	}
+
+	jobs := make(chan repoJob, len(repoJobs))
+	results := make(chan repoResult, len(repoJobs))
+	errCh := make(chan error, 1)
+	done := make(chan struct{})
+	var doneOnce sync.Once
+	var wg sync.WaitGroup
+
+	reportErr := func(fetchErr error) {
+		if fetchErr == nil {
+			return
+		}
+		doneOnce.Do(func() {
+			close(done)
+		})
+		select {
+		case errCh <- fetchErr:
+		default:
+		}
+	}
+
+	worker := func() {
+		defer wg.Done()
+		for job := range jobs {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			record, err := s.fetchRepoRecord(job.owner, job.repoName, job.repo)
+			if err != nil {
+				reportErr(err)
+				return
+			}
+			select {
+			case <-done:
+				return
+			case results <- repoResult{
+				index:  job.index,
+				record: record,
+			}:
+			}
+		}
+	}
+
+	for _, job := range repoJobs {
+		jobs <- job
+	}
+	close(jobs)
+
+	workerCount := s.pullsWorkers
+	if workerCount > len(repoJobs) {
+		workerCount = len(repoJobs)
+	}
+	wg.Add(workerCount)
+	for i := 0; i < workerCount; i++ {
+		go worker()
+	}
+
+	wg.Wait()
+	close(results)
+
+	for result := range results {
+		records[result.index] = result.record
+	}
+
+	select {
+	case err := <-errCh:
+		return nil, err
+	default:
+	}
+
 	return records, nil
 }
 
@@ -263,112 +327,73 @@ func (s *Service) fetchLanguages(owner, repo string) (map[string]float64, error)
 	return languages, nil
 }
 
-func (s *Service) fetchPullsCount(owner, repo string) (int, int, error) {
+func (s *Service) fetchRepoRecord(owner, repoName string, repo *forgejo.Repository) (RepoRecord, error) {
+	topics, err := s.fetchTopics(owner, repoName)
+	if err != nil {
+		return RepoRecord{}, fmt.Errorf("topicsの取得に失敗しました (%s/%s): %w", owner, repoName, err)
+	}
+	languages, err := s.fetchLanguages(owner, repoName)
+	if err != nil {
+		return RepoRecord{}, fmt.Errorf("languagesの取得に失敗しました (%s/%s): %w", owner, repoName, err)
+	}
+	closedPullsCount, err := s.fetchClosedPullsCount(owner, repoName)
+	if err != nil {
+		return RepoRecord{}, fmt.Errorf("pullsの取得に失敗しました (%s/%s): %w", owner, repoName, err)
+	}
+
+	return RepoRecord{
+		Name:             repoName,
+		Description:      repo.Description,
+		IsPrivate:        repo.Private,
+		HTTPURL:          repo.HTMLURL,
+		IssuesCount:      repo.OpenIssues,
+		OpenPullsCount:   repo.OpenPulls,
+		ClosedPullsCount: closedPullsCount,
+		ForksCount:       repo.Forks,
+		StargazersCount:  repo.Stars,
+		SubscribersCount: repo.Watchers,
+		Language:         primaryLanguage(languages),
+		Languages:        languages,
+		Size:             repo.Size,
+		RepoCreatedAt:    formatDate(repo.Created),
+		RepoUpdatedAt:    formatDate(repo.Updated),
+		IsArchived:       repo.Archived,
+		Tags:             strings.Join(topics, ","),
+	}, nil
+}
+
+func (s *Service) fetchClosedPullsCount(owner, repo string) (int, error) {
 	firstPulls, response, err := s.client.ListRepoPullRequests(owner, repo, forgejo.ListPullRequestsOptions{
 		ListOptions: forgejo.ListOptions{
 			Page:     1,
-			PageSize: pullsPageSize,
+			PageSize: 1,
 		},
-		State: forgejo.StateAll,
+		State: forgejo.StateClosed,
 	})
 	if err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
-	totalOpenPulls := 0
-	totalClosedPulls := 0
-	totalOpenPulls, totalClosedPulls = countPullsByState(firstPulls)
-
-	if response == nil || response.LastPage == 0 || response.LastPage <= 1 {
-		return totalOpenPulls, totalClosedPulls, nil
+	if response == nil {
+		return len(firstPulls), nil
 	}
 
-	type pullsCount struct {
-		open   int
-		closed int
-	}
-
-	lastPage := response.LastPage
-	pagesToFetch := make(chan int, lastPage-1)
-	for page := 2; page <= lastPage; page++ {
-		pagesToFetch <- page
-	}
-	close(pagesToFetch)
-
-	countResults := make(chan pullsCount, lastPage-1)
-	errCh := make(chan error, 1)
-	done := make(chan struct{})
-
-	var wg sync.WaitGroup
-	workerCount := s.pullsWorkers
-	if workerCount > lastPage-1 {
-		workerCount = lastPage - 1
-	}
-
-	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for page := range pagesToFetch {
-				pulls, _, err := s.client.ListRepoPullRequests(owner, repo, forgejo.ListPullRequestsOptions{
-					ListOptions: forgejo.ListOptions{
-						Page:     page,
-						PageSize: pullsPageSize,
-					},
-					State: forgejo.StateAll,
-				})
-				if err != nil {
-					select {
-					case errCh <- err:
-					default:
-					}
-					return
-				}
-
-				open, closed := countPullsByState(pulls)
-				select {
-				case countResults <- pullsCount{open: open, closed: closed}:
-				case <-done:
-					return
-				}
-			}
-		}()
-	}
-
-	remainingPages := lastPage - 1
-	for i := 0; i < remainingPages; i++ {
-		select {
-		case err := <-errCh:
-			close(done)
-			wg.Wait()
-			return 0, 0, err
-		case result := <-countResults:
-			totalOpenPulls += result.open
-			totalClosedPulls += result.closed
+	totalCountFromHeader := strings.TrimSpace(response.Header.Get("X-Total-Count"))
+	if totalCountFromHeader != "" {
+		totalClosedPulls, err := strconv.Atoi(totalCountFromHeader)
+		if err == nil {
+			return totalClosedPulls, nil
 		}
 	}
-
-	close(done)
-	wg.Wait()
-
-	return totalOpenPulls, totalClosedPulls, nil
-}
-
-func countPullsByState(pulls []*forgejo.PullRequest) (int, int) {
-	openPulls := 0
-	closedPulls := 0
-	for _, pull := range pulls {
-		if pull == nil {
-			continue
-		}
-		switch pull.State {
-		case forgejo.StateOpen:
-			openPulls++
-		case forgejo.StateClosed:
-			closedPulls++
-		}
+	if len(firstPulls) == 0 {
+		return 0, nil
 	}
-	return openPulls, closedPulls
+
+	if response.LastPage > 1 {
+		return response.LastPage, nil
+	}
+
+	return len(firstPulls), nil
 }
 
 func (s *Service) fetchProjects(owner, repo string) ([]projectResponse, error) {

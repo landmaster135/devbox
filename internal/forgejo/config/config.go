@@ -27,7 +27,7 @@ type Config struct {
 	Username  string // Forgejoユーザー名
 	Token     string // APIトークン
 	JSON      bool   // JSON形式で出力するか
-	// PullsPageWorkers はpulls一覧のページ取得時に同時に実行するワーカー数です。
+	// PullsPageWorkers はrepo list取得時の同時実行ワーカー数です。
 	PullsPageWorkers int
 	Help             bool // ヘルプ表示フラグ
 }
@@ -102,7 +102,7 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 	parser.StringVar(&host, "forgejo-host", host, "Forgejoホスト（https://example.com）")
 	parser.StringVar(&username, "forgejo-username", username, "Forgejoユーザー名")
 	parser.StringVar(&token, "forgejo-token", token, "Forgejo APIトークン")
-	parser.StringVar(&pullsPageWorkers, "forgejo-pulls-page-workers", pullsPageWorkers, "pullsページ取得時の同時実行数")
+	parser.StringVar(&pullsPageWorkers, "forgejo-pulls-page-workers", pullsPageWorkers, "repo list 取得時の同時実行数")
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプを表示（短縮）")
 
