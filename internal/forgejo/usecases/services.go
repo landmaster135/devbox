@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	forgejo "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
@@ -17,6 +18,7 @@ const (
 	defaultHTTPTimeout = 30 * time.Second
 	timeFormatDate     = time.RFC3339
 	pullsPageSize      = 100
+	pullsPageWorkers   = 4
 )
 
 type httpClient interface {
@@ -251,38 +253,111 @@ func (s *Service) fetchLanguages(owner, repo string) (map[string]float64, error)
 }
 
 func (s *Service) fetchPullsCount(owner, repo string) (int, int, error) {
-	page := 1
+	firstPulls, response, err := s.client.ListRepoPullRequests(owner, repo, forgejo.ListPullRequestsOptions{
+		ListOptions: forgejo.ListOptions{
+			Page:     1,
+			PageSize: pullsPageSize,
+		},
+		State: forgejo.StateAll,
+	})
+	if err != nil {
+		return 0, 0, err
+	}
+
 	totalOpenPulls := 0
 	totalClosedPulls := 0
-	for {
-		pulls, response, err := s.client.ListRepoPullRequests(owner, repo, forgejo.ListPullRequestsOptions{
-			ListOptions: forgejo.ListOptions{
-				Page:     page,
-				PageSize: pullsPageSize,
-			},
-			State: forgejo.StateAll,
-		})
-		if err != nil {
-			return 0, 0, err
-		}
+	totalOpenPulls, totalClosedPulls = countPullsByState(firstPulls)
 
-		for _, pull := range pulls {
-			if pull == nil {
-				continue
-			}
-			switch pull.State {
-			case forgejo.StateOpen:
-				totalOpenPulls++
-			case forgejo.StateClosed:
-				totalClosedPulls++
-			}
-		}
-		if response == nil || response.LastPage == 0 || response.LastPage <= page {
-			break
-		}
-		page++
+	if response == nil || response.LastPage == 0 || response.LastPage <= 1 {
+		return totalOpenPulls, totalClosedPulls, nil
 	}
+
+	type pullsCount struct {
+		open   int
+		closed int
+	}
+
+	lastPage := response.LastPage
+	pagesToFetch := make(chan int, lastPage-1)
+	for page := 2; page <= lastPage; page++ {
+		pagesToFetch <- page
+	}
+	close(pagesToFetch)
+
+	countResults := make(chan pullsCount, lastPage-1)
+	errCh := make(chan error, 1)
+	done := make(chan struct{})
+
+	var wg sync.WaitGroup
+	workerCount := pullsPageWorkers
+	if workerCount > lastPage-1 {
+		workerCount = lastPage - 1
+	}
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for page := range pagesToFetch {
+				pulls, _, err := s.client.ListRepoPullRequests(owner, repo, forgejo.ListPullRequestsOptions{
+					ListOptions: forgejo.ListOptions{
+						Page:     page,
+						PageSize: pullsPageSize,
+					},
+					State: forgejo.StateAll,
+				})
+				if err != nil {
+					select {
+					case errCh <- err:
+					default:
+					}
+					return
+				}
+
+				open, closed := countPullsByState(pulls)
+				select {
+				case countResults <- pullsCount{open: open, closed: closed}:
+				case <-done:
+					return
+				}
+			}
+		}()
+	}
+
+	remainingPages := lastPage - 1
+	for i := 0; i < remainingPages; i++ {
+		select {
+		case err := <-errCh:
+			close(done)
+			wg.Wait()
+			return 0, 0, err
+		case result := <-countResults:
+			totalOpenPulls += result.open
+			totalClosedPulls += result.closed
+		}
+	}
+
+	close(done)
+	wg.Wait()
+
 	return totalOpenPulls, totalClosedPulls, nil
+}
+
+func countPullsByState(pulls []*forgejo.PullRequest) (int, int) {
+	openPulls := 0
+	closedPulls := 0
+	for _, pull := range pulls {
+		if pull == nil {
+			continue
+		}
+		switch pull.State {
+		case forgejo.StateOpen:
+			openPulls++
+		case forgejo.StateClosed:
+			closedPulls++
+		}
+	}
+	return openPulls, closedPulls
 }
 
 func (s *Service) fetchProjects(owner, repo string) ([]projectResponse, error) {

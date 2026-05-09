@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	forgejo "codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3"
 )
 
 func TestListRepos(t *testing.T) {
@@ -71,6 +74,91 @@ func TestListRepos(t *testing.T) {
 	}
 	if !called("GET /api/v1/repos/landmaster135/repo1/pulls") {
 		t.Fatalf("pulls endpoint was not requested")
+	}
+}
+
+func TestListReposWithMultiplePullPages(t *testing.T) {
+	server, called := newForgejoTestServer(map[string]handlerResponse{
+		"GET /api/v1/user/repos": {
+			status: http.StatusOK,
+			body:   `[{"id":1,"owner":{"login":"landmaster135"},"name":"repo1","full_name":"landmaster135/repo1","description":"Repo one","private":false,"html_url":"https://example.com/landmaster135/repo1","open_issues_count":1,"open_pr_counter":2,"forks_count":3,"stars_count":4,"watchers_count":5,"size":123,"archived":false,"created_at":"2022-10-18T00:00:00Z","updated_at":"2022-10-19T00:00:00Z"}]`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/topics": {
+			status: http.StatusOK,
+			body:   `{"topics":["game","demo"]}`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/languages": {
+			status: http.StatusOK,
+			body:   `{"Go":120.0,"C++":40.0}`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/pulls": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"Link": "</api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"next\", </api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"last\"",
+			},
+			body: `[{"id":1,"state":"open","title":"Add README"},{"id":2,"state":"open","title":"Fix bug"}]`,
+		},
+		"GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all": {
+			status: http.StatusOK,
+			body:   `[{"id":3,"state":"closed","title":"Old PR"}]`,
+		},
+	})
+	defer server.Close()
+
+	service := newServiceForTest(server, t)
+	records, err := service.ListRepos()
+	if err != nil {
+		t.Fatalf("ListRepos() error = %v", err)
+	}
+
+	if len(records) != 1 {
+		t.Fatalf("len(records) = %d, want 1", len(records))
+	}
+
+	record := records[0]
+	if record.OpenPullsCount != 2 {
+		t.Fatalf("OpenPullsCount = %d, want %d", record.OpenPullsCount, 2)
+	}
+	if record.ClosedPullsCount != 1 {
+		t.Fatalf("ClosedPullsCount = %d, want %d", record.ClosedPullsCount, 1)
+	}
+	if !called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/pulls?limit=100&page=2&state=all") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/pulls?state=all&page=2&limit=100") &&
+		!called("GET /api/v1/repos/landmaster135/repo1/pulls?page=2&state=all&limit=100") {
+		t.Fatalf("second pulls page was not requested")
+	}
+}
+
+func TestPullsListResponsePaginationHeader(t *testing.T) {
+	server, _ := newForgejoTestServer(map[string]handlerResponse{
+		"GET /api/v1/repos/landmaster135/repo1/pulls": {
+			status: http.StatusOK,
+			headers: map[string]string{
+				"Link": "</api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"next\", </api/v1/repos/landmaster135/repo1/pulls?page=2&limit=100&state=all>; rel=\"last\"",
+			},
+			body: `[{"id":1,"state":"open","title":"Add README"},{"id":2,"state":"open","title":"Fix bug"}]`,
+		},
+	})
+	defer server.Close()
+
+	service := newServiceForTest(server, t)
+	_, response, err := service.client.ListRepoPullRequests("landmaster135", "repo1", forgejo.ListPullRequestsOptions{
+		ListOptions: forgejo.ListOptions{
+			Page:     1,
+			PageSize: pullsPageSize,
+		},
+		State: forgejo.StateAll,
+	})
+	if err != nil {
+		t.Fatalf("ListRepoPullRequests() error = %v", err)
+	}
+	if response == nil {
+		t.Fatal("response = nil")
+	}
+	t.Logf("LastPage=%d NextPage=%d", response.LastPage, response.NextPage)
+	if response.LastPage != 2 {
+		t.Fatalf("response.LastPage = %d (want 2)", response.LastPage)
 	}
 }
 
@@ -242,13 +330,42 @@ type handlerResponse struct {
 }
 
 func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, func(string) bool) {
+	normalizeRequestPath := func(path, rawQuery string) string {
+		path = strings.TrimSuffix(path, "/")
+		if rawQuery == "" {
+			return path
+		}
+		values, err := url.ParseQuery(rawQuery)
+		if err != nil {
+			return path + "?" + rawQuery
+		}
+		return path + "?" + values.Encode()
+	}
+
+	normalizeRequestKey := func(rawKey string) string {
+		parts := strings.SplitN(strings.TrimSpace(rawKey), " ", 2)
+		if len(parts) != 2 {
+			return rawKey
+		}
+		method := parts[0]
+		pathAndQuery := parts[1]
+		split := strings.SplitN(pathAndQuery, "?", 2)
+		path := split[0]
+		rawQuery := ""
+		if len(split) == 2 {
+			rawQuery = split[1]
+		}
+		return fmt.Sprintf("%s %s", method, normalizeRequestPath(path, rawQuery))
+	}
+
+	normalizedPaths := make(map[string]handlerResponse, len(paths))
+	for key, response := range paths {
+		normalizedPaths[normalizeRequestKey(key)] = response
+	}
+
 	pathStates := map[string]int{}
 	buildKey := func(r *http.Request) string {
-		path := strings.TrimSuffix(r.URL.Path, "/")
-		if r.URL.RawQuery == "" {
-			return fmt.Sprintf("%s %s", r.Method, path)
-		}
-		return fmt.Sprintf("%s %s?%s", r.Method, path, r.URL.RawQuery)
+		return fmt.Sprintf("%s %s", r.Method, normalizeRequestPath(r.URL.Path, r.URL.RawQuery))
 	}
 	buildPathOnlyKey := func(r *http.Request) string {
 		return fmt.Sprintf("%s %s", r.Method, strings.TrimSuffix(r.URL.Path, "/"))
@@ -260,20 +377,20 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, f
 		if _, ok := pathStates[buildPathOnlyKey(r)]; !ok && key != buildPathOnlyKey(r) {
 			pathStates[buildPathOnlyKey(r)] = 0
 		}
-		if response, ok := paths[key]; ok {
-			w.WriteHeader(response.status)
+		if response, ok := normalizedPaths[key]; ok {
 			for headerKey, headerValue := range response.headers {
 				w.Header().Set(headerKey, headerValue)
 			}
+			w.WriteHeader(response.status)
 			_, _ = w.Write([]byte(response.body))
 			return
 		}
-		if response, ok := paths[buildPathOnlyKey(r)]; ok {
+		if response, ok := normalizedPaths[buildPathOnlyKey(r)]; ok {
 			pathStates[buildPathOnlyKey(r)]++
-			w.WriteHeader(response.status)
 			for headerKey, headerValue := range response.headers {
 				w.Header().Set(headerKey, headerValue)
 			}
+			w.WriteHeader(response.status)
 			_, _ = w.Write([]byte(response.body))
 			return
 		}
@@ -284,7 +401,7 @@ func newForgejoTestServer(paths map[string]handlerResponse) (*httptest.Server, f
 
 	server := httptest.NewServer(handler)
 	called := func(path string) bool {
-		_, ok := pathStates[path]
+		_, ok := pathStates[normalizeRequestKey(path)]
 		return ok
 	}
 	return server, called
