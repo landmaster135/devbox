@@ -30,7 +30,13 @@ func (s *Service) Execute(
 	filter string,
 	anyContents []string,
 	allContents []string,
+	allTags []string,
 ) (*common.ListMemosOutput, error) {
+	normalizedAllTags := normalizeTags(allTags)
+	if len(normalizedAllTags) > 0 {
+		return s.executeAllTags(ctx, pageSize, pageToken, state, orderBy, filter, normalizedAllTags)
+	}
+
 	normalizedAllContents := normalizeContents(allContents)
 	if len(normalizedAllContents) > 0 {
 		return s.executeAllContents(ctx, pageSize, pageToken, state, orderBy, filter, normalizedAllContents)
@@ -65,6 +71,72 @@ func (s *Service) Execute(
 		Memos:         mergedMemos,
 		NextPageToken: nextPageToken,
 		TotalSize:     int64(len(mergedMemos)),
+	}, nil
+}
+
+func (s *Service) executeAllTags(
+	ctx context.Context,
+	pageSize int,
+	pageToken string,
+	state string,
+	orderBy string,
+	filter string,
+	allTags []string,
+) (*common.ListMemosOutput, error) {
+	requiredCount := len(allTags)
+	if requiredCount == 0 {
+		return &common.ListMemosOutput{
+			Memos:         []common.Memo{},
+			NextPageToken: "",
+			TotalSize:     0,
+		}, nil
+	}
+
+	countByMemoKey := make(map[string]int)
+	firstMemoByKey := make(map[string]common.Memo)
+	memoOrder := make([]string, 0)
+
+	for _, tag := range allTags {
+		combinedFilter := buildTagContainsFilter(filter, tag)
+		result, err := s.executeSingle(ctx, pageSize, pageToken, state, orderBy, combinedFilter)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			continue
+		}
+
+		seenInTag := make(map[string]struct{})
+		for _, memo := range result.Memos {
+			memoKey := memoDedupKey(memo)
+			if memoKey == "" {
+				continue
+			}
+			if _, exists := seenInTag[memoKey]; exists {
+				continue
+			}
+			seenInTag[memoKey] = struct{}{}
+
+			if _, exists := countByMemoKey[memoKey]; !exists {
+				firstMemoByKey[memoKey] = memo
+				memoOrder = append(memoOrder, memoKey)
+			}
+			countByMemoKey[memoKey]++
+		}
+	}
+
+	overlappedMemos := make([]common.Memo, 0)
+	for _, memoKey := range memoOrder {
+		if countByMemoKey[memoKey] < requiredCount {
+			continue
+		}
+		overlappedMemos = append(overlappedMemos, firstMemoByKey[memoKey])
+	}
+
+	return &common.ListMemosOutput{
+		Memos:         overlappedMemos,
+		NextPageToken: "",
+		TotalSize:     int64(len(overlappedMemos)),
 	}, nil
 }
 
@@ -191,6 +263,30 @@ func buildContentContainsFilter(baseFilter string, content string) string {
 		return containsCondition
 	}
 	return fmt.Sprintf("(%s) && %s", trimmedBaseFilter, containsCondition)
+}
+
+func normalizeTags(tags []string) []string {
+	out := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		trimmed := strings.TrimSpace(tag)
+		if trimmed == "" {
+			continue
+		}
+		out = append(out, trimmed)
+	}
+	return out
+}
+
+func buildTagContainsFilter(baseFilter string, tag string) string {
+	escapedTag := strings.ReplaceAll(tag, `\`, `\\`)
+	escapedTag = strings.ReplaceAll(escapedTag, `'`, `\'`)
+	tagFilter := fmt.Sprintf("tag in ['%s']", escapedTag)
+
+	trimmedBaseFilter := strings.TrimSpace(baseFilter)
+	if trimmedBaseFilter == "" {
+		return tagFilter
+	}
+	return fmt.Sprintf("(%s) && (%s)", trimmedBaseFilter, tagFilter)
 }
 
 func appendDedupMemos(target []common.Memo, incoming []common.Memo, seen map[string]struct{}) []common.Memo {

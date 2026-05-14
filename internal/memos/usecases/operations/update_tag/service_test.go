@@ -13,12 +13,12 @@ import (
 )
 
 type mockMemoLister struct {
-	executeFunc func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*common.ListMemosOutput, error)
+	executeFunc func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error)
 }
 
-func (m *mockMemoLister) Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*common.ListMemosOutput, error) {
+func (m *mockMemoLister) Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error) {
 	if m.executeFunc != nil {
-		return m.executeFunc(ctx, pageSize, pageToken, state, orderBy, filter, anyContents, allContents)
+		return m.executeFunc(ctx, pageSize, pageToken, state, orderBy, filter, anyContents, allContents, allTags)
 	}
 	return nil, nil
 }
@@ -41,10 +41,10 @@ func TestServiceOperationUpdateTag_Normal(t *testing.T) {
 
 	service := New(
 		&mockMemoLister{
-			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*common.ListMemosOutput, error) {
+			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error) {
 				listCalled++
-				if len(anyContents) != 0 || len(allContents) != 0 {
-					t.Fatalf("anyContents/allContents = %v/%v, want empty", anyContents, allContents)
+				if len(anyContents) != 0 || len(allContents) != 0 || len(allTags) != 0 {
+					t.Fatalf("anyContents/allContents/allTags = %v/%v/%v, want empty", anyContents, allContents, allTags)
 				}
 				if pageSize != listMemosPageSize {
 					t.Fatalf("pageSize = %d, want %d", pageSize, listMemosPageSize)
@@ -150,10 +150,10 @@ func TestServiceOperationUpdateTag_SourceTagWithVariationSelector_Normal(t *test
 
 	service := New(
 		&mockMemoLister{
-			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*common.ListMemosOutput, error) {
+			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error) {
 				filterChecked = true
-				if len(anyContents) != 0 || len(allContents) != 0 {
-					t.Fatalf("anyContents/allContents = %v/%v, want empty", anyContents, allContents)
+				if len(anyContents) != 0 || len(allContents) != 0 || len(allTags) != 0 {
+					t.Fatalf("anyContents/allContents/allTags = %v/%v/%v, want empty", anyContents, allContents, allTags)
 				}
 				if !strings.Contains(filter, `"`+crossWithVS+`" in tags`) {
 					t.Fatalf("filter = %q, want to include VS form", filter)
@@ -203,9 +203,9 @@ func TestServiceOperationUpdateTag_ParallelUpdate_Normal(t *testing.T) {
 
 	service := New(
 		&mockMemoLister{
-			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*common.ListMemosOutput, error) {
-				if len(anyContents) != 0 || len(allContents) != 0 {
-					t.Fatalf("anyContents/allContents = %v/%v, want empty", anyContents, allContents)
+			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error) {
+				if len(anyContents) != 0 || len(allContents) != 0 || len(allTags) != 0 {
+					t.Fatalf("anyContents/allContents/allTags = %v/%v/%v, want empty", anyContents, allContents, allTags)
 				}
 				return &common.ListMemosOutput{
 					Memos: []common.Memo{
@@ -304,9 +304,9 @@ func TestServiceOperationUpdateTag_MissingDestTag_Error(t *testing.T) {
 func TestServiceOperationUpdateTag_UpdateError_Error(t *testing.T) {
 	service := New(
 		&mockMemoLister{
-			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*common.ListMemosOutput, error) {
-				if len(anyContents) != 0 || len(allContents) != 0 {
-					t.Fatalf("anyContents/allContents = %v/%v, want empty", anyContents, allContents)
+			executeFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error) {
+				if len(anyContents) != 0 || len(allContents) != 0 || len(allTags) != 0 {
+					t.Fatalf("anyContents/allContents/allTags = %v/%v/%v, want empty", anyContents, allContents, allTags)
 				}
 				return &common.ListMemosOutput{
 					Memos: []common.Memo{

@@ -54,6 +54,7 @@ func TestServiceOperationListMemos_Normal(t *testing.T) {
 		`created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
 		nil,
 		nil,
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -92,6 +93,7 @@ func TestServiceOperationListMemos_InvalidTimestampFilter_Error(t *testing.T) {
 		"NORMAL",
 		"",
 		`created_ts > "2023-01-01T13:00:00"`,
+		nil,
 		nil,
 		nil,
 	)
@@ -151,6 +153,7 @@ func TestServiceOperationListMemos_WithAnyContents_DedupByMemoID(t *testing.T) {
 		"",
 		[]string{"meeting", "study"},
 		nil,
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -200,6 +203,7 @@ func TestServiceOperationListMemos_WithAnyContentsAndFilter_CombineConditions(t 
 		"",
 		`created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
 		[]string{"meeting"},
+		nil,
 		nil,
 	)
 	if err != nil {
@@ -255,6 +259,7 @@ func TestServiceOperationListMemos_WithMultipleAnyContentsAndFilter_CombineEachC
 		"",
 		`created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
 		[]string{"meeting", "study"},
+		nil,
 		nil,
 	)
 	if err != nil {
@@ -312,6 +317,7 @@ func TestServiceOperationListMemos_WithAllContents_OnlyOverlapsRemain(t *testing
 		"",
 		nil,
 		[]string{"meeting", "study"},
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -376,6 +382,7 @@ func TestServiceOperationListMemos_WithAllContentsAndFilter_CombineEachCondition
 		`created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
 		nil,
 		[]string{"meeting", "study"},
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -418,6 +425,7 @@ func TestServiceOperationListMemos_WithAllContents_NoOverlap(t *testing.T) {
 		"",
 		nil,
 		[]string{"meeting", "study"},
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -462,6 +470,7 @@ func TestServiceOperationListMemos_WithSingleAllContents_ReturnsMatchedMemos(t *
 		"",
 		nil,
 		[]string{"any1"},
+		nil,
 	)
 	if err != nil {
 		t.Fatalf("Execute() error = %v", err)
@@ -477,5 +486,161 @@ func TestServiceOperationListMemos_WithSingleAllContents_ReturnsMatchedMemos(t *
 	}
 	if result.TotalSize != 2 {
 		t.Fatalf("totalSize = %d, want 2", result.TotalSize)
+	}
+}
+
+func TestServiceOperationListMemos_WithAllTags_OnlyOverlapsRemain(t *testing.T) {
+	callIndex := 0
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
+			callIndex++
+			query := r.URL.Query()
+
+			switch callIndex {
+			case 1:
+				if got := query.Get("filter"); got != `tag in ['health']` {
+					t.Fatalf("filter(1st) = %q, want %q", got, `tag in ['health']`)
+				}
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/1"},{"name":"memos/2"}],"totalSize":2}`), nil
+			case 2:
+				if got := query.Get("filter"); got != `tag in ['book']` {
+					t.Fatalf("filter(2nd) = %q, want %q", got, `tag in ['book']`)
+				}
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/2"},{"name":"memos/3"}],"totalSize":2}`), nil
+			default:
+				t.Fatalf("unexpected call index: %d", callIndex)
+				return nil, nil
+			}
+		},
+	}
+
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
+		BaseURL:    "https://memos.example.com",
+		APIToken:   "token",
+		HTTPClient: client,
+	})
+	service := New(jsonClient)
+
+	result, err := service.Execute(
+		context.Background(),
+		20,
+		"",
+		"",
+		"",
+		"",
+		nil,
+		nil,
+		[]string{"health", "book"},
+	)
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if callIndex != 2 {
+		t.Fatalf("callIndex = %d, want 2", callIndex)
+	}
+	if len(result.Memos) != 1 || result.Memos[0].Name != "memos/2" {
+		t.Fatalf("memos = %#v, want only memos/2", result.Memos)
+	}
+	if result.NextPageToken != "" {
+		t.Fatalf("nextPageToken = %q, want empty", result.NextPageToken)
+	}
+	if result.TotalSize != 1 {
+		t.Fatalf("totalSize = %d, want 1", result.TotalSize)
+	}
+}
+
+func TestServiceOperationListMemos_WithAllTagsAndFilter_CombineEachCondition(t *testing.T) {
+	callIndex := 0
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
+			callIndex++
+			query := r.URL.Query()
+
+			switch callIndex {
+			case 1:
+				want := `(created_ts > 1672578000 && visibility == "PUBLIC") && (tag in ['health'])`
+				if got := query.Get("filter"); got != want {
+					t.Fatalf("filter(1st) = %q, want %q", got, want)
+				}
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/2"}],"totalSize":1}`), nil
+			case 2:
+				want := `(created_ts > 1672578000 && visibility == "PUBLIC") && (tag in ['book'])`
+				if got := query.Get("filter"); got != want {
+					t.Fatalf("filter(2nd) = %q, want %q", got, want)
+				}
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/2"},{"name":"memos/3"}],"totalSize":2}`), nil
+			default:
+				t.Fatalf("unexpected call index: %d", callIndex)
+				return nil, nil
+			}
+		},
+	}
+
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
+		BaseURL:    "https://memos.example.com",
+		APIToken:   "token",
+		HTTPClient: client,
+	})
+	service := New(jsonClient)
+
+	result, err := service.Execute(
+		context.Background(),
+		20,
+		"",
+		"",
+		"",
+		`created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
+		nil,
+		nil,
+		[]string{"health", "book"},
+	)
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if len(result.Memos) != 1 || result.Memos[0].Name != "memos/2" {
+		t.Fatalf("memos = %#v, want only memos/2", result.Memos)
+	}
+}
+
+func TestServiceOperationListMemos_WithAllTags_DedupWithinSingleTagResponse(t *testing.T) {
+	callIndex := 0
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
+			callIndex++
+			switch callIndex {
+			case 1:
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/1"},{"name":"memos/1"}],"totalSize":2}`), nil
+			case 2:
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/2"}],"totalSize":1}`), nil
+			default:
+				t.Fatalf("unexpected call index: %d", callIndex)
+				return nil, nil
+			}
+		},
+	}
+
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
+		BaseURL:    "https://memos.example.com",
+		APIToken:   "token",
+		HTTPClient: client,
+	})
+	service := New(jsonClient)
+
+	result, err := service.Execute(
+		context.Background(),
+		20,
+		"",
+		"",
+		"",
+		"",
+		nil,
+		nil,
+		[]string{"health", "book"},
+	)
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if len(result.Memos) != 0 {
+		t.Fatalf("memos = %#v, want empty", result.Memos)
 	}
 }

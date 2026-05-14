@@ -52,6 +52,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 	case cfg.OperationDeleteMemo:
 		result, err = service.DeleteMemo(ctx, conf.Memo, conf.Force)
 	case cfg.OperationListMemos:
+		allTags := splitByComma(conf.AllTags)
 		anyTagsFilter := buildAnyTagsFilter(splitByComma(conf.AnyTags))
 		mergedFilter := mergeFilters(conf.Filter, anyTagsFilter)
 		result, err = service.ListMemos(
@@ -63,6 +64,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			mergedFilter,
 			splitByComma(conf.AnyContents),
 			splitByComma(conf.AllContents),
+			allTags,
 		)
 	case cfg.OperationListAttachments:
 		result, err = service.ListAttachments(
