@@ -213,6 +213,76 @@ func TestRun_ListMemosWithAnyContents_Normal(t *testing.T) {
 	}
 }
 
+func TestRun_ListMemosWithAnyTags_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	exitCode := run([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-any-tags= health, book ,,",
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
+		return &usecases.MockMemoService{
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*usecases.ListMemosOutput, error) {
+				called = true
+				if filter != "tag in ['health','book']" {
+					t.Fatalf("filter = %q, want %q", filter, "tag in ['health','book']")
+				}
+				return &usecases.ListMemosOutput{
+					Memos: []usecases.Memo{
+						{Name: "memos/1"},
+					},
+				}, nil
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if !called {
+		t.Fatal("ListMemosFunc was not called")
+	}
+}
+
+func TestRun_ListMemosWithAnyTagsAndFilter_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	exitCode := run([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		`-filter=visibility == "PUBLIC"`,
+		"-any-tags=health,book",
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
+		return &usecases.MockMemoService{
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*usecases.ListMemosOutput, error) {
+				called = true
+				want := `(visibility == "PUBLIC") && (tag in ['health','book'])`
+				if filter != want {
+					t.Fatalf("filter = %q, want %q", filter, want)
+				}
+				return &usecases.ListMemosOutput{
+					Memos: []usecases.Memo{
+						{Name: "memos/2"},
+					},
+				}, nil
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if !called {
+		t.Fatal("ListMemosFunc was not called")
+	}
+}
+
 func TestRun_ListMemosWithAllContents_Normal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -847,6 +917,37 @@ func TestSplitByComma_Empty_Normal(t *testing.T) {
 	got := splitByComma("  ")
 	if got != nil {
 		t.Fatalf("got = %v, want nil", got)
+	}
+}
+
+func TestBuildAnyTagsFilter_Normal(t *testing.T) {
+	got := buildAnyTagsFilter([]string{"health", "book"})
+	want := "tag in ['health','book']"
+	if got != want {
+		t.Fatalf("buildAnyTagsFilter() = %q, want %q", got, want)
+	}
+}
+
+func TestBuildAnyTagsFilter_Escape_Normal(t *testing.T) {
+	got := buildAnyTagsFilter([]string{`a'b`, `path\tag`})
+	want := `tag in ['a\'b','path\\tag']`
+	if got != want {
+		t.Fatalf("buildAnyTagsFilter() = %q, want %q", got, want)
+	}
+}
+
+func TestMergeFilters_Normal(t *testing.T) {
+	got := mergeFilters(`visibility == "PUBLIC"`, "tag in ['health','book']")
+	want := `(visibility == "PUBLIC") && (tag in ['health','book'])`
+	if got != want {
+		t.Fatalf("mergeFilters() = %q, want %q", got, want)
+	}
+}
+
+func TestMergeFilters_ExtraEmpty_Normal(t *testing.T) {
+	got := mergeFilters(`visibility == "PUBLIC"`, "")
+	if got != `visibility == "PUBLIC"` {
+		t.Fatalf("mergeFilters() = %q, want base filter", got)
 	}
 }
 

@@ -52,13 +52,15 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 	case cfg.OperationDeleteMemo:
 		result, err = service.DeleteMemo(ctx, conf.Memo, conf.Force)
 	case cfg.OperationListMemos:
+		anyTagsFilter := buildAnyTagsFilter(splitByComma(conf.AnyTags))
+		mergedFilter := mergeFilters(conf.Filter, anyTagsFilter)
 		result, err = service.ListMemos(
 			ctx,
 			conf.PageSize,
 			conf.PageToken,
 			conf.State,
 			conf.OrderBy,
-			conf.Filter,
+			mergedFilter,
 			splitByComma(conf.AnyContents),
 			splitByComma(conf.AllContents),
 		)
@@ -153,6 +155,35 @@ func splitByComma(raw string) []string {
 		return nil
 	}
 	return out
+}
+
+func buildAnyTagsFilter(tags []string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+
+	quoted := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		escaped := strings.ReplaceAll(tag, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, `'`, `\'`)
+		quoted = append(quoted, fmt.Sprintf("'%s'", escaped))
+	}
+
+	return fmt.Sprintf("tag in [%s]", strings.Join(quoted, ","))
+}
+
+func mergeFilters(baseFilter, extraFilter string) string {
+	base := strings.TrimSpace(baseFilter)
+	extra := strings.TrimSpace(extraFilter)
+
+	if base == "" {
+		return extra
+	}
+	if extra == "" {
+		return base
+	}
+
+	return fmt.Sprintf("(%s) && (%s)", base, extra)
 }
 
 func currentUTCTimeRFC3339() string {

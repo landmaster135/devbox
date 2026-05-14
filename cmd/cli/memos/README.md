@@ -77,6 +77,7 @@ go run ./cmd/cli/memos \
 | `-state` | 状態フィルタ（`NORMAL`, `ARCHIVED`） | 任意 |
 | `-order-by` | 並び順（例: `update_time desc`） | 任意 |
 | `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`。`created_ts` / `updated_ts` の RFC3339 比較値は内部で Unix 秒へ変換） | 任意 |
+| `-any-tags` | タグ検索条件（カンマ区切り。例: `health,book`。`tag in ['health','book']` を生成） | 任意 |
 | `-any-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`） | 任意 |
 | `-all-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`。複数結果で重複する memo のみ返却） | 任意 |
 
@@ -86,6 +87,8 @@ go run ./cmd/cli/memos \
 - `-all-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価し、複数クエリの結果でメモIDが重複したメモのみ返却します。
 - `-any-contents` と `-all-contents` は同時指定できません。
 - `-filter` と併用した場合は、`(<filter>) && content.contains("<keyword>")` をキーワードごとに評価します。
+- `-any-tags` を指定すると、`tag in ['tag1','tag2',...]` 形式の filter を生成して適用します。
+- `-filter` と `-any-tags` を併用した場合は、`(<filter>) && (tag in ['tag1','tag2',...])` を評価します。
 
 **filter で利用可能な主なフィールド**
 
@@ -246,6 +249,15 @@ go run ./cmd/cli/memos \
   -filter='"work" in tags && "project" in tags'
 ```
 
+メモ一覧（`-any-tags`: 複数タグのOR検索）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -any-tags='health,book'
+```
+
 メモ一覧（`-any-contents`: 複数キーワード検索＋重複排除）
 ```bash
 go run ./cmd/cli/memos \
@@ -272,6 +284,16 @@ go run ./cmd/cli/memos \
   -api-token=$MEMOS_TOKEN \
   -filter='visibility == "PUBLIC"' \
   -any-contents='meeting,study'
+```
+
+メモ一覧（`-filter` と `-any-tags` の併用）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"' \
+  -any-tags='health,book'
 ```
 
 添付一覧
