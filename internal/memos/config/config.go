@@ -74,6 +74,7 @@ type Config struct {
 	PageToken string
 	OrderBy   string
 	Filter    string
+	Contents  string
 
 	UpdateMask   string
 	UpdatesTime  bool
@@ -122,6 +123,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.PageToken, "page-token", "", "list-memos/list-attachments のページトークン")
 	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos/list-attachments のソート指定（例: update_time desc）")
 	fs.StringVar(&cfg.Filter, "filter", "", "list-memos/list-attachments のフィルタ条件（CEL形式。list-memos では created_ts/updated_ts の RFC3339 比較値を Unix 秒に自動変換）")
+	fs.StringVar(&cfg.Contents, "contents", "", "list-memos で content.contains に渡すキーワード（カンマ区切り）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
 	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
 	fs.StringVar(&cfg.SrcTag, "src-tag", "", "update-tag で置換元のタグ（例: work または #work）")
@@ -155,6 +157,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.PageToken = strings.TrimSpace(cfg.PageToken)
 	cfg.OrderBy = strings.TrimSpace(cfg.OrderBy)
 	cfg.Filter = strings.TrimSpace(cfg.Filter)
+	cfg.Contents = strings.TrimSpace(cfg.Contents)
 	cfg.UpdateMask = strings.TrimSpace(cfg.UpdateMask)
 	cfg.SrcTag = normalizeTagValue(strings.TrimSpace(cfg.SrcTag))
 	cfg.DestTag = normalizeTagValue(strings.TrimSpace(cfg.DestTag))
@@ -318,7 +321,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  delete-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -force (任意: デフォルト false)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
-	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換)\n")
+	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換), -contents (任意: カンマ区切りで content.contains を複数評価)\n")
 	fmt.Fprintf(os.Stderr, "  list-attachments\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -order-by (任意), -filter (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
@@ -340,6 +343,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -page-size=20 -state=NORMAL\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > \"2023-01-01T13:00:00Z\" && visibility == \"PUBLIC\"'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -contents='meeting,study'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-attachments -base-url=https://memos.example.com -api-token=token -page-size=50 -order-by=create_time desc\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-tag -base-url=https://memos.example.com -api-token=token -src-tag=work -dest-tag=project\n", os.Args[0])

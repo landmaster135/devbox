@@ -59,6 +59,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.State,
 			conf.OrderBy,
 			conf.Filter,
+			splitByComma(conf.Contents),
 		)
 	case cfg.OperationListAttachments:
 		result, err = service.ListAttachments(
