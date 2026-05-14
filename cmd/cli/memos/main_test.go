@@ -161,7 +161,7 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 	}
 }
 
-func TestRun_ListMemosWithContents_Normal(t *testing.T) {
+func TestRun_ListMemosWithAnyContents_Normal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	called := false
@@ -170,7 +170,7 @@ func TestRun_ListMemosWithContents_Normal(t *testing.T) {
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
-		"-contents= meeting, study ,,",
+		"-any-contents= meeting, study ,,",
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
 			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, contents []string) (*usecases.ListMemosOutput, error) {

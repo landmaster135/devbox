@@ -113,20 +113,20 @@ func TestConfig_ParseFlags_ListMemosWithFilter_Normal(t *testing.T) {
 	}
 }
 
-func TestConfig_ParseFlags_ListMemosWithContents_Normal(t *testing.T) {
+func TestConfig_ParseFlags_ListMemosWithAnyContents_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
 		"-page-size=10",
-		"-contents= meeting, study ,,",
+		"-any-contents= meeting, study ,,",
 	})
 	if err != nil {
 		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
 	}
 
-	if cfg.Contents != "meeting, study ,," {
-		t.Fatalf("contents = %q, want %q", cfg.Contents, "meeting, study ,,")
+	if cfg.AnyContents != "meeting, study ,," {
+		t.Fatalf("anyContents = %q, want %q", cfg.AnyContents, "meeting, study ,,")
 	}
 }
 

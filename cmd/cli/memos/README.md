@@ -77,10 +77,10 @@ go run ./cmd/cli/memos \
 | `-state` | 状態フィルタ（`NORMAL`, `ARCHIVED`） | 任意 |
 | `-order-by` | 並び順（例: `update_time desc`） | 任意 |
 | `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`。`created_ts` / `updated_ts` の RFC3339 比較値は内部で Unix 秒へ変換） | 任意 |
-| `-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`） | 任意 |
+| `-any-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`） | 任意 |
 
 補足:
-- `-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価して結果を統合します。
+- `-any-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価して結果を統合します。
 - 複数キーワードで同一メモがヒットした場合は、メモID単位で重複排除して返却します。
 - `-filter` と併用した場合は、`(<filter>) && content.contains("<keyword>")` をキーワードごとに評価します。
 
@@ -243,23 +243,23 @@ go run ./cmd/cli/memos \
   -filter='"work" in tags && "project" in tags'
 ```
 
-メモ一覧（`-contents`: 複数キーワード検索＋重複排除）
+メモ一覧（`-any-contents`: 複数キーワード検索＋重複排除）
 ```bash
 go run ./cmd/cli/memos \
   -operation=list-memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
-  -contents='meeting,study'
+  -any-contents='meeting,study'
 ```
 
-メモ一覧（`-filter` と `-contents` の併用）
+メモ一覧（`-filter` と `-any-contents` の併用）
 ```bash
 go run ./cmd/cli/memos \
   -operation=list-memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
   -filter='visibility == "PUBLIC"' \
-  -contents='meeting,study'
+  -any-contents='meeting,study'
 ```
 
 添付一覧
