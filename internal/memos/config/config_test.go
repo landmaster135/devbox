@@ -196,6 +196,39 @@ func TestConfig_ParseFlags_ListMemosWithAnyAndAllTags_Error(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlags_ListMemosWithExcludedTags_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-excluded-tags= health, book ,,",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.ExcludedTags != "health, book ,," {
+		t.Fatalf("excludedTags = %q, want %q", cfg.ExcludedTags, "health, book ,,")
+	}
+}
+
+func TestConfig_ParseFlags_ListMemosWithExcludedTagsEmptyCSV_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-excluded-tags= ,, ",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "excluded-tags に少なくとも1つのタグ") {
+		t.Fatalf("error = %v, want excluded-tags validation error", err)
+	}
+}
+
 func TestConfig_ParseFlags_ListMemosWithAnyContents_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=list-memos",

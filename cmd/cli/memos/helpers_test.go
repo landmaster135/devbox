@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	usecases "github.com/landmaster135/devbox/internal/memos/usecases"
 )
 
 func TestSplitByComma_Normal(t *testing.T) {
@@ -79,5 +81,35 @@ func TestPrintJSON_MarshalError_Error(t *testing.T) {
 	err := printJSON(&out, map[string]any{"invalid": make(chan int)})
 	if err == nil {
 		t.Fatal("printJSON() error = nil, want error")
+	}
+}
+
+func TestMemoDedupKey_Normal(t *testing.T) {
+	if got := memoDedupKey(usecases.Memo{Name: "memos/123"}); got != "memos/123" {
+		t.Fatalf("memoDedupKey(name) = %q, want %q", got, "memos/123")
+	}
+	if got := memoDedupKey(usecases.Memo{UID: "abc"}); got != "memos/abc" {
+		t.Fatalf("memoDedupKey(uid) = %q, want %q", got, "memos/abc")
+	}
+	if got := memoDedupKey(usecases.Memo{ID: 99}); got != "memo-id:99" {
+		t.Fatalf("memoDedupKey(id) = %q, want %q", got, "memo-id:99")
+	}
+}
+
+func TestNormalizeMemoResourceName_Normal(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{input: "memo-1", want: "memos/memo-1"},
+		{input: "memos/memo-2", want: "memos/memo-2"},
+		{input: "/api/v1/memos/memo-3/", want: "memos/memo-3"},
+		{input: "  ", want: ""},
+	}
+
+	for _, tt := range tests {
+		if got := normalizeMemoResourceName(tt.input); got != tt.want {
+			t.Fatalf("normalizeMemoResourceName(%q) = %q, want %q", tt.input, got, tt.want)
+		}
 	}
 }

@@ -70,14 +70,15 @@ type Config struct {
 	PinnedSet   bool
 	DisplayTime string
 
-	PageSize    int
-	PageToken   string
-	OrderBy     string
-	Filter      string
-	AnyTags     string
-	AllTags     string
-	AnyContents string
-	AllContents string
+	PageSize     int
+	PageToken    string
+	OrderBy      string
+	Filter       string
+	AnyTags      string
+	AllTags      string
+	ExcludedTags string
+	AnyContents  string
+	AllContents  string
 
 	UpdateMask   string
 	UpdatesTime  bool
@@ -128,6 +129,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.Filter, "filter", "", "list-memos/list-attachments のフィルタ条件（CEL形式。list-memos では created_ts/updated_ts の RFC3339 比較値を Unix 秒に自動変換）")
 	fs.StringVar(&cfg.AnyTags, "any-tags", "", "list-memos で tag in [...] に渡すタグ（カンマ区切り）")
 	fs.StringVar(&cfg.AllTags, "all-tags", "", "list-memos で tag in [...] をタグごとに評価し、重複 memo のみ返すタグ（カンマ区切り）")
+	fs.StringVar(&cfg.ExcludedTags, "excluded-tags", "", "list-memos の検索結果から除外するタグ（カンマ区切り。タグごとに tag in ['<tag>'] を評価して memo ID を除外）")
 	fs.StringVar(&cfg.AnyContents, "any-contents", "", "list-memos で content.contains に渡すキーワード（カンマ区切り）")
 	fs.StringVar(&cfg.AllContents, "all-contents", "", "list-memos で content.contains を複数評価し、複数結果で重複する memo のみ返すキーワード（カンマ区切り）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
@@ -165,6 +167,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.Filter = strings.TrimSpace(cfg.Filter)
 	cfg.AnyTags = strings.TrimSpace(cfg.AnyTags)
 	cfg.AllTags = strings.TrimSpace(cfg.AllTags)
+	cfg.ExcludedTags = strings.TrimSpace(cfg.ExcludedTags)
 	cfg.AnyContents = strings.TrimSpace(cfg.AnyContents)
 	cfg.AllContents = strings.TrimSpace(cfg.AllContents)
 	cfg.UpdateMask = strings.TrimSpace(cfg.UpdateMask)
@@ -234,6 +237,9 @@ func validateConfig(cfg *Config) error {
 		}
 		if cfg.AllTags != "" && !hasNonEmptyCSVEntries(cfg.AllTags) {
 			return fmt.Errorf("list-memos 操作では all-tags に少なくとも1つのタグが必要です")
+		}
+		if cfg.ExcludedTags != "" && !hasNonEmptyCSVEntries(cfg.ExcludedTags) {
+			return fmt.Errorf("list-memos 操作では excluded-tags に少なくとも1つのタグが必要です")
 		}
 		if cfg.AnyTags != "" && cfg.AllTags != "" {
 			return fmt.Errorf("list-memos 操作では any-tags と all-tags は同時に指定できません")
@@ -345,7 +351,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  delete-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -force (任意: デフォルト false)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
-	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換), -any-tags (任意: カンマ区切りで tag in [...] を生成), -all-tags (任意: カンマ区切りで tag in [...] をタグごとに評価し重複 memo のみ返却), -any-contents (任意: カンマ区切りで content.contains を複数評価し和集合を返却), -all-contents (任意: カンマ区切りで content.contains を複数評価し重複 memo のみ返却)\n")
+	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換), -any-tags (任意: カンマ区切りで tag in [...] を生成), -all-tags (任意: カンマ区切りで tag in [...] をタグごとに評価し重複 memo のみ返却), -excluded-tags (任意: カンマ区切りで除外対象タグを指定), -any-contents (任意: カンマ区切りで content.contains を複数評価し和集合を返却), -all-contents (任意: カンマ区切りで content.contains を複数評価し重複 memo のみ返却)\n")
 	fmt.Fprintf(os.Stderr, "  list-attachments\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -order-by (任意), -filter (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
@@ -369,6 +375,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > \"2023-01-01T13:00:00Z\" && visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -any-tags='health,book'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -all-tags='health,book'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -excluded-tags='health,book'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -any-contents='meeting,study'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -all-contents='meeting,study'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-attachments -base-url=https://memos.example.com -api-token=token -page-size=50 -order-by=create_time desc\n", os.Args[0])

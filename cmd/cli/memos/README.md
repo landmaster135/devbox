@@ -79,6 +79,7 @@ go run ./cmd/cli/memos \
 | `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`。`created_ts` / `updated_ts` の RFC3339 比較値は内部で Unix 秒へ変換） | 任意 |
 | `-any-tags` | タグ検索条件（カンマ区切り。例: `health,book`。`tag in ['health','book']` を生成） | 任意 |
 | `-all-tags` | タグ検索条件（カンマ区切り。例: `health,book`。タグごとに `tag in ['<tag>']` を評価し、複数結果で重複する memo のみ返却） | 任意 |
+| `-excluded-tags` | 除外タグ（カンマ区切り。例: `health,book`。タグごとに `tag in ['<tag>']` を評価し、該当 memo ID を最終結果から除外） | 任意 |
 | `-any-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`） | 任意 |
 | `-all-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`。複数結果で重複する memo のみ返却） | 任意 |
 
@@ -93,6 +94,8 @@ go run ./cmd/cli/memos \
 - `-all-tags` を指定すると、タグごとに `tag in ['<tag>']` を個別評価し、複数クエリでメモIDが重複したメモのみ返却します。
 - `-filter` と `-all-tags` を併用した場合は、`(<filter>) && (tag in ['<tag>'])` をタグごとに評価します。
 - `-any-tags` と `-all-tags` は同時指定できません。
+- `-excluded-tags` を指定すると、ベース検索結果（`-filter` / `-any-tags` / `-all-tags` / `-any-contents` / `-all-contents` を適用した結果）から、タグごとの `tag in ['<tag>']` 検索でヒットした memo ID を除外します。
+- `-excluded-tags` はタグ数に応じて追加の `list-memos` API 呼び出しが発生します。
 
 **filter で利用可能な主なフィールド**
 
@@ -269,6 +272,26 @@ go run ./cmd/cli/memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
   -all-tags='health,book'
+```
+
+メモ一覧（`-excluded-tags`: タグ一致メモの除外）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -excluded-tags='health,book'
+```
+
+メモ一覧（`-filter` / `-any-tags` と `-excluded-tags` の併用）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"' \
+  -any-tags='health,book' \
+  -excluded-tags='archive'
 ```
 
 メモ一覧（`-any-contents`: 複数キーワード検索＋重複排除）

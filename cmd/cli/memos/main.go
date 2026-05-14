@@ -55,7 +55,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 		allTags := splitByComma(conf.AllTags)
 		anyTagsFilter := buildAnyTagsFilter(splitByComma(conf.AnyTags))
 		mergedFilter := mergeFilters(conf.Filter, anyTagsFilter)
-		result, err = service.ListMemos(
+		listMemosResult, listErr := service.ListMemos(
 			ctx,
 			conf.PageSize,
 			conf.PageToken,
@@ -66,6 +66,23 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			splitByComma(conf.AllContents),
 			allTags,
 		)
+		if listErr != nil {
+			err = listErr
+			break
+		}
+
+		excludedTags := splitByComma(conf.ExcludedTags)
+		listMemosResult, err = excludeMemosByTags(
+			ctx,
+			service,
+			listMemosResult,
+			conf.PageSize,
+			conf.PageToken,
+			conf.State,
+			conf.OrderBy,
+			excludedTags,
+		)
+		result = listMemosResult
 	case cfg.OperationListAttachments:
 		result, err = service.ListAttachments(
 			ctx,
@@ -172,6 +189,89 @@ func buildAnyTagsFilter(tags []string) string {
 	}
 
 	return fmt.Sprintf("tag in [%s]", strings.Join(quoted, ","))
+}
+
+func excludeMemosByTags(
+	ctx context.Context,
+	service usecases.MemoService,
+	base *usecases.ListMemosOutput,
+	pageSize int,
+	pageToken string,
+	state string,
+	orderBy string,
+	excludedTags []string,
+) (*usecases.ListMemosOutput, error) {
+	if base == nil || len(base.Memos) == 0 || len(excludedTags) == 0 {
+		return base, nil
+	}
+
+	excludedKeys := make(map[string]struct{})
+	for _, tag := range excludedTags {
+		tagFilter := buildAnyTagsFilter([]string{tag})
+		excludedResult, err := service.ListMemos(ctx, pageSize, pageToken, state, orderBy, tagFilter, nil, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		if excludedResult == nil {
+			continue
+		}
+		for _, memo := range excludedResult.Memos {
+			key := memoDedupKey(memo)
+			if key == "" {
+				continue
+			}
+			excludedKeys[key] = struct{}{}
+		}
+	}
+	if len(excludedKeys) == 0 {
+		return base, nil
+	}
+
+	filtered := make([]usecases.Memo, 0, len(base.Memos))
+	for _, memo := range base.Memos {
+		key := memoDedupKey(memo)
+		if key == "" {
+			filtered = append(filtered, memo)
+			continue
+		}
+		if _, exists := excludedKeys[key]; exists {
+			continue
+		}
+		filtered = append(filtered, memo)
+	}
+
+	output := *base
+	output.Memos = filtered
+	output.TotalSize = int64(len(filtered))
+	return &output, nil
+}
+
+func memoDedupKey(memo usecases.Memo) string {
+	if memoName := normalizeMemoResourceName(memo.Name); memoName != "" {
+		return memoName
+	}
+	if memoUID := normalizeMemoResourceName(memo.UID); memoUID != "" {
+		return memoUID
+	}
+	if memo.ID > 0 {
+		return fmt.Sprintf("memo-id:%d", memo.ID)
+	}
+	return ""
+}
+
+func normalizeMemoResourceName(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = strings.Trim(trimmed, "/")
+	trimmed = strings.TrimPrefix(trimmed, "api/v1/")
+	trimmed = strings.TrimPrefix(trimmed, "memos/")
+	trimmed = strings.TrimSpace(trimmed)
+	if trimmed == "" {
+		return ""
+	}
+	return "memos/" + trimmed
 }
 
 func mergeFilters(baseFilter, extraFilter string) string {

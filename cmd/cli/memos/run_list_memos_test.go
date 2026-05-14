@@ -329,3 +329,144 @@ func TestRun_ListMemosWithAllTagsAndFilter_Normal(t *testing.T) {
 		t.Fatal("ListMemosFunc was not called")
 	}
 }
+
+func TestRun_ListMemosWithExcludedTags_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	callCount := 0
+
+	exitCode := run([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-excluded-tags=health,book",
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
+		return &usecases.MockMemoService{
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*usecases.ListMemosOutput, error) {
+				callCount++
+
+				if pageSize != 20 {
+					t.Fatalf("pageSize = %d, want 20", pageSize)
+				}
+				if len(anyContents) != 0 || len(allContents) != 0 || len(allTags) != 0 {
+					t.Fatalf("unexpected list options: anyContents=%v allContents=%v allTags=%v", anyContents, allContents, allTags)
+				}
+
+				switch callCount {
+				case 1:
+					if filter != "" {
+						t.Fatalf("filter(1st) = %q, want empty", filter)
+					}
+					return &usecases.ListMemosOutput{
+						Memos: []usecases.Memo{
+							{Name: "memos/1"},
+							{Name: "memos/2"},
+							{Name: "memos/3"},
+						},
+						TotalSize: 3,
+					}, nil
+				case 2:
+					if filter != "tag in ['health']" {
+						t.Fatalf("filter(2nd) = %q, want %q", filter, "tag in ['health']")
+					}
+					return &usecases.ListMemosOutput{
+						Memos: []usecases.Memo{
+							{Name: "memos/2"},
+						},
+						TotalSize: 1,
+					}, nil
+				case 3:
+					if filter != "tag in ['book']" {
+						t.Fatalf("filter(3rd) = %q, want %q", filter, "tag in ['book']")
+					}
+					return &usecases.ListMemosOutput{
+						Memos: []usecases.Memo{
+							{Name: "memos/3"},
+						},
+						TotalSize: 1,
+					}, nil
+				default:
+					t.Fatalf("unexpected ListMemos call count: %d", callCount)
+					return nil, nil
+				}
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if callCount != 3 {
+		t.Fatalf("callCount = %d, want 3", callCount)
+	}
+	if !strings.Contains(stdout.String(), "\"name\": \"memos/1\"") {
+		t.Fatalf("stdout = %s, want remaining memo", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "\"name\": \"memos/2\"") || strings.Contains(stdout.String(), "\"name\": \"memos/3\"") {
+		t.Fatalf("stdout = %s, want excluded memos removed", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "\"totalSize\": 1") {
+		t.Fatalf("stdout = %s, want totalSize=1", stdout.String())
+	}
+}
+
+func TestRun_ListMemosWithAnyTagsAndExcludedTags_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	callCount := 0
+
+	exitCode := run([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		`-filter=visibility == "PUBLIC"`,
+		"-any-tags=health,book",
+		"-excluded-tags=archive",
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
+		return &usecases.MockMemoService{
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*usecases.ListMemosOutput, error) {
+				callCount++
+				switch callCount {
+				case 1:
+					want := `(visibility == "PUBLIC") && (tag in ['health','book'])`
+					if filter != want {
+						t.Fatalf("filter(1st) = %q, want %q", filter, want)
+					}
+					return &usecases.ListMemosOutput{
+						Memos: []usecases.Memo{
+							{Name: "memos/1"},
+							{Name: "memos/2"},
+						},
+						TotalSize: 2,
+					}, nil
+				case 2:
+					if filter != "tag in ['archive']" {
+						t.Fatalf("filter(2nd) = %q, want %q", filter, "tag in ['archive']")
+					}
+					return &usecases.ListMemosOutput{
+						Memos: []usecases.Memo{
+							{Name: "memos/2"},
+						},
+						TotalSize: 1,
+					}, nil
+				default:
+					t.Fatalf("unexpected ListMemos call count: %d", callCount)
+					return nil, nil
+				}
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if callCount != 2 {
+		t.Fatalf("callCount = %d, want 2", callCount)
+	}
+	if !strings.Contains(stdout.String(), "\"name\": \"memos/1\"") {
+		t.Fatalf("stdout = %s, want memos/1", stdout.String())
+	}
+	if strings.Contains(stdout.String(), "\"name\": \"memos/2\"") {
+		t.Fatalf("stdout = %s, want memos/2 excluded", stdout.String())
+	}
+}
