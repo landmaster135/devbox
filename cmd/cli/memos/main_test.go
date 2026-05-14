@@ -109,7 +109,7 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 		`-filter=created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
-			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, contents []string) (*usecases.ListMemosOutput, error) {
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*usecases.ListMemosOutput, error) {
 				called = true
 				if pageSize != 10 {
 					t.Fatalf("pageSize = %d, want 10", pageSize)
@@ -127,8 +127,11 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 				if filter != wantFilter {
 					t.Fatalf("filter = %q, want %q", filter, wantFilter)
 				}
-				if len(contents) != 0 {
-					t.Fatalf("contents = %v, want empty", contents)
+				if len(anyContents) != 0 {
+					t.Fatalf("anyContents = %v, want empty", anyContents)
+				}
+				if len(allContents) != 0 {
+					t.Fatalf("allContents = %v, want empty", allContents)
 				}
 				return &usecases.ListMemosOutput{
 					Memos: []usecases.Memo{
@@ -173,7 +176,7 @@ func TestRun_ListMemosWithAnyContents_Normal(t *testing.T) {
 		"-any-contents= meeting, study ,,",
 	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
 		return &usecases.MockMemoService{
-			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, contents []string) (*usecases.ListMemosOutput, error) {
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*usecases.ListMemosOutput, error) {
 				called = true
 				if pageSize != 20 {
 					t.Fatalf("pageSize = %d, want 20", pageSize)
@@ -184,8 +187,11 @@ func TestRun_ListMemosWithAnyContents_Normal(t *testing.T) {
 				if state != "" || orderBy != "" || filter != "" {
 					t.Fatalf("state/orderBy/filter = %q/%q/%q, want empty", state, orderBy, filter)
 				}
-				if len(contents) != 2 || contents[0] != "meeting" || contents[1] != "study" {
-					t.Fatalf("contents = %v, want [meeting study]", contents)
+				if len(anyContents) != 2 || anyContents[0] != "meeting" || anyContents[1] != "study" {
+					t.Fatalf("anyContents = %v, want [meeting study]", anyContents)
+				}
+				if len(allContents) != 0 {
+					t.Fatalf("allContents = %v, want empty", allContents)
 				}
 				return &usecases.ListMemosOutput{
 					Memos: []usecases.Memo{
@@ -203,6 +209,49 @@ func TestRun_ListMemosWithAnyContents_Normal(t *testing.T) {
 		t.Fatal("ListMemosFunc was not called")
 	}
 	if !strings.Contains(stdout.String(), "\"name\": \"memos/1\"") {
+		t.Fatalf("stdout = %s, want memo json", stdout.String())
+	}
+}
+
+func TestRun_ListMemosWithAllContents_Normal(t *testing.T) {
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	called := false
+
+	exitCode := run([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-all-contents= meeting, study ,,",
+	}, &stdout, &stderr, func(conf *cfg.Config) usecases.MemoService {
+		return &usecases.MockMemoService{
+			ListMemosFunc: func(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string) (*usecases.ListMemosOutput, error) {
+				called = true
+				if pageSize != 20 {
+					t.Fatalf("pageSize = %d, want 20", pageSize)
+				}
+				if len(anyContents) != 0 {
+					t.Fatalf("anyContents = %v, want empty", anyContents)
+				}
+				if len(allContents) != 2 || allContents[0] != "meeting" || allContents[1] != "study" {
+					t.Fatalf("allContents = %v, want [meeting study]", allContents)
+				}
+				return &usecases.ListMemosOutput{
+					Memos: []usecases.Memo{
+						{Name: "memos/2"},
+					},
+				}, nil
+			},
+		}
+	})
+
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0, stderr=%s", exitCode, stderr.String())
+	}
+	if !called {
+		t.Fatal("ListMemosFunc was not called")
+	}
+	if !strings.Contains(stdout.String(), "\"name\": \"memos/2\"") {
 		t.Fatalf("stdout = %s, want memo json", stdout.String())
 	}
 }

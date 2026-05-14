@@ -60,6 +60,7 @@ func run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 			conf.OrderBy,
 			conf.Filter,
 			splitByComma(conf.AnyContents),
+			splitByComma(conf.AllContents),
 		)
 	case cfg.OperationListAttachments:
 		result, err = service.ListAttachments(

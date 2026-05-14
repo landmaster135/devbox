@@ -130,6 +130,56 @@ func TestConfig_ParseFlags_ListMemosWithAnyContents_Normal(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlags_ListMemosWithAllContents_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-all-contents= meeting, study ,,",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.AllContents != "meeting, study ,," {
+		t.Fatalf("allContents = %q, want %q", cfg.AllContents, "meeting, study ,,")
+	}
+}
+
+func TestConfig_ParseFlags_ListMemosWithAnyAndAllContents_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-any-contents=meeting",
+		"-all-contents=study",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "any-contents と all-contents は同時に指定できません") {
+		t.Fatalf("error = %v, want simultaneous options error", err)
+	}
+}
+
+func TestConfig_ParseFlags_ListMemosWithAllContentsEmptyCSV_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-memos",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-page-size=10",
+		"-all-contents=  ,,  ",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "all-contents に少なくとも1つのキーワード") {
+		t.Fatalf("error = %v, want all-contents validation error", err)
+	}
+}
+
 func TestConfig_ParseFlags_ListAttachments_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=list-attachments",

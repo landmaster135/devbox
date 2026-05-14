@@ -75,6 +75,7 @@ type Config struct {
 	OrderBy     string
 	Filter      string
 	AnyContents string
+	AllContents string
 
 	UpdateMask   string
 	UpdatesTime  bool
@@ -124,6 +125,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	fs.StringVar(&cfg.OrderBy, "order-by", "", "list-memos/list-attachments のソート指定（例: update_time desc）")
 	fs.StringVar(&cfg.Filter, "filter", "", "list-memos/list-attachments のフィルタ条件（CEL形式。list-memos では created_ts/updated_ts の RFC3339 比較値を Unix 秒に自動変換）")
 	fs.StringVar(&cfg.AnyContents, "any-contents", "", "list-memos で content.contains に渡すキーワード（カンマ区切り）")
+	fs.StringVar(&cfg.AllContents, "all-contents", "", "list-memos で content.contains を複数評価し、複数結果で重複する memo のみ返すキーワード（カンマ区切り）")
 	fs.StringVar(&cfg.UpdateMask, "update-mask", "", "update-memo の updateMask（例: content,visibility）")
 	fs.BoolVar(&cfg.UpdatesTime, "updates-time", false, "update-memo で displayTime を現在日時へ設定し updateTime 更新を促すか")
 	fs.StringVar(&cfg.SrcTag, "src-tag", "", "update-tag で置換元のタグ（例: work または #work）")
@@ -158,6 +160,7 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.OrderBy = strings.TrimSpace(cfg.OrderBy)
 	cfg.Filter = strings.TrimSpace(cfg.Filter)
 	cfg.AnyContents = strings.TrimSpace(cfg.AnyContents)
+	cfg.AllContents = strings.TrimSpace(cfg.AllContents)
 	cfg.UpdateMask = strings.TrimSpace(cfg.UpdateMask)
 	cfg.SrcTag = normalizeTagValue(strings.TrimSpace(cfg.SrcTag))
 	cfg.DestTag = normalizeTagValue(strings.TrimSpace(cfg.DestTag))
@@ -219,6 +222,12 @@ func validateConfig(cfg *Config) error {
 	case OperationListMemos:
 		if cfg.PageSize == 0 {
 			return fmt.Errorf("list-memos 操作では page-size に 1 以上を指定してください")
+		}
+		if cfg.AnyContents != "" && cfg.AllContents != "" {
+			return fmt.Errorf("list-memos 操作では any-contents と all-contents は同時に指定できません")
+		}
+		if cfg.AllContents != "" && !hasNonEmptyCSVEntries(cfg.AllContents) {
+			return fmt.Errorf("list-memos 操作では all-contents に少なくとも1つのキーワードが必要です")
 		}
 	case OperationListAttachments:
 		if cfg.PageSize == 0 {
@@ -321,7 +330,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  delete-memo\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -force (任意: デフォルト false)\n")
 	fmt.Fprintf(os.Stderr, "  list-memos\n")
-	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換), -any-contents (任意: カンマ区切りで content.contains を複数評価)\n")
+	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -state (任意), -order-by (任意), -filter (任意: CEL形式、created_ts/updated_ts の RFC3339 比較値は自動変換), -any-contents (任意: カンマ区切りで content.contains を複数評価し和集合を返却), -all-contents (任意: カンマ区切りで content.contains を複数評価し重複 memo のみ返却)\n")
 	fmt.Fprintf(os.Stderr, "  list-attachments\n")
 	fmt.Fprintf(os.Stderr, "        -page-size (任意), -page-token (任意), -order-by (任意), -filter (任意)\n")
 	fmt.Fprintf(os.Stderr, "  update-memo\n")
@@ -344,6 +353,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -filter='created_ts > \"2023-01-01T13:00:00Z\" && visibility == \"PUBLIC\"'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -any-contents='meeting,study'\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-memos -base-url=https://memos.example.com -api-token=token -all-contents='meeting,study'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-attachments -base-url=https://memos.example.com -api-token=token -page-size=50 -order-by=create_time desc\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-memo -base-url=https://memos.example.com -api-token=token -memo=abc123 -content='updated'\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=update-tag -base-url=https://memos.example.com -api-token=token -src-tag=work -dest-tag=project\n", os.Args[0])

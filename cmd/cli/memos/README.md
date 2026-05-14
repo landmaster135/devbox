@@ -78,10 +78,13 @@ go run ./cmd/cli/memos \
 | `-order-by` | 並び順（例: `update_time desc`） | 任意 |
 | `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`。`created_ts` / `updated_ts` の RFC3339 比較値は内部で Unix 秒へ変換） | 任意 |
 | `-any-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`） | 任意 |
+| `-all-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`。複数結果で重複する memo のみ返却） | 任意 |
 
 補足:
 - `-any-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価して結果を統合します。
 - 複数キーワードで同一メモがヒットした場合は、メモID単位で重複排除して返却します。
+- `-all-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価し、複数クエリの結果でメモIDが重複したメモのみ返却します。
+- `-any-contents` と `-all-contents` は同時指定できません。
 - `-filter` と併用した場合は、`(<filter>) && content.contains("<keyword>")` をキーワードごとに評価します。
 
 **filter で利用可能な主なフィールド**
@@ -250,6 +253,15 @@ go run ./cmd/cli/memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
   -any-contents='meeting,study'
+```
+
+メモ一覧（`-all-contents`: 複数キーワード検索の重複メモのみ）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -all-contents='meeting,study'
 ```
 
 メモ一覧（`-filter` と `-any-contents` の併用）

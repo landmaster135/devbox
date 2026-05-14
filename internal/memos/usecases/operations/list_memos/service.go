@@ -28,10 +28,16 @@ func (s *Service) Execute(
 	state string,
 	orderBy string,
 	filter string,
-	contents []string,
+	anyContents []string,
+	allContents []string,
 ) (*common.ListMemosOutput, error) {
-	normalizedContents := normalizeContents(contents)
-	if len(normalizedContents) == 0 {
+	normalizedAllContents := normalizeContents(allContents)
+	if len(normalizedAllContents) > 0 {
+		return s.executeAllContents(ctx, pageSize, pageToken, state, orderBy, filter, normalizedAllContents)
+	}
+
+	normalizedAnyContents := normalizeContents(anyContents)
+	if len(normalizedAnyContents) == 0 {
 		return s.executeSingle(ctx, pageSize, pageToken, state, orderBy, filter)
 	}
 
@@ -39,7 +45,7 @@ func (s *Service) Execute(
 	seenMemoKeys := make(map[string]struct{})
 	nextPageToken := ""
 
-	for i, term := range normalizedContents {
+	for i, term := range normalizedAnyContents {
 		combinedFilter := buildContentContainsFilter(filter, term)
 		result, err := s.executeSingle(ctx, pageSize, pageToken, state, orderBy, combinedFilter)
 		if err != nil {
@@ -50,7 +56,7 @@ func (s *Service) Execute(
 		}
 
 		mergedMemos = appendDedupMemos(mergedMemos, result.Memos, seenMemoKeys)
-		if len(normalizedContents) == 1 && i == 0 {
+		if len(normalizedAnyContents) == 1 && i == 0 {
 			nextPageToken = strings.TrimSpace(result.NextPageToken)
 		}
 	}
@@ -59,6 +65,72 @@ func (s *Service) Execute(
 		Memos:         mergedMemos,
 		NextPageToken: nextPageToken,
 		TotalSize:     int64(len(mergedMemos)),
+	}, nil
+}
+
+func (s *Service) executeAllContents(
+	ctx context.Context,
+	pageSize int,
+	pageToken string,
+	state string,
+	orderBy string,
+	filter string,
+	allContents []string,
+) (*common.ListMemosOutput, error) {
+	requiredCount := len(allContents)
+	if requiredCount == 0 {
+		return &common.ListMemosOutput{
+			Memos:         []common.Memo{},
+			NextPageToken: "",
+			TotalSize:     0,
+		}, nil
+	}
+
+	countByMemoKey := make(map[string]int)
+	firstMemoByKey := make(map[string]common.Memo)
+	memoOrder := make([]string, 0)
+
+	for _, term := range allContents {
+		combinedFilter := buildContentContainsFilter(filter, term)
+		result, err := s.executeSingle(ctx, pageSize, pageToken, state, orderBy, combinedFilter)
+		if err != nil {
+			return nil, err
+		}
+		if result == nil {
+			continue
+		}
+
+		seenInTerm := make(map[string]struct{})
+		for _, memo := range result.Memos {
+			memoKey := memoDedupKey(memo)
+			if memoKey == "" {
+				continue
+			}
+			if _, exists := seenInTerm[memoKey]; exists {
+				continue
+			}
+			seenInTerm[memoKey] = struct{}{}
+
+			if _, exists := countByMemoKey[memoKey]; !exists {
+				firstMemoByKey[memoKey] = memo
+				memoOrder = append(memoOrder, memoKey)
+			}
+			countByMemoKey[memoKey]++
+		}
+	}
+
+	overlappedMemos := make([]common.Memo, 0)
+	for _, memoKey := range memoOrder {
+		if countByMemoKey[memoKey] < requiredCount {
+			continue
+		}
+		overlappedMemos = append(overlappedMemos, firstMemoByKey[memoKey])
+	}
+
+	return &common.ListMemosOutput{
+		Memos:         overlappedMemos,
+		NextPageToken: "",
+		TotalSize:     int64(len(overlappedMemos)),
 	}, nil
 }
 
