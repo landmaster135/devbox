@@ -208,3 +208,60 @@ func TestServiceOperationListMemos_WithContentsAndFilter_CombineConditions(t *te
 		t.Fatalf("totalSize = %d, want 1", result.TotalSize)
 	}
 }
+
+func TestServiceOperationListMemos_WithMultipleContentsAndFilter_CombineEachCondition(t *testing.T) {
+	callIndex := 0
+	client := &testutil.MockHTTPClient{
+		DoFunc: func(r *http.Request) (*http.Response, error) {
+			callIndex++
+			query := r.URL.Query()
+
+			switch callIndex {
+			case 1:
+				want := `(created_ts > 1672578000 && visibility == "PUBLIC") && content.contains("meeting")`
+				if got := query.Get("filter"); got != want {
+					t.Fatalf("filter(1st) = %q, want %q", got, want)
+				}
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/1"},{"name":"memos/2"}],"totalSize":2}`), nil
+			case 2:
+				want := `(created_ts > 1672578000 && visibility == "PUBLIC") && content.contains("study")`
+				if got := query.Get("filter"); got != want {
+					t.Fatalf("filter(2nd) = %q, want %q", got, want)
+				}
+				return testutil.JSONResponse(http.StatusOK, `{"memos":[{"name":"memos/2"},{"name":"memos/3"}],"totalSize":2}`), nil
+			default:
+				t.Fatalf("unexpected call index: %d", callIndex)
+				return nil, nil
+			}
+		},
+	}
+
+	jsonClient := common.NewJSONClient(common.JSONClientOptions{
+		BaseURL:    "https://memos.example.com",
+		APIToken:   "token",
+		HTTPClient: client,
+	})
+	service := New(jsonClient)
+
+	result, err := service.Execute(
+		context.Background(),
+		20,
+		"",
+		"",
+		"",
+		`created_ts > "2023-01-01T13:00:00Z" && visibility == "PUBLIC"`,
+		[]string{"meeting", "study"},
+	)
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+	if callIndex != 2 {
+		t.Fatalf("callIndex = %d, want 2", callIndex)
+	}
+	if len(result.Memos) != 3 {
+		t.Fatalf("len(memos) = %d, want 3", len(result.Memos))
+	}
+	if result.Memos[0].Name != "memos/1" || result.Memos[1].Name != "memos/2" || result.Memos[2].Name != "memos/3" {
+		t.Fatalf("memos order = %#v, want memos/1,memos/2,memos/3", result.Memos)
+	}
+}
