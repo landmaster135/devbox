@@ -182,7 +182,8 @@ func resolveClipTargets(contentFiles []string) ([]clipTarget, error) {
 				ContentBaseName: contentBaseName,
 			})
 		default:
-			return nil, fmt.Errorf("content-dir 内のファイル名が不正です。web-summary-YYYYMMDD-hhmmss-<slug>.md または movie-summary-YYYYMMDD-hhmmss-<slug>.md のみ指定できます: %s", baseName)
+			detail := common.ExplainClipContentFileNameIssue(baseName)
+			return nil, fmt.Errorf("content-dir 内のファイル名が不正です。%s 対象: %s", detail, baseName)
 		}
 	}
 	return targets, nil

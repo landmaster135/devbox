@@ -1,4 +1,5 @@
 # AGENTS.md (docs マップ)
+Quick Decision Trees に則って、参照するべきドキュメントを全て確認すること。
 
 ## Summary
 

@@ -39,8 +39,11 @@ func (s *Service) ListMemos(
 	state string,
 	orderBy string,
 	filter string,
+	anyContents []string,
+	allContents []string,
+	allTags []string,
 ) (*ListMemosOutput, error) {
-	return s.listMemosOp.Execute(ctx, pageSize, pageToken, state, orderBy, filter)
+	return s.listMemosOp.Execute(ctx, pageSize, pageToken, state, orderBy, filter, anyContents, allContents, allTags)
 }
 
 // ListAttachments は ListAttachments API を呼び出す。

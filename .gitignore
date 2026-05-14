@@ -44,6 +44,10 @@ pkg/win_dos/Taskfile.env.yml
 
 ### tmp ###
 **/tmp/**
+tmp/
+.tmp/
+.tmpdir/
+.gobuild/
 
 ### Docker ###
 # .dockerignore

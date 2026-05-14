@@ -19,7 +19,7 @@ const (
 
 // MemoLister は対象メモ取得の契約。
 type MemoLister interface {
-	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*common.ListMemosOutput, error)
+	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error)
 }
 
 // MemoUpdater はメモ更新の契約。
@@ -70,7 +70,7 @@ func (s *Service) Execute(ctx context.Context, srcTag string, destTag string) (*
 
 	pageToken := ""
 	for {
-		listResult, err := s.memoLister.Execute(ctx, listMemosPageSize, pageToken, "", "", filter)
+		listResult, err := s.memoLister.Execute(ctx, listMemosPageSize, pageToken, "", "", filter, nil, nil, nil)
 		if err != nil {
 			return nil, err
 		}

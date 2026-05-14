@@ -199,6 +199,16 @@ func TestResolveContentBaseNameFromAttachment_Error(t *testing.T) {
 	}
 }
 
+func TestExplainClipContentFileNameIssue_TimePart_Error(t *testing.T) {
+	got := ExplainClipContentFileNameIssue("web-summary-20260326-0043001-knowledge-graph-how-to-use-01.md")
+	if !strings.Contains(got, "時刻部") {
+		t.Fatalf("got = %s, want 時刻部 message", got)
+	}
+	if !strings.Contains(got, "0043001") {
+		t.Fatalf("got = %s, want invalid time value", got)
+	}
+}
+
 func TestPatterns_Normal(t *testing.T) {
 	if !MatchWebClipFile("web-summary-20241225-233435-daikokuyu-event-info.md") {
 		t.Fatal("MatchWebClipFile() = false, want true")

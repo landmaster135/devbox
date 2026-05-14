@@ -77,6 +77,25 @@ go run ./cmd/cli/memos \
 | `-state` | 状態フィルタ（`NORMAL`, `ARCHIVED`） | 任意 |
 | `-order-by` | 並び順（例: `update_time desc`） | 任意 |
 | `-filter` | フィルタ条件（CEL形式。例: `visibility == "PUBLIC"`。`created_ts` / `updated_ts` の RFC3339 比較値は内部で Unix 秒へ変換） | 任意 |
+| `-any-tags` | タグ検索条件（カンマ区切り。例: `health,book`。`tag in ['health','book']` を生成） | 任意 |
+| `-all-tags` | タグ検索条件（カンマ区切り。例: `health,book`。タグごとに `tag in ['<tag>']` を評価し、複数結果で重複する memo のみ返却） | 任意 |
+| `-excluded-tags` | 除外タグ（カンマ区切り。例: `health,book`。タグごとに `tag in ['<tag>']` を評価し、該当 memo ID を最終結果から除外） | 任意 |
+| `-any-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`） | 任意 |
+| `-all-contents` | `content.contains` 検索キーワード（カンマ区切り。例: `meeting,study`。複数結果で重複する memo のみ返却） | 任意 |
+
+補足:
+- `-any-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価して結果を統合します。
+- 複数キーワードで同一メモがヒットした場合は、メモID単位で重複排除して返却します。
+- `-all-contents` を指定すると、キーワードごとに `content.contains("<keyword>")` を評価し、複数クエリの結果でメモIDが重複したメモのみ返却します。
+- `-any-contents` と `-all-contents` は同時指定できません。
+- `-filter` と併用した場合は、`(<filter>) && content.contains("<keyword>")` をキーワードごとに評価します。
+- `-any-tags` を指定すると、`tag in ['tag1','tag2',...]` 形式の filter を生成して適用します。
+- `-filter` と `-any-tags` を併用した場合は、`(<filter>) && (tag in ['tag1','tag2',...])` を評価します。
+- `-all-tags` を指定すると、タグごとに `tag in ['<tag>']` を個別評価し、複数クエリでメモIDが重複したメモのみ返却します。
+- `-filter` と `-all-tags` を併用した場合は、`(<filter>) && (tag in ['<tag>'])` をタグごとに評価します。
+- `-any-tags` と `-all-tags` は同時指定できません。
+- `-excluded-tags` を指定すると、ベース検索結果（`-filter` / `-any-tags` / `-all-tags` / `-any-contents` / `-all-contents` を適用した結果）から、タグごとの `tag in ['<tag>']` 検索でヒットした memo ID を除外します。
+- `-excluded-tags` はタグ数に応じて追加の `list-memos` API 呼び出しが発生します。
 
 **filter で利用可能な主なフィールド**
 
@@ -235,6 +254,92 @@ go run ./cmd/cli/memos \
   -base-url=$MEMOS_BASE_URL \
   -api-token=$MEMOS_TOKEN \
   -filter='"work" in tags && "project" in tags'
+```
+
+メモ一覧（`-any-tags`: 複数タグのOR検索）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -any-tags='health,book'
+```
+
+メモ一覧（`-all-tags`: 複数タグのAND検索）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -all-tags='health,book'
+```
+
+メモ一覧（`-excluded-tags`: タグ一致メモの除外）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -excluded-tags='health,book'
+```
+
+メモ一覧（`-filter` / `-any-tags` と `-excluded-tags` の併用）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"' \
+  -any-tags='health,book' \
+  -excluded-tags='archive'
+```
+
+メモ一覧（`-any-contents`: 複数キーワード検索＋重複排除）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -any-contents='meeting,study'
+```
+
+メモ一覧（`-all-contents`: 複数キーワード検索の重複メモのみ）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -all-contents='meeting,study'
+```
+
+メモ一覧（`-filter` と `-any-contents` の併用）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"' \
+  -any-contents='meeting,study'
+```
+
+メモ一覧（`-filter` と `-any-tags` の併用）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"' \
+  -any-tags='health,book'
+```
+
+メモ一覧（`-filter` と `-all-tags` の併用）
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-memos \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -filter='visibility == "PUBLIC"' \
+  -all-tags='health,book'
 ```
 
 添付一覧

@@ -188,6 +188,79 @@ func TestService_ExecuteContentFilenameInvalid_NoCreateClipCall_Error(t *testing
 	}
 }
 
+func TestService_ExecuteContentFilenameInvalid_ShowFixPoint_Error(t *testing.T) {
+	tests := []struct {
+		name             string
+		invalidFileName  string
+		wantErrSubString string
+	}{
+		{
+			name:             "TimeDigitsInvalid",
+			invalidFileName:  "web-summary-20260326-0043001-knowledge-graph-how-to-use-01.md",
+			wantErrSubString: "時刻部",
+		},
+		{
+			name:             "PrefixDelimiterUnderscore",
+			invalidFileName:  "web-summary_20260326-043001-knowledge-graph-how-to-use-01.md",
+			wantErrSubString: "接頭辞",
+		},
+		{
+			name:             "PrefixWordUnderscore",
+			invalidFileName:  "web_summary-20260326-043001-knowledge-graph-how-to-use-01.md",
+			wantErrSubString: "接頭辞",
+		},
+		{
+			name:             "DateDigitsInvalid",
+			invalidFileName:  "web-summary-202600326-043001-knowledge-graph-how-to-use-01.md",
+			wantErrSubString: "日付部",
+		},
+		{
+			name:             "SlugMissing",
+			invalidFileName:  "web-summary-20260326-043001.md",
+			wantErrSubString: "slug",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contentDir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(contentDir, tt.invalidFileName), []byte("x"), 0o644); err != nil {
+				t.Fatalf("WriteFile() error = %v", err)
+			}
+
+			service := NewService(ServiceOptions{
+				FileSystem: infrastructures.NewOSFileSystem(),
+				CreateClipService: &mockCreateClipService{
+					executeFunc: func(ctx context.Context, input common.CreateClipInput) (*common.CreateClipOutput, error) {
+						t.Fatal("Execute should not be called when content filename is invalid")
+						return nil, nil
+					},
+				},
+			})
+
+			_, err := service.Execute(context.Background(), common.CreateClipsInput{
+				Operation:  common.OperationCreateClips,
+				ContentDir: contentDir,
+			})
+			if err == nil {
+				t.Fatal("Execute() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), "content-dir 内のファイル名が不正です") {
+				t.Fatalf("error = %v, want content-dir validation message", err)
+			}
+			if !strings.Contains(err.Error(), "直す箇所") {
+				t.Fatalf("error = %v, want fix-point message", err)
+			}
+			if !strings.Contains(err.Error(), tt.wantErrSubString) {
+				t.Fatalf("error = %v, want %s message", err, tt.wantErrSubString)
+			}
+			if !strings.Contains(err.Error(), tt.invalidFileName) {
+				t.Fatalf("error = %v, want invalid filename", err)
+			}
+		})
+	}
+}
+
 func TestService_ExecuteAttachmentFilenameInvalid_NoCreateClipCall_Error(t *testing.T) {
 	contentDir := t.TempDir()
 	attachmentDir := t.TempDir()

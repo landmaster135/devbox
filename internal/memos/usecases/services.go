@@ -47,7 +47,7 @@ type deleteMemoOperation interface {
 }
 
 type listMemosOperation interface {
-	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string) (*common.ListMemosOutput, error)
+	Execute(ctx context.Context, pageSize int, pageToken string, state string, orderBy string, filter string, anyContents []string, allContents []string, allTags []string) (*common.ListMemosOutput, error)
 }
 
 type listAttachmentsOperation interface {
