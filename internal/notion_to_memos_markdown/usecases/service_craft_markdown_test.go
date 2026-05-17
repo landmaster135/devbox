@@ -262,7 +262,7 @@ func TestService_CraftMarkdown_TaskNormal(t *testing.T) {
 	if !strings.Contains(text, "# Task sample") {
 		t.Fatalf("heading missing (%s): %s", outputFile, text)
 	}
-	if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
+	if !strings.Contains(text, "#91-backup/tool-migration/202602-notion") {
 		t.Fatalf("task backup tag missing (%s): %s", outputFile, text)
 	}
 	if !strings.Contains(text, "#01-p/todo-status/3-done") {

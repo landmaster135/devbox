@@ -30,7 +30,7 @@
     - `src-body-dir/<con_id>.md` がある場合は見出し分割せず、1入力につき1ファイル（`<con_id>_01.md`）を加工対象にする
     - `src-body-dir/<con_id>.md` が無い場合のみ `src-body-dir/<con_id>_*.md` を加工対象にする
     - どの入力でも各出力ファイルに `add-heading1(page_title)` と `add-tags` 相当の加工を適用
-    - `priority` と `status_id` から Task用タグを付与し、`#91-backup/tool-migration/202602_notion` を必ず付与
+    - `priority` と `status_id` から Task用タグを付与し、`#91-backup/tool-migration/202602-notion` を必ず付与
     - `powered_artifacts[].page_title` が定義済みマップに一致した場合、対応する追加タグを付与
     - `status_id` に応じて `done_at_start` または `updated_at` を採用し、`yyyyMMddhhmmss_<index>.md` へリネーム
     - 添付ファイル名は `con_id_<number>(.<ext>)` または `con_id_<index>_<number>(.<ext>)` のみ受け付ける（規約外はエラー）
