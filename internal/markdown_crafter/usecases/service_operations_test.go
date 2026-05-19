@@ -57,10 +57,11 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 		{
 			name: "SplitHeadings",
 			cfg: &config.Config{
-				Operation:    config.OperationSplitHeadings,
-				FilePath:     "note.md",
-				HeadingLevel: 2,
-				OutputDir:    "out",
+				Operation:        config.OperationSplitHeadings,
+				FilePath:         "note.md",
+				HeadingLevel:     2,
+				OutputDir:        "out",
+				SequencialDigits: 2,
 			},
 			setup: func(repo *operationDispatchRepository) {
 				repo.readFileContents["note.md"] = "## 見出し\n本文\n"
@@ -70,7 +71,7 @@ func TestService_ExecuteByConfig_Normal(t *testing.T) {
 				if len(repo.createdDirs) != 1 || repo.createdDirs[0] != "out" {
 					t.Fatalf("unexpected created dirs: %v", repo.createdDirs)
 				}
-				if _, ok := repo.writtenFiles[filepath.Join("out", "001.md")]; !ok {
+				if _, ok := repo.writtenFiles[filepath.Join("out", "note_01.md")]; !ok {
 					t.Fatalf("expected output file was not written: %v", repo.writtenFiles)
 				}
 				if !strings.Contains(result, "split-headings: 1 ファイルを出力しました") {

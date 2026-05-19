@@ -49,8 +49,8 @@ func NewService(repository domain.Repository) *Service {
 	)
 }
 
-func (s *Service) SplitHeadings(filePath string, headingLevel int, outputDir string) (string, error) {
-	return s.splitHeadingsOperation.Execute(filePath, headingLevel, outputDir)
+func (s *Service) SplitHeadings(filePath string, headingLevel int, outputDir, prefix string, sequencialDigits int) (string, error) {
+	return s.splitHeadingsOperation.Execute(filePath, headingLevel, outputDir, prefix, sequencialDigits)
 }
 
 func (s *Service) AddFrontMatter(filePath string, kvPairs []string) (string, error) {
@@ -88,7 +88,7 @@ func (s *Service) RemoveTitleHashTags(dirPath string, startLine int, endLine int
 func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
 	switch cfg.Operation {
 	case config.OperationSplitHeadings:
-		return s.SplitHeadings(cfg.FilePath, cfg.HeadingLevel, cfg.OutputDir)
+		return s.SplitHeadings(cfg.FilePath, cfg.HeadingLevel, cfg.OutputDir, cfg.Prefix, cfg.SequencialDigits)
 	case config.OperationAddFrontMatter:
 		return s.AddFrontMatter(cfg.FilePath, cfg.KVPairs)
 	case config.OperationAddTags:

@@ -3,7 +3,7 @@ package usecases
 import "github.com/landmaster135/devbox/internal/markdown_crafter/domain"
 
 type splitHeadingsOperation interface {
-	Execute(filePath string, headingLevel int, outputDir string) (string, error)
+	Execute(filePath string, headingLevel int, outputDir, prefix string, sequencialDigits int) (string, error)
 }
 
 type addFrontMatterOperation interface {

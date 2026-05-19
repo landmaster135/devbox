@@ -31,6 +31,35 @@ func TestParseFlags_SplitHeadings_Normal(t *testing.T) {
 		if cfg.Operation != OperationSplitHeadings {
 			t.Fatalf("unexpected operation: %s", cfg.Operation)
 		}
+		if cfg.Prefix != "" {
+			t.Fatalf("unexpected prefix: %s", cfg.Prefix)
+		}
+		if cfg.SequencialDigits != 2 {
+			t.Fatalf("unexpected sequencial digits: %d", cfg.SequencialDigits)
+		}
+	})
+}
+
+func TestParseFlags_SplitHeadings_WithPrefixAndDigits_Normal(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationSplitHeadings,
+		"--file-path", "./sample.md",
+		"--heading-level", "2",
+		"--output-dir", "./out",
+		"--prefix", "article_",
+		"--sequencial-digits", "4",
+	}, func() {
+		cfg, err := ParseFlags()
+		if err != nil {
+			t.Fatalf("ParseFlags returned error: %v", err)
+		}
+		if cfg.Prefix != "article_" {
+			t.Fatalf("unexpected prefix: %s", cfg.Prefix)
+		}
+		if cfg.SequencialDigits != 4 {
+			t.Fatalf("unexpected sequencial digits: %d", cfg.SequencialDigits)
+		}
 	})
 }
 
@@ -197,6 +226,22 @@ func TestParseFlags_Invalid(t *testing.T) {
 		"--file-path", "./sample.md",
 		"--heading-level", "0",
 		"--output-dir", "./out",
+	}, func() {
+		_, err := ParseFlags()
+		if err == nil {
+			t.Fatal("expected validation error")
+		}
+	})
+}
+
+func TestParseFlags_InvalidSequencialDigits(t *testing.T) {
+	withArgs([]string{
+		"markdown-crafter",
+		"--operation", OperationSplitHeadings,
+		"--file-path", "./sample.md",
+		"--heading-level", "2",
+		"--output-dir", "./out",
+		"--sequencial-digits", "0",
 	}, func() {
 		_, err := ParseFlags()
 		if err == nil {
