@@ -18,6 +18,7 @@
 | `-fps` | 任意 | `2` | 1秒あたりに抽出するフレーム数 |
 | `-quality` | 任意 | `2` | JPEG品質 (`1-31`、小さいほど高品質) |
 | `-match-rate` | 条件付き必須 | なし | 重複判定の一致率しきい値 (`0-100`、`dedup-images` で必須) |
+| `-log` | 任意 | `false` | `dedup-images` 実行中に照合率ログを標準出力へ表示 |
 | `-start-position` | 任意 | 空 | 抽出開始位置。秒数または `HH:MM:SS[.ms]` |
 | `-out-dir` | 必須 | なし | 抽出画像の出力先ディレクトリ |
 | `-help`, `-h` | 任意 | `false` | ヘルプ表示 |
@@ -29,6 +30,9 @@
 
 # 画像重複を除外して代表画像のみを出力
 ./movie-extractor -operation dedup-images -src-dir ./images -match-rate 100 -out-dir ./unique-images
+
+# 画像重複除外時の照合率ログを表示
+./movie-extractor -operation dedup-images -src-dir ./images -match-rate 98 -out-dir ./unique-images -log
 ```
 
 ## 使用例
@@ -45,6 +49,9 @@
 
 # 画素一致率100%以上を重複と判定
 ./movie-extractor -operation dedup-images -src-dir ./images -match-rate 100 -out-dir ./unique-images
+
+# 照合率ログを表示しながら重複除外
+./movie-extractor -operation dedup-images -src-dir ./images -match-rate 98 -out-dir ./unique-images -log
 ```
 
 ## 出力例
@@ -74,6 +81,19 @@
 - img01.jpg
 - img11.jpg
 - img21.jpg
+```
+
+成功時（dedup-images + log）:
+
+```text
+照合率: "img02.png" vs "img01.png": 75.00%
+重複除外が完了しました。
+入力画像数: 2
+出力画像数: 2
+出力ディレクトリ: /path/to/unique-images
+出力ファイル:
+- img01.png
+- img02.png
 ```
 
 ## 注意事項

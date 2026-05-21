@@ -51,9 +51,16 @@ func handleExtractFrames(cfg *config.Config) {
 
 func handleDedupImages(cfg *config.Config) {
 	service := usecases.NewService()
+	var logWriter *os.File
+	if cfg.Log {
+		logWriter = os.Stdout
+	}
+
 	result, err := service.HandleDedupImages(usecases.DedupImagesInput{
 		SrcDir:    cfg.SrcDir,
 		MatchRate: cfg.MatchRate,
+		Log:       cfg.Log,
+		LogWriter: logWriter,
 		OutDir:    cfg.OutDir,
 	})
 	if err != nil {

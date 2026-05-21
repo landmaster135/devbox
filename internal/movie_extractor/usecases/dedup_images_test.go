@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"bytes"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -148,6 +149,37 @@ func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
 	expected := []string{"img01.png", "img02.png", "img03.png"}
 	if !reflect.DeepEqual(names, expected) {
 		t.Fatalf("unexpected output files: got=%v want=%v", names, expected)
+	}
+}
+
+func TestHandleDedupImages_LogOutput(t *testing.T) {
+	srcDir := t.TempDir()
+	outDir := filepath.Join(t.TempDir(), "unique")
+
+	imageA := [][]uint8{{7, 7}, {7, 7}}
+	imageB := [][]uint8{{7, 7}, {7, 8}}
+
+	mustWritePNG(t, filepath.Join(srcDir, "img01.png"), imageA)
+	mustWritePNG(t, filepath.Join(srcDir, "img02.png"), imageB)
+
+	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
+	logBuffer := &bytes.Buffer{}
+	result, err := service.HandleDedupImages(DedupImagesInput{
+		SrcDir:    srcDir,
+		MatchRate: 100,
+		Log:       true,
+		LogWriter: logBuffer,
+		OutDir:    outDir,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(logBuffer.String(), `照合率: "img02.png" vs "img01.png": 75.00%`) {
+		t.Fatalf("unexpected log output: %s", logBuffer.String())
+	}
+	if strings.Contains(result, "照合率:") {
+		t.Fatalf("unexpected result: %s", result)
 	}
 }
 

@@ -23,6 +23,8 @@ var supportedImageExtensions = map[string]struct{}{
 type DedupImagesInput struct {
 	SrcDir    string
 	MatchRate float64
+	Log       bool
+	LogWriter io.Writer
 	OutDir    string
 }
 
@@ -80,6 +82,15 @@ func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
 			rate, matchErr := calculatePixelMatchRate(candidate, recentSelected)
 			if matchErr != nil {
 				return "", fmt.Errorf("画像比較に失敗しました (%s, %s): %w", candidate, recentSelected, matchErr)
+			}
+			if input.Log && input.LogWriter != nil {
+				fmt.Fprintf(
+					input.LogWriter,
+					`照合率: "%s" vs "%s": %.2f%%`+"\n",
+					filepath.Base(candidate),
+					filepath.Base(recentSelected),
+					rate*100,
+				)
 			}
 			if rate*100 >= input.MatchRate {
 				isDuplicate = true

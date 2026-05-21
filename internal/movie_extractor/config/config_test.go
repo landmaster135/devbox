@@ -180,6 +180,7 @@ func TestParseFlagsWithParser(t *testing.T) {
 		mock.SetStringValue("operation", "dedup-images")
 		mock.SetStringValue("src-dir", "images")
 		mock.SetFloat64Value("match-rate", 99.9)
+		mock.SetBoolValue("log", true)
 		mock.SetStringValue("out-dir", "unique")
 
 		cfg, err := ParseFlagsWithParser(mock)
@@ -187,6 +188,9 @@ func TestParseFlagsWithParser(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if cfg.Operation != "dedup-images" || cfg.SrcDir != "images" || cfg.MatchRate != 99.9 {
+			t.Fatalf("unexpected config: %+v", cfg)
+		}
+		if !cfg.Log {
 			t.Fatalf("unexpected config: %+v", cfg)
 		}
 	})

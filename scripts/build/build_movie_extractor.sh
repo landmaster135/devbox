@@ -42,3 +42,4 @@ echo "  ./movie-extractor -operation extract-frames -src-file ./sample.mp4 -out-
 echo "  ./movie-extractor -operation extract-frames -src-file ./sample.mp4 -fps 5 -quality 3 -out-dir ./frames"
 echo "  ./movie-extractor -operation extract-frames -src-file ./sample.mp4 -start-position 00:00:10.5 -out-dir ./frames"
 echo "  ./movie-extractor -operation dedup-images -src-dir ./images -match-rate 100 -out-dir ./unique-images"
+echo "  ./movie-extractor -operation dedup-images -src-dir ./images -match-rate 98 -out-dir ./unique-images -log"

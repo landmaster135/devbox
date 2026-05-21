@@ -33,6 +33,7 @@ type Config struct {
 	FPS           int
 	Quality       int
 	MatchRate     float64
+	Log           bool
 	StartPosition string
 	OutDir        string
 	Help          bool
@@ -104,6 +105,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 		fps           = defaultFPS
 		quality       = defaultQuality
 		matchRate     = defaultMatchRate
+		log           = false
 		startPosition = ""
 		outDir        = ""
 		help          = false
@@ -115,6 +117,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	parser.IntVar(&fps, "fps", fps, "1秒あたりに抽出するフレーム数")
 	parser.IntVar(&quality, "quality", quality, "JPEG品質(1-31)。小さいほど高品質")
 	parser.Float64Var(&matchRate, "match-rate", matchRate, "画像重複とみなす一致率(0-100)")
+	parser.BoolVar(&log, "log", log, "dedup-images 実行中に照合率ログを標準出力へ表示")
 	parser.StringVar(&startPosition, "start-position", startPosition, "抽出開始位置。秒数または HH:MM:SS[.ms]")
 	parser.StringVar(&outDir, "out-dir", outDir, "抽出画像の出力先ディレクトリ")
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
@@ -127,7 +130,12 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, srcFile, srcDir, fps, quality, matchRate, startPosition, outDir)
+	cfg, err := NewConfig(operation, srcFile, srcDir, fps, quality, matchRate, startPosition, outDir)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Log = log
+	return cfg, nil
 }
 
 // PrintUsage は CLI 利用方法を表示します。
@@ -155,6 +163,8 @@ func PrintUsage() {
       JPEG品質（extract-frames のみ。1-31, 小さいほど高品質。デフォルト: 2）
   -match-rate float
       重複判定の一致率しきい値（dedup-images で必須。0-100）
+  -log
+      dedup-images 実行中に照合率ログを標準出力へ表示
   -start-position string
       抽出開始位置（extract-frames のみ。秒数または HH:MM:SS[.ms]）
   -help, -h
@@ -165,6 +175,7 @@ func PrintUsage() {
   %[1]s -operation extract-frames -src-file ./movie.mp4 -fps 5 -quality 3 -out-dir ./frames
   %[1]s -operation extract-frames -src-file ./movie.mp4 -start-position 00:00:10.5 -out-dir ./frames
   %[1]s -operation dedup-images -src-dir ./images -match-rate 100 -out-dir ./unique-images
+  %[1]s -operation dedup-images -src-dir ./images -match-rate 98 -out-dir ./unique-images -log
 `)
 }
 
