@@ -75,14 +75,14 @@ func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
 		}
 
 		isDuplicate := false
-		for _, selected := range selectedImages {
-			rate, matchErr := calculatePixelMatchRate(candidate, selected)
+		if len(selectedImages) > 0 {
+			recentSelected := selectedImages[len(selectedImages)-1]
+			rate, matchErr := calculatePixelMatchRate(candidate, recentSelected)
 			if matchErr != nil {
-				return "", fmt.Errorf("画像比較に失敗しました (%s, %s): %w", candidate, selected, matchErr)
+				return "", fmt.Errorf("画像比較に失敗しました (%s, %s): %w", candidate, recentSelected, matchErr)
 			}
 			if rate*100 >= input.MatchRate {
 				isDuplicate = true
-				break
 			}
 		}
 

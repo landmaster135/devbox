@@ -123,6 +123,34 @@ func TestHandleDedupImages_DecodeError(t *testing.T) {
 	}
 }
 
+func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
+	srcDir := t.TempDir()
+	outDir := filepath.Join(t.TempDir(), "unique")
+
+	imageA := [][]uint8{{5, 5}, {5, 5}}
+	imageB := [][]uint8{{9, 9}, {9, 9}}
+
+	mustWritePNG(t, filepath.Join(srcDir, "img01.png"), imageA)
+	mustWritePNG(t, filepath.Join(srcDir, "img02.png"), imageB)
+	mustWritePNG(t, filepath.Join(srcDir, "img03.png"), imageA)
+
+	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
+	_, err := service.HandleDedupImages(DedupImagesInput{
+		SrcDir:    srcDir,
+		MatchRate: 100,
+		OutDir:    outDir,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	names := mustReadFileNames(t, outDir)
+	expected := []string{"img01.png", "img02.png", "img03.png"}
+	if !reflect.DeepEqual(names, expected) {
+		t.Fatalf("unexpected output files: got=%v want=%v", names, expected)
+	}
+}
+
 func mustWritePNG(t *testing.T, path string, pixels [][]uint8) {
 	t.Helper()
 	img := toGrayImage(t, pixels)
