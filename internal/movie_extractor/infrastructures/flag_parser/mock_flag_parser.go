@@ -4,6 +4,7 @@ package flag_parser
 type MockFlagParser struct {
 	stringValues map[string]string
 	intValues    map[string]int
+	floatValues  map[string]float64
 	boolValues   map[string]bool
 	parseError   error
 	parseCalled  bool
@@ -14,6 +15,7 @@ func NewMockFlagParser() *MockFlagParser {
 	return &MockFlagParser{
 		stringValues: make(map[string]string),
 		intValues:    make(map[string]int),
+		floatValues:  make(map[string]float64),
 		boolValues:   make(map[string]bool),
 	}
 }
@@ -28,6 +30,14 @@ func (m *MockFlagParser) StringVar(p *string, name string, value string, usage s
 
 func (m *MockFlagParser) IntVar(p *int, name string, value int, usage string) {
 	if v, ok := m.intValues[name]; ok {
+		*p = v
+		return
+	}
+	*p = value
+}
+
+func (m *MockFlagParser) Float64Var(p *float64, name string, value float64, usage string) {
+	if v, ok := m.floatValues[name]; ok {
 		*p = v
 		return
 	}
@@ -53,6 +63,10 @@ func (m *MockFlagParser) SetStringValue(name, value string) {
 
 func (m *MockFlagParser) SetIntValue(name string, value int) {
 	m.intValues[name] = value
+}
+
+func (m *MockFlagParser) SetFloat64Value(name string, value float64) {
+	m.floatValues[name] = value
 }
 
 func (m *MockFlagParser) SetBoolValue(name string, value bool) {

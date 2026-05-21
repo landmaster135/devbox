@@ -13,8 +13,10 @@ func TestNewConfig(t *testing.T) {
 		name        string
 		operation   string
 		srcFile     string
+		srcDir      string
 		fps         int
 		quality     int
+		matchRate   float64
 		startPos    string
 		outDir      string
 		expectError string
@@ -27,6 +29,13 @@ func TestNewConfig(t *testing.T) {
 			quality:   2,
 			startPos:  "00:00:10.5",
 			outDir:    "frames",
+		},
+		{
+			name:      "dedup-images正常系",
+			operation: "dedup-images",
+			srcDir:    "images",
+			matchRate: 98.5,
+			outDir:    "unique",
 		},
 		{
 			name:        "未対応operation",
@@ -81,11 +90,35 @@ func TestNewConfig(t *testing.T) {
 			quality:     2,
 			expectError: "out-dir は必須です",
 		},
+		{
+			name:        "dedup-imagesでsrc-dir未指定",
+			operation:   "dedup-images",
+			matchRate:   95,
+			outDir:      "unique",
+			expectError: "src-dir は必須です",
+		},
+		{
+			name:        "dedup-imagesでmatch-rate不正",
+			operation:   "dedup-images",
+			srcDir:      "images",
+			matchRate:   120,
+			outDir:      "unique",
+			expectError: "match-rate は0から100",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg, err := NewConfig(tt.operation, tt.srcFile, tt.fps, tt.quality, tt.startPos, tt.outDir)
+			cfg, err := NewConfig(
+				tt.operation,
+				tt.srcFile,
+				tt.srcDir,
+				tt.fps,
+				tt.quality,
+				tt.matchRate,
+				tt.startPos,
+				tt.outDir,
+			)
 
 			if tt.expectError == "" {
 				if err != nil {
@@ -93,6 +126,9 @@ func TestNewConfig(t *testing.T) {
 				}
 				if cfg.Operation != tt.operation {
 					t.Fatalf("operation mismatch: got=%s", cfg.Operation)
+				}
+				if tt.operation == "dedup-images" && cfg.MatchRate != tt.matchRate {
+					t.Fatalf("match-rate mismatch: got=%f", cfg.MatchRate)
 				}
 				return
 			}
@@ -135,6 +171,22 @@ func TestParseFlagsWithParser(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if cfg.Operation != "extract-frames" || cfg.SrcFile != "input.mp4" {
+			t.Fatalf("unexpected config: %+v", cfg)
+		}
+	})
+
+	t.Run("dedup-images正常系", func(t *testing.T) {
+		mock := flagParser.NewMockFlagParser()
+		mock.SetStringValue("operation", "dedup-images")
+		mock.SetStringValue("src-dir", "images")
+		mock.SetFloat64Value("match-rate", 99.9)
+		mock.SetStringValue("out-dir", "unique")
+
+		cfg, err := ParseFlagsWithParser(mock)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Operation != "dedup-images" || cfg.SrcDir != "images" || cfg.MatchRate != 99.9 {
 			t.Fatalf("unexpected config: %+v", cfg)
 		}
 	})

@@ -24,6 +24,8 @@ func main() {
 	switch cfg.Operation {
 	case "extract-frames":
 		handleExtractFrames(cfg)
+	case "dedup-images":
+		handleDedupImages(cfg)
 	default:
 		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作です: %s\n", cfg.Operation)
 		config.PrintUsage()
@@ -39,6 +41,20 @@ func handleExtractFrames(cfg *config.Config) {
 		Quality:       cfg.Quality,
 		StartPosition: cfg.StartPosition,
 		OutDir:        cfg.OutDir,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Print(result)
+}
+
+func handleDedupImages(cfg *config.Config) {
+	service := usecases.NewService()
+	result, err := service.HandleDedupImages(usecases.DedupImagesInput{
+		SrcDir:    cfg.SrcDir,
+		MatchRate: cfg.MatchRate,
+		OutDir:    cfg.OutDir,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)

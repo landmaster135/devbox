@@ -12,10 +12,12 @@ const (
 	defaultOperation = "extract-frames"
 	defaultFPS       = 2
 	defaultQuality   = 2
+	defaultMatchRate = -1.0
 )
 
 var supportedOperations = map[string]struct{}{
 	"extract-frames": {},
+	"dedup-images":   {},
 }
 
 var (
@@ -27,8 +29,10 @@ var (
 type Config struct {
 	Operation     string
 	SrcFile       string
+	SrcDir        string
 	FPS           int
 	Quality       int
+	MatchRate     float64
 	StartPosition string
 	OutDir        string
 	Help          bool
@@ -38,25 +42,37 @@ type Config struct {
 func NewConfig(
 	operation string,
 	srcFile string,
+	srcDir string,
 	fps int,
 	quality int,
+	matchRate float64,
 	startPosition string,
 	outDir string,
 ) (*Config, error) {
 	if _, ok := supportedOperations[operation]; !ok {
 		return nil, fmt.Errorf("未対応のoperationです: %s", operation)
 	}
-	if srcFile == "" {
-		return nil, fmt.Errorf("src-file は必須です")
-	}
-	if fps <= 0 {
-		return nil, fmt.Errorf("fps は1以上の整数を指定してください")
-	}
-	if quality < 1 || quality > 31 {
-		return nil, fmt.Errorf("quality は1から31の範囲で指定してください")
-	}
-	if !isValidStartPosition(startPosition) {
-		return nil, fmt.Errorf("start-position の形式が不正です: %s", startPosition)
+	switch operation {
+	case "extract-frames":
+		if srcFile == "" {
+			return nil, fmt.Errorf("src-file は必須です")
+		}
+		if fps <= 0 {
+			return nil, fmt.Errorf("fps は1以上の整数を指定してください")
+		}
+		if quality < 1 || quality > 31 {
+			return nil, fmt.Errorf("quality は1から31の範囲で指定してください")
+		}
+		if !isValidStartPosition(startPosition) {
+			return nil, fmt.Errorf("start-position の形式が不正です: %s", startPosition)
+		}
+	case "dedup-images":
+		if srcDir == "" {
+			return nil, fmt.Errorf("src-dir は必須です")
+		}
+		if matchRate < 0 || matchRate > 100 {
+			return nil, fmt.Errorf("match-rate は0から100の範囲で指定してください")
+		}
 	}
 	if outDir == "" {
 		return nil, fmt.Errorf("out-dir は必須です")
@@ -65,8 +81,10 @@ func NewConfig(
 	return &Config{
 		Operation:     operation,
 		SrcFile:       srcFile,
+		SrcDir:        srcDir,
 		FPS:           fps,
 		Quality:       quality,
+		MatchRate:     matchRate,
 		StartPosition: startPosition,
 		OutDir:        outDir,
 	}, nil
@@ -82,17 +100,21 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	var (
 		operation     = defaultOperation
 		srcFile       = ""
+		srcDir        = ""
 		fps           = defaultFPS
 		quality       = defaultQuality
+		matchRate     = defaultMatchRate
 		startPosition = ""
 		outDir        = ""
 		help          = false
 	)
 
-	parser.StringVar(&operation, "operation", operation, "実行する操作。extract-frames のみ対応")
+	parser.StringVar(&operation, "operation", operation, "実行する操作。extract-frames または dedup-images")
 	parser.StringVar(&srcFile, "src-file", srcFile, "入力動画ファイルのパス")
+	parser.StringVar(&srcDir, "src-dir", srcDir, "重複除外対象の画像ディレクトリ")
 	parser.IntVar(&fps, "fps", fps, "1秒あたりに抽出するフレーム数")
 	parser.IntVar(&quality, "quality", quality, "JPEG品質(1-31)。小さいほど高品質")
+	parser.Float64Var(&matchRate, "match-rate", matchRate, "画像重複とみなす一致率(0-100)")
 	parser.StringVar(&startPosition, "start-position", startPosition, "抽出開始位置。秒数または HH:MM:SS[.ms]")
 	parser.StringVar(&outDir, "out-dir", outDir, "抽出画像の出力先ディレクトリ")
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
@@ -105,7 +127,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, srcFile, fps, quality, startPosition, outDir)
+	return NewConfig(operation, srcFile, srcDir, fps, quality, matchRate, startPosition, outDir)
 }
 
 // PrintUsage は CLI 利用方法を表示します。
@@ -114,22 +136,27 @@ func PrintUsage() {
 
 使用方法:
   %[1]s -operation extract-frames -src-file <video file> -out-dir <directory> [options]
+  %[1]s -operation dedup-images -src-dir <image directory> -match-rate <0-100> -out-dir <directory>
 
 必須フラグ:
-  -src-file string
-      入力動画ファイルのパス
   -out-dir string
       出力ディレクトリ
 
 任意フラグ:
   -operation string
-      実行操作（デフォルト: extract-frames）
+      実行操作（extract-frames / dedup-images）
+  -src-file string
+      入力動画ファイルのパス（extract-frames で必須）
+  -src-dir string
+      入力画像ディレクトリのパス（dedup-images で必須）
   -fps int
-      抽出フレームレート（デフォルト: 1）
+      抽出フレームレート（extract-frames のみ。デフォルト: 2）
   -quality int
-      JPEG品質（1-31, 小さいほど高品質。デフォルト: 2）
+      JPEG品質（extract-frames のみ。1-31, 小さいほど高品質。デフォルト: 2）
+  -match-rate float
+      重複判定の一致率しきい値（dedup-images で必須。0-100）
   -start-position string
-      抽出開始位置（秒数または HH:MM:SS[.ms]）
+      抽出開始位置（extract-frames のみ。秒数または HH:MM:SS[.ms]）
   -help, -h
       ヘルプを表示
 
@@ -137,6 +164,7 @@ func PrintUsage() {
   %[1]s -operation extract-frames -src-file ./movie.mp4 -out-dir ./frames
   %[1]s -operation extract-frames -src-file ./movie.mp4 -fps 5 -quality 3 -out-dir ./frames
   %[1]s -operation extract-frames -src-file ./movie.mp4 -start-position 00:00:10.5 -out-dir ./frames
+  %[1]s -operation dedup-images -src-dir ./images -match-rate 100 -out-dir ./unique-images
 `)
 }
 
