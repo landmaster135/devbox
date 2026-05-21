@@ -116,13 +116,13 @@ func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
 
 	var result strings.Builder
 	result.WriteString("重複除外が完了しました。\n")
-	result.WriteString(fmt.Sprintf("入力画像数: %d\n", len(imagePaths)))
-	result.WriteString(fmt.Sprintf("出力画像数: %d\n", len(selectedImages)))
-	result.WriteString(fmt.Sprintf("出力ディレクトリ: %s\n", absOutDir))
+	fmt.Fprintf(&result, "入力画像数: %d\n", len(imagePaths))
+	fmt.Fprintf(&result, "出力画像数: %d\n", len(selectedImages))
+	fmt.Fprintf(&result, "出力ディレクトリ: %s\n", absOutDir)
 	if len(selectedImages) > 0 {
 		result.WriteString("出力ファイル:\n")
 		for _, selectedImage := range selectedImages {
-			result.WriteString(fmt.Sprintf("- %s\n", filepath.Base(selectedImage)))
+			fmt.Fprintf(&result, "- %s\n", filepath.Base(selectedImage))
 		}
 	}
 
@@ -183,10 +183,12 @@ func calculatePixelMatchRate(filePath1 string, filePath2 string) (float64, error
 func calculateGrayscaleMatchRate(img1 image.Image, img2 image.Image) float64 {
 	bounds1 := img1.Bounds()
 	bounds2 := img2.Bounds()
+	height := bounds1.Dy()
+	width := bounds1.Dx()
 	matchCount := 0
-	totalPixelCount := bounds1.Dx() * bounds1.Dy()
-	for y := 0; y < bounds1.Dy(); y++ {
-		for x := 0; x < bounds1.Dx(); x++ {
+	totalPixelCount := width * height
+	for y := range height {
+		for x := range width {
 			pixel1 := color.GrayModel.Convert(img1.At(bounds1.Min.X+x, bounds1.Min.Y+y)).(color.Gray)
 			pixel2 := color.GrayModel.Convert(img2.At(bounds2.Min.X+x, bounds2.Min.Y+y)).(color.Gray)
 			diff := int(pixel1.Y) - int(pixel2.Y)
@@ -215,9 +217,9 @@ func toGrayMatrix(img image.Image) [][]float64 {
 	width := bounds.Dx()
 	height := bounds.Dy()
 	matrix := make([][]float64, height)
-	for y := 0; y < height; y++ {
+	for y := range height {
 		row := make([]float64, width)
-		for x := 0; x < width; x++ {
+		for x := range width {
 			pixel := color.GrayModel.Convert(img.At(bounds.Min.X+x, bounds.Min.Y+y)).(color.Gray)
 			row[x] = float64(pixel.Y)
 		}
@@ -233,9 +235,9 @@ func applyGaussianBlur(matrix [][]float64) [][]float64 {
 	normalizer := 16.0
 
 	horizontal := make([][]float64, height)
-	for y := 0; y < height; y++ {
+	for y := range height {
 		row := make([]float64, width)
-		for x := 0; x < width; x++ {
+		for x := range width {
 			sum := 0.0
 			for index := -2; index <= 2; index++ {
 				sum += matrix[y][clampIndex(x+index, width)] * weights[index+2]
@@ -246,9 +248,9 @@ func applyGaussianBlur(matrix [][]float64) [][]float64 {
 	}
 
 	vertical := make([][]float64, height)
-	for y := 0; y < height; y++ {
+	for y := range height {
 		row := make([]float64, width)
-		for x := 0; x < width; x++ {
+		for x := range width {
 			sum := 0.0
 			for index := -2; index <= 2; index++ {
 				sum += horizontal[clampIndex(y+index, height)][x] * weights[index+2]
@@ -267,10 +269,10 @@ func applySobel(matrix [][]float64) ([][]float64, [][]float64) {
 	magnitude := make([][]float64, height)
 	direction := make([][]float64, height)
 
-	for y := 0; y < height; y++ {
+	for y := range height {
 		magRow := make([]float64, width)
 		dirRow := make([]float64, width)
-		for x := 0; x < width; x++ {
+		for x := range width {
 			xm1 := clampIndex(x-1, width)
 			xp1 := clampIndex(x+1, width)
 			ym1 := clampIndex(y-1, height)
@@ -340,8 +342,8 @@ func applyHysteresisThreshold(suppressed [][]float64) [][]bool {
 	height := len(suppressed)
 	width := len(suppressed[0])
 	maxValue := 0.0
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			if suppressed[y][x] > maxValue {
 				maxValue = suppressed[y][x]
 			}
@@ -355,9 +357,9 @@ func applyHysteresisThreshold(suppressed [][]float64) [][]bool {
 	low := maxValue * cannyLowThresholdRatio
 
 	state := make([][]uint8, height)
-	for y := 0; y < height; y++ {
+	for y := range height {
 		row := make([]uint8, width)
-		for x := 0; x < width; x++ {
+		for x := range width {
 			value := suppressed[y][x]
 			if value >= high {
 				row[x] = 2
@@ -373,8 +375,8 @@ func applyHysteresisThreshold(suppressed [][]float64) [][]bool {
 		x int
 	}
 	queue := make([]point, 0, width*height/8)
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			if state[y][x] == 2 {
 				queue = append(queue, point{y: y, x: x})
 			}
@@ -405,9 +407,9 @@ func applyHysteresisThreshold(suppressed [][]float64) [][]bool {
 	}
 
 	edges := make([][]bool, height)
-	for y := 0; y < height; y++ {
+	for y := range height {
 		row := make([]bool, width)
-		for x := 0; x < width; x++ {
+		for x := range width {
 			row[x] = state[y][x] == 2
 		}
 		edges[y] = row
