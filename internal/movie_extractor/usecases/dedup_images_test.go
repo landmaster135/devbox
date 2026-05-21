@@ -129,7 +129,7 @@ func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "unique")
 
 	imageA := [][]uint8{{5, 5}, {5, 5}}
-	imageB := [][]uint8{{9, 9}, {9, 9}}
+	imageB := [][]uint8{{20, 20}, {20, 20}}
 
 	mustWritePNG(t, filepath.Join(srcDir, "img01.png"), imageA)
 	mustWritePNG(t, filepath.Join(srcDir, "img02.png"), imageB)
@@ -175,7 +175,7 @@ func TestHandleDedupImages_LogOutput(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !strings.Contains(logBuffer.String(), `照合率: "img02.png" vs "img01.png": 75.00%`) {
+	if !strings.Contains(logBuffer.String(), `照合率: "img02.png" vs "img01.png": 100.00%`) {
 		t.Fatalf("unexpected log output: %s", logBuffer.String())
 	}
 	if strings.Contains(result, "照合率:") {

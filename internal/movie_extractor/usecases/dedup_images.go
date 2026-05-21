@@ -19,6 +19,8 @@ var supportedImageExtensions = map[string]struct{}{
 	".png":  {},
 }
 
+const grayscaleDiffTolerance = 5
+
 // DedupImagesInput は dedup-images 操作の入力です。
 type DedupImagesInput struct {
 	SrcDir    string
@@ -168,7 +170,11 @@ func calculatePixelMatchRate(filePath1 string, filePath2 string) (float64, error
 		for x := 0; x < bounds1.Dx(); x++ {
 			pixel1 := color.GrayModel.Convert(img1.At(bounds1.Min.X+x, bounds1.Min.Y+y)).(color.Gray)
 			pixel2 := color.GrayModel.Convert(img2.At(bounds2.Min.X+x, bounds2.Min.Y+y)).(color.Gray)
-			if pixel1.Y == pixel2.Y {
+			diff := int(pixel1.Y) - int(pixel2.Y)
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff <= grayscaleDiffTolerance {
 				matchCount++
 			}
 		}
