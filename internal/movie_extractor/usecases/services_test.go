@@ -1,170 +1,112 @@
 package usecases
 
 import (
-	"errors"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
+	"bytes"
 	"testing"
 
-	commandExecutor "github.com/landmaster135/devbox/internal/movie_extractor/infrastructures/command_executor"
+	dedupImagesOperation "github.com/landmaster135/devbox/internal/movie_extractor/usecases/operations/dedup_images"
+	extractFramesOperation "github.com/landmaster135/devbox/internal/movie_extractor/usecases/operations/extract_frames"
 )
 
-func TestHandleExtractFrames_Success(t *testing.T) {
-	tempDir := t.TempDir()
-	srcFile := filepath.Join(tempDir, "input.mp4")
-	if err := os.WriteFile(srcFile, []byte("dummy"), 0644); err != nil {
-		t.Fatalf("failed to create source file: %v", err)
-	}
+type extractFramesServiceStub struct {
+	input  extractFramesOperation.Input
+	called bool
+}
 
-	outDir := filepath.Join(tempDir, "frames")
-	mock := &commandExecutor.MockRepository{
-		ExecuteFunc: func(name string, args ...string) ([]byte, error) {
-			return []byte("ok"), nil
-		},
-	}
+func (s *extractFramesServiceStub) Handle(input extractFramesOperation.Input) (string, error) {
+	s.called = true
+	s.input = input
+	return "ok", nil
+}
 
-	service := NewServiceWithExecutor(mock)
-	result, err := service.HandleExtractFrames(ExtractFramesInput{
-		SrcFile:       srcFile,
+type dedupImagesServiceStub struct {
+	input  dedupImagesOperation.Input
+	called bool
+}
+
+func (s *dedupImagesServiceStub) Handle(input dedupImagesOperation.Input) (string, error) {
+	s.called = true
+	s.input = input
+	return "ok", nil
+}
+
+func TestHandleExtractFrames_DelegatesToOperation(t *testing.T) {
+	extractStub := &extractFramesServiceStub{}
+	dedupStub := &dedupImagesServiceStub{}
+	service := newServiceWithOperations(extractStub, dedupStub)
+
+	input := ExtractFramesInput{
+		SrcFile:       "input.mp4",
 		FPS:           3,
 		Quality:       2,
 		StartPosition: "00:00:01.5",
-		OutDir:        outDir,
-	})
-	if err != nil {
+		OutDir:        "frames",
+	}
+	if _, err := service.HandleExtractFrames(input); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(mock.Calls) != 1 {
-		t.Fatalf("expected 1 command call, got %d", len(mock.Calls))
+	if !extractStub.called {
+		t.Fatal("extract operation was not called")
 	}
-	call := mock.Calls[0]
-	if call.Name != "ffmpeg" {
-		t.Fatalf("unexpected command: %s", call.Name)
-	}
-
-	argsText := strings.Join(call.Args, " ")
-	if !strings.Contains(argsText, "-ss 00:00:01.5") {
-		t.Fatalf("start-position argument missing: %s", argsText)
-	}
-	if !strings.Contains(argsText, "-vf fps=3") {
-		t.Fatalf("fps argument missing: %s", argsText)
-	}
-	if !strings.Contains(argsText, "-q:v 2") {
-		t.Fatalf("quality argument missing: %s", argsText)
+	if dedupStub.called {
+		t.Fatal("dedup operation should not be called")
 	}
 
-	if _, err := os.Stat(outDir); err != nil {
-		t.Fatalf("out-dir should be created: %v", err)
+	if extractStub.input.SrcFile != input.SrcFile {
+		t.Fatalf("unexpected src-file: %s", extractStub.input.SrcFile)
 	}
-	if !strings.Contains(result, "フレーム抽出が完了しました") {
-		t.Fatalf("unexpected result: %s", result)
+	if extractStub.input.FPS != input.FPS {
+		t.Fatalf("unexpected fps: %d", extractStub.input.FPS)
+	}
+	if extractStub.input.Quality != input.Quality {
+		t.Fatalf("unexpected quality: %d", extractStub.input.Quality)
+	}
+	if extractStub.input.StartPosition != input.StartPosition {
+		t.Fatalf("unexpected start-position: %s", extractStub.input.StartPosition)
+	}
+	if extractStub.input.OutDir != input.OutDir {
+		t.Fatalf("unexpected out-dir: %s", extractStub.input.OutDir)
 	}
 }
 
-func TestHandleExtractFrames_InputValidation(t *testing.T) {
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
+func TestHandleDedupImages_DelegatesToOperation(t *testing.T) {
+	extractStub := &extractFramesServiceStub{}
+	dedupStub := &dedupImagesServiceStub{}
+	service := newServiceWithOperations(extractStub, dedupStub)
 
-	_, err := service.HandleExtractFrames(ExtractFramesInput{})
-	if err == nil {
-		t.Fatal("expected validation error")
+	logWriter := &bytes.Buffer{}
+	input := DedupImagesInput{
+		SrcDir:    "images",
+		MatchRate: 98,
+		Log:       true,
+		LogWriter: logWriter,
+		OutDir:    "unique-images",
 	}
-	if !strings.Contains(err.Error(), "src-file は必須です") {
+	if _, err := service.HandleDedupImages(input); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-}
 
-func TestHandleExtractFrames_SourceNotFound(t *testing.T) {
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-
-	_, err := service.HandleExtractFrames(ExtractFramesInput{
-		SrcFile: "not-found.mp4",
-		FPS:     1,
-		Quality: 2,
-		OutDir:  t.TempDir(),
-	})
-	if err == nil {
-		t.Fatal("expected error")
+	if !dedupStub.called {
+		t.Fatal("dedup operation was not called")
 	}
-	if !strings.Contains(err.Error(), "入力動画ファイルが存在しません") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestHandleExtractFrames_FFmpegNotFound(t *testing.T) {
-	tempDir := t.TempDir()
-	srcFile := filepath.Join(tempDir, "input.mp4")
-	if err := os.WriteFile(srcFile, []byte("dummy"), 0644); err != nil {
-		t.Fatalf("failed to create source file: %v", err)
+	if extractStub.called {
+		t.Fatal("extract operation should not be called")
 	}
 
-	mock := &commandExecutor.MockRepository{
-		ExecuteFunc: func(name string, args ...string) ([]byte, error) {
-			return nil, exec.ErrNotFound
-		},
+	if dedupStub.input.SrcDir != input.SrcDir {
+		t.Fatalf("unexpected src-dir: %s", dedupStub.input.SrcDir)
 	}
-
-	service := NewServiceWithExecutor(mock)
-	_, err := service.HandleExtractFrames(ExtractFramesInput{
-		SrcFile: srcFile,
-		FPS:     1,
-		Quality: 2,
-		OutDir:  filepath.Join(tempDir, "frames"),
-	})
-	if err == nil {
-		t.Fatal("expected error")
+	if dedupStub.input.MatchRate != input.MatchRate {
+		t.Fatalf("unexpected match-rate: %f", dedupStub.input.MatchRate)
 	}
-	if !strings.Contains(err.Error(), "ffmpeg コマンドが見つかりません") {
-		t.Fatalf("unexpected error: %v", err)
+	if dedupStub.input.Log != input.Log {
+		t.Fatalf("unexpected log flag: %v", dedupStub.input.Log)
 	}
-}
-
-func TestHandleExtractFrames_FFmpegExitError(t *testing.T) {
-	tempDir := t.TempDir()
-	srcFile := filepath.Join(tempDir, "input.mp4")
-	if err := os.WriteFile(srcFile, []byte("dummy"), 0644); err != nil {
-		t.Fatalf("failed to create source file: %v", err)
+	if dedupStub.input.LogWriter != input.LogWriter {
+		t.Fatal("log writer was not passed through")
 	}
-
-	mock := &commandExecutor.MockRepository{
-		ExecuteFunc: func(name string, args ...string) ([]byte, error) {
-			return []byte("ffmpeg failed"), makeExitError(t)
-		},
+	if dedupStub.input.OutDir != input.OutDir {
+		t.Fatalf("unexpected out-dir: %s", dedupStub.input.OutDir)
 	}
-
-	service := NewServiceWithExecutor(mock)
-	_, err := service.HandleExtractFrames(ExtractFramesInput{
-		SrcFile: srcFile,
-		FPS:     1,
-		Quality: 2,
-		OutDir:  filepath.Join(tempDir, "frames"),
-	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if !strings.Contains(err.Error(), "ffmpeg の実行に失敗しました") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(err.Error(), "ffmpeg failed") {
-		t.Fatalf("expected ffmpeg output in error: %v", err)
-	}
-}
-
-func TestBuildFFmpegError_OtherError(t *testing.T) {
-	err := buildFFmpegError(errors.New("boom"), nil)
-	if !strings.Contains(err.Error(), "boom") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func makeExitError(t *testing.T) error {
-	t.Helper()
-	cmd := exec.Command("sh", "-c", "exit 1")
-	err := cmd.Run()
-	if err == nil {
-		t.Fatal("expected exit error")
-	}
-	return err
 }

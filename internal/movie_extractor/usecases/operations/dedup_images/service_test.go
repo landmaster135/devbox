@@ -1,4 +1,4 @@
-package usecases
+package dedupimages
 
 import (
 	"bytes"
@@ -12,11 +12,9 @@ import (
 	"sort"
 	"strings"
 	"testing"
-
-	commandExecutor "github.com/landmaster135/devbox/internal/movie_extractor/infrastructures/command_executor"
 )
 
-func TestHandleDedupImages_ExampleCase(t *testing.T) {
+func TestHandle_ExampleCase(t *testing.T) {
 	srcDir := t.TempDir()
 	outDir := filepath.Join(t.TempDir(), "unique")
 
@@ -31,8 +29,8 @@ func TestHandleDedupImages_ExampleCase(t *testing.T) {
 	mustWriteJPEG(t, filepath.Join(srcDir, "img21.jpg"), group2)
 	mustWriteJPEG(t, filepath.Join(srcDir, "img22.jpg"), group2)
 
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-	result, err := service.HandleDedupImages(DedupImagesInput{
+	service := NewService()
+	result, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 100,
 		OutDir:    outDir,
@@ -51,7 +49,7 @@ func TestHandleDedupImages_ExampleCase(t *testing.T) {
 	}
 }
 
-func TestHandleDedupImages_MatchRateThreshold(t *testing.T) {
+func TestHandle_MatchRateThreshold(t *testing.T) {
 	srcDir := t.TempDir()
 	outDirHigh := filepath.Join(t.TempDir(), "high")
 	outDirLow := filepath.Join(t.TempDir(), "low")
@@ -62,8 +60,8 @@ func TestHandleDedupImages_MatchRateThreshold(t *testing.T) {
 	mustWritePNG(t, filepath.Join(srcDir, "a.png"), base)
 	mustWritePNG(t, filepath.Join(srcDir, "b.png"), partial)
 
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-	if _, err := service.HandleDedupImages(DedupImagesInput{
+	service := NewService()
+	if _, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 80,
 		OutDir:    outDirHigh,
@@ -75,7 +73,7 @@ func TestHandleDedupImages_MatchRateThreshold(t *testing.T) {
 		t.Fatalf("unexpected output with high threshold: %v", highNames)
 	}
 
-	if _, err := service.HandleDedupImages(DedupImagesInput{
+	if _, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 70,
 		OutDir:    outDirLow,
@@ -88,9 +86,9 @@ func TestHandleDedupImages_MatchRateThreshold(t *testing.T) {
 	}
 }
 
-func TestHandleDedupImages_NoImages(t *testing.T) {
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-	_, err := service.HandleDedupImages(DedupImagesInput{
+func TestHandle_NoImages(t *testing.T) {
+	service := NewService()
+	_, err := service.Handle(Input{
 		SrcDir:    t.TempDir(),
 		MatchRate: 90,
 		OutDir:    t.TempDir(),
@@ -103,15 +101,15 @@ func TestHandleDedupImages_NoImages(t *testing.T) {
 	}
 }
 
-func TestHandleDedupImages_DecodeError(t *testing.T) {
+func TestHandle_DecodeError(t *testing.T) {
 	srcDir := t.TempDir()
 	outDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(srcDir, "broken.png"), []byte("not-image"), 0644); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
 
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-	_, err := service.HandleDedupImages(DedupImagesInput{
+	service := NewService()
+	_, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 90,
 		OutDir:    outDir,
@@ -124,7 +122,7 @@ func TestHandleDedupImages_DecodeError(t *testing.T) {
 	}
 }
 
-func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
+func TestHandle_CompareOnlyRecentSelectedImage(t *testing.T) {
 	srcDir := t.TempDir()
 	outDir := filepath.Join(t.TempDir(), "unique")
 
@@ -135,8 +133,8 @@ func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
 	mustWritePNG(t, filepath.Join(srcDir, "img02.png"), imageB)
 	mustWritePNG(t, filepath.Join(srcDir, "img03.png"), imageA)
 
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-	_, err := service.HandleDedupImages(DedupImagesInput{
+	service := NewService()
+	_, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 100,
 		OutDir:    outDir,
@@ -152,7 +150,7 @@ func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
 	}
 }
 
-func TestHandleDedupImages_LogOutput(t *testing.T) {
+func TestHandle_LogOutput(t *testing.T) {
 	srcDir := t.TempDir()
 	outDir := filepath.Join(t.TempDir(), "unique")
 
@@ -162,9 +160,9 @@ func TestHandleDedupImages_LogOutput(t *testing.T) {
 	mustWritePNG(t, filepath.Join(srcDir, "img01.png"), imageA)
 	mustWritePNG(t, filepath.Join(srcDir, "img02.png"), imageB)
 
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
+	service := NewService()
 	logBuffer := &bytes.Buffer{}
-	result, err := service.HandleDedupImages(DedupImagesInput{
+	result, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 100,
 		Log:       true,
@@ -183,15 +181,15 @@ func TestHandleDedupImages_LogOutput(t *testing.T) {
 	}
 }
 
-func TestHandleDedupImages_WhiteBackgroundDifferentEdges(t *testing.T) {
+func TestHandle_WhiteBackgroundDifferentEdges(t *testing.T) {
 	srcDir := t.TempDir()
 	outDir := filepath.Join(t.TempDir(), "unique")
 
 	mustWriteLineImagePNG(t, filepath.Join(srcDir, "img01.png"), 64, 64, 14)
 	mustWriteLineImagePNG(t, filepath.Join(srcDir, "img02.png"), 64, 64, 40)
 
-	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
-	_, err := service.HandleDedupImages(DedupImagesInput{
+	service := NewService()
+	_, err := service.Handle(Input{
 		SrcDir:    srcDir,
 		MatchRate: 80,
 		OutDir:    outDir,

@@ -1,4 +1,4 @@
-package usecases
+package dedupimages
 
 import (
 	"fmt"
@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/landmaster135/devbox/internal/movie_extractor/usecases/common"
 )
 
 var supportedImageExtensions = map[string]struct{}{
@@ -26,8 +28,7 @@ const (
 	cannyLowThresholdRatio  = 0.10
 )
 
-// DedupImagesInput は dedup-images 操作の入力です。
-type DedupImagesInput struct {
+type Input struct {
 	SrcDir    string
 	MatchRate float64
 	Log       bool
@@ -35,8 +36,13 @@ type DedupImagesInput struct {
 	OutDir    string
 }
 
-// HandleDedupImages は画像ディレクトリから重複画像を除去し、代表画像のみを出力します。
-func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
+type Service struct{}
+
+func NewService() *Service {
+	return &Service{}
+}
+
+func (s *Service) Handle(input Input) (string, error) {
 	if strings.TrimSpace(input.SrcDir) == "" {
 		return "", fmt.Errorf("src-dir は必須です")
 	}
@@ -66,13 +72,9 @@ func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
 		return "", fmt.Errorf("src-dir に対象画像が存在しません: %s", input.SrcDir)
 	}
 
-	if err := os.MkdirAll(input.OutDir, 0755); err != nil {
-		return "", fmt.Errorf("出力ディレクトリの作成に失敗しました: %w", err)
-	}
-
-	absOutDir, err := filepath.Abs(input.OutDir)
+	absOutDir, err := common.PrepareOutputDir(input.OutDir)
 	if err != nil {
-		return "", fmt.Errorf("出力ディレクトリの絶対パス変換に失敗しました: %w", err)
+		return "", err
 	}
 
 	selectedImages := make([]string, 0, len(imagePaths))
