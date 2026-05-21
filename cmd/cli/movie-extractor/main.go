@@ -1,5 +1,48 @@
 package main
 
+import (
+	"fmt"
+	"os"
+
+	config "github.com/landmaster135/devbox/internal/movie_extractor/config"
+	usecases "github.com/landmaster135/devbox/internal/movie_extractor/usecases"
+)
+
 func main() {
-  // TODO: implement
+	cfg, err := config.ParseFlags()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+
+	if cfg.Help {
+		config.PrintUsage()
+		return
+	}
+
+	switch cfg.Operation {
+	case "extract-frames":
+		handleExtractFrames(cfg)
+	default:
+		fmt.Fprintf(os.Stderr, "エラー: 未対応の操作です: %s\n", cfg.Operation)
+		config.PrintUsage()
+		os.Exit(1)
+	}
+}
+
+func handleExtractFrames(cfg *config.Config) {
+	service := usecases.NewService()
+	result, err := service.HandleExtractFrames(usecases.ExtractFramesInput{
+		SrcFile:       cfg.SrcFile,
+		FPS:           cfg.FPS,
+		Quality:       cfg.Quality,
+		StartPosition: cfg.StartPosition,
+		OutDir:        cfg.OutDir,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Print(result)
 }
