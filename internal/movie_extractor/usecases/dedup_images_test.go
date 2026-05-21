@@ -183,6 +183,30 @@ func TestHandleDedupImages_LogOutput(t *testing.T) {
 	}
 }
 
+func TestHandleDedupImages_WhiteBackgroundDifferentEdges(t *testing.T) {
+	srcDir := t.TempDir()
+	outDir := filepath.Join(t.TempDir(), "unique")
+
+	mustWriteLineImagePNG(t, filepath.Join(srcDir, "img01.png"), 64, 64, 14)
+	mustWriteLineImagePNG(t, filepath.Join(srcDir, "img02.png"), 64, 64, 40)
+
+	service := NewServiceWithExecutor(&commandExecutor.MockRepository{})
+	_, err := service.HandleDedupImages(DedupImagesInput{
+		SrcDir:    srcDir,
+		MatchRate: 80,
+		OutDir:    outDir,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	names := mustReadFileNames(t, outDir)
+	expected := []string{"img01.png", "img02.png"}
+	if !reflect.DeepEqual(names, expected) {
+		t.Fatalf("unexpected output files: got=%v want=%v", names, expected)
+	}
+}
+
 func mustWritePNG(t *testing.T, path string, pixels [][]uint8) {
 	t.Helper()
 	img := toGrayImage(t, pixels)
@@ -206,6 +230,33 @@ func mustWriteJPEG(t *testing.T, path string, pixels [][]uint8) {
 	defer file.Close()
 	if err := jpeg.Encode(file, img, &jpeg.Options{Quality: 100}); err != nil {
 		t.Fatalf("failed to encode jpeg: %v", err)
+	}
+}
+
+func mustWriteLineImagePNG(t *testing.T, path string, width int, height int, lineX int) {
+	t.Helper()
+	img := image.NewGray(image.Rect(0, 0, width, height))
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			img.SetGray(x, y, color.Gray{Y: 255})
+		}
+	}
+	for y := 0; y < height; y++ {
+		for dx := -1; dx <= 1; dx++ {
+			x := lineX + dx
+			if x >= 0 && x < width {
+				img.SetGray(x, y, color.Gray{Y: 0})
+			}
+		}
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("failed to create file: %v", err)
+	}
+	defer file.Close()
+	if err := png.Encode(file, img); err != nil {
+		t.Fatalf("failed to encode png: %v", err)
 	}
 }
 

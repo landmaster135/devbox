@@ -6,7 +6,7 @@
 - `operation: extract-frames` を実行します。
 - `ffmpeg` を利用して、指定動画から連番 JPEG を出力します。
 - `operation: dedup-images` を実行します。
-- 指定ディレクトリ内の画像を画素一致率で比較し、重複グループごとに1枚だけ出力します。
+- 指定ディレクトリ内の画像を Canny エッジベースの照合率で比較し、重複グループごとに1枚だけ出力します。
 
 ## フラグ一覧
 
@@ -17,7 +17,7 @@
 | `-src-dir` | 条件付き必須 | なし | 入力画像ディレクトリのパス（`dedup-images` で必須） |
 | `-fps` | 任意 | `2` | 1秒あたりに抽出するフレーム数 |
 | `-quality` | 任意 | `2` | JPEG品質 (`1-31`、小さいほど高品質) |
-| `-match-rate` | 条件付き必須 | なし | 重複判定の一致率しきい値 (`0-100`、`dedup-images` で必須) |
+| `-match-rate` | 条件付き必須 | なし | 重複判定の照合率しきい値 (`0-100`、`dedup-images` で必須) |
 | `-log` | 任意 | `false` | `dedup-images` 実行中に照合率ログを標準出力へ表示 |
 | `-start-position` | 任意 | 空 | 抽出開始位置。秒数または `HH:MM:SS[.ms]` |
 | `-out-dir` | 必須 | なし | 抽出画像の出力先ディレクトリ |
@@ -47,7 +47,7 @@
 # 00:00:10.5 から抽出
 ./movie-extractor -operation extract-frames -src-file ./sample.mp4 -start-position 00:00:10.5 -out-dir ./frames
 
-# 画素一致率100%以上を重複と判定
+# エッジ照合率100%以上を重複と判定
 ./movie-extractor -operation dedup-images -src-dir ./images -match-rate 100 -out-dir ./unique-images
 
 # 照合率ログを表示しながら重複除外
@@ -86,7 +86,7 @@
 成功時（dedup-images + log）:
 
 ```text
-照合率: "img02.png" vs "img01.png": 75.00%
+照合率: "img02.png" vs "img01.png": 100.00%
 重複除外が完了しました。
 入力画像数: 2
 出力画像数: 2
