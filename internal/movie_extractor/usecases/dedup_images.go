@@ -69,7 +69,6 @@ func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
 	}
 
 	selectedImages := make([]string, 0, len(imagePaths))
-	writtenNames := make([]string, 0, len(imagePaths))
 
 	for _, candidate := range imagePaths {
 		if _, decodeErr := decodeImage(candidate); decodeErr != nil {
@@ -106,18 +105,17 @@ func (s *Service) HandleDedupImages(input DedupImagesInput) (string, error) {
 			return "", fmt.Errorf("画像コピーに失敗しました (%s -> %s): %w", candidate, destPath, copyErr)
 		}
 		selectedImages = append(selectedImages, candidate)
-		writtenNames = append(writtenNames, filepath.Base(candidate))
 	}
 
 	var result strings.Builder
 	result.WriteString("重複除外が完了しました。\n")
 	result.WriteString(fmt.Sprintf("入力画像数: %d\n", len(imagePaths)))
-	result.WriteString(fmt.Sprintf("出力画像数: %d\n", len(writtenNames)))
+	result.WriteString(fmt.Sprintf("出力画像数: %d\n", len(selectedImages)))
 	result.WriteString(fmt.Sprintf("出力ディレクトリ: %s\n", absOutDir))
-	if len(writtenNames) > 0 {
+	if len(selectedImages) > 0 {
 		result.WriteString("出力ファイル:\n")
-		for _, name := range writtenNames {
-			result.WriteString(fmt.Sprintf("- %s\n", name))
+		for _, selectedImage := range selectedImages {
+			result.WriteString(fmt.Sprintf("- %s\n", filepath.Base(selectedImage)))
 		}
 	}
 
