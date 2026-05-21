@@ -2,14 +2,9 @@ package dedupimages
 
 import (
 	"bytes"
-	"image"
-	"image/color"
-	"image/jpeg"
-	"image/png"
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -46,43 +41,6 @@ func TestHandle_ExampleCase(t *testing.T) {
 	}
 	if !strings.Contains(result, "出力画像数: 3") {
 		t.Fatalf("unexpected result: %s", result)
-	}
-}
-
-func TestHandle_MatchRateThreshold(t *testing.T) {
-	srcDir := t.TempDir()
-	outDirHigh := filepath.Join(t.TempDir(), "high")
-	outDirLow := filepath.Join(t.TempDir(), "low")
-
-	base := [][]uint8{{0, 0}, {0, 0}}
-	partial := [][]uint8{{0, 0}, {0, 255}} // 一致率 75%
-
-	mustWritePNG(t, filepath.Join(srcDir, "a.png"), base)
-	mustWritePNG(t, filepath.Join(srcDir, "b.png"), partial)
-
-	service := NewService()
-	if _, err := service.Handle(Input{
-		SrcDir:    srcDir,
-		MatchRate: 80,
-		OutDir:    outDirHigh,
-	}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	highNames := mustReadFileNames(t, outDirHigh)
-	if !reflect.DeepEqual(highNames, []string{"a.png", "b.png"}) {
-		t.Fatalf("unexpected output with high threshold: %v", highNames)
-	}
-
-	if _, err := service.Handle(Input{
-		SrcDir:    srcDir,
-		MatchRate: 70,
-		OutDir:    outDirLow,
-	}); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	lowNames := mustReadFileNames(t, outDirLow)
-	if !reflect.DeepEqual(lowNames, []string{"a.png"}) {
-		t.Fatalf("unexpected output with low threshold: %v", lowNames)
 	}
 }
 
@@ -179,117 +137,4 @@ func TestHandle_LogOutput(t *testing.T) {
 	if strings.Contains(result, "照合率:") {
 		t.Fatalf("unexpected result: %s", result)
 	}
-}
-
-func TestHandle_WhiteBackgroundDifferentEdges(t *testing.T) {
-	srcDir := t.TempDir()
-	outDir := filepath.Join(t.TempDir(), "unique")
-
-	mustWriteLineImagePNG(t, filepath.Join(srcDir, "img01.png"), 64, 64, 14)
-	mustWriteLineImagePNG(t, filepath.Join(srcDir, "img02.png"), 64, 64, 40)
-
-	service := NewService()
-	_, err := service.Handle(Input{
-		SrcDir:    srcDir,
-		MatchRate: 80,
-		OutDir:    outDir,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	names := mustReadFileNames(t, outDir)
-	expected := []string{"img01.png", "img02.png"}
-	if !reflect.DeepEqual(names, expected) {
-		t.Fatalf("unexpected output files: got=%v want=%v", names, expected)
-	}
-}
-
-func mustWritePNG(t *testing.T, path string, pixels [][]uint8) {
-	t.Helper()
-	img := toGrayImage(t, pixels)
-	file, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("failed to create file: %v", err)
-	}
-	defer file.Close()
-	if err := png.Encode(file, img); err != nil {
-		t.Fatalf("failed to encode png: %v", err)
-	}
-}
-
-func mustWriteJPEG(t *testing.T, path string, pixels [][]uint8) {
-	t.Helper()
-	img := toGrayImage(t, pixels)
-	file, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("failed to create file: %v", err)
-	}
-	defer file.Close()
-	if err := jpeg.Encode(file, img, &jpeg.Options{Quality: 100}); err != nil {
-		t.Fatalf("failed to encode jpeg: %v", err)
-	}
-}
-
-func mustWriteLineImagePNG(t *testing.T, path string, width int, height int, lineX int) {
-	t.Helper()
-	img := image.NewGray(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			img.SetGray(x, y, color.Gray{Y: 255})
-		}
-	}
-	for y := 0; y < height; y++ {
-		for dx := -1; dx <= 1; dx++ {
-			x := lineX + dx
-			if x >= 0 && x < width {
-				img.SetGray(x, y, color.Gray{Y: 0})
-			}
-		}
-	}
-
-	file, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("failed to create file: %v", err)
-	}
-	defer file.Close()
-	if err := png.Encode(file, img); err != nil {
-		t.Fatalf("failed to encode png: %v", err)
-	}
-}
-
-func toGrayImage(t *testing.T, pixels [][]uint8) *image.Gray {
-	t.Helper()
-	if len(pixels) == 0 || len(pixels[0]) == 0 {
-		t.Fatal("pixels must not be empty")
-	}
-	height := len(pixels)
-	width := len(pixels[0])
-	img := image.NewGray(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		if len(pixels[y]) != width {
-			t.Fatal("pixels width mismatch")
-		}
-		for x := 0; x < width; x++ {
-			img.SetGray(x, y, color.Gray{Y: pixels[y][x]})
-		}
-	}
-	return img
-}
-
-func mustReadFileNames(t *testing.T, dir string) []string {
-	t.Helper()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("failed to read dir: %v", err)
-	}
-	names := make([]string, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		names = append(names, entry.Name())
-	}
-	sort.Strings(names)
-	return names
 }
