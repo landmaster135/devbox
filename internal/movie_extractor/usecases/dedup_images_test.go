@@ -21,8 +21,8 @@ func TestHandleDedupImages_ExampleCase(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "unique")
 
 	group1 := [][]uint8{{10, 10}, {10, 10}}
-	unique := [][]uint8{{20, 20}, {20, 20}}
-	group2 := [][]uint8{{30, 30}, {30, 30}}
+	unique := [][]uint8{{120, 120}, {120, 120}}
+	group2 := [][]uint8{{240, 240}, {240, 240}}
 
 	mustWriteJPEG(t, filepath.Join(srcDir, "img01.jpg"), group1)
 	mustWriteJPEG(t, filepath.Join(srcDir, "img02.jpg"), group1)
@@ -129,7 +129,7 @@ func TestHandleDedupImages_CompareOnlyRecentSelectedImage(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "unique")
 
 	imageA := [][]uint8{{5, 5}, {5, 5}}
-	imageB := [][]uint8{{20, 20}, {20, 20}}
+	imageB := [][]uint8{{80, 80}, {80, 80}}
 
 	mustWritePNG(t, filepath.Join(srcDir, "img01.png"), imageA)
 	mustWritePNG(t, filepath.Join(srcDir, "img02.png"), imageB)

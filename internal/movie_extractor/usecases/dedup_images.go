@@ -19,7 +19,7 @@ var supportedImageExtensions = map[string]struct{}{
 	".png":  {},
 }
 
-const grayscaleDiffTolerance = 8
+const grayscaleDiffTolerance = 20
 
 // DedupImagesInput は dedup-images 操作の入力です。
 type DedupImagesInput struct {
