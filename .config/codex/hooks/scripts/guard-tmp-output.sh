@@ -57,6 +57,45 @@ guard_go_temp_envs() {
   done
 }
 
+extract_go_test_compile_output() {
+  awk '
+    {
+      for (i = 1; i <= NF; i++) {
+        if ($i == "-o") {
+          if (i + 1 <= NF) {
+            print $(i + 1)
+          }
+          exit
+        }
+        if ($i ~ /^-o=.+/) {
+          sub(/^-o=/, "", $i)
+          print $i
+          exit
+        }
+      }
+    }
+  ' <<<"$cmd"
+}
+
+guard_go_test_compile_output() {
+  [[ "$cmd" =~ (^|[[:space:];&|])go[[:space:]]+test([[:space:]][^;&|]*)?[[:space:]]-c([[:space:]]|$) ]] || return 0
+
+  local output_path
+  output_path="$(extract_go_test_compile_output)"
+
+  if [[ -z "$output_path" ]]; then
+    echo "Blocked: go test -c must specify -o under project .agents directory." >&2
+    echo "Project root: $project_root" >&2
+    echo "Allowed root: $allowed_root" >&2
+    exit 2
+  fi
+
+  block_if_outside_agents "$output_path"
+}
+
+guard_go_temp_envs
+guard_go_test_compile_output
+
 # For command block
 block_tmp_cache_args_for_command() {
   local command_name="$1"
@@ -77,8 +116,8 @@ block_tmp_cache_args_for_command() {
       | sed -E "s/(^|[;&|[:space:]])${command_name}[[:space:]]+//" \
       | tr ' ' '\n' \
       | grep -v '^-'
-    )
-  }
+  )
+}
 
 block_tmp_cache_args_for_command "mkdir"
 block_tmp_cache_args_for_command "touch"
