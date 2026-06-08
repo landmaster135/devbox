@@ -36,24 +36,49 @@ block_if_outside_agents() {
   fi
 }
 
-for key in TMPDIR GOTMPDIR GOCACHE; do
-	value="$(
-    grep -oE "(^|[[:space:]])${key}=[^[:space:]]+" <<<"$cmd" \
-      | head -1 \
-      | sed -E "s/^[[:space:]]*${key}=//" \
-      || true
-  )"
-  if [[ -n "$value" ]]; then
-    block_if_outside_agents "$value"
-  fi
-done
+# For Go test caching
+is_go_command() {
+  [[ "$cmd" =~ (^|[[:space:];&|])go[[:space:]]+(test|tool|build|run|vet|generate|list)([[:space:]]|$) ]]
+}
 
-while read -r path; do
-  [[ -z "$path" ]] && continue
-  block_if_outside_agents "$path"
-done < <(
-  grep -oE 'mkdir[[:space:]]+(-p[[:space:]]+)?[^;&|]+' <<<"$cmd" \
-    | sed -E 's/^mkdir[[:space:]]+(-p[[:space:]]+)?//' \
-    | tr ' ' '\n' \
-    | grep -v '^-'
-)
+guard_go_temp_envs() {
+  is_go_command || return 0
+
+  for key in TMPDIR GOTMPDIR GOCACHE; do
+    value="$(
+      grep -oE "(^|[[:space:]])${key}=[^[:space:]]+" <<<"$cmd" \
+        | head -1 \
+        | sed -E "s/^[[:space:]]*${key}=//" \
+        || true
+    )"
+
+    [[ -z "$value" ]] && continue
+    block_if_outside_agents "$value"
+  done
+}
+
+# For command block
+block_tmp_cache_args_for_command() {
+  local command_name="$1"
+
+  while read -r path; do
+    [[ -z "$path" ]] && continue
+
+    local lower_path
+    lower_path="$(tr '[:upper:]' '[:lower:]' <<<"$path")"
+
+    if [[ "$lower_path" == *tmp* || "$lower_path" == *cache* ]]; then
+      echo "Blocked: ${command_name} arguments must not contain tmp or cache." >&2
+      echo "Rejected argument: $path" >&2
+      exit 2
+    fi
+  done < <(
+    grep -oE "(^|[;&|[:space:]])${command_name}[[:space:]][^;&|]+" <<<"$cmd" \
+      | sed -E "s/(^|[;&|[:space:]])${command_name}[[:space:]]+//" \
+      | tr ' ' '\n' \
+      | grep -v '^-'
+    )
+  }
+
+block_tmp_cache_args_for_command "mkdir"
+block_tmp_cache_args_for_command "touch"
