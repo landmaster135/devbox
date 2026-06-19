@@ -26,6 +26,8 @@ func (m *MockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 type MockFileSystem struct {
 	ReadFileFunc           func(filePath string) ([]byte, error)
 	ReadAttachmentFileFunc func(filePath string) (*infrastructures.AttachmentFile, error)
+	EnsureDirectoryFunc    func(dirPath string) (string, error)
+	WriteFileFunc          func(filePath string, content []byte) error
 }
 
 func (m *MockFileSystem) ReadFile(filePath string) ([]byte, error) {
@@ -40,6 +42,20 @@ func (m *MockFileSystem) ReadAttachmentFile(filePath string) (*infrastructures.A
 		return m.ReadAttachmentFileFunc(filePath)
 	}
 	return nil, nil
+}
+
+func (m *MockFileSystem) EnsureDirectory(dirPath string) (string, error) {
+	if m.EnsureDirectoryFunc != nil {
+		return m.EnsureDirectoryFunc(dirPath)
+	}
+	return dirPath, nil
+}
+
+func (m *MockFileSystem) WriteFile(filePath string, content []byte) error {
+	if m.WriteFileFunc != nil {
+		return m.WriteFileFunc(filePath, content)
+	}
+	return nil
 }
 
 func ReadBodyAsMap(t *testing.T, body io.ReadCloser) map[string]any {

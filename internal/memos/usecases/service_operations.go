@@ -157,3 +157,12 @@ func (s *Service) AddMemoRelations(
 ) (*AddMemoRelationsOutput, error) {
 	return s.addMemoRelationsOp.Execute(ctx, memo, relatedMemos, replaces)
 }
+
+// ListUserTags は GetUserStats API から tagCount を取得し、JSON ファイルへ保存する。
+func (s *Service) ListUserTags(
+	ctx context.Context,
+	userID string,
+	outputDir string,
+) (*ListUserTagsOutput, error) {
+	return s.listUserTagsOp.Execute(ctx, userID, outputDir)
+}

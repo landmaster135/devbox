@@ -20,6 +20,7 @@ const (
 	OperationPatchFiles        = "patch-files"
 	OperationListMemoRelations = "list-memo-relations"
 	OperationAddMemoRelations  = "add-memo-relations"
+	OperationListUserTags      = "list-user-tags"
 
 	defaultTimeoutSeconds = 30
 	defaultPageSize       = 20
@@ -36,6 +37,7 @@ var supportedOperations = []string{
 	OperationPatchFiles,
 	OperationListMemoRelations,
 	OperationAddMemoRelations,
+	OperationListUserTags,
 }
 
 var supportedVisibility = map[string]struct{}{
@@ -59,8 +61,10 @@ type Config struct {
 	TimeoutSeconds int
 	Help           bool
 
-	MemoID string
-	Memo   string
+	MemoID    string
+	Memo      string
+	UserID    string
+	OutputDir string
 
 	Content     string
 	ContentFile string
@@ -116,6 +120,8 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 
 	fs.StringVar(&cfg.MemoID, "memo-id", "", "create-memo で作成する memoId（任意）")
 	fs.StringVar(&cfg.Memo, "memo", "", "get-memo/delete-memo/update-memo/patch-files/list-memo-relations/add-memo-relations で対象にする memo 識別子")
+	fs.StringVar(&cfg.UserID, "user-id", "", "list-user-tags で統計取得対象にする user ID")
+	fs.StringVar(&cfg.OutputDir, "output-dir", "", "list-user-tags で tagCount JSON を出力するディレクトリ")
 	fs.StringVar(&cfg.Content, "content", "", "create-memo/update-memo で設定する本文")
 	fs.StringVar(&cfg.ContentFile, "content-file", "", "create-memo/update-memo で設定する本文ファイルのパス")
 	fs.StringVar(&cfg.Visibility, "visibility", "", "visibility（PRIVATE/PROTECTED/PUBLIC）")
@@ -157,6 +163,8 @@ func ParseFlagsFromArgs(args []string) (*Config, error) {
 	cfg.APIToken = strings.TrimSpace(cfg.APIToken)
 	cfg.MemoID = strings.TrimSpace(cfg.MemoID)
 	cfg.Memo = strings.TrimSpace(cfg.Memo)
+	cfg.UserID = strings.TrimSpace(cfg.UserID)
+	cfg.OutputDir = strings.TrimSpace(cfg.OutputDir)
 	cfg.Content = strings.TrimSpace(cfg.Content)
 	cfg.ContentFile = strings.TrimSpace(cfg.ContentFile)
 	cfg.Visibility = strings.ToUpper(strings.TrimSpace(cfg.Visibility))
@@ -286,6 +294,13 @@ func validateConfig(cfg *Config) error {
 		if !hasNonEmptyCSVEntries(cfg.RelatedMemos) {
 			return fmt.Errorf("add-memo-relations 操作には related-memos パラメータが必要です")
 		}
+	case OperationListUserTags:
+		if cfg.UserID == "" {
+			return fmt.Errorf("list-user-tags 操作には user-id パラメータが必要です")
+		}
+		if cfg.OutputDir == "" {
+			return fmt.Errorf("list-user-tags 操作には output-dir パラメータが必要です")
+		}
 	}
 
 	return nil
@@ -364,6 +379,8 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        -memo (必須)\n\n")
 	fmt.Fprintf(os.Stderr, "  add-memo-relations\n")
 	fmt.Fprintf(os.Stderr, "        -memo (必須), -related-memos (必須), -replaces (任意: デフォルト false)\n\n")
+	fmt.Fprintf(os.Stderr, "  list-user-tags\n")
+	fmt.Fprintf(os.Stderr, "        -user-id (必須), -output-dir (必須: tagCount JSON の出力先ディレクトリ)\n\n")
 
 	fmt.Fprintf(os.Stderr, "例:\n")
 	fmt.Fprintf(os.Stderr, "  %s -operation=create-memo -base-url=https://memos.example.com -api-token=token -content='hello'\n", os.Args[0])
@@ -384,6 +401,7 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "  %s -operation=patch-files -base-url=https://memos.example.com -api-token=token -memo=abc123 -files=./a.png,./b.pdf -replaces=false\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=list-memo-relations -base-url=https://memos.example.com -api-token=token -memo=abc123\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "  %s -operation=add-memo-relations -base-url=https://memos.example.com -api-token=token -memo=abc123 -related-memos=def456,ghi789 -replaces=false\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "  %s -operation=list-user-tags -base-url=https://memos.example.com -api-token=token -user-id=1 -output-dir=./tmp\n", os.Args[0])
 }
 
 func normalizeTagValue(tag string) string {

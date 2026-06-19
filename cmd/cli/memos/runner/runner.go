@@ -111,6 +111,8 @@ func Run(args []string, stdout, stderr io.Writer, factory serviceFactory) int {
 		result, err = service.ListMemoRelations(ctx, conf.Memo)
 	case cfg.OperationAddMemoRelations:
 		result, err = service.AddMemoRelations(ctx, conf.Memo, splitByComma(conf.RelatedMemos), conf.Replaces)
+	case cfg.OperationListUserTags:
+		result, err = service.ListUserTags(ctx, conf.UserID, conf.OutputDir)
 	default:
 		fmt.Fprintf(stderr, "エラー: 未対応の operation です: %s\n", conf.Operation)
 		return 1

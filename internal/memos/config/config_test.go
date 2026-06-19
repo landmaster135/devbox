@@ -95,6 +95,59 @@ func TestConfig_ParseFlags_ListMemosPageSizeZero_Error(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlags_ListUserTags_Normal(t *testing.T) {
+	cfg, err := ParseFlagsFromArgs([]string{
+		"-operation=list-user-tags",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-user-id= 1 ",
+		"-output-dir= ./tmp ",
+	})
+	if err != nil {
+		t.Fatalf("ParseFlagsFromArgs() error = %v", err)
+	}
+
+	if cfg.Operation != OperationListUserTags {
+		t.Fatalf("operation = %s, want %s", cfg.Operation, OperationListUserTags)
+	}
+	if cfg.UserID != "1" {
+		t.Fatalf("userID = %q, want 1", cfg.UserID)
+	}
+	if cfg.OutputDir != "./tmp" {
+		t.Fatalf("outputDir = %q, want ./tmp", cfg.OutputDir)
+	}
+}
+
+func TestConfig_ParseFlags_ListUserTagsRequiresUserID_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-user-tags",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-output-dir=./tmp",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "user-id パラメータ") {
+		t.Fatalf("error = %v, want user-id パラメータ", err)
+	}
+}
+
+func TestConfig_ParseFlags_ListUserTagsRequiresOutputDir_Error(t *testing.T) {
+	_, err := ParseFlagsFromArgs([]string{
+		"-operation=list-user-tags",
+		"-base-url=https://memos.example.com",
+		"-api-token=test-token",
+		"-user-id=1",
+	})
+	if err == nil {
+		t.Fatal("ParseFlagsFromArgs() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "output-dir パラメータ") {
+		t.Fatalf("error = %v, want output-dir パラメータ", err)
+	}
+}
+
 func TestConfig_ParseFlags_ListMemosWithFilter_Normal(t *testing.T) {
 	cfg, err := ParseFlagsFromArgs([]string{
 		"-operation=list-memos",
