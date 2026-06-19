@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ func TestRun_ListMemosWithFilter_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -86,7 +86,7 @@ func TestRun_ListMemosWithAnyContents_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -135,7 +135,7 @@ func TestRun_ListMemosWithAnyTags_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -169,7 +169,7 @@ func TestRun_ListMemosWithAnyTagsAndFilter_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -205,7 +205,7 @@ func TestRun_ListMemosWithAllContents_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -251,7 +251,7 @@ func TestRun_ListMemosWithAllTags_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -294,7 +294,7 @@ func TestRun_ListMemosWithAllTagsAndFilter_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -335,7 +335,7 @@ func TestRun_ListMemosWithExcludedTags_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	callCount := 0
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -415,7 +415,7 @@ func TestRun_ListMemosWithAnyTagsAndExcludedTags_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	callCount := 0
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memos",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

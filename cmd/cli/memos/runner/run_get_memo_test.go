@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ func TestRun_GetMemoError_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=get-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

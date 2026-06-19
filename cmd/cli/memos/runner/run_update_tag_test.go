@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ func TestRun_UpdateTag_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=update-tag",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ func TestRun_ListAttachments_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-attachments",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

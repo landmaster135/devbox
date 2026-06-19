@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ func TestRun_CreateMemo_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 	called := false
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=create-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -62,7 +62,7 @@ func TestRun_CreateMemoWithContentFile_Normal(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=create-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -95,7 +95,7 @@ func TestRun_CreateMemoWithMissingContentFile_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=create-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

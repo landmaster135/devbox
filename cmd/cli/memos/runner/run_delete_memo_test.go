@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ func TestRun_DeleteMemo_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=delete-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -52,7 +52,7 @@ func TestRun_DeleteMemo_ServiceError_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=delete-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -77,7 +77,7 @@ func TestRun_DeleteMemo_DefaultForceFalse_Normal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=delete-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

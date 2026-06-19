@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ func TestRun_PatchFiles_ReplacesTrue_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=patch-files",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -60,7 +60,7 @@ func TestRun_PatchFiles_ReplacesFalse_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=patch-files",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -96,7 +96,7 @@ func TestRun_PatchFiles_ServiceError_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=patch-files",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

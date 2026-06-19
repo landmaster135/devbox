@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ func TestRun_ListMemoRelations_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=list-memo-relations",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -58,7 +58,7 @@ func TestRun_AddMemoRelations_ReplacesFalse_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=add-memo-relations",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -106,7 +106,7 @@ func TestRun_AddMemoRelations_ReplacesTrue_Normal(t *testing.T) {
 	var stderr bytes.Buffer
 
 	var called bool
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=add-memo-relations",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -137,7 +137,7 @@ func TestRun_AddMemoRelations_ServiceError_Error(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=add-memo-relations",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",

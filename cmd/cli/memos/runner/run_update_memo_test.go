@@ -1,4 +1,4 @@
-package main
+package runner
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ func TestRun_UpdateMemo_Normal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=update-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
@@ -51,7 +51,7 @@ func TestRun_UpdateMemo_UpdatesTime_Normal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run([]string{
+	exitCode := Run([]string{
 		"-operation=update-memo",
 		"-base-url=https://memos.example.com",
 		"-api-token=test-token",
