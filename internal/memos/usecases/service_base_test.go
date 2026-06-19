@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 func TestNewService_DefaultDependencies_Normal(t *testing.T) {

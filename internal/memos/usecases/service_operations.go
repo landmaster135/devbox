@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // CreateMemo は CreateMemo API を呼び出す。

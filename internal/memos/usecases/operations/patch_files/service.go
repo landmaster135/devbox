@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // AttachmentCreator は添付作成契約。

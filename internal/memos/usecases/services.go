@@ -6,7 +6,7 @@ import (
 	"time"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 	addmemorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/add_memo_relations"
 	attachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/attachments"
 	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"

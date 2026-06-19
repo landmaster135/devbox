@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // Service は get_memo operation を扱う。

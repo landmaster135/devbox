@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // Service は attachments operation 群を扱う。

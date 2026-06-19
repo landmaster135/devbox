@@ -1,6 +1,8 @@
 package usecases
 
-import "context"
+import (
+	"context"
+)
 
 // MemoService は Memos ユースケースの公開契約。
 type MemoService interface {

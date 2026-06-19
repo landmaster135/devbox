@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 const (
