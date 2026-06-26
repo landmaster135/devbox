@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -278,14 +279,15 @@ func TestNewConfig_Error(t *testing.T) {
 func TestParseFlagsWithParser_Normal(t *testing.T) {
 	tests := []struct {
 		name     string
+		token    string
 		setup    func(*MockFlagParser)
 		expected *Config
 	}{
 		{
-			name: "基本的なパラメータ",
+			name:  "基本的なパラメータ",
+			token: "test-token",
 			setup: func(m *MockFlagParser) {
 				m.SetStringValue("operation", "list-issues")
-				m.SetStringValue("token", "test-token")
 				m.SetStringValue("owner", "test-owner")
 				m.SetStringValue("repo", "test-repo")
 			},
@@ -302,10 +304,10 @@ func TestParseFlagsWithParser_Normal(t *testing.T) {
 			},
 		},
 		{
-			name: "短縮形パラメータ",
+			name:  "短縮形パラメータ",
+			token: "test-token",
 			setup: func(m *MockFlagParser) {
 				m.SetStringValue("o", "list-issues")
-				m.SetStringValue("t", "test-token")
 				m.SetStringValue("ow", "test-owner")
 				m.SetStringValue("r", "test-repo")
 			},
@@ -334,6 +336,8 @@ func TestParseFlagsWithParser_Normal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envKeyGitHubToken, tt.token)
+
 			mockParser := NewMockFlagParser()
 			tt.setup(mockParser)
 
@@ -363,4 +367,39 @@ func TestParseFlagsWithParser_Normal(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseFlagsWithParser_Error はParseFlagsWithParserのエラー系テスト
+func TestParseFlagsWithParser_Error(t *testing.T) {
+	t.Run("GitHubトークン環境変数が空", func(t *testing.T) {
+		t.Setenv(envKeyGitHubToken, "")
+
+		mockParser := NewMockFlagParser()
+		mockParser.SetStringValue("operation", "list-issues")
+		mockParser.SetStringValue("owner", "test-owner")
+		mockParser.SetStringValue("repo", "test-repo")
+
+		_, err := ParseFlagsWithParser(mockParser)
+		if err == nil {
+			t.Fatal("ParseFlagsWithParser() error = nil, want error")
+		}
+		if !strings.Contains(err.Error(), envKeyGitHubToken) {
+			t.Fatalf("ParseFlagsWithParser() error = %v, want %s", err, envKeyGitHubToken)
+		}
+	})
+
+	t.Run("ヘルプフラグはGitHubトークン環境変数が空でも成功", func(t *testing.T) {
+		t.Setenv(envKeyGitHubToken, "")
+
+		mockParser := NewMockFlagParser()
+		mockParser.SetBoolValue("help", true)
+
+		result, err := ParseFlagsWithParser(mockParser)
+		if err != nil {
+			t.Fatalf("ParseFlagsWithParser() error = %v, want nil", err)
+		}
+		if !result.Help {
+			t.Fatal("ParseFlagsWithParser().Help = false, want true")
+		}
+	})
 }
