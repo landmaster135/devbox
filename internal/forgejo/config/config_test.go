@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	flagParser "github.com/landmaster135/devbox/internal/forgejo/infrastructures/flag_parser"
@@ -95,7 +96,7 @@ func TestNewConfig_Error(t *testing.T) {
 			host:      "",
 			username:  "user",
 			token:     "token",
-			wantMsg:   "forgejo-host が指定されていません",
+			wantMsg:   "FORGEJO_HOST が指定されていません",
 		},
 		{
 			name:      "username missing",
@@ -103,7 +104,7 @@ func TestNewConfig_Error(t *testing.T) {
 			host:      "https://example.com",
 			username:  "",
 			token:     "token",
-			wantMsg:   "forgejo-username が指定されていません",
+			wantMsg:   "FORGEJO_USERNAME が指定されていません",
 		},
 		{
 			name:      "token missing",
@@ -111,7 +112,7 @@ func TestNewConfig_Error(t *testing.T) {
 			host:      "https://example.com",
 			username:  "user",
 			token:     "",
-			wantMsg:   "forgejo-token が指定されていません",
+			wantMsg:   "FORGEJO_TOKEN が指定されていません",
 		},
 	}
 
@@ -129,14 +130,13 @@ func TestNewConfig_Error(t *testing.T) {
 }
 
 func TestParseFlagsWithParser_ResolveOperationFromArgs(t *testing.T) {
+	setForgejoEnv(t, "https://example.com", "from-env", "token")
+
 	parser := flagParser.NewMockFlagParser()
 	parser.SetArgs([]string{"repo", "list"})
 	parser.SetBoolFlag("help", false)
 	parser.SetBoolFlag("h", false)
 	parser.SetBoolFlag("json", false)
-	parser.SetStringFlag("forgejo-host", "https://example.com")
-	parser.SetStringFlag("forgejo-username", "from-args")
-	parser.SetStringFlag("forgejo-token", "token")
 
 	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
@@ -144,6 +144,21 @@ func TestParseFlagsWithParser_ResolveOperationFromArgs(t *testing.T) {
 	}
 	if cfg.Operation != "repo list" {
 		t.Fatalf("Operation = %s, want repo list", cfg.Operation)
+	}
+}
+
+func TestParseFlagsWithParser_ResolveOperationFromFlag(t *testing.T) {
+	setForgejoEnv(t, "https://example.com", "from-env", "token")
+
+	parser := flagParser.NewMockFlagParser()
+	parser.SetStringFlag("operation", "issue list")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("ParseFlagsWithParser() error = %v", err)
+	}
+	if cfg.Operation != "issue list" {
+		t.Fatalf("Operation = %s, want issue list", cfg.Operation)
 	}
 }
 
@@ -161,19 +176,21 @@ func TestParseFlagsWithParser_Help(t *testing.T) {
 }
 
 func TestParseFlagsWithParser_UsesDotEnv(t *testing.T) {
+	unsetForgejoEnv(t)
 	tmpDir := t.TempDir()
 	dotenvPath := filepath.Join(tmpDir, ".env")
-	content := []byte("forgejo-host=https://example.com\nforgejo-username=env-user\nforgejo-token=env-token\n")
+	content := []byte("FORGEJO_HOST=https://example.com\nFORGEJO_USERNAME=env-user\nFORGEJO_TOKEN=env-token\n")
 	if err := os.WriteFile(dotenvPath, content, 0o600); err != nil {
 		t.Fatalf("failed to write .env: %v", err)
 	}
+	chdirForTest(t, tmpDir)
 
 	parser := flagParser.NewMockFlagParser()
 	parser.SetArgs([]string{"issue", "list"})
 	parser.SetBoolFlag("json", false)
-	cfg, err := ParseFlagsWithParserWithEnvFile(parser, dotenvPath)
+	cfg, err := ParseFlagsWithParser(parser)
 	if err != nil {
-		t.Fatalf("ParseFlagsWithParserWithEnvFile() error = %v", err)
+		t.Fatalf("ParseFlagsWithParser() error = %v", err)
 	}
 	if cfg.Operation != "issue list" {
 		t.Fatalf("Operation = %s, want issue list", cfg.Operation)
@@ -192,15 +209,67 @@ func TestParseFlagsWithParser_UsesDotEnv(t *testing.T) {
 	}
 }
 
+func TestParseFlagsWithParser_UsesEnvironmentVariables(t *testing.T) {
+	setForgejoEnv(t, "https://env.example.com", "env-user", "env-token")
+
+	parser := flagParser.NewMockFlagParser()
+	parser.SetArgs([]string{"repo", "list"})
+	parser.SetBoolFlag("json", true)
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("ParseFlagsWithParser() error = %v", err)
+	}
+	if cfg.Host != "https://env.example.com" {
+		t.Fatalf("Host = %s, want https://env.example.com", cfg.Host)
+	}
+	if cfg.Username != "env-user" {
+		t.Fatalf("Username = %s, want env-user", cfg.Username)
+	}
+	if cfg.Token != "env-token" {
+		t.Fatalf("Token = %s, want env-token", cfg.Token)
+	}
+	if !cfg.JSON {
+		t.Fatalf("JSON should be true")
+	}
+}
+
+func TestParseFlagsWithParser_EnvironmentOverridesDotEnv(t *testing.T) {
+	setForgejoEnv(t, "https://env.example.com", "env-user", "env-token")
+	tmpDir := t.TempDir()
+	dotenvPath := filepath.Join(tmpDir, ".env")
+	content := []byte("FORGEJO_HOST=https://dotenv.example.com\nFORGEJO_USERNAME=dotenv-user\nFORGEJO_TOKEN=dotenv-token\n")
+	if err := os.WriteFile(dotenvPath, content, 0o600); err != nil {
+		t.Fatalf("failed to write .env: %v", err)
+	}
+	chdirForTest(t, tmpDir)
+
+	parser := flagParser.NewMockFlagParser()
+	parser.SetArgs([]string{"repo", "list"})
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("ParseFlagsWithParser() error = %v", err)
+	}
+	if cfg.Host != "https://env.example.com" {
+		t.Fatalf("Host = %s, want https://env.example.com", cfg.Host)
+	}
+	if cfg.Username != "env-user" {
+		t.Fatalf("Username = %s, want env-user", cfg.Username)
+	}
+	if cfg.Token != "env-token" {
+		t.Fatalf("Token = %s, want env-token", cfg.Token)
+	}
+}
+
 func TestParseFlagsWithParser_CustomReposWorkers(t *testing.T) {
+	setForgejoEnv(t, "https://example.com", "user", "token")
+
 	parser := flagParser.NewMockFlagParser()
 	parser.SetArgs([]string{"repo", "list"})
 	parser.SetBoolFlag("help", false)
 	parser.SetBoolFlag("h", false)
 	parser.SetBoolFlag("json", false)
-	parser.SetStringFlag("forgejo-host", "https://example.com")
-	parser.SetStringFlag("forgejo-username", "user")
-	parser.SetStringFlag("forgejo-token", "token")
 	parser.SetStringFlag("repos-workers", "8")
 
 	cfg, err := ParseFlagsWithParser(parser)
@@ -213,14 +282,13 @@ func TestParseFlagsWithParser_CustomReposWorkers(t *testing.T) {
 }
 
 func TestParseFlagsWithParser_InvalidReposWorkers(t *testing.T) {
+	setForgejoEnv(t, "https://example.com", "user", "token")
+
 	parser := flagParser.NewMockFlagParser()
 	parser.SetArgs([]string{"repo", "list"})
 	parser.SetBoolFlag("help", false)
 	parser.SetBoolFlag("h", false)
 	parser.SetBoolFlag("json", false)
-	parser.SetStringFlag("forgejo-host", "https://example.com")
-	parser.SetStringFlag("forgejo-username", "user")
-	parser.SetStringFlag("forgejo-token", "token")
 	parser.SetStringFlag("repos-workers", "abc")
 
 	if _, err := ParseFlagsWithParser(parser); err == nil {
@@ -228,7 +296,25 @@ func TestParseFlagsWithParser_InvalidReposWorkers(t *testing.T) {
 	}
 }
 
+func TestParseFlagsWithParser_NonPositiveReposWorkers_Error(t *testing.T) {
+	setForgejoEnv(t, "https://example.com", "user", "token")
+
+	parser := flagParser.NewMockFlagParser()
+	parser.SetArgs([]string{"repo", "list"})
+	parser.SetStringFlag("repos-workers", "0")
+
+	_, err := ParseFlagsWithParser(parser)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "repos-workers は1以上を指定してください") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestParseFlagsWithParser_InterspersedArgs(t *testing.T) {
+	setForgejoEnv(t, "https://example.com", "inter-user", "inter-token")
+
 	originalArgs := os.Args
 	defer func() {
 		os.Args = originalArgs
@@ -238,12 +324,7 @@ func TestParseFlagsWithParser_InterspersedArgs(t *testing.T) {
 		"forgejo.exe",
 		"repo",
 		"list",
-		"-forgejo-host",
-		"https://example.com",
-		"-forgejo-username",
-		"inter-user",
-		"-forgejo-token",
-		"inter-token",
+		"-json",
 	}
 
 	cfg, err := ParseFlags()
@@ -259,6 +340,48 @@ func TestParseFlagsWithParser_InterspersedArgs(t *testing.T) {
 	if cfg.Token != "inter-token" {
 		t.Fatalf("Token = %s, want inter-token", cfg.Token)
 	}
+	if !cfg.JSON {
+		t.Fatalf("JSON should be true")
+	}
+}
+
+func TestParseFlagsWithParser_RemovedConnectionFlag_Error(t *testing.T) {
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+	}()
+
+	os.Args = []string{
+		"forgejo.exe",
+		"repo",
+		"list",
+		"-forgejo-host",
+		"https://example.com",
+	}
+
+	_, err := ParseFlags()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "フラグ解析に失敗しました") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseFlagsWithParser_MissingEnvironmentVariable_Error(t *testing.T) {
+	unsetForgejoEnv(t)
+	chdirForTest(t, t.TempDir())
+
+	parser := flagParser.NewMockFlagParser()
+	parser.SetArgs([]string{"repo", "list"})
+
+	_, err := ParseFlagsWithParser(parser)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "環境変数 FORGEJO_HOST が設定されていません") {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestParseFlagsWithParser_ErrorOnParseFailure(t *testing.T) {
@@ -268,4 +391,49 @@ func TestParseFlagsWithParser_ErrorOnParseFailure(t *testing.T) {
 	if _, err := ParseFlagsWithParser(parser); err == nil {
 		t.Fatalf("expected error")
 	}
+}
+
+func setForgejoEnv(t *testing.T, host, username, token string) {
+	t.Helper()
+	t.Setenv(envKeyHost, host)
+	t.Setenv(envKeyUsername, username)
+	t.Setenv(envKeyToken, token)
+}
+
+func unsetForgejoEnv(t *testing.T) {
+	t.Helper()
+	keys := []string{envKeyHost, envKeyUsername, envKeyToken}
+	originals := make(map[string]string, len(keys))
+	present := make(map[string]bool, len(keys))
+	for _, key := range keys {
+		value, ok := os.LookupEnv(key)
+		originals[key] = value
+		present[key] = ok
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatalf("failed to unset %s: %v", key, err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, key := range keys {
+			if present[key] {
+				_ = os.Setenv(key, originals[key])
+				continue
+			}
+			_ = os.Unsetenv(key)
+		}
+	})
+}
+
+func chdirForTest(t *testing.T, dir string) {
+	t.Helper()
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("failed to change working directory: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalDir)
+	})
 }

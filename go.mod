@@ -5,6 +5,7 @@ go 1.25.5
 require (
 	cloud.google.com/go/monitoring v1.24.2
 	cloud.google.com/go/run v1.11.0
+	codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3 v3.0.0
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/a-h/templ v0.3.977
@@ -19,6 +20,7 @@ require (
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/googleapis/gax-go/v2 v2.14.2
+	github.com/joho/godotenv v1.5.1
 	github.com/kkdai/youtube/v2 v2.10.4
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.33.0
@@ -50,7 +52,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	cloud.google.com/go/iam v1.5.2 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
-	codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v3 v3.0.0 // indirect
 	github.com/42wim/httpsig v1.2.3 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/aws/aws-sdk-go v1.38.20 // indirect
