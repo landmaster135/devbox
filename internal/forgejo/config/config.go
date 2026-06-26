@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -39,14 +40,7 @@ func NewConfig(operation, host, username, token string, jsonOutput bool) (*Confi
 		return nil, fmt.Errorf("operationが指定されていません")
 	}
 
-	isSupported := false
-	for _, op := range supportedOperations {
-		if operation == op {
-			isSupported = true
-			break
-		}
-	}
-	if !isSupported {
+	if !slices.Contains(supportedOperations, operation) {
 		return nil, fmt.Errorf("未対応のoperationです: %s", operation)
 	}
 
