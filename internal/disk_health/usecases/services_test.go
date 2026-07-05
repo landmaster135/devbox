@@ -102,11 +102,28 @@ func TestService_AssessReport_CriticalPendingSector(t *testing.T) {
 	if assessment.Status != domain.StatusCritical {
 		t.Fatalf("expected critical, got %s", assessment.Status)
 	}
-	if len(assessment.Findings) != 1 {
-		t.Fatalf("expected 1 finding, got %d", len(assessment.Findings))
+	if len(assessment.Findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(assessment.Findings))
 	}
 	if assessment.Findings[0].AttributeID != 197 {
 		t.Fatalf("expected attribute 197, got %d", assessment.Findings[0].AttributeID)
+	}
+	compoundFinding := assessment.Findings[1]
+	if compoundFinding.Severity != domain.SeverityCritical {
+		t.Fatalf("expected critical, got %s", compoundFinding.Severity)
+	}
+	if compoundFinding.AttributeID != 5 {
+		t.Fatalf("expected attribute 5, got %d", compoundFinding.AttributeID)
+	}
+	if compoundFinding.AttributeName != "Reallocated_Sector_Ct" {
+		t.Fatalf("expected Reallocated_Sector_Ct, got %s", compoundFinding.AttributeName)
+	}
+	if compoundFinding.RawValue != 0 {
+		t.Fatalf("expected raw value 0, got %d", compoundFinding.RawValue)
+	}
+	expectedMessage := "Current_Pending_Sector=404 による代替セクタへの移し替えに失敗、ドライブが自己修復できていません"
+	if compoundFinding.Message != expectedMessage {
+		t.Fatalf("expected %q, got %q", expectedMessage, compoundFinding.Message)
 	}
 }
 
@@ -266,6 +283,15 @@ func TestService_AssessSmart_JSONOutput_Normal(t *testing.T) {
 	}
 	if assessment.Status != domain.StatusCritical {
 		t.Fatalf("expected critical, got %s", assessment.Status)
+	}
+	if len(assessment.Findings) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(assessment.Findings))
+	}
+	if assessment.Findings[1].AttributeID != 5 {
+		t.Fatalf("expected attribute 5, got %d", assessment.Findings[1].AttributeID)
+	}
+	if assessment.Findings[1].RawValue != 0 {
+		t.Fatalf("expected raw value 0, got %d", assessment.Findings[1].RawValue)
 	}
 	if len(assessment.Attributes) != 0 {
 		t.Fatalf("expected attributes omitted, got %d", len(assessment.Attributes))

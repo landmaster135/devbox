@@ -41,7 +41,7 @@ type Finding struct {
 	Severity      Severity `json:"severity"`
 	AttributeID   int      `json:"attribute_id,omitempty"`
 	AttributeName string   `json:"attribute_name,omitempty"`
-	RawValue      int64    `json:"raw_value,omitempty"`
+	RawValue      int64    `json:"raw_value"`
 	Message       string   `json:"message"`
 }
 

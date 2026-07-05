@@ -65,6 +65,7 @@ serial_number: WD-WX12D126617N
 overall_health: PASSED
 findings:
 - [critical] Current_Pending_Sector raw=404: 代替待ちセクタを検出しました
+- [critical] Reallocated_Sector_Ct raw=0: Current_Pending_Sector=404 による代替セクタへの移し替えに失敗、ドライブが自己修復できていません
 ```
 
 ### JSON 出力
@@ -84,6 +85,13 @@ findings:
       "attribute_name": "Current_Pending_Sector",
       "raw_value": 404,
       "message": "代替待ちセクタを検出しました"
+    },
+    {
+      "severity": "critical",
+      "attribute_id": 5,
+      "attribute_name": "Reallocated_Sector_Ct",
+      "raw_value": 0,
+      "message": "Current_Pending_Sector=404 による代替セクタへの移し替えに失敗、ドライブが自己修復できていません"
     }
   ]
 }

@@ -35,6 +35,7 @@ func (s *Service) AssessReport(report *domain.SmartReport) domain.Assessment {
 	for _, attribute := range report.Attributes {
 		s.assessAttribute(&assessment, attribute)
 	}
+	s.assessCompoundFindings(&assessment, report.Attributes)
 
 	s.finalizeAssessment(&assessment)
 	return assessment
@@ -62,6 +63,34 @@ func (s *Service) assessAttribute(assessment *domain.Assessment, attribute domai
 	case s.isTemperatureAttribute(attribute) && attribute.RawValue >= 50:
 		s.addFinding(assessment, attribute, domain.SeverityWarning, "ディスク温度が高めです")
 	}
+}
+
+func (s *Service) assessCompoundFindings(assessment *domain.Assessment, attributes []domain.SmartAttribute) {
+	pendingSector, hasPendingSector := s.findAttribute(attributes, 197, "Current_Pending_Sector")
+	reallocatedSector, hasReallocatedSector := s.findAttribute(attributes, 5, "Reallocated_Sector_Ct")
+	if !hasPendingSector || !hasReallocatedSector {
+		return
+	}
+	if pendingSector.RawValue <= 0 || reallocatedSector.RawValue != 0 {
+		return
+	}
+
+	assessment.Findings = append(assessment.Findings, domain.Finding{
+		Severity:      domain.SeverityCritical,
+		AttributeID:   reallocatedSector.ID,
+		AttributeName: reallocatedSector.Name,
+		RawValue:      reallocatedSector.RawValue,
+		Message:       fmt.Sprintf("Current_Pending_Sector=%d による代替セクタへの移し替えに失敗、ドライブが自己修復できていません", pendingSector.RawValue),
+	})
+}
+
+func (s *Service) findAttribute(attributes []domain.SmartAttribute, id int, name string) (domain.SmartAttribute, bool) {
+	for _, attribute := range attributes {
+		if s.isAttribute(attribute, id, name) {
+			return attribute, true
+		}
+	}
+	return domain.SmartAttribute{}, false
 }
 
 func (s *Service) isAttribute(attribute domain.SmartAttribute, id int, name string) bool {
