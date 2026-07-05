@@ -21,52 +21,52 @@ image-converter [オプション]
 
 | オプション | デフォルト値 | 説明 |
 |------------|--------------|------|
-| `-src` | `.` | 変換元ディレクトリ |
-| `-out` | `./999_converted_images` | 出力先ディレクトリ |
-| `-archive` | `""` (空) | アーカイブ先ディレクトリ（空の場合は無効） |
-| `-move` | `false` | 元ファイルをコピーではなく移動（-archiveが指定されている場合のみ有効） |
-| `-ext` | `png` | 変換先フォーマット (png/jpg/webp/avif) |
-| `-q` | `80` | 非可逆圧縮フォーマットの品質 (1-100) |
-| `-workers` | CPU数 | 同時実行ワーカー数 |
-| `-R` | `false` | サブディレクトリを再帰的に処理 |
-| `-lossless` | `false` | ロスレス圧縮の有効化 |
+| `--src` | `.` | 変換元ディレクトリ |
+| `--out` | `./999_converted_images` | 出力先ディレクトリ |
+| `--archive` | `""` (空) | アーカイブ先ディレクトリ（空の場合は無効） |
+| `--move` | `false` | 元ファイルをコピーではなく移動（-archiveが指定されている場合のみ有効） |
+| `--ext` | `png` | 変換先フォーマット (png/jpg/webp/avif) |
+| `--q` | `80` | 非可逆圧縮フォーマットの品質 (1-100) |
+| `--workers` | CPU数 | 同時実行ワーカー数 |
+| `--R` | `false` | サブディレクトリを再帰的に処理 |
+| `--lossless` | `false` | ロスレス圧縮の有効化 |
 
 ## 使用例
 
 ### カレントディレクトリの画像をPNGに変換
 
 ```bash
-go run ./cmd/cli/image-converter -ext png
+go run ./cmd/cli/image-converter --ext png
 ```
 
 ### 指定ディレクトリの画像をWebPに変換（品質90）
 
 ```bash
-go run ./cmd/cli/image-converter -src ./photos -ext webp -q 90
+go run ./cmd/cli/image-converter --src ./photos --ext webp --q 90
 ```
 
 ### サブディレクトリも含めて全画像をJPEGに変換
 
 ```bash
-go run ./cmd/cli/image-converter -src ./photos -ext jpg -R
+go run ./cmd/cli/image-converter --src ./photos --ext jpg --R
 ```
 
 ### 出力先ディレクトリを指定して変換
 
 ```bash
-go run ./cmd/cli/image-converter -src ./photos -out ./converted -ext avif
+go run ./cmd/cli/image-converter --src ./photos -out ./converted --ext avif
 ```
 
 ### 変換後に元ファイルをアーカイブディレクトリにコピー
 
 ```bash
-go run ./cmd/cli/image-converter -src ./photos -ext webp -archive ./originals
+go run ./cmd/cli/image-converter --src ./photos --ext webp --archive ./originals
 ```
 
 ### 変換後に元ファイルをアーカイブディレクトリに移動
 
 ```bash
-go run ./cmd/cli/image-converter -src ./photos -ext webp -archive ./originals -move
+go run ./cmd/cli/image-converter --src ./photos --ext webp --archive ./originals --move
 ```
 
 ## サポートされているフォーマット
@@ -88,7 +88,7 @@ go run ./cmd/cli/image-converter -src ./photos -ext webp -archive ./originals -m
 
 | usecase | settings |
 | --- | --- |
-| Androidでスクショした漫画の画像をPDFにマージする | `-ext jpg -q 20` |
+| Androidでスクショした漫画の画像をPDFにマージする | `--ext jpg --q 20` |
 
 ## ビルド方法
 
