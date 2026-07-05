@@ -143,10 +143,18 @@ tasks:
     desc: "image-converterでJPGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:jpg-to-webp
+  image:convert:jpg-to-webp:cwebp:
+    desc: "image-converter-by-libwebpでJPGからWebPに変換"
+    cmds:
+      - task: image-convert:image-converter:jpg-to-webp:cwebp
   image:convert:png-to-webp:
     desc: "image-converterでPNGからWebPに変換"
     cmds:
       - task: image-convert:image-converter:png-to-webp
+  image:convert:png-to-webp:cwebp:
+    desc: "image-converter-by-libwebpでPNGからWebPに変換"
+    cmds:
+      - task: image-convert:image-converter:png-to-webp:cwebp
   image:convert:png-to-webp:keeping-saturation:
     desc: "image-converterでPNGからWebP(lossless)に変換"
     cmds:
