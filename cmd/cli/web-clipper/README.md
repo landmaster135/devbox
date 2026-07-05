@@ -18,7 +18,7 @@ Web記事要約用のMarkdownに、指定URLのリンク行を挿入したり、
 ## フラグ
 
 | フラグ | 必須 | 説明 |
-| --- | --- | --- |
+|---|---|---|
 | `--operation` | はい | 実行する操作。`patch-markdown`, `rename-attachments` に対応。 |
 | `--target-title` | `patch-markdown` で必須 | 追加するリンク表示テキスト。 |
 | `--target-url` | `patch-markdown` で必須 | 追加するリンクURL。 |

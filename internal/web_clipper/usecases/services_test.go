@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/landmaster135/devbox/internal/web_clipper/config"
 	"github.com/landmaster135/devbox/internal/web_clipper/infrastructures/filesystem"
 )
 
@@ -361,6 +362,14 @@ func TestServiceRenameAttachments_Normal(t *testing.T) {
 func TestServiceRenameAttachments_JSONOutput_Normal(t *testing.T) {
 	t.Parallel()
 
+	type renameAttachmentsOutput struct {
+		RenamedCount int `json:"renamed_count"`
+		Files        []struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+		} `json:"files"`
+	}
+
 	mockRepo := &filesystem.MockRepository{
 		ListDirectoryFunc: func(path string) ([]filesystem.FileInfo, error) {
 			return []filesystem.FileInfo{
@@ -520,5 +529,193 @@ func TestServiceRenameAttachments_Error(t *testing.T) {
 				t.Fatalf("Rename呼び出し回数が期待と異なります: got=%d want=%d", len(mockRepo.RenameCalls), tt.expectedCalls)
 			}
 		})
+	}
+}
+
+type mockPatchMarkdownOperation struct {
+	result string
+	err    error
+	calls  []mockPatchMarkdownCall
+}
+
+type mockPatchMarkdownCall struct {
+	targetTitle        string
+	targetURL          string
+	srcMarkdownContent string
+	srcMarkdownFile    string
+	outFilePath        string
+	topHeadingLevel    int
+}
+
+func (m *mockPatchMarkdownOperation) Execute(targetTitle, targetURL, srcMarkdownContent, srcMarkdownFile, outFilePath string, topHeadingLevel int) (string, error) {
+	m.calls = append(m.calls, mockPatchMarkdownCall{
+		targetTitle:        targetTitle,
+		targetURL:          targetURL,
+		srcMarkdownContent: srcMarkdownContent,
+		srcMarkdownFile:    srcMarkdownFile,
+		outFilePath:        outFilePath,
+		topHeadingLevel:    topHeadingLevel,
+	})
+
+	return m.result, m.err
+}
+
+type mockRenameAttachmentsOperation struct {
+	result string
+	err    error
+	calls  []mockRenameAttachmentsCall
+}
+
+type mockRenameAttachmentsCall struct {
+	opts RenameAttachmentsOptions
+	now  time.Time
+}
+
+func (m *mockRenameAttachmentsOperation) Execute(opts RenameAttachmentsOptions, now time.Time) (string, error) {
+	m.calls = append(m.calls, mockRenameAttachmentsCall{
+		opts: opts,
+		now:  now,
+	})
+
+	return m.result, m.err
+}
+
+func TestServiceExecuteByConfig_Normal(t *testing.T) {
+	t.Parallel()
+
+	fixedNow := time.Date(2026, 7, 5, 17, 12, 34, 0, time.UTC)
+
+	tests := []struct {
+		name                string
+		cfg                 *config.Config
+		expectedResult      string
+		expectedPatchCalls  int
+		expectedRenameCalls int
+		validatePatchCall   func(t *testing.T, call mockPatchMarkdownCall)
+		validateRenameCall  func(t *testing.T, call mockRenameAttachmentsCall)
+	}{
+		{
+			name: "patch-markdownへ委譲_Normal",
+			cfg: &config.Config{
+				Operation:          config.OperationPatchMarkdown,
+				TargetTitle:        "OpenAI Blog",
+				TargetURL:          "https://openai.com/blog",
+				SrcMarkdownContent: "## title\n",
+				OutFilePath:        "/tmp/out.md",
+				TopHeadingLevel:    2,
+			},
+			expectedResult:      "patched",
+			expectedPatchCalls:  1,
+			expectedRenameCalls: 0,
+			validatePatchCall: func(t *testing.T, call mockPatchMarkdownCall) {
+				t.Helper()
+
+				if call.targetTitle != "OpenAI Blog" {
+					t.Fatalf("targetTitle = %q, want %q", call.targetTitle, "OpenAI Blog")
+				}
+				if call.targetURL != "https://openai.com/blog" {
+					t.Fatalf("targetURL = %q, want %q", call.targetURL, "https://openai.com/blog")
+				}
+				if call.srcMarkdownContent != "## title\n" {
+					t.Fatalf("srcMarkdownContent = %q, want %q", call.srcMarkdownContent, "## title\n")
+				}
+				if call.outFilePath != "/tmp/out.md" {
+					t.Fatalf("outFilePath = %q, want %q", call.outFilePath, "/tmp/out.md")
+				}
+				if call.topHeadingLevel != 2 {
+					t.Fatalf("topHeadingLevel = %d, want 2", call.topHeadingLevel)
+				}
+			},
+		},
+		{
+			name: "rename-attachmentsへ委譲_Normal",
+			cfg: &config.Config{
+				Operation:  config.OperationRenameAttachments,
+				SrcDir:     "/tmp/attachments",
+				Slug:       "openai-blog",
+				Start:      1,
+				Digits:     3,
+				SortByName: true,
+				JSON:       true,
+				Verbose:    true,
+			},
+			expectedResult:      "renamed",
+			expectedPatchCalls:  0,
+			expectedRenameCalls: 1,
+			validateRenameCall: func(t *testing.T, call mockRenameAttachmentsCall) {
+				t.Helper()
+
+				if call.opts.SrcDir != "/tmp/attachments" {
+					t.Fatalf("SrcDir = %q, want %q", call.opts.SrcDir, "/tmp/attachments")
+				}
+				if call.opts.Slug != "openai-blog" {
+					t.Fatalf("Slug = %q, want %q", call.opts.Slug, "openai-blog")
+				}
+				if call.opts.Start != 1 {
+					t.Fatalf("Start = %d, want 1", call.opts.Start)
+				}
+				if call.opts.Digits != 3 {
+					t.Fatalf("Digits = %d, want 3", call.opts.Digits)
+				}
+				if !call.opts.SortByName || !call.opts.JSON || !call.opts.Verbose {
+					t.Fatalf("boolean options = %+v, want SortByName/JSON/Verbose true", call.opts)
+				}
+				if !call.now.Equal(fixedNow) {
+					t.Fatalf("now = %s, want %s", call.now, fixedNow)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			patchOp := &mockPatchMarkdownOperation{result: "patched"}
+			renameOp := &mockRenameAttachmentsOperation{result: "renamed"}
+			service := newServiceWithOperations(&filesystem.MockRepository{}, patchOp, renameOp)
+			service.now = func() time.Time {
+				return fixedNow
+			}
+
+			result, err := service.ExecuteByConfig(tt.cfg)
+			if err != nil {
+				t.Fatalf("ExecuteByConfig() returned error: %v", err)
+			}
+			if result != tt.expectedResult {
+				t.Fatalf("result = %q, want %q", result, tt.expectedResult)
+			}
+			if len(patchOp.calls) != tt.expectedPatchCalls {
+				t.Fatalf("patch calls = %d, want %d", len(patchOp.calls), tt.expectedPatchCalls)
+			}
+			if len(renameOp.calls) != tt.expectedRenameCalls {
+				t.Fatalf("rename calls = %d, want %d", len(renameOp.calls), tt.expectedRenameCalls)
+			}
+			if tt.validatePatchCall != nil {
+				tt.validatePatchCall(t, patchOp.calls[0])
+			}
+			if tt.validateRenameCall != nil {
+				tt.validateRenameCall(t, renameOp.calls[0])
+			}
+		})
+	}
+}
+
+func TestServiceExecuteByConfig_UnsupportedOperation(t *testing.T) {
+	t.Parallel()
+
+	service := newServiceWithOperations(
+		&filesystem.MockRepository{},
+		&mockPatchMarkdownOperation{},
+		&mockRenameAttachmentsOperation{},
+	)
+
+	_, err := service.ExecuteByConfig(&config.Config{Operation: "unknown"})
+	if err == nil {
+		t.Fatal("エラーが期待されますがnilでした")
+	}
+	if !strings.Contains(err.Error(), "未対応のoperationです: unknown") {
+		t.Fatalf("error = %q, want unsupported operation error", err.Error())
 	}
 }
