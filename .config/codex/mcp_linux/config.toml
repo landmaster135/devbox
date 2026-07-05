@@ -21,6 +21,7 @@ web_search = "live"
 
 [features]
 skills = true
+codex_hooks = true
 
 [projects."/home/user/devbox"]
 trust_level = "trusted"

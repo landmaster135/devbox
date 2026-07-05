@@ -86,6 +86,19 @@ type AddMemoRelationsOutput struct {
 	FinalRelations     []MemoRelation `json:"finalRelations,omitempty"`
 }
 
+// UserStats は GetUserStats API のレスポンスのうち利用する情報。
+type UserStats struct {
+	Name     string         `json:"name,omitempty"`
+	TagCount map[string]int `json:"tagCount,omitempty"`
+}
+
+// ListUserTagsOutput は list-user-tags 操作のレスポンス。
+type ListUserTagsOutput struct {
+	UserID     string         `json:"userId"`
+	OutputPath string         `json:"outputPath"`
+	TagCount   map[string]int `json:"tagCount"`
+}
+
 // UpdateTagOutput は update-tag 操作のレスポンス。
 type UpdateTagOutput struct {
 	SourceTag        string   `json:"sourceTag"`

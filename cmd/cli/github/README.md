@@ -13,23 +13,31 @@ GitHubのイシューを取得するCLIツールです。
 
 ```bash
 # イシュー一覧取得
-./github -operation list-issues -token YOUR_GITHUB_TOKEN -owner OWNER -repo REPO
+go run ./cmd/cli/github -operation list-issues -owner OWNER -repo REPO
 
 # 短縮形を使用
-./github -o list-issues -t YOUR_GITHUB_TOKEN -ow OWNER -r REPO
+go run ./cmd/cli/github -o list-issues -ow OWNER -r REPO
 ```
 
 ### オプションパラメータ付き
 
 ```bash
 # 状態とソートを指定
-./github -o list-issues -t YOUR_GITHUB_TOKEN -ow octocat -r Hello-World -state open -sort created -direction desc
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -state open -sort created -direction desc
 
 # ページネーション
-./github -o list-issues -t YOUR_GITHUB_TOKEN -ow octocat -r Hello-World -per_page 10 -page 2
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -per-page 10 -page 2
 
 # 短縮形でオプション指定
-./github -o list-issues -t YOUR_GITHUB_TOKEN -ow octocat -r Hello-World -s closed -so updated -d asc -pp 50 -p 2
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -s closed -so updated -d asc -pp 50 -p 2
+```
+
+## 環境変数
+
+GitHubトークンは CLI フラグではなく、環境変数または `.env` から読み取ります。
+
+```bash
+export GITHUB_PERSONAL_ACCESS_TOKEN=ghp_xxxxxxxxxxxx
 ```
 
 ## パラメータ
@@ -39,7 +47,6 @@ GitHubのイシューを取得するCLIツールです。
 | パラメータ | 短縮形 | 説明 |
 |-----------|--------|------|
 | `-operation` | `-o` | 操作タイプ (list-issues) |
-| `-token` | `-t` | GitHubトークン |
 | `-owner` | `-ow` | リポジトリオーナー |
 | `-repo` | `-r` | リポジトリ名 |
 
@@ -60,41 +67,41 @@ GitHubのイシューを取得するCLIツールです。
 ### 1. 基本的なイシュー一覧取得
 
 ```bash
-./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World
 ```
 
 ### 2. オープンなイシューのみを作成日時の降順で取得
 
 ```bash
-./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -s open -so created -d desc
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -s open -so created -d desc
 ```
 
 ### 3. クローズされたイシューを更新日時の昇順で取得
 
 ```bash
-./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -s closed -so updated -d asc
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -s closed -so updated -d asc
 ```
 
 ### 4. ページネーションを使用して2ページ目を取得（1ページあたり10件）
 
 ```bash
-./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -pp 10 -p 2
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -pp 10 -p 2
 ```
 
 ### 5. 特定のイシューを番号で取得
 
 ```bash
-./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -issue-number 123
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -issue-number 123
 # または短縮形
-./github -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -in 123
+go run ./cmd/cli/github -o list-issues -ow octocat -r Hello-World -in 123
 ```
 
 ### 6. ヘルプの表示
 
 ```bash
-./github -h
+go run ./cmd/cli/github -h
 # または
-./github -help
+go run ./cmd/cli/github -help
 ```
 
 ## GitHubトークンの取得方法
@@ -102,7 +109,7 @@ GitHubのイシューを取得するCLIツールです。
 1. GitHubにログインし、Settings > Developer settings > Personal access tokens > Tokens (classic) に移動
 2. "Generate new token (classic)" をクリック
 3. 必要なスコープを選択（リポジトリの読み取りには `repo` スコープが必要）
-4. トークンを生成し、安全な場所に保存
+4. トークンを生成し、`GITHUB_PERSONAL_ACCESS_TOKEN` に設定
 
 ## 出力形式
 
@@ -122,18 +129,19 @@ GitHubのイシューを取得するCLIツールです。
 ## エラーハンドリング
 
 - 必須パラメータが不足している場合、エラーメッセージとヘルプが表示されます
+- `GITHUB_PERSONAL_ACCESS_TOKEN` が未設定の場合、エラーメッセージとヘルプが表示されます
 - GitHubトークンが無効な場合、認証エラーが表示されます
 - 存在しないリポジトリを指定した場合、404エラーが表示されます
 
 ## ビルド方法
 
 ```bash
-cd /home/user/devbox/cmd/cli/github
+cd $HOME/devbox/cmd/cli/github
 go build -o github main.go
 ```
 
 ## テスト実行
 
 ```bash
-cd /home/user/devbox/internal/github
+cd $HOME/devbox/internal/github
 go test ./...

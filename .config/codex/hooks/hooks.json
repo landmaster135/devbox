@@ -1,0 +1,17 @@
+{
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "^Bash$",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "$HOME/devbox/.config/codex/hooks/scripts/guard-tmp-output.sh",
+						"timeout": 5,
+						"statusMessage": "Checking temporary output policy"
+					}
+				]
+			}
+		]
+	}
+}

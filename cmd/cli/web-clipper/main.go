@@ -22,21 +22,7 @@ func main() {
 	}
 
 	service := usecases.NewService(nil)
-
-	var result string
-	switch cfg.Operation {
-	case config.OperationPatchMarkdown:
-		result, err = service.PatchMarkdown(
-			cfg.TargetTitle,
-			cfg.TargetURL,
-			cfg.SrcMarkdownContent,
-			cfg.SrcMarkdownFile,
-			cfg.OutFilePath,
-			cfg.TopHeadingLevel,
-		)
-	default:
-		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
-	}
+	result, err := service.ExecuteByConfig(cfg)
 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)

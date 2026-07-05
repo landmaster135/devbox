@@ -63,9 +63,34 @@ func NewService(options Options) *Service {
 
 // Execute は repo list を実行します。
 func (s *Service) Execute() ([]commonUsecases.RepoRecord, error) {
-	repos, _, err := s.client.ListMyRepos(forgejo.ListReposOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("リポジトリ一覧の取得に失敗しました: %w", err)
+	const reposPageSize = 100
+
+	repos := make([]*forgejo.Repository, 0)
+	page := 1
+	for {
+		currentPageRepos, response, err := s.client.ListMyRepos(forgejo.ListReposOptions{
+			ListOptions: forgejo.ListOptions{
+				Page:     page,
+				PageSize: reposPageSize,
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("リポジトリ一覧の取得に失敗しました: %w", err)
+		}
+
+		repos = append(repos, currentPageRepos...)
+
+		if response == nil {
+			if len(currentPageRepos) < reposPageSize {
+				break
+			}
+			page++
+			continue
+		}
+		if response.NextPage <= page {
+			break
+		}
+		page = response.NextPage
 	}
 
 	repoJobs := make([]repoJob, 0, len(repos))

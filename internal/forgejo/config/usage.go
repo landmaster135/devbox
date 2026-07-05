@@ -10,8 +10,10 @@ import (
 const usageTemplate = `Forgejo CLI
 
 使用方法:
-  %s -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username user -forgejo-token your_token
-  %s -operation "issue list" -forgejo-host https://codeberg.org -forgejo-username user -forgejo-token your_token
+  %s -operation "repo list"
+  %s -operation "issue list"
+  %s repo list
+  %s issue list
 
   位置引数:
   repo list
@@ -19,18 +21,15 @@ const usageTemplate = `Forgejo CLI
 
 オプション:
   -operation          実行する操作 (repo list, issue list)
-  -forgejo-host       Forgejoのホスト URL (例: https://codeberg.org)
-  -forgejo-username   Forgejoのユーザー名
-  -forgejo-token      Forgejo APIトークン
   -repos-workers  repo list の同時ワーカー数 (初期値: 4)
   -json               JSON形式で出力
   -help, -h           ヘルプを表示
 
 環境変数:
   .env (またはOS環境変数)
-    forgejo-host
-    forgejo-username
-    forgejo-token
+    FORGEJO_HOST
+    FORGEJO_USERNAME
+    FORGEJO_TOKEN
 
 注意:
   カレントディレクトリの .env を読み込みます。
@@ -40,5 +39,5 @@ const usageTemplate = `Forgejo CLI
 // PrintUsage は使用方法を表示します。
 func PrintUsage() {
 	command := os.Args[0]
-	flagParser.PrintUsage(fmt.Sprintf(usageTemplate, command, command))
+	flagParser.PrintUsage(fmt.Sprintf(usageTemplate, command, command, command, command))
 }

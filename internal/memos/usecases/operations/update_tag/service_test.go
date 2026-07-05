@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 type mockMemoLister struct {

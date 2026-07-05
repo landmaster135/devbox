@@ -6,7 +6,7 @@ import (
 	"net/url"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // Service は create_memo operation を扱う。

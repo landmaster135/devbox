@@ -3,7 +3,11 @@ package config
 import (
 	"fmt"
 	"os"
+
+	envLoader "github.com/landmaster135/devbox/internal/env_loader"
 )
+
+const envKeyGitHubToken = "GITHUB_PERSONAL_ACCESS_TOKEN"
 
 // Config はGitHub CLIの設定を保持する構造体
 type Config struct {
@@ -81,7 +85,6 @@ func ParseFlags() (*Config, error) {
 func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 	var (
 		operation   = ""
-		token       = ""
 		owner       = ""
 		repo        = ""
 		state       = ""
@@ -95,9 +98,6 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 
 	parser.StringVar(&operation, "operation", operation, "操作タイプ (list-issues)")
 	parser.StringVar(&operation, "o", operation, "操作タイプの短縮形")
-
-	parser.StringVar(&token, "token", token, "GitHubトークン")
-	parser.StringVar(&token, "t", token, "GitHubトークンの短縮形")
 
 	parser.StringVar(&owner, "owner", owner, "リポジトリオーナー")
 	parser.StringVar(&owner, "ow", owner, "リポジトリオーナーの短縮形")
@@ -135,7 +135,12 @@ func ParseFlagsWithParser(parser FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(operation, token, owner, repo, state, sort, direction, perPage, page, issueNumber)
+	envValues, err := envLoader.Load([]string{envKeyGitHubToken})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewConfig(operation, envValues[envKeyGitHubToken], owner, repo, state, sort, direction, perPage, page, issueNumber)
 }
 
 // PrintUsage は使用方法を表示する
@@ -144,20 +149,22 @@ func PrintUsage() {
 
 使用方法:
   イシュー一覧取得:
-    %s -operation list-issues -token YOUR_TOKEN -owner OWNER -repo REPO
-    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO
+    %s -operation list-issues -owner OWNER -repo REPO
+    %s -o list-issues -ow OWNER -r REPO
 
   特定イシュー取得:
-    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -issue-number 123
-    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -in 123
+    %s -o list-issues -ow OWNER -r REPO -issue-number 123
+    %s -o list-issues -ow OWNER -r REPO -in 123
 
   オプションパラメータ付き:
-    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -state open -sort created -direction desc
-    %s -o list-issues -t YOUR_TOKEN -ow OWNER -r REPO -s closed -so updated -d asc -pp 50 -p 2
+    %s -o list-issues -ow OWNER -r REPO -state open -sort created -direction desc
+    %s -o list-issues -ow OWNER -r REPO -s closed -so updated -d asc -pp 50 -p 2
+
+環境変数:
+  GITHUB_PERSONAL_ACCESS_TOKEN GitHubトークン [必須]
 
 オプション:
   -operation, -o     操作タイプ (list-issues) [必須]
-  -token, -t         GitHubトークン [必須]
   -owner, -ow        リポジトリオーナー [必須]
   -repo, -r          リポジトリ名 [必須]
   -state, -s         イシューの状態 (open, closed, all) [任意]
@@ -170,16 +177,16 @@ func PrintUsage() {
 
 例:
   # 基本的な使用方法（イシュー一覧取得）
-  %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World
+  %s -o list-issues -ow octocat -r Hello-World
 
   # 特定のイシューを取得
-  %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -in 123
+  %s -o list-issues -ow octocat -r Hello-World -in 123
 
   # 状態とソートを指定
-  %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -s open -so created -d desc
+  %s -o list-issues -ow octocat -r Hello-World -s open -so created -d desc
 
   # ページネーション
-  %s -o list-issues -t ghp_xxxxxxxxxxxx -ow octocat -r Hello-World -pp 10 -p 2
+  %s -o list-issues -ow octocat -r Hello-World -pp 10 -p 2
 
 `, os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 }

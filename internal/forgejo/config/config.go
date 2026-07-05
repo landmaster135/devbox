@@ -1,22 +1,21 @@
 package config
 
 import (
-	"bufio"
 	"fmt"
-	"os"
+	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/forgejo/infrastructures/flag_parser"
+	envLoader "github.com/landmaster135/devbox/internal/env_loader"
+	flagParser "github.com/landmaster135/devbox/internal/forgejo/infrastructures/flag_parser"
 )
 
 const (
-	dotenvFilename     = ".env"
 	operationRepoList  = "repo list"
 	operationIssueList = "issue list"
-	envKeyHost         = "forgejo-host"
-	envKeyUsername     = "forgejo-username"
-	envKeyToken        = "forgejo-token"
+	envKeyHost         = "FORGEJO_HOST"
+	envKeyUsername     = "FORGEJO_USERNAME"
+	envKeyToken        = "FORGEJO_TOKEN"
 	defaultWorkers     = 4
 )
 
@@ -41,14 +40,7 @@ func NewConfig(operation, host, username, token string, jsonOutput bool) (*Confi
 		return nil, fmt.Errorf("operationが指定されていません")
 	}
 
-	isSupported := false
-	for _, op := range supportedOperations {
-		if operation == op {
-			isSupported = true
-			break
-		}
-	}
-	if !isSupported {
+	if !slices.Contains(supportedOperations, operation) {
 		return nil, fmt.Errorf("未対応のoperationです: %s", operation)
 	}
 
@@ -77,21 +69,13 @@ func NewConfig(operation, host, username, token string, jsonOutput bool) (*Confi
 
 // ParseFlags はコマンドライン引数を解析してConfigを作成します。
 func ParseFlags() (*Config, error) {
-	return ParseFlagsWithParser(flag_parser.NewStandardFlagParser())
+	return ParseFlagsWithParser(flagParser.NewStandardFlagParser())
 }
 
 // ParseFlagsWithParser は指定されたFlagParserを使用してコマンドライン引数を解析します。
-func ParseFlagsWithParser(parser flag_parser.FlagParser) (*Config, error) {
-	return ParseFlagsWithParserWithEnvFile(parser, dotenvFilename)
-}
-
-// ParseFlagsWithParserWithEnvFile は指定した .env ファイルを環境変数のデフォルト値として使用します。
-func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath string) (*Config, error) {
+func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	var (
 		operation    = ""
-		host         = ""
-		username     = ""
-		token        = ""
 		reposWorkers = ""
 		jsonOutput   = false
 		help         = false
@@ -99,9 +83,6 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 
 	parser.StringVar(&operation, "operation", operation, "実行する操作 (repo list, issue list)")
 	parser.BoolVar(&jsonOutput, "json", jsonOutput, "JSON形式で出力")
-	parser.StringVar(&host, "forgejo-host", host, "Forgejoホスト（https://example.com）")
-	parser.StringVar(&username, "forgejo-username", username, "Forgejoユーザー名")
-	parser.StringVar(&token, "forgejo-token", token, "Forgejo APIトークン")
 	parser.StringVar(&reposWorkers, "repos-workers", reposWorkers, "repo list 取得時の同時実行数")
 	parser.BoolVar(&help, "help", help, "ヘルプを表示")
 	parser.BoolVar(&help, "h", help, "ヘルプを表示（短縮）")
@@ -116,19 +97,9 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 	args := parser.Args()
 	operation = resolveOperation(operation, args)
 
-	envValues, err := loadDotEnv(envFilePath)
+	envValues, err := envLoader.Load([]string{envKeyHost, envKeyUsername, envKeyToken})
 	if err != nil {
 		return nil, err
-	}
-
-	if host == "" {
-		host = lookupEnvWithDotEnv(envKeyHost, host, envValues)
-	}
-	if username == "" {
-		username = lookupEnvWithDotEnv(envKeyUsername, username, envValues)
-	}
-	if token == "" {
-		token = lookupEnvWithDotEnv(envKeyToken, token, envValues)
 	}
 
 	reposWorkersInt, err := parseReposWorkers(reposWorkers)
@@ -136,7 +107,7 @@ func ParseFlagsWithParserWithEnvFile(parser flag_parser.FlagParser, envFilePath 
 		return nil, err
 	}
 
-	cfg, err := NewConfig(operation, host, username, token, jsonOutput)
+	cfg, err := NewConfig(operation, envValues[envKeyHost], envValues[envKeyUsername], envValues[envKeyToken], jsonOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -175,65 +146,4 @@ func resolveOperation(operation string, args []string) string {
 		return strings.TrimSpace(args[0])
 	}
 	return ""
-}
-
-func lookupEnvWithDotEnv(key, flagValue string, envValues map[string]string) string {
-	flagValue = strings.TrimSpace(flagValue)
-	if flagValue != "" {
-		return flagValue
-	}
-	if osValue := strings.TrimSpace(os.Getenv(key)); osValue != "" {
-		return osValue
-	}
-	if fileValue, ok := envValues[key]; ok {
-		return fileValue
-	}
-	return ""
-}
-
-func loadDotEnv(path string) (map[string]string, error) {
-	if path == "" {
-		return map[string]string{}, nil
-	}
-
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return map[string]string{}, nil
-		}
-		return nil, err
-	}
-
-	values := make(map[string]string)
-	scanner := bufio.NewScanner(strings.NewReader(string(raw)))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		line = strings.TrimPrefix(line, "export ")
-		key, value, ok := splitKeyValue(line)
-		if !ok {
-			continue
-		}
-		values[key] = value
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return values, nil
-}
-
-func splitKeyValue(line string) (key string, value string, ok bool) {
-	if !strings.Contains(line, "=") {
-		return "", "", false
-	}
-	parts := strings.SplitN(line, "=", 2)
-	key = strings.TrimSpace(parts[0])
-	value = strings.TrimSpace(parts[1])
-	if key == "" {
-		return "", "", false
-	}
-	value = strings.TrimSpace(strings.Trim(value, "\""))
-	return key, value, true
 }

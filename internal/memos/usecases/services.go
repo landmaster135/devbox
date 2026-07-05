@@ -6,7 +6,7 @@ import (
 	"time"
 
 	infrastructures "github.com/landmaster135/devbox/internal/memos/infrastructures"
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 	addmemorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/add_memo_relations"
 	attachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/attachments"
 	creatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/create_memo"
@@ -14,6 +14,7 @@ import (
 	getmemo "github.com/landmaster135/devbox/internal/memos/usecases/operations/get_memo"
 	listattachments "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_attachments"
 	listmemos "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_memos"
+	listusertags "github.com/landmaster135/devbox/internal/memos/usecases/operations/list_user_tags"
 	memorelations "github.com/landmaster135/devbox/internal/memos/usecases/operations/memo_relations"
 	patchfiles "github.com/landmaster135/devbox/internal/memos/usecases/operations/patch_files"
 	updatememo "github.com/landmaster135/devbox/internal/memos/usecases/operations/update_memo"
@@ -86,6 +87,10 @@ type addMemoRelationsOperation interface {
 	Execute(ctx context.Context, memo string, relatedMemos []string, replaces bool) (*common.AddMemoRelationsOutput, error)
 }
 
+type listUserTagsOperation interface {
+	Execute(ctx context.Context, userID string, outputDir string) (*common.ListUserTagsOutput, error)
+}
+
 // Service は Memos API 呼び出しのユースケースを提供する。
 type Service struct {
 	createMemoOp          createMemoOperation
@@ -101,6 +106,7 @@ type Service struct {
 	setMemoAttachmentsOp  setMemoAttachmentsOperation
 	listMemoRelationsOp   listMemoRelationsOperation
 	addMemoRelationsOp    addMemoRelationsOperation
+	listUserTagsOp        listUserTagsOperation
 }
 
 // Memo は CLI/上位層に返すメモ情報。
@@ -132,6 +138,9 @@ type ListMemoRelationsOutput = common.ListMemoRelationsOutput
 
 // AddMemoRelationsOutput は add-memo-relations のレスポンス。
 type AddMemoRelationsOutput = common.AddMemoRelationsOutput
+
+// ListUserTagsOutput は list-user-tags のレスポンス。
+type ListUserTagsOutput = common.ListUserTagsOutput
 
 // NewService は Service を生成する。
 func NewService(opts ServiceOptions) *Service {
@@ -174,5 +183,6 @@ func NewService(opts ServiceOptions) *Service {
 		setMemoAttachmentsOp:  attachmentsOp,
 		listMemoRelationsOp:   memoRelationsOp,
 		addMemoRelationsOp:    addmemorelations.New(memoRelationsOp, memoRelationsOp),
+		listUserTagsOp:        listusertags.New(jsonClient, fileSystem),
 	}
 }

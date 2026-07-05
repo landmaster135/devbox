@@ -2,13 +2,19 @@ package usecases
 
 import (
 	"fmt"
-	"strings"
+	"time"
 
+	"github.com/landmaster135/devbox/internal/web_clipper/config"
 	"github.com/landmaster135/devbox/internal/web_clipper/infrastructures/filesystem"
+	patchmarkdown "github.com/landmaster135/devbox/internal/web_clipper/usecases/operations/patch_markdown"
+	renameattachments "github.com/landmaster135/devbox/internal/web_clipper/usecases/operations/rename_attachments"
 )
 
 type Service struct {
-	repository filesystem.Repository
+	repository                 filesystem.Repository
+	now                        func() time.Time
+	patchMarkdownOperation     patchMarkdownOperation
+	renameAttachmentsOperation renameAttachmentsOperation
 }
 
 func NewService(repository filesystem.Repository) *Service {
@@ -17,128 +23,46 @@ func NewService(repository filesystem.Repository) *Service {
 		repo = filesystem.NewRepository()
 	}
 
-	return &Service{
-		repository: repo,
-	}
+	return newServiceWithOperations(
+		repo,
+		patchmarkdown.NewService(repo),
+		renameattachments.NewService(repo),
+	)
 }
 
 func (s *Service) PatchMarkdown(targetTitle, targetURL, srcMarkdownContent, srcMarkdownFile, outFilePath string, topHeadingLevel int) (string, error) {
-	trimmedTargetTitle := strings.TrimSpace(targetTitle)
-	trimmedTargetURL := strings.TrimSpace(targetURL)
-	trimmedSrcMarkdownFile := strings.TrimSpace(srcMarkdownFile)
-	trimmedOutFilePath := strings.TrimSpace(outFilePath)
-
-	if trimmedTargetTitle == "" {
-		return "", fmt.Errorf("--target-title は必須です")
-	}
-	if trimmedTargetURL == "" {
-		return "", fmt.Errorf("--target-url は必須です")
-	}
-	if strings.TrimSpace(srcMarkdownContent) == "" && trimmedSrcMarkdownFile == "" {
-		return "", fmt.Errorf("--src-markdown-content または --src-markdown-file のいずれかは必須です")
-	}
-	if strings.TrimSpace(srcMarkdownContent) != "" && trimmedSrcMarkdownFile != "" {
-		return "", fmt.Errorf("--src-markdown-content と --src-markdown-file は同時に指定できません")
-	}
-	if trimmedOutFilePath == "" {
-		return "", fmt.Errorf("--out-file-path は必須です")
-	}
-	if strings.Contains(trimmedOutFilePath, ",") {
-		return "", fmt.Errorf("--out-file-path にカンマは使用できません")
-	}
-	if topHeadingLevel < 1 {
-		return "", fmt.Errorf("--top-heading-level は 1 以上で指定してください")
-	}
-
-	markdownContent, err := s.resolveMarkdownContent(srcMarkdownContent, trimmedSrcMarkdownFile)
-	if err != nil {
-		return "", err
-	}
-
-	normalizedContent := normalizeNewlines(markdownContent)
-	if containsHeadingLevel4OrMore(normalizedContent) {
-		return "", fmt.Errorf("見出しレベル4以上（#### 以降）は使用できません")
-	}
-
-	patchedContent, err := addWebArticleInfo(normalizedContent, trimmedTargetTitle, trimmedTargetURL, topHeadingLevel)
-	if err != nil {
-		return "", err
-	}
-
-	if err := s.repository.WriteFile(trimmedOutFilePath, []byte(patchedContent)); err != nil {
-		return "", fmt.Errorf("出力ファイルへの書き込みに失敗しました: %w", err)
-	}
-
-	return fmt.Sprintf("出力しました: %s", trimmedOutFilePath), nil
+	return s.patchMarkdownOperation.Execute(targetTitle, targetURL, srcMarkdownContent, srcMarkdownFile, outFilePath, topHeadingLevel)
 }
 
-func (s *Service) resolveMarkdownContent(srcMarkdownContent, srcMarkdownFile string) (string, error) {
-	if srcMarkdownFile != "" {
-		data, err := s.repository.ReadFile(srcMarkdownFile)
-		if err != nil {
-			return "", fmt.Errorf("入力ファイルの読み込みに失敗しました: %w", err)
-		}
-		return string(data), nil
-	}
+type RenameAttachmentsOptions = renameattachments.Options
 
-	return srcMarkdownContent, nil
+func (s *Service) RenameAttachments(opts RenameAttachmentsOptions) (string, error) {
+	return s.renameAttachmentsOperation.Execute(opts, s.now())
 }
 
-func normalizeNewlines(content string) string {
-	return strings.ReplaceAll(content, "\r\n", "\n")
-}
-
-func containsHeadingLevel4OrMore(markdownContent string) bool {
-	lines := strings.Split(markdownContent, "\n")
-	for _, line := range lines {
-		if headingLevel(line) >= 4 {
-			return true
-		}
+func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
+	switch cfg.Operation {
+	case config.OperationPatchMarkdown:
+		return s.PatchMarkdown(
+			cfg.TargetTitle,
+			cfg.TargetURL,
+			cfg.SrcMarkdownContent,
+			cfg.SrcMarkdownFile,
+			cfg.OutFilePath,
+			cfg.TopHeadingLevel,
+		)
+	case config.OperationRenameAttachments:
+		return s.RenameAttachments(RenameAttachmentsOptions{
+			SrcDir:     cfg.SrcDir,
+			Slug:       cfg.Slug,
+			Start:      cfg.Start,
+			Digits:     cfg.Digits,
+			SortByTime: cfg.SortByTime,
+			SortByName: cfg.SortByName,
+			JSON:       cfg.JSON,
+			Verbose:    cfg.Verbose,
+		})
+	default:
+		return "", fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}
-	return false
-}
-
-func addWebArticleInfo(markdownContent, targetTitle, targetURL string, topHeadingLevel int) (string, error) {
-	lines := strings.Split(markdownContent, "\n")
-	targetHeadingIndex := -1
-
-	for idx, line := range lines {
-		if headingLevel(line) == topHeadingLevel {
-			targetHeadingIndex = idx
-			break
-		}
-	}
-
-	if targetHeadingIndex == -1 {
-		return "", fmt.Errorf("見出しレベル%d が見つかりませんでした", topHeadingLevel)
-	}
-
-	linkLine := fmt.Sprintf("- [%s](%s)", targetTitle, targetURL)
-
-	outputLines := make([]string, 0, len(lines)+1)
-	outputLines = append(outputLines, lines[:targetHeadingIndex+1]...)
-	outputLines = append(outputLines, linkLine)
-	outputLines = append(outputLines, lines[targetHeadingIndex+1:]...)
-
-	return strings.Join(outputLines, "\n"), nil
-}
-
-func headingLevel(line string) int {
-	trimmed := strings.TrimLeft(line, " \t")
-	if trimmed == "" || trimmed[0] != '#' {
-		return 0
-	}
-
-	level := 0
-	for level < len(trimmed) && trimmed[level] == '#' {
-		level++
-	}
-	if level == 0 {
-		return 0
-	}
-	if level < len(trimmed) && trimmed[level] != ' ' && trimmed[level] != '\t' {
-		return 0
-	}
-
-	return level
 }

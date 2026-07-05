@@ -32,6 +32,8 @@ Markdown ファイルを加工する CLI ツールです。`--operation` で下�
 | `--heading-position` | `add-heading1` で必須 | なし | 追加位置（`head` または `tail`） |
 | `--replacement-text` | `replace-images` で必須 | なし | 画像記法を置換する文字列（例: `(添付画像)`） |
 | `--output-dir` | `split-headings` で必須 | なし | 分割ファイルの出力先ディレクトリ |
+| `--prefix` | `split-headings` で任意 | 入力ファイル名 | 分割ファイル名のプレフィックス |
+| `--sequencial-digits` | `split-headings` で任意 | `2` | 分割ファイル連番の桁数（1以上） |
 | `--kv` | `add-front-matter` で必須（1件以上） | なし | 追加する key-value（`key=value`）複数指定可 |
 | `--tags` | `add-tags` で必須 | なし | カンマ区切りタグ（例: `go,markdown`） |
 | `--help`, `-h` | 任意 | `false` | ヘルプ表示 |
@@ -70,8 +72,23 @@ test2
 
 出力:
 
-- `./out/001.md`
-- `./out/002.md`
+- `./out/sample_01.md`
+- `./out/sample_02.md`
+
+```bash
+go run ./cmd/cli/markdown-crafter \
+  --operation split-headings \
+  --file-path ./sample.md \
+  --heading-level 2 \
+  --output-dir ./out \
+  --prefix section_ \
+  --sequencial-digits 4
+```
+
+出力:
+
+- `./out/section_0001.md`
+- `./out/section_0002.md`
 
 ### add-front-matter
 
@@ -156,8 +173,8 @@ go run ./cmd/cli/markdown-crafter \
 
 ```text
 split-headings: 2 ファイルを出力しました
-- out/001.md
-- out/002.md
+- out/sample_01.md
+- out/sample_02.md
 ```
 
 ```text

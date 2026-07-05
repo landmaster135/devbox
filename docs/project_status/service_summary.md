@@ -14,8 +14,8 @@
 *depends-visualizer*: プログラムファイル内の関数間の依存関係を解析して可視化するツールです。
 *diff-dreamer*: テキスト比較用のGUIをHTMLページで提供します。
 *discord-webhook*: Discord WebhookでメッセージやEmbed付き通知を送信するためのCLIツールです。
+*disk-health*: `smartctl -a` の出力を保存した `.log` / `.txt` ファイルから、ディスクの SMART 健康度を評価する CLI ツールです。
 *docker*: env.yml に定義した情報を `docker-compose.yml` へ同期するユーティリティです。`npm run docker:env` 相当の環境変数反映に加え、指定サービスのポート番号やボリューム定義を env.yml ベースで更新できます。
-*env-loader*: 
 *exif-mirror*: 指定されたソースフォルダ内の画像ファイルから、ターゲットフォルダ内の同名ファイルにEXIFデータをコピーするCLIツールです。
 *exif-modifier*: 任意のディレクトリ内にある画像・動画ファイルのExifプロパティを編集するCLIツールです。
 *exif-viewer*: 画像ファイルのEXIF・メタデータ情報を参照・表示するためのCLIツールです。

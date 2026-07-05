@@ -26,6 +26,8 @@ type AttachmentFile struct {
 type FileSystem interface {
 	ReadFile(filePath string) ([]byte, error)
 	ReadAttachmentFile(filePath string) (*AttachmentFile, error)
+	EnsureDirectory(dirPath string) (string, error)
+	WriteFile(filePath string, content []byte) error
 }
 
 // OSFileSystem は実ファイルシステム実装。
@@ -69,6 +71,40 @@ func (fs *OSFileSystem) ReadAttachmentFile(filePath string) (*AttachmentFile, er
 		Content:     data,
 		ContentType: contentType,
 	}, nil
+}
+
+// EnsureDirectory は指定パスが存在するディレクトリであることを確認し、絶対パスを返す。
+func (fs *OSFileSystem) EnsureDirectory(dirPath string) (string, error) {
+	cleanPath := strings.TrimSpace(dirPath)
+	if cleanPath == "" {
+		return "", fmt.Errorf("dirPath が空です")
+	}
+
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		return "", fmt.Errorf("ディレクトリパスの絶対パス変換に失敗しました (%s): %w", cleanPath, err)
+	}
+
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return "", fmt.Errorf("ディレクトリの確認に失敗しました (%s): %w", absPath, err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("指定されたパスはディレクトリではありません: %s", absPath)
+	}
+	return absPath, nil
+}
+
+// WriteFile は指定ファイルへ内容を書き込む。
+func (fs *OSFileSystem) WriteFile(filePath string, content []byte) error {
+	cleanPath := strings.TrimSpace(filePath)
+	if cleanPath == "" {
+		return fmt.Errorf("filePath が空です")
+	}
+	if err := os.WriteFile(cleanPath, content, 0o600); err != nil {
+		return fmt.Errorf("ファイルの書き込みに失敗しました (%s): %w", cleanPath, err)
+	}
+	return nil
 }
 
 func detectContentType(filePath string, content []byte) string {

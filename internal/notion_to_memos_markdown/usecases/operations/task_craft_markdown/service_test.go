@@ -74,7 +74,7 @@ func TestService_Execute_Normal(t *testing.T) {
 	if !strings.Contains(text, "#01-p/todo-prior/3-mid") {
 		t.Fatalf("priority tag missing (%s): %s", outputFile, text)
 	}
-	if !strings.Contains(text, "#91-backup/tool-migration/202602_notion") {
+	if !strings.Contains(text, "#91-backup/tool-migration/202602-notion") {
 		t.Fatalf("required tag missing (%s): %s", outputFile, text)
 	}
 	if !strings.Contains(text, "#06-af/system/devbox") {
@@ -547,7 +547,7 @@ func TestBuildTagsForTask_PoweredArtifactsIgnoresUnknownAndDeduplicates(t *testi
 	tags := buildTagsForTask(task)
 	joined := "#" + strings.Join(tags, " #")
 
-	if !strings.Contains(joined, "#91-backup/tool-migration/202602_notion") {
+	if !strings.Contains(joined, "#91-backup/tool-migration/202602-notion") {
 		t.Fatalf("required backup tag missing: %s", joined)
 	}
 	if strings.Count(joined, "#06-af/system/devbox") != 1 {

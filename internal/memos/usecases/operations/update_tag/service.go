@@ -8,8 +8,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
 	"golang.org/x/sync/errgroup"
+
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 const (

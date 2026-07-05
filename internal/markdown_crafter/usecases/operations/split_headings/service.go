@@ -19,7 +19,7 @@ func NewService(repository domain.Repository) *Service {
 	}
 }
 
-func (s *Service) Execute(filePath string, headingLevel int, outputDir string) (string, error) {
+func (s *Service) Execute(filePath string, headingLevel int, outputDir, prefix string, sequencialDigits int) (string, error) {
 	content, err := s.repository.ReadFile(filePath)
 	if err != nil {
 		return "", err
@@ -34,11 +34,16 @@ func (s *Service) Execute(filePath string, headingLevel int, outputDir string) (
 		return "", err
 	}
 
+	effectivePrefix := prefix
+	if strings.TrimSpace(effectivePrefix) == "" {
+		effectivePrefix = defaultPrefix(filePath)
+	}
+
 	outputs := make([]string, 0, len(sections))
 	for i, section := range sections {
-		fileName := fmt.Sprintf("%03d.md", i+1)
+		fileName := buildOutputFileName(effectivePrefix, sequencialDigits, i+1)
 		outputPath := filepath.Join(outputDir, fileName)
-		if err := s.repository.WriteFile(outputPath, section); err != nil {
+		if err := s.repository.WriteFile(outputPath, withSingleTrailingNewline(section)); err != nil {
 			return "", err
 		}
 		outputs = append(outputs, outputPath)
@@ -50,6 +55,29 @@ func (s *Service) Execute(filePath string, headingLevel int, outputDir string) (
 		builder.WriteString(fmt.Sprintf("- %s\n", output))
 	}
 	return builder.String(), nil
+}
+
+func defaultPrefix(filePath string) string {
+	base := filepath.Base(filePath)
+	ext := filepath.Ext(base)
+	name := strings.TrimSuffix(base, ext)
+	if strings.TrimSpace(name) == "" {
+		return "section"
+	}
+	return name
+}
+
+func withSingleTrailingNewline(content string) string {
+	trimmed := strings.TrimRight(content, "\r\n")
+	return trimmed + "\n"
+}
+
+func buildOutputFileName(prefix string, sequencialDigits int, index int) string {
+	normalizedPrefix := prefix
+	if !strings.HasSuffix(normalizedPrefix, "_") {
+		normalizedPrefix += "_"
+	}
+	return fmt.Sprintf("%s%0*d.md", normalizedPrefix, sequencialDigits, index)
 }
 
 func ExtractSectionsByHeadingLevel(content string, headingLevel int) []string {

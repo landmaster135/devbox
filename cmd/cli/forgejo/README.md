@@ -7,34 +7,40 @@ Forgejo のリポジトリ/Issue 情報を取得する CLI です。
 - `repo list`: `repo list` で自分がアクセス可能なリポジトリ一覧を取得
 - `issue list`: 指定ユーザーのリポジトリ配下の issue 一覧を取得
 
-認証は `forgejo-token` の API トークンを使用します。  
-`.env`（または OS 環境変数）から以下のキーを読み込みます。
+認証は `FORGEJO_TOKEN` の API トークンを使用します。
+接続情報は CLI フラグでは指定せず、`.env`（または OS 環境変数）から以下のキーを読み込みます。
 
-- `forgejo-host`
-- `forgejo-username`
-- `forgejo-token`
+- `FORGEJO_HOST`
+- `FORGEJO_USERNAME`
+- `FORGEJO_TOKEN`
 
 ## 使い方
 
 ```bash
-./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
+go run ./cmd/cli/forgejo -operation "repo list"
 
-./forgejo -operation "issue list" -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
+go run ./cmd/cli/forgejo -operation "issue list"
 
-./forgejo repo list -forgejo-host https://codeberg.org -forgejo-username YOUR_NAME -forgejo-token YOUR_TOKEN
-./forgejo issue list -forgejo-username YOUR_NAME
+go run ./cmd/cli/forgejo repo list
+go run ./cmd/cli/forgejo issue list
 ```
 
 ## パラメータ
 
-### 必須
+### 操作指定
 
 | 名前 | 説明 |
 | --- | --- |
 | `-operation` | 実行操作 (`repo list` / `issue list`) |
-| `forgejo-host` | Forgejo ホスト（例: `https://codeberg.org`） |
-| `forgejo-username` | ユーザー名 |
-| `forgejo-token` | API トークン |
+| 位置引数 | `repo list` / `issue list` |
+
+接続情報は `.env`（または OS 環境変数）で指定します。
+
+| 名前 | 説明 |
+| --- | --- |
+| `FORGEJO_HOST` | Forgejo ホスト（例: `https://codeberg.org`） |
+| `FORGEJO_USERNAME` | ユーザー名 |
+| `FORGEJO_TOKEN` | API トークン |
 
 ### 任意
 
@@ -47,22 +53,10 @@ Forgejo のリポジトリ/Issue 情報を取得する CLI です。
 ## 使用例
 
 ```bash
-./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx -json
-./forgejo -operation "repo list" -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx -repos-workers 8
+go run ./cmd/cli/forgejo -operation "repo list" -json
+go run ./cmd/cli/forgejo -operation "repo list" -repos-workers 8
 
-./forgejo issue list -forgejo-host https://codeberg.org -forgejo-username yourname -forgejo-token xxx
-```
-
-`.env` に設定する例:
-
-```bash
-cat <<EOF > .env
-forgejo-host=https://codeberg.org
-forgejo-username=yourname
-forgejo-token=xxx
-EOF
-
-./forgejo repo list
+go run ./cmd/cli/forgejo issue list
 ```
 
 ## 出力

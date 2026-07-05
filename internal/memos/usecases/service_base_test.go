@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 func TestNewService_DefaultDependencies_Normal(t *testing.T) {
@@ -52,6 +52,9 @@ func TestNewService_DefaultDependencies_Normal(t *testing.T) {
 	}
 	if service.addMemoRelationsOp == nil {
 		t.Fatal("addMemoRelationsOp is nil")
+	}
+	if service.listUserTagsOp == nil {
+		t.Fatal("listUserTagsOp is nil")
 	}
 }
 
@@ -198,5 +201,33 @@ func TestService_AddMemoRelations_DelegatesOperation(t *testing.T) {
 	}
 	if len(result.AddedRelations) != 1 {
 		t.Fatalf("len(addedRelations) = %d, want 1", len(result.AddedRelations))
+	}
+}
+
+type stubListUserTagsOperation struct{}
+
+func (s *stubListUserTagsOperation) Execute(ctx context.Context, userID string, outputDir string) (*ListUserTagsOutput, error) {
+	return &ListUserTagsOutput{
+		UserID:     userID,
+		OutputPath: outputDir + "/user-tags_" + userID + ".json",
+		TagCount:   map[string]int{"work": 2},
+	}, nil
+}
+
+func TestService_ListUserTags_DelegatesOperation(t *testing.T) {
+	service := &Service{listUserTagsOp: &stubListUserTagsOperation{}}
+
+	result, err := service.ListUserTags(context.Background(), "1", "/tmp/out")
+	if err != nil {
+		t.Fatalf("ListUserTags() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("result = nil, want non-nil")
+	}
+	if result.UserID != "1" {
+		t.Fatalf("userID = %s, want 1", result.UserID)
+	}
+	if result.TagCount["work"] != 2 {
+		t.Fatalf("tagCount[work] = %d, want 2", result.TagCount["work"])
 	}
 }

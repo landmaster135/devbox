@@ -32,10 +32,10 @@
 | depends-visualizer                          | ✅  | ❌️  | ❌️  | ❌️ |
 | diff-dreamer                                | ✅  | ❌️  | ❌️  | ❌️ |
 | discord-webhook                             | ✅  | ❌️  | ❌️  | ❌️ |
+| disk-health                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | docker                                      | ✅  | ❌️  | ❌️  | ❌️ |
 | dockhand                                    | ✅  | ❌️  | ❌️  | ❌️ |
 | duckduckgo-search                           | ❌️  | ✅  | ❌️  | ❌️ |
-| env-loader                                  | ✅  | ❌️  | ❌️  | ❌️ |
 | everart                                     | ❌️  | ✅  | ❌️  | ❌️ |
 | exif-mirror                                 | ✅  | ❌️  | ❌️  | ❌️ |
 | exif-modifier                               | ✅  | ❌️  | ❌️  | ❌️ |
@@ -74,6 +74,7 @@
 | html-sanitizer                              | ✅  | ❌️  | ❌️  | ❌️ |
 | http-request                                | ✅  | ✅  | ❌️  | ❌️ |
 | image-converter                             | ✅  | ❌️  | ❌️  | ❌️ |
+| image-converter-by-libwebp                  | ✅  | ❌️  | ❌️  | ❌️ |
 | image-filterer                              | ✅  | ❌️  | ❌️  | ❌️ |
 | image-filterer-v2                           | ✅  | ❌️  | ❌️  | ❌️ |
 | image-renamer                               | ✅  | ❌️  | ❌️  | ❌️ |
@@ -100,6 +101,7 @@
 | memos-utility                               | ✅  | ❌️  | ❌️  | ❌️ |
 | movie-converter-for-gif                     | ✅  | ❌️  | ❌️  | ❌️ |
 | movie-converter-for-webm                    | ✅  | ❌️  | ❌️  | ❌️ |
+| movie-extractor                             | ✅  | ❌️  | ❌️  | ❌️ |
 | notion-blog-content-extractor               | ✅  | ❌️  | ❌️  | ❌️ |
 | notion-sync                                 | ✅  | ✅  | ❌️  | ❌️ |
 | notion-to-memos-markdown                    | ✅  | ❌️  | ❌️  | ❌️ |
@@ -137,12 +139,12 @@
 
 ### 統計情報
 
-- **総サービス数**: 120
-- **CLIツール実装数**: 109
+- **総サービス数**: 122
+- **CLIツール実装数**: 111
 - **MCPツール実装数**: 27
 - **gRPCハンドラ実装数**: 1
 - **HTTPハンドラ実装数**: 2
-- **CLIのみ実装**: 92
+- **CLIのみ実装**: 94
 - **MCPのみ実装**: 11
 - **gRPCハンドラのみ実装**: 0
 - **HTTPハンドラのみ実装**: 0

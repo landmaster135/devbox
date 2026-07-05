@@ -14,6 +14,7 @@ Memos API（`/api/v1`）を操作するCLIツールです。
 - `patch-files`: ローカルファイルを添付として作成し、メモ添付を更新
 - `list-memo-relations`: 対象メモのリレーション一覧を取得
 - `add-memo-relations`: 対象メモのリレーションを追加/置換して更新
+- `list-user-tags`: ユーザー統計からタグ別件数を取得して JSON ファイルへ出力
 
 ## インストール
 
@@ -35,7 +36,7 @@ go run ./cmd/cli/memos \
 
 | オプション | 説明 | 必須 |
 |---|---|---|
-| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `update-tag`, `patch-files`, `list-memo-relations`, `add-memo-relations`） | 必須 |
+| `-operation` | 実行する操作（`create-memo`, `get-memo`, `delete-memo`, `list-memos`, `list-attachments`, `update-memo`, `update-tag`, `patch-files`, `list-memo-relations`, `add-memo-relations`, `list-user-tags`） | 必須 |
 | `-base-url` | Memos のベースURL（例: `https://memos.example.com`） | 必須 |
 | `-api-token` | Bearer トークン | 必須 |
 | `-timeout` | HTTPタイムアウト秒（デフォルト: 30） | 任意 |
@@ -186,6 +187,19 @@ Memos の `filter` は CEL 形式です。公式ドキュメント上で確認�
 補足:
 - `add-memo-relations` はまず `ListMemoRelations` で既存リレーションを取得し、`SetMemoRelations` で更新します。
 - 結果には `discardedRelations`（破棄された関係）と `addedRelations`（追加された関係）を含みます。
+
+### list-user-tags
+
+| オプション | 説明 | 必須 |
+|---|---|---|
+| `-user-id` | `GetUserStats` の `/users/{user}:getStats` に渡す user ID | 必須 |
+| `-output-dir` | `tagCount` JSON ファイルを出力する既存ディレクトリ | 必須 |
+
+補足:
+- `list-user-tags` は `GetUserStats` のレスポンスから `tagCount` だけを抽出します。
+- 出力ファイルは `-output-dir` 配下の `user-tags_<user-id>.json` です。ファイル名に使いにくい文字は `_` に置換します。
+- 同名ファイルが存在する場合は上書きします。
+- `-output-dir` が存在しない、またはディレクトリでない場合はエラーになります。
 
 ## 使用例
 
@@ -439,6 +453,16 @@ go run ./cmd/cli/memos \
   -replaces=true
 ```
 
+ユーザーのタグ別件数を JSON ファイルへ出力
+```bash
+go run ./cmd/cli/memos \
+  -operation=list-user-tags \
+  -base-url=$MEMOS_BASE_URL \
+  -api-token=$MEMOS_TOKEN \
+  -user-id=$MEMOS_USER_ID \
+  -output-dir=./tmp
+```
+
 メモ作成（改行を含む本文をファイルから渡す）
 ```bash
 go run ./cmd/cli/memos \
@@ -452,6 +476,8 @@ go run ./cmd/cli/memos \
 ## 出力
 
 成功時は API レスポンスを整形済み JSON で `stdout` に出力します。失敗時は `stderr` に `エラー: ...` を出力し、終了コード `1` で終了します。
+
+`list-user-tags` は `stdout` に出力先と `tagCount` を含む JSON を出力し、あわせて `-output-dir` 配下へ `tagCount` のみを含む JSON ファイルを保存します。
 
 ## 参考リンク
 
@@ -468,3 +494,4 @@ go run ./cmd/cli/memos \
 - SetMemoAttachments: https://usememos.com/docs/api/memoservice/SetMemoAttachments
 - ListMemoRelations: https://usememos.com/docs/api/memoservice/ListMemoRelations
 - SetMemoRelations: https://usememos.com/docs/api/memoservice/SetMemoRelations
+- GetUserStats: https://usememos.com/docs/api/latest/userservice/GetUserStats

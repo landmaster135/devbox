@@ -33,36 +33,40 @@ var allowedOperations = []string{
 }
 
 type Config struct {
-	Operation       string
-	FilePath        string
-	DirPath         string
-	HeadingLevel    int
-	StartLine       int
-	EndLine         int
-	OutputDir       string
-	KVPairs         []string
-	Tags            string
-	HeadingText     string
-	HeadingPosition string
-	ReplacementText string
-	Help            bool
+	Operation        string
+	FilePath         string
+	DirPath          string
+	HeadingLevel     int
+	StartLine        int
+	EndLine          int
+	OutputDir        string
+	Prefix           string
+	SequencialDigits int
+	KVPairs          []string
+	Tags             string
+	HeadingText      string
+	HeadingPosition  string
+	ReplacementText  string
+	Help             bool
 }
 
-func NewConfig(operation, filePath, dirPath string, headingLevel, startLine, endLine int, outputDir string, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
+func NewConfig(operation, filePath, dirPath string, headingLevel, startLine, endLine int, outputDir, prefix string, sequencialDigits int, kvPairs []string, tags, headingText, headingPosition, replacementText string, help bool) (*Config, error) {
 	cfg := &Config{
-		Operation:       operation,
-		FilePath:        filePath,
-		DirPath:         dirPath,
-		HeadingLevel:    headingLevel,
-		StartLine:       startLine,
-		EndLine:         endLine,
-		OutputDir:       outputDir,
-		KVPairs:         kvPairs,
-		Tags:            tags,
-		HeadingText:     headingText,
-		HeadingPosition: headingPosition,
-		ReplacementText: replacementText,
-		Help:            help,
+		Operation:        operation,
+		FilePath:         filePath,
+		DirPath:          dirPath,
+		HeadingLevel:     headingLevel,
+		StartLine:        startLine,
+		EndLine:          endLine,
+		OutputDir:        outputDir,
+		Prefix:           prefix,
+		SequencialDigits: sequencialDigits,
+		KVPairs:          kvPairs,
+		Tags:             tags,
+		HeadingText:      headingText,
+		HeadingPosition:  headingPosition,
+		ReplacementText:  replacementText,
+		Help:             help,
 	}
 
 	if cfg.Help {
@@ -92,6 +96,9 @@ func (c *Config) validate() error {
 		}
 		if strings.TrimSpace(c.OutputDir) == "" {
 			return fmt.Errorf("--output-dir は必須です (--operation=split-headings)")
+		}
+		if c.SequencialDigits < 1 {
+			return fmt.Errorf("--sequencial-digits は 1 以上で指定してください (--operation=split-headings)")
 		}
 	case OperationAddFrontMatter:
 		if strings.TrimSpace(c.FilePath) == "" {
@@ -192,19 +199,21 @@ func ParseFlags() (*Config, error) {
 	}
 
 	var (
-		operation       string
-		filePath        string
-		dirPath         string
-		headingLevel    int
-		startLine       int
-		endLine         int
-		outputDir       string
-		tags            string
-		headingText     string
-		headingPosition string
-		replacementText string
-		help            bool
-		kvPairs         stringSliceValue
+		operation        string
+		filePath         string
+		dirPath          string
+		headingLevel     int
+		startLine        int
+		endLine          int
+		outputDir        string
+		prefix           string
+		sequencialDigits int
+		tags             string
+		headingText      string
+		headingPosition  string
+		replacementText  string
+		help             bool
+		kvPairs          stringSliceValue
 	)
 
 	flagSet.StringVar(&operation, "operation", "", fmt.Sprintf("実行する操作 (%s)", strings.Join(allowedOperations, ", ")))
@@ -214,6 +223,8 @@ func ParseFlags() (*Config, error) {
 	flagSet.IntVar(&startLine, "start-line", 0, "対象開始行（1始まり, remove-title-hash-tagsで必須）")
 	flagSet.IntVar(&endLine, "end-line", 0, "対象終了行（1始まり, remove-title-hash-tagsで必須）")
 	flagSet.StringVar(&outputDir, "output-dir", "", "分割後ファイルの出力先ディレクトリ (split-headingsで必須)")
+	flagSet.StringVar(&prefix, "prefix", "", "分割後ファイル名のプレフィックス (split-headingsで未指定時は入力ファイル名)")
+	flagSet.IntVar(&sequencialDigits, "sequencial-digits", 2, "split-headings の連番桁数 (1以上, デフォルト: 2)")
 	flagSet.Var(&kvPairs, "kv", "front matter に追加する key=value (add-front-matter で複数指定可)")
 	flagSet.StringVar(&tags, "tags", "", "追加するタグ（カンマ区切り, 例: go,markdown）")
 	flagSet.StringVar(&headingText, "heading-text", "", "追加する見出し1のテキスト（add-heading1で必須）")
@@ -226,14 +237,14 @@ func ParseFlags() (*Config, error) {
 		return nil, err
 	}
 
-	return NewConfig(operation, filePath, dirPath, headingLevel, startLine, endLine, outputDir, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
+	return NewConfig(operation, filePath, dirPath, headingLevel, startLine, endLine, outputDir, prefix, sequencialDigits, []string(kvPairs), tags, headingText, headingPosition, replacementText, help)
 }
 
 func PrintUsage() {
 	exeName := os.Args[0]
 	fmt.Fprintf(os.Stderr, "Markdown Crafter CLI ツール\n\n")
 	fmt.Fprintf(os.Stderr, "使用方法:\n")
-	fmt.Fprintf(os.Stderr, "  %s --operation split-headings --file-path ./note.md --heading-level 2 --output-dir ./out\n", exeName)
+	fmt.Fprintf(os.Stderr, "  %s --operation split-headings --file-path ./note.md --heading-level 2 --output-dir ./out --prefix note_ --sequencial-digits 3\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-front-matter --file-path ./note.md --kv title=記事 --kv author=nov\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --file-path ./note.md --tags go,markdown\n", exeName)
 	fmt.Fprintf(os.Stderr, "  %s --operation add-tags --dir-path ./notes --tags go,markdown\n", exeName)
@@ -258,6 +269,10 @@ func PrintUsage() {
 	fmt.Fprintf(os.Stderr, "        対象終了行（1始まり, remove-title-hash-tagsで必須）\n")
 	fmt.Fprintf(os.Stderr, "  --output-dir string\n")
 	fmt.Fprintf(os.Stderr, "        分割後ファイルの出力先ディレクトリ (split-headingsで必須)\n")
+	fmt.Fprintf(os.Stderr, "  --prefix string\n")
+	fmt.Fprintf(os.Stderr, "        分割後ファイル名のプレフィックス (split-headingsで未指定時は入力ファイル名)\n")
+	fmt.Fprintf(os.Stderr, "  --sequencial-digits int\n")
+	fmt.Fprintf(os.Stderr, "        split-headings の連番桁数 (1以上, デフォルト: 2)\n")
 	fmt.Fprintf(os.Stderr, "  --kv key=value\n")
 	fmt.Fprintf(os.Stderr, "        front matter に追加する key=value (add-front-matter で複数指定可)\n")
 	fmt.Fprintf(os.Stderr, "  --tags string\n")

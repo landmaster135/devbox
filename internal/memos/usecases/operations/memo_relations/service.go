@@ -8,7 +8,7 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // Service は memo relations API を扱う。

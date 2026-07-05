@@ -132,6 +132,70 @@ func TestOSFileSystem_ReadAttachmentFile_EmptyFile_DefaultContentType_Normal(t *
 	}
 }
 
+func TestOSFileSystem_EnsureDirectory_Normal(t *testing.T) {
+	fs := NewOSFileSystem()
+	tempDir := t.TempDir()
+
+	got, err := fs.EnsureDirectory(tempDir)
+	if err != nil {
+		t.Fatalf("EnsureDirectory() error = %v", err)
+	}
+	if !filepath.IsAbs(got) {
+		t.Fatalf("EnsureDirectory() = %s, want absolute path", got)
+	}
+}
+
+func TestOSFileSystem_EnsureDirectory_EmptyPath_Error(t *testing.T) {
+	fs := NewOSFileSystem()
+	_, err := fs.EnsureDirectory("  ")
+	if err == nil {
+		t.Fatal("EnsureDirectory() error = nil, want error")
+	}
+}
+
+func TestOSFileSystem_EnsureDirectory_FilePath_Error(t *testing.T) {
+	fs := NewOSFileSystem()
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "memo.txt")
+	if err := os.WriteFile(target, []byte("hello"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	_, err := fs.EnsureDirectory(target)
+	if err == nil {
+		t.Fatal("EnsureDirectory() error = nil, want error")
+	}
+	if !strings.Contains(err.Error(), "ディレクトリではありません") {
+		t.Fatalf("error = %v, want ディレクトリではありません", err)
+	}
+}
+
+func TestOSFileSystem_WriteFile_Normal(t *testing.T) {
+	fs := NewOSFileSystem()
+	tempDir := t.TempDir()
+	target := filepath.Join(tempDir, "out.json")
+
+	if err := fs.WriteFile(target, []byte("{}\n")); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	got, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	if string(got) != "{}\n" {
+		t.Fatalf("content = %q, want %q", string(got), "{}\n")
+	}
+}
+
+func TestOSFileSystem_WriteFile_EmptyPath_Error(t *testing.T) {
+	fs := NewOSFileSystem()
+	err := fs.WriteFile("  ", []byte("{}"))
+	if err == nil {
+		t.Fatal("WriteFile() error = nil, want error")
+	}
+}
+
 func TestNormalizeContentType_Empty_Error(t *testing.T) {
 	_, err := normalizeContentType("   ")
 	if err == nil {

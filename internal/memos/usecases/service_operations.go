@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/memos/usecases/common"
+	common "github.com/landmaster135/devbox/internal/memos/usecases/common"
 )
 
 // CreateMemo は CreateMemo API を呼び出す。
@@ -156,4 +156,13 @@ func (s *Service) AddMemoRelations(
 	replaces bool,
 ) (*AddMemoRelationsOutput, error) {
 	return s.addMemoRelationsOp.Execute(ctx, memo, relatedMemos, replaces)
+}
+
+// ListUserTags は GetUserStats API から tagCount を取得し、JSON ファイルへ保存する。
+func (s *Service) ListUserTags(
+	ctx context.Context,
+	userID string,
+	outputDir string,
+) (*ListUserTagsOutput, error) {
+	return s.listUserTagsOp.Execute(ctx, userID, outputDir)
 }

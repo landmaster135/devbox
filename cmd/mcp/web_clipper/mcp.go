@@ -43,6 +43,14 @@ func createConfigFromRequest(request mcpInfraUsecases.CallToolRequest) (*webClip
 		srcMarkdownFile,
 		outFilePath,
 		topHeadingLevel,
+		"",
+		"",
+		-1,
+		2,
+		false,
+		false,
+		false,
+		false,
 		false,
 	)
 	if err != nil {
