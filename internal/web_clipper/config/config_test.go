@@ -14,6 +14,14 @@ func TestNewConfig(t *testing.T) {
 		srcMarkdownFile    string
 		outFilePath        string
 		topHeadingLevel    int
+		srcDir             string
+		slug               string
+		start              int
+		digits             int
+		sortByTime         bool
+		sortByName         bool
+		jsonOutput         bool
+		verbose            bool
 		help               bool
 		expectError        bool
 		errorMessage       string
@@ -26,6 +34,8 @@ func TestNewConfig(t *testing.T) {
 			srcMarkdownContent: "## 見出し\n本文\n",
 			outFilePath:        "./out.md",
 			topHeadingLevel:    2,
+			start:              defaultRenameAttachmentStart,
+			digits:             defaultRenameAttachmentDigit,
 		},
 		{
 			name:            "正常系_file指定",
@@ -35,6 +45,28 @@ func TestNewConfig(t *testing.T) {
 			srcMarkdownFile: "./in.md",
 			outFilePath:     "./out.md",
 			topHeadingLevel: 2,
+			start:           defaultRenameAttachmentStart,
+			digits:          defaultRenameAttachmentDigit,
+		},
+		{
+			name:       "正常系_renameAttachments_name指定",
+			operation:  OperationRenameAttachments,
+			srcDir:     "./attachments",
+			slug:       "openai-blog",
+			start:      1,
+			digits:     3,
+			sortByName: true,
+		},
+		{
+			name:       "正常系_renameAttachments_time指定",
+			operation:  OperationRenameAttachments,
+			srcDir:     "./attachments",
+			slug:       "openai-blog",
+			start:      0,
+			digits:     2,
+			sortByTime: true,
+			jsonOutput: true,
+			verbose:    true,
 		},
 		{
 			name:               "異常系_contentとfileの同時指定",
@@ -45,6 +77,8 @@ func TestNewConfig(t *testing.T) {
 			srcMarkdownFile:    "./in.md",
 			outFilePath:        "./out.md",
 			topHeadingLevel:    2,
+			start:              defaultRenameAttachmentStart,
+			digits:             defaultRenameAttachmentDigit,
 			expectError:        true,
 			errorMessage:       "--src-markdown-content と --src-markdown-file は同時に指定できません",
 		},
@@ -56,8 +90,10 @@ func TestNewConfig(t *testing.T) {
 			srcMarkdownContent: "## 見出し\n本文\n",
 			outFilePath:        "./out.md",
 			topHeadingLevel:    2,
+			start:              defaultRenameAttachmentStart,
+			digits:             defaultRenameAttachmentDigit,
 			expectError:        true,
-			errorMessage:       "--operation には patch-markdown を指定してください",
+			errorMessage:       "--operation には patch-markdown, rename-attachments を指定してください",
 		},
 		{
 			name:            "異常系_入力ソース未指定",
@@ -66,6 +102,8 @@ func TestNewConfig(t *testing.T) {
 			targetURL:       "https://openai.com/blog",
 			outFilePath:     "./out.md",
 			topHeadingLevel: 2,
+			start:           defaultRenameAttachmentStart,
+			digits:          defaultRenameAttachmentDigit,
 			expectError:     true,
 			errorMessage:    "--src-markdown-content または --src-markdown-file のいずれかは必須です (--operation=patch-markdown)",
 		},
@@ -77,8 +115,96 @@ func TestNewConfig(t *testing.T) {
 			srcMarkdownContent: "## 見出し\n本文\n",
 			outFilePath:        "./out.md",
 			topHeadingLevel:    0,
+			start:              defaultRenameAttachmentStart,
+			digits:             defaultRenameAttachmentDigit,
 			expectError:        true,
 			errorMessage:       "--top-heading-level は 1 以上で指定してください",
+		},
+		{
+			name:         "異常系_renameAttachments_slug未指定",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			start:        1,
+			digits:       3,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "--slug は必須です (--operation=rename-attachments)",
+		},
+		{
+			name:         "異常系_renameAttachments_srcDir未指定",
+			operation:    OperationRenameAttachments,
+			slug:         "openai-blog",
+			start:        1,
+			digits:       3,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "--src-dir は必須です (--operation=rename-attachments)",
+		},
+		{
+			name:         "異常系_renameAttachments_slugに英大文字を含む",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			slug:         "OpenAI-blog",
+			start:        1,
+			digits:       3,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "--slug は英小文字、数字、半角ハイフンのみ使用できます",
+		},
+		{
+			name:         "異常系_renameAttachments_slugにアンダースコアを含む",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			slug:         "openai_blog",
+			start:        1,
+			digits:       3,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "--slug は英小文字、数字、半角ハイフンのみ使用できます",
+		},
+		{
+			name:         "異常系_renameAttachments_start未指定",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			slug:         "openai-blog",
+			start:        defaultRenameAttachmentStart,
+			digits:       3,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "--start は 0 以上で指定してください (--operation=rename-attachments)",
+		},
+		{
+			name:         "異常系_renameAttachments_digits不正",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			slug:         "openai-blog",
+			start:        1,
+			digits:       0,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "--digits は 1 以上で指定してください",
+		},
+		{
+			name:         "異常系_renameAttachments_sort未指定",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			slug:         "openai-blog",
+			start:        1,
+			digits:       3,
+			expectError:  true,
+			errorMessage: "-time または -name のいずれか一方を指定してください",
+		},
+		{
+			name:         "異常系_renameAttachments_sort同時指定",
+			operation:    OperationRenameAttachments,
+			srcDir:       "./attachments",
+			slug:         "openai-blog",
+			start:        1,
+			digits:       3,
+			sortByTime:   true,
+			sortByName:   true,
+			expectError:  true,
+			errorMessage: "-time または -name のいずれか一方を指定してください",
 		},
 		{
 			name:               "正常系_help",
@@ -89,6 +215,8 @@ func TestNewConfig(t *testing.T) {
 			srcMarkdownFile:    "",
 			outFilePath:        "",
 			topHeadingLevel:    0,
+			start:              defaultRenameAttachmentStart,
+			digits:             defaultRenameAttachmentDigit,
 			help:               true,
 		},
 	}
@@ -106,6 +234,14 @@ func TestNewConfig(t *testing.T) {
 				tt.srcMarkdownFile,
 				tt.outFilePath,
 				tt.topHeadingLevel,
+				tt.srcDir,
+				tt.slug,
+				tt.start,
+				tt.digits,
+				tt.sortByTime,
+				tt.sortByName,
+				tt.jsonOutput,
+				tt.verbose,
 				tt.help,
 			)
 

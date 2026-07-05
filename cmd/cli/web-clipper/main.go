@@ -34,6 +34,17 @@ func main() {
 			cfg.OutFilePath,
 			cfg.TopHeadingLevel,
 		)
+	case config.OperationRenameAttachments:
+		result, err = service.RenameAttachments(usecases.RenameAttachmentsOptions{
+			SrcDir:     cfg.SrcDir,
+			Slug:       cfg.Slug,
+			Start:      cfg.Start,
+			Digits:     cfg.Digits,
+			SortByTime: cfg.SortByTime,
+			SortByName: cfg.SortByName,
+			JSON:       cfg.JSON,
+			Verbose:    cfg.Verbose,
+		})
 	default:
 		err = fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}
