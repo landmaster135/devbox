@@ -16,6 +16,7 @@ SMART overall-health self-assessment test result: PASSED
 
 Vendor Specific SMART Attributes with Thresholds:
 ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x002f   189   184   051    Pre-fail  Always       -       1061
   5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
 190 Airflow_Temperature_Cel 0x0022   070   051   040    Old_age   Always       -       30 (Min/Max 25/30)
 194 Temperature_Celsius     0x0022   030   049   000    Old_age   Always       -       30 (0 12 0 0 0)
@@ -30,6 +31,7 @@ SMART overall-health self-assessment test result: PASSED
 
 Vendor Specific SMART Attributes with Thresholds:
 ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  1 Raw_Read_Error_Rate     0x002f   189   184   051    Pre-fail  Always       -       1061
   5 Reallocated_Sector_Ct   0x0033   200   200   140    Pre-fail  Always       -       0
 194 Temperature_Celsius     0x0022   103   091   000    Old_age   Always       -       49
 197 Current_Pending_Sector  0x0032   200   200   000    Old_age   Always       -       404
@@ -53,11 +55,11 @@ func TestService_ParseSmartReport_Normal(t *testing.T) {
 	if report.OverallHealth != "PASSED" {
 		t.Fatalf("expected PASSED, got %s", report.OverallHealth)
 	}
-	if len(report.Attributes) != 6 {
-		t.Fatalf("expected 6 attributes, got %d", len(report.Attributes))
+	if len(report.Attributes) != 7 {
+		t.Fatalf("expected 7 attributes, got %d", len(report.Attributes))
 	}
-	if report.Attributes[1].RawValue != 30 {
-		t.Fatalf("expected raw value 30, got %d", report.Attributes[1].RawValue)
+	if report.Attributes[2].RawValue != 30 {
+		t.Fatalf("expected raw value 30, got %d", report.Attributes[2].RawValue)
 	}
 }
 
@@ -152,6 +154,100 @@ func TestService_AssessReport_WarningTemperature(t *testing.T) {
 
 	if assessment.Status != domain.StatusWarning {
 		t.Fatalf("expected warning, got %s", assessment.Status)
+	}
+}
+
+func TestService_AssessReport_WarningRawReadErrorRateValue(t *testing.T) {
+	service := NewService(ServiceOptions{})
+	report, err := service.ParseSmartReport(strings.Replace(healthySmartLog, "1 Raw_Read_Error_Rate     0x002f   189   184   051", "1 Raw_Read_Error_Rate     0x002f   061   184   051", 1))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	assessment := service.AssessReport(report)
+
+	if assessment.Status != domain.StatusWarning {
+		t.Fatalf("expected warning, got %s", assessment.Status)
+	}
+	if len(assessment.Findings) != 1 {
+		t.Fatalf("expected 1 finding, got %d", len(assessment.Findings))
+	}
+	finding := assessment.Findings[0]
+	if finding.Severity != domain.SeverityWarning {
+		t.Fatalf("expected warning, got %s", finding.Severity)
+	}
+	if finding.AttributeID != 1 {
+		t.Fatalf("expected attribute 1, got %d", finding.AttributeID)
+	}
+	expectedMessage := "Raw_Read_Error_Rate の現在正規化値がメーカー定義しきい値に近づいています: VALUE=61 THRESH=51"
+	if finding.Message != expectedMessage {
+		t.Fatalf("expected %q, got %q", expectedMessage, finding.Message)
+	}
+}
+
+func TestService_AssessReport_CriticalRawReadErrorRateValue(t *testing.T) {
+	service := NewService(ServiceOptions{})
+	report, err := service.ParseSmartReport(strings.Replace(healthySmartLog, "1 Raw_Read_Error_Rate     0x002f   189   184   051", "1 Raw_Read_Error_Rate     0x002f   051   184   051", 1))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	assessment := service.AssessReport(report)
+
+	if assessment.Status != domain.StatusCritical {
+		t.Fatalf("expected critical, got %s", assessment.Status)
+	}
+	finding := assessment.Findings[0]
+	if finding.Severity != domain.SeverityCritical {
+		t.Fatalf("expected critical, got %s", finding.Severity)
+	}
+	expectedMessage := "Raw_Read_Error_Rate の現在正規化値がメーカー定義しきい値以下です: VALUE=51 THRESH=51"
+	if finding.Message != expectedMessage {
+		t.Fatalf("expected %q, got %q", expectedMessage, finding.Message)
+	}
+}
+
+func TestService_AssessReport_WarningRawReadErrorRateWorst(t *testing.T) {
+	service := NewService(ServiceOptions{})
+	report, err := service.ParseSmartReport(strings.Replace(healthySmartLog, "1 Raw_Read_Error_Rate     0x002f   189   184   051", "1 Raw_Read_Error_Rate     0x002f   189   060   051", 1))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	assessment := service.AssessReport(report)
+
+	if assessment.Status != domain.StatusWarning {
+		t.Fatalf("expected warning, got %s", assessment.Status)
+	}
+	finding := assessment.Findings[0]
+	if finding.Severity != domain.SeverityWarning {
+		t.Fatalf("expected warning, got %s", finding.Severity)
+	}
+	expectedMessage := "Raw_Read_Error_Rate の過去最悪正規化値がメーカー定義しきい値に近づいています: WORST=60 THRESH=51"
+	if finding.Message != expectedMessage {
+		t.Fatalf("expected %q, got %q", expectedMessage, finding.Message)
+	}
+}
+
+func TestService_AssessReport_CriticalRawReadErrorRateWorst(t *testing.T) {
+	service := NewService(ServiceOptions{})
+	report, err := service.ParseSmartReport(strings.Replace(healthySmartLog, "1 Raw_Read_Error_Rate     0x002f   189   184   051", "1 Raw_Read_Error_Rate     0x002f   189   050   051", 1))
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	assessment := service.AssessReport(report)
+
+	if assessment.Status != domain.StatusCritical {
+		t.Fatalf("expected critical, got %s", assessment.Status)
+	}
+	finding := assessment.Findings[0]
+	if finding.Severity != domain.SeverityCritical {
+		t.Fatalf("expected critical, got %s", finding.Severity)
+	}
+	expectedMessage := "Raw_Read_Error_Rate の過去最悪正規化値がメーカー定義しきい値以下です: WORST=50 THRESH=51"
+	if finding.Message != expectedMessage {
+		t.Fatalf("expected %q, got %q", expectedMessage, finding.Message)
 	}
 }
 

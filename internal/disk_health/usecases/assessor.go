@@ -7,6 +7,8 @@ import (
 	"github.com/landmaster135/devbox/internal/disk_health/domain"
 )
 
+const normalizedValueWarningMargin = 10
+
 func (s *Service) AssessReport(report *domain.SmartReport) domain.Assessment {
 	assessment := domain.Assessment{
 		Status:        domain.StatusHealthy,
@@ -58,10 +60,48 @@ func (s *Service) assessAttribute(assessment *domain.Assessment, attribute domai
 		s.addFinding(assessment, attribute, domain.SeverityWarning, "セクタ代替イベントを検出しました")
 	case s.isAttribute(attribute, 199, "UDMA_CRC_Error_Count") && attribute.RawValue > 0:
 		s.addFinding(assessment, attribute, domain.SeverityWarning, "UDMA CRCエラーを検出しました。ケーブルや接続状態を確認してください")
+	case s.isAttribute(attribute, 1, "Raw_Read_Error_Rate"):
+		s.assessRawReadErrorRate(assessment, attribute)
 	case s.isTemperatureAttribute(attribute) && attribute.RawValue >= 60:
 		s.addFinding(assessment, attribute, domain.SeverityCritical, "ディスク温度が危険域です")
 	case s.isTemperatureAttribute(attribute) && attribute.RawValue >= 50:
 		s.addFinding(assessment, attribute, domain.SeverityWarning, "ディスク温度が高めです")
+	}
+}
+
+func (s *Service) assessRawReadErrorRate(assessment *domain.Assessment, attribute domain.SmartAttribute) {
+	s.assessNormalizedValue(
+		assessment,
+		attribute,
+		attribute.Value,
+		"現在正規化値",
+		"VALUE",
+	)
+	s.assessNormalizedValue(
+		assessment,
+		attribute,
+		attribute.Worst,
+		"過去最悪正規化値",
+		"WORST",
+	)
+}
+
+func (s *Service) assessNormalizedValue(assessment *domain.Assessment, attribute domain.SmartAttribute, value int, label string, fieldName string) {
+	switch {
+	case value <= attribute.Threshold:
+		s.addFinding(
+			assessment,
+			attribute,
+			domain.SeverityCritical,
+			fmt.Sprintf("%s の%sがメーカー定義しきい値以下です: %s=%d THRESH=%d", attribute.Name, label, fieldName, value, attribute.Threshold),
+		)
+	case value <= attribute.Threshold+normalizedValueWarningMargin:
+		s.addFinding(
+			assessment,
+			attribute,
+			domain.SeverityWarning,
+			fmt.Sprintf("%s の%sがメーカー定義しきい値に近づいています: %s=%d THRESH=%d", attribute.Name, label, fieldName, value, attribute.Threshold),
+		)
 	}
 }
 
