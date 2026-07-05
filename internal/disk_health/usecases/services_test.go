@@ -12,17 +12,23 @@ import (
 
 const healthySmartLog = `Device Model:     ST5000LM000-2AN170
 Serial Number:    WCJ925F8
+Rotation Rate:    5526 rpm
+Sector Sizes:     512 bytes logical, 4096 bytes physical
 SMART overall-health self-assessment test result: PASSED
 
 Vendor Specific SMART Attributes with Thresholds:
 ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
   1 Raw_Read_Error_Rate     0x002f   189   184   051    Pre-fail  Always       -       1061
   5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
+  9 Power_On_Hours          0x0032   100   100   000    Old_age   Always       -       87 (239 223 0)
+ 12 Power_Cycle_Count       0x0032   100   100   020    Old_age   Always       -       159
 190 Airflow_Temperature_Cel 0x0022   070   051   040    Old_age   Always       -       30 (Min/Max 25/30)
 194 Temperature_Celsius     0x0022   030   049   000    Old_age   Always       -       30 (0 12 0 0 0)
 197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -       0
 198 Offline_Uncorrectable   0x0010   100   100   000    Old_age   Offline      -       0
 199 UDMA_CRC_Error_Count    0x003e   200   200   000    Old_age   Always       -       0
+241 Total_LBAs_Written      0x0000   100   253   000    Old_age   Offline      -       3836222920
+242 Total_LBAs_Read         0x0000   100   253   000    Old_age   Offline      -       1647232405
 `
 
 const criticalSmartLog = `Device Model:     WDC WD50NDZM-11BCXS1
@@ -55,12 +61,88 @@ func TestService_ParseSmartReport_Normal(t *testing.T) {
 	if report.OverallHealth != "PASSED" {
 		t.Fatalf("expected PASSED, got %s", report.OverallHealth)
 	}
-	if len(report.Attributes) != 7 {
-		t.Fatalf("expected 7 attributes, got %d", len(report.Attributes))
+	if len(report.Attributes) != 11 {
+		t.Fatalf("expected 11 attributes, got %d", len(report.Attributes))
 	}
-	if report.Attributes[2].RawValue != 30 {
-		t.Fatalf("expected raw value 30, got %d", report.Attributes[2].RawValue)
+	if report.Attributes[4].RawValue != 30 {
+		t.Fatalf("expected raw value 30, got %d", report.Attributes[4].RawValue)
 	}
+	if report.DiskInfo == nil {
+		t.Fatal("expected disk info")
+	}
+	assertInt64Pointer(t, report.DiskInfo.RotationRateRPM, 5526)
+	assertInt64Pointer(t, report.DiskInfo.PowerOnHours, 87)
+	assertInt64Pointer(t, report.DiskInfo.PowerCycleCount, 159)
+	assertInt64Pointer(t, report.DiskInfo.TemperatureCelsius, 30)
+	assertInt64Pointer(t, report.DiskInfo.TotalLBAsWritten, 3836222920)
+	assertInt64Pointer(t, report.DiskInfo.TotalBytesWritten, 1964146135040)
+	assertInt64Pointer(t, report.DiskInfo.TotalLBAsRead, 1647232405)
+	assertInt64Pointer(t, report.DiskInfo.TotalBytesRead, 843382991360)
+}
+
+func TestService_ParseSmartReport_MissingDiskInfo_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	report, err := service.ParseSmartReport(`Device Model:     ST5000LM000-2AN170
+SMART overall-health self-assessment test result: PASSED
+
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+  5 Reallocated_Sector_Ct   0x0033   100   100   010    Pre-fail  Always       -       0
+`)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if report.DiskInfo != nil {
+		t.Fatalf("expected no disk info, got %#v", report.DiskInfo)
+	}
+}
+
+func TestService_ParseSmartReport_DefaultSectorAndAirflowTemperature_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	report, err := service.ParseSmartReport(`Device Model:     ST5000LM000-2AN170
+Rotation Rate:    Solid State Device
+SMART overall-health self-assessment test result: PASSED
+
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+190 Airflow_Temperature_Cel 0x0022   070   051   040    Old_age   Always       -       31 (Min/Max 25/31)
+241 Total_LBAs_Written      0x0000   100   253   000    Old_age   Offline      -       10
+242 Total_LBAs_Read         0x0000   100   253   000    Old_age   Offline      -       20
+`)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if report.DiskInfo == nil {
+		t.Fatal("expected disk info")
+	}
+	if report.DiskInfo.RotationRateRPM != nil {
+		t.Fatalf("expected no rotation rate, got %d", *report.DiskInfo.RotationRateRPM)
+	}
+	assertInt64Pointer(t, report.DiskInfo.TemperatureCelsius, 31)
+	assertInt64Pointer(t, report.DiskInfo.TotalBytesWritten, 5120)
+	assertInt64Pointer(t, report.DiskInfo.TotalBytesRead, 10240)
+}
+
+func TestService_ParseSmartReport_SectorSizeFallback_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	report, err := service.ParseSmartReport(`Device Model:     ST5000LM000-2AN170
+Sector Size:      4096 bytes
+SMART overall-health self-assessment test result: PASSED
+
+Vendor Specific SMART Attributes with Thresholds:
+ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
+241 Total_LBAs_Written      0x0000   100   253   000    Old_age   Offline      -       10
+`)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if report.DiskInfo == nil {
+		t.Fatal("expected disk info")
+	}
+	assertInt64Pointer(t, report.DiskInfo.TotalBytesWritten, 40960)
 }
 
 func TestService_ParseSmartReport_EmptyContent(t *testing.T) {
@@ -354,6 +436,15 @@ func TestService_AssessSmart_TextOutput_Normal(t *testing.T) {
 	if !strings.Contains(result, "status: healthy") {
 		t.Fatalf("expected healthy output, got %s", result)
 	}
+	if !strings.Contains(result, "disk_info:") {
+		t.Fatalf("expected disk info output, got %s", result)
+	}
+	if !strings.Contains(result, "  rotation_rate_rpm: 5526") {
+		t.Fatalf("expected rotation rate output, got %s", result)
+	}
+	if !strings.Contains(result, "  total_bytes_written: 1964146135040") {
+		t.Fatalf("expected total bytes written output, got %s", result)
+	}
 	if strings.Contains(result, "attributes:") {
 		t.Fatalf("expected non-verbose output, got %s", result)
 	}
@@ -417,6 +508,37 @@ func TestService_AssessSmart_JSONVerboseOutput_Normal(t *testing.T) {
 	}
 }
 
+func TestService_AssessSmart_JSONDiskInfoOutput_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				return []byte(healthySmartLog), nil
+			},
+		},
+	})
+
+	result, err := service.AssessSmart("smart.log", true, false)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var assessment domain.Assessment
+	if err := json.Unmarshal([]byte(result), &assessment); err != nil {
+		t.Fatalf("expected valid json, got %v", err)
+	}
+	if assessment.DiskInfo == nil {
+		t.Fatal("expected disk info")
+	}
+	assertInt64Pointer(t, assessment.DiskInfo.RotationRateRPM, 5526)
+	assertInt64Pointer(t, assessment.DiskInfo.PowerOnHours, 87)
+	assertInt64Pointer(t, assessment.DiskInfo.PowerCycleCount, 159)
+	assertInt64Pointer(t, assessment.DiskInfo.TemperatureCelsius, 30)
+	assertInt64Pointer(t, assessment.DiskInfo.TotalLBAsWritten, 3836222920)
+	assertInt64Pointer(t, assessment.DiskInfo.TotalBytesWritten, 1964146135040)
+	assertInt64Pointer(t, assessment.DiskInfo.TotalLBAsRead, 1647232405)
+	assertInt64Pointer(t, assessment.DiskInfo.TotalBytesRead, 843382991360)
+}
+
 func TestService_AssessSmart_TextVerboseOutput_Normal(t *testing.T) {
 	service := NewService(ServiceOptions{
 		FileSystem: &filesystem.MockRepository{
@@ -448,5 +570,16 @@ func TestService_AssessSmart_ReadFileError(t *testing.T) {
 	_, err := service.AssessSmart("smart.log", false, false)
 	if !errors.Is(err, expectedErr) {
 		t.Fatalf("expected %v, got %v", expectedErr, err)
+	}
+}
+
+func assertInt64Pointer(t *testing.T, actual *int64, expected int64) {
+	t.Helper()
+
+	if actual == nil {
+		t.Fatalf("expected %d, got nil", expected)
+	}
+	if *actual != expected {
+		t.Fatalf("expected %d, got %d", expected, *actual)
 	}
 }

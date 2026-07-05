@@ -6,6 +6,8 @@
 
 `disk-health` は SMART 全体ヘルスと主要な故障予兆属性を解析し、`healthy` / `warning` / `critical` / `unknown` の 4 段階で評価します。特に代替待ちセクタ、訂正不能セクタ、代替済みセクタ、CRC エラー、温度を重点的に確認します。
 
+健康度評価に加えて、取得できる場合は Rotation Rate、電源投入時間、電源投入回数、温度、読み込み量、書き込み量も出力します。この追加サマリーは `-verbose` を指定しない通常出力にも含まれます。
+
 ## フラグ一覧
 
 | フラグ | 必須 | デフォルト値 | 説明 |
@@ -52,6 +54,15 @@ summary: SMART情報に重大な問題は見つかりませんでした。
 model: ST5000LM000-2AN170
 serial_number: WCJ925F8
 overall_health: PASSED
+disk_info:
+  rotation_rate_rpm: 5526
+  power_on_hours: 87
+  power_cycle_count: 159
+  temperature_celsius: 30
+  total_lbas_written: 3836222920
+  total_bytes_written: 1964146135040
+  total_lbas_read: 1647232405
+  total_bytes_read: 843382991360
 ```
 
 ### 致命的な欠損を検出した場合
@@ -78,6 +89,16 @@ findings:
   "overall_health": "PASSED",
   "model": "WDC WD50NDZM-11BCXS1",
   "serial_number": "WD-WX12D126617N",
+  "disk_info": {
+    "rotation_rate_rpm": 5526,
+    "power_on_hours": 87,
+    "power_cycle_count": 159,
+    "temperature_celsius": 30,
+    "total_lbas_written": 3836222920,
+    "total_bytes_written": 1964146135040,
+    "total_lbas_read": 1647232405,
+    "total_bytes_read": 843382991360
+  },
   "findings": [
     {
       "severity": "critical",

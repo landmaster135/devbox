@@ -23,6 +23,7 @@ func (s *Service) FormatText(assessment domain.Assessment, verbose bool) string 
 	if assessment.OverallHealth != "" {
 		builder.WriteString(fmt.Sprintf("overall_health: %s\n", assessment.OverallHealth))
 	}
+	s.writeDiskInfoText(&builder, assessment.DiskInfo)
 
 	if len(assessment.Findings) > 0 {
 		builder.WriteString("findings:\n")
@@ -51,6 +52,42 @@ func (s *Service) FormatText(assessment domain.Assessment, verbose bool) string 
 	}
 
 	return builder.String()
+}
+
+func (s *Service) writeDiskInfoText(builder *strings.Builder, diskInfo *domain.DiskInfo) {
+	if diskInfo == nil {
+		return
+	}
+
+	lines := s.formatDiskInfoLines(diskInfo)
+	if len(lines) == 0 {
+		return
+	}
+
+	builder.WriteString("disk_info:\n")
+	for _, line := range lines {
+		builder.WriteString(line)
+	}
+}
+
+func (s *Service) formatDiskInfoLines(diskInfo *domain.DiskInfo) []string {
+	lines := make([]string, 0, 8)
+	lines = s.appendInt64Line(lines, "rotation_rate_rpm", diskInfo.RotationRateRPM)
+	lines = s.appendInt64Line(lines, "power_on_hours", diskInfo.PowerOnHours)
+	lines = s.appendInt64Line(lines, "power_cycle_count", diskInfo.PowerCycleCount)
+	lines = s.appendInt64Line(lines, "temperature_celsius", diskInfo.TemperatureCelsius)
+	lines = s.appendInt64Line(lines, "total_lbas_written", diskInfo.TotalLBAsWritten)
+	lines = s.appendInt64Line(lines, "total_bytes_written", diskInfo.TotalBytesWritten)
+	lines = s.appendInt64Line(lines, "total_lbas_read", diskInfo.TotalLBAsRead)
+	lines = s.appendInt64Line(lines, "total_bytes_read", diskInfo.TotalBytesRead)
+	return lines
+}
+
+func (s *Service) appendInt64Line(lines []string, name string, value *int64) []string {
+	if value == nil {
+		return lines
+	}
+	return append(lines, fmt.Sprintf("  %s: %d\n", name, *value))
 }
 
 func (s *Service) FormatJSON(assessment domain.Assessment, verbose bool) (string, error) {

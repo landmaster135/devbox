@@ -30,11 +30,24 @@ type SmartAttribute struct {
 	RawText    string `json:"raw_text"`
 }
 
+type DiskInfo struct {
+	RotationRateRPM    *int64 `json:"rotation_rate_rpm,omitempty"`
+	PowerOnHours       *int64 `json:"power_on_hours,omitempty"`
+	PowerCycleCount    *int64 `json:"power_cycle_count,omitempty"`
+	TemperatureCelsius *int64 `json:"temperature_celsius,omitempty"`
+	TotalLBAsWritten   *int64 `json:"total_lbas_written,omitempty"`
+	TotalBytesWritten  *int64 `json:"total_bytes_written,omitempty"`
+	TotalLBAsRead      *int64 `json:"total_lbas_read,omitempty"`
+	TotalBytesRead     *int64 `json:"total_bytes_read,omitempty"`
+}
+
 type SmartReport struct {
-	Model         string           `json:"model,omitempty"`
-	SerialNumber  string           `json:"serial_number,omitempty"`
-	OverallHealth string           `json:"overall_health,omitempty"`
-	Attributes    []SmartAttribute `json:"attributes,omitempty"`
+	Model                  string           `json:"model,omitempty"`
+	SerialNumber           string           `json:"serial_number,omitempty"`
+	OverallHealth          string           `json:"overall_health,omitempty"`
+	LogicalSectorSizeBytes *int64           `json:"-"`
+	DiskInfo               *DiskInfo        `json:"disk_info,omitempty"`
+	Attributes             []SmartAttribute `json:"attributes,omitempty"`
 }
 
 type Finding struct {
@@ -52,6 +65,7 @@ type Assessment struct {
 	OverallHealth string           `json:"overall_health,omitempty"`
 	Model         string           `json:"model,omitempty"`
 	SerialNumber  string           `json:"serial_number,omitempty"`
+	DiskInfo      *DiskInfo        `json:"disk_info,omitempty"`
 	Findings      []Finding        `json:"findings,omitempty"`
 	Attributes    []SmartAttribute `json:"attributes,omitempty"`
 }

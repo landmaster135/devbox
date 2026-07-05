@@ -17,6 +17,7 @@ func (s *Service) AssessReport(report *domain.SmartReport) domain.Assessment {
 		OverallHealth: report.OverallHealth,
 		Model:         report.Model,
 		SerialNumber:  report.SerialNumber,
+		DiskInfo:      report.DiskInfo,
 		Attributes:    report.Attributes,
 	}
 
