@@ -33,6 +33,23 @@ func TestConfig_ParseFlagsWithParser_Normal(t *testing.T) {
 	}
 }
 
+func TestConfig_ParseFlagsWithParser_AssessDmesg_Normal(t *testing.T) {
+	parser := flagParser.NewMockFlagParser()
+	parser.SetString("operation", OperationAssessDmesg)
+	parser.SetString("src-file", "dmesg.log")
+
+	cfg, err := ParseFlagsWithParser(parser)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Operation != OperationAssessDmesg {
+		t.Fatalf("expected %s, got %s", OperationAssessDmesg, cfg.Operation)
+	}
+	if cfg.SrcFile != "dmesg.log" {
+		t.Fatalf("expected dmesg.log, got %s", cfg.SrcFile)
+	}
+}
+
 func TestConfig_ParseFlagsWithParser_Help(t *testing.T) {
 	parser := flagParser.NewMockFlagParser()
 	parser.SetBool("help", true)
@@ -79,6 +96,15 @@ func TestConfig_Validate_UnsupportedOperation(t *testing.T) {
 
 func TestConfig_Validate_MissingSrcFile(t *testing.T) {
 	cfg := &Config{Operation: OperationAssessSmart}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestConfig_Validate_AssessDmesgMissingSrcFile(t *testing.T) {
+	cfg := &Config{Operation: OperationAssessDmesg}
 
 	err := cfg.Validate()
 	if err == nil {

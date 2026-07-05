@@ -45,6 +45,33 @@ ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_
 199 UDMA_CRC_Error_Count    0x0032   200   200   000    Old_age   Always       -       0
 `
 
+const healthyDmesgLog = `(標準入力):261:[    0.104909] APIC: Switch to symmetric I/O mode setup
+(標準入力):379:[    0.198970] ACPI BIOS Error (bug): Failure creating named object [\_SB.PC00.TXHC.RHUB.SS01._UPC], AE_ALREADY_EXISTS (20251212/dswload2-327)
+(標準入力):380:[    0.198974] ACPI Error: AE_ALREADY_EXISTS, During name lookup/catalog (20251212/psobject-220)
+(標準入力):789:[    0.518951] DMAR: Intel(R) Virtualization Technology for Directed I/O
+(標準入力):806:[    0.527869] Adaptive Deadline I/O Scheduler 3.2.0 by Masahito Suzuki
+(標準入力):919:[    0.753700] RAS: Correctable Errors collector initialized.
+(標準入力):1011:[    1.251757] sd 1:0:0:0: [sda] Preferred minimum I/O size 512 bytes
+(標準入力):1469:[ 6221.314864] sd 2:0:0:0: [sdc] Spinning up disk...
+(標準入力):1471:[ 6230.227278] sd 2:0:0:0: [sdc] 9767541167 512-byte logical blocks: (5.00 TB/4.55 TiB)
+(標準入力):1472:[ 6230.227389] sd 2:0:0:0: [sdc] Write Protect is off
+(標準入力):1475:[ 6230.252204] sd 2:0:0:0: [sdc] Preferred minimum I/O size 512 bytes
+(標準入力):1478:[ 6230.321645] sd 2:0:0:0: [sdc] Attached SCSI disk
+`
+
+const criticalDmesgLog = `(標準入力):1:[17568.682761] critical medium error, dev sdb, sector 8491832904 op 0x0:(READ) flags 0x80700 phys_seg 1 prio class 3
+(標準入力):2:[17571.754409] sd 0:0:0:0: [sdb] tag#0 FAILED Result: hostbyte=DID_OK driverbyte=DRIVER_OK cmd_age=3s
+(標準入力):3:[17571.754422] sd 0:0:0:0: [sdb] tag#0 Sense Key : Medium Error [current]
+(標準入力):4:[17571.754426] sd 0:0:0:0: [sdb] tag#0 Add. Sense: Unrecovered read error
+(標準入力):5:[17571.754431] sd 0:0:0:0: [sdb] tag#0 CDB: Read(16) 88 00 00 00 00 01 fa 27 16 48 00 00 00 08 00 00
+`
+
+const warningDmesgLog = `[18000.100000] blk_update_request: I/O error, dev sdb, sector 42 op 0x0:(READ)
+[18001.100000] sd 0:0:0:0: [sdb] tag#1 failed command: READ FPDMA QUEUED
+[18002.100000] ata1: link is slow to respond, please be patient
+[18003.100000] sd 0:0:0:0: [sdb] command timeout
+`
+
 func TestService_ParseSmartReport_Normal(t *testing.T) {
 	service := NewService(ServiceOptions{})
 
@@ -78,6 +105,80 @@ func TestService_ParseSmartReport_Normal(t *testing.T) {
 	assertInt64Pointer(t, report.DiskInfo.TotalBytesWritten, 1964146135040)
 	assertInt64Pointer(t, report.DiskInfo.TotalLBAsRead, 1647232405)
 	assertInt64Pointer(t, report.DiskInfo.TotalBytesRead, 843382991360)
+}
+
+func TestService_ParseDmesgLog_HealthyNoiseOnly_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	events, err := service.ParseDmesgLog(healthyDmesgLog)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("expected no events, got %d", len(events))
+	}
+}
+
+func TestService_ParseDmesgLog_CriticalMediumError_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	events, err := service.ParseDmesgLog(criticalDmesgLog)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(events) != 4 {
+		t.Fatalf("expected 4 events, got %d", len(events))
+	}
+	if events[0].Severity != domain.SeverityCritical {
+		t.Fatalf("expected critical, got %s", events[0].Severity)
+	}
+	if events[0].Device != "sdb" {
+		t.Fatalf("expected sdb, got %s", events[0].Device)
+	}
+	if strings.Contains(events[0].Message, "8491832904") {
+		t.Fatalf("expected no sector in message, got %s", events[0].Message)
+	}
+}
+
+func TestService_ParseDmesgLog_WarningEvents_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	events, err := service.ParseDmesgLog(warningDmesgLog)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(events) != 3 {
+		t.Fatalf("expected 3 events, got %d", len(events))
+	}
+	for _, event := range events {
+		if event.Severity != domain.SeverityWarning {
+			t.Fatalf("expected warning, got %s", event.Severity)
+		}
+	}
+}
+
+func TestService_ParseDmesgLog_DeviceOptionalCriticalMediumError_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	events, err := service.ParseDmesgLog(`[17568.682761] critical medium error, sector 8491832904 op 0x0:(READ)`)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(events))
+	}
+	if events[0].Device != "" {
+		t.Fatalf("expected no device, got %s", events[0].Device)
+	}
+}
+
+func TestService_ParseDmesgLog_EmptyContent(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	_, err := service.ParseDmesgLog("")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
 }
 
 func TestService_ParseSmartReport_MissingDiskInfo_Normal(t *testing.T) {
@@ -171,6 +272,53 @@ func TestService_AssessReport_Healthy_Normal(t *testing.T) {
 	}
 	if len(assessment.Findings) != 0 {
 		t.Fatalf("expected no findings, got %d", len(assessment.Findings))
+	}
+}
+
+func TestService_AssessDmesgEvents_Healthy_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+
+	assessment := service.AssessDmesgEvents(nil)
+
+	if assessment.Status != domain.StatusHealthy {
+		t.Fatalf("expected healthy, got %s", assessment.Status)
+	}
+	if assessment.Score != 100 {
+		t.Fatalf("expected score 100, got %d", assessment.Score)
+	}
+}
+
+func TestService_AssessDmesgEvents_Critical_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+	events, err := service.ParseDmesgLog(criticalDmesgLog)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	assessment := service.AssessDmesgEvents(events)
+
+	if assessment.Status != domain.StatusCritical {
+		t.Fatalf("expected critical, got %s", assessment.Status)
+	}
+	if assessment.Score != 20 {
+		t.Fatalf("expected score 20, got %d", assessment.Score)
+	}
+}
+
+func TestService_AssessDmesgEvents_Warning_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{})
+	events, err := service.ParseDmesgLog(warningDmesgLog)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	assessment := service.AssessDmesgEvents(events)
+
+	if assessment.Status != domain.StatusWarning {
+		t.Fatalf("expected warning, got %s", assessment.Status)
+	}
+	if assessment.Score != 60 {
+		t.Fatalf("expected score 60, got %d", assessment.Score)
 	}
 }
 
@@ -568,6 +716,161 @@ func TestService_AssessSmart_ReadFileError(t *testing.T) {
 	})
 
 	_, err := service.AssessSmart("smart.log", false, false)
+	if !errors.Is(err, expectedErr) {
+		t.Fatalf("expected %v, got %v", expectedErr, err)
+	}
+}
+
+func TestService_AssessDmesg_TextOutput_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				if filePath != "dmesg.log" {
+					t.Fatalf("expected dmesg.log, got %s", filePath)
+				}
+				return []byte(criticalDmesgLog), nil
+			},
+		},
+	})
+
+	result, err := service.AssessDmesg("dmesg.log", false, false)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !strings.Contains(result, "status: critical") {
+		t.Fatalf("expected critical output, got %s", result)
+	}
+	if !strings.Contains(result, "findings:") {
+		t.Fatalf("expected findings output, got %s", result)
+	}
+	if !strings.Contains(result, "- [critical] sdb: critical medium error を検出しました") {
+		t.Fatalf("expected device finding output, got %s", result)
+	}
+	if strings.Contains(result, "devices:") {
+		t.Fatalf("expected no devices output, got %s", result)
+	}
+	if strings.Contains(result, "sector=") {
+		t.Fatalf("expected no structured sector output, got %s", result)
+	}
+	if strings.Contains(result, "raw:") {
+		t.Fatalf("expected non-verbose output, got %s", result)
+	}
+}
+
+func TestService_AssessDmesg_TextVerboseOutput_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				return []byte(criticalDmesgLog), nil
+			},
+		},
+	})
+
+	result, err := service.AssessDmesg("dmesg.log", false, true)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !strings.Contains(result, "raw:") {
+		t.Fatalf("expected verbose raw output, got %s", result)
+	}
+	if !strings.Contains(result, "sector 8491832904") {
+		t.Fatalf("expected sector only in raw output, got %s", result)
+	}
+}
+
+func TestService_AssessDmesg_JSONOutput_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				return []byte(criticalDmesgLog), nil
+			},
+		},
+	})
+
+	result, err := service.AssessDmesg("dmesg.log", true, false)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var assessment domain.DmesgAssessment
+	if err := json.Unmarshal([]byte(result), &assessment); err != nil {
+		t.Fatalf("expected valid json, got %v", err)
+	}
+	if assessment.Status != domain.StatusCritical {
+		t.Fatalf("expected critical, got %s", assessment.Status)
+	}
+	if len(assessment.Findings) != 4 {
+		t.Fatalf("expected 4 findings, got %d", len(assessment.Findings))
+	}
+	if assessment.Findings[0].Device != "sdb" {
+		t.Fatalf("expected sdb, got %s", assessment.Findings[0].Device)
+	}
+	if assessment.Findings[0].Line != "" {
+		t.Fatalf("expected raw line omitted, got %s", assessment.Findings[0].Line)
+	}
+	if strings.Contains(result, `"devices"`) {
+		t.Fatalf("expected no devices field, got %s", result)
+	}
+	if strings.Contains(result, `"sector"`) {
+		t.Fatalf("expected no sector field, got %s", result)
+	}
+}
+
+func TestService_AssessDmesg_JSONVerboseOutput_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				return []byte(criticalDmesgLog), nil
+			},
+		},
+	})
+
+	result, err := service.AssessDmesg("dmesg.log", true, true)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	var assessment domain.DmesgAssessment
+	if err := json.Unmarshal([]byte(result), &assessment); err != nil {
+		t.Fatalf("expected valid json, got %v", err)
+	}
+	if assessment.Findings[0].Line == "" {
+		t.Fatal("expected raw line in verbose json")
+	}
+}
+
+func TestService_AssessDmesg_HealthyOutput_Normal(t *testing.T) {
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				return []byte(healthyDmesgLog), nil
+			},
+		},
+	})
+
+	result, err := service.AssessDmesg("dmesg.log", false, false)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !strings.Contains(result, "status: healthy") {
+		t.Fatalf("expected healthy output, got %s", result)
+	}
+	if strings.Contains(result, "findings:") {
+		t.Fatalf("expected no findings output, got %s", result)
+	}
+}
+
+func TestService_AssessDmesg_ReadFileError(t *testing.T) {
+	expectedErr := errors.New("read failed")
+	service := NewService(ServiceOptions{
+		FileSystem: &filesystem.MockRepository{
+			ReadFileFunc: func(filePath string) ([]byte, error) {
+				return nil, expectedErr
+			},
+		},
+	})
+
+	_, err := service.AssessDmesg("dmesg.log", false, false)
 	if !errors.Is(err, expectedErr) {
 		t.Fatalf("expected %v, got %v", expectedErr, err)
 	}

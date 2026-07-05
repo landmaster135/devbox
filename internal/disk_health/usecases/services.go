@@ -39,3 +39,21 @@ func (s *Service) AssessSmart(srcFile string, outputJSON bool, verbose bool) (st
 	}
 	return s.FormatText(assessment, verbose), nil
 }
+
+func (s *Service) AssessDmesg(srcFile string, outputJSON bool, verbose bool) (string, error) {
+	content, err := s.fileSystem.ReadFile(srcFile)
+	if err != nil {
+		return "", fmt.Errorf("dmesgログファイルの読み込みに失敗しました: %w", err)
+	}
+
+	events, err := s.ParseDmesgLog(string(content))
+	if err != nil {
+		return "", err
+	}
+
+	assessment := s.AssessDmesgEvents(events)
+	if outputJSON {
+		return s.FormatDmesgJSON(assessment, verbose)
+	}
+	return s.FormatDmesgText(assessment, verbose), nil
+}
