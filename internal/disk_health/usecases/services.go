@@ -3,11 +3,16 @@ package usecases
 import (
 	"fmt"
 
+	config "github.com/landmaster135/devbox/internal/disk_health/config"
 	"github.com/landmaster135/devbox/internal/disk_health/infrastructures/filesystem"
+	assessdmesg "github.com/landmaster135/devbox/internal/disk_health/usecases/operations/assess_dmesg"
+	assesssmart "github.com/landmaster135/devbox/internal/disk_health/usecases/operations/assess_smart"
 )
 
 type Service struct {
-	fileSystem filesystem.Repository
+	fileSystem           filesystem.Repository
+	assessSmartOperation assessSmartOperation
+	assessDmesgOperation assessDmesgOperation
 }
 
 type ServiceOptions struct {
@@ -19,41 +24,28 @@ func NewService(options ServiceOptions) *Service {
 	if fileSystem == nil {
 		fileSystem = filesystem.NewOSRepository()
 	}
-	return &Service{fileSystem: fileSystem}
+
+	service := &Service{fileSystem: fileSystem}
+	service.assessSmartOperation = assesssmart.NewService(fileSystem)
+	service.assessDmesgOperation = assessdmesg.NewService(fileSystem)
+	return service
 }
 
 func (s *Service) AssessSmart(srcFile string, outputJSON bool, verbose bool) (string, error) {
-	content, err := s.fileSystem.ReadFile(srcFile)
-	if err != nil {
-		return "", fmt.Errorf("SMART情報ファイルの読み込みに失敗しました: %w", err)
-	}
-
-	report, err := s.ParseSmartReport(string(content))
-	if err != nil {
-		return "", err
-	}
-
-	assessment := s.AssessReport(report)
-	if outputJSON {
-		return s.FormatJSON(assessment, verbose)
-	}
-	return s.FormatText(assessment, verbose), nil
+	return s.assessSmartOperation.Execute(srcFile, outputJSON, verbose)
 }
 
 func (s *Service) AssessDmesg(srcFile string, outputJSON bool, verbose bool) (string, error) {
-	content, err := s.fileSystem.ReadFile(srcFile)
-	if err != nil {
-		return "", fmt.Errorf("dmesgログファイルの読み込みに失敗しました: %w", err)
-	}
+	return s.assessDmesgOperation.Execute(srcFile, outputJSON, verbose)
+}
 
-	events, err := s.ParseDmesgLog(string(content))
-	if err != nil {
-		return "", err
+func (s *Service) ExecuteByConfig(cfg *config.Config) (string, error) {
+	switch cfg.Operation {
+	case config.OperationAssessSmart:
+		return s.AssessSmart(cfg.SrcFile, cfg.JSON, cfg.Verbose)
+	case config.OperationAssessDmesg:
+		return s.AssessDmesg(cfg.SrcFile, cfg.JSON, cfg.Verbose)
+	default:
+		return "", fmt.Errorf("未対応のoperationです: %s", cfg.Operation)
 	}
-
-	assessment := s.AssessDmesgEvents(events)
-	if outputJSON {
-		return s.FormatDmesgJSON(assessment, verbose)
-	}
-	return s.FormatDmesgText(assessment, verbose), nil
 }

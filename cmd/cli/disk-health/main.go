@@ -21,31 +21,8 @@ func main() {
 		return
 	}
 
-	switch cfg.Operation {
-	case config.OperationAssessSmart:
-		handleAssessSmart(cfg)
-	case config.OperationAssessDmesg:
-		handleAssessDmesg(cfg)
-	default:
-		fmt.Fprintf(os.Stderr, "エラー: 未対応のoperationです: %s\n", cfg.Operation)
-		config.PrintUsage()
-		os.Exit(1)
-	}
-}
-
-func handleAssessSmart(cfg *config.Config) {
 	service := usecases.NewService(usecases.ServiceOptions{})
-	result, err := service.AssessSmart(cfg.SrcFile, cfg.JSON, cfg.Verbose)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Print(result)
-}
-
-func handleAssessDmesg(cfg *config.Config) {
-	service := usecases.NewService(usecases.ServiceOptions{})
-	result, err := service.AssessDmesg(cfg.SrcFile, cfg.JSON, cfg.Verbose)
+	result, err := service.ExecuteByConfig(cfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: %v\n", err)
 		os.Exit(1)

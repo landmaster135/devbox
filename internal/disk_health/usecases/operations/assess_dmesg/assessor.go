@@ -1,4 +1,4 @@
-package usecases
+package assessdmesg
 
 import "github.com/landmaster135/devbox/internal/disk_health/domain"
 

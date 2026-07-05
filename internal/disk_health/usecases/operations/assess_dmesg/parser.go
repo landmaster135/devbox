@@ -1,4 +1,4 @@
-package usecases
+package assessdmesg
 
 import (
 	"fmt"
