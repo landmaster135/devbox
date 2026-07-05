@@ -32,11 +32,11 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/u2takey/ffmpeg-go v0.5.0
 	github.com/valkey-io/valkey-go v1.0.63
-	golang.org/x/image v0.26.0
+	golang.org/x/image v0.41.0
 	golang.org/x/net v0.48.0
 	golang.org/x/oauth2 v0.34.0
-	golang.org/x/sync v0.19.0
-	golang.org/x/text v0.32.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/text v0.37.0
 	google.golang.org/api v0.241.0
 	google.golang.org/genai v1.18.0
 	google.golang.org/grpc v1.79.3
