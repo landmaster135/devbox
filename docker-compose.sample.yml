@@ -32,6 +32,16 @@ services:
       - type: bind
         source: ${VOLUME_DATA_DIR}
         target: /app/volume
+      # To retrieve CPU info
+      - type: bind
+        source: /sys
+        target: /sys
+        read_only: true
+      - type: bind
+        source: /run/udev
+        target: /run/udev
+        read_only: true
+    privileged: true
     user: ${HOST_ID}
     labels:
       tsdproxy.enable: "true"
