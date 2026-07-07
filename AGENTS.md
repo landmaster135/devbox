@@ -14,7 +14,7 @@ Quick Decision Trees に則って、参照するべきドキュメントを全�
   - 実行計画ドキュメント（active/completed）の入口
 - `docs/project_status/service_implementation_status.md`
   - サービス実装状況（CLI/MCP/gRPC/HTTP）の確認
-- `docs/project_overview/project_overview.md`
+- `docs/project_overview/index.md`
   - 全体アーキテクチャとディレクトリ構成の確認
 - `docs/user_prompt/prompt_sample.md`
   - 依頼テンプレートやプロンプト例の参照
