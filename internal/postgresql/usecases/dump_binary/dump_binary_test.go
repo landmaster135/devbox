@@ -87,6 +87,42 @@ func TestDumper_DumpDatabase_ExcludeTableData(t *testing.T) {
 	assert.Equal(t, filepath.Join(outputDir, result.FileName), capturedArgs[5])
 }
 
+func TestDumper_DumpTableDataAsSQL_Normal(t *testing.T) {
+	mockExecutor := &infrastructures.MockCommandExecutor{}
+	mockWriter := &writer.MockFileWriter{}
+	dumper := NewDumperWithDependencies(mockExecutor, mockWriter, "", RetryConfig{})
+
+	outputDir := t.TempDir()
+	var capturedArgs []string
+	mockExecutor.ExecuteFunc = func(name string, args ...string) ([]byte, error) {
+		require.Equal(t, "pg_dump", name)
+		capturedArgs = append([]string(nil), args...)
+		return []byte("ok"), nil
+	}
+
+	result, err := dumper.DumpTableDataAsSQL(
+		context.Background(),
+		"postgres://user:pass@localhost:5432/testdb",
+		outputDir,
+		"public.attachments",
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, capturedArgs, 8)
+	assert.Equal(t, "--data-only", capturedArgs[0])
+	assert.Equal(t, "--table", capturedArgs[1])
+	assert.Equal(t, "public.attachments", capturedArgs[2])
+	assert.Equal(t, "--column-inserts", capturedArgs[3])
+	assert.Equal(t, "--dbname", capturedArgs[4])
+	assert.Equal(t, "postgres://user:pass@localhost:5432/testdb", capturedArgs[5])
+	assert.Equal(t, "-f", capturedArgs[6])
+	assert.Equal(t, filepath.Join(outputDir, result.FileName), capturedArgs[7])
+	assert.Equal(t, "public.attachments", result.TableName)
+	assert.Equal(t, "sql", result.Format)
+	assert.True(t, filepath.Ext(result.FileName) == ".sql")
+	assert.True(t, filepath.Base(result.FileName)[:12] == "attachments_")
+}
+
 func TestDumper_DumpDatabase_StripsStatementCacheModeForPgDump(t *testing.T) {
 	mockExecutor := &infrastructures.MockCommandExecutor{}
 	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", RetryConfig{})

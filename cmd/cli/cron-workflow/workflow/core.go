@@ -97,7 +97,7 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	)
 	postgresDumpWorkflow := usecases.NewWorkflow(
 		"Daily PostgreSQL dump with notification",
-		"5 0 * * 0-6",
+		"50 0 * * 0-6",
 		wh.GetCreator().Timezone,
 		wh.DumpPostgreSQLNotification,
 	)
@@ -406,11 +406,9 @@ func (wh *WorkflowHandler) dumpPostgreSQLAndNotify(ctx context.Context, notifica
 }
 
 func (wh *WorkflowHandler) dumpExtraSQLTables(ctx context.Context, target postgresDumpTarget) ([]string, error) {
-	const sqlFormat = "sql"
-
 	var summaries []string
 	for _, tableName := range target.extraSQLDumpTables {
-		result, err := postgres.HandleToDumpTable(ctx, target.dbURL, wh.GetCreator().Timezone, tableName, target.outputDir, sqlFormat, nil)
+		result, err := postgres.HandleToDumpTableDataAsSQL(ctx, target.dbURL, wh.GetCreator().Timezone, tableName, target.outputDir)
 		if err != nil {
 			return nil, fmt.Errorf("dump %s table as SQL for %s database: %w", tableName, target.name, err)
 		}
