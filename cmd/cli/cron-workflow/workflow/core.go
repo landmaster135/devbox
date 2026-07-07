@@ -9,7 +9,7 @@ import (
 
 	usecases "github.com/landmaster135/devbox/internal/cron_workflow/usecases"
 	workflowCreator "github.com/landmaster135/devbox/internal/cron_workflow/usecases/workflow_creator"
-	"github.com/landmaster135/devbox/internal/logging"
+	logging "github.com/landmaster135/devbox/internal/logging"
 
 	textGenerator "github.com/landmaster135/devbox/internal/datetime_calculator/usecases/text_generator"
 	discordWebhook "github.com/landmaster135/devbox/internal/discord_webhook/usecases"

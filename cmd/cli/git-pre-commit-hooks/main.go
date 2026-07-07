@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/git_pre_commit_hooks/config"
-	"github.com/landmaster135/devbox/internal/git_pre_commit_hooks/usecases"
+	config "github.com/landmaster135/devbox/internal/git_pre_commit_hooks/config"
+	usecases "github.com/landmaster135/devbox/internal/git_pre_commit_hooks/usecases"
 )
 
 func main() {

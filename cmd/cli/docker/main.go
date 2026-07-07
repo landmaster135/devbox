@@ -5,7 +5,7 @@ import (
 	"os"
 
 	config "github.com/landmaster135/devbox/internal/docker/config"
-	"github.com/landmaster135/devbox/internal/docker/usecases"
+	usecases "github.com/landmaster135/devbox/internal/docker/usecases"
 )
 
 func main() {

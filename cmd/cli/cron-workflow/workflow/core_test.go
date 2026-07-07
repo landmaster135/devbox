@@ -1,6 +1,8 @@
 package workflow
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestWorkflowHandler_List_Normal(t *testing.T) {
 	workflows, err := List(nil)

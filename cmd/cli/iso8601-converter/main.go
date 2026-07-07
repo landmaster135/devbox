@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/iso8601-converter/usecases"
+	usecases "github.com/landmaster135/devbox/internal/iso8601-converter/usecases"
 )
 
 // exitCode はプログラムの終了コードを表します

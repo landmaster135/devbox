@@ -6,8 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/image_converter_by_libwebp/config"
-	"github.com/landmaster135/devbox/internal/image_converter_by_libwebp/usecases"
+	config "github.com/landmaster135/devbox/internal/image_converter_by_libwebp/config"
+	usecases "github.com/landmaster135/devbox/internal/image_converter_by_libwebp/usecases"
 )
 
 type exitCode int
