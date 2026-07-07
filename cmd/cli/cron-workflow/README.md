@@ -4,27 +4,16 @@
 
 ## 同梱ワークフロー
 
-| 説明 | 実行間隔 | 目的 |
-|---|---|---|
-| 東京の天気通知 | `0 1 * * 0-6` | OpenWeatherMap から 3 日分の予報を取得し、Discord Webhook へ投稿します。 |
-| 日次見出し通知 | `1 0 * * 0-6` | 日次テンプレート見出しを Discord Webhook へ投稿します。 |
-| PostgreSQL ダンプ通知 | `50 0 * * 0-6` | staging / production DB を binary 形式でダンプし、結果を Discord Webhook へ投稿します。`attachments` テーブルのデータはこの dump から除外します。 |
-| PostgreSQL extra tables SQL ダンプ通知 | `10 1 * * 0-6` | staging / production DB の `attachments` テーブルデータを SQL 形式でダンプし、結果を Discord Webhook へ投稿します。 |
-| Memos PostgreSQL ダンプ通知 | `5 2 * * 0-6` | memos staging / production DB をダンプし、結果を Discord Webhook へ投稿します。 |
-| PC情報スナップショット | `*/10 * * * 0-6` | `machine-info` ユースケースの `CollectAndSaveUbuntuInfo` を呼び出し、`PC_INFO_OUTPUT_DIR` で指定した配下に JSON ログを書き出します。 |
+| 説明 | 目的 |
+|---|---|
+| 東京の天気通知 | OpenWeatherMap から 3 日分の予報を取得し、Discord Webhook へ投稿します。 |
+| 日次見出し通知 | 日次テンプレート見出しを Discord Webhook へ投稿します。 |
+| PostgreSQL ダンプ通知 | staging / production DB を binary 形式でダンプし、結果を Discord Webhook へ投稿します。`attachments` テーブルのデータはこの dump から除外します。 |
+| PostgreSQL extra tables SQL ダンプ通知 | staging / production DB の `attachments` テーブルデータを SQL 形式でダンプし、結果を Discord Webhook へ投稿します。 |
+| Memos PostgreSQL ダンプ通知 | memos staging / production DB をダンプし、結果を Discord Webhook へ投稿します。 |
+| PC情報スナップショット | `machine-info` ユースケースの `CollectAndSaveUbuntuInfo` を呼び出し、`PC_INFO_OUTPUT_DIR` で指定した配下に JSON ログを書き出します。 |
 
 ワークフローを追加・更新する場合は `workflow/core.go` を変更し、CLI を再ビルドしてください。
-
-## PostgreSQL ダンプ関連の必須環境変数
-
-- `DATABASE_URL_01_STAGING`
-- `DATABASE_DUMP_DIR_01_STAGING`
-- `DATABASE_URL_01_PRODUCT`
-- `DATABASE_DUMP_DIR_01_PRODUCT`
-- `DATABASE_URL_01_MEMOS_STAGING`
-- `DATABASE_DUMP_DIR_01_MEMOS_STAGING`
-- `DATABASE_URL_01_MEMOS_PROD`
-- `DATABASE_DUMP_DIR_01_MEMOS_PROD`
 
 ## ビルド
 
