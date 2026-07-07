@@ -29,6 +29,7 @@ RUN apt-get update && \
       > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
+    lm-sensors \
     postgresql-client-common \
     postgresql-client-18 \
     tzdata && \
@@ -39,6 +40,7 @@ ENV PATH="/usr/lib/postgresql/18/bin:${PATH}"
 
 # イメージビルド時に pg_dump の存在とバージョンを検証
 RUN pg_dump --version
+RUN sensors -v
 
 WORKDIR /app
 
