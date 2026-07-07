@@ -8,7 +8,7 @@
 |---|---|---|
 | 東京の天気通知 | `0 1 * * 0-6` | OpenWeatherMap から 3 日分の予報を取得し、Discord Webhook へ投稿します。 |
 | 日次見出し通知 | `1 0 * * 0-6` | 日次テンプレート見出しを Discord Webhook へ投稿します。 |
-| PostgreSQL ダンプ通知 | `0 2 * * 0-6` | staging / production DB をダンプし、結果を Discord Webhook へ投稿します。 |
+| PostgreSQL ダンプ通知 | `0 2 * * 0-6` | staging / production DB をダンプし、`attachments` テーブルのデータだけ別 SQL ファイルへ分離して、結果を Discord Webhook へ投稿します。 |
 | Memos PostgreSQL ダンプ通知 | `5 2 * * 0-6` | memos staging / production DB をダンプし、結果を Discord Webhook へ投稿します。 |
 | PC情報スナップショット | `*/10 * * * 0-6` | `machine-info` ユースケースの `CollectAndSaveUbuntuInfo` を呼び出し、`PC_INFO_OUTPUT_DIR` で指定した配下に JSON ログを書き出します。 |
 

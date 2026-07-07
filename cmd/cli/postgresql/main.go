@@ -32,6 +32,7 @@ func handleDumpAllTables(cfg *config.Config) {
 		cfg.Concurrency,
 		cfg.ResultFormat,
 		cfg.ResultHeading,
+		nil,
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "エラー: 全テーブルダンプに失敗しました: %v\n", err)

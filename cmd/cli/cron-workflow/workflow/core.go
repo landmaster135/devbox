@@ -18,6 +18,8 @@ import (
 	weatherNotificator "github.com/landmaster135/devbox/internal/weather_notificator/usecases"
 )
 
+const postgresAttachmentsTable = "public.attachments"
+
 type WorkflowHandler struct {
 	Creator *workflowCreator.WorkflowCreator
 	logger  *logging.StructuredLogger
@@ -45,9 +47,24 @@ type WorkflowHandlerRepository interface {
 }
 
 type postgresDumpTarget struct {
-	name      string
-	dbURL     string
-	outputDir string
+	name               string
+	dbURL              string
+	outputDir          string
+	excludeTableData   []string
+	extraSQLDumpTables []string
+}
+
+func newPostgresDumpTarget(name, dbURL, outputDir string, splitAttachments bool) postgresDumpTarget {
+	target := postgresDumpTarget{
+		name:      name,
+		dbURL:     dbURL,
+		outputDir: outputDir,
+	}
+	if splitAttachments {
+		target.excludeTableData = []string{postgresAttachmentsTable}
+		target.extraSQLDumpTables = []string{postgresAttachmentsTable}
+	}
+	return target
 }
 
 // List returns all configured workflows.
@@ -80,7 +97,7 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	)
 	postgresDumpWorkflow := usecases.NewWorkflow(
 		"Daily PostgreSQL dump with notification",
-		"0 2 * * 0-6",
+		"5 0 * * 0-6",
 		wh.GetCreator().Timezone,
 		wh.DumpPostgreSQLNotification,
 	)
@@ -283,8 +300,8 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 	stagingOutputDir := filepath.Join(creator.VolumeDir, stagingDirEnv)
 	productOutputDir := filepath.Join(creator.VolumeDir, productDirEnv)
 	targets := []postgresDumpTarget{
-		{name: "staging", dbURL: stagingDBURL, outputDir: stagingOutputDir},
-		{name: "production", dbURL: productDBURL, outputDir: productOutputDir},
+		newPostgresDumpTarget("staging", stagingDBURL, stagingOutputDir, true),
+		newPostgresDumpTarget("production", productDBURL, productOutputDir, true),
 	}
 
 	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
@@ -313,8 +330,8 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotificationForMemos(ctx context.Contex
 	memosStagingOutputDir := filepath.Join(creator.VolumeDir, memosStagingDirEnv)
 	memosProdOutputDir := filepath.Join(creator.VolumeDir, memosProdDirEnv)
 	targets := []postgresDumpTarget{
-		{name: "memos-staging", dbURL: memosStagingDBURL, outputDir: memosStagingOutputDir},
-		{name: "memos-prod", dbURL: memosProdDBURL, outputDir: memosProdOutputDir},
+		newPostgresDumpTarget("memos-staging", memosStagingDBURL, memosStagingOutputDir, false),
+		newPostgresDumpTarget("memos-prod", memosProdDBURL, memosProdOutputDir, false),
 	}
 
 	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
@@ -352,13 +369,18 @@ func (wh *WorkflowHandler) dumpPostgreSQLAndNotify(ctx context.Context, notifica
 			return fmt.Errorf("prepare dump directory for %s: %w", target.name, err)
 		}
 
-		_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, creator.Timezone, target.outputDir, format, nil, &concurrency, "markdown", target.name)
+		_, minResult, err := postgres.HandleToDumpAllTables(ctx, target.dbURL, creator.Timezone, target.outputDir, format, nil, &concurrency, "markdown", target.name, target.excludeTableData)
 		if err != nil {
 			return fmt.Errorf("dump %s database: %w", target.name, err)
 		}
 
 		wh.logger.WithTags("postgres-dump").Infof("completed %s dump into %s", target.name, target.outputDir)
 		dumpSummaries = append(dumpSummaries, minResult)
+		extraSummaries, err := wh.dumpExtraSQLTables(ctx, target)
+		if err != nil {
+			return err
+		}
+		dumpSummaries = append(dumpSummaries, extraSummaries...)
 	}
 
 	content := notification
@@ -381,4 +403,29 @@ func (wh *WorkflowHandler) dumpPostgreSQLAndNotify(ctx context.Context, notifica
 
 	wh.logger.WithTags("postgres-dump").Infof("dispatched Discord notification for PostgreSQL backups")
 	return nil
+}
+
+func (wh *WorkflowHandler) dumpExtraSQLTables(ctx context.Context, target postgresDumpTarget) ([]string, error) {
+	const sqlFormat = "sql"
+
+	var summaries []string
+	for _, tableName := range target.extraSQLDumpTables {
+		result, err := postgres.HandleToDumpTable(ctx, target.dbURL, wh.GetCreator().Timezone, tableName, target.outputDir, sqlFormat, nil)
+		if err != nil {
+			return nil, fmt.Errorf("dump %s table as SQL for %s database: %w", tableName, target.name, err)
+		}
+
+		wh.logger.WithTags("postgres-dump").Infof("completed %s SQL dump for %s into %s: %s", tableName, target.name, target.outputDir, result)
+		summaries = append(summaries, formatExtraSQLDumpSummary(target.name, tableName))
+	}
+
+	return summaries, nil
+}
+
+func formatExtraSQLDumpSummary(targetName, tableName string) string {
+	return fmt.Sprintf(
+		"## %s extra SQL dump\n\n```markdown\n| Table | Format | Status |\n| --- | --- | --- |\n| `%s` | sql | completed |\n```",
+		targetName,
+		tableName,
+	)
 }

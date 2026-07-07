@@ -58,7 +58,7 @@ func NewDumperWithDependencies(commandExecutor infrastructures.CommandExecutor, 
 	}
 }
 
-func (d *Dumper) DumpDatabase(ctx context.Context, databaseURL, outputPath string) (*DumpResult, error) {
+func (d *Dumper) DumpDatabase(ctx context.Context, databaseURL, outputPath string, excludeTableData []string) (*DumpResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -86,9 +86,13 @@ func (d *Dumper) DumpDatabase(ctx context.Context, databaseURL, outputPath strin
 
 	fileName := d.generateFileName(databaseURL)
 	filePath := filepath.Join(outputPath, fileName)
+	args, err := buildPgDumpArgs(pgDumpDatabaseURL, filePath, excludeTableData)
+	if err != nil {
+		return nil, err
+	}
 
 	for attempt := 1; attempt <= d.retryConfig.MaxAttempts; attempt++ {
-		output, err := d.commandExecutor.Execute("pg_dump", "-Fc", "--dbname", pgDumpDatabaseURL, "-f", filePath)
+		output, err := d.commandExecutor.Execute("pg_dump", args...)
 		if err == nil {
 			return &DumpResult{
 				TableName:   "all_tables",
@@ -114,6 +118,19 @@ func (d *Dumper) DumpDatabase(ctx context.Context, databaseURL, outputPath strin
 	}
 
 	return nil, errors.New("pg_dump の実行に失敗しました")
+}
+
+func buildPgDumpArgs(databaseURL, filePath string, excludeTableData []string) ([]string, error) {
+	args := []string{"-Fc", "--dbname", databaseURL}
+	for _, table := range excludeTableData {
+		trimmedTable := strings.TrimSpace(table)
+		if trimmedTable == "" {
+			return nil, errors.New("exclude-table-data に空のテーブル名は指定できません")
+		}
+		args = append(args, "--exclude-table-data="+trimmedTable)
+	}
+	args = append(args, "-f", filePath)
+	return args, nil
 }
 
 func (d *Dumper) generateFileName(databaseURL string) string {
