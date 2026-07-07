@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 COMPOSE_PATH="${PROJECT_ROOT}/docker-compose.yml"
-ENV_PATH="${PROJECT_ROOT}/env.yml"
 BUILD_SCRIPT="${PROJECT_ROOT}/pkg/docker/build_image.sh"
 DOCKERFILE_PATH="${PROJECT_ROOT}/pkg/docker/Dockerfile.cron"
 IMAGE_NAME="devbox-cron"
@@ -16,7 +15,7 @@ function log() {
 
 function build_frontend() {
   log "フロントエンドイメージをビルド"
-  "$BUILD_SCRIPT" "$ENV_PATH" "$DOCKERFILE_PATH"
+  "$BUILD_SCRIPT" "$DOCKERFILE_PATH"
 }
 
 function verify_image() {

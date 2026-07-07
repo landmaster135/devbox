@@ -5,7 +5,7 @@ services:
     image: "devbox-cron:latest"
     restart: unless-stopped
     ports:
-      - "${CRON_URL_PORT}:8880"
+      - "${CRON_URL_PORT}:${CRON_URL_PORT}"
     environment:
       - HOST_ID=${HOST_ID}
       - CRON_URL_PORT=${CRON_URL_PORT}
