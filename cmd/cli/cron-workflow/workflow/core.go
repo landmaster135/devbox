@@ -43,28 +43,40 @@ type WorkflowHandlerRepository interface {
 	NotifyWeather(ctx context.Context) error
 	NotifyDailyHeading(ctx context.Context) error
 	DumpPostgreSQLNotification(ctx context.Context) error
+	DumpPostgreSQLExtraTablesNotification(ctx context.Context) error
 	DumpPostgreSQLNotificationForMemos(ctx context.Context) error
 }
 
 type postgresDumpTarget struct {
-	name               string
-	dbURL              string
-	outputDir          string
-	excludeTableData   []string
-	extraSQLDumpTables []string
+	name             string
+	dbURL            string
+	outputDir        string
+	excludeTableData []string
 }
 
-func newPostgresDumpTarget(name, dbURL, outputDir string, splitAttachments bool) postgresDumpTarget {
-	target := postgresDumpTarget{
-		name:      name,
-		dbURL:     dbURL,
-		outputDir: outputDir,
+func newPostgresDumpTarget(name, dbURL, outputDir string, excludeTableData []string) postgresDumpTarget {
+	return postgresDumpTarget{
+		name:             name,
+		dbURL:            dbURL,
+		outputDir:        outputDir,
+		excludeTableData: excludeTableData,
 	}
-	if splitAttachments {
-		target.excludeTableData = []string{postgresAttachmentsTable}
-		target.extraSQLDumpTables = []string{postgresAttachmentsTable}
+}
+
+type postgresExtraSQLDumpTarget struct {
+	name       string
+	dbURL      string
+	outputDir  string
+	tableNames []string
+}
+
+func newPostgresExtraSQLDumpTarget(name, dbURL, outputDir string, tableNames []string) postgresExtraSQLDumpTarget {
+	return postgresExtraSQLDumpTarget{
+		name:       name,
+		dbURL:      dbURL,
+		outputDir:  outputDir,
+		tableNames: tableNames,
 	}
-	return target
 }
 
 // List returns all configured workflows.
@@ -97,9 +109,15 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	)
 	postgresDumpWorkflow := usecases.NewWorkflow(
 		"Daily PostgreSQL dump with notification",
-		"50 0 * * 0-6",
+		"0 2 * * 0-6",
 		wh.GetCreator().Timezone,
 		wh.DumpPostgreSQLNotification,
+	)
+	postgresExtraTablesDumpWorkflow := usecases.NewWorkflow(
+		"Daily PostgreSQL extra tables SQL dump with notification",
+		"0 2 * * 0",
+		wh.GetCreator().Timezone,
+		wh.DumpPostgreSQLExtraTablesNotification,
 	)
 	postgresDumpWorkflowForMemos := usecases.NewWorkflow(
 		"Daily PostgreSQL dump for memos with notification",
@@ -119,6 +137,7 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
 		*postgresDumpWorkflow,
+		*postgresExtraTablesDumpWorkflow,
 		*postgresDumpWorkflowForMemos,
 		*pcInfoWorkflow,
 	}, nil
@@ -300,11 +319,41 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotification(ctx context.Context) error
 	stagingOutputDir := filepath.Join(creator.VolumeDir, stagingDirEnv)
 	productOutputDir := filepath.Join(creator.VolumeDir, productDirEnv)
 	targets := []postgresDumpTarget{
-		newPostgresDumpTarget("staging", stagingDBURL, stagingOutputDir, true),
-		newPostgresDumpTarget("production", productDBURL, productOutputDir, true),
+		newPostgresDumpTarget("staging", stagingDBURL, stagingOutputDir, []string{postgresAttachmentsTable}),
+		newPostgresDumpTarget("production", productDBURL, productOutputDir, []string{postgresAttachmentsTable}),
 	}
 
 	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
+}
+
+func (wh *WorkflowHandler) DumpPostgreSQLExtraTablesNotification(ctx context.Context) error {
+	creator := wh.GetCreator()
+	notification := "PostgreSQL extra tables SQL dump が完了しました"
+	stagingDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01Staging)
+	if err != nil {
+		return fmt.Errorf("resolve staging DB URL: %w", err)
+	}
+	stagingDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyDBDirectory01Staging)
+	if err != nil {
+		return fmt.Errorf("resolve staging dump directory: %w", err)
+	}
+	productDBURL, err := getEnvVars(creator.EnvRepo, EnvKeyDBURL01Product)
+	if err != nil {
+		return fmt.Errorf("resolve production DB URL: %w", err)
+	}
+	productDirEnv, err := getEnvVars(creator.EnvRepo, EnvKeyDBDirectory01Product)
+	if err != nil {
+		return fmt.Errorf("resolve production dump directory: %w", err)
+	}
+
+	stagingOutputDir := filepath.Join(creator.VolumeDir, stagingDirEnv)
+	productOutputDir := filepath.Join(creator.VolumeDir, productDirEnv)
+	targets := []postgresExtraSQLDumpTarget{
+		newPostgresExtraSQLDumpTarget("staging", stagingDBURL, stagingOutputDir, []string{postgresAttachmentsTable}),
+		newPostgresExtraSQLDumpTarget("production", productDBURL, productOutputDir, []string{postgresAttachmentsTable}),
+	}
+
+	return wh.dumpPostgreSQLExtraTablesAndNotify(ctx, notification, targets)
 }
 
 func (wh *WorkflowHandler) DumpPostgreSQLNotificationForMemos(ctx context.Context) error {
@@ -330,8 +379,8 @@ func (wh *WorkflowHandler) DumpPostgreSQLNotificationForMemos(ctx context.Contex
 	memosStagingOutputDir := filepath.Join(creator.VolumeDir, memosStagingDirEnv)
 	memosProdOutputDir := filepath.Join(creator.VolumeDir, memosProdDirEnv)
 	targets := []postgresDumpTarget{
-		newPostgresDumpTarget("memos-staging", memosStagingDBURL, memosStagingOutputDir, false),
-		newPostgresDumpTarget("memos-prod", memosProdDBURL, memosProdOutputDir, false),
+		newPostgresDumpTarget("memos-staging", memosStagingDBURL, memosStagingOutputDir, nil),
+		newPostgresDumpTarget("memos-prod", memosProdDBURL, memosProdOutputDir, nil),
 	}
 
 	return wh.dumpPostgreSQLAndNotify(ctx, notification, targets)
@@ -376,11 +425,6 @@ func (wh *WorkflowHandler) dumpPostgreSQLAndNotify(ctx context.Context, notifica
 
 		wh.logger.WithTags("postgres-dump").Infof("completed %s dump into %s", target.name, target.outputDir)
 		dumpSummaries = append(dumpSummaries, minResult)
-		extraSummaries, err := wh.dumpExtraSQLTables(ctx, target)
-		if err != nil {
-			return err
-		}
-		dumpSummaries = append(dumpSummaries, extraSummaries...)
 	}
 
 	content := notification
@@ -405,19 +449,66 @@ func (wh *WorkflowHandler) dumpPostgreSQLAndNotify(ctx context.Context, notifica
 	return nil
 }
 
-func (wh *WorkflowHandler) dumpExtraSQLTables(ctx context.Context, target postgresDumpTarget) ([]string, error) {
-	var summaries []string
-	for _, tableName := range target.extraSQLDumpTables {
-		result, err := postgres.HandleToDumpTableDataAsSQL(ctx, target.dbURL, wh.GetCreator().Timezone, tableName, target.outputDir)
-		if err != nil {
-			return nil, fmt.Errorf("dump %s table as SQL for %s database: %w", tableName, target.name, err)
-		}
+func (wh *WorkflowHandler) dumpPostgreSQLExtraTablesAndNotify(ctx context.Context, notification string, targets []postgresExtraSQLDumpTarget) error {
+	const (
+		embedType = "postgres"
+		embedText = "最新バックアップ"
+	)
 
-		wh.logger.WithTags("postgres-dump").Infof("completed %s SQL dump for %s into %s: %s", tableName, target.name, target.outputDir, result)
-		summaries = append(summaries, formatExtraSQLDumpSummary(target.name, tableName))
+	creator := wh.GetCreator()
+	webhookURL, err := getEnvVars(creator.EnvRepo, EnvKeyDiscordWebhookURLForDailyTemplate)
+	if err != nil {
+		return fmt.Errorf("resolve Discord webhook URL for PostgreSQL extra tables dump: %w", err)
+	}
+	service := discordWebhook.NewDefaultDiscordWebhookService()
+
+	headerGen := func(header string, summaries []string) string {
+		return fmt.Sprintf("%s\n%s", header, strings.Join(summaries, "\n"))
 	}
 
-	return summaries, nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	var dumpSummaries []string
+	for _, target := range targets {
+		if err := creator.FileRepo.EnsureDir(target.outputDir); err != nil {
+			return fmt.Errorf("prepare extra SQL dump directory for %s: %w", target.name, err)
+		}
+
+		for _, tableName := range target.tableNames {
+			result, err := postgres.HandleToDumpTableDataAsSQL(ctx, target.dbURL, creator.Timezone, tableName, target.outputDir)
+			if err != nil {
+				return fmt.Errorf("dump %s table as SQL for %s database: %w", tableName, target.name, err)
+			}
+
+			wh.logger.WithTags("postgres-extra-sql-dump").Infof("completed %s SQL dump for %s into %s: %s", tableName, target.name, target.outputDir, result)
+			dumpSummaries = append(dumpSummaries, formatExtraSQLDumpSummary(target.name, tableName))
+		}
+	}
+
+	content := notification
+	if len(dumpSummaries) > 0 {
+		content = headerGen(notification, dumpSummaries)
+	}
+
+	if err := service.SendNotification(
+		ctx,
+		webhookURL,
+		"",
+		content,
+		embedType,
+		embedText,
+		"",
+		"",
+	); err != nil {
+		return fmt.Errorf("send PostgreSQL extra tables dump notification: %w", err)
+	}
+
+	wh.logger.WithTags("postgres-extra-sql-dump").Infof("dispatched Discord notification for PostgreSQL extra table backups")
+	return nil
 }
 
 func formatExtraSQLDumpSummary(targetName, tableName string) string {
