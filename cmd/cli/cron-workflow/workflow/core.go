@@ -60,12 +60,12 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	}
 	wh := NewWorkflowHandler(wc, logging.Ensure(logger))
 
-	// heartbeatWorkflow := usecases.NewWorkflow(
-	// 	"Heartbeat monitor",
-	// 	"*/1 * * * *",
-	// 	wh.GetCreator().Timezone,
-	// 	wh.KeepHeartbeat,
-	// )
+	heartbeatWorkflow := usecases.NewWorkflow(
+		"Heartbeat monitor",
+		"0 0 * * 0-6",
+		wh.GetCreator().Timezone,
+		wh.KeepHeartbeat,
+	)
 	weatherWorkflow := usecases.NewWorkflow(
 		"Daily Tokyo weather notification",
 		"0 1 * * 0-6",
@@ -98,7 +98,7 @@ func List(logger *logging.StructuredLogger) ([]usecases.Workflow, error) {
 	)
 
 	return []usecases.Workflow{
-		// *heartbeatWorkflow,
+		*heartbeatWorkflow,
 		*weatherWorkflow,
 		*dailyHeadingWorkflow,
 		*postgresDumpWorkflow,

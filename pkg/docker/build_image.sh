@@ -19,20 +19,20 @@ declare -A BUILD_ARG_VALUES=()
 declare -A REQUESTED_KEYS=()
 declare -a BUILD_ARG_KEYS=()
 
-trim() {
+function trim() {
   local value="$1"
   value="${value#${value%%[![:space:]]*}}"
   value="${value%${value##*[![:space:]]}}"
   printf '%s' "$value"
 }
 
-rtrim() {
+function rtrim() {
   local value="$1"
   value="${value%${value##*[![:space:]]}}"
   printf '%s' "$value"
 }
 
-strip_inline_comment() {
+function strip_inline_comment() {
   local value="$1"
   local length=${#value}
   local in_single=0
@@ -77,7 +77,7 @@ strip_inline_comment() {
   rtrim "$result"
 }
 
-strip_quotes() {
+function strip_quotes() {
   local value
   value="$(trim "$1")"
   local length=${#value}
@@ -91,7 +91,7 @@ strip_quotes() {
   printf '%s' "$value"
 }
 
-parse_env_file() {
+function parse_env_file() {
   local file="$1"
   while IFS= read -r line || [[ -n "$line" ]]; do
     local trimmed
@@ -113,7 +113,7 @@ parse_env_file() {
   done < "$file"
 }
 
-parse_key_list() {
+function parse_key_list() {
   local csv="$1"
   local IFS=','
   read -ra raw_keys <<< "$csv"
@@ -130,7 +130,7 @@ parse_key_list() {
   done
 }
 
-ensure_required_args() {
+function ensure_required_args() {
   local missing=()
   for key in "${BUILD_ARG_KEYS[@]}"; do
     if [[ -z "${BUILD_ARG_VALUES[$key]+x}" || -z "${BUILD_ARG_VALUES[$key]}" ]]; then
@@ -144,7 +144,7 @@ ensure_required_args() {
   fi
 }
 
-format_command_preview() {
+function format_command_preview() {
   local preview="docker"
   for arg in "$@"; do
     if [[ "$arg" =~ [^A-Za-z0-9._/:=-] ]]; then
