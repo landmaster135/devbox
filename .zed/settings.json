@@ -1,0 +1,20 @@
+{
+  "lsp": {
+    "yaml-language-server": {
+      "settings": {
+        "yaml": {
+          "schemaStore": {
+            "enable": false
+          },
+          "schemas": {
+            "./.zed/taskfile.schema.json": [
+              "Taskfile.yml",
+              "pkg/taskfile/Taskfile.yml",
+              "pkg/taskfile/taskfiles/*.yml"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

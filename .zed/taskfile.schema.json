@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Taskfile",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": ["string", "number"]
+    },
+    "includes": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "taskfile": {
+                "type": "string"
+              },
+              "dir": {
+                "type": "string"
+              },
+              "internal": {
+                "type": "boolean"
+              },
+              "flatten": {
+                "type": "boolean"
+              },
+              "optional": {
+                "type": "boolean"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "vars": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "dotenv": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/task"
+      }
+    }
+  },
+  "$defs": {
+    "task": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "desc": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "aliases": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "cmds": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/cmd"
+              }
+            },
+            "deps": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/taskCall"
+              }
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/precondition"
+              }
+            },
+            "vars": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "dir": {
+              "type": "string"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "generates": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "status": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "silent": {
+              "type": "boolean"
+            },
+            "interactive": {
+              "type": "boolean"
+            },
+            "internal": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "cmd": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "cmd": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "silent": {
+              "type": "boolean"
+            },
+            "ignore_error": {
+              "type": "boolean"
+            },
+            "defer": {
+              "type": "string"
+            },
+            "vars": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      ]
+    },
+    "taskCall": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "task": {
+              "type": "string"
+            },
+            "vars": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      ]
+    },
+    "precondition": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "sh": {
+              "type": "string"
+            },
+            "msg": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

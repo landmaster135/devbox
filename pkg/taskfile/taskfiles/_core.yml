@@ -14,12 +14,16 @@ vars:
   INTERACTIVE_TEXT_INPUT_NAME: input_text_interactively
   INTERACTIVE_TEXT_INPUT_FUNC: |
     function {{.INTERACTIVE_TEXT_INPUT_NAME}}() {
-      local prompt="$1"; local key="$2";
+      local prompt="$1"; local key="$2"; local default_value="${3-}";
       local value;
-      if ! value="$("{{.INTERACTIVE_BIN}}" \
-        --prompt "$prompt" --input-type text --key "$key")"; then
-        return 1;
-      fi; printf '%s\n' "$value";
+      if [ "$#" -ge 3 ]; then
+        value="$("{{.INTERACTIVE_BIN}}" \
+          --prompt "$prompt" --input-type text --key "$key" --default "$default_value")" || return 1;
+      else
+        value="$("{{.INTERACTIVE_BIN}}" \
+          --prompt "$prompt" --input-type text --key "$key")" || return 1;
+      fi
+      printf '%s\n' "$value";
     }
   INTERACTIVE_MAP_INPUT_NAME: input_map_interactively
   INTERACTIVE_MAP_INPUT_FUNC: |
