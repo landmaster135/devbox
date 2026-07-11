@@ -42,7 +42,7 @@ tasks:
           echo $'\n[Step 01: START]--- cwebp Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter-by-libwebp{{.EXE}}" \
             --src-dir=. --out-dir=.{{.DIR_SEP}}999_converted_images \
-            --archive-dir=.{{.DIR_SEP}}5_original_files \
+            --archive-dir="" \
             --ext=webp \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- cwebp Webp変換プログラムの実行が完了しました ---'
@@ -83,7 +83,7 @@ tasks:
           echo $'\n[Step 01: START]--- cwebp Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter-by-libwebp{{.EXE}}" \
             --src-dir=. --out-dir=.{{.DIR_SEP}}999_converted_images \
-            --archive-dir=.{{.DIR_SEP}}5_original_files \
+            --archive-dir="" \
             --ext=webp --q=99 \
             $MOVE_FLAG
           echo $'\n[Step 01: END]--- cwebp Webp変換プログラムの実行が完了しました ---'
