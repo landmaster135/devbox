@@ -120,27 +120,46 @@ func TestConvertSVGForceConvert(t *testing.T) {
 	}
 }
 
-func TestArchiveMoveFlag(t *testing.T) {
+func TestArchiveOriginal_Copy_Normal(t *testing.T) {
 	srcDir := t.TempDir()
 	archDir := t.TempDir()
 	src, _ := writeDummyFile(srcDir, "pic.jpg", 10)
 
-	// move=false → 何もしない
 	if err := ArchiveOriginal(src, srcDir, archDir, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(src); err != nil {
 		t.Errorf("source should remain when move=false: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(archDir, "pic.jpg")); !os.IsNotExist(err) {
-		t.Errorf("file should NOT be archived when move=false")
+	if _, err := os.Stat(filepath.Join(archDir, "pic.jpg")); err != nil {
+		t.Errorf("file should be copied when move=false: %v", err)
 	}
+}
 
-	// move=true → 移動
+func TestArchiveOriginal_Move_Normal(t *testing.T) {
+	srcDir := t.TempDir()
+	archDir := t.TempDir()
+	src, _ := writeDummyFile(srcDir, "pic.jpg", 10)
+
 	if err := ArchiveOriginal(src, srcDir, archDir, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(src); !os.IsNotExist(err) {
 		t.Errorf("source should be moved when move=true")
+	}
+	if _, err := os.Stat(filepath.Join(archDir, "pic.jpg")); err != nil {
+		t.Errorf("file should be moved to archive: %v", err)
+	}
+}
+
+func TestArchiveOriginal_EmptyArchiveDir_Normal(t *testing.T) {
+	srcDir := t.TempDir()
+	src, _ := writeDummyFile(srcDir, "pic.jpg", 10)
+
+	if err := ArchiveOriginal(src, srcDir, "", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(src); err != nil {
+		t.Errorf("source should remain when archiveDir is empty: %v", err)
 	}
 }

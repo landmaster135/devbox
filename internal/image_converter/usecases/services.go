@@ -184,15 +184,22 @@ func copyFile(src, dst string) error {
 
 // preserving the relative directory structure under srcDir.
 func ArchiveOriginal(srcPath, srcDir, archiveDir string, move bool) error {
-	if !move {
-		return nil // 触らない
+	if archiveDir == "" {
+		return nil
 	}
 
-	rel, _ := filepath.Rel(srcDir, srcPath)
+	rel, err := filepath.Rel(srcDir, srcPath)
+	if err != nil {
+		return err
+	}
 	dest := filepath.Join(archiveDir, rel)
 
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
+	}
+
+	if !move {
+		return copyFile(srcPath, dest)
 	}
 
 	// 1) rename で速く 2) cross-device fallback
