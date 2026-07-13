@@ -54,10 +54,10 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	// オプション構造体を作成して返す
 	return usecases.PDFMergerOptions{
 		Operation:     *operation,
-		Dir:           *srcDir,
+		SrcDir:        *srcDir,
 		ReceivingFile: *receivingFile,
 		Recursive:     *recursive,
-		Extract:       *srcFile,
+		SrcFile:       *srcFile,
 		OutputDir:     *outputDir,
 		ImageFormat:   *imageFormat,
 		StartPage:     *startPage,

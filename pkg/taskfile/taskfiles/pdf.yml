@@ -71,18 +71,18 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+          SRC_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " src-file)" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
-            "$PDF_PATH"
+            "$SRC_FILE_FLAG"
 
           OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
 
           echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
             --operation=extract-images \
-            --src-file="$PDF_PATH" \
+            "$SRC_FILE_FLAG" \
             --output-dir="$OUTPUT_DIR" \
             --format=jpg
           echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
@@ -97,22 +97,22 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+          SRC_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " src-file)" || exit 1
           START_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input start page number: " start)" || exit 1
           END_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input end page number: " end)" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
-            "$PDF_PATH"
+            "$SRC_FILE_FLAG"
 
           OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
 
           echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
             --operation=extract-images \
-            --src-file="$PDF_PATH" \
+            "$SRC_FILE_FLAG" \
             --output-dir="$OUTPUT_DIR" \
             --format=jpg \
             --start="$START_PAGE" \

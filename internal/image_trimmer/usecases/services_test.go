@@ -43,8 +43,8 @@ func TestCropAndSave(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		inPath      string
-		outDir      string
+		inputPath   string
+		outputDir   string
 		x1, y1      int
 		x2, y2      int
 		suffix      string
@@ -53,8 +53,8 @@ func TestCropAndSave(t *testing.T) {
 	}{
 		{
 			name:        "正常系: 有効な矩形でトリミング",
-			inPath:      testInputPath,
-			outDir:      testOutputDir,
+			inputPath:   testInputPath,
+			outputDir:   testOutputDir,
 			x1:          10,
 			y1:          10,
 			x2:          50,
@@ -64,8 +64,8 @@ func TestCropAndSave(t *testing.T) {
 		},
 		{
 			name:        "異常系: 負の座標",
-			inPath:      testInputPath,
-			outDir:      testOutputDir,
+			inputPath:   testInputPath,
+			outputDir:   testOutputDir,
 			x1:          -1,
 			y1:          10,
 			x2:          50,
@@ -76,8 +76,8 @@ func TestCropAndSave(t *testing.T) {
 		},
 		{
 			name:        "異常系: x2 < x1",
-			inPath:      testInputPath,
-			outDir:      testOutputDir,
+			inputPath:   testInputPath,
+			outputDir:   testOutputDir,
 			x1:          50,
 			y1:          10,
 			x2:          10,
@@ -88,8 +88,8 @@ func TestCropAndSave(t *testing.T) {
 		},
 		{
 			name:        "異常系: 画像範囲外",
-			inPath:      testInputPath,
-			outDir:      testOutputDir,
+			inputPath:   testInputPath,
+			outputDir:   testOutputDir,
 			x1:          10,
 			y1:          10,
 			x2:          150,
@@ -100,8 +100,8 @@ func TestCropAndSave(t *testing.T) {
 		},
 		{
 			name:        "異常系: 存在しないファイル",
-			inPath:      filepath.Join(testInputDir, "nonexistent.png"),
-			outDir:      testOutputDir,
+			inputPath:   filepath.Join(testInputDir, "nonexistent.png"),
+			outputDir:   testOutputDir,
 			x1:          10,
 			y1:          10,
 			x2:          50,
@@ -114,7 +114,7 @@ func TestCropAndSave(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CropAndSave(tt.inPath, tt.outDir, tt.x1, tt.y1, tt.x2, tt.y2, tt.suffix)
+			err := CropAndSave(tt.inputPath, tt.outputDir, tt.x1, tt.y1, tt.x2, tt.y2, tt.suffix)
 
 			if tt.expectError {
 				if err == nil {
@@ -128,7 +128,7 @@ func TestCropAndSave(t *testing.T) {
 				}
 
 				// 出力ファイルが存在するか確認
-				expectedOutputPath := filepath.Join(tt.outDir, "test_cropped.png")
+				expectedOutputPath := filepath.Join(tt.outputDir, "test_cropped.png")
 				if _, err := os.Stat(expectedOutputPath); os.IsNotExist(err) {
 					t.Errorf("CropAndSave() output file not created: %s", expectedOutputPath)
 				}
@@ -204,16 +204,16 @@ func TestCropAndSaveUnsupportedFormat(t *testing.T) {
 func TestMoveOriginal(t *testing.T) {
 	// テスト用の一時ディレクトリを作成
 	tmpDir := t.TempDir()
-	testSrcDir := filepath.Join(tmpDir, "src")
-	testArcDir := filepath.Join(tmpDir, "archive")
+	testSourceDir := filepath.Join(tmpDir, "source")
+	testArchiveDir := filepath.Join(tmpDir, "archive")
 
 	// ソースディレクトリを作成
-	if err := os.MkdirAll(testSrcDir, 0o755); err != nil {
+	if err := os.MkdirAll(testSourceDir, 0o755); err != nil {
 		t.Fatalf("failed to create test source dir: %v", err)
 	}
 
 	// テストファイルを作成
-	testFile := filepath.Join(testSrcDir, "test.png")
+	testFile := filepath.Join(testSourceDir, "test.png")
 	content := []byte("test content")
 	if err := os.WriteFile(testFile, content, 0o644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)
@@ -221,29 +221,29 @@ func TestMoveOriginal(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		src         string
-		arcDir      string
+		sourceFile  string
+		archiveDir  string
 		expectError bool
 		errContains string
 		setupErr    bool
 	}{
 		{
 			name:        "正常系: ファイルを正常に移動",
-			src:         testFile,
-			arcDir:      testArcDir,
+			sourceFile:  testFile,
+			archiveDir:  testArchiveDir,
 			expectError: false,
 		},
 		{
 			name:        "異常系: 存在しないファイル",
-			src:         filepath.Join(testSrcDir, "nonexistent.png"),
-			arcDir:      testArcDir,
+			sourceFile:  filepath.Join(testSourceDir, "nonexistent.png"),
+			archiveDir:  testArchiveDir,
 			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := MoveOriginal(tt.src, tt.arcDir)
+			err := MoveOriginal(tt.sourceFile, tt.archiveDir)
 
 			if tt.expectError {
 				if err == nil {
@@ -255,14 +255,14 @@ func TestMoveOriginal(t *testing.T) {
 				}
 
 				// 移動先にファイルが存在するか確認
-				expectedPath := filepath.Join(tt.arcDir, filepath.Base(tt.src))
+				expectedPath := filepath.Join(tt.archiveDir, filepath.Base(tt.sourceFile))
 				if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 					t.Errorf("MoveOriginal() file not found at %s", expectedPath)
 				}
 
 				// 元の場所にファイルがないか確認
-				if _, err := os.Stat(tt.src); !os.IsNotExist(err) {
-					t.Errorf("MoveOriginal() source file still exists at %s", tt.src)
+				if _, err := os.Stat(tt.sourceFile); !os.IsNotExist(err) {
+					t.Errorf("MoveOriginal() source file still exists at %s", tt.sourceFile)
 				}
 			}
 		})
@@ -272,26 +272,26 @@ func TestMoveOriginal(t *testing.T) {
 // MoveOriginalでディレクトリが作成されることをテスト
 func TestMoveOriginalCreateDir(t *testing.T) {
 	tmpDir := t.TempDir()
-	testSrcDir := filepath.Join(tmpDir, "src")
-	testArcDir := filepath.Join(tmpDir, "archive", "subdir") // 存在しないネストディレクトリ
+	testSourceDir := filepath.Join(tmpDir, "source")
+	testArchiveDir := filepath.Join(tmpDir, "archive", "subdir") // 存在しないネストディレクトリ
 
 	// ソースディレクトリとファイルを作成
-	if err := os.MkdirAll(testSrcDir, 0o755); err != nil {
+	if err := os.MkdirAll(testSourceDir, 0o755); err != nil {
 		t.Fatalf("failed to create test source dir: %v", err)
 	}
 
-	testFile := filepath.Join(testSrcDir, "test.png")
+	testFile := filepath.Join(testSourceDir, "test.png")
 	if err := os.WriteFile(testFile, []byte("test"), 0o644); err != nil {
 		t.Fatalf("failed to create test file: %v", err)
 	}
 
-	err := MoveOriginal(testFile, testArcDir)
+	err := MoveOriginal(testFile, testArchiveDir)
 	if err != nil {
 		t.Errorf("MoveOriginal() unexpected error = %v", err)
 	}
 
 	// ネストディレクトリが作成されているか確認
-	if _, err := os.Stat(testArcDir); os.IsNotExist(err) {
-		t.Errorf("MoveOriginal() did not create archive directory: %s", testArcDir)
+	if _, err := os.Stat(testArchiveDir); os.IsNotExist(err) {
+		t.Errorf("MoveOriginal() did not create archive directory: %s", testArchiveDir)
 	}
 }

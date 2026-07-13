@@ -26,7 +26,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 			name: "画像抽出処理_正常系",
 			opts: PDFMergerOptions{
 				Operation:   OperationExtractImages,
-				Extract:     "test_data/org/sample_01_01.pdf",
+				SrcFile:     "test_data/org/sample_01_01.pdf",
 				OutputDir:   "test_data/tmp/extract_test",
 				ImageFormat: "jpg",
 				StartPage:   0,
@@ -39,7 +39,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 			name: "画像抽出処理_出力ディレクトリ未指定",
 			opts: PDFMergerOptions{
 				Operation:   OperationExtractImages,
-				Extract:     "test_data/org/sample_01_01.pdf",
+				SrcFile:     "test_data/org/sample_01_01.pdf",
 				OutputDir:   "",
 				ImageFormat: "jpg",
 			},
@@ -50,7 +50,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 			name: "PDF作成処理_正常系",
 			opts: PDFMergerOptions{
 				Operation: OperationMergeIntoNew,
-				Dir:       "test_data/org",
+				SrcDir:    "test_data/org",
 				OutputDir: "test_data/tmp/created_test",
 			},
 			expectError:    false,
@@ -60,7 +60,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 			name: "既存PDF追加処理_正常系",
 			opts: PDFMergerOptions{
 				Operation:     OperationAddIntoExist,
-				Dir:           "test_data/org",
+				SrcDir:        "test_data/org",
 				OutputDir:     "test_data/tmp/added_test",
 				ReceivingFile: "test_data/org/sample_01_01.pdf",
 			},
@@ -71,7 +71,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 			name: "PDF作成処理_画像なし",
 			opts: PDFMergerOptions{
 				Operation: OperationMergeIntoNew,
-				Dir:       "test_data/tmp/empty",
+				SrcDir:    "test_data/tmp/empty",
 				OutputDir: "test_data/tmp/empty_test",
 			},
 			expectError:    true,
@@ -81,7 +81,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 			name: "未対応Operation",
 			opts: PDFMergerOptions{
 				Operation: "unknown",
-				Dir:       "test_data/org",
+				SrcDir:    "test_data/org",
 				OutputDir: "test_data/tmp/unknown_test",
 			},
 			expectError:    true,
@@ -136,7 +136,7 @@ func TestPDFMergerService_handleImageExtraction(t *testing.T) {
 		{
 			name: "正常系_全ページ抽出",
 			opts: PDFMergerOptions{
-				Extract:     "test_data/org/sample_01_01.pdf",
+				SrcFile:     "test_data/org/sample_01_01.pdf",
 				OutputDir:   "test_data/tmp/extract_handle_test",
 				ImageFormat: "jpg",
 				StartPage:   0,
@@ -147,7 +147,7 @@ func TestPDFMergerService_handleImageExtraction(t *testing.T) {
 		{
 			name: "異常系_PDFファイル不存在",
 			opts: PDFMergerOptions{
-				Extract:     "test_data/org/nonexistent.pdf",
+				SrcFile:     "test_data/org/nonexistent.pdf",
 				OutputDir:   "test_data/tmp/extract_handle_test",
 				ImageFormat: "jpg",
 			},
@@ -156,7 +156,7 @@ func TestPDFMergerService_handleImageExtraction(t *testing.T) {
 		{
 			name: "異常系_出力ディレクトリ未指定",
 			opts: PDFMergerOptions{
-				Extract:     "test_data/org/sample_01_01.pdf",
+				SrcFile:     "test_data/org/sample_01_01.pdf",
 				OutputDir:   "",
 				ImageFormat: "jpg",
 			},
@@ -198,7 +198,7 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "正常系_新規PDF作成",
 			opts: PDFMergerOptions{
-				Dir:       "test_data/org",
+				SrcDir:    "test_data/org",
 				OutputDir: "test_data/tmp/handle_created_test",
 			},
 			expectError: false,
@@ -206,7 +206,7 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "正常系_既存PDFに追加",
 			opts: PDFMergerOptions{
-				Dir:           "test_data/org",
+				SrcDir:        "test_data/org",
 				OutputDir:     "test_data/tmp/handle_merged_test",
 				ReceivingFile: "test_data/org/sample_01_01.pdf",
 			},
@@ -215,7 +215,7 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "異常系_既存PDFファイル不存在",
 			opts: PDFMergerOptions{
-				Dir:           "test_data/org",
+				SrcDir:        "test_data/org",
 				OutputDir:     "test_data/tmp/handle_error_test",
 				ReceivingFile: "test_data/org/nonexistent.pdf",
 			},
@@ -224,7 +224,7 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "異常系_画像ファイルなし",
 			opts: PDFMergerOptions{
-				Dir:       "test_data/tmp/empty_handle",
+				SrcDir:    "test_data/tmp/empty_handle",
 				OutputDir: "test_data/tmp/handle_empty_test",
 			},
 			expectError: true,
@@ -232,7 +232,7 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "異常系_出力ディレクトリ未指定",
 			opts: PDFMergerOptions{
-				Dir: "test_data/org",
+				SrcDir: "test_data/org",
 			},
 			expectError: true,
 		},
@@ -291,7 +291,7 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 			name: "画像抽出オプション",
 			opts: PDFMergerOptions{
 				Operation:   OperationExtractImages,
-				Extract:     "test.pdf",
+				SrcFile:     "test.pdf",
 				OutputDir:   "output",
 				ImageFormat: "jpg",
 				StartPage:   1,
@@ -303,7 +303,7 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 			name: "PDF作成オプション",
 			opts: PDFMergerOptions{
 				Operation:     OperationAddIntoExist,
-				Dir:           "images",
+				SrcDir:        "images",
 				OutputDir:     "output",
 				ReceivingFile: "existing.pdf",
 			},
@@ -319,11 +319,11 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// オプション構造体の各フィールドが期待通りに設定されているか確認
-			if tt.opts.Extract != "" && tt.opts.Extract != "test.pdf" && tt.name == "画像抽出オプション" {
-				t.Errorf("Extract field mismatch")
+			if tt.opts.SrcFile != "" && tt.opts.SrcFile != "test.pdf" && tt.name == "画像抽出オプション" {
+				t.Errorf("SrcFile field mismatch")
 			}
-			if tt.opts.Dir != "" && tt.opts.Dir != "images" && tt.name == "PDF作成オプション" {
-				t.Errorf("Dir field mismatch")
+			if tt.opts.SrcDir != "" && tt.opts.SrcDir != "images" && tt.name == "PDF作成オプション" {
+				t.Errorf("SrcDir field mismatch")
 			}
 			// 構造体が正常に作成されることを確認
 			t.Logf("%s: %+v", tt.description, tt.opts)
@@ -341,7 +341,7 @@ func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
 			name: "MergeIntoNew_Normal",
 			opts: PDFMergerOptions{
 				Operation: OperationMergeIntoNew,
-				Dir:       "images",
+				SrcDir:    "images",
 				OutputDir: "output",
 			},
 			expectError: false,
@@ -350,7 +350,7 @@ func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
 			name: "AddIntoExist_Normal",
 			opts: PDFMergerOptions{
 				Operation:     OperationAddIntoExist,
-				Dir:           "images",
+				SrcDir:        "images",
 				OutputDir:     "output",
 				ReceivingFile: "existing.pdf",
 			},
@@ -360,7 +360,7 @@ func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
 			name: "ExtractImages_Normal",
 			opts: PDFMergerOptions{
 				Operation: OperationExtractImages,
-				Extract:   "input.pdf",
+				SrcFile:   "input.pdf",
 				OutputDir: "output",
 			},
 			expectError: false,
@@ -369,13 +369,13 @@ func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
 			name: "AddIntoExist_ReceivingFile未指定",
 			opts: PDFMergerOptions{
 				Operation: OperationAddIntoExist,
-				Dir:       "images",
+				SrcDir:    "images",
 				OutputDir: "output",
 			},
 			expectError: true,
 		},
 		{
-			name: "ExtractImages_Extract未指定",
+			name: "ExtractImages_SrcFile未指定",
 			opts: PDFMergerOptions{
 				Operation: OperationExtractImages,
 				OutputDir: "output",
@@ -416,7 +416,7 @@ func TestPDFMergerService_Integration(t *testing.T) {
 
 		opts := PDFMergerOptions{
 			Operation:   OperationExtractImages,
-			Extract:     "test_data/org/sample_01_01.pdf",
+			SrcFile:     "test_data/org/sample_01_01.pdf",
 			OutputDir:   outputDir,
 			ImageFormat: "jpg",
 			StartPage:   0,
@@ -457,7 +457,7 @@ func TestPDFMergerService_Integration(t *testing.T) {
 
 		opts := PDFMergerOptions{
 			Operation: OperationMergeIntoNew,
-			Dir:       "test_data/org",
+			SrcDir:    "test_data/org",
 			OutputDir: outputDir,
 		}
 

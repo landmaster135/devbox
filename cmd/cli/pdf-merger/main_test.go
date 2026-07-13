@@ -18,8 +18,8 @@ func TestParseFlags_Recursive(t *testing.T) {
 	if opts.Operation != usecases.OperationMergeIntoNew {
 		t.Errorf("Operation: 期待 %s, 実際 %s", usecases.OperationMergeIntoNew, opts.Operation)
 	}
-	if opts.Dir != "images" {
-		t.Errorf("Dir: 期待 %s, 実際 %s", "images", opts.Dir)
+	if opts.SrcDir != "images" {
+		t.Errorf("SrcDir: 期待 %s, 実際 %s", "images", opts.SrcDir)
 	}
 	if !opts.Recursive {
 		t.Errorf("Recursive: 期待 true, 実際 false")
@@ -134,7 +134,7 @@ func TestParseFlags_OperationSpecificOptions(t *testing.T) {
 		args                  []string
 		expectedOperation     string
 		expectedReceivingFile string
-		expectedExtract       string
+		expectedSrcFile       string
 	}{
 		{
 			name:                  "既存PDFに画像を追加_Normal",
@@ -147,7 +147,7 @@ func TestParseFlags_OperationSpecificOptions(t *testing.T) {
 			args:                  []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-output-dir", "output"},
 			expectedOperation:     usecases.OperationExtractImages,
 			expectedReceivingFile: "",
-			expectedExtract:       "input.pdf",
+			expectedSrcFile:       "input.pdf",
 		},
 	}
 
@@ -165,8 +165,8 @@ func TestParseFlags_OperationSpecificOptions(t *testing.T) {
 			if opts.ReceivingFile != tt.expectedReceivingFile {
 				t.Errorf("ReceivingFile: 期待 %s, 実際 %s", tt.expectedReceivingFile, opts.ReceivingFile)
 			}
-			if opts.Extract != tt.expectedExtract {
-				t.Errorf("Extract: 期待 %s, 実際 %s", tt.expectedExtract, opts.Extract)
+			if opts.SrcFile != tt.expectedSrcFile {
+				t.Errorf("SrcFile: 期待 %s, 実際 %s", tt.expectedSrcFile, opts.SrcFile)
 			}
 		})
 	}

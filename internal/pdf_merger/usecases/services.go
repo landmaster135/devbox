@@ -18,7 +18,7 @@ import (
 type PDFMergerOptions struct {
 	// 共通オプション
 	Operation string
-	Dir       string
+	SrcDir    string
 	OutputDir string
 
 	// PDF作成用オプション
@@ -26,7 +26,7 @@ type PDFMergerOptions struct {
 	Recursive     bool
 
 	// 画像抽出用オプション
-	Extract     string
+	SrcFile     string
 	ImageFormat string
 	StartPage   int
 	EndPage     int
@@ -85,19 +85,19 @@ func (opts PDFMergerOptions) ValidateOperation() error {
 		if opts.ReceivingFile != "" {
 			return fmt.Errorf("operation %s では ReceivingFile を指定できません", opts.Operation)
 		}
-		if opts.Extract != "" {
-			return fmt.Errorf("operation %s では Extract を指定できません", opts.Operation)
+		if opts.SrcFile != "" {
+			return fmt.Errorf("operation %s では SrcFile を指定できません", opts.Operation)
 		}
 	case OperationAddIntoExist:
 		if opts.ReceivingFile == "" {
 			return fmt.Errorf("operation %s では ReceivingFile は必須です", opts.Operation)
 		}
-		if opts.Extract != "" {
-			return fmt.Errorf("operation %s では Extract を指定できません", opts.Operation)
+		if opts.SrcFile != "" {
+			return fmt.Errorf("operation %s では SrcFile を指定できません", opts.Operation)
 		}
 	case OperationExtractImages:
-		if opts.Extract == "" {
-			return fmt.Errorf("operation %s では Extract は必須です", opts.Operation)
+		if opts.SrcFile == "" {
+			return fmt.Errorf("operation %s では SrcFile は必須です", opts.Operation)
 		}
 		if opts.ReceivingFile != "" {
 			return fmt.Errorf("operation %s では ReceivingFile を指定できません", opts.Operation)
@@ -116,15 +116,15 @@ func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions) error {
 	}
 
 	// PDFファイルの存在確認
-	if _, err := os.Stat(opts.Extract); os.IsNotExist(err) {
-		return fmt.Errorf("PDFファイルが見つかりません: %s", opts.Extract)
+	if _, err := os.Stat(opts.SrcFile); os.IsNotExist(err) {
+		return fmt.Errorf("PDFファイルが見つかりません: %s", opts.SrcFile)
 	}
 
 	// 画像抽出サービスのインスタンスを作成
 	imageService := NewImageExtractionService()
 
 	// PDFのページ数を取得
-	totalPages, err := imageService.GetPageCount(opts.Extract)
+	totalPages, err := imageService.GetPageCount(opts.SrcFile)
 	if err != nil {
 		return fmt.Errorf("PDFのページ数取得に失敗しました: %w", err)
 	}
@@ -138,13 +138,13 @@ func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions) error {
 	rangeInfo := imageService.GetRangeOfPages(opts.StartPage, opts.EndPage, totalPages)
 
 	s.logger.Println("PDF画像抽出を開始します...")
-	s.logger.Printf("入力PDF    : %s", opts.Extract)
+	s.logger.Printf("入力PDF    : %s", opts.SrcFile)
 	s.logger.Printf("出力ディレクトリ: %s", opts.OutputDir)
 	s.logger.Printf("画像形式   : %s", opts.ImageFormat)
 	s.logger.Printf("ページ範囲 : %s", rangeInfo.Message)
 
 	// 画像抽出の実行
-	err = imageService.ExtractToImages(opts.Extract, opts.OutputDir, opts.ImageFormat, opts.StartPage, opts.EndPage)
+	err = imageService.ExtractToImages(opts.SrcFile, opts.OutputDir, opts.ImageFormat, opts.StartPage, opts.EndPage)
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	}
 
 	// 画像ファイルの取得
-	images, err := pdfService.GetSourceImages(opts.Dir, opts.Recursive)
+	images, err := pdfService.GetSourceImages(opts.SrcDir, opts.Recursive)
 	if err != nil {
 		return err
 	}
