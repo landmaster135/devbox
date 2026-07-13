@@ -4,23 +4,13 @@
 
 ## 機能
 
-- 複数の画像ファイルを一括変換
-- PNG, JPEG, WebP, AVIFなど様々なフォーマット間の変換をサポート
+- 複数の画像ファイルを様々なフォーマット間で一括変換
 - 非可逆圧縮フォーマットの品質調整
-- 複数のCPUコアを活用した並列処理
-- 再帰的なディレクトリ走査オプション
-- 元画像ファイルのアーカイブ機能（コピーまたは移動）
-
-## 使い方
-
-```bash
-image-converter [オプション]
-```
 
 ### オプション
 
 | オプション | デフォルト値 | 説明 |
-|------------|--------------|------|
+|---|---|---|
 | `--src` | `.` | 変換元ディレクトリ |
 | `--out` | `./999_converted_images` | 出力先ディレクトリ |
 | `--archive` | `""` (空) | アーカイブ先ディレクトリ（空の場合は無効） |
@@ -33,38 +23,32 @@ image-converter [オプション]
 
 ## 使用例
 
-### カレントディレクトリの画像をPNGに変換
-
+カレントディレクトリの画像をPNGに変換
 ```bash
 go run ./cmd/cli/image-converter --ext png
 ```
 
-### 指定ディレクトリの画像をWebPに変換（品質90）
-
+指定ディレクトリの画像をWebPに変換（品質90）
 ```bash
 go run ./cmd/cli/image-converter --src ./photos --ext webp --q 90
 ```
 
-### サブディレクトリも含めて全画像をJPEGに変換
-
+サブディレクトリも含めて全画像をJPEGに変換
 ```bash
 go run ./cmd/cli/image-converter --src ./photos --ext jpg --R
 ```
 
-### 出力先ディレクトリを指定して変換
-
+出力先ディレクトリを指定して変換
 ```bash
 go run ./cmd/cli/image-converter --src ./photos -out ./converted --ext avif
 ```
 
-### 変換後に元ファイルをアーカイブディレクトリにコピー
-
+変換後に元ファイルをアーカイブディレクトリにコピー
 ```bash
 go run ./cmd/cli/image-converter --src ./photos --ext webp --archive ./originals
 ```
 
-### 変換後に元ファイルをアーカイブディレクトリに移動
-
+変換後に元ファイルをアーカイブディレクトリに移動
 ```bash
 go run ./cmd/cli/image-converter --src ./photos --ext webp --archive ./originals --move
 ```
@@ -87,19 +71,5 @@ go run ./cmd/cli/image-converter --src ./photos --ext webp --archive ./originals
 ## 推奨ユースケース
 
 | usecase | settings |
-| --- | --- |
+|---|---|
 | Androidでスクショした漫画の画像をPDFにマージする | `--ext jpg --q 20` |
-
-## ビルド方法
-
-リポジトリのルートディレクトリで以下のコマンドを実行します：
-
-```bash
-./scripts/build_image_converter.sh
-```
-
-または手動でビルドする場合：
-
-```bash
-cd devbox
-go build -o bin/image-converter ./cmd/cli/image-converter
