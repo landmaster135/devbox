@@ -13,8 +13,8 @@
 |---|---|---|
 | `--src` | `.` | 変換元ディレクトリ |
 | `--out` | `./999_converted_images` | 出力先ディレクトリ |
-| `--archive` | `""` (空) | アーカイブ先ディレクトリ（空の場合は無効） |
-| `--move` | `false` | 元ファイルをコピーではなく移動（-archiveが指定されている場合のみ有効） |
+| `--archive` | `""` (空) | アーカイブ先ディレクトリ (空の場合は無効) |
+| `--move` | `false` | 元ファイルをコピーではなく移動 (-archiveが指定されている場合のみ有効) |
 | `--ext` | `png` | 変換先フォーマット (png/jpg/webp/avif) |
 | `--q` | `80` | 非可逆圧縮フォーマットの品質 (1-100) |
 | `--workers` | CPU数 | 同時実行ワーカー数 |
@@ -28,14 +28,9 @@
 go run ./cmd/cli/image-converter --ext png
 ```
 
-指定ディレクトリの画像をWebPに変換（品質90）
+指定ディレクトリの画像をWebPに変換 (品質90)
 ```bash
 go run ./cmd/cli/image-converter --src ./photos --ext webp --q 90
-```
-
-サブディレクトリも含めて全画像をJPEGに変換
-```bash
-go run ./cmd/cli/image-converter --src ./photos --ext jpg --R
 ```
 
 出力先ディレクトリを指定して変換
@@ -60,7 +55,7 @@ go run ./cmd/cli/image-converter --src ./photos --ext webp --archive ./originals
 - JPEG
 - WebP
 - AVIF
-- その他（usecasesパッケージのコーデックテーブルに依存）
+- その他 (usecasesパッケージのコーデックテーブルに依存)
 
 ### 出力フォーマット
 - PNG
