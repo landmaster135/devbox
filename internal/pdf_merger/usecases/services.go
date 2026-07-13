@@ -22,8 +22,8 @@ type PDFMergerOptions struct {
 	OutputDir string
 
 	// PDF作成用オプション
-	Add       string
-	Recursive bool
+	ReceivingFile string
+	Recursive     bool
 
 	// 画像抽出用オプション
 	Extract     string
@@ -82,15 +82,15 @@ func (s *PDFMergerService) Process(opts PDFMergerOptions) error {
 func (opts PDFMergerOptions) ValidateOperation() error {
 	switch opts.Operation {
 	case OperationMergeIntoNew:
-		if opts.Add != "" {
-			return fmt.Errorf("operation %s では Add を指定できません", opts.Operation)
+		if opts.ReceivingFile != "" {
+			return fmt.Errorf("operation %s では ReceivingFile を指定できません", opts.Operation)
 		}
 		if opts.Extract != "" {
 			return fmt.Errorf("operation %s では Extract を指定できません", opts.Operation)
 		}
 	case OperationAddIntoExist:
-		if opts.Add == "" {
-			return fmt.Errorf("operation %s では Add は必須です", opts.Operation)
+		if opts.ReceivingFile == "" {
+			return fmt.Errorf("operation %s では ReceivingFile は必須です", opts.Operation)
 		}
 		if opts.Extract != "" {
 			return fmt.Errorf("operation %s では Extract を指定できません", opts.Operation)
@@ -99,8 +99,8 @@ func (opts PDFMergerOptions) ValidateOperation() error {
 		if opts.Extract == "" {
 			return fmt.Errorf("operation %s では Extract は必須です", opts.Operation)
 		}
-		if opts.Add != "" {
-			return fmt.Errorf("operation %s では Add を指定できません", opts.Operation)
+		if opts.ReceivingFile != "" {
+			return fmt.Errorf("operation %s では ReceivingFile を指定できません", opts.Operation)
 		}
 	default:
 		return fmt.Errorf("未対応の operation です: %s", opts.Operation)
@@ -176,16 +176,16 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	s.logger.Printf("検出した画像: %d 枚", len(images))
 
 	// 既存PDFファイルが指定されている場合は既存PDFに画像を追加
-	if opts.Add != "" {
+	if opts.ReceivingFile != "" {
 		// 既存PDFファイルの存在確認
-		if _, err := os.Stat(opts.Add); os.IsNotExist(err) {
-			return fmt.Errorf("既存PDFファイルが見つかりません: %s", opts.Add)
+		if _, err := os.Stat(opts.ReceivingFile); os.IsNotExist(err) {
+			return fmt.Errorf("既存PDFファイルが見つかりません: %s", opts.ReceivingFile)
 		}
 
-		s.logger.Printf("既存 PDF   : %s", opts.Add)
+		s.logger.Printf("既存 PDF   : %s", opts.ReceivingFile)
 
 		// 既存PDFに画像を追加
-		err = pdfService.AddImagesToExistingPDF(opts.Add, images, output)
+		err = pdfService.AddImagesToExistingPDF(opts.ReceivingFile, images, output)
 		if err != nil {
 			return err
 		}

@@ -59,10 +59,10 @@ func TestPDFMergerService_Process(t *testing.T) {
 		{
 			name: "既存PDF追加処理_正常系",
 			opts: PDFMergerOptions{
-				Operation: OperationAddIntoExist,
-				Dir:       "test_data/org",
-				OutputDir: "test_data/tmp/added_test",
-				Add:       "test_data/org/sample_01_01.pdf",
+				Operation:     OperationAddIntoExist,
+				Dir:           "test_data/org",
+				OutputDir:     "test_data/tmp/added_test",
+				ReceivingFile: "test_data/org/sample_01_01.pdf",
 			},
 			expectError:    false,
 			expectedOutput: "既存PDFに画像を追加しました",
@@ -206,18 +206,18 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "正常系_既存PDFに追加",
 			opts: PDFMergerOptions{
-				Dir:       "test_data/org",
-				OutputDir: "test_data/tmp/handle_merged_test",
-				Add:       "test_data/org/sample_01_01.pdf",
+				Dir:           "test_data/org",
+				OutputDir:     "test_data/tmp/handle_merged_test",
+				ReceivingFile: "test_data/org/sample_01_01.pdf",
 			},
 			expectError: false,
 		},
 		{
 			name: "異常系_既存PDFファイル不存在",
 			opts: PDFMergerOptions{
-				Dir:       "test_data/org",
-				OutputDir: "test_data/tmp/handle_error_test",
-				Add:       "test_data/org/nonexistent.pdf",
+				Dir:           "test_data/org",
+				OutputDir:     "test_data/tmp/handle_error_test",
+				ReceivingFile: "test_data/org/nonexistent.pdf",
 			},
 			expectError: true,
 		},
@@ -302,10 +302,10 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 		{
 			name: "PDF作成オプション",
 			opts: PDFMergerOptions{
-				Operation: OperationAddIntoExist,
-				Dir:       "images",
-				OutputDir: "output",
-				Add:       "existing.pdf",
+				Operation:     OperationAddIntoExist,
+				Dir:           "images",
+				OutputDir:     "output",
+				ReceivingFile: "existing.pdf",
 			},
 			description: "PDF作成用のオプションが正しく設定される",
 		},
@@ -349,10 +349,10 @@ func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
 		{
 			name: "AddIntoExist_Normal",
 			opts: PDFMergerOptions{
-				Operation: OperationAddIntoExist,
-				Dir:       "images",
-				OutputDir: "output",
-				Add:       "existing.pdf",
+				Operation:     OperationAddIntoExist,
+				Dir:           "images",
+				OutputDir:     "output",
+				ReceivingFile: "existing.pdf",
 			},
 			expectError: false,
 		},
@@ -366,7 +366,7 @@ func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "AddIntoExist_Add未指定",
+			name: "AddIntoExist_ReceivingFile未指定",
 			opts: PDFMergerOptions{
 				Operation: OperationAddIntoExist,
 				Dir:       "images",

@@ -27,7 +27,7 @@ go run ./cmd/cli/pdf-merger -operation=merge-into-new -src-dir /path/to/images -
 
 ```bash
 # 既存のPDFに画像を追加
-go run ./cmd/cli/pdf-merger -operation=add-into-exist -src-dir /path/to/images -add existing.pdf -output-dir ./merged
+go run ./cmd/cli/pdf-merger -operation=add-into-exist -src-dir /path/to/images -receiving-file existing.pdf -output-dir ./merged
 ```
 
 ### 3. PDFから画像を抽出
@@ -52,7 +52,7 @@ go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -outpu
 | `-operation string` | 必須 | なし | 実行する処理。`merge-into-new`, `add-into-exist`, `extract-images` のいずれか |
 | `-src-dir string` | 任意 | `.` | 画像を検索するフォルダー |
 | `-output-dir string` | 必須 | なし | PDFの出力ディレクトリ。出力PDFは`<output-dir>/<basename(output-dir)>.pdf`として作成 |
-| `-add string` | `add-into-exist`時必須 | なし | 画像を追加する既存PDFファイルパス |
+| `-receiving-file string` | `add-into-exist`時必須 | なし | 画像を追加する既存PDFファイルパス |
 | `-recursive bool` | 任意 | `false` | サブディレクトリまで再帰的に画像を検索する |
 
 ### PDF画像抽出オプション
@@ -85,9 +85,9 @@ PDF を生成しました。完了です。
 ## 注意事項
 
 - **PDF作成・既存PDF追加・画像抽出のいずれでも、`-operation` と `-output-dir` オプションは必須です**
-- `-operation=merge-into-new` では `-add` と `-src-file` は指定できません
-- `-operation=add-into-exist` では `-add` が必須で、`-src-file` は指定できません
-- `-operation=extract-images` では `-src-file` が必須で、`-add` は指定できません
+- `-operation=merge-into-new` では `-receiving-file` と `-src-file` は指定できません
+- `-operation=add-into-exist` では `-receiving-file` が必須で、`-src-file` は指定できません
+- `-operation=extract-images` では `-src-file` が必須で、`-receiving-file` は指定できません
 - PDF作成・既存PDF追加時の出力PDFは、`-output-dir ./dist`の場合は`./dist/dist.pdf`として作成されます
 - PDF作成・既存PDF追加時に`-output-dir .`を指定した場合は、カレントディレクトリ直下に`<カレントディレクトリ名>.pdf`として作成されます
 - ページ番号は1から始まります

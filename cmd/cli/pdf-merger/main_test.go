@@ -83,28 +83,32 @@ func TestParseFlags_OperationValidation(t *testing.T) {
 			args: []string{"-operation", "unknown", "-src-dir", "images", "-output-dir", "output"},
 		},
 		{
-			name: "MergeIntoNewでAdd指定",
-			args: []string{"-operation", usecases.OperationMergeIntoNew, "-src-dir", "images", "-add", "existing.pdf", "-output-dir", "output"},
+			name: "MergeIntoNewでReceivingFile指定",
+			args: []string{"-operation", usecases.OperationMergeIntoNew, "-src-dir", "images", "-receiving-file", "existing.pdf", "-output-dir", "output"},
 		},
 		{
 			name: "MergeIntoNewでSrcFile指定",
 			args: []string{"-operation", usecases.OperationMergeIntoNew, "-src-dir", "images", "-src-file", "input.pdf", "-output-dir", "output"},
 		},
 		{
-			name: "AddIntoExistでAdd未指定",
+			name: "AddIntoExistでReceivingFile未指定",
 			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-output-dir", "output"},
 		},
 		{
 			name: "AddIntoExistでSrcFile指定",
-			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-add", "existing.pdf", "-src-file", "input.pdf", "-output-dir", "output"},
+			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-receiving-file", "existing.pdf", "-src-file", "input.pdf", "-output-dir", "output"},
 		},
 		{
 			name: "ExtractImagesでSrcFile未指定",
 			args: []string{"-operation", usecases.OperationExtractImages, "-output-dir", "output"},
 		},
 		{
-			name: "ExtractImagesでAdd指定",
-			args: []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-add", "existing.pdf", "-output-dir", "output"},
+			name: "ExtractImagesでReceivingFile指定",
+			args: []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-receiving-file", "existing.pdf", "-output-dir", "output"},
+		},
+		{
+			name: "Add廃止フラグ指定",
+			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-add", "existing.pdf", "-output-dir", "output"},
 		},
 		{
 			name: "Extract廃止フラグ指定",
@@ -126,23 +130,24 @@ func TestParseFlags_OperationValidation(t *testing.T) {
 
 func TestParseFlags_OperationSpecificOptions(t *testing.T) {
 	tests := []struct {
-		name              string
-		args              []string
-		expectedOperation string
-		expectedAdd       string
-		expectedExtract   string
+		name                  string
+		args                  []string
+		expectedOperation     string
+		expectedReceivingFile string
+		expectedExtract       string
 	}{
 		{
-			name:              "既存PDFに画像を追加_Normal",
-			args:              []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-add", "existing.pdf", "-output-dir", "output"},
-			expectedOperation: usecases.OperationAddIntoExist,
-			expectedAdd:       "existing.pdf",
+			name:                  "既存PDFに画像を追加_Normal",
+			args:                  []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-receiving-file", "existing.pdf", "-output-dir", "output"},
+			expectedOperation:     usecases.OperationAddIntoExist,
+			expectedReceivingFile: "existing.pdf",
 		},
 		{
-			name:              "PDFから画像を抽出_Normal",
-			args:              []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-output-dir", "output"},
-			expectedOperation: usecases.OperationExtractImages,
-			expectedExtract:   "input.pdf",
+			name:                  "PDFから画像を抽出_Normal",
+			args:                  []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-output-dir", "output"},
+			expectedOperation:     usecases.OperationExtractImages,
+			expectedReceivingFile: "",
+			expectedExtract:       "input.pdf",
 		},
 	}
 
@@ -157,8 +162,8 @@ func TestParseFlags_OperationSpecificOptions(t *testing.T) {
 			if opts.Operation != tt.expectedOperation {
 				t.Errorf("Operation: 期待 %s, 実際 %s", tt.expectedOperation, opts.Operation)
 			}
-			if opts.Add != tt.expectedAdd {
-				t.Errorf("Add: 期待 %s, 実際 %s", tt.expectedAdd, opts.Add)
+			if opts.ReceivingFile != tt.expectedReceivingFile {
+				t.Errorf("ReceivingFile: 期待 %s, 実際 %s", tt.expectedReceivingFile, opts.ReceivingFile)
 			}
 			if opts.Extract != tt.expectedExtract {
 				t.Errorf("Extract: 期待 %s, 実際 %s", tt.expectedExtract, opts.Extract)

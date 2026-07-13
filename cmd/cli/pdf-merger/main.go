@@ -27,7 +27,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	// コマンドライン引数の定義
 	operation := fs.String("operation", "", "実行する処理 (merge-into-new, add-into-exist, extract-images)")
 	srcDir := fs.String("src-dir", ".", "画像を検索するフォルダー")
-	add := fs.String("add", "", "既存の PDF ファイルパス (指定時は既存PDFに画像を追加)")
+	receivingFile := fs.String("receiving-file", "", "画像を追加する既存の PDF ファイルパス")
 	recursive := fs.Bool("recursive", false, "画像をサブディレクトリまで再帰探索する")
 
 	// PDF画像抽出用のオプション
@@ -47,36 +47,36 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	if *outputDir == "" {
 		return usecases.PDFMergerOptions{}, fmt.Errorf("-output-dir は必須です")
 	}
-	if err := validateOperationFlags(*operation, *add, *srcFile); err != nil {
+	if err := validateOperationFlags(*operation, *receivingFile, *srcFile); err != nil {
 		return usecases.PDFMergerOptions{}, err
 	}
 
 	// オプション構造体を作成して返す
 	return usecases.PDFMergerOptions{
-		Operation:   *operation,
-		Dir:         *srcDir,
-		Add:         *add,
-		Recursive:   *recursive,
-		Extract:     *srcFile,
-		OutputDir:   *outputDir,
-		ImageFormat: *imageFormat,
-		StartPage:   *startPage,
-		EndPage:     *endPage,
+		Operation:     *operation,
+		Dir:           *srcDir,
+		ReceivingFile: *receivingFile,
+		Recursive:     *recursive,
+		Extract:       *srcFile,
+		OutputDir:     *outputDir,
+		ImageFormat:   *imageFormat,
+		StartPage:     *startPage,
+		EndPage:       *endPage,
 	}, nil
 }
 
-func validateOperationFlags(operation, add, srcFile string) error {
+func validateOperationFlags(operation, receivingFile, srcFile string) error {
 	switch operation {
 	case usecases.OperationMergeIntoNew:
-		if add != "" {
-			return fmt.Errorf("-operation=%s では -add を指定できません", operation)
+		if receivingFile != "" {
+			return fmt.Errorf("-operation=%s では -receiving-file を指定できません", operation)
 		}
 		if srcFile != "" {
 			return fmt.Errorf("-operation=%s では -src-file を指定できません", operation)
 		}
 	case usecases.OperationAddIntoExist:
-		if add == "" {
-			return fmt.Errorf("-operation=%s では -add は必須です", operation)
+		if receivingFile == "" {
+			return fmt.Errorf("-operation=%s では -receiving-file は必須です", operation)
 		}
 		if srcFile != "" {
 			return fmt.Errorf("-operation=%s では -src-file を指定できません", operation)
@@ -85,8 +85,8 @@ func validateOperationFlags(operation, add, srcFile string) error {
 		if srcFile == "" {
 			return fmt.Errorf("-operation=%s では -src-file は必須です", operation)
 		}
-		if add != "" {
-			return fmt.Errorf("-operation=%s では -add を指定できません", operation)
+		if receivingFile != "" {
+			return fmt.Errorf("-operation=%s では -receiving-file を指定できません", operation)
 		}
 	default:
 		return fmt.Errorf("未対応の operation です: %s", operation)

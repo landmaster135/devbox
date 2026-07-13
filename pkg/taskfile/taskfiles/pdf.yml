@@ -147,15 +147,15 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}}
           TARGET_DIR=.
-          EXISTING_PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input PDF file you wanna add new pages (e.g.: '.'): " add)" || exit 1
+          RECEIVING_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input PDF file you wanna add new pages (e.g.: '.'): " receiving-file)" || exit 1
 
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像を既存PDFへ追加します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
             --operation=add-into-exist \
             --src-dir="$TARGET_DIR" \
             --output-dir=. \
-            --add="$EXISTING_PDF_PATH"
+            "$RECEIVING_FILE_FLAG"
           echo $'\n[Step 01: END]--- 既存PDFへの追加が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
