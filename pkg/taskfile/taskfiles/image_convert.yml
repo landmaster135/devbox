@@ -195,7 +195,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 座標指定トリミングを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trimmer{{.EXE}}" \
-            --src=. --out=.{{.DIR_SEP}}999_converted_images --suffix=cropped \
+            --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --suffix=cropped \
             $COORDINATE_ARGS $MOVE_FLAG
           echo $'\n[Step 01: END]--- 座標指定トリミングの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -237,7 +237,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 用途別プリセットトリミングを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-trimmer{{.EXE}}" \
-            --src=. --out=.{{.DIR_SEP}}999_converted_images --suffix=cropped \
+            --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --suffix=cropped \
             "$X1_ARG" "$Y1_ARG" "$X2_ARG" "$Y2_ARG" $MOVE_FLAG
           echo $'\n[Step 01: END]--- 用途別プリセットトリミングの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"

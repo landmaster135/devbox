@@ -38,4 +38,4 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run ./cmd/cli/image-trimmer -out ./trimmed_images -x1 10 -y1 20 -x2 300 -y2 400"
+echo "  go run ./cmd/cli/image-trimmer -output-dir ./trimmed_images -x1 10 -y1 20 -x2 300 -y2 400"
