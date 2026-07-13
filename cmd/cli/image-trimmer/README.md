@@ -9,22 +9,10 @@
 - 並行処理による高速な処理
 - 元ファイルのアーカイブ機能
 
-## インストール
-
-```bash
-go install github.com/landmaster135/devbox/cmd/cli/image-trimmer@latest
-```
-
-## 使用方法
-
-```bash
-image-trimmer [オプション]
-```
-
 ### オプション
 
 | オプション | デフォルト値 | 説明 |
-|------------|--------------|------|
+|---|---|---|
 | `-src` | `.` | トリミング元ディレクトリ |
 | `-out` | srcと同じ | 出力先ディレクトリ |
 | `-arc` | `./5_original_files` | アーカイブ先ディレクトリ |
@@ -39,40 +27,32 @@ image-trimmer [オプション]
 
 ## 使用例
 
-### 基本的な使用方法
-
-カレントディレクトリ内の画像を座標(10,20)から(300,400)までトリミング：
-
+カレントディレクトリ内の画像を座標 (10,20) から (300,400) までトリミング：
 ```bash
 go run ./cmd/cli/image-trimmer -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### 特定のディレクトリの画像を処理
-
+特定のディレクトリの画像を処理
 ```bash
 go run ./cmd/cli/image-trimmer -src ./images -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### 出力先を指定
-
+出力先を指定
 ```bash
 go run ./cmd/cli/image-trimmer -src ./images -out ./trimmed_images -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### サブディレクトリも含めて処理
-
+サブディレクトリも含めて処理
 ```bash
 go run ./cmd/cli/image-trimmer -src ./images -r -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### 元ファイルを移動
-
+元ファイルを移動
 ```bash
 go run ./cmd/cli/image-trimmer -src ./images -move -x1 10 -y1 20 -x2 300 -y2 400
 ```
 
-### カスタムサフィックスを指定
-
+カスタムサフィックスを指定
 ```bash
 go run ./cmd/cli/image-trimmer -src ./images -suffix cropped -x1 10 -y1 20 -x2 300 -y2 400
 ```
