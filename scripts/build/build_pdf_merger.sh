@@ -38,6 +38,6 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run ./cmd/cli/pdf-merger -output-dir ./dist"
-echo "  go run ./cmd/cli/pdf-merger -src-dir /path/to/images -output-dir ./dist"
-echo "  go run ./cmd/cli/pdf-merger -src-dir /path/to/images -output-dir ./merged"
+echo "  go run ./cmd/cli/pdf-merger -operation=merge-into-new -output-dir ./dist"
+echo "  go run ./cmd/cli/pdf-merger -operation=merge-into-new -src-dir /path/to/images -output-dir ./dist"
+echo "  go run ./cmd/cli/pdf-merger -operation=merge-into-new -src-dir /path/to/images -output-dir ./merged"

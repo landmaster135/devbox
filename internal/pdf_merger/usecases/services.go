@@ -17,6 +17,7 @@ import (
 // PDFMergerOptions はPDFマージャーの処理オプションを格納する構造体
 type PDFMergerOptions struct {
 	// 共通オプション
+	Operation string
 	Dir       string
 	OutputDir string
 
@@ -30,6 +31,12 @@ type PDFMergerOptions struct {
 	StartPage   int
 	EndPage     int
 }
+
+const (
+	OperationMergeIntoNew  = "merge-into-new"
+	OperationAddIntoExist  = "add-into-exist"
+	OperationExtractImages = "extract-images"
+)
 
 // Logger はPDFMergerService内で利用するログ出力のインターフェース
 type Logger interface {
@@ -57,10 +64,48 @@ func NewPDFMergerServiceWithLogger(logger Logger) *PDFMergerService {
 
 // Process はオプションに応じて適切な処理を実行します
 func (s *PDFMergerService) Process(opts PDFMergerOptions) error {
-	if opts.Extract != "" {
-		return s.handleImageExtraction(opts)
+	if err := opts.ValidateOperation(); err != nil {
+		return err
 	}
-	return s.handlePDFCreation(opts)
+
+	switch opts.Operation {
+	case OperationMergeIntoNew, OperationAddIntoExist:
+		return s.handlePDFCreation(opts)
+	case OperationExtractImages:
+		return s.handleImageExtraction(opts)
+	default:
+		return fmt.Errorf("未対応の operation です: %s", opts.Operation)
+	}
+}
+
+// ValidateOperation は operation と関連オプションの組み合わせを検証します
+func (opts PDFMergerOptions) ValidateOperation() error {
+	switch opts.Operation {
+	case OperationMergeIntoNew:
+		if opts.Add != "" {
+			return fmt.Errorf("operation %s では Add を指定できません", opts.Operation)
+		}
+		if opts.Extract != "" {
+			return fmt.Errorf("operation %s では Extract を指定できません", opts.Operation)
+		}
+	case OperationAddIntoExist:
+		if opts.Add == "" {
+			return fmt.Errorf("operation %s では Add は必須です", opts.Operation)
+		}
+		if opts.Extract != "" {
+			return fmt.Errorf("operation %s では Extract を指定できません", opts.Operation)
+		}
+	case OperationExtractImages:
+		if opts.Extract == "" {
+			return fmt.Errorf("operation %s では Extract は必須です", opts.Operation)
+		}
+		if opts.Add != "" {
+			return fmt.Errorf("operation %s では Add を指定できません", opts.Operation)
+		}
+	default:
+		return fmt.Errorf("未対応の operation です: %s", opts.Operation)
+	}
+	return nil
 }
 
 // handleImageExtraction はPDFからの画像抽出を処理します

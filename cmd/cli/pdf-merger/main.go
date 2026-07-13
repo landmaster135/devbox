@@ -25,6 +25,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	fs.SetOutput(stderr)
 
 	// コマンドライン引数の定義
+	operation := fs.String("operation", "", "実行する処理 (merge-into-new, add-into-exist, extract-images)")
 	srcDir := fs.String("src-dir", ".", "画像を検索するフォルダー")
 	add := fs.String("add", "", "既存の PDF ファイルパス (指定時は既存PDFに画像を追加)")
 	recursive := fs.Bool("recursive", false, "画像をサブディレクトリまで再帰探索する")
@@ -40,12 +41,19 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	if err := fs.Parse(args); err != nil {
 		return usecases.PDFMergerOptions{}, err
 	}
+	if *operation == "" {
+		return usecases.PDFMergerOptions{}, fmt.Errorf("-operation は必須です")
+	}
 	if *outputDir == "" {
 		return usecases.PDFMergerOptions{}, fmt.Errorf("-output-dir は必須です")
+	}
+	if err := validateOperationFlags(*operation, *add, *extract); err != nil {
+		return usecases.PDFMergerOptions{}, err
 	}
 
 	// オプション構造体を作成して返す
 	return usecases.PDFMergerOptions{
+		Operation:   *operation,
 		Dir:         *srcDir,
 		Add:         *add,
 		Recursive:   *recursive,
@@ -55,6 +63,35 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 		StartPage:   *startPage,
 		EndPage:     *endPage,
 	}, nil
+}
+
+func validateOperationFlags(operation, add, extract string) error {
+	switch operation {
+	case usecases.OperationMergeIntoNew:
+		if add != "" {
+			return fmt.Errorf("-operation=%s では -add を指定できません", operation)
+		}
+		if extract != "" {
+			return fmt.Errorf("-operation=%s では -extract を指定できません", operation)
+		}
+	case usecases.OperationAddIntoExist:
+		if add == "" {
+			return fmt.Errorf("-operation=%s では -add は必須です", operation)
+		}
+		if extract != "" {
+			return fmt.Errorf("-operation=%s では -extract を指定できません", operation)
+		}
+	case usecases.OperationExtractImages:
+		if extract == "" {
+			return fmt.Errorf("-operation=%s では -extract は必須です", operation)
+		}
+		if add != "" {
+			return fmt.Errorf("-operation=%s では -add を指定できません", operation)
+		}
+	default:
+		return fmt.Errorf("未対応の operation です: %s", operation)
+	}
+	return nil
 }
 
 // run はPDFマージャーツールの主要なロジックを実行します

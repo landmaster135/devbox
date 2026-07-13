@@ -81,8 +81,10 @@ tasks:
 
           echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --operation=extract-images \
+            --extract="$PDF_PATH" \
             --output-dir="$OUTPUT_DIR" \
-            $PDF_PATH
+            --format=jpg
           echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -109,8 +111,12 @@ tasks:
 
           echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --operation=extract-images \
+            --extract="$PDF_PATH" \
             --output-dir="$OUTPUT_DIR" \
-            $PDF_PATH $START_PAGE $END_PAGE
+            --format=jpg \
+            --start="$START_PAGE" \
+            --end="$END_PAGE"
           echo $'\n[Step 01: END]--- PDFからのページ範囲抽出が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -127,6 +133,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像からPDFを生成します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --operation=merge-into-new \
             --src-dir="$TARGET_DIR" \
             --output-dir=.
           echo $'\n[Step 01: END]--- 現在のディレクトリのPDF生成が完了しました ---'
@@ -145,9 +152,10 @@ tasks:
 
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像を既存PDFへ追加します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --operation=add-into-exist \
             --src-dir="$TARGET_DIR" \
             --output-dir=. \
-            "$EXISTING_PDF_PATH"
+            --add="$EXISTING_PDF_PATH"
           echo $'\n[Step 01: END]--- 既存PDFへの追加が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true

@@ -25,6 +25,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 		{
 			name: "画像抽出処理_正常系",
 			opts: PDFMergerOptions{
+				Operation:   OperationExtractImages,
 				Extract:     "test_data/org/sample_01_01.pdf",
 				OutputDir:   "test_data/tmp/extract_test",
 				ImageFormat: "jpg",
@@ -37,6 +38,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 		{
 			name: "画像抽出処理_出力ディレクトリ未指定",
 			opts: PDFMergerOptions{
+				Operation:   OperationExtractImages,
 				Extract:     "test_data/org/sample_01_01.pdf",
 				OutputDir:   "",
 				ImageFormat: "jpg",
@@ -47,6 +49,7 @@ func TestPDFMergerService_Process(t *testing.T) {
 		{
 			name: "PDF作成処理_正常系",
 			opts: PDFMergerOptions{
+				Operation: OperationMergeIntoNew,
 				Dir:       "test_data/org",
 				OutputDir: "test_data/tmp/created_test",
 			},
@@ -54,10 +57,32 @@ func TestPDFMergerService_Process(t *testing.T) {
 			expectedOutput: "検出した画像",
 		},
 		{
+			name: "既存PDF追加処理_正常系",
+			opts: PDFMergerOptions{
+				Operation: OperationAddIntoExist,
+				Dir:       "test_data/org",
+				OutputDir: "test_data/tmp/added_test",
+				Add:       "test_data/org/sample_01_01.pdf",
+			},
+			expectError:    false,
+			expectedOutput: "既存PDFに画像を追加しました",
+		},
+		{
 			name: "PDF作成処理_画像なし",
 			opts: PDFMergerOptions{
+				Operation: OperationMergeIntoNew,
 				Dir:       "test_data/tmp/empty",
 				OutputDir: "test_data/tmp/empty_test",
+			},
+			expectError:    true,
+			expectedOutput: "",
+		},
+		{
+			name: "未対応Operation",
+			opts: PDFMergerOptions{
+				Operation: "unknown",
+				Dir:       "test_data/org",
+				OutputDir: "test_data/tmp/unknown_test",
 			},
 			expectError:    true,
 			expectedOutput: "",
@@ -77,7 +102,9 @@ func TestPDFMergerService_Process(t *testing.T) {
 				os.RemoveAll("test_data/tmp/extract_test")
 				os.RemoveAll("test_data/tmp/empty")
 				os.RemoveAll("test_data/tmp/created_test")
+				os.RemoveAll("test_data/tmp/added_test")
 				os.RemoveAll("test_data/tmp/empty_test")
+				os.RemoveAll("test_data/tmp/unknown_test")
 			}()
 
 			service, logBuf := newTestPDFMergerService()
@@ -263,6 +290,7 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 		{
 			name: "画像抽出オプション",
 			opts: PDFMergerOptions{
+				Operation:   OperationExtractImages,
 				Extract:     "test.pdf",
 				OutputDir:   "output",
 				ImageFormat: "jpg",
@@ -274,6 +302,7 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 		{
 			name: "PDF作成オプション",
 			opts: PDFMergerOptions{
+				Operation: OperationAddIntoExist,
 				Dir:       "images",
 				OutputDir: "output",
 				Add:       "existing.pdf",
@@ -302,6 +331,80 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 	}
 }
 
+func TestPDFMergerOptions_ValidateOperation(t *testing.T) {
+	tests := []struct {
+		name        string
+		opts        PDFMergerOptions
+		expectError bool
+	}{
+		{
+			name: "MergeIntoNew_Normal",
+			opts: PDFMergerOptions{
+				Operation: OperationMergeIntoNew,
+				Dir:       "images",
+				OutputDir: "output",
+			},
+			expectError: false,
+		},
+		{
+			name: "AddIntoExist_Normal",
+			opts: PDFMergerOptions{
+				Operation: OperationAddIntoExist,
+				Dir:       "images",
+				OutputDir: "output",
+				Add:       "existing.pdf",
+			},
+			expectError: false,
+		},
+		{
+			name: "ExtractImages_Normal",
+			opts: PDFMergerOptions{
+				Operation: OperationExtractImages,
+				Extract:   "input.pdf",
+				OutputDir: "output",
+			},
+			expectError: false,
+		},
+		{
+			name: "AddIntoExist_Add未指定",
+			opts: PDFMergerOptions{
+				Operation: OperationAddIntoExist,
+				Dir:       "images",
+				OutputDir: "output",
+			},
+			expectError: true,
+		},
+		{
+			name: "ExtractImages_Extract未指定",
+			opts: PDFMergerOptions{
+				Operation: OperationExtractImages,
+				OutputDir: "output",
+			},
+			expectError: true,
+		},
+		{
+			name: "未対応Operation",
+			opts: PDFMergerOptions{
+				Operation: "unknown",
+				OutputDir: "output",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.opts.ValidateOperation()
+			if tt.expectError && err == nil {
+				t.Fatal("エラーが期待されましたが、エラーが発生しませんでした")
+			}
+			if !tt.expectError && err != nil {
+				t.Fatalf("予期しないエラーが発生しました: %v", err)
+			}
+		})
+	}
+}
+
 func TestPDFMergerService_Integration(t *testing.T) {
 	t.Run("完全な画像抽出フロー", func(t *testing.T) {
 		// テスト用ディレクトリの準備
@@ -312,6 +415,7 @@ func TestPDFMergerService_Integration(t *testing.T) {
 		defer os.RemoveAll(outputDir)
 
 		opts := PDFMergerOptions{
+			Operation:   OperationExtractImages,
 			Extract:     "test_data/org/sample_01_01.pdf",
 			OutputDir:   outputDir,
 			ImageFormat: "jpg",
@@ -352,6 +456,7 @@ func TestPDFMergerService_Integration(t *testing.T) {
 		defer os.RemoveAll(outputDir)
 
 		opts := PDFMergerOptions{
+			Operation: OperationMergeIntoNew,
 			Dir:       "test_data/org",
 			OutputDir: outputDir,
 		}
