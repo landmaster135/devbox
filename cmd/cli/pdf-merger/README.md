@@ -46,18 +46,23 @@ go run ./cmd/cli/pdf-merger -extract input.pdf -output-dir ./images -start 5 -fo
 ## オプション
 
 ### 基本オプション
-- `-dir string`: 画像を検索するフォルダー（デフォルト: "."）
-- `-out string`: 出力PDFファイル名（未指定なら <dir名>.pdf）
-- `-add string`: 既存のPDFファイルパス（指定時は既存PDFに画像を追加）
-- `-recursive bool`: サブディレクトリまで再帰的に画像を検索する（デフォルト: false）
+
+| オプション | 必須/任意 | デフォルト | 説明 |
+|---|---|---|---|
+| `-dir string` | 任意 | `.` | 画像を検索するフォルダー |
+| `-out string` | 任意 | `<dir名>.pdf` | 出力PDFファイル名 |
+| `-add string` | 任意 | なし | 既存のPDFファイルパス。指定時は既存PDFに画像を追加 |
+| `-recursive bool` | 任意 | `false` | サブディレクトリまで再帰的に画像を検索する |
 
 ### PDF画像抽出オプション
-- `-extract string`: **PDFファイルから画像を抽出する（PDFファイルパス）**
-- `-output-dir string`: **画像の出力ディレクトリ（抽出時必須）**
-- `-format string`: **出力画像形式（デフォルト: "jpg"）**
-  - サポート形式: jpg, jpeg, png, tiff, webp
-- `-start int`: **抽出開始ページ（1から開始、0は全ページ）**
-- `-end int`: **抽出終了ページ（0は最終ページまで）**
+
+| オプション | 必須/任意 | デフォルト | 説明 |
+|---|---|---|---|
+| `-extract string` | 任意 | なし | 画像を抽出するPDFファイルパス。指定時はPDF画像抽出モードで実行 |
+| `-output-dir string` | 抽出時必須 | なし | 画像の出力ディレクトリ |
+| `-format string` | 任意 | `jpg` | 出力画像形式。サポート形式: `jpg`, `jpeg`, `png`, `tiff`, `webp` |
+| `-start int` | 任意 | `0` | 抽出開始ページ。1から開始し、0は全ページ |
+| `-end int` | 任意 | `0` | 抽出終了ページ。0は最終ページまで |
 
 ## 注意事項
 
