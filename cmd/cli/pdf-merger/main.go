@@ -31,7 +31,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	recursive := fs.Bool("recursive", false, "画像をサブディレクトリまで再帰探索する")
 
 	// PDF画像抽出用のオプション
-	extract := fs.String("extract", "", "PDFファイルから画像を抽出する (PDFファイルパス)")
+	srcFile := fs.String("src-file", "", "PDFファイルから画像を抽出する入力PDFファイルパス")
 	outputDir := fs.String("output-dir", "", "出力ディレクトリ (PDF作成/抽出時必須)")
 	imageFormat := fs.String("format", "jpg", "出力画像形式 (jpg, jpeg, png, tiff, webp)")
 	startPage := fs.Int("start", 0, "抽出開始ページ (1から開始、0は全ページ)")
@@ -47,7 +47,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	if *outputDir == "" {
 		return usecases.PDFMergerOptions{}, fmt.Errorf("-output-dir は必須です")
 	}
-	if err := validateOperationFlags(*operation, *add, *extract); err != nil {
+	if err := validateOperationFlags(*operation, *add, *srcFile); err != nil {
 		return usecases.PDFMergerOptions{}, err
 	}
 
@@ -57,7 +57,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 		Dir:         *srcDir,
 		Add:         *add,
 		Recursive:   *recursive,
-		Extract:     *extract,
+		Extract:     *srcFile,
 		OutputDir:   *outputDir,
 		ImageFormat: *imageFormat,
 		StartPage:   *startPage,
@@ -65,25 +65,25 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	}, nil
 }
 
-func validateOperationFlags(operation, add, extract string) error {
+func validateOperationFlags(operation, add, srcFile string) error {
 	switch operation {
 	case usecases.OperationMergeIntoNew:
 		if add != "" {
 			return fmt.Errorf("-operation=%s では -add を指定できません", operation)
 		}
-		if extract != "" {
-			return fmt.Errorf("-operation=%s では -extract を指定できません", operation)
+		if srcFile != "" {
+			return fmt.Errorf("-operation=%s では -src-file を指定できません", operation)
 		}
 	case usecases.OperationAddIntoExist:
 		if add == "" {
 			return fmt.Errorf("-operation=%s では -add は必須です", operation)
 		}
-		if extract != "" {
-			return fmt.Errorf("-operation=%s では -extract を指定できません", operation)
+		if srcFile != "" {
+			return fmt.Errorf("-operation=%s では -src-file を指定できません", operation)
 		}
 	case usecases.OperationExtractImages:
-		if extract == "" {
-			return fmt.Errorf("-operation=%s では -extract は必須です", operation)
+		if srcFile == "" {
+			return fmt.Errorf("-operation=%s では -src-file は必須です", operation)
 		}
 		if add != "" {
 			return fmt.Errorf("-operation=%s では -add を指定できません", operation)

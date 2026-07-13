@@ -82,7 +82,7 @@ tasks:
           echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
             --operation=extract-images \
-            --extract="$PDF_PATH" \
+            --src-file="$PDF_PATH" \
             --output-dir="$OUTPUT_DIR" \
             --format=jpg
           echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
@@ -112,7 +112,7 @@ tasks:
           echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
             --operation=extract-images \
-            --extract="$PDF_PATH" \
+            --src-file="$PDF_PATH" \
             --output-dir="$OUTPUT_DIR" \
             --format=jpg \
             --start="$START_PAGE" \

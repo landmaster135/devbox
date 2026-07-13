@@ -87,24 +87,28 @@ func TestParseFlags_OperationValidation(t *testing.T) {
 			args: []string{"-operation", usecases.OperationMergeIntoNew, "-src-dir", "images", "-add", "existing.pdf", "-output-dir", "output"},
 		},
 		{
-			name: "MergeIntoNewでExtract指定",
-			args: []string{"-operation", usecases.OperationMergeIntoNew, "-src-dir", "images", "-extract", "input.pdf", "-output-dir", "output"},
+			name: "MergeIntoNewでSrcFile指定",
+			args: []string{"-operation", usecases.OperationMergeIntoNew, "-src-dir", "images", "-src-file", "input.pdf", "-output-dir", "output"},
 		},
 		{
 			name: "AddIntoExistでAdd未指定",
 			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-output-dir", "output"},
 		},
 		{
-			name: "AddIntoExistでExtract指定",
-			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-add", "existing.pdf", "-extract", "input.pdf", "-output-dir", "output"},
+			name: "AddIntoExistでSrcFile指定",
+			args: []string{"-operation", usecases.OperationAddIntoExist, "-src-dir", "images", "-add", "existing.pdf", "-src-file", "input.pdf", "-output-dir", "output"},
 		},
 		{
-			name: "ExtractImagesでExtract未指定",
+			name: "ExtractImagesでSrcFile未指定",
 			args: []string{"-operation", usecases.OperationExtractImages, "-output-dir", "output"},
 		},
 		{
 			name: "ExtractImagesでAdd指定",
-			args: []string{"-operation", usecases.OperationExtractImages, "-extract", "input.pdf", "-add", "existing.pdf", "-output-dir", "output"},
+			args: []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-add", "existing.pdf", "-output-dir", "output"},
+		},
+		{
+			name: "Extract廃止フラグ指定",
+			args: []string{"-operation", usecases.OperationExtractImages, "-extract", "input.pdf", "-output-dir", "output"},
 		},
 	}
 
@@ -136,7 +140,7 @@ func TestParseFlags_OperationSpecificOptions(t *testing.T) {
 		},
 		{
 			name:              "PDFから画像を抽出_Normal",
-			args:              []string{"-operation", usecases.OperationExtractImages, "-extract", "input.pdf", "-output-dir", "output"},
+			args:              []string{"-operation", usecases.OperationExtractImages, "-src-file", "input.pdf", "-output-dir", "output"},
 			expectedOperation: usecases.OperationExtractImages,
 			expectedExtract:   "input.pdf",
 		},

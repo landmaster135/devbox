@@ -34,13 +34,13 @@ go run ./cmd/cli/pdf-merger -operation=add-into-exist -src-dir /path/to/images -
 
 ```bash
 # PDFの全ページを画像として抽出
-go run ./cmd/cli/pdf-merger -operation=extract-images -extract input.pdf -output-dir ./images
+go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -output-dir ./images
 
 # 特定のページ範囲を抽出（例：3ページから10ページまで）
-go run ./cmd/cli/pdf-merger -operation=extract-images -extract input.pdf -output-dir ./images -start 3 -end 10
+go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -output-dir ./images -start 3 -end 10
 
 # JPEGで特定の開始ページから最後まで抽出
-go run ./cmd/cli/pdf-merger -operation=extract-images -extract input.pdf -output-dir ./images -start 5 -format jpg
+go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -output-dir ./images -start 5 -format jpg
 ```
 
 ## オプション
@@ -60,7 +60,7 @@ go run ./cmd/cli/pdf-merger -operation=extract-images -extract input.pdf -output
 | オプション | 必須/任意 | デフォルト | 説明 |
 |---|---|---|---|
 | `-operation string` | 必須 | なし | `extract-images` を指定 |
-| `-extract string` | `extract-images`時必須 | なし | 画像を抽出するPDFファイルパス |
+| `-src-file string` | `extract-images`時必須 | なし | 画像を抽出するPDFファイルパス |
 | `-output-dir string` | 抽出時必須 | なし | 画像の出力ディレクトリ |
 | `-format string` | 任意 | `jpg` | 出力画像形式。サポート形式: `jpg`, `jpeg`, `png`, `tiff`, `webp` |
 | `-start int` | 任意 | `0` | 抽出開始ページ。1から開始し、0は全ページ |
@@ -85,9 +85,9 @@ PDF を生成しました。完了です。
 ## 注意事項
 
 - **PDF作成・既存PDF追加・画像抽出のいずれでも、`-operation` と `-output-dir` オプションは必須です**
-- `-operation=merge-into-new` では `-add` と `-extract` は指定できません
-- `-operation=add-into-exist` では `-add` が必須で、`-extract` は指定できません
-- `-operation=extract-images` では `-extract` が必須で、`-add` は指定できません
+- `-operation=merge-into-new` では `-add` と `-src-file` は指定できません
+- `-operation=add-into-exist` では `-add` が必須で、`-src-file` は指定できません
+- `-operation=extract-images` では `-src-file` が必須で、`-add` は指定できません
 - PDF作成・既存PDF追加時の出力PDFは、`-output-dir ./dist`の場合は`./dist/dist.pdf`として作成されます
 - PDF作成・既存PDF追加時に`-output-dir .`を指定した場合は、カレントディレクトリ直下に`<カレントディレクトリ名>.pdf`として作成されます
 - ページ番号は1から始まります
