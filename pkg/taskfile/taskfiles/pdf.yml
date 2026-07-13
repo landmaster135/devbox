@@ -127,7 +127,8 @@ tasks:
 
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像からPDFを生成します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
-            --dir="$TARGET_DIR"
+            --dir="$TARGET_DIR" \
+            --output-dir=.
           echo $'\n[Step 01: END]--- 現在のディレクトリのPDF生成が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         silent: true
@@ -145,6 +146,7 @@ tasks:
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像を既存PDFへ追加します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
             --dir="$TARGET_DIR" \
+            --output-dir=. \
             "$EXISTING_PDF_PATH"
           echo $'\n[Step 01: END]--- 既存PDFへの追加が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"

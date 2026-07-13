@@ -26,13 +26,12 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 
 	// コマンドライン引数の定義
 	dir := fs.String("dir", ".", "画像を検索するフォルダー")
-	out := fs.String("out", "", "出力 PDF ファイル名 (未指定なら <dir 名>.pdf)")
 	add := fs.String("add", "", "既存の PDF ファイルパス (指定時は既存PDFに画像を追加)")
 	recursive := fs.Bool("recursive", false, "画像をサブディレクトリまで再帰探索する")
 
 	// PDF画像抽出用のオプション
 	extract := fs.String("extract", "", "PDFファイルから画像を抽出する (PDFファイルパス)")
-	outputDir := fs.String("output-dir", "", "画像の出力ディレクトリ (抽出時必須)")
+	outputDir := fs.String("output-dir", "", "出力ディレクトリ (PDF作成/抽出時必須)")
 	imageFormat := fs.String("format", "jpg", "出力画像形式 (jpg, jpeg, png, tiff, webp)")
 	startPage := fs.Int("start", 0, "抽出開始ページ (1から開始、0は全ページ)")
 	endPage := fs.Int("end", 0, "抽出終了ページ (0は最終ページまで)")
@@ -41,11 +40,13 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	if err := fs.Parse(args); err != nil {
 		return usecases.PDFMergerOptions{}, err
 	}
+	if *outputDir == "" {
+		return usecases.PDFMergerOptions{}, fmt.Errorf("-output-dir は必須です")
+	}
 
 	// オプション構造体を作成して返す
 	return usecases.PDFMergerOptions{
 		Dir:         *dir,
-		Out:         *out,
 		Add:         *add,
 		Recursive:   *recursive,
 		Extract:     *extract,

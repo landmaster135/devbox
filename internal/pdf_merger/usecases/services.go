@@ -17,8 +17,8 @@ import (
 // PDFMergerOptions はPDFマージャーの処理オプションを格納する構造体
 type PDFMergerOptions struct {
 	// 共通オプション
-	Dir string
-	Out string
+	Dir       string
+	OutputDir string
 
 	// PDF作成用オプション
 	Add       string
@@ -26,7 +26,6 @@ type PDFMergerOptions struct {
 
 	// 画像抽出用オプション
 	Extract     string
-	OutputDir   string
 	ImageFormat string
 	StartPage   int
 	EndPage     int
@@ -114,8 +113,13 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	// PDF作成サービスのインスタンスを作成
 	pdfService := NewPDFCreationService()
 
+	output, err := pdfService.ResolveOutputPDFPath(opts.OutputDir)
+	if err != nil {
+		return err
+	}
+
 	// 画像ファイルの取得
-	images, output, err := pdfService.GetSourceImages(opts.Dir, opts.Out, opts.Recursive)
+	images, err := pdfService.GetSourceImages(opts.Dir, opts.Recursive)
 	if err != nil {
 		return err
 	}
@@ -172,17 +176,40 @@ func NewPDFCreationService() *PDFCreationService {
 	return &PDFCreationService{}
 }
 
-// GetSourceImages は指定されたディレクトリから画像ファイルを取得します
-func (s *PDFCreationService) GetSourceImages(dir string, out string, recursive bool) ([]string, string, error) {
-	absDir, err := filepath.Abs(dir)
-	if err != nil {
-		return nil, "", err
+// ResolveOutputPDFPath は出力ディレクトリからPDF出力パスを解決します
+func (s *PDFCreationService) ResolveOutputPDFPath(outputDir string) (string, error) {
+	if outputDir == "" {
+		return "", fmt.Errorf("PDF作成時は --output-dir オプションが必須です")
 	}
 
-	// 出力名のデフォルト: <フォルダー名>.pdf
-	if out == "" {
-		base := filepath.Base(absDir)
-		out = filepath.Join(absDir, base+".pdf")
+	cleanedOutputDir := filepath.Clean(outputDir)
+	absOutputDir, err := filepath.Abs(cleanedOutputDir)
+	if err != nil {
+		return "", fmt.Errorf("出力ディレクトリパスの変換に失敗しました: %w", err)
+	}
+
+	base := filepath.Base(absOutputDir)
+	if base == "." || base == string(filepath.Separator) || base == "" {
+		return "", fmt.Errorf("出力PDFファイル名を決定できない出力ディレクトリです: %s", outputDir)
+	}
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return "", fmt.Errorf("出力ディレクトリの作成に失敗しました: %w", err)
+	}
+
+	trimmedOutputDir := strings.TrimRight(outputDir, string(filepath.Separator))
+	if trimmedOutputDir == "" {
+		return "", fmt.Errorf("出力PDFファイル名を決定できない出力ディレクトリです: %s", outputDir)
+	}
+
+	return trimmedOutputDir + string(filepath.Separator) + base + ".pdf", nil
+}
+
+// GetSourceImages は指定されたディレクトリから画像ファイルを取得します
+func (s *PDFCreationService) GetSourceImages(dir string, recursive bool) ([]string, error) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
 	}
 
 	// ---- 画像ファイルを収集 ----
@@ -193,16 +220,16 @@ func (s *PDFCreationService) GetSourceImages(dir string, out string, recursive b
 		images, err = s.collectSourceImagesInDirectory(absDir)
 	}
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	if len(images) == 0 {
 		fmt.Println("画像が見つかりませんでした。終了します。")
-		return nil, "", nil
+		return nil, nil
 	}
 	sort.Strings(images) // PowerShell の Sort-Object 相当
 
-	return images, out, nil
+	return images, nil
 }
 
 func (s *PDFCreationService) collectSourceImagesInDirectory(absDir string) ([]string, error) {

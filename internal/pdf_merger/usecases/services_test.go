@@ -69,7 +69,7 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		service := NewPDFCreationService()
 
 		// テスト実行
-		images, output, err := service.GetSourceImages(tmpDir, "", false)
+		images, err := service.GetSourceImages(tmpDir, false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -77,12 +77,6 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		// 検証
 		if len(images) != 3 {
 			t.Errorf("予想される画像数は3、実際は%d", len(images))
-		}
-
-		// 出力パスのデフォルト値を確認
-		expectedOutput := filepath.Join(tmpDir, filepath.Base(tmpDir)+".pdf")
-		if output != expectedOutput {
-			t.Errorf("予想される出力パス: %s, 実際: %s", expectedOutput, output)
 		}
 
 		// 画像がソートされていることを確認
@@ -103,13 +97,13 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		defer os.RemoveAll(tmpDir)
 
 		service := NewPDFCreationService()
-		images, output, err := service.GetSourceImages(tmpDir, "", false)
+		images, err := service.GetSourceImages(tmpDir, false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
 
-		if images != nil || output != "" {
-			t.Errorf("空のディレクトリでは、images: nil, output: \"\"が期待されます")
+		if images != nil {
+			t.Errorf("空のディレクトリでは、images: nilが期待されます")
 		}
 	})
 
@@ -117,41 +111,88 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		nonExistentDir := "/non/existent/directory"
 		service := NewPDFCreationService()
 		// 実際の実装ではエラーが返されないので、テストを調整
-		images, output, err := service.GetSourceImages(nonExistentDir, "", false)
+		images, err := service.GetSourceImages(nonExistentDir, false)
 		if err != nil {
 			t.Logf("エラーが発生: %v", err)
 			// これは期待される動作なので、OKとする
 			return
 		}
 		// エラーが返されない場合、空の結果が返されることを確認
-		if images != nil || output != "" {
-			t.Errorf("存在しないディレクトリでは、images: nil, output: \"\"が期待されます")
+		if images != nil {
+			t.Errorf("存在しないディレクトリでは、images: nilが期待されます")
 		}
 	})
 
-	t.Run("カスタム出力パス", func(t *testing.T) {
+	t.Run("出力PDFパスを出力ディレクトリから解決", func(t *testing.T) {
 		tmpDir, err := os.MkdirTemp("", "testdir-*")
 		if err != nil {
 			t.Fatalf("テストディレクトリの作成に失敗: %v", err)
 		}
 		defer os.RemoveAll(tmpDir)
 
-		// テスト用JPGファイルを作成
-		err = createValidJPEG(filepath.Join(tmpDir, "test.jpg"), 10, 10)
+		service := NewPDFCreationService()
+		outputDir := filepath.Join(tmpDir, "custom_output")
+		output, err := service.ResolveOutputPDFPath(outputDir)
 		if err != nil {
-			t.Fatalf("テストJPGファイルの作成に失敗: %v", err)
+			t.Fatalf("ResolveOutputPDFPath()でエラーが発生: %v", err)
 		}
+
+		expectedOutput := filepath.Join(outputDir, "custom_output.pdf")
+		if output != expectedOutput {
+			t.Errorf("予想される出力パス: %s, 実際: %s", expectedOutput, output)
+		}
+	})
+
+	t.Run("相対出力ディレクトリのドット表記を保持", func(t *testing.T) {
+		service := NewPDFCreationService()
+		outputDir := "./test_data/tmp/dist"
+		defer os.RemoveAll(outputDir)
+
+		output, err := service.ResolveOutputPDFPath(outputDir)
+		if err != nil {
+			t.Fatalf("ResolveOutputPDFPath()でエラーが発生: %v", err)
+		}
+
+		expectedOutput := "./test_data/tmp/dist/dist.pdf"
+		if output != expectedOutput {
+			t.Errorf("予想される出力パス: %s, 実際: %s", expectedOutput, output)
+		}
+	})
+
+	t.Run("カレントディレクトリ指定ではカレントディレクトリ名をPDF名にする", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "test-output-dir-current-*")
+		if err != nil {
+			t.Fatalf("テストディレクトリの作成に失敗: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		originalDir, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("カレントディレクトリの取得に失敗: %v", err)
+		}
+		if err := os.Chdir(tmpDir); err != nil {
+			t.Fatalf("カレントディレクトリの変更に失敗: %v", err)
+		}
+		defer os.Chdir(originalDir)
 
 		service := NewPDFCreationService()
-		// カスタム出力パスをテンポラリディレクトリ内に指定
-		customOutput := filepath.Join(tmpDir, "custom_output.pdf")
-		_, output, err := service.GetSourceImages(tmpDir, customOutput, false)
+		output, err := service.ResolveOutputPDFPath(".")
 		if err != nil {
-			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
+			t.Fatalf("ResolveOutputPDFPath()でエラーが発生: %v", err)
 		}
 
-		if output != customOutput {
-			t.Errorf("予想される出力パス: %s, 実際: %s", customOutput, output)
+		expectedOutput := "." + string(filepath.Separator) + filepath.Base(tmpDir) + ".pdf"
+		if output != expectedOutput {
+			t.Errorf("予想される出力パス: %s, 実際: %s", expectedOutput, output)
+		}
+	})
+
+	t.Run("出力ディレクトリ未指定", func(t *testing.T) {
+		service := NewPDFCreationService()
+
+		_, err := service.ResolveOutputPDFPath("")
+		if err == nil {
+			t.Fatal("出力ディレクトリ未指定ではエラーが期待されます")
 		}
 	})
 
@@ -174,7 +215,7 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		}
 
 		service := NewPDFCreationService()
-		images, _, err := service.GetSourceImages(tmpDir, "", false)
+		images, err := service.GetSourceImages(tmpDir, false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -208,7 +249,7 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		}
 
 		service := NewPDFCreationService()
-		images, _, err := service.GetSourceImages(tmpDir, "", true)
+		images, err := service.GetSourceImages(tmpDir, true)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -317,9 +358,14 @@ func TestPDFCreationService_Integration(t *testing.T) {
 		service := NewPDFCreationService()
 
 		// 画像を収集
-		images, output, err := service.GetSourceImages(tmpDir, "", false)
+		images, err := service.GetSourceImages(tmpDir, false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
+		}
+		outputDir := filepath.Join(tmpDir, "output")
+		output, err := service.ResolveOutputPDFPath(outputDir)
+		if err != nil {
+			t.Fatalf("ResolveOutputPDFPath()でエラーが発生: %v", err)
 		}
 
 		// PDFに結合

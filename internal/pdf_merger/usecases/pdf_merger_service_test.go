@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -46,8 +47,8 @@ func TestPDFMergerService_Process(t *testing.T) {
 		{
 			name: "PDF作成処理_正常系",
 			opts: PDFMergerOptions{
-				Dir: "test_data/org",
-				Out: "test_data/tmp/created_test.pdf",
+				Dir:       "test_data/org",
+				OutputDir: "test_data/tmp/created_test",
 			},
 			expectError:    false,
 			expectedOutput: "検出した画像",
@@ -55,8 +56,8 @@ func TestPDFMergerService_Process(t *testing.T) {
 		{
 			name: "PDF作成処理_画像なし",
 			opts: PDFMergerOptions{
-				Dir: "test_data/tmp/empty",
-				Out: "test_data/tmp/empty_test.pdf",
+				Dir:       "test_data/tmp/empty",
+				OutputDir: "test_data/tmp/empty_test",
 			},
 			expectError:    true,
 			expectedOutput: "",
@@ -75,8 +76,8 @@ func TestPDFMergerService_Process(t *testing.T) {
 			defer func() {
 				os.RemoveAll("test_data/tmp/extract_test")
 				os.RemoveAll("test_data/tmp/empty")
-				os.Remove("test_data/tmp/created_test.pdf")
-				os.Remove("test_data/tmp/empty_test.pdf")
+				os.RemoveAll("test_data/tmp/created_test")
+				os.RemoveAll("test_data/tmp/empty_test")
 			}()
 
 			service, logBuf := newTestPDFMergerService()
@@ -170,34 +171,41 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 		{
 			name: "正常系_新規PDF作成",
 			opts: PDFMergerOptions{
-				Dir: "test_data/org",
-				Out: "test_data/tmp/handle_created_test.pdf",
+				Dir:       "test_data/org",
+				OutputDir: "test_data/tmp/handle_created_test",
 			},
 			expectError: false,
 		},
 		{
 			name: "正常系_既存PDFに追加",
 			opts: PDFMergerOptions{
-				Dir: "test_data/org",
-				Out: "test_data/tmp/handle_merged_test.pdf",
-				Add: "test_data/org/sample_01_01.pdf",
+				Dir:       "test_data/org",
+				OutputDir: "test_data/tmp/handle_merged_test",
+				Add:       "test_data/org/sample_01_01.pdf",
 			},
 			expectError: false,
 		},
 		{
 			name: "異常系_既存PDFファイル不存在",
 			opts: PDFMergerOptions{
-				Dir: "test_data/org",
-				Out: "test_data/tmp/handle_error_test.pdf",
-				Add: "test_data/org/nonexistent.pdf",
+				Dir:       "test_data/org",
+				OutputDir: "test_data/tmp/handle_error_test",
+				Add:       "test_data/org/nonexistent.pdf",
 			},
 			expectError: true,
 		},
 		{
 			name: "異常系_画像ファイルなし",
 			opts: PDFMergerOptions{
-				Dir: "test_data/tmp/empty_handle",
-				Out: "test_data/tmp/handle_empty_test.pdf",
+				Dir:       "test_data/tmp/empty_handle",
+				OutputDir: "test_data/tmp/handle_empty_test",
+			},
+			expectError: true,
+		},
+		{
+			name: "異常系_出力ディレクトリ未指定",
+			opts: PDFMergerOptions{
+				Dir: "test_data/org",
 			},
 			expectError: true,
 		},
@@ -211,10 +219,10 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 			}
 			defer func() {
 				os.RemoveAll("test_data/tmp/empty_handle")
-				os.Remove("test_data/tmp/handle_created_test.pdf")
-				os.Remove("test_data/tmp/handle_merged_test.pdf")
-				os.Remove("test_data/tmp/handle_error_test.pdf")
-				os.Remove("test_data/tmp/handle_empty_test.pdf")
+				os.RemoveAll("test_data/tmp/handle_created_test")
+				os.RemoveAll("test_data/tmp/handle_merged_test")
+				os.RemoveAll("test_data/tmp/handle_error_test")
+				os.RemoveAll("test_data/tmp/handle_empty_test")
 			}()
 
 			service, _ := newTestPDFMergerService()
@@ -230,8 +238,9 @@ func TestPDFMergerService_handlePDFCreation(t *testing.T) {
 					t.Errorf("予期しないエラーが発生しました: %v", err)
 				}
 				// 出力ファイルが作成されているか確認
-				if _, err := os.Stat(tt.opts.Out); os.IsNotExist(err) {
-					t.Errorf("出力ファイルが作成されていません: %s", tt.opts.Out)
+				outputPath := filepath.Join(tt.opts.OutputDir, filepath.Base(tt.opts.OutputDir)+".pdf")
+				if _, err := os.Stat(outputPath); os.IsNotExist(err) {
+					t.Errorf("出力ファイルが作成されていません: %s", outputPath)
 				}
 			}
 		})
@@ -265,9 +274,9 @@ func TestPDFMergerOptions_Validation(t *testing.T) {
 		{
 			name: "PDF作成オプション",
 			opts: PDFMergerOptions{
-				Dir: "images",
-				Out: "output.pdf",
-				Add: "existing.pdf",
+				Dir:       "images",
+				OutputDir: "output",
+				Add:       "existing.pdf",
 			},
 			description: "PDF作成用のオプションが正しく設定される",
 		},
@@ -338,12 +347,13 @@ func TestPDFMergerService_Integration(t *testing.T) {
 	})
 
 	t.Run("完全なPDF作成フロー", func(t *testing.T) {
-		outputFile := "test_data/tmp/integration_created.pdf"
-		defer os.Remove(outputFile)
+		outputDir := "test_data/tmp/integration_created"
+		outputFile := filepath.Join(outputDir, "integration_created.pdf")
+		defer os.RemoveAll(outputDir)
 
 		opts := PDFMergerOptions{
-			Dir: "test_data/org",
-			Out: outputFile,
+			Dir:       "test_data/org",
+			OutputDir: outputDir,
 		}
 
 		service, logBuf := newTestPDFMergerService()
