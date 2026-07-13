@@ -25,9 +25,10 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 	fs.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	dir := fs.String("dir", ".", "画像を検索するフォルダー (再帰探索)")
+	dir := fs.String("dir", ".", "画像を検索するフォルダー")
 	out := fs.String("out", "", "出力 PDF ファイル名 (未指定なら <dir 名>.pdf)")
 	add := fs.String("add", "", "既存の PDF ファイルパス (指定時は既存PDFに画像を追加)")
+	recursive := fs.Bool("recursive", false, "画像をサブディレクトリまで再帰探索する")
 
 	// PDF画像抽出用のオプション
 	extract := fs.String("extract", "", "PDFファイルから画像を抽出する (PDFファイルパス)")
@@ -46,6 +47,7 @@ func parseFlags(args []string, stderr io.Writer) (usecases.PDFMergerOptions, err
 		Dir:         *dir,
 		Out:         *out,
 		Add:         *add,
+		Recursive:   *recursive,
 		Extract:     *extract,
 		OutputDir:   *outputDir,
 		ImageFormat: *imageFormat,

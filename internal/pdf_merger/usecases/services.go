@@ -21,7 +21,8 @@ type PDFMergerOptions struct {
 	Out string
 
 	// PDF作成用オプション
-	Add string
+	Add       string
+	Recursive bool
 
 	// 画像抽出用オプション
 	Extract     string
@@ -114,7 +115,7 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	pdfService := NewPDFCreationService()
 
 	// 画像ファイルの取得
-	images, output, err := pdfService.GetSourceImages(opts.Dir, opts.Out)
+	images, output, err := pdfService.GetSourceImages(opts.Dir, opts.Out, opts.Recursive)
 	if err != nil {
 		return err
 	}
@@ -172,7 +173,7 @@ func NewPDFCreationService() *PDFCreationService {
 }
 
 // GetSourceImages は指定されたディレクトリから画像ファイルを取得します
-func (s *PDFCreationService) GetSourceImages(dir string, out string) ([]string, string, error) {
+func (s *PDFCreationService) GetSourceImages(dir string, out string, recursive bool) ([]string, string, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return nil, "", err
@@ -186,16 +187,11 @@ func (s *PDFCreationService) GetSourceImages(dir string, out string) ([]string, 
 
 	// ---- 画像ファイルを収集 ----
 	var images []string
-	err = filepath.WalkDir(absDir, func(p string, d os.DirEntry, _ error) error {
-		if d == nil || d.IsDir() {
-			return nil
-		}
-		ext := strings.ToLower(filepath.Ext(p))
-		if ext == ".jpg" {
-			images = append(images, p)
-		}
-		return nil
-	})
+	if recursive {
+		images, err = s.collectSourceImagesRecursively(absDir)
+	} else {
+		images, err = s.collectSourceImagesInDirectory(absDir)
+	}
 	if err != nil {
 		return nil, "", err
 	}
@@ -207,6 +203,49 @@ func (s *PDFCreationService) GetSourceImages(dir string, out string) ([]string, 
 	sort.Strings(images) // PowerShell の Sort-Object 相当
 
 	return images, out, nil
+}
+
+func (s *PDFCreationService) collectSourceImagesInDirectory(absDir string) ([]string, error) {
+	entries, err := os.ReadDir(absDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var images []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(absDir, entry.Name())
+		if s.isSourceImage(path) {
+			images = append(images, path)
+		}
+	}
+	return images, nil
+}
+
+func (s *PDFCreationService) collectSourceImagesRecursively(absDir string) ([]string, error) {
+	var images []string
+	err := filepath.WalkDir(absDir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d == nil || d.IsDir() {
+			return nil
+		}
+		if s.isSourceImage(p) {
+			images = append(images, p)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return images, nil
+}
+
+func (s *PDFCreationService) isSourceImage(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".jpg"
 }
 
 // MergeImagesIntoPDF は画像ファイルを1つのPDFに結合します

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -68,7 +69,7 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		service := NewPDFCreationService()
 
 		// テスト実行
-		images, output, err := service.GetSourceImages(tmpDir, "")
+		images, output, err := service.GetSourceImages(tmpDir, "", false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -102,7 +103,7 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		defer os.RemoveAll(tmpDir)
 
 		service := NewPDFCreationService()
-		images, output, err := service.GetSourceImages(tmpDir, "")
+		images, output, err := service.GetSourceImages(tmpDir, "", false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
@@ -116,7 +117,7 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		nonExistentDir := "/non/existent/directory"
 		service := NewPDFCreationService()
 		// 実際の実装ではエラーが返されないので、テストを調整
-		images, output, err := service.GetSourceImages(nonExistentDir, "")
+		images, output, err := service.GetSourceImages(nonExistentDir, "", false)
 		if err != nil {
 			t.Logf("エラーが発生: %v", err)
 			// これは期待される動作なので、OKとする
@@ -144,13 +145,85 @@ func TestPDFCreationService_GetSourceImages(t *testing.T) {
 		service := NewPDFCreationService()
 		// カスタム出力パスをテンポラリディレクトリ内に指定
 		customOutput := filepath.Join(tmpDir, "custom_output.pdf")
-		_, output, err := service.GetSourceImages(tmpDir, customOutput)
+		_, output, err := service.GetSourceImages(tmpDir, customOutput, false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
 
 		if output != customOutput {
 			t.Errorf("予想される出力パス: %s, 実際: %s", customOutput, output)
+		}
+	})
+
+	t.Run("非再帰ではサブディレクトリ内のJPG画像を収集しない", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "testdir-nonrecursive-*")
+		if err != nil {
+			t.Fatalf("テストディレクトリの作成に失敗: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		subDir := filepath.Join(tmpDir, "sub")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatalf("サブディレクトリの作成に失敗: %v", err)
+		}
+		if err := createValidJPEG(filepath.Join(tmpDir, "root.jpg"), 10, 10); err != nil {
+			t.Fatalf("直下JPGファイルの作成に失敗: %v", err)
+		}
+		if err := createValidJPEG(filepath.Join(subDir, "nested.jpg"), 10, 10); err != nil {
+			t.Fatalf("サブディレクトリJPGファイルの作成に失敗: %v", err)
+		}
+
+		service := NewPDFCreationService()
+		images, _, err := service.GetSourceImages(tmpDir, "", false)
+		if err != nil {
+			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
+		}
+
+		if len(images) != 1 {
+			t.Fatalf("非再帰では画像数1が期待されますが、%d個見つかりました", len(images))
+		}
+
+		expectedPath := filepath.Join(tmpDir, "root.jpg")
+		if images[0] != expectedPath {
+			t.Errorf("画像パス: 期待 %s, 実際 %s", expectedPath, images[0])
+		}
+	})
+
+	t.Run("再帰ではサブディレクトリ内のJPG画像を収集する", func(t *testing.T) {
+		tmpDir, err := os.MkdirTemp("", "testdir-recursive-*")
+		if err != nil {
+			t.Fatalf("テストディレクトリの作成に失敗: %v", err)
+		}
+		defer os.RemoveAll(tmpDir)
+
+		subDir := filepath.Join(tmpDir, "sub")
+		if err := os.MkdirAll(subDir, 0755); err != nil {
+			t.Fatalf("サブディレクトリの作成に失敗: %v", err)
+		}
+		if err := createValidJPEG(filepath.Join(tmpDir, "root.jpg"), 10, 10); err != nil {
+			t.Fatalf("直下JPGファイルの作成に失敗: %v", err)
+		}
+		if err := createValidJPEG(filepath.Join(subDir, "nested.jpg"), 10, 10); err != nil {
+			t.Fatalf("サブディレクトリJPGファイルの作成に失敗: %v", err)
+		}
+
+		service := NewPDFCreationService()
+		images, _, err := service.GetSourceImages(tmpDir, "", true)
+		if err != nil {
+			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
+		}
+
+		if len(images) != 2 {
+			t.Fatalf("再帰では画像数2が期待されますが、%d個見つかりました", len(images))
+		}
+
+		expectedImages := []string{
+			filepath.Join(tmpDir, "root.jpg"),
+			filepath.Join(subDir, "nested.jpg"),
+		}
+		sort.Strings(expectedImages)
+		if !reflect.DeepEqual(images, expectedImages) {
+			t.Errorf("画像一覧: 期待 %v, 実際 %v", expectedImages, images)
 		}
 	})
 }
@@ -244,7 +317,7 @@ func TestPDFCreationService_Integration(t *testing.T) {
 		service := NewPDFCreationService()
 
 		// 画像を収集
-		images, output, err := service.GetSourceImages(tmpDir, "")
+		images, output, err := service.GetSourceImages(tmpDir, "", false)
 		if err != nil {
 			t.Fatalf("GetSourceImages()でエラーが発生: %v", err)
 		}
