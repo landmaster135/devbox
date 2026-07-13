@@ -17,17 +17,17 @@
 go run ./cmd/cli/pdf-merger -output-dir ./dist
 
 # 特定のディレクトリの画像からPDFを作成
-go run ./cmd/cli/pdf-merger -dir /path/to/images -output-dir ./dist
+go run ./cmd/cli/pdf-merger -src-dir /path/to/images -output-dir ./dist
 
 # 出力ディレクトリ名をもとにPDFを作成
-go run ./cmd/cli/pdf-merger -dir /path/to/images -output-dir ./merged
+go run ./cmd/cli/pdf-merger -src-dir /path/to/images -output-dir ./merged
 ```
 
 ### 2. 既存PDFに画像を追加
 
 ```bash
 # 既存のPDFに画像を追加
-go run ./cmd/cli/pdf-merger -dir /path/to/images -add existing.pdf -output-dir ./merged
+go run ./cmd/cli/pdf-merger -src-dir /path/to/images -add existing.pdf -output-dir ./merged
 ```
 
 ### 3. PDFから画像を抽出
@@ -49,7 +49,7 @@ go run ./cmd/cli/pdf-merger -extract input.pdf -output-dir ./images -start 5 -fo
 
 | オプション | 必須/任意 | デフォルト | 説明 |
 |---|---|---|---|
-| `-dir string` | 任意 | `.` | 画像を検索するフォルダー |
+| `-src-dir string` | 任意 | `.` | 画像を検索するフォルダー |
 | `-output-dir string` | 必須 | なし | PDFの出力ディレクトリ。出力PDFは`<output-dir>/<basename(output-dir)>.pdf`として作成 |
 | `-add string` | 任意 | なし | 既存のPDFファイルパス。指定時は既存PDFに画像を追加 |
 | `-recursive bool` | 任意 | `false` | サブディレクトリまで再帰的に画像を検索する |
@@ -75,6 +75,7 @@ go run ./cmd/cli/pdf-merger -extract input.pdf -output-dir ./images -start 5 -fo
 - 出力ディレクトリが存在しない場合は自動的に作成されます
 - **ファイル名について**: 抽出された画像は`document_0001.jpg`、`document_0002.jpg`のような4桁連番形式で命名されます
 - 画像作成時は、デフォルトでは指定ディレクトリ直下のみを検索します。サブディレクトリも対象にする場合は`-recursive`を指定してください
+- 画像作成時の検索元ディレクトリは`-src-dir`で指定します。旧`-dir`オプションは使用できません
 - 現在のバージョンでは、画像作成時はJPG形式（`.jpg`拡張子）の画像ファイルのみがサポートされています
 - 画像ファイルはアルファベット順にソートされてPDFに配置されます
 - 出力PDFファイルは、既存のファイルがある場合は上書きされます

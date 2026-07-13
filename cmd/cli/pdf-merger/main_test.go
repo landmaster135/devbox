@@ -8,7 +8,7 @@ import (
 func TestParseFlags_Recursive(t *testing.T) {
 	var stderr bytes.Buffer
 
-	opts, err := parseFlags([]string{"-dir", "images", "-output-dir", "output", "-recursive"}, &stderr)
+	opts, err := parseFlags([]string{"-src-dir", "images", "-output-dir", "output", "-recursive"}, &stderr)
 	if err != nil {
 		t.Fatalf("parseFlags()でエラーが発生: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestParseFlags_Recursive(t *testing.T) {
 func TestParseFlags_RecursiveDefault(t *testing.T) {
 	var stderr bytes.Buffer
 
-	opts, err := parseFlags([]string{"-dir", "images", "-output-dir", "output"}, &stderr)
+	opts, err := parseFlags([]string{"-src-dir", "images", "-output-dir", "output"}, &stderr)
 	if err != nil {
 		t.Fatalf("parseFlags()でエラーが発生: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestParseFlags_RecursiveDefault(t *testing.T) {
 func TestParseFlags_OutFlagRemoved(t *testing.T) {
 	var stderr bytes.Buffer
 
-	_, err := parseFlags([]string{"-dir", "images", "-out", "output.pdf"}, &stderr)
+	_, err := parseFlags([]string{"-src-dir", "images", "-out", "output.pdf"}, &stderr)
 	if err == nil {
 		t.Fatal("廃止された-outフラグではエラーが期待されます")
 	}
@@ -49,8 +49,17 @@ func TestParseFlags_OutFlagRemoved(t *testing.T) {
 func TestParseFlags_OutputDirRequired(t *testing.T) {
 	var stderr bytes.Buffer
 
-	_, err := parseFlags([]string{"-dir", "images"}, &stderr)
+	_, err := parseFlags([]string{"-src-dir", "images"}, &stderr)
 	if err == nil {
 		t.Fatal("-output-dir未指定ではエラーが期待されます")
+	}
+}
+
+func TestParseFlags_DirFlagRemoved(t *testing.T) {
+	var stderr bytes.Buffer
+
+	_, err := parseFlags([]string{"-dir", "images", "-output-dir", "output"}, &stderr)
+	if err == nil {
+		t.Fatal("廃止された-dirフラグではエラーが期待されます")
 	}
 }
