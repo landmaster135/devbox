@@ -21,7 +21,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src=. --out=.{{.DIR_SEP}}999_converted_images --ext=webp \
+            --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp \
             --archive="" \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
@@ -68,7 +68,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src=. --out=.{{.DIR_SEP}}999_converted_images --ext=webp \
+            --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp \
             --archive="" \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
@@ -112,7 +112,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- Webp(lossless)変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src=. --out=.{{.DIR_SEP}}999_converted_images --ext=webp --q=80 --lossless \
+            --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp --q=80 --lossless \
             --archive=.{{.DIR_SEP}}5_original_files \
             $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp(lossless)変換プログラムの実行が完了しました ---'
@@ -135,7 +135,7 @@ tasks:
 
           echo $'\n[Step 01: START]--- JPG変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src=. --out=.{{.DIR_SEP}}999_converted_images --ext=jpg \
+            --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=jpg \
             --archive=.{{.DIR_SEP}}5_original_files \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- JPG変換プログラムの実行が完了しました ---'

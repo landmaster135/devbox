@@ -83,7 +83,7 @@ func MakeCodecTable(q int, lossless bool) map[string]codec {
 }
 
 // ConvertFile runs a single conversion job
-func ConvertFile(path, srcDir, outDir, outExt string, table map[string]codec) error {
+func ConvertFile(path, sourceDir, outputDir, outExt string, table map[string]codec) error {
 	inExt := strings.TrimPrefix(strings.ToLower(filepath.Ext(path)), ".")
 	cIn, ok := table[inExt]
 	if !ok {
@@ -132,9 +132,9 @@ func ConvertFile(path, srcDir, outDir, outExt string, table map[string]codec) er
 	}
 
 	// --- write ---
-	rel, _ := filepath.Rel(srcDir, path)
+	rel, _ := filepath.Rel(sourceDir, path)
 	base := strings.TrimSuffix(rel, filepath.Ext(rel))
-	outPath := filepath.Join(outDir, base+"."+dstExt)
+	outPath := filepath.Join(outputDir, base+"."+dstExt)
 
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
@@ -182,13 +182,13 @@ func copyFile(src, dst string) error {
 	return out.Sync()
 }
 
-// preserving the relative directory structure under srcDir.
-func ArchiveOriginal(srcPath, srcDir, archiveDir string, move bool) error {
+// preserving the relative directory structure under sourceDir.
+func ArchiveOriginal(srcPath, sourceDir, archiveDir string, move bool) error {
 	if archiveDir == "" {
 		return nil
 	}
 
-	rel, err := filepath.Rel(srcDir, srcPath)
+	rel, err := filepath.Rel(sourceDir, srcPath)
 	if err != nil {
 		return err
 	}

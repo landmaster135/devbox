@@ -38,4 +38,4 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  go run ./cmd/cli/image-converter --out ./converted --ext png"
+echo "  go run ./cmd/cli/image-converter --output-dir ./converted --ext png"

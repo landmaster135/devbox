@@ -28,10 +28,10 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	flagSet.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	srcDir := flagSet.String("src", ".", "source directory to scan")
-	outDir := flagSet.String("out", "", "output directory (required)")
+	sourceDir := flagSet.String("src-dir", ".", "source directory to scan")
+	outputDir := flagSet.String("output-dir", "", "output directory (required)")
 	archiveDir := flagSet.String("archive", "", "move processed originals to this directory (disabled if empty)")
-	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
+	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with --archive)")
 	outExt := flagSet.String("ext", "png", "target extension (png|jpg|webp|avif)")
 	quality := flagSet.Int("q", 80, "quality for lossy formats (1-100)")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
@@ -44,8 +44,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	if strings.TrimSpace(*outDir) == "" {
-		fmt.Fprintln(stderr, "エラー: -out は必須です")
+	if strings.TrimSpace(*outputDir) == "" {
+		fmt.Fprintln(stderr, "エラー: -output-dir は必須です")
 		flagSet.Usage()
 		return exitCodeError
 	}
@@ -70,7 +70,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 		if *recursive {
 			// 再帰的にディレクトリを走査
-			err := filepath.WalkDir(*srcDir, func(path string, d os.DirEntry, err error) error {
+			err := filepath.WalkDir(*sourceDir, func(path string, d os.DirEntry, err error) error {
 				if err != nil || d.IsDir() {
 					return nil
 				}
@@ -86,7 +86,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 			}
 		} else {
 			// 単一ディレクトリのみ処理
-			entries, err := os.ReadDir(*srcDir)
+			entries, err := os.ReadDir(*sourceDir)
 			if err != nil {
 				fmt.Fprintf(stderr, "エラー: ディレクトリの読み込みに失敗しました: %v\n", err)
 				return
@@ -98,7 +98,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 				}
 				ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(e.Name())), ".")
 				if _, ok := codecs[ext]; ok {
-					paths <- filepath.Join(*srcDir, e.Name())
+					paths <- filepath.Join(*sourceDir, e.Name())
 				}
 			}
 		}
@@ -115,14 +115,14 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		go func() {
 			defer wg.Done()
 			for p := range paths {
-				if err := usecases.ConvertFile(p, *srcDir, *outDir, *outExt, codecs); err != nil {
+				if err := usecases.ConvertFile(p, *sourceDir, *outputDir, *outExt, codecs); err != nil {
 					fmt.Fprintf(stderr, "警告: %v\n", err)
 					countMutex.Lock()
 					errorCount++
 					countMutex.Unlock()
 					continue
 				}
-				if err := usecases.ArchiveOriginal(p, *srcDir, *archiveDir, *moveOrig); err != nil {
+				if err := usecases.ArchiveOriginal(p, *sourceDir, *archiveDir, *moveOrig); err != nil {
 					fmt.Fprintf(stderr, "警告: %v\n", err)
 					countMutex.Lock()
 					errorCount++
