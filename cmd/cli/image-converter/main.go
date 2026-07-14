@@ -30,8 +30,8 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// コマンドライン引数の定義
 	sourceDir := flagSet.String("src-dir", ".", "source directory to scan")
 	outputDir := flagSet.String("output-dir", "", "output directory (required)")
-	archiveDir := flagSet.String("archive", "", "move processed originals to this directory (disabled if empty)")
-	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with --archive)")
+	archiveDir := flagSet.String("archive-dir", "", "move processed originals to this directory (disabled if empty)")
+	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with --archive-dir)")
 	outExt := flagSet.String("ext", "png", "target extension (png|jpg|webp|avif)")
 	quality := flagSet.Int("q", 80, "quality for lossy formats (1-100)")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")

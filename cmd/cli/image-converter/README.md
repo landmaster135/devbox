@@ -13,8 +13,8 @@
 |---|---|---|---|
 | `--src-dir` | 任意 | `.` | 変換元ディレクトリ |
 | `--output-dir` | 必須 | なし | 出力先ディレクトリ |
-| `--archive` | 任意 | `""` (空) | アーカイブ先ディレクトリ (空の場合は無効) |
-| `--move` | 任意 | `false` | 元ファイルをコピーではなく移動 (`--archive` が指定されている場合のみ有効) |
+| `--archive-dir` | 任意 | `""` (空) | アーカイブ先ディレクトリ (空の場合は無効) |
+| `--move` | 任意 | `false` | 元ファイルをコピーではなく移動 (`--archive-dir` が指定されている場合のみ有効) |
 | `--ext` | 任意 | `png` | 変換先フォーマット (png/jpg/webp/avif) |
 | `--q` | 任意 | `80` | 非可逆圧縮フォーマットの品質 (1-100) |
 | `--workers` | 任意 | CPU数 | 同時実行ワーカー数 |
@@ -40,12 +40,12 @@ go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --e
 
 変換後に元ファイルをアーカイブディレクトリにコピー
 ```bash
-go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --ext webp --archive ./originals
+go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --ext webp --archive-dir ./originals
 ```
 
 変換後に元ファイルをアーカイブディレクトリに移動
 ```bash
-go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --ext webp --archive ./originals --move
+go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --ext webp --archive-dir ./originals --move
 ```
 
 ### 出力例
