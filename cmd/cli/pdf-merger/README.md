@@ -66,37 +66,9 @@ go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -outpu
 | `-start int` | 任意 | `0` | 抽出開始ページ。1から開始し、0は全ページ |
 | `-end int` | 任意 | `0` | 抽出終了ページ。0は最終ページまで |
 
-## 出力例
-
-### 成功時
-
-```text
-検出した画像: 1 枚
-PDF を生成しました。完了です。
-出力 PDF   : ./dist/dist.pdf
-```
-
-### エラー時
-
-```text
--operation は必須です
-```
-
 ## 注意事項
 
-- **PDF作成・既存PDF追加・画像抽出のいずれでも、`-operation` と `-output-dir` オプションは必須です**
-- `-operation=merge-into-new` では `-receiving-file` と `-src-file` は指定できません
-- `-operation=add-into-exist` では `-receiving-file` が必須で、`-src-file` は指定できません
-- `-operation=extract-images` では `-src-file` が必須で、`-receiving-file` は指定できません
 - PDF作成・既存PDF追加時の出力PDFは、`-output-dir ./dist`の場合は`./dist/dist.pdf`として作成されます
-- PDF作成・既存PDF追加時に`-output-dir .`を指定した場合は、カレントディレクトリ直下に`<カレントディレクトリ名>.pdf`として作成されます
-- ページ番号は1から始まります
-- 開始ページが終了ページより大きい場合はエラーになります
-- サポートされていない画像形式を指定した場合はエラーメッセージが表示されます
 - 出力ディレクトリが存在しない場合は自動的に作成されます
-- **ファイル名について**: 抽出された画像は`document_0001.jpg`、`document_0002.jpg`のような4桁連番形式で命名されます
-- 画像作成時は、デフォルトでは指定ディレクトリ直下のみを検索します。サブディレクトリも対象にする場合は`-recursive`を指定してください
-- 画像作成時の検索元ディレクトリは`-src-dir`で指定します。旧`-dir`オプションは使用できません
 - 現在のバージョンでは、画像作成時はJPG形式（`.jpg`拡張子）の画像ファイルのみがサポートされています
-- 画像ファイルはアルファベット順にソートされてPDFに配置されます
 - 出力PDFファイルは、既存のファイルがある場合は上書きされます
