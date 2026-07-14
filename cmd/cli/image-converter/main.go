@@ -29,7 +29,7 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 
 	// コマンドライン引数の定義
 	srcDir := flagSet.String("src", ".", "source directory to scan")
-	outDir := flagSet.String("out", "./999_converted_images", "output directory")
+	outDir := flagSet.String("out", "", "output directory (required)")
 	archiveDir := flagSet.String("archive", "", "move processed originals to this directory (disabled if empty)")
 	moveOrig := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
 	outExt := flagSet.String("ext", "png", "target extension (png|jpg|webp|avif)")
@@ -41,6 +41,12 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	// 引数の解析
 	if err := flagSet.Parse(args); err != nil {
 		fmt.Fprintln(stderr, err)
+		return exitCodeError
+	}
+
+	if strings.TrimSpace(*outDir) == "" {
+		fmt.Fprintln(stderr, "エラー: -out は必須です")
+		flagSet.Usage()
 		return exitCodeError
 	}
 
