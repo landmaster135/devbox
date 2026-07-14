@@ -70,5 +70,5 @@ go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -outpu
 
 - PDF作成・既存PDF追加時の出力PDFは、`-output-dir ./dist`の場合は`./dist/dist.pdf`として作成されます
 - 出力ディレクトリが存在しない場合は自動的に作成されます
-- 現在のバージョンでは、画像作成時はJPG形式（`.jpg`拡張子）の画像ファイルのみがサポートされています
+- 現在のバージョンでは、PDF作成時の入力画像は `.jpg`拡張子の画像ファイルのみがサポートされています
 - 出力PDFファイルは、既存のファイルがある場合は上書きされます
