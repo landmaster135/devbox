@@ -18,12 +18,15 @@ tasks:
 
           MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+          ARCHIVE_DIR_ARG=""
+          if [ -n "$MOVE_FLAG" ]; then
+            ARCHIVE_DIR_ARG="--archive-dir=.{{.DIR_SEP}}5_original_files"
+          fi
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
             --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp \
-            --archive-dir=.{{.DIR_SEP}}5_original_files \
-            $QUALITY_ARG $MOVE_FLAG
+            $ARCHIVE_DIR_ARG $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -65,12 +68,15 @@ tasks:
 
           MOVE_FLAG="$({{.INTERACTIVE_CONFIRM_INPUT_NAME}} \
             "Select whether to move original image files to archive directory or not  [y]='--move'  [n]='' : " move)" || exit 1
+          ARCHIVE_DIR_ARG=""
+          if [ -n "$MOVE_FLAG" ]; then
+            ARCHIVE_DIR_ARG="--archive-dir=.{{.DIR_SEP}}5_original_files"
+          fi
 
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
             --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp \
-            --archive-dir=.{{.DIR_SEP}}5_original_files \
-            $QUALITY_ARG $MOVE_FLAG
+            $ARCHIVE_DIR_ARG $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
