@@ -48,20 +48,6 @@ go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --e
 go run ./cmd/cli/image-converter --src-dir ./photos --output-dir ./converted --ext webp --archive-dir ./originals --move
 ```
 
-### 出力例
-
-成功時
-```text
-✔ 画像変換が完了しました
-  成功: 3 ファイル
-```
-
-エラー時 (`--output-dir` 未指定)
-```text
-エラー: -output-dir は必須です
-Usage of image-converter:
-```
-
 ## サポートされているフォーマット
 
 ### 入力フォーマット
@@ -76,9 +62,3 @@ Usage of image-converter:
 - JPEG (jpg)
 - WebP (webp)
 - AVIF (avif)
-
-## 推奨ユースケース
-
-| usecase | settings |
-|---|---|
-| Androidでスクショした漫画の画像をPDFにマージする | `--output-dir ./converted --ext jpg --q 20` |
