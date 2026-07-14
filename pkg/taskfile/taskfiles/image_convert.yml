@@ -22,7 +22,7 @@ tasks:
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
             --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp \
-            --archive-dir="" \
+            --archive-dir=.{{.DIR_SEP}}5_original_files \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -69,7 +69,7 @@ tasks:
           echo $'\n[Step 01: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
             --src-dir=. --output-dir=.{{.DIR_SEP}}999_converted_images --ext=webp \
-            --archive-dir="" \
+            --archive-dir=.{{.DIR_SEP}}5_original_files \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
