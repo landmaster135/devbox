@@ -26,10 +26,10 @@ echo "Building for Linux/AMD64..."
 mkdir -p "${LINUX_AMD64_DIR}"
 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${LINUX_AMD64_DIR}/${OUTPUT_NAME}" "${PACKAGE}"
 
-# Windows/AMD64向けビルド
+# Windows/AMD64向けビルド(Windows Defender誤検知対策で-ldflagsから-sを省く)
 echo "Building for Windows/AMD64..."
 mkdir -p "${WIN_AMD64_DIR}"
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -trimpath -o "${WIN_AMD64_DIR}/${WIN_OUTPUT_NAME}" "${PACKAGE}"
+GOOS=windows GOARCH=amd64 go build -ldflags="-w" -trimpath -o "${WIN_AMD64_DIR}/${WIN_OUTPUT_NAME}" "${PACKAGE}"
 
 # macOS/ARM64向けビルド
 echo "Building for macOS/ARM64..."
@@ -38,5 +38,4 @@ GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -trimpath -o "${MAC_ARM64_DIR
 
 echo "Build completed successfully!"
 echo "Usage as example:"
-echo "  ./image-trimmer -src ./photos -x1 10 -y1 20 -x2 300 -y2 400"
-echo "  ./image-trimmer -src ./photos -r -x1 0 -y1 0 -x2 800 -y2 600 -suffix cropped"
+echo "  go run ./cmd/cli/image-trimmer -output-dir ./trimmed_images -x1 10 -y1 20 -x2 300 -y2 400"

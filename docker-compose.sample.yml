@@ -1,17 +1,49 @@
+name: "devbox"
+
 services:
   devbox:
     image: "devbox-cron:latest"
     restart: unless-stopped
     ports:
-      - "9999:9999"
+      - "${CRON_URL_PORT}:${CRON_URL_PORT}"
     environment:
-      - GIN_MODE=staging
+      - HOST_ID=${HOST_ID}
+      - CRON_URL_PORT=${CRON_URL_PORT}
+      - MOUNT_VOLUME=${MOUNT_VOLUME}
+      - DB_SERVER_URL=${DB_SERVER_URL}
+      - DB_SERVER_ENDPOINT_FOR_VOCABULARY_APPEND=${DB_SERVER_ENDPOINT_FOR_VOCABULARY_APPEND}
+      - HEART_OWNER=${HEART_OWNER}
+      - DISCORD_WEBHOOK_URL_FOR_WEATHER=${DISCORD_WEBHOOK_URL_FOR_WEATHER}
+      - OPEN_WEATHER_API_KEY=${OPEN_WEATHER_API_KEY}
+      - DISCORD_WEBHOOK_URL_FOR_DAILY_TEMPLATE=${DISCORD_WEBHOOK_URL_FOR_DAILY_TEMPLATE}
+      - DATABASE_URL_01_STAGING=${DATABASE_URL_01_STAGING}
+      - DATABASE_DUMP_DIR_01_STAGING=${DATABASE_DUMP_DIR_01_STAGING}
+      - DATABASE_URL_01_PRODUCT=${DATABASE_URL_01_PRODUCT}
+      - DATABASE_DUMP_DIR_01_PRODUCT=${DATABASE_DUMP_DIR_01_PRODUCT}
+      - DATABASE_URL_01_MEMOS_STAGING=${DATABASE_URL_01_MEMOS_STAGING}
+      - DATABASE_DUMP_DIR_01_MEMOS_STAGING=${DATABASE_DUMP_DIR_01_MEMOS_STAGING}
+      - DATABASE_URL_01_MEMOS_PROD=${DATABASE_URL_01_MEMOS_PROD}
+      - DATABASE_DUMP_DIR_01_MEMOS_PROD=${DATABASE_DUMP_DIR_01_MEMOS_PROD}
+      - PC_INFO_OUTPUT_DIR=${PC_INFO_OUTPUT_DIR}
+      - PC_INFO_MEMORY_HOSTNAME_OF_NAS_01=${PC_INFO_MEMORY_HOSTNAME_OF_NAS_01}
+      - PC_INFO_MEMORY_NAMES_OF_NAS_01=${PC_INFO_MEMORY_NAMES_OF_NAS_01}
+      - PC_INFO_MEMORY_MANUFACTURERS_OF_NAS_01=${PC_INFO_MEMORY_MANUFACTURERS_OF_NAS_01}
     volumes:
       - type: bind
-        source: ""
-        target: ""
-    user: "9999:9999"
+        source: ${VOLUME_DATA_DIR}
+        target: /app/volume
+      # To retrieve CPU info
+      - type: bind
+        source: /sys
+        target: /sys
+        read_only: true
+      - type: bind
+        source: /run/udev
+        target: /run/udev
+        read_only: true
+    privileged: true
+    user: ${HOST_ID}
     labels:
       tsdproxy.enable: "true"
       tsdproxy.name: "devbox"
-      tsdproxy.container_port: 9999
+      tsdproxy.container_port: ${CRON_URL_PORT}

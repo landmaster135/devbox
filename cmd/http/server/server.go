@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	PortEnvKey = "CRON_URL_PORT"
 	// DefaultPort はデフォルトのポート番号
 	DefaultPort = 8080
 	// DefaultReadTimeout は読み取りタイムアウト
@@ -58,7 +59,7 @@ func NewHTTPServer(logger *logging.StructuredLogger) *HTTPServer {
 
 // getPort は環境変数またはデフォルトからポート番号を取得する
 func getPort(logger *logging.StructuredLogger) int {
-	portStr := os.Getenv("PORT")
+	portStr := os.Getenv(PortEnvKey)
 	if portStr == "" {
 		return DefaultPort
 	}
@@ -66,7 +67,7 @@ func getPort(logger *logging.StructuredLogger) int {
 	port, err := strconv.Atoi(portStr)
 	taggedLogger := logging.Ensure(logger).WithTags("config")
 	if err != nil {
-		taggedLogger.Warnf("無効なPORT環境変数: %s, デフォルトポート %d を使用します", portStr, DefaultPort)
+		taggedLogger.Warnf("無効な%s環境変数: %s, デフォルトポート %d を使用します", PortEnvKey, portStr, DefaultPort)
 		return DefaultPort
 	}
 

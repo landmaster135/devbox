@@ -48,22 +48,22 @@ func writeDummyFile(dir, name string, size int) (string, error) {
 }
 
 func TestConvertKeepsOriginalWhenLarger(t *testing.T) {
-	srcDir := t.TempDir()
-	outDir := t.TempDir()
+	sourceDir := t.TempDir()
+	outputDir := t.TempDir()
 
-	origPath, err := writeDummyFile(srcDir, "photo.jpg", 100) // 100‑byte source
+	origPath, err := writeDummyFile(sourceDir, "photo.jpg", 100) // 100‑byte source
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	codecs := makeStubCodecTable(200) // Encode yields 200‑byte output (larger)
 
-	if err := ConvertFile(origPath, srcDir, outDir, "png", codecs); err != nil {
+	if err := ConvertFile(origPath, sourceDir, outputDir, "png", codecs); err != nil {
 		t.Fatalf("convertFile failed: %v", err)
 	}
 
 	// Expect: kept original -> output file has .jpg and 100 bytes
-	outPath := filepath.Join(outDir, "photo.jpg")
+	outPath := filepath.Join(outputDir, "photo.jpg")
 	info, err := os.Stat(outPath)
 	if err != nil {
 		t.Fatalf("expected output file %s: %v", outPath, err)
@@ -74,19 +74,19 @@ func TestConvertKeepsOriginalWhenLarger(t *testing.T) {
 }
 
 func TestConvertConvertedWhenSmaller(t *testing.T) {
-	srcDir := t.TempDir()
-	outDir := t.TempDir()
+	sourceDir := t.TempDir()
+	outputDir := t.TempDir()
 
-	origPath, _ := writeDummyFile(srcDir, "flower.jpg", 200) // 200‑byte source
+	origPath, _ := writeDummyFile(sourceDir, "flower.jpg", 200) // 200‑byte source
 
 	codecs := makeStubCodecTable(50) // Encode yields 50‑byte output (smaller)
 
-	if err := ConvertFile(origPath, srcDir, outDir, "webp", codecs); err != nil {
+	if err := ConvertFile(origPath, sourceDir, outputDir, "webp", codecs); err != nil {
 		t.Fatalf("convertFile failed: %v", err)
 	}
 
 	// Expect: converted -> output file has .webp and 50 bytes
-	outPath := filepath.Join(outDir, "flower.webp")
+	outPath := filepath.Join(outputDir, "flower.webp")
 	info, err := os.Stat(outPath)
 	if err != nil {
 		t.Fatalf("expected output file %s: %v", outPath, err)
@@ -97,20 +97,20 @@ func TestConvertConvertedWhenSmaller(t *testing.T) {
 }
 
 func TestConvertSVGForceConvert(t *testing.T) {
-	srcDir := t.TempDir()
-	outDir := t.TempDir()
+	sourceDir := t.TempDir()
+	outputDir := t.TempDir()
 
-	origPath, _ := writeDummyFile(srcDir, "icon.svg", 80) // 80‑byte SVG
+	origPath, _ := writeDummyFile(sourceDir, "icon.svg", 80) // 80‑byte SVG
 
 	codecs := makeStubCodecTable(300) // Encode yields larger size
 
 	// Rule: SVG input → non‑SVG output must convert regardless of size
-	if err := ConvertFile(origPath, srcDir, outDir, "png", codecs); err != nil {
+	if err := ConvertFile(origPath, sourceDir, outputDir, "png", codecs); err != nil {
 		t.Fatalf("convertFile failed: %v", err)
 	}
 
 	// Expect: converted -> .png exists (even though it's larger)
-	outPath := filepath.Join(outDir, "icon.png")
+	outPath := filepath.Join(outputDir, "icon.png")
 	info, err := os.Stat(outPath)
 	if err != nil {
 		t.Fatalf("expected output file %s: %v", outPath, err)
@@ -120,27 +120,46 @@ func TestConvertSVGForceConvert(t *testing.T) {
 	}
 }
 
-func TestArchiveMoveFlag(t *testing.T) {
-	srcDir := t.TempDir()
-	archDir := t.TempDir()
-	src, _ := writeDummyFile(srcDir, "pic.jpg", 10)
+func TestArchiveOriginal_Copy_Normal(t *testing.T) {
+	sourceDir := t.TempDir()
+	archiveDir := t.TempDir()
+	src, _ := writeDummyFile(sourceDir, "pic.jpg", 10)
 
-	// move=false → 何もしない
-	if err := ArchiveOriginal(src, srcDir, archDir, false); err != nil {
+	if err := ArchiveOriginal(src, sourceDir, archiveDir, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(src); err != nil {
 		t.Errorf("source should remain when move=false: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(archDir, "pic.jpg")); !os.IsNotExist(err) {
-		t.Errorf("file should NOT be archived when move=false")
+	if _, err := os.Stat(filepath.Join(archiveDir, "pic.jpg")); err != nil {
+		t.Errorf("file should be copied when move=false: %v", err)
 	}
+}
 
-	// move=true → 移動
-	if err := ArchiveOriginal(src, srcDir, archDir, true); err != nil {
+func TestArchiveOriginal_Move_Normal(t *testing.T) {
+	sourceDir := t.TempDir()
+	archiveDir := t.TempDir()
+	src, _ := writeDummyFile(sourceDir, "pic.jpg", 10)
+
+	if err := ArchiveOriginal(src, sourceDir, archiveDir, true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(src); !os.IsNotExist(err) {
 		t.Errorf("source should be moved when move=true")
+	}
+	if _, err := os.Stat(filepath.Join(archiveDir, "pic.jpg")); err != nil {
+		t.Errorf("file should be moved to archive: %v", err)
+	}
+}
+
+func TestArchiveOriginal_EmptyArchiveDir_Normal(t *testing.T) {
+	sourceDir := t.TempDir()
+	src, _ := writeDummyFile(sourceDir, "pic.jpg", 10)
+
+	if err := ArchiveOriginal(src, sourceDir, "", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(src); err != nil {
+		t.Errorf("source should remain when archiveDir is empty: %v", err)
 	}
 }

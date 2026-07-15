@@ -15,7 +15,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 
 # Runtime stage: minimal image for Cloud Run
 FROM debian:bookworm-slim
-ARG CRON_URL_PORT
 
 # 必要最小限のパッケージをインストール
 RUN apt-get update && \
@@ -29,6 +28,7 @@ RUN apt-get update && \
       > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
+    lm-sensors \
     postgresql-client-common \
     postgresql-client-18 \
     tzdata && \
@@ -39,6 +39,7 @@ ENV PATH="/usr/lib/postgresql/18/bin:${PATH}"
 
 # イメージビルド時に pg_dump の存在とバージョンを検証
 RUN pg_dump --version
+RUN sensors -v
 
 WORKDIR /app
 
@@ -49,9 +50,6 @@ RUN groupadd -g 65532 nonroot && \
 COPY --from=builder /workspace/bin/server /app/server
 RUN chown -R nonroot:nonroot /app
 USER nonroot
-
-ENV PORT=${CRON_URL_PORT}
-EXPOSE ${CRON_URL_PORT}
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS "http://127.0.0.1:${CRON_URL_PORT}/health" || exit 1

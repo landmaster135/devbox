@@ -43,7 +43,7 @@ func TestDumper_DumpDatabase_Normal(t *testing.T) {
 		return []byte("ok"), nil
 	}
 
-	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", outputDir)
+	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", outputDir, nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Len(t, capturedArgs, 5)
@@ -55,6 +55,72 @@ func TestDumper_DumpDatabase_Normal(t *testing.T) {
 	assert.Equal(t, "all_tables", result.TableName)
 	assert.Equal(t, "binary", result.Format)
 	assert.True(t, filepath.Ext(result.FileName) == ".dump")
+}
+
+func TestDumper_DumpDatabase_ExcludeTableData(t *testing.T) {
+	mockExecutor := &infrastructures.MockCommandExecutor{}
+	mockWriter := &writer.MockFileWriter{}
+	dumper := NewDumperWithDependencies(mockExecutor, mockWriter, "", RetryConfig{})
+
+	outputDir := t.TempDir()
+	var capturedArgs []string
+	mockExecutor.ExecuteFunc = func(name string, args ...string) ([]byte, error) {
+		require.Equal(t, "pg_dump", name)
+		capturedArgs = append([]string(nil), args...)
+		return []byte("ok"), nil
+	}
+
+	result, err := dumper.DumpDatabase(
+		context.Background(),
+		"postgres://user:pass@localhost:5432/testdb",
+		outputDir,
+		[]string{"public.attachments"},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, capturedArgs, 6)
+	assert.Equal(t, "-Fc", capturedArgs[0])
+	assert.Equal(t, "--dbname", capturedArgs[1])
+	assert.Equal(t, "postgres://user:pass@localhost:5432/testdb", capturedArgs[2])
+	assert.Equal(t, "--exclude-table-data=public.attachments", capturedArgs[3])
+	assert.Equal(t, "-f", capturedArgs[4])
+	assert.Equal(t, filepath.Join(outputDir, result.FileName), capturedArgs[5])
+}
+
+func TestDumper_DumpTableDataAsSQL_Normal(t *testing.T) {
+	mockExecutor := &infrastructures.MockCommandExecutor{}
+	mockWriter := &writer.MockFileWriter{}
+	dumper := NewDumperWithDependencies(mockExecutor, mockWriter, "", RetryConfig{})
+
+	outputDir := t.TempDir()
+	var capturedArgs []string
+	mockExecutor.ExecuteFunc = func(name string, args ...string) ([]byte, error) {
+		require.Equal(t, "pg_dump", name)
+		capturedArgs = append([]string(nil), args...)
+		return []byte("ok"), nil
+	}
+
+	result, err := dumper.DumpTableDataAsSQL(
+		context.Background(),
+		"postgres://user:pass@localhost:5432/testdb",
+		outputDir,
+		"public.attachments",
+	)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, capturedArgs, 8)
+	assert.Equal(t, "--data-only", capturedArgs[0])
+	assert.Equal(t, "--table", capturedArgs[1])
+	assert.Equal(t, "public.attachments", capturedArgs[2])
+	assert.Equal(t, "--column-inserts", capturedArgs[3])
+	assert.Equal(t, "--dbname", capturedArgs[4])
+	assert.Equal(t, "postgres://user:pass@localhost:5432/testdb", capturedArgs[5])
+	assert.Equal(t, "-f", capturedArgs[6])
+	assert.Equal(t, filepath.Join(outputDir, result.FileName), capturedArgs[7])
+	assert.Equal(t, "public.attachments", result.TableName)
+	assert.Equal(t, "sql", result.Format)
+	assert.True(t, filepath.Ext(result.FileName) == ".sql")
+	assert.True(t, filepath.Base(result.FileName)[:12] == "attachments_")
 }
 
 func TestDumper_DumpDatabase_StripsStatementCacheModeForPgDump(t *testing.T) {
@@ -71,6 +137,7 @@ func TestDumper_DumpDatabase_StripsStatementCacheModeForPgDump(t *testing.T) {
 		context.Background(),
 		"postgresql://user:pass@host/db?sslmode=require&statement_cache_mode=describe",
 		t.TempDir(),
+		nil,
 	)
 	require.NoError(t, err)
 	require.Len(t, capturedArgs, 5)
@@ -80,7 +147,7 @@ func TestDumper_DumpDatabase_StripsStatementCacheModeForPgDump(t *testing.T) {
 func TestDumper_DumpDatabase_DatabaseURLEmpty_Error(t *testing.T) {
 	dumper := NewDumperWithDependencies(&infrastructures.MockCommandExecutor{}, &writer.MockFileWriter{}, "", RetryConfig{})
 
-	result, err := dumper.DumpDatabase(context.Background(), "", t.TempDir())
+	result, err := dumper.DumpDatabase(context.Background(), "", t.TempDir(), nil)
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "database-url が設定されていません")
@@ -94,7 +161,7 @@ func TestDumper_DumpDatabase_CommandError(t *testing.T) {
 	}
 	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", noWaitRetryConfig(3))
 
-	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir(), nil)
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "pg_dump の実行に失敗しました")
@@ -117,7 +184,7 @@ func TestDumper_DumpDatabase_RetryOnRetriableErrorThenSuccess(t *testing.T) {
 		return []byte("ok"), nil
 	}
 
-	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir(), nil)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	assert.Len(t, mockExecutor.Calls, 2)
@@ -131,7 +198,7 @@ func TestDumper_DumpDatabase_RetryExhaustedOnRetriableError(t *testing.T) {
 	}
 	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", noWaitRetryConfig(3))
 
-	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	result, err := dumper.DumpDatabase(context.Background(), "postgres://user:pass@localhost:5432/testdb", t.TempDir(), nil)
 	require.Error(t, err)
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "(attempts=3)")
@@ -158,7 +225,7 @@ func TestDumper_DumpDatabase_ContextCanceledDuringRetryWait(t *testing.T) {
 	}
 	dumper := NewDumperWithDependencies(mockExecutor, &writer.MockFileWriter{}, "", retryConfig)
 
-	result, err := dumper.DumpDatabase(ctx, "postgres://user:pass@localhost:5432/testdb", t.TempDir())
+	result, err := dumper.DumpDatabase(ctx, "postgres://user:pass@localhost:5432/testdb", t.TempDir(), nil)
 	require.ErrorIs(t, err, context.Canceled)
 	assert.Nil(t, result)
 	assert.Len(t, mockExecutor.Calls, 1)

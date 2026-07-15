@@ -17,19 +17,26 @@ import (
 // PDFMergerOptions はPDFマージャーの処理オプションを格納する構造体
 type PDFMergerOptions struct {
 	// 共通オプション
-	Dir string
-	Out string
+	Operation string
+	SrcDir    string
+	OutputDir string
 
 	// PDF作成用オプション
-	Add string
+	ReceivingFile string
+	Recursive     bool
 
 	// 画像抽出用オプション
-	Extract     string
-	OutputDir   string
+	SrcFile     string
 	ImageFormat string
 	StartPage   int
 	EndPage     int
 }
+
+const (
+	OperationMergeIntoNew  = "merge-into-new"
+	OperationAddIntoExist  = "add-into-exist"
+	OperationExtractImages = "extract-images"
+)
 
 // Logger はPDFMergerService内で利用するログ出力のインターフェース
 type Logger interface {
@@ -57,10 +64,48 @@ func NewPDFMergerServiceWithLogger(logger Logger) *PDFMergerService {
 
 // Process はオプションに応じて適切な処理を実行します
 func (s *PDFMergerService) Process(opts PDFMergerOptions) error {
-	if opts.Extract != "" {
-		return s.handleImageExtraction(opts)
+	if err := opts.ValidateOperation(); err != nil {
+		return err
 	}
-	return s.handlePDFCreation(opts)
+
+	switch opts.Operation {
+	case OperationMergeIntoNew, OperationAddIntoExist:
+		return s.handlePDFCreation(opts)
+	case OperationExtractImages:
+		return s.handleImageExtraction(opts)
+	default:
+		return fmt.Errorf("未対応の operation です: %s", opts.Operation)
+	}
+}
+
+// ValidateOperation は operation と関連オプションの組み合わせを検証します
+func (opts PDFMergerOptions) ValidateOperation() error {
+	switch opts.Operation {
+	case OperationMergeIntoNew:
+		if opts.ReceivingFile != "" {
+			return fmt.Errorf("operation %s では ReceivingFile を指定できません", opts.Operation)
+		}
+		if opts.SrcFile != "" {
+			return fmt.Errorf("operation %s では SrcFile を指定できません", opts.Operation)
+		}
+	case OperationAddIntoExist:
+		if opts.ReceivingFile == "" {
+			return fmt.Errorf("operation %s では ReceivingFile は必須です", opts.Operation)
+		}
+		if opts.SrcFile != "" {
+			return fmt.Errorf("operation %s では SrcFile を指定できません", opts.Operation)
+		}
+	case OperationExtractImages:
+		if opts.SrcFile == "" {
+			return fmt.Errorf("operation %s では SrcFile は必須です", opts.Operation)
+		}
+		if opts.ReceivingFile != "" {
+			return fmt.Errorf("operation %s では ReceivingFile を指定できません", opts.Operation)
+		}
+	default:
+		return fmt.Errorf("未対応の operation です: %s", opts.Operation)
+	}
+	return nil
 }
 
 // handleImageExtraction はPDFからの画像抽出を処理します
@@ -71,15 +116,15 @@ func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions) error {
 	}
 
 	// PDFファイルの存在確認
-	if _, err := os.Stat(opts.Extract); os.IsNotExist(err) {
-		return fmt.Errorf("PDFファイルが見つかりません: %s", opts.Extract)
+	if _, err := os.Stat(opts.SrcFile); os.IsNotExist(err) {
+		return fmt.Errorf("PDFファイルが見つかりません: %s", opts.SrcFile)
 	}
 
 	// 画像抽出サービスのインスタンスを作成
 	imageService := NewImageExtractionService()
 
 	// PDFのページ数を取得
-	totalPages, err := imageService.GetPageCount(opts.Extract)
+	totalPages, err := imageService.GetPageCount(opts.SrcFile)
 	if err != nil {
 		return fmt.Errorf("PDFのページ数取得に失敗しました: %w", err)
 	}
@@ -93,13 +138,13 @@ func (s *PDFMergerService) handleImageExtraction(opts PDFMergerOptions) error {
 	rangeInfo := imageService.GetRangeOfPages(opts.StartPage, opts.EndPage, totalPages)
 
 	s.logger.Println("PDF画像抽出を開始します...")
-	s.logger.Printf("入力PDF    : %s", opts.Extract)
+	s.logger.Printf("入力PDF    : %s", opts.SrcFile)
 	s.logger.Printf("出力ディレクトリ: %s", opts.OutputDir)
 	s.logger.Printf("画像形式   : %s", opts.ImageFormat)
 	s.logger.Printf("ページ範囲 : %s", rangeInfo.Message)
 
 	// 画像抽出の実行
-	err = imageService.ExtractToImages(opts.Extract, opts.OutputDir, opts.ImageFormat, opts.StartPage, opts.EndPage)
+	err = imageService.ExtractToImages(opts.SrcFile, opts.OutputDir, opts.ImageFormat, opts.StartPage, opts.EndPage)
 	if err != nil {
 		return err
 	}
@@ -113,8 +158,13 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	// PDF作成サービスのインスタンスを作成
 	pdfService := NewPDFCreationService()
 
+	output, err := pdfService.ResolveOutputPDFPath(opts.OutputDir)
+	if err != nil {
+		return err
+	}
+
 	// 画像ファイルの取得
-	images, output, err := pdfService.GetSourceImages(opts.Dir, opts.Out)
+	images, err := pdfService.GetSourceImages(opts.SrcDir, opts.Recursive)
 	if err != nil {
 		return err
 	}
@@ -126,16 +176,16 @@ func (s *PDFMergerService) handlePDFCreation(opts PDFMergerOptions) error {
 	s.logger.Printf("検出した画像: %d 枚", len(images))
 
 	// 既存PDFファイルが指定されている場合は既存PDFに画像を追加
-	if opts.Add != "" {
+	if opts.ReceivingFile != "" {
 		// 既存PDFファイルの存在確認
-		if _, err := os.Stat(opts.Add); os.IsNotExist(err) {
-			return fmt.Errorf("既存PDFファイルが見つかりません: %s", opts.Add)
+		if _, err := os.Stat(opts.ReceivingFile); os.IsNotExist(err) {
+			return fmt.Errorf("既存PDFファイルが見つかりません: %s", opts.ReceivingFile)
 		}
 
-		s.logger.Printf("既存 PDF   : %s", opts.Add)
+		s.logger.Printf("既存 PDF   : %s", opts.ReceivingFile)
 
 		// 既存PDFに画像を追加
-		err = pdfService.AddImagesToExistingPDF(opts.Add, images, output)
+		err = pdfService.AddImagesToExistingPDF(opts.ReceivingFile, images, output)
 		if err != nil {
 			return err
 		}
@@ -171,42 +221,103 @@ func NewPDFCreationService() *PDFCreationService {
 	return &PDFCreationService{}
 }
 
-// GetSourceImages は指定されたディレクトリから画像ファイルを取得します
-func (s *PDFCreationService) GetSourceImages(dir string, out string) ([]string, string, error) {
-	absDir, err := filepath.Abs(dir)
-	if err != nil {
-		return nil, "", err
+// ResolveOutputPDFPath は出力ディレクトリからPDF出力パスを解決します
+func (s *PDFCreationService) ResolveOutputPDFPath(outputDir string) (string, error) {
+	if outputDir == "" {
+		return "", fmt.Errorf("PDF作成時は --output-dir オプションが必須です")
 	}
 
-	// 出力名のデフォルト: <フォルダー名>.pdf
-	if out == "" {
-		base := filepath.Base(absDir)
-		out = filepath.Join(absDir, base+".pdf")
+	cleanedOutputDir := filepath.Clean(outputDir)
+	absOutputDir, err := filepath.Abs(cleanedOutputDir)
+	if err != nil {
+		return "", fmt.Errorf("出力ディレクトリパスの変換に失敗しました: %w", err)
+	}
+
+	base := filepath.Base(absOutputDir)
+	if base == "." || base == string(filepath.Separator) || base == "" {
+		return "", fmt.Errorf("出力PDFファイル名を決定できない出力ディレクトリです: %s", outputDir)
+	}
+
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		return "", fmt.Errorf("出力ディレクトリの作成に失敗しました: %w", err)
+	}
+
+	trimmedOutputDir := strings.TrimRight(outputDir, string(filepath.Separator))
+	if trimmedOutputDir == "" {
+		return "", fmt.Errorf("出力PDFファイル名を決定できない出力ディレクトリです: %s", outputDir)
+	}
+
+	return trimmedOutputDir + string(filepath.Separator) + base + ".pdf", nil
+}
+
+// GetSourceImages は指定されたディレクトリから画像ファイルを取得します
+func (s *PDFCreationService) GetSourceImages(dir string, recursive bool) ([]string, error) {
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return nil, err
 	}
 
 	// ---- 画像ファイルを収集 ----
 	var images []string
-	err = filepath.WalkDir(absDir, func(p string, d os.DirEntry, _ error) error {
+	if recursive {
+		images, err = s.collectSourceImagesRecursively(absDir)
+	} else {
+		images, err = s.collectSourceImagesInDirectory(absDir)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if len(images) == 0 {
+		fmt.Println("画像が見つかりませんでした。終了します。")
+		return nil, nil
+	}
+	sort.Strings(images) // PowerShell の Sort-Object 相当
+
+	return images, nil
+}
+
+func (s *PDFCreationService) collectSourceImagesInDirectory(absDir string) ([]string, error) {
+	entries, err := os.ReadDir(absDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var images []string
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(absDir, entry.Name())
+		if s.isSourceImage(path) {
+			images = append(images, path)
+		}
+	}
+	return images, nil
+}
+
+func (s *PDFCreationService) collectSourceImagesRecursively(absDir string) ([]string, error) {
+	var images []string
+	err := filepath.WalkDir(absDir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d == nil || d.IsDir() {
 			return nil
 		}
-		ext := strings.ToLower(filepath.Ext(p))
-		if ext == ".jpg" {
+		if s.isSourceImage(p) {
 			images = append(images, p)
 		}
 		return nil
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
+	return images, nil
+}
 
-	if len(images) == 0 {
-		fmt.Println("画像が見つかりませんでした。終了します。")
-		return nil, "", nil
-	}
-	sort.Strings(images) // PowerShell の Sort-Object 相当
-
-	return images, out, nil
+func (s *PDFCreationService) isSourceImage(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".jpg"
 }
 
 // MergeImagesIntoPDF は画像ファイルを1つのPDFに結合します

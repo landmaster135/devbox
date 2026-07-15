@@ -1,0 +1,41 @@
+.git
+.gitignore
+
+# Local agent/editor state
+.agents
+.cache
+.codex
+.config
+.gocache
+.tmp
+.vscode
+.idea
+
+# Build outputs and packaged images
+bin
+dist
+build
+coverage.html
+coverage.out
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+
+# Generated tool binaries and local service data
+pkg/bin
+qdrant_storage
+
+# Temporary files
+tmp
+**/tmp
+**/tmp/**
+**/test_data
+**/test_data/**
+**/testdata
+**/testdata/**
+*.log
+
+# Local environment files should not be baked into images
+.env
+.env.*

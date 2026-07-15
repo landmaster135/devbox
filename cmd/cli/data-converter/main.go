@@ -5,8 +5,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/data_converter/config"
-	"github.com/landmaster135/devbox/internal/data_converter/usecases"
+	config "github.com/landmaster135/devbox/internal/data_converter/config"
+	usecases "github.com/landmaster135/devbox/internal/data_converter/usecases"
 )
 
 type exitCode int

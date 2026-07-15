@@ -28,8 +28,8 @@ tasks:
 
           echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp \
-            --q 80  --archive .{{.DIR_SEP}}5_original_files \
+            --src-dir . --output-dir .{{.DIR_SEP}}999_converted_images --ext webp \
+            --q 80  --archive-dir "" \
             $MOVE_FLAG
           echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -58,8 +58,8 @@ tasks:
 
           echo $'\n[Step 02: START]--- Webp(lossless)変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp \
-            --q 80 --lossless --archive .{{.DIR_SEP}}5_original_files \
+            --src-dir . --output-dir .{{.DIR_SEP}}999_converted_images --ext webp \
+            --q 80 --lossless --archive-dir "" \
             $MOVE_FLAG
           echo $'\n[Step 02: END]--- Webp(lossless)変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -92,7 +92,7 @@ tasks:
 
           echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp --q 80 --archive .{{.DIR_SEP}}5_original_files
+            --src-dir . --output-dir .{{.DIR_SEP}}999_converted_images --ext webp --q 80 --archive-dir ""
           echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -125,7 +125,7 @@ tasks:
 
           echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp --q 80 --archive .{{.DIR_SEP}}5_original_files
+            --src-dir . --output-dir .{{.DIR_SEP}}999_converted_images --ext webp --q 80 --archive-dir ""
           echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -157,7 +157,7 @@ tasks:
 
           echo $'\n[Step 02: START]--- Webp変換プログラムを実行します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}image-converter{{.EXE}}" \
-            --src . --ext webp --q 80 --archive .{{.DIR_SEP}}5_original_files
+            --src-dir . --output-dir .{{.DIR_SEP}}999_converted_images --ext webp --q 80 --archive-dir ""
           echo $'\n[Step 02: END]--- Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true

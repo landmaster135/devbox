@@ -6,7 +6,7 @@ import (
 	"os"
 
 	config "github.com/landmaster135/devbox/internal/file_line_deduper/config"
-	"github.com/landmaster135/devbox/internal/file_line_deduper/usecases/services"
+	services "github.com/landmaster135/devbox/internal/file_line_deduper/usecases/services"
 )
 
 // exitCode はプログラムの終了コードを表します

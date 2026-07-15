@@ -327,8 +327,27 @@ func HandleToDumpTable(ctx context.Context, dbURL, timezone, tableName, outputPa
 	return string(jsonResult), nil
 }
 
+func HandleToDumpTableDataAsSQL(ctx context.Context, dbURL, timezone, tableName, outputPath string) (string, error) {
+	if outputPath == "" {
+		outputPath = "."
+	}
+
+	dumper := dumpBinary.NewDumper(timezone)
+	result, err := dumper.DumpTableDataAsSQL(ctx, dbURL, outputPath, tableName)
+	if err != nil {
+		return "", fmt.Errorf("テーブルデータSQLダンプの実行に失敗しました: %v", err)
+	}
+
+	jsonResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("結果のJSON変換に失敗しました: %v", err)
+	}
+
+	return string(jsonResult), nil
+}
+
 // HandleToDumpAllTables はデータベース内の全テーブルをダンプして、結果をJSON形式で返します
-func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPath, format string, limit *int, concurrency *int, resultFormat, heading string) (string, string, error) {
+func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPath, format string, limit *int, concurrency *int, resultFormat, heading string, excludeTableData []string) (string, string, error) {
 	// デフォルト値を設定
 	if outputPath == "" {
 		outputPath = "."
@@ -342,7 +361,8 @@ func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPa
 
 	if format == "binary" {
 		binaryDumper := dumpBinary.NewDumper(timezone)
-		binaryResult, err := binaryDumper.DumpDatabase(ctx, dbURL, outputPath)
+		binaryExcludeTableData := buildBinaryDumpOptions(excludeTableData)
+		binaryResult, err := binaryDumper.DumpDatabase(ctx, dbURL, outputPath, binaryExcludeTableData)
 		if err != nil {
 			return "", "", fmt.Errorf("全テーブルbinaryダンプの実行に失敗しました: %v", err)
 		}
@@ -386,6 +406,10 @@ func HandleToDumpAllTables(ctx context.Context, dbURL, timezone string, outputPa
 	}
 
 	return jsonResult, minJSONResult, nil
+}
+
+func buildBinaryDumpOptions(excludeTableData []string) []string {
+	return append([]string(nil), excludeTableData...)
 }
 
 func serviceSafeDatabaseName(dbURL string) string {

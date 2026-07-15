@@ -71,18 +71,20 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+          SRC_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " src-file)" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
-            "$PDF_PATH"
+            "$SRC_FILE_FLAG"
 
           OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
 
           echo $'\n[Step 01: START]--- PDFから全ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --operation=extract-images \
+            "$SRC_FILE_FLAG" \
             --output-dir="$OUTPUT_DIR" \
-            $PDF_PATH
+            --format=jpg
           echo $'\n[Step 01: END]--- PDFからの全ページ抽出が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -95,22 +97,26 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}} {{.METHOD_FLAG_GUARD_FUNC}}
 
-          PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input path of PDF file you wanna extract as JPG: " extract)" || exit 1
+          SRC_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input path of PDF file you wanna extract as JPG: " src-file)" || exit 1
           START_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input start page number: " start)" || exit 1
           END_PAGE="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
             "Input end page number: " end)" || exit 1
 
           {{.METHOD_FLAG_GUARD_NAME}} "interactive-input からPDFファイルパスを取得できませんでした。" \
-            "$PDF_PATH"
+            "$SRC_FILE_FLAG"
 
           OUTPUT_DIR=".{{.DIR_SEP}}888_images_from_pdf"
 
           echo $'\n[Step 01: START]--- PDFから指定ページを抽出します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
+            --operation=extract-images \
+            "$SRC_FILE_FLAG" \
             --output-dir="$OUTPUT_DIR" \
-            $PDF_PATH $START_PAGE $END_PAGE
+            --format=jpg \
+            --start="$START_PAGE" \
+            --end="$END_PAGE"
           echo $'\n[Step 01: END]--- PDFからのページ範囲抽出が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true
@@ -127,7 +133,9 @@ tasks:
 
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像からPDFを生成します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
-            --dir="$TARGET_DIR"
+            --operation=merge-into-new \
+            --src-dir="$TARGET_DIR" \
+            --output-dir=.
           echo $'\n[Step 01: END]--- 現在のディレクトリのPDF生成が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         silent: true
@@ -139,13 +147,15 @@ tasks:
           set -eu
           {{.INTERACTIVE_TEXT_INPUT_FUNC}}
           TARGET_DIR=.
-          EXISTING_PDF_PATH="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
-            "Input PDF file you wanna add new pages (e.g.: '.'): " add)" || exit 1
+          RECEIVING_FILE_FLAG="$({{.INTERACTIVE_TEXT_INPUT_NAME}} \
+            "Input PDF file you wanna add new pages (e.g.: '.'): " receiving-file)" || exit 1
 
           echo $'\n[Step 01: START]--- 現在のディレクトリの画像を既存PDFへ追加します ---'
           "{{.CLI_BIN_DIR}}{{.DIR_SEP}}pdf-merger{{.EXE}}" \
-            --dir="$TARGET_DIR" \
-            "$EXISTING_PDF_PATH"
+            --operation=add-into-exist \
+            --src-dir="$TARGET_DIR" \
+            --output-dir=. \
+            "$RECEIVING_FILE_FLAG"
           echo $'\n[Step 01: END]--- 既存PDFへの追加が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
         interactive: true

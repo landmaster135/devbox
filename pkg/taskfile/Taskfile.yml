@@ -139,6 +139,10 @@ tasks:
     desc: "image-renamerで特定のディレクトリ内で接頭辞を使ったリネーム"
     cmds:
       - task: image-rename:image-renamer:by-prefix
+  image:rename:screenshot:
+    desc: "image-renamer-for-screenshotでスクショをリネーム"
+    cmds:
+      - task: image-rename:image-renamer:screenshot
   image:convert:jpg-to-webp:
     desc: "image-converterでJPGからWebPに変換"
     cmds:

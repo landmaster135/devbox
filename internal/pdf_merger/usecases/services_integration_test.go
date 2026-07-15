@@ -482,7 +482,7 @@ func TestPDFCreationService_GetSourceImages_EdgeCases(t *testing.T) {
 		}
 		defer os.Chmod(restrictedDir, 0755) // クリーンアップ用に権限を戻す
 
-		_, _, err = service.GetSourceImages(restrictedDir, "")
+		_, err = service.GetSourceImages(restrictedDir, false)
 		// 権限エラーが発生する可能性があるが、システムによって動作が異なる
 		t.Logf("権限のないディレクトリでの結果: %v", err)
 	})
@@ -505,7 +505,7 @@ func TestPDFCreationService_GetSourceImages_EdgeCases(t *testing.T) {
 			t.Fatalf("JPGファイルのコピーに失敗: %v", err)
 		}
 
-		images, output, err := service.GetSourceImages(longDirName, "")
+		images, err := service.GetSourceImages(longDirName, false)
 		if err != nil {
 			t.Fatalf("長いパス名でエラーが発生: %v", err)
 		}
@@ -514,7 +514,7 @@ func TestPDFCreationService_GetSourceImages_EdgeCases(t *testing.T) {
 			t.Errorf("画像が1つ期待されますが、%d個見つかりました", len(images))
 		}
 
-		t.Logf("長いパス名での出力: %s", output)
+		t.Logf("長いパス名での画像: %v", images)
 	})
 }
 
@@ -525,7 +525,7 @@ func TestErrorHandling_FileSystemErrors(t *testing.T) {
 
 		// 無効なパス文字を含むディレクトリ名（システムによって異なる）
 		invalidPath := string([]byte{0, 1, 2}) // null文字を含む無効なパス
-		_, _, err := service.GetSourceImages(invalidPath, "")
+		_, err := service.GetSourceImages(invalidPath, false)
 
 		// エラーが発生することを確認（システムによって動作が異なる可能性がある）
 		t.Logf("無効なパスでの結果: %v", err)

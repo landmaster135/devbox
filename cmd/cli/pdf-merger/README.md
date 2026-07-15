@@ -4,129 +4,71 @@
 
 ## 機能
 
-1. **画像からPDFを作成** - ディレクトリ内の画像ファイルを収集してPDFファイルを生成
-2. **既存PDFに画像を追加** - 既存のPDFファイルに画像ページを追加
-3. **PDFから画像を抽出** - PDFファイルの任意のページ範囲を画像として抽出 **(新機能)**
+1. **画像からPDFを作成**: ディレクトリ内の画像ファイルを収集してPDFファイルを生成
+2. **既存PDFに画像を追加**: 既存のPDFファイルに画像ページを追加
+3. **PDFから画像を抽出**: PDFファイルの任意のページ範囲を画像として抽出
 
-## 使用方法
+## 使用例
 
 ### 1. 画像からPDFを作成
 
 ```bash
 # 現在のディレクトリの画像からPDFを作成
-./pdf-merger
+go run ./cmd/cli/pdf-merger -operation=merge-into-new -output-dir ./dist
 
 # 特定のディレクトリの画像からPDFを作成
-./pdf-merger -dir /path/to/images
+go run ./cmd/cli/pdf-merger -operation=merge-into-new -src-dir /path/to/images -output-dir ./dist
 
-# 出力ファイル名を指定
-./pdf-merger -dir /path/to/images -out output.pdf
+# 出力ディレクトリ名をもとにPDFを作成
+go run ./cmd/cli/pdf-merger -operation=merge-into-new -src-dir /path/to/images -output-dir ./merged
 ```
 
 ### 2. 既存PDFに画像を追加
 
 ```bash
 # 既存のPDFに画像を追加
-./pdf-merger -dir /path/to/images -add existing.pdf -out merged.pdf
+go run ./cmd/cli/pdf-merger -operation=add-into-exist -src-dir /path/to/images -receiving-file existing.pdf -output-dir ./merged
 ```
 
-### 3. PDFから画像を抽出 **(新機能)**
+### 3. PDFから画像を抽出
 
 ```bash
 # PDFの全ページを画像として抽出
-./pdf-merger -extract input.pdf -output-dir ./images
+go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -output-dir ./images
 
 # 特定のページ範囲を抽出（例：3ページから10ページまで）
-./pdf-merger -extract input.pdf -output-dir ./images -start 3 -end 10
+go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -output-dir ./images -start 3 -end 10
 
-# 特定の開始ページから最後まで抽出
-./pdf-merger -extract input.pdf -output-dir ./images -start 5
-
-# 画像形式を指定して抽出
-./pdf-merger -extract input.pdf -output-dir ./images -format png
-
-# JPEGで単一ページを抽出
-./pdf-merger -extract input.pdf -output-dir ./images -start 1 -end 1 -format jpg
+# JPEGで特定の開始ページから最後まで抽出
+go run ./cmd/cli/pdf-merger -operation=extract-images -src-file input.pdf -output-dir ./images -start 5 -format jpg
 ```
 
 ## オプション
 
 ### 基本オプション
-- `-dir string`: 画像を検索するフォルダー（デフォルト: "."）
-- `-out string`: 出力PDFファイル名（未指定なら <dir名>.pdf）
-- `-add string`: 既存のPDFファイルパス（指定時は既存PDFに画像を追加）
+
+| オプション | 必須/任意 | デフォルト | 説明 |
+|---|---|---|---|
+| `-operation string` | 必須 | なし | 実行する処理。`merge-into-new`, `add-into-exist`, `extract-images` のいずれか |
+| `-src-dir string` | 任意 | `.` | 画像を検索するフォルダー |
+| `-output-dir string` | 必須 | なし | PDFの出力ディレクトリ。出力PDFは`<output-dir>/<basename(output-dir)>.pdf`として作成 |
+| `-receiving-file string` | `add-into-exist`時必須 | なし | 画像を追加する既存PDFファイルパス |
+| `-recursive bool` | 任意 | `false` | サブディレクトリまで再帰的に画像を検索する |
 
 ### PDF画像抽出オプション
-- `-extract string`: **PDFファイルから画像を抽出する（PDFファイルパス）**
-- `-output-dir string`: **画像の出力ディレクトリ（抽出時必須）**
-- `-format string`: **出力画像形式（デフォルト: "jpg"）**
-  - サポート形式: jpg, jpeg, png, tiff, webp
-- `-start int`: **抽出開始ページ（1から開始、0は全ページ）**
-- `-end int`: **抽出終了ページ（0は最終ページまで）**
 
-## 使用例
-
-### 画像からPDF作成の例
-```bash
-# カレントディレクトリのJPG画像からPDFを作成
-./pdf-merger
-
-# 指定ディレクトリの画像からmybook.pdfを作成
-./pdf-merger -dir /home/user/photos -out mybook.pdf
-
-# 既存のdocument.pdfに新しい画像を追加してupdated.pdfを作成
-./pdf-merger -dir /home/user/new_pages -add document.pdf -out updated.pdf
-```
-
-### PDF画像抽出の例
-```bash
-# document.pdfの全ページをJPG画像として./outputディレクトリに抽出
-./pdf-merger -extract document.pdf -output-dir ./output
-
-# レポートの1-5ページをPNG形式で抽出
-./pdf-merger -extract report.pdf -output-dir ./pages -start 1 -end 5 -format png
-
-# プレゼンテーションの10ページ目以降をTIFF形式で抽出
-./pdf-merger -extract presentation.pdf -output-dir ./slides -start 10 -format tiff
-
-# マニュアルの表紙（1ページ目）のみをWebP形式で抽出
-./pdf-merger -extract manual.pdf -output-dir ./cover -start 1 -end 1 -format webp
-```
-
-## インストール
-
-ビルドスクリプトを使用してツールをビルドします：
-
-```bash
-cd devbox
-./scripts/build_pdf_merger.sh
-```
-
-ビルドが成功すると、以下の場所に実行ファイルが生成されます：
-
-- Linux用: `pkg/bin/linux_amd64/pdf-merger`
-- Windows用: `pkg/bin/win_amd64/pdf-merger.exe`
+| オプション | 必須/任意 | デフォルト | 説明 |
+|---|---|---|---|
+| `-operation string` | 必須 | なし | `extract-images` を指定 |
+| `-src-file string` | `extract-images`時必須 | なし | 画像を抽出するPDFファイルパス |
+| `-output-dir string` | 抽出時必須 | なし | 画像の出力ディレクトリ |
+| `-format string` | 任意 | `jpg` | 出力画像形式。サポート形式: `jpg`, `jpeg`, `png`, `tiff`, `webp` |
+| `-start int` | 任意 | `0` | 抽出開始ページ。1から開始し、0は全ページ |
+| `-end int` | 任意 | `0` | 抽出終了ページ。0は最終ページまで |
 
 ## 注意事項
 
-- **画像抽出機能を使用する場合、`-output-dir`オプションは必須です**
-- ページ番号は1から始まります
-- 開始ページが終了ページより大きい場合はエラーになります
-- サポートされていない画像形式を指定した場合はエラーメッセージが表示されます
+- PDF作成・既存PDF追加時の出力PDFは、`-output-dir ./dist`の場合は`./dist/dist.pdf`として作成されます
 - 出力ディレクトリが存在しない場合は自動的に作成されます
-- **ファイル名について**: 抽出された画像は`document_0001.jpg`、`document_0002.jpg`のような4桁連番形式で命名されます
-- 現在のバージョンでは、画像作成時はJPG形式（`.jpg`拡張子）の画像ファイルのみがサポートされています
-- 画像ファイルはアルファベット順にソートされてPDFに配置されます
+- 現在のバージョンでは、PDF作成時の入力画像は `.jpg`拡張子の画像ファイルのみがサポートされています
 - 出力PDFファイルは、既存のファイルがある場合は上書きされます
-
-## 技術仕様
-
-- PDF処理にはpdfcpuライブラリを使用
-- UTF-8エンコーディングでファイル処理
-- エラーハンドリングと詳細なログ出力
-- クロスプラットフォーム対応（Windows、macOS、Linux）
-
-## 依存関係
-
-- Go
-- github.com/pdfcpu/pdfcpu v0.10.2

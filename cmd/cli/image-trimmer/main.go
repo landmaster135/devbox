@@ -28,15 +28,15 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 	flagSet.SetOutput(stderr)
 
 	// コマンドライン引数の定義
-	srcDir := flagSet.String("src", ".", "source directory to scan")
-	outDir := flagSet.String("out", "", "output directory (output into src if empty)")
-	arcDir := flagSet.String("arc", "./5_original_files", "move processed originals to this directory")
+	srcDir := flagSet.String("src-dir", ".", "source directory to scan")
+	outDir := flagSet.String("output-dir", "", "output directory (required)")
+	arcDir := flagSet.String("archive-dir", "./5_original_files", "move processed originals to this directory")
 	x1 := flagSet.Int("x1", 0, "X-coordinate on upper left")
 	y1 := flagSet.Int("y1", 0, "Y-coordinate on upper left")
 	x2 := flagSet.Int("x2", 0, "X-coordinate on lower right")
-	y2 := flagSet.Int("y2", 0,  "Y-coordinate on lower right")
+	y2 := flagSet.Int("y2", 0, "Y-coordinate on lower right")
 	suffix := flagSet.String("suffix", "trimmed", "suffix to attach to file name to save")
-	move := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive)")
+	move := flagSet.Bool("move", false, "move originals instead of copying (effective only with -archive-dir)")
 	recursive := flagSet.Bool("r", false, "recursively scan sub-directories")
 	workers := flagSet.Int("workers", runtime.NumCPU(), "number of concurrent workers")
 
@@ -46,9 +46,11 @@ func run(args []string, stdout, stderr io.Writer) exitCode {
 		return exitCodeError
 	}
 
-	// 出力ディレクトリが指定されていない場合は入力ディレクトリと同じに
-	if *outDir == "" {
-		*outDir = *srcDir
+	// 出力ディレクトリのバリデーション
+	if strings.TrimSpace(*outDir) == "" {
+		fmt.Fprintf(stderr, "エラー: -output-dir は必須です。出力先ディレクトリを指定してください。\n")
+		flagSet.Usage()
+		return exitCodeError
 	}
 
 	// トリミング座標のバリデーション

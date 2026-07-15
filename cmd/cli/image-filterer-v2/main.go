@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/landmaster135/devbox/internal/image_filterer_v2/config"
-	"github.com/landmaster135/devbox/internal/image_filterer_v2/usecases"
+	config "github.com/landmaster135/devbox/internal/image_filterer_v2/config"
+	usecases "github.com/landmaster135/devbox/internal/image_filterer_v2/usecases"
 )
 
 func main() {

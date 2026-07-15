@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/depends_visualizer/config"
-	"github.com/landmaster135/devbox/internal/depends_visualizer/usecases"
+	config "github.com/landmaster135/devbox/internal/depends_visualizer/config"
+	usecases "github.com/landmaster135/devbox/internal/depends_visualizer/usecases"
 )
 
 func main() {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/landmaster135/devbox/internal/file_character_replacer/config"
-	"github.com/landmaster135/devbox/internal/file_character_replacer/usecases"
+	config "github.com/landmaster135/devbox/internal/file_character_replacer/config"
+	usecases "github.com/landmaster135/devbox/internal/file_character_replacer/usecases"
 )
 
 func main() {
