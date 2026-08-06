@@ -134,10 +134,10 @@ project root 解決の基本形。
 project_root="$(
   git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || realpath -m "$cwd"
 )"
-allowed_root="$(realpath -m "$project_root/.agents")"
+allowed_root="$(realpath -m "$project_root/agent-work")"
 ```
 
-`.agents` 配下判定。
+`agent-work` 配下判定。
 
 ```bash
 is_under_allowed_root() {
@@ -224,7 +224,7 @@ guard_go_temp_envs() {
 
 ### `go test -c` の出力先を強制する
 
-`go test -c` は test binary を生成するため、`-o` を必須にし、出力先を project `.agents` 配下へ限定する。
+`go test -c` は test binary を生成するため、`-o` を必須にし、出力先を project `agent-work` 配下へ限定する。
 
 ```bash
 extract_go_test_compile_output() {
@@ -254,7 +254,7 @@ guard_go_test_compile_output() {
   output_path="$(extract_go_test_compile_output)"
 
   if [[ -z "$output_path" ]]; then
-    echo "Blocked: go test -c must specify -o under project .agents directory." >&2
+    echo "Blocked: go test -c must specify -o under project agent-work directory." >&2
     echo "Project root: $project_root" >&2
     echo "Allowed root: $allowed_root" >&2
     exit 2
@@ -298,7 +298,7 @@ printf '%s\n' '{"cwd":"<repo>","tool_input":{"command":"go test -c ./cmd/rpc/foo
 `go test -c` の許可例。
 
 ```bash
-printf '%s\n' '{"cwd":"<repo>","tool_input":{"command":"go test -c -o .agents/cache/foo.test ./cmd/rpc/foo"}}' \
+printf '%s\n' '{"cwd":"<repo>","tool_input":{"command":"go test -c -o agent-work/cache/foo.test ./cmd/rpc/foo"}}' \
   | /path/to/hook-script.sh
 ```
 

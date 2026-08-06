@@ -19,7 +19,7 @@
 - --operation: inspect, --task-type: root の場合は、/home/user/devbox/internal/taskfile/usecases/taskfiles/root.ymlにあるフィールドが、"--taskfile-path"で渡されたTaskfileで不足していないかどうかを確認する。
 
 ## 新規のCLIツールの追加の実装計画の作成
-/home/user/devbox/cmd/cli/gcloud-genset-spanner/main.goにCloud Spanner用のgcloudコマンドを出力するCLIツールを実装したい。そのCLIツールでは、--operationとその他のCLIフラグを受け取る。下記の--operationを実装する計画を/home/user/devbox/.agents/draft.mdに書いて。実装の仕方は/home/user/devbox/cmd/cli/gcloud-genset-cloudsql/main.goを参考にして。
+/home/user/devbox/cmd/cli/gcloud-genset-spanner/main.goにCloud Spanner用のgcloudコマンドを出力するCLIツールを実装したい。そのCLIツールでは、--operationとその他のCLIフラグを受け取る。下記の--operationを実装する計画を/home/user/devbox/agent-work/tmp/draft.mdに書いて。実装の仕方は/home/user/devbox/cmd/cli/gcloud-genset-cloudsql/main.goを参考にして。
 
 ### --operation: instance-list
 下記のgcloudコマンドを出力する。

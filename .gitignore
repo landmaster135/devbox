@@ -62,8 +62,6 @@ docker-compose.yml
 target*
 # .clinerules
 .clinerules/*
-.agents/tmp/*
-!.agents/tmp/.gitkeep
 .config/cagent/config_linux/**/*_prod.yml
 
 ### Cloud Functions ###
@@ -95,5 +93,7 @@ lib/personal/*
 !lib/personal/.gitkeep
 !lib/personal/README.md
 
-### agent ###
+### agents ###
 .codex
+agent-work/*
+!agent-work/.gitkeep
