@@ -10,7 +10,7 @@ import (
 )
 
 func TestConfig_NewConfig_Normal(t *testing.T) {
-	cfg, err := NewConfig("src", "out", "archive", ".WEBP", true, 99, 2, true, true)
+	cfg, err := NewConfig("src", "out", "archive", ".WEBP", true, 99, 6, 2, true, true)
 	if err != nil {
 		t.Fatalf("NewConfig() error = %v", err)
 	}
@@ -33,6 +33,9 @@ func TestConfig_NewConfig_Normal(t *testing.T) {
 	if cfg.Quality != 99 {
 		t.Fatalf("Quality = %d, want 99", cfg.Quality)
 	}
+	if cfg.Method != 6 {
+		t.Fatalf("Method = %d, want 6", cfg.Method)
+	}
 	if cfg.Workers != 2 {
 		t.Fatalf("Workers = %d, want 2", cfg.Workers)
 	}
@@ -51,22 +54,25 @@ func TestConfig_NewConfig_Error(t *testing.T) {
 		outDir  string
 		outExt  string
 		quality int
+		method  int
 		workers int
 		want    string
 	}{
-		{name: "入力ディレクトリが空", srcDir: "", outDir: "out", outExt: "webp", quality: 99, workers: 1, want: "入力ディレクトリが指定されていません"},
-		{name: "出力ディレクトリが空", srcDir: "src", outDir: "", outExt: "webp", quality: 99, workers: 1, want: "出力ディレクトリが指定されていません"},
-		{name: "出力形式が空", srcDir: "src", outDir: "out", outExt: "", quality: 99, workers: 1, want: "出力形式が指定されていません"},
-		{name: "未対応形式", srcDir: "src", outDir: "out", outExt: "jpg", quality: 99, workers: 1, want: "サポートされていない出力フォーマットです: jpg"},
-		{name: "品質が小さい", srcDir: "src", outDir: "out", outExt: "webp", quality: 0, workers: 1, want: "品質は1から100の範囲で指定してください: 0"},
-		{name: "品質が大きい", srcDir: "src", outDir: "out", outExt: "webp", quality: 101, workers: 1, want: "品質は1から100の範囲で指定してください: 101"},
-		{name: "workersが小さい", srcDir: "src", outDir: "out", outExt: "webp", quality: 99, workers: 0, want: "workers は1以上で指定してください: 0"},
+		{name: "入力ディレクトリが空", srcDir: "", outDir: "out", outExt: "webp", quality: 99, method: 4, workers: 1, want: "入力ディレクトリが指定されていません"},
+		{name: "出力ディレクトリが空", srcDir: "src", outDir: "", outExt: "webp", quality: 99, method: 4, workers: 1, want: "出力ディレクトリが指定されていません"},
+		{name: "出力形式が空", srcDir: "src", outDir: "out", outExt: "", quality: 99, method: 4, workers: 1, want: "出力形式が指定されていません"},
+		{name: "未対応形式", srcDir: "src", outDir: "out", outExt: "jpg", quality: 99, method: 4, workers: 1, want: "サポートされていない出力フォーマットです: jpg"},
+		{name: "品質が小さい", srcDir: "src", outDir: "out", outExt: "webp", quality: 0, method: 4, workers: 1, want: "品質は1から100の範囲で指定してください: 0"},
+		{name: "品質が大きい", srcDir: "src", outDir: "out", outExt: "webp", quality: 101, method: 4, workers: 1, want: "品質は1から100の範囲で指定してください: 101"},
+		{name: "圧縮メソッドが小さい", srcDir: "src", outDir: "out", outExt: "webp", quality: 99, method: -1, workers: 1, want: "圧縮メソッドは0から6の範囲で指定してください: -1"},
+		{name: "圧縮メソッドが大きい", srcDir: "src", outDir: "out", outExt: "webp", quality: 99, method: 7, workers: 1, want: "圧縮メソッドは0から6の範囲で指定してください: 7"},
+		{name: "workersが小さい", srcDir: "src", outDir: "out", outExt: "webp", quality: 99, method: 4, workers: 0, want: "workers は1以上で指定してください: 0"},
 	}
 
 	for _, tt := range tests {
 		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := NewConfig(tc.srcDir, tc.outDir, "", tc.outExt, false, tc.quality, tc.workers, false, false)
+			_, err := NewConfig(tc.srcDir, tc.outDir, "", tc.outExt, false, tc.quality, tc.method, tc.workers, false, false)
 			if err == nil {
 				t.Fatalf("NewConfig() error = nil, want %q", tc.want)
 			}
@@ -85,6 +91,7 @@ func TestConfig_ParseFlagsWithParser_Normal(t *testing.T) {
 	parser.SetBoolFlag("move", true)
 	parser.SetStringFlag("ext", "webp")
 	parser.SetIntFlag("q", 88)
+	parser.SetIntFlag("m", 6)
 	parser.SetIntFlag("workers", 3)
 	parser.SetBoolFlag("recursive", true)
 	parser.SetBoolFlag("lossless", true)
@@ -99,7 +106,7 @@ func TestConfig_ParseFlagsWithParser_Normal(t *testing.T) {
 	if !cfg.Move || !cfg.Recursive || !cfg.Lossless {
 		t.Fatalf("Config bools = %#v", cfg)
 	}
-	if cfg.Quality != 88 || cfg.Workers != 3 {
+	if cfg.Quality != 88 || cfg.Method != 6 || cfg.Workers != 3 {
 		t.Fatalf("Config numeric values = %#v", cfg)
 	}
 }
@@ -120,6 +127,9 @@ func TestConfig_ParseFlagsWithParser_Default_Normal(t *testing.T) {
 	}
 	if cfg.Quality != 99 {
 		t.Fatalf("Quality = %d, want 99", cfg.Quality)
+	}
+	if cfg.Method != defaultMethod {
+		t.Fatalf("Method = %d, want %d", cfg.Method, defaultMethod)
 	}
 	if cfg.Workers != runtime.NumCPU() {
 		t.Fatalf("Workers = %d, want %d", cfg.Workers, runtime.NumCPU())

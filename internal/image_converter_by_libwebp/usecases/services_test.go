@@ -41,6 +41,9 @@ func TestService_Convert_Normal(t *testing.T) {
 		if call.Quality != 99 {
 			t.Fatalf("Quality = %d, want 99", call.Quality)
 		}
+		if call.Method != 4 {
+			t.Fatalf("Method = %d, want 4", call.Method)
+		}
 		if call.Lossless {
 			t.Fatalf("Lossless = true, want false")
 		}
@@ -138,7 +141,7 @@ func TestService_Convert_PartialError(t *testing.T) {
 	createTestFile(t, filepath.Join(srcDir, "ng.jpg"))
 
 	mockConverter := &libwebp.MockConverter{
-		ConvertToWebPFunc: func(ctx context.Context, inputPath string, outputPath string, quality int, lossless bool) error {
+		ConvertToWebPFunc: func(ctx context.Context, inputPath string, outputPath string, quality int, method int, lossless bool) error {
 			if strings.Contains(inputPath, "ng.jpg") {
 				return errors.New("convert failed")
 			}
@@ -241,7 +244,7 @@ func TestService_Convert_NilConfig(t *testing.T) {
 
 func newTestConfig(t *testing.T, srcDir string, outDir string, archiveDir string, move bool, recursive bool, workers int) *config.Config {
 	t.Helper()
-	cfg, err := config.NewConfig(srcDir, outDir, archiveDir, "webp", move, 99, workers, recursive, false)
+	cfg, err := config.NewConfig(srcDir, outDir, archiveDir, "webp", move, 99, 4, workers, recursive, false)
 	if err != nil {
 		t.Fatalf("NewConfig() error = %v", err)
 	}

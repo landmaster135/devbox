@@ -11,13 +11,14 @@ import (
 func TestCommandConverter_BuildArgs_Normal(t *testing.T) {
 	converter := NewCommandConverter()
 
-	got := converter.buildArgs("input.jpg", "output.webp", 99, false)
+	got := converter.buildArgs("input.jpg", "output.webp", 99, 4, false)
 	want := []string{
 		"-preset", "photo",
 		"-metadata", "icc",
 		"-sharp_yuv",
 		"-progress",
 		"-short",
+		"-m", "4",
 		"-q", "99",
 		"input.jpg",
 		"-o", "output.webp",
@@ -31,7 +32,7 @@ func TestCommandConverter_BuildArgs_Normal(t *testing.T) {
 func TestCommandConverter_BuildArgs_Lossless_Normal(t *testing.T) {
 	converter := NewCommandConverter()
 
-	got := converter.buildArgs("input.png", "output.webp", 99, true)
+	got := converter.buildArgs("input.png", "output.webp", 99, 6, true)
 	want := []string{
 		"-preset", "photo",
 		"-metadata", "icc",
@@ -39,6 +40,7 @@ func TestCommandConverter_BuildArgs_Lossless_Normal(t *testing.T) {
 		"-progress",
 		"-short",
 		"-lossless",
+		"-m", "6",
 		"-q", "99",
 		"input.png",
 		"-o", "output.webp",
@@ -88,14 +90,14 @@ func TestCommandConverter_ConvertToWebP_Normal(t *testing.T) {
 		return "ok", nil
 	}
 
-	err := converter.ConvertToWebP(context.Background(), "input.jpg", "output.webp", 99, false)
+	err := converter.ConvertToWebP(context.Background(), "input.jpg", "output.webp", 99, 4, false)
 	if err != nil {
 		t.Fatalf("ConvertToWebP() error = %v", err)
 	}
 	if gotName != "cwebp" {
 		t.Fatalf("command name = %q, want cwebp", gotName)
 	}
-	wantArgs := converter.buildArgs("input.jpg", "output.webp", 99, false)
+	wantArgs := converter.buildArgs("input.jpg", "output.webp", 99, 4, false)
 	if !reflect.DeepEqual(gotArgs, wantArgs) {
 		t.Fatalf("args = %#v, want %#v", gotArgs, wantArgs)
 	}
@@ -107,7 +109,7 @@ func TestCommandConverter_ConvertToWebP_Error(t *testing.T) {
 		return "failed output", errors.New("exit status 1")
 	}
 
-	err := converter.ConvertToWebP(context.Background(), "input.jpg", "output.webp", 99, false)
+	err := converter.ConvertToWebP(context.Background(), "input.jpg", "output.webp", 99, 4, false)
 	if err == nil {
 		t.Fatalf("ConvertToWebP() error = nil")
 	}

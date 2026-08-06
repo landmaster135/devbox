@@ -13,8 +13,11 @@ const (
 	defaultOutDir  = "./999_converted_images"
 	defaultOutExt  = "webp"
 	defaultQuality = 99
+	defaultMethod  = 4
 	minQuality     = 1
 	maxQuality     = 100
+	minMethod      = 0
+	maxMethod      = 6
 )
 
 // Config は image-converter-by-libwebp CLI の設定を保持します。
@@ -25,6 +28,7 @@ type Config struct {
 	Move       bool
 	OutExt     string
 	Quality    int
+	Method     int
 	Workers    int
 	Recursive  bool
 	Lossless   bool
@@ -32,7 +36,7 @@ type Config struct {
 }
 
 // NewConfig は値検証済みの Config を作成します。
-func NewConfig(srcDir, outDir, archiveDir, outExt string, move bool, quality, workers int, recursive, lossless bool) (*Config, error) {
+func NewConfig(srcDir, outDir, archiveDir, outExt string, move bool, quality, method, workers int, recursive, lossless bool) (*Config, error) {
 	normalizedOutExt := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(outExt), "."))
 	if normalizedOutExt == "" {
 		return nil, fmt.Errorf("出力形式が指定されていません")
@@ -49,6 +53,9 @@ func NewConfig(srcDir, outDir, archiveDir, outExt string, move bool, quality, wo
 	if quality < minQuality || quality > maxQuality {
 		return nil, fmt.Errorf("品質は%dから%dの範囲で指定してください: %d", minQuality, maxQuality, quality)
 	}
+	if method < minMethod || method > maxMethod {
+		return nil, fmt.Errorf("圧縮メソッドは%dから%dの範囲で指定してください: %d", minMethod, maxMethod, method)
+	}
 	if workers < 1 {
 		return nil, fmt.Errorf("workers は1以上で指定してください: %d", workers)
 	}
@@ -60,6 +67,7 @@ func NewConfig(srcDir, outDir, archiveDir, outExt string, move bool, quality, wo
 		Move:       move,
 		OutExt:     normalizedOutExt,
 		Quality:    quality,
+		Method:     method,
 		Workers:    workers,
 		Recursive:  recursive,
 		Lossless:   lossless,
@@ -84,6 +92,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	move := false
 	outExt := defaultOutExt
 	quality := defaultQuality
+	method := defaultMethod
 	workers := runtime.NumCPU()
 	recursive := false
 	lossless := false
@@ -95,6 +104,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 	parser.BoolVar(&move, "move", move, "退避時にコピーではなく移動する")
 	parser.StringVar(&outExt, "ext", outExt, "出力形式 (webp)")
 	parser.IntVar(&quality, "q", quality, "WebP 品質 (1-100)")
+	parser.IntVar(&method, "m", method, "cwebp 圧縮メソッド (0-6)")
 	parser.IntVar(&workers, "workers", workers, "並列ワーカー数")
 	parser.BoolVar(&recursive, "recursive", recursive, "サブディレクトリを再帰的に走査する")
 	parser.BoolVar(&recursive, "R", recursive, "サブディレクトリを再帰的に走査する")
@@ -109,7 +119,7 @@ func ParseFlagsWithParser(parser flagParser.FlagParser) (*Config, error) {
 		return &Config{Help: true}, nil
 	}
 
-	return NewConfig(srcDir, outDir, archiveDir, outExt, move, quality, workers, recursive, lossless)
+	return NewConfig(srcDir, outDir, archiveDir, outExt, move, quality, method, workers, recursive, lossless)
 }
 
 // PrintUsage は usage を標準エラーへ出力します。

@@ -16,6 +16,7 @@
 | `--move` | 任意 | `false` | 退避時にコピーではなく移動する |
 | `--ext` | 任意 | `webp` | 出力形式。対応形式は `webp` |
 | `--q` | 任意 | `99` | WebP 品質。`1` から `100` |
+| `--m` | 任意 | `4` | `cwebp -m` に渡す圧縮メソッド。`0` から `6` |
 | `--workers` | 任意 | CPU 数 | 並列ワーカー数 |
 | `--recursive`, `-R` | 任意 | `false` | サブディレクトリを再帰的に走査する |
 | `--lossless` | 任意 | `false` | `cwebp -lossless` を有効にする |
@@ -27,7 +28,8 @@
 go run ./cmd/cli/image-converter-by-libwebp \
   --src-dir ./photos \
   --out-dir ./webp \
-  --q 99
+  --q 99 \
+  --m 6
 ```
 
 ## 使用例
@@ -58,6 +60,8 @@ go run ./cmd/cli/image-converter-by-libwebp \
 ```text
 -preset photo -metadata icc -sharp_yuv -progress -short
 ```
+
+`--m` は `cwebp -m` として渡します。デフォルトは `4` です。
 
 `--lossless` 指定時は、上記に加えて `-lossless` を付与します。
 

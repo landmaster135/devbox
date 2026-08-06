@@ -10,7 +10,7 @@ import (
 // Converter は libwebp による変換処理を抽象化します。
 type Converter interface {
 	CheckAvailable() error
-	ConvertToWebP(ctx context.Context, inputPath string, outputPath string, quality int, lossless bool) error
+	ConvertToWebP(ctx context.Context, inputPath string, outputPath string, quality int, method int, lossless bool) error
 }
 
 // CommandConverter は cwebp コマンドを使う Converter 実装です。
@@ -38,8 +38,8 @@ func (c *CommandConverter) CheckAvailable() error {
 }
 
 // ConvertToWebP は cwebp で単一ファイルを WebP へ変換します。
-func (c *CommandConverter) ConvertToWebP(ctx context.Context, inputPath string, outputPath string, quality int, lossless bool) error {
-	args := c.buildArgs(inputPath, outputPath, quality, lossless)
+func (c *CommandConverter) ConvertToWebP(ctx context.Context, inputPath string, outputPath string, quality int, method int, lossless bool) error {
+	args := c.buildArgs(inputPath, outputPath, quality, method, lossless)
 	output, err := c.runCommand(ctx, c.commandName, args...)
 	if err != nil {
 		return fmt.Errorf("cwebp 実行に失敗しました: %w: %s", err, output)
@@ -52,7 +52,7 @@ func runCommand(ctx context.Context, name string, args ...string) (string, error
 	return string(output), err
 }
 
-func (c *CommandConverter) buildArgs(inputPath string, outputPath string, quality int, lossless bool) []string {
+func (c *CommandConverter) buildArgs(inputPath string, outputPath string, quality int, method int, lossless bool) []string {
 	args := []string{
 		"-preset", "photo",
 		"-metadata", "icc",
@@ -63,6 +63,7 @@ func (c *CommandConverter) buildArgs(inputPath string, outputPath string, qualit
 	if lossless {
 		args = append(args, "-lossless")
 	}
+	args = append(args, "-m", strconv.Itoa(method))
 	args = append(args, "-q", strconv.Itoa(quality), inputPath, "-o", outputPath)
 	return args
 }
