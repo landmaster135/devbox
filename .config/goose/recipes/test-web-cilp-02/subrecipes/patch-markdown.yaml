@@ -1,0 +1,46 @@
+version: 1.0.0
+title: "patch-markdown-subrecipe"
+description: "web_clipper__patch_markdown だけを呼び出すサブレシピ"
+
+parameters:
+  - key: target_title
+    input_type: string
+    requirement: required
+    description: "Markdownへ挿入する記事タイトル"
+  - key: target_url
+    input_type: string
+    requirement: required
+    description: "Markdownへ挿入する記事URL"
+  - key: out_file_path
+    input_type: string
+    requirement: required
+    description: "出力先Markdownファイルパス"
+
+extensions:
+  - type: stdio
+    name: web_clipper
+    cmd: "./mcps/devbox-mcp-tools"
+    args:
+      - web_clipper
+    timeout: 300
+    bundled: false
+    description: "Web記事要約Markdownを出力する devbox MCP"
+    available_tools:
+      - patch_markdown
+
+instructions: |
+  あなたは `web_clipper__patch_markdown` の疎通確認だけを行う検証用サブレシピです。
+  他のツールは使わず、`web_clipper__patch_markdown` を1回だけ呼び出してください。
+
+prompt: |
+  `web_clipper__patch_markdown` を次のJSON引数で1回だけ実行してください。
+
+  {
+    "target_title": "{{ target_title }}",
+    "target_url": "{{ target_url }}",
+    "src_markdown_content": "## Test Article Summary\n\n### Test Section\nThis is a minimal subrecipe web_clipper patch_markdown test.\n",
+    "out_file_path": "{{ out_file_path }}",
+    "top_heading_level": 2
+  }
+
+  実行結果をそのまま最終回答として返してください。
