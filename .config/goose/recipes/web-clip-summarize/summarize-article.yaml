@@ -7,15 +7,30 @@ parameters:
     input_type: string
     requirement: required
     description: "要約したい記事のURL"
+  - key: output_dir
+    input_type: string
+    requirement: required
+    description: "要約Markdownの出力ディレクトリ"
+
+settings:
+  max_turns: 20
 
 extensions:
-  - type: builtin
-    name: computercontroller
   - type: platform
     name: skills
     description: "Discover and load local Agent Skills"
     display_name: Skills
     bundled: true
+  - type: stdio
+    name: http_request
+    cmd: "{{ recipe_dir }}/mcps/devbox-mcp-tools"
+    args:
+      - http_request
+    timeout: 300
+    bundled: false
+    description: "Web記事本文を取得する devbox MCP"
+    available_tools:
+      - http_request
   - type: stdio
     name: web_clipper
     cmd: ./mcps/devbox-mcp-tools
@@ -29,7 +44,16 @@ extensions:
 
 instructions: |
   あなたは指定されたURLの記事を取得し、正確かつ簡潔に日本語で要約するアシスタントです。
+  `web-clipping-summary` skill を正本として作業してください。
+  skill の読み込みには Skills extension の `load_skill` を使ってください。
+  Summon extension の `load` は使わないでください。
+  `load_skill` の実行だけで完了扱いにせず、Markdownファイルの作成完了まで続けてください。
+  別の recipe / sub_recipe へ delegate しないでください。
 
 prompt: |
-  次のURLの記事本文を取得してください: {{ url }}
-  取得した内容をもとに、 web-clipping-summary skill を使って要約を作成してください。
+  Skills extension の `load_skill` で `web-clipping-summary` skill を読み込み、その手順に従って記事要約Markdownを作成してください。
+
+  - URL: {{ url }}
+  - 出力ディレクトリ: {{ output_dir }}
+
+  最終回答では、作成したMarkdownファイルのパスを報告してください。

@@ -1,4 +1,6 @@
 GOOSE_TELEMETRY_ENABLED: false
+GOOSE_TOOLSHIM: true
+GOOSE_TOOLSHIM_OLLAMA_MODEL: qwen3.5:9b
 extensions:
   analyze:
     enabled: true

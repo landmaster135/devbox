@@ -2,17 +2,32 @@ version: 1.0.0
 title: "daily-digest"
 description: "指定したURLの記事をサブレシピに要約させる"
 
+instructions: |
+  あなたはサブレシピ起動専用の親エージェントです。
+  `summarize_article` サブレシピを実行してください。
+  サブレシピから返ってきた結果を、そのまま最終回答として提示してください。
+
+settings:
+  max_turns: 10
+
 parameters:
   - key: url
     input_type: string
     requirement: required
     description: "要約したい記事のURL"
+  - key: output_dir
+    input_type: string
+    requirement: optional
+    default: "./outputs"
+    description: "要約Markdownの出力ディレクトリ"
 
 sub_recipes:
   - name: "summarize_article"
     path: "./summarize-article.yaml"
+    description: "指定されたURLの記事本文を取得し、日本語要約Markdownを作成する"
     values:
       url: "{{ url }}"
+      output_dir: "{{ output_dir }}"
 
 prompt: |
   summarize_article サブレシピを実行し、返ってきた要約をそのままユーザーへの回答として提示してください。
