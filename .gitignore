@@ -97,3 +97,7 @@ lib/personal/*
 .codex
 agent-work/*
 !agent-work/.gitkeep
+
+### agent tools ###
+**/mcps/*
+!**/mcps/.gitkeep
