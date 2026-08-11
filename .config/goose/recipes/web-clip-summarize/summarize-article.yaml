@@ -11,6 +11,21 @@ parameters:
 extensions:
   - type: builtin
     name: computercontroller
+  - type: platform
+    name: skills
+    description: "Discover and load local Agent Skills"
+    display_name: Skills
+    bundled: true
+  - type: stdio
+    name: web_clipper
+    cmd: ./mcps/devbox-mcp-tools
+    args:
+      - web_clipper
+    timeout: 300
+    bundled: false
+    description: "Web記事要約Markdownを出力する devbox MCP"
+    available_tools:
+      - patch_markdown
 
 instructions: |
   あなたは指定されたURLの記事を取得し、正確かつ簡潔に日本語で要約するアシスタントです。
