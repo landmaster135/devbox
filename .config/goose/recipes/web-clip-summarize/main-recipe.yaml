@@ -1,0 +1,18 @@
+version: 1.0.0
+title: "daily-digest"
+description: "指定したURLの記事をサブレシピに要約させる"
+
+parameters:
+  - key: url
+    input_type: string
+    requirement: required
+    description: "要約したい記事のURL"
+
+sub_recipes:
+  - name: "summarize_article"
+    path: "./summarize-article.yaml"
+    values:
+      url: "{{ url }}"
+
+prompt: |
+  summarize_article サブレシピを実行し、返ってきた要約をそのままユーザーへの回答として提示してください。
