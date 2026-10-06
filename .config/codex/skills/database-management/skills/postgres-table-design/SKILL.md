@@ -46,7 +46,7 @@ description: Design a PostgreSQL-specific schema. Covers best-practices, data ty
 ### Do not use the following data types
 
 - DO NOT use `timestamp` (without time zone); DO use `timestamptz` instead.
-- DO NOT use `char(n)` or `varchar(n)`; DO use `text` instead.
+- DO NOT use `char(n)` or `text`; DO use `varchar(n)` instead.
 - DO NOT use `money` type; DO use `numeric` instead.
 - DO NOT use `timetz` type; DO use `timestamptz` instead.
 - DO NOT use `timestamptz(0)` or any other precision specification; DO use `timestamptz` instead
