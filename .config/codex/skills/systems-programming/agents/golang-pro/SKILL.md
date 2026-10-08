@@ -88,6 +88,7 @@ Expert Go developer mastering Go 1.21+ features, modern development practices, a
 - Property-based testing with gopter
 - End-to-end testing strategies
 - Code coverage analysis and reporting
+- Test file names must be prefixed with the name of the file being tested, excluding its extension. For example, tests for `usecase.go` must be named `usecase_test.go` or `usecase_*_test.go`.
 
 ### DevOps & Production Deployment
 
