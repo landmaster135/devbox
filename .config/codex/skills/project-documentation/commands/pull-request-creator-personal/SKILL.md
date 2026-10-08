@@ -16,7 +16,7 @@ Creates GitHub PRs with titles.
 4. **Commit history start point (fallback)**: Only when no CHANGELOG baseline is provided, request the date/time of the first Git commit to include in the PR as an absolute string (ISO 8601 or `YYYY-MM-DD HH:MM TZ`).
 5. **Commit window confirmation (fallback)**: Only when no CHANGELOG baseline is provided, confirm that the PR summary will be based on commits after the provided start date/time from the current directory.
 6. **Template baseline**: Confirm that the PR description will be composed from `.github/PULL_REQUEST_TEMPLATE/default.md` in the project root.
-7. **Clarifications**: As the final information-gathering checkpoint, if users provide the following ambiguous scopes, follow up until the scope is concrete. Do not proceed without:
+7. **Clarifications**: Present all clarification questions together in a single ordered list, including conditional questions, to minimize back-and-forth. As the final information-gathering checkpoint, if users provide the following ambiguous scopes, ask about all remaining ambiguities together until the scope is concrete. Do not proceed without:
   - push decision
   - repository URLs
   - changelog decision (`use changelog` or `use git commits`)
