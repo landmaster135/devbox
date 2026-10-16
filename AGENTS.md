@@ -3,7 +3,7 @@ Quick Decision Trees に則って、参照するべきドキュメントを全�
 
 ## Summary
 
-このファイルは、エージェント向けの入口です。  
+このファイルは、エージェント向けの入口です。
 実装・設計・運用の詳細ルールは `docs/` 側を正本とします。
 
 - `docs/tool_implementation/index.md`
