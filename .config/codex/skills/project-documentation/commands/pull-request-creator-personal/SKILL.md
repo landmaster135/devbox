@@ -59,33 +59,6 @@ Creates GitHub PRs with titles.
 - If a CHANGELOG baseline is provided, prioritize it as the summary source and use git history only for supplemental verification
 - Reference the chosen CHANGELOG headings or git history window in prose if it adds clarity
 
-### Examples
-
-Feature in editor
-```
-feat: Add workflow performance metrics display
-```
-
-Bug fix
-```
-fix: Resolve memory leak in execution engine
-```
-
-Breaking change (add exclamation mark before colon)
-```
-feat!: Remove deprecated v1 endpoints
-```
-
-No changelog entry
-```
-refactor: Simplify error handling (no-changelog)
-```
-
-No scope (affects multiple areas)
-```
-chore: Update dependencies to latest versions
-```
-
 ### Validation
 
 The PR title must match this pattern:
