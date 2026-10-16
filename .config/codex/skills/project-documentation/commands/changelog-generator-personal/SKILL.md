@@ -75,4 +75,4 @@ PR: #<number> (use `PR: pending` if unknown)
   - Snippets from `git show <hash>` if they want supporting detail
   - Summaries of PR numbers, tags, or blast radius
 3. Insert the new entry at the top of `docs/changelog/v*.md` unless the user specifies another location.
-4. If you ran tests (`go test`, scripts, etc.), record results and update `.agents/test_results.md` accordingly.
+4. If you ran tests (`go test`, scripts, etc.), record results and update `agent-work/tmp/test_results.md` accordingly.

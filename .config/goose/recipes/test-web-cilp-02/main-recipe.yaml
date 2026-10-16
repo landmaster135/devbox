@@ -1,0 +1,62 @@
+version: 1.0.0
+title: "test-web-clip-subrecipe"
+description: "web_clipper__patch_markdown をサブレシピ経由で呼び出す最小検証用 recipe"
+
+parameters:
+  - key: target_title
+    input_type: string
+    requirement: optional
+    default: "Test Article"
+    description: "Markdownへ挿入する記事タイトル"
+  - key: target_url
+    input_type: string
+    requirement: optional
+    default: "https://example.com/test-article"
+    description: "Markdownへ挿入する記事URL"
+  - key: out_file_path
+    input_type: string
+    requirement: optional
+    default: "./tmp/test-web-clip-subrecipe-patch-markdown.md"
+    description: "出力先Markdownファイルパス"
+
+extensions:
+  - type: platform
+    name: summon
+  - type: stdio
+    name: web_clipper
+    cmd: "./mcps/devbox-mcp-tools"
+    args:
+      - web_clipper
+    timeout: 300
+    bundled: false
+    description: "Web記事要約Markdownを出力する devbox MCP"
+    available_tools:
+      - patch_markdown
+
+sub_recipes:
+  - name: "patch_markdown_test"
+    path: "./subrecipes/patch-markdown.yaml"
+    description: "web_clipper__patch_markdown を1回だけ実行する"
+    values:
+      target_title: "{{ target_title }}"
+      target_url: "{{ target_url }}"
+      out_file_path: "{{ out_file_path }}"
+
+instructions: |
+  あなたはサブレシピ呼び出しだけを行う検証用エージェントです。
+  `delegate` ツールを使って `patch_markdown_test` サブレシピを1回だけ実行してください。
+  サブレシピから返ってきた結果を、そのまま最終回答として提示してください。
+
+prompt: |
+  `delegate` を次の内容で1回だけ実行してください。
+
+  - source: `patch_markdown_test`
+  - instructions: `このサブレシピに定義済みの instructions と prompt に従って処理を実行してください。`
+  - args:
+    {
+      "target_title": "{{ target_title }}",
+      "target_url": "{{ target_url }}",
+      "out_file_path": "{{ out_file_path }}"
+    }
+
+  `delegate` の結果をそのまま最終回答として返してください。

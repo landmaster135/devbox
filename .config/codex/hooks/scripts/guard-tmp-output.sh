@@ -9,7 +9,7 @@ project_root="$(
   git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || realpath -m "$cwd"
 )"
 
-allowed_root="$(realpath -m "$project_root/.agents")"
+allowed_root="$(realpath -m "$project_root/agent-work")"
 
 is_under_allowed_root() {
   local path="$1"
@@ -28,7 +28,7 @@ block_if_outside_agents() {
   local path="$1"
 
   if ! is_under_allowed_root "$path"; then
-    echo "Blocked: temporary outputs must be under project .agents directory." >&2
+    echo "Blocked: temporary outputs must be under project agent-work directory." >&2
     echo "Project root: $project_root" >&2
     echo "Allowed root: $allowed_root" >&2
     echo "Rejected path: $path" >&2
@@ -84,7 +84,7 @@ guard_go_test_compile_output() {
   output_path="$(extract_go_test_compile_output)"
 
   if [[ -z "$output_path" ]]; then
-    echo "Blocked: go test -c must specify -o under project .agents directory." >&2
+    echo "Blocked: go test -c must specify -o under project agent-work directory." >&2
     echo "Project root: $project_root" >&2
     echo "Allowed root: $allowed_root" >&2
     exit 2

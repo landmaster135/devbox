@@ -50,6 +50,7 @@ tasks:
             --src-dir=. --out-dir=.{{.DIR_SEP}}999_converted_images \
             --archive-dir="" \
             --ext=webp \
+            --m=6 \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- cwebp Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"
@@ -100,6 +101,7 @@ tasks:
             --src-dir=. --out-dir=.{{.DIR_SEP}}999_converted_images \
             --archive-dir="" \
             --ext=webp \
+            --m=6 \
             $QUALITY_ARG $MOVE_FLAG
           echo $'\n[Step 01: END]--- cwebp Webp変換プログラムの実行が完了しました ---'
         dir: "{{.TASKFILE_DIR}}"

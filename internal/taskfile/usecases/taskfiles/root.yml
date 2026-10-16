@@ -18,7 +18,7 @@ tasks:
   find:agents:
     desc: "List files in the agent directory at the project root"
     cmds:
-      - find .agents | sort -f
+      - find agent-work | sort -f
   find:pjroot:
     desc: "List files in the project root directory"
     cmds:

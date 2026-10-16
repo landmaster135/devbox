@@ -16,7 +16,7 @@ Creates GitHub PRs with titles.
 4. **Commit history start point (fallback)**: Only when no CHANGELOG baseline is provided, request the date/time of the first Git commit to include in the PR as an absolute string (ISO 8601 or `YYYY-MM-DD HH:MM TZ`).
 5. **Commit window confirmation (fallback)**: Only when no CHANGELOG baseline is provided, confirm that the PR summary will be based on commits after the provided start date/time from the current directory.
 6. **Template baseline**: Confirm that the PR description will be composed from `.github/PULL_REQUEST_TEMPLATE/default.md` in the project root.
-7. **Clarifications**: As the final information-gathering checkpoint, if users provide the following ambiguous scopes, follow up until the scope is concrete. Do not proceed without:
+7. **Clarifications**: Present all clarification questions together in a single ordered list, including conditional questions, to minimize back-and-forth. As the final information-gathering checkpoint, if users provide the following ambiguous scopes, ask about all remaining ambiguities together until the scope is concrete. Do not proceed without:
   - push decision
   - repository URLs
   - changelog decision (`use changelog` or `use git commits`)
@@ -59,33 +59,6 @@ Creates GitHub PRs with titles.
 - If a CHANGELOG baseline is provided, prioritize it as the summary source and use git history only for supplemental verification
 - Reference the chosen CHANGELOG headings or git history window in prose if it adds clarity
 
-### Examples
-
-Feature in editor
-```
-feat: Add workflow performance metrics display
-```
-
-Bug fix
-```
-fix: Resolve memory leak in execution engine
-```
-
-Breaking change (add exclamation mark before colon)
-```
-feat!: Remove deprecated v1 endpoints
-```
-
-No changelog entry
-```
-refactor: Simplify error handling (no-changelog)
-```
-
-No scope (affects multiple areas)
-```
-chore: Update dependencies to latest versions
-```
-
 ### Validation
 
 The PR title must match this pattern:
@@ -95,8 +68,10 @@ The PR title must match this pattern:
 
 ## PR Body
 
-### Commit Classification Rules
+### Template Preservation Rules
+- Add content only where the template has a placeholder.
 
+### Commit Classification Rules
 - Classify each tool/service area by its dominant commit type in the selected commit window.
 - Do not duplicate a tool across sections when it is already represented as `feat` in the same PR summary.
 - If a tool has `feat:` commits, list it under feature-related sections only, and do not also list it as `refactor` or `test`.

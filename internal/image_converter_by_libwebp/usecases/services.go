@@ -183,7 +183,7 @@ func (s *Service) convertOne(ctx context.Context, path string, srcDir string, ou
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return fmt.Errorf("出力先ディレクトリの作成に失敗しました: %w", err)
 	}
-	if err := s.converter.ConvertToWebP(ctx, path, outPath, cfg.Quality, cfg.Lossless); err != nil {
+	if err := s.converter.ConvertToWebP(ctx, path, outPath, cfg.Quality, cfg.Method, cfg.Lossless); err != nil {
 		return err
 	}
 	if archiveDir == "" {

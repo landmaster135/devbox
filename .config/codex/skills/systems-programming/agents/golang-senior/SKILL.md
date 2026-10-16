@@ -9,7 +9,7 @@ Follow these rules for Go coding.
 
 ## Points to keep in mind during development
 
-- When creating functions, basically make them as methods of a struct. When creating test functions, it's fine to make them as standalone functions.
+- Prioritize simplicity and readability when writing functions. When creating test functions, it's fine to make them as standalone functions.
 - Always implement functions, structs, and objects starting from the base level. That is, the next thing you implement should be something that will be called by what you previously implemented.
 - After finishing the CLI tool implementation, update the README within the CLI package before testing the functionality.
 
@@ -20,6 +20,7 @@ Follow these rules for Go coding.
 - When testing modules, execute with `go test -coverprofile=coverage.out ./...` in the local environment.
 - Always run tests for the entire package when executing tests.
 - Use the `go run` command for verification when testing CLI tool functionality.
+- Test file names must be prefixed with the name of the file being tested, excluding its extension. For example, tests for `usecase.go` must be named `usecase_test.go` or `usecase_*_test.go`.
 - If, when you run `go test`, you encounter an error like:
 
 ```text

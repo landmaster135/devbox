@@ -10,6 +10,7 @@
 .tmp
 .vscode
 .idea
+agent-work
 
 # Build outputs and packaged images
 bin
