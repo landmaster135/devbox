@@ -68,8 +68,10 @@ The PR title must match this pattern:
 
 ## PR Body
 
-### Commit Classification Rules
+### Template Preservation Rules
+- Add content only where the template has a placeholder.
 
+### Commit Classification Rules
 - Classify each tool/service area by its dominant commit type in the selected commit window.
 - Do not duplicate a tool across sections when it is already represented as `feat` in the same PR summary.
 - If a tool has `feat:` commits, list it under feature-related sections only, and do not also list it as `refactor` or `test`.
